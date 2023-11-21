@@ -2,16 +2,20 @@
     "driverPath": "",
     "driverEntryPoint": "",
     "account": "",
-    "user":  "",
-    "password":  "",
+    "host": "",
+    "database": "",
+    "user": "",
+    "password": "",
     "warehouse": "",
-    "authenticationType":"",
+    "authenticationType": "",
     "authenticationTokenPath": "",
+    "pkcs8Passcode": "",
+    "useHighPrecision":  true,
     "metadata": {
         "catalog": "",
         "schema": "",
         "table": "",
-        "expectedColumnCount":  0
+        "expectedColumnCount": 0
     },
     "query": "",
     "expectedResults": 0

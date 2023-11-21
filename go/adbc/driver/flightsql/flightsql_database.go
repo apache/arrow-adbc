@@ -30,9 +30,9 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
-	"github.com/apache/arrow/go/v13/arrow/array"
-	"github.com/apache/arrow/go/v13/arrow/flight"
-	"github.com/apache/arrow/go/v13/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v14/arrow/flight"
+	"github.com/apache/arrow/go/v14/arrow/flight/flightsql"
 	"github.com/bluele/gcache"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -382,7 +382,8 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl) (*flights
 		}
 
 		if md, ok := metadata.FromOutgoingContext(ctx); ok {
-			// No need to worry about lock here since we are sole owner
+			authMiddle.mutex.Lock()
+			defer authMiddle.mutex.Unlock()
 			authMiddle.hdrs.Set("authorization", md.Get("Authorization")[0])
 		}
 	}

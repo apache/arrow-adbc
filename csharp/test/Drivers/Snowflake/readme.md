@@ -22,9 +22,12 @@ The Snowflake tests leverage the interop nature of the C# ADBC library. These re
 
 To compile, navigate to the `go/adbc/pkg` directory of the cloned [arrow-adbc](https://github.com/apache/arrow-adbc) repository then run the `make` command.  If you encounter compilation errors, please ensure that Go, [GCC and C++](https://code.visualstudio.com/docs/cpp/config-mingw) tools are installed. And following [Contributing to ADBC](https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md#environment-setup).
 
+## Setup
+The environment variable `SNOWFLAKE_TEST_CONFIG_FILE` must be set to a configuration JSON file for the tests to execute. If it is not, the tests will show as passed with an output message that they are skipped. A template configuration file can be found in the Resources directory.
+
 ## Configuration
 
-The following values can be setup in the configuration
+The following values can be setup in the configuration:
 
 - **driverPath** - The path for the Go library. Can be a relative path if using .NET 5.0 or greater, otherwise, it is an absolute path.
 - **driverEntryPoint** - The driver entry point. For Snowflake, this is `SnowflakeDriverInit`.
@@ -35,7 +38,7 @@ The following values can be setup in the configuration
 - **authenticationType** - The `adbc.snowflake.sql.auth_type` value from the [Snowflake Client Options](https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html#client-options).
 - **authenticationTokenPath** - The path to the authentication token file, if using `auth_jwt` for the auth type.
 - metadata
-  - **database** - Used by metadata tests for which database to target.
+  - **catalog** - Used by metadata tests for which database to target.
   - **schema** - Used by metadata tests for which schema to target.
   - **table** - Used by metadata tests for which table to target.
   - **expectedColumnCount** - Used by metadata tests to validate the number of columns that are returned.

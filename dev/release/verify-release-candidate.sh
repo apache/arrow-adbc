@@ -399,7 +399,9 @@ install_conda() {
 maybe_setup_conda() {
   # Optionally setup conda environment with the passed dependencies
   local env="conda-${CONDA_ENV:-source}"
-  local pyver=${PYTHON_VERSION:-3}
+  # XXX(https://github.com/apache/arrow-adbc/issues/1247): no duckdb for
+  # python 3.12 on conda-forge right now
+  local pyver=${PYTHON_VERSION:-3.11}
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     show_info "Configuring Conda environment..."
@@ -534,7 +536,7 @@ test_python() {
   show_header "Build and test Python libraries"
 
   # Build and test Python
-  maybe_setup_virtualenv cython duckdb pandas pyarrow pytest setuptools_scm setuptools || exit 1
+  maybe_setup_virtualenv cython duckdb pandas protobuf pyarrow pytest setuptools_scm setuptools || exit 1
   maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_python.txt" || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then

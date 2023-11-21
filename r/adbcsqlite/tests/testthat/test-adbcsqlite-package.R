@@ -93,7 +93,10 @@ test_that("read/write/execute SQL work with sqlite connections", {
 
   stream <- adbcdrivermanager::read_adbc(con, "SELECT * from df")
   expect_identical(as.data.frame(stream), data.frame(x = as.double(3:12)))
+
   stream$release()
+  adbcdrivermanager::adbc_connection_release(con)
+  adbcdrivermanager::adbc_database_release(db)
 })
 
 test_that("write_adbc() with temporary = TRUE works with sqlite databases", {
@@ -118,4 +121,7 @@ test_that("write_adbc() with temporary = TRUE works with sqlite databases", {
     adbcdrivermanager::read_adbc(con, "SELECT * from df"),
     class = "adbc_status_invalid_argument"
   )
+
+  adbcdrivermanager::adbc_connection_release(con)
+  adbcdrivermanager::adbc_database_release(db)
 })

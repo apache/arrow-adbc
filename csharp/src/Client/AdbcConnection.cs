@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -41,6 +41,7 @@ namespace Apache.Arrow.Adbc.Client
         public AdbcConnection()
         {
            this.AdbcDriver = null;
+           this.DecimalBehavior = DecimalBehavior.UseSqlDecimal;
            this.adbcConnectionParameters = new Dictionary<string, string>();
            this.adbcConnectionOptions = new Dictionary<string, string>();
         }
@@ -55,7 +56,7 @@ namespace Apache.Arrow.Adbc.Client
         }
 
         /// <summary>
-        /// Overloaded. Intializes an <see cref="AdbcConnection"/>.
+        /// Overloaded. Initializes an <see cref="AdbcConnection"/>.
         /// </summary>
         /// <param name="adbcDriver">
         /// The <see cref="AdbcDriver"/> to use for connecting. This value
@@ -67,7 +68,7 @@ namespace Apache.Arrow.Adbc.Client
         }
 
         /// <summary>
-        /// Overloaded. Intializes an <see cref="AdbcConnection"/>.
+        /// Overloaded. Initializes an <see cref="AdbcConnection"/>.
         /// </summary>
         /// <param name="adbcDriver">
         /// The <see cref="AdbcDriver"/> to use for connecting. This value
@@ -120,6 +121,11 @@ namespace Apache.Arrow.Adbc.Client
 
         public override string ConnectionString { get => GetConnectionString(); set => SetConnectionProperties(value); }
 
+        /// <summary>
+        /// Gets or sets the behavior of decimals.
+        /// </summary>
+        public DecimalBehavior DecimalBehavior { get; set; }
+
         protected override DbCommand CreateDbCommand()
         {
             EnsureConnectionOpen();
@@ -140,6 +146,7 @@ namespace Apache.Arrow.Adbc.Client
         {
             this.adbcConnectionInternal?.Dispose();
             this.adbcConnectionInternal = null;
+            this.adbcStatement = null;
 
             base.Dispose(disposing);
         }
@@ -220,9 +227,6 @@ namespace Apache.Arrow.Adbc.Client
             return GetSchema(null);
         }
 
-        //GetSchema("TABLES")
-        //GetSchema("VIEWS")
-
         public override DataTable GetSchema(string collectionName)
         {
             return GetSchema(collectionName, null);
@@ -231,7 +235,7 @@ namespace Apache.Arrow.Adbc.Client
         public override DataTable GetSchema(string collectionName, string[] restrictionValues)
         {
             Schema arrowSchema = this.adbcConnectionInternal.GetTableSchema("", "", "");
-            return SchemaConverter.ConvertArrowSchema(arrowSchema, this.AdbcStatement);
+            return SchemaConverter.ConvertArrowSchema(arrowSchema, this.AdbcStatement, this.DecimalBehavior);
         }
 
         #region NOT_IMPLEMENTED

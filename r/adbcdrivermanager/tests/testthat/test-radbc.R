@@ -40,6 +40,23 @@ test_that("connection methods work for the void driver", {
   )
 
   expect_error(
+    adbc_connection_get_info(con, double()),
+    "NOT_IMPLEMENTED"
+  )
+
+  expect_error(
+    adbc_connection_get_info(con, NULL),
+    "NOT_IMPLEMENTED"
+  )
+
+  # With defaults of NULL/OL
+  expect_error(
+    adbc_connection_get_objects(con),
+    "NOT_IMPLEMENTED"
+  )
+
+  # With explicit args
+  expect_error(
     adbc_connection_get_objects(
       con, 0,
       "catalog", "db_schema",
@@ -66,14 +83,29 @@ test_that("connection methods work for the void driver", {
     "NOT_IMPLEMENTED"
   )
 
-  expect_identical(
+  expect_error(
     adbc_connection_commit(con),
-    con
+    "NOT_IMPLEMENTED"
   )
 
-  expect_identical(
+  expect_error(
     adbc_connection_rollback(con),
-    con
+    "NOT_IMPLEMENTED"
+  )
+
+  expect_error(
+    adbc_connection_cancel(con),
+    "NOT_IMPLEMENTED"
+  )
+
+  expect_error(
+    adbc_connection_get_statistic_names(con),
+    "NOT_IMPLEMENTED"
+  )
+
+  expect_error(
+    adbc_connection_get_statistics(con, NULL, NULL, "table name"),
+    "NOT_IMPLEMENTED"
   )
 
   expect_identical(
@@ -136,9 +168,19 @@ test_that("statement methods work for the void driver", {
     adbc_statement_execute_query(stmt),
     "NOT_IMPLEMENTED"
   )
+
+  expect_error(
+    adbc_statement_execute_schema(stmt),
+    "NOT_IMPLEMENTED"
+  )
+
+  expect_error(
+    adbc_statement_cancel(stmt),
+    "NOT_IMPLEMENTED"
+  )
 })
 
-test_that("invalid parameter types generate errors", {
+test_that("invalid external pointer inputs generate errors", {
   db <- adbc_database_init(adbc_driver_void())
   con <- adbc_connection_init(db)
   stmt <- adbc_statement_init(con)
@@ -153,31 +195,131 @@ test_that("invalid parameter types generate errors", {
     "Expected external pointer with class 'adbc_statement'"
   )
 
+  # (makes a NULL xptr)
+  stmt2 <- unserialize(serialize(stmt, NULL))
   expect_error(
-    adbc_connection_get_objects(
-      con, NULL,
-      "catalog", "db_schema",
-      "table_name", "table_type", "column_name"
-    ),
+    adbc_statement_set_sql_query(stmt2, "some query"),
+    "Can't convert external pointer to NULL to T*"
+  )
+})
+
+test_that("invalid integer inputs generate errors", {
+  db <- adbc_database_init(adbc_driver_void())
+  con <- adbc_connection_init(db)
+
+  expect_error(
+    adbc_connection_get_objects(con, depth = "abc"),
     "Expected integer(1) or double(1)",
     fixed = TRUE
   )
 
   expect_error(
-    adbc_statement_set_sql_query(stmt, NULL),
-    "Expected character(1)",
+    adbc_connection_get_objects(con, depth = 1:5),
+    "Expected integer(1) or double(1)",
     fixed = TRUE
+  )
+
+  expect_error(
+    adbc_connection_get_objects(con, structure(1L, class = "non-empty")),
+    "Can't convert classed object"
+  )
+
+  expect_error(
+    adbc_connection_get_objects(con, NA_real_),
+    "Can't convert non-finite"
+  )
+})
+
+test_that("invalid int list inputs generate errors", {
+  db <- adbc_database_init(adbc_driver_void())
+  con <- adbc_connection_init(db)
+
+  expect_error(
+    adbc_connection_get_info(con, character()),
+    "Expected integer"
+  )
+
+  expect_error(
+    adbc_connection_get_info(con, structure(integer(), class = "non-empty")),
+    "Can't convert classed object"
+  )
+
+  expect_error(
+    adbc_connection_get_info(con, NA_real_),
+    "Can't convert non-finite element"
+  )
+})
+
+test_that("invalid const char* list inputs generate errors", {
+  db <- adbc_database_init(adbc_driver_void())
+  con <- adbc_connection_init(db)
+
+  expect_error(
+    adbc_connection_get_objects(
+      con,
+      table_type = integer()
+    ),
+    "Expected character"
+  )
+
+  expect_error(
+    adbc_connection_get_objects(
+      con,
+      table_type = NA_character_
+    ),
+    "Can't convert NA_character_ element"
+  )
+
+  expect_error(
+    adbc_connection_get_objects(
+      con,
+      table_type = structure("abc", class = "non-empty")
+    ),
+    "Can't convert classed object"
+  )
+})
+
+test_that("invalid const char* inputs generate errors", {
+  db <- adbc_database_init(adbc_driver_void())
+  con <- adbc_connection_init(db)
+  stmt <- adbc_statement_init(con)
+
+  expect_error(
+    adbc_statement_set_sql_query(stmt, NULL),
+    "Expected character"
+  )
+
+  expect_error(
+    adbc_statement_set_sql_query(stmt, structure("abc", class = "non-empty")),
+    "Can't convert classed object to const char"
   )
 
   expect_error(
     adbc_statement_set_sql_query(stmt, NA_character_),
     "Can't convert NA_character_"
   )
+})
 
-  # (makes a NULL xptr)
-  stmt2 <- unserialize(serialize(stmt, NULL))
+test_that("invalid bool inputs generate errors", {
+  db <- adbc_database_init(adbc_driver_void())
+  con <- adbc_connection_init(db)
+
   expect_error(
-    adbc_statement_set_sql_query(stmt2, "some query"),
-    "Can't convert external pointer to NULL to T*"
+    adbc_connection_get_statistics(con, NULL, NULL, "table name", character()),
+    "Expected integer(1) or double(1)",
+    fixed = TRUE
+  )
+
+  expect_error(
+    adbc_connection_get_statistics(con, NULL, NULL, "table name", NA),
+    "Can't convert NA to bool"
+  )
+
+  expect_error(
+    adbc_connection_get_statistics(
+      con, NULL, NULL, "table name",
+      structure(TRUE, class = "non-empty")
+    ),
+    "Can't convert classed object to bool"
   )
 })

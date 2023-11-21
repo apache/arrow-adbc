@@ -48,6 +48,7 @@ BuildRequires:	libpq-devel
 BuildRequires:	ninja-build
 BuildRequires:	pkgconfig
 BuildRequires:	sqlite-devel
+BuildRequires:	vala
 
 %description
 Apache Arrow Database Connectivity (ADBC) is an Apache Arrow based database access API
@@ -63,11 +64,11 @@ cd c
 %adbc_cmake \
   -DCMAKE_BUILD_TYPE=${cmake_build_type} \
   -G"Unix Makefiles" \
+  -DADBC_DRIVER_FLIGHTSQL=ON \
   -DADBC_DRIVER_MANAGER=ON \
   -DADBC_DRIVER_POSTGRESQL=ON \
-  -DADBC_DRIVER_SQLITE=ON \
-  -DADBC_DRIVER_FLIGHTSQL=ON \
-  -DADBC_DRIVER_SNOWFLAKE=ON
+  -DADBC_DRIVER_SNOWFLAKE=ON \
+  -DADBC_DRIVER_SQLITE=ON
 %adbc_cmake_build
 cd -
 
@@ -78,7 +79,8 @@ meson setup build \
   --default-library=both \
   --libdir=%{_libdir} \
   --prefix=%{_prefix} \
-  -Dadbc_build_dir=$PWD/../c/%{adbc_cmake_builddir}/driver_manager
+  -Dadbc_build_dir=$PWD/../c/%{adbc_cmake_builddir}/driver_manager \
+  -Dvapi=true
 
 LD_LIBRARY_PATH=$PWD/../c/%{adbc_cmake_builddir}/driver_manager \
   meson compile -C build %{?_smp_mflags}
@@ -258,7 +260,7 @@ This package contains the libraries for ADBC GLib.
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
-%{_libdir}/girepository-1.0/ADBC-*.typelib
+%{_libdir}/girepository-1.0/
 %{_libdir}/libadbc-glib.so.*
 
 %package glib-devel
@@ -276,7 +278,8 @@ Libraries and header files for ADBC GLib.
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
-%{_datadir}/gir-1.0/ADBC-*.gir
+%{_datadir}/gir-1.0/
+%{_datadir}/vala/vapi/
 %{_includedir}/adbc-glib/
 %{_libdir}/libadbc-glib.a
 %{_libdir}/libadbc-glib.so
@@ -293,6 +296,7 @@ Documentation for ADBC GLib.
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
+%{_datadir}/adbc-glib/example/
 %{_docdir}/adbc-glib/
 
 %changelog

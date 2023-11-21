@@ -269,6 +269,21 @@ def test_ingest(postgres: dbapi.Connection) -> None:
             cur.adbc_ingest("foo", table, catalog_name="main")
 
 
+def test_ingest_schema(postgres: dbapi.Connection) -> None:
+    table = pyarrow.Table.from_pydict({"numbers": [1, 2], "letters": ["a", "b"]})
+
+    with postgres.cursor() as cur:
+        cur.execute("CREATE SCHEMA IF NOT EXISTS testschema")
+        cur.execute("DROP TABLE IF EXISTS testschema.foo")
+
+        postgres.commit()
+
+        cur.adbc_ingest("foo", table, mode="create", db_schema_name="testschema")
+
+        cur.execute("SELECT * FROM testschema.foo ORDER BY numbers")
+        assert cur.fetch_arrow_table() == table
+
+
 def test_ingest_temporary(postgres: dbapi.Connection) -> None:
     table = pyarrow.Table.from_pydict(
         {

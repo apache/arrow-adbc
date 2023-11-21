@@ -48,3 +48,10 @@ jobs:
           script: |
             const script = require(`${process.env.GITHUB_WORKSPACE}/.github/workflows/dev_pr/title_check.js`);
             await script({github, context});
+
+      - name: Assign milestone
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./.github/workflows/dev_pr/milestone.sh "${GITHUB_REPOSITORY}" ${{github.event.number}}

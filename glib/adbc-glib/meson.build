@@ -102,3 +102,9 @@ adbc_glib_gir = gnome.generate_gir(libadbc_glib,
                                    nsversion: api_version,
                                    sources: sources + definition_headers + enums,
                                    symbol_prefix: 'gadbc')
+if generate_vapi
+  adbc_glib_vapi = gnome.generate_vapi('adbc-glib',
+                                       install: true,
+                                       packages: ['gobject-2.0'],
+                                       sources: [adbc_glib_gir[0]])
+endif

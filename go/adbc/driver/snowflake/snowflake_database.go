@@ -19,17 +19,22 @@ package snowflake
 
 import (
 	"context"
+	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/snowflakedb/gosnowflake"
+	"github.com/youmark/pkcs8"
 )
 
 var (
@@ -328,13 +333,73 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 				}
 			}
 
-			d.cfg.PrivateKey, err = x509.ParsePKCS1PrivateKey(data)
+			var block []byte
+			if strings.Contains(string(data), "PRIVATE KEY") {
+				b, _ := pem.Decode(data)
+				block = b.Bytes
+			} else {
+				block = data
+			}
+
+			var key *rsa.PrivateKey
+			key, err = x509.ParsePKCS1PrivateKey(block)
+			if err != nil && strings.Contains(err.Error(), "use ParsePKCS8PrivateKey instead") {
+				var pkcs8Key any
+				pkcs8Key, err = x509.ParsePKCS8PrivateKey(block)
+				key, ok = pkcs8Key.(*rsa.PrivateKey)
+				if !ok {
+					err = errors.New("file does not contain an RSA private key")
+				}
+			}
+
 			if err != nil {
 				return adbc.Error{
 					Msg:  "failed parsing private key file '" + v + "': " + err.Error(),
 					Code: adbc.StatusInvalidArgument,
 				}
 			}
+
+			d.cfg.PrivateKey = key
+		case OptionJwtPrivateKeyPkcs8Value:
+			block, _ := pem.Decode([]byte(v))
+
+			if block == nil {
+				return adbc.Error{
+					Msg:  "Failed to parse PEM block containing the private key",
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+
+			var parsedKey any
+
+			if block.Type == "ENCRYPTED PRIVATE KEY" {
+				passcode, ok := cnOptions[OptionJwtPrivateKeyPkcs8Password]
+				if ok {
+					parsedKey, err = pkcs8.ParsePKCS8PrivateKey(block.Bytes, []byte(passcode))
+				} else {
+					return adbc.Error{
+						Msg:  OptionJwtPrivateKeyPkcs8Password + " is not configured",
+						Code: adbc.StatusInvalidArgument,
+					}
+				}
+			} else if block.Type == "PRIVATE KEY" {
+				parsedKey, err = pkcs8.ParsePKCS8PrivateKey(block.Bytes)
+			} else {
+				return adbc.Error{
+					Msg:  block.Type + " is not supported",
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+
+			if err != nil {
+				return adbc.Error{
+					Msg:  "[Snowflake] failed parsing PKCS8 private key: " + err.Error(),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+
+			d.cfg.PrivateKey = parsedKey.(*rsa.PrivateKey)
+
 		case OptionClientRequestMFAToken:
 			switch v {
 			case adbc.OptionValueEnabled:

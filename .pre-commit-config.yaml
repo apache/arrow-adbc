@@ -29,13 +29,21 @@ repos:
       exclude: ci/conda/meta.yaml
     - id: end-of-file-fixer
       exclude: "^r/.*?/_snaps/.*?.md$"
+    - id: mixed-line-ending
+      name: "Mixed line endings (LF)"
+      args: [--fix=lf]
+      exclude: '\.(bat|sln|csproj)$'
+    - id: mixed-line-ending
+      name: "Mixed line endings (CRLF)"
+      args: [--fix=crlf]
+      files: '\.(bat|sln|csproj)$'
     - id: trailing-whitespace
       exclude: "^r/.*?/_snaps/.*?.md$"
   - repo: https://github.com/pocc/pre-commit-hooks
     rev: v1.3.5
     hooks:
       - id: clang-format
-        args: [-i]
+        args: [-i, --version=14]
         types_or: [c, c++]
   - repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
@@ -48,7 +56,7 @@ repos:
     - id: cpplint
       args:
         # From Arrow's config
-        - "--filter=-whitespace/comments,-whitespace/indent,-readability/braces,-readability/casting,-readability/todo,-readability/alt_tokens,-build/header_guard,-build/c++11,-build/include_order,-build/include_subdir"
+        - "--filter=-whitespace/comments,-whitespace/indent,-readability/braces,-readability/casting,-readability/todo,-readability/alt_tokens,-build/header_guard,-build/c++11,-build/include_order,-build/include_subdir,-runtime/references"
         - "--linelength=90"
         - "--verbose=2"
   - repo: https://github.com/golangci/golangci-lint
@@ -79,6 +87,12 @@ repos:
     hooks:
     - id: isort
       types_or: [python]
+  # TODO: Change this to vala-lang/vala-lint after
+  # https://github.com/vala-lang/vala-lint/pull/179 is merged.
+  - repo: https://github.com/kou/vala-lint
+    rev: pre-commit-hook
+    hooks:
+    - id: vala-lint
   - repo: local
     hooks:
     - id: apache-rat

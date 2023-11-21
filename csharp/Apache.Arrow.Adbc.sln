@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33403.182
@@ -26,6 +26,10 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Client", "src\Client\Apache.Arrow.Adbc.Client.csproj", "{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake", "test\Drivers\Snowflake\Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake.csproj", "{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Drivers.BigQuery", "src\Drivers\BigQuery\Apache.Arrow.Adbc.Drivers.BigQuery.csproj", "{A748041C-EF9A-4E88-B6FB-9F2D6CB79170}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.BigQuery", "test\Drivers\BigQuery\Apache.Arrow.Adbc.Tests.Drivers.BigQuery.csproj", "{EA43BB7C-BC00-4701-BDF4-367880C2495C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -61,6 +65,14 @@ Global
 		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A748041C-EF9A-4E88-B6FB-9F2D6CB79170}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A748041C-EF9A-4E88-B6FB-9F2D6CB79170}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A748041C-EF9A-4E88-B6FB-9F2D6CB79170}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A748041C-EF9A-4E88-B6FB-9F2D6CB79170}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA43BB7C-BC00-4701-BDF4-367880C2495C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA43BB7C-BC00-4701-BDF4-367880C2495C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA43BB7C-BC00-4701-BDF4-367880C2495C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA43BB7C-BC00-4701-BDF4-367880C2495C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -73,6 +85,8 @@ Global
 		{5C15E79C-19C4-4FF4-BB82-28754FE3966B} = {C7290227-E925-47E7-8B6B-A8B171645D58}
 		{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C} = {B6111602-2DC4-4B2F-9598-E3EE1972D3E4}
 		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156} = {C7290227-E925-47E7-8B6B-A8B171645D58}
+		{A748041C-EF9A-4E88-B6FB-9F2D6CB79170} = {FEB257A0-4FD3-495E-9A47-9E1649755445}
+		{EA43BB7C-BC00-4701-BDF4-367880C2495C} = {C7290227-E925-47E7-8B6B-A8B171645D58}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4795CF16-0FDB-4BE0-9768-5CF31564DC03}

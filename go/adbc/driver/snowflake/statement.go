@@ -25,9 +25,9 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v13/arrow"
-	"github.com/apache/arrow/go/v13/arrow/array"
-	"github.com/apache/arrow/go/v13/arrow/memory"
+	"github.com/apache/arrow/go/v14/arrow"
+	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v14/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
 	"golang.org/x/exp/constraints"
 )
@@ -582,6 +582,37 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	}
 
 	return n, nil
+}
+
+// ExecuteSchema gets the schema of the result set of a query without executing it.
+func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
+	if st.targetTable != "" {
+		return nil, adbc.Error{
+			Msg:  "cannot execute schema for ingestion",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	if st.query == "" {
+		return nil, adbc.Error{
+			Msg:  "cannot execute without a query",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	if st.streamBind != nil || st.bound != nil {
+		return nil, adbc.Error{
+			Msg:  "executing schema with bound params not yet implemented",
+			Code: adbc.StatusNotImplemented,
+		}
+	}
+
+	loader, err := st.cnxn.cn.QueryArrowStream(gosnowflake.WithDescribeOnly(ctx), st.query)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusInternal, err)
+	}
+
+	return rowTypesToArrowSchema(ctx, loader, st.useHighPrecision)
 }
 
 // Prepare turns this statement into a prepared statement to be executed

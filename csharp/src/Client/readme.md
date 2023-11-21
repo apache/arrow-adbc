@@ -23,20 +23,20 @@ The Client library provides an ADO.NET client over the the top of results from t
 
 ## Library Design
 The Client is designed to work with any driver that inherits from [AdbcDriver](https://github.com/apache/arrow-adbc/blob/main/csharp/src/Apache.Arrow.Adbc/AdbcDriver.cs), whether they are written in a .NET language or a C-compatible language that can be loaded via Interop.
-The driver is injected at runtime during the creation of the `Client.AdbcConnection`, seen here:
+The driver is injected at runtime during the creation of the `Adbc.Client.AdbcConnection`, seen here:
 
 ![Dependency Injection Model](/docs/DependencyInjection.png "Dependency Injection Model")
 
 This enables the client to work with multiple ADBC drivers in the same fashion. When a new client AdbcConnection is created, the driver is just passed in as part of the constructor, like:
 
 ```
-new Client.AdbcConnection()
+new Adbc.Client.AdbcConnection()
 {
    new DriverA(),
    ...
 }
 
-new Client.AdbcConnection()
+new Adbc.Client.AdbcConnection()
 {
    new DriverB(),
    ...
@@ -67,9 +67,9 @@ For example, when using the [Snowflake ADBC Go Driver](https://arrow.apache.org/
 if using the default user name and password authentication, but look like
 
 ```
- adbc.snowflake.sql.account={account};adbc.snowflake.sql.warehouse={warehouse};username={user};password={password};adbc.snowflake.sql.auth_type=snowflake_jwt;adbc.snowflake.sql.client_option.auth_token={token}
+ adbc.snowflake.sql.account={account};adbc.snowflake.sql.warehouse={warehouse};username={user};password={password};adbc.snowflake.sql.auth_type=snowflake_jwt;adbc.snowflake.sql.client_option.jwt_private_key={private_key_file}
 ```
 
-when using JWT authentication.
+when using JWT authentication with an unencrypted key file.
 
 Other ADBC drivers will have different connection parameters, so be sure to check the documentation for each driver.

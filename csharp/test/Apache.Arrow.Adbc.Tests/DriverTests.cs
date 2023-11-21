@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -15,7 +15,7 @@
 * limitations under the License.
 */
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests
 {
@@ -45,14 +45,14 @@ namespace Apache.Arrow.Adbc.Tests
                 count += nextBatch.Length;
             }
 
-            Assert.AreEqual(expectedNumberOfResults, count, "The parsed records differ from the specified amount");
+            Assert.True(expectedNumberOfResults == count, "The parsed records differ from the specified amount");
 
             // if the values were set, make sure they are correct
             if (queryResult.RowCount != -1)
             {
-                Assert.AreEqual(queryResult.RowCount, expectedNumberOfResults, "The RowCount value does not match the expected results");
+                Assert.True(queryResult.RowCount == expectedNumberOfResults, "The RowCount value does not match the expected results");
 
-                Assert.AreEqual(queryResult.RowCount, count, "The RowCount value does not match the counted records");
+                Assert.True(queryResult.RowCount == count, "The RowCount value does not match the counted records");
             }
         }
     }

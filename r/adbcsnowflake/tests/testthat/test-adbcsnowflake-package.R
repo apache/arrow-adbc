@@ -20,13 +20,9 @@ test_that("adbcsnowflake() works", {
 })
 
 test_that("default options can open a database and execute a query", {
-  test_db_uri <- Sys.getenv("ADBC_SNOWFLAKE_TEST_URI", "")
-  skip_if(identical(test_db_uri, ""))
+  skip_if_not(adbcsnowflake_has_test_db())
 
-  db <- adbcdrivermanager::adbc_database_init(
-    adbcsnowflake(),
-    uri = test_db_uri
-  )
+  db <- adbcsnowflake_test_db()
   expect_s3_class(db, "adbcsnowflake_database")
 
   con <- adbcdrivermanager::adbc_connection_init(db)
@@ -39,28 +35,16 @@ test_that("default options can open a database and execute a query", {
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
   expect_s3_class(stmt, "adbcsnowflake_statement")
-  adbcdrivermanager::adbc_statement_set_sql_query(
-    stmt,
-    "use schema snowflake_sample_data.tpch_sf1;"
-  )
-  adbcdrivermanager::adbc_statement_execute_query(stmt)
-  adbcdrivermanager::adbc_statement_release(stmt)
-
-  stmt <- adbcdrivermanager::adbc_statement_init(con)
-  expect_s3_class(stmt, "adbcsnowflake_statement")
 
   adbcdrivermanager::adbc_statement_set_sql_query(
     stmt,
-    "SELECT R_REGIONKEY FROM REGION ORDER BY R_REGIONKEY"
+    "SELECT 'abc' as ABC"
   )
 
   stream <- nanoarrow::nanoarrow_allocate_array_stream()
   adbcdrivermanager::adbc_statement_execute_query(stmt, stream)
   result <- as.data.frame(stream)
-  expect_identical(
-    result$R_REGIONKEY,
-    c(0, 1, 2, 3, 4)
-  )
+  expect_identical(result, data.frame(ABC = "abc"))
 
   adbcdrivermanager::adbc_statement_release(stmt)
 })

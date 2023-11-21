@@ -98,6 +98,14 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     return ddl;
   }
 
+  std::optional<std::string> PrimaryKeyIngestTableDdl(
+      std::string_view name) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += name;
+    ddl += " (id INTEGER PRIMARY KEY, value BIGINT)";
+    return ddl;
+  }
+
   std::optional<std::string> CompositePrimaryKeyTableDdl(
       std::string_view name) const override {
     std::string ddl = "CREATE TABLE ";
@@ -175,6 +183,68 @@ class SqliteConnectionTest : public ::testing::Test,
 };
 ADBCV_TEST_CONNECTION(SqliteConnectionTest)
 
+TEST_F(SqliteConnectionTest, ExtensionLoading) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  // Can't enable here, or set either option
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.enabled",
+                                      "true", &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.path",
+                                      "libsqlitezstd.so", &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+  ASSERT_THAT(
+      AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.entrypoint",
+                              "entrypoint", &error),
+      adbc_validation::IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  // Can't set entrypoint before path
+  ASSERT_THAT(
+      AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.entrypoint",
+                              "entrypoint", &error),
+      adbc_validation::IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+
+  // path can't be null
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.path",
+                                      nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+
+  // Shouldn't work unless enabled
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.path",
+                                      "doesnotexist", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionSetOption(
+                  &connection, "adbc.sqlite.load_extension.entrypoint", nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_UNKNOWN, &error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.enabled",
+                                      "invalid", &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.enabled",
+                                      "false", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.enabled",
+                                      "true", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  // Now enabled, but the extension doesn't exist anyways
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.path",
+                                      "doesnotexist", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionSetOption(
+                  &connection, "adbc.sqlite.load_extension.entrypoint", nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_UNKNOWN, &error));
+
+  ASSERT_THAT(AdbcConnectionRelease(&connection, &error),
+              adbc_validation::IsOkStatus(&error));
+}
+
 TEST_F(SqliteConnectionTest, GetInfoMetadata) {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error),
               adbc_validation::IsOkStatus(&error));
@@ -246,10 +316,9 @@ class SqliteStatementTest : public ::testing::Test,
 
   void TestSqlIngestUInt64() {
     std::vector<std::optional<uint64_t>> values = {std::nullopt, 0, INT64_MAX};
-    return TestSqlIngestType(NANOARROW_TYPE_UINT64, values);
+    return TestSqlIngestType(NANOARROW_TYPE_UINT64, values, /*dictionary_encode*/ false);
   }
 
-  void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
   void TestSqlIngestDuration() {
     GTEST_SKIP() << "Cannot ingest DURATION (not implemented)";
   }
@@ -555,6 +624,22 @@ TEST_F(SqliteReaderTest, InferIntRejectStr) {
           "[SQLite] Type mismatch in column 0: expected INT64 but got STRING/BINARY"));
 }
 
+TEST_F(SqliteReaderTest, InferIntRejectBlob) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecSelect(R"((1), (NULL), (X''), (NULL))", /*infer_rows=*/2, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {1, std::nullopt}));
+
+  ASSERT_THAT(reader.MaybeNext(), ::testing::Not(IsOkErrno()));
+  ASSERT_THAT(
+      reader.stream->get_last_error(&reader.stream.value),
+      ::testing::HasSubstr(
+          "[SQLite] Type mismatch in column 0: expected INT64 but got STRING/BINARY"));
+}
+
 TEST_F(SqliteReaderTest, InferFloatReadIntFloat) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
@@ -576,6 +661,25 @@ TEST_F(SqliteReaderTest, InferFloatReadIntFloat) {
 TEST_F(SqliteReaderTest, InferFloatRejectStr) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(ExecSelect(R"((1E0), (NULL), (2E0), (3), (""), (NULL))",
+                                     /*infer_rows=*/2, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {1.0, std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {2.0, 3.0}));
+
+  ASSERT_THAT(reader.MaybeNext(), ::testing::Not(IsOkErrno()));
+  ASSERT_THAT(
+      reader.stream->get_last_error(&reader.stream.value),
+      ::testing::HasSubstr(
+          "[SQLite] Type mismatch in column 0: expected DOUBLE but got STRING/BINARY"));
+}
+
+TEST_F(SqliteReaderTest, InferFloatRejectBlob) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(ExecSelect(R"((1E0), (NULL), (2E0), (3), (X''), (NULL))",
                                      /*infer_rows=*/2, &reader));
   ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
