@@ -32,6 +32,10 @@ package drivermgr
 //     return (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
 // }
 //
+// struct ArrowArrayStream* allocArrStream() {
+//     return (struct ArrowArrayStream*)malloc(sizeof(struct ArrowArrayStream));
+// }
+//
 import "C"
 import (
 	"context"
@@ -186,6 +190,15 @@ func getRdr(out *C.struct_ArrowArrayStream) (array.RecordReader, error) {
 	return rdr.(array.RecordReader), nil
 }
 
+func getSchema(out *C.struct_ArrowSchema) (*arrow.Schema, error) {
+	// Maybe: ImportCArrowSchema should perform this check?
+	if out.format == nil {
+		return nil, nil
+	}
+
+	return cdata.ImportCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(out)))
+}
+
 type cnxn struct {
 	conn *C.struct_AdbcConnection
 }
@@ -255,19 +268,68 @@ func (c *cnxn) GetObjects(_ context.Context, depth adbc.ObjectDepth, catalog, db
 }
 
 func (c *cnxn) GetTableSchema(_ context.Context, catalog, dbSchema *string, tableName string) (*arrow.Schema, error) {
-	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		schema     C.struct_ArrowSchema
+		err        C.struct_AdbcError
+		catalog_   *C.char
+		dbSchema_  *C.char
+		tableName_ *C.char
+	)
+
+	if catalog != nil {
+		catalog_ = C.CString(*catalog)
+		defer C.free(unsafe.Pointer(catalog_))
+	}
+
+	if dbSchema != nil {
+		dbSchema_ = C.CString(*dbSchema)
+		defer C.free(unsafe.Pointer(dbSchema_))
+	}
+
+	tableName_ = C.CString(tableName)
+	defer C.free(unsafe.Pointer(tableName_))
+
+	if code := adbc.Status(C.AdbcConnectionGetTableSchema(c.conn, catalog_, dbSchema_, tableName_, &schema, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+
+	return getSchema(&schema)
 }
 
 func (c *cnxn) GetTableTypes(context.Context) (array.RecordReader, error) {
-	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		out C.struct_ArrowArrayStream
+		err C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcConnectionGetTableTypes(c.conn, &out, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+	return getRdr(&out)
 }
 
 func (c *cnxn) Commit(context.Context) error {
-	return &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		err C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcConnectionCommit(c.conn, &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+
+	return nil
 }
 
 func (c *cnxn) Rollback(context.Context) error {
-	return &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		err C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcConnectionRollback(c.conn, &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+
+	return nil
 }
 
 func (c *cnxn) NewStatement() (adbc.Statement, error) {
@@ -405,11 +467,29 @@ func (s *stmt) Bind(_ context.Context, values arrow.Record) error {
 }
 
 func (s *stmt) BindStream(_ context.Context, stream array.RecordReader) error {
-	return &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		arrStream   = C.allocArrStream()
+		cdArrStream = (*cdata.CArrowArrayStream)(unsafe.Pointer(arrStream))
+		err         C.struct_AdbcError
+	)
+	cdata.ExportRecordReader(stream, cdArrStream)
+	if code := adbc.Status(C.AdbcStatementBindStream(s.st, arrStream, &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+	return nil
 }
 
 func (s *stmt) GetParameterSchema() (*arrow.Schema, error) {
-	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		schema C.struct_ArrowSchema
+		err    C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcStatementGetParameterSchema(s.st, &schema, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+
+	return getSchema(&schema)
 }
 
 func (s *stmt) ExecutePartitions(context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
