@@ -369,7 +369,7 @@ namespace Apache.Arrow.Adbc.Client
             {
                 // Flattens the hierarchical ADBC schema into a DataTable
 
-                using (var stream = Invoke(adbcConnection, restrictions))
+                using (IArrowArrayStream stream = Invoke(adbcConnection, restrictions))
                 {
                     MapItem[] map = this.Map;
                     DataTable result = new DataTable(Name);
@@ -512,8 +512,6 @@ namespace Apache.Arrow.Adbc.Client
                 }
             }
 
-            class Counter { }
-
             protected struct MapItem
             {
                 public readonly string AdoName;
@@ -614,7 +612,19 @@ namespace Apache.Arrow.Adbc.Client
                 new MapItem("TABLE_CATALOG", new [] { "catalog_name" }, typeof(string)),
                 new MapItem("TABLE_SCHEMA", new [] { "catalog_db_schemas", "db_schema_name" }, typeof(string)),
                 new MapItem("TABLE_NAME", new [] { "catalog_db_schemas", "db_schema_tables", "table_name" }, typeof(string)),
-                new MapItem("COLUMN_NAME", new [] { "catalog_db_schemas", "db_schema_tables", "table_name" }, typeof(string)),
+                new MapItem("COLUMN_NAME", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "column_name" }, typeof(string)),
+                new MapItem("ORDINAL_POSITION", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "ordinal_position" }, typeof(int)),
+                new MapItem("REMARKS", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "remarks" }, typeof(string)),
+                new MapItem("DATA_TYPE", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "xdbc_type_name" }, typeof(string)),
+                new MapItem("IS_NULLABLE", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "xdbc_is_nullable" }, typeof(string)),
+                new MapItem("COLUMN_DEFAULT", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "xdbc_column_def" }, typeof(string)),
+                new MapItem("IS_AUTOINCREMENT", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "xdbc_is_autoincrement" }, typeof(bool)),
+                new MapItem("IS_GENERATED", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "xdbc_is_generatedcolumn" }, typeof(bool)),
+                new MapItem("CHARACTER_OCTET_LENGTH", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "xdbc_char_octet_length" }, typeof(int)),
+                new MapItem("CHARACTER_MAXIMUM_LENGTH", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "xdbc_column_size" }, typeof(int)),
+                new MapItem("NUMERIC_PRECISION", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "xdbc_decimal_digits" }, typeof(short)),
+                new MapItem("NUMERIC_PRECISION_RADIX", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "xdbc_num_prec_radix" }, typeof(short)),
+                new MapItem("DATETIME_PRECISION", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "xdbc_datetime_sub" }, typeof(short)),
             };
 
             protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)

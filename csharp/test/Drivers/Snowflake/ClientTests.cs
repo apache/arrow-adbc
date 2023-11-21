@@ -212,7 +212,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 Assert.Equal(4, tables.Columns.Count);
                 Assert.Equal(32, tables.Rows.Count);
 
-                // Columns
+                var columns = adbcConnection.GetSchema("Columns", new[] { catalog, schema });
+                Assert.Equal(16, columns.Columns.Count);
+                Assert.Equal(441, columns.Rows.Count);
             }
         }
         private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(SnowflakeTestConfiguration testConfiguration)
