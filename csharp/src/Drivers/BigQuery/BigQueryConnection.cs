@@ -1053,7 +1053,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     UnionMode.Sparse => 1,
                     UnionMode.Dense => 2,
-                    _ => throw new InvalidOperationException("TODO"),
+                    _ => throw new InvalidOperationException($"Unknown UnionMode {type.Mode}"),
                 };
 
                 ArrayData[] children = new ArrayData[type.Fields.Count];
@@ -1086,7 +1086,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public void Visit(IArrowType type)
             {
-                throw new NotImplementedException($"Concatenation for {type.Name} is not supported yet.");
+                throw new NotImplementedException($"EmptyArrayCreationVisitor for {type.Name} is not supported yet.");
             }
         }
     }

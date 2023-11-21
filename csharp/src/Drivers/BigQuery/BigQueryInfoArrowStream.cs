@@ -48,6 +48,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public void Dispose()
         {
             this.batch?.Dispose();
+            this.batch = null;
         }
     }
 }
