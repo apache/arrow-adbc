@@ -239,6 +239,13 @@ namespace Apache.Arrow.Adbc.Tests
                     return "'-inf'";
                 case double.NaN:
                     return "'NaN'";
+#if NET472
+                // Standard Double.ToString() calls round up the max value, resulting in Snowflake storing infinity
+                case double.MaxValue:
+                    return "1.7976931348623157E+308";
+                case double.MinValue:
+                    return "-1.7976931348623157E+308";
+#endif
                 default:
                     return value.ToString();
             }
