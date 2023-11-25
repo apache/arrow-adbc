@@ -87,7 +87,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType);
 
-                if(!authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase) &&
+                if (!authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase) &&
                     !authenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase))
                 {
                     throw new ArgumentException($"The {BigQueryParameters.AuthenticationType} parameter can only be `{BigQueryConstants.UserAuthenticationType}` or `{BigQueryConstants.ServiceAccountAuthenticationType}`");
@@ -232,7 +232,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 infoValue
             };
 
-            return new BigQueryInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays, 4);
+            return new BigQueryInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
         }
 
         public override IArrowArrayStream GetObjects(
@@ -246,7 +246,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             List<IArrowArray> dataArrays = GetCatalogs(depth, catalogPattern, dbSchemaPattern,
                 tableNamePattern, tableTypes, columnNamePattern);
 
-            return new BigQueryInfoArrowStream(StandardSchemas.GetObjectsSchema, dataArrays, 1);
+            return new BigQueryInfoArrowStream(StandardSchemas.GetObjectsSchema, dataArrays);
         }
 
         private List<IArrowArray> GetCatalogs(
@@ -362,7 +362,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             if (tableNamePattern != null)
             {
                 query = string.Concat(query, string.Format(" WHERE table_name LIKE '{0}'", Sanitize(tableNamePattern)));
-                if (tableTypes.Count > 0)
+                if (tableTypes?.Count > 0)
                 {
                     List<string> sanitizedTypes = tableTypes.Select(x => Sanitize(x)).ToList();
 
@@ -371,7 +371,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
             else
             {
-                if (tableTypes.Count > 0)
+                if (tableTypes?.Count > 0)
                 {
                     List<string> sanitizedTypes = tableTypes.Select(x => Sanitize(x)).ToList();
                     query = string.Concat(query, string.Format(" WHERE table_type IN ('{0}')", string.Join("', '", sanitizedTypes).ToUpper()));
@@ -796,7 +796,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private ParsedDecimalValues ParsePrecisionAndScale(string type)
         {
-            if(string.IsNullOrWhiteSpace(type)) throw new ArgumentNullException(nameof(type));
+            if (string.IsNullOrWhiteSpace(type)) throw new ArgumentNullException(nameof(type));
 
             string[] values = type.Substring(type.IndexOf("(") + 1).TrimEnd(')').Split(",".ToCharArray());
 
@@ -817,7 +817,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 tableTypesBuilder.Build()
             };
 
-            return new BigQueryInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays, 1);
+            return new BigQueryInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
         }
 
         private ListArray CreateNestedListArray(List<IArrowArray> arrayList, IArrowType dataType)
@@ -850,12 +850,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             ArrayData data = ArrayDataConcatenator.Concatenate(arrayDataList);
 
-            IArrowArray value = null;
-
             if (data == null)
-                value = new NullArray(0);
-            else
-                value = ArrowArrayFactory.BuildArray(data);
+            {
+                EmptyArrayCreationVisitor visitor = new EmptyArrayCreationVisitor(0);
+                dataType.Accept(visitor);
+                data = visitor.Result;
+            }
+
+            IArrowArray value = ArrowArrayFactory.BuildArray(data);
 
             valueOffsetsBufferBuilder.Append(length);
 
@@ -880,7 +882,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             Dictionary<string, string> options = new Dictionary<string, string>();
 
-            foreach (KeyValuePair<string,string> keyValuePair in this.properties)
+            foreach (KeyValuePair<string, string> keyValuePair in this.properties)
             {
                 if (keyValuePair.Key == BigQueryParameters.AllowLargeResults)
                 {
@@ -976,6 +978,116 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             XdbcDataType_XDBC_BIT = -7,
             XdbcDataType_XDBC_WCHAR = -8,
             XdbcDataType_XDBC_WVARCHAR = -9,
+        }
+
+        private class EmptyArrayCreationVisitor :
+            IArrowTypeVisitor<BooleanType>,
+            IArrowTypeVisitor<FixedWidthType>,
+            IArrowTypeVisitor<BinaryType>,
+            IArrowTypeVisitor<StringType>,
+            IArrowTypeVisitor<ListType>,
+            IArrowTypeVisitor<FixedSizeListType>,
+            IArrowTypeVisitor<StructType>,
+            IArrowTypeVisitor<UnionType>,
+            IArrowTypeVisitor<MapType>
+        {
+            public ArrayData Result { get; private set; }
+            private readonly int _length;
+
+            public EmptyArrayCreationVisitor(int length)
+            {
+                _length = length;
+            }
+
+            public void Visit(BooleanType type)
+            {
+                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
+            }
+
+            public void Visit(FixedWidthType type)
+            {
+                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
+            }
+
+            public void Visit(BinaryType type)
+            {
+                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty, ArrowBuffer.Empty });
+            }
+
+            public void Visit(StringType type)
+            {
+                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty, ArrowBuffer.Empty });
+            }
+
+            public void Visit(ListType type)
+            {
+                type.ValueDataType.Accept(this);
+                ArrayData child = Result;
+
+                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty }, new[] { child });
+            }
+
+            public void Visit(FixedSizeListType type)
+            {
+                type.ValueDataType.Accept(this);
+                ArrayData child = Result;
+
+                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty }, new[] { child });
+            }
+
+            public void Visit(StructType type)
+            {
+                ArrayData[] children = new ArrayData[type.Fields.Count];
+                for (int i = 0; i < type.Fields.Count; i++)
+                {
+                    type.Fields[i].DataType.Accept(this);
+                    children[i] = Result;
+                }
+
+                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty }, children);
+            }
+
+            public void Visit(UnionType type)
+            {
+                int bufferCount = type.Mode switch
+                {
+                    UnionMode.Sparse => 1,
+                    UnionMode.Dense => 2,
+                    _ => throw new InvalidOperationException($"Unknown UnionMode {type.Mode}"),
+                };
+
+                ArrayData[] children = new ArrayData[type.Fields.Count];
+                for (int i = 0; i < type.Fields.Count; i++)
+                {
+                    type.Fields[i].DataType.Accept(this);
+                    children[i] = Result;
+                }
+
+                ArrowBuffer[] buffers = new ArrowBuffer[bufferCount];
+                buffers[0] = ArrowBuffer.Empty;
+                if (bufferCount > 1)
+                {
+                    buffers[1] = ArrowBuffer.Empty;
+                }
+
+                Result = new ArrayData(type, _length, _length, 0, buffers, children);
+            }
+
+            public void Visit(MapType type)
+            {
+                ArrayData[] children = new ArrayData[2];
+                type.KeyField.DataType.Accept(this);
+                children[0] = Result;
+                type.ValueField.DataType.Accept(this);
+                children[1] = Result;
+
+                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty }, children);
+            }
+
+            public void Visit(IArrowType type)
+            {
+                throw new NotImplementedException($"EmptyArrayCreationVisitor for {type.Name} is not supported yet.");
+            }
         }
     }
 }

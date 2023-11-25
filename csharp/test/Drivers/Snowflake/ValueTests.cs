@@ -18,12 +18,11 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
-using Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Tests
+namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
     // TODO: When supported, use prepared statements instead of SQL string literals
     //      Which will better test how the driver handles values sent/received
@@ -239,6 +238,13 @@ namespace Apache.Arrow.Adbc.Tests
                     return "'-inf'";
                 case double.NaN:
                     return "'NaN'";
+#if NET472
+                // Double.ToString() rounds max/min values, causing Snowflake to store +/- infinity
+                case double.MaxValue:
+                    return "1.7976931348623157E+308";
+                case double.MinValue:
+                    return "-1.7976931348623157E+308";
+#endif
                 default:
                     return value.ToString();
             }

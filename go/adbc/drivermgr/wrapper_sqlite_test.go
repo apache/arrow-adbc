@@ -53,20 +53,25 @@ func (dm *DriverMgrSuite) SetupSuite() {
 	})
 	dm.NoError(err)
 
-	db, err := dm.db.Open(dm.ctx)
+	cnxn, err := dm.db.Open(dm.ctx)
 	dm.NoError(err)
-	defer db.Close()
+	defer cnxn.Close()
 
-	stmt, err := db.NewStatement()
+	stmt, err := cnxn.NewStatement()
 	dm.NoError(err)
 	defer stmt.Close()
 
-	err = stmt.SetSqlQuery("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)")
-	dm.NoError(err)
+	dm.NoError(stmt.SetSqlQuery("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)"))
 
 	nrows, err := stmt.ExecuteUpdate(dm.ctx)
 	dm.NoError(err)
 	dm.Equal(int64(0), nrows)
+
+	dm.NoError(stmt.SetSqlQuery("INSERT INTO test_table (id, name) VALUES (1, 'test')"))
+
+	nrows, err = stmt.ExecuteUpdate(dm.ctx)
+	dm.NoError(err)
+	dm.Equal(int64(1), nrows)
 }
 
 func (dm *DriverMgrSuite) SetupTest() {
@@ -334,6 +339,83 @@ func (dm *DriverMgrSuite) TestGetObjectsTableType() {
 	dm.False(rdr.Next())
 }
 
+func (dm *DriverMgrSuite) TestGetTableSchema() {
+	schema, err := dm.conn.GetTableSchema(dm.ctx, nil, nil, "test_table")
+	dm.NoError(err)
+
+	expSchema := arrow.NewSchema(
+		[]arrow.Field{
+			{Name: "id", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+			{Name: "name", Type: arrow.BinaryTypes.String, Nullable: true},
+		}, nil)
+	dm.True(expSchema.Equal(schema))
+}
+
+func (dm *DriverMgrSuite) TestGetTableSchemaInvalidTable() {
+	_, err := dm.conn.GetTableSchema(dm.ctx, nil, nil, "unknown_table")
+	dm.Error(err)
+}
+
+func (dm *DriverMgrSuite) TestGetTableSchemaCatalog() {
+	catalog := "does_not_exist"
+	schema, err := dm.conn.GetTableSchema(dm.ctx, &catalog, nil, "test_table")
+	dm.NoError(err)
+	dm.Nil(schema)
+}
+
+func (dm *DriverMgrSuite) TestGetTableSchemaDBSchema() {
+	dbSchema := "does_not_exist"
+	schema, err := dm.conn.GetTableSchema(dm.ctx, nil, &dbSchema, "test_table")
+	dm.NoError(err)
+	dm.Nil(schema)
+}
+
+func (dm *DriverMgrSuite) TestGetTableTypes() {
+	rdr, err := dm.conn.GetTableTypes(dm.ctx)
+	dm.NoError(err)
+	defer rdr.Release()
+
+	expSchema := adbc.TableTypesSchema
+	dm.True(expSchema.Equal(rdr.Schema()))
+	dm.True(rdr.Next())
+
+	rec := rdr.Record()
+	dm.Equal(int64(2), rec.NumRows())
+
+	expTableTypes := []string{"table", "view"}
+	dm.Contains(expTableTypes, rec.Column(0).ValueStr(0))
+	dm.Contains(expTableTypes, rec.Column(0).ValueStr(1))
+	dm.False(rdr.Next())
+}
+
+func (dm *DriverMgrSuite) TestCommit() {
+	err := dm.conn.Commit(dm.ctx)
+	dm.Error(err)
+	dm.ErrorContains(err, "No active transaction, cannot commit")
+}
+
+func (dm *DriverMgrSuite) TestCommitAutocommitDisabled() {
+	cnxnopt, ok := dm.conn.(adbc.PostInitOptions)
+	dm.True(ok)
+
+	dm.NoError(cnxnopt.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
+	dm.NoError(dm.conn.Commit(dm.ctx))
+}
+
+func (dm *DriverMgrSuite) TestRollback() {
+	err := dm.conn.Rollback(dm.ctx)
+	dm.Error(err)
+	dm.ErrorContains(err, "No active transaction, cannot rollback")
+}
+
+func (dm *DriverMgrSuite) TestRollbackAutocommitDisabled() {
+	cnxnopt, ok := dm.conn.(adbc.PostInitOptions)
+	dm.True(ok)
+
+	dm.NoError(cnxnopt.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
+	dm.NoError(dm.conn.Rollback(dm.ctx))
+}
+
 func (dm *DriverMgrSuite) TestSqlExecute() {
 	query := "SELECT 1"
 	st, err := dm.conn.NewStatement()
@@ -427,6 +509,77 @@ func (dm *DriverMgrSuite) TestSqlPrepareMultipleParams() {
 	rec := rdr.Record()
 	dm.Truef(array.RecordEqual(params, rec), "expected: %s\ngot: %s", params, rec)
 	dm.False(rdr.Next())
+}
+
+func (dm *DriverMgrSuite) TestGetParameterSchema() {
+	query := "SELECT ?1, ?2"
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	dm.Require().NoError(st.SetSqlQuery(query))
+	defer st.Close()
+
+	expSchema := arrow.NewSchema([]arrow.Field{
+		{Name: "?1", Type: arrow.Null, Nullable: true},
+		{Name: "?2", Type: arrow.Null, Nullable: true},
+	}, nil)
+
+	schema, err := st.GetParameterSchema()
+	dm.NoError(err)
+
+	dm.True(expSchema.Equal(schema))
+}
+
+func (dm *DriverMgrSuite) TestBindStream() {
+	query := "SELECT ?1, ?2"
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	dm.Require().NoError(st.SetSqlQuery(query))
+	defer st.Close()
+
+	schema := arrow.NewSchema([]arrow.Field{
+		{Name: "1", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+		{Name: "2", Type: arrow.BinaryTypes.String, Nullable: true},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(memory.DefaultAllocator, schema)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+	bldr.Field(1).(*array.StringBuilder).AppendValues([]string{"one", "two", "three"}, nil)
+
+	rec1 := bldr.NewRecord()
+	defer rec1.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{4, 5, 6}, nil)
+	bldr.Field(1).(*array.StringBuilder).AppendValues([]string{"four", "five", "six"}, nil)
+
+	rec2 := bldr.NewRecord()
+	defer rec2.Release()
+
+	recsIn := []arrow.Record{rec1, rec2}
+	rdrIn, err := array.NewRecordReader(schema, recsIn)
+	dm.NoError(err)
+
+	dm.NoError(st.BindStream(dm.ctx, rdrIn))
+
+	rdrOut, _, err := st.ExecuteQuery(dm.ctx)
+	dm.NoError(err)
+	defer rdrOut.Release()
+
+	recsOut := make([]arrow.Record, 0)
+	for rdrOut.Next() {
+		rec := rdrOut.Record()
+		rec.Retain()
+		defer rec.Release()
+		recsOut = append(recsOut, rec)
+	}
+
+	tableIn := array.NewTableFromRecords(schema, recsIn)
+	defer tableIn.Release()
+	tableOut := array.NewTableFromRecords(schema, recsOut)
+	defer tableOut.Release()
+
+	dm.Truef(array.TableEqual(tableIn, tableOut), "expected: %s\ngot: %s", tableIn, tableOut)
 }
 
 func TestDriverMgr(t *testing.T) {

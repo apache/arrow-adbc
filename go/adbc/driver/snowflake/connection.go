@@ -323,15 +323,22 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 
 var loc = time.Now().Location()
 
-func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent bool, identGen, identInc sql.NullString, charMaxLength, charOctetLength sql.NullInt32, datetimePrec sql.NullInt16, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
+func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent, useHighPrecision bool, identGen, identInc sql.NullString, charMaxLength, charOctetLength sql.NullInt32, datetimePrec sql.NullInt16, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
 	ret.Name, ret.Nullable = name, isnullable
 
 	switch dataType {
 	case "NUMBER":
-		if !numScale.Valid || numScale.Int16 == 0 {
-			ret.Type = arrow.PrimitiveTypes.Int64
+		if useHighPrecision {
+			ret.Type = &arrow.Decimal128Type{
+				Precision: int32(numPrec.Int16),
+				Scale:     int32(numScale.Int16),
+			}
 		} else {
-			ret.Type = arrow.PrimitiveTypes.Float64
+			if !numScale.Valid || numScale.Int16 == 0 {
+				ret.Type = arrow.PrimitiveTypes.Int64
+			} else {
+				ret.Type = arrow.PrimitiveTypes.Float64
+			}
 		}
 	case "FLOAT":
 		fallthrough
@@ -639,7 +646,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			}
 
 			prevKey = key
-			fieldList = append(fieldList, toField(colName, isNullable, dataType, numericPrec, numericPrecRadix, numericScale, isIdent, identGen, identIncrement, charMaxLength, charOctetLength, datetimePrec, comment, ordinalPos))
+			fieldList = append(fieldList, toField(colName, isNullable, dataType, numericPrec, numericPrecRadix, numericScale, isIdent, c.useHighPrecision, identGen, identIncrement, charMaxLength, charOctetLength, datetimePrec, comment, ordinalPos))
 		}
 
 		if len(fieldList) > 0 && curTableInfo != nil {
