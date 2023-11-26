@@ -1,3 +1,5 @@
+# -*- indent-tabs-mode: nil -*-
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,29 +17,32 @@
 # specific language governing permissions and limitations
 # under the License.
 
-ARG FROM=almalinux:9
-FROM ${FROM}
+if build_example and generate_vapi
+  vala_example_executable_kwargs = {
+    'c_args': [
+      '-I' + meson.build_root(),
+      '-I' + meson.source_root(),
+    ],
+    'dependencies': [
+      adbc_glib_vapi,
+      arrow_glib,
+      dependency('gobject-2.0'),
+    ],
+    'vala_args': [
+      '--pkg', 'posix',
+      '--vapidir', arrow_glib.get_variable('vapidir'),
+    ],
+  }
+  executable('sqlite', 'sqlite.vala',
+             kwargs: vala_example_executable_kwargs)
+endif
 
-ARG DEBUG
-
-RUN \
-  quiet=$([ "${DEBUG}" = "yes" ] || echo "--quiet") && \
-  dnf install -y ${quiet} epel-release && \
-  dnf install -y https://apache.jfrog.io/artifactory/arrow/almalinux/$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)/apache-arrow-release-latest.rpm && \
-  dnf install --enablerepo=crb -y ${quiet} \
-    ccache \
-    cmake \
-    gcc-c++ \
-    gobject-introspection-devel \
-    golang \
-    libpq-devel \
-    make \
-    ninja-build \
-    pkg-config \
-    python3 \
-    python3-pip \
-    rpmdevtools \
-    sqlite-devel \
-    tar \
-    vala && \
-  dnf clean ${quiet} all
+files = [
+  'README.md',
+  'sqlite.vala',
+]
+install_data(files,
+             install_dir: join_paths(data_dir,
+                                     meson.project_name(),
+                                     'example',
+                                     'vala'))

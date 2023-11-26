@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -16,39 +16,40 @@
 */
 
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using Apache.Arrow.Ipc;
 
-namespace Apache.Arrow.Adbc.Drivers.BigQuery
+namespace Apache.Arrow.Adbc.Tests
 {
     /// <summary>
-    /// Stream used for metadata calls
+    /// Used to build and verify sample data against a data source without having to create a table.
     /// </summary>
-    internal class BigQueryInfoArrowStream : IArrowArrayStream
+    public class SampleDataBuilder
     {
-        private Schema schema;
-        private RecordBatch batch;
-
-        public BigQueryInfoArrowStream(Schema schema, List<IArrowArray> data)
+        public SampleDataBuilder()
         {
-            this.schema = schema;
-            this.batch = new RecordBatch(schema, data, data[0].Length);
+            this.Samples = new List<SampleData>();
         }
 
-        public Schema Schema { get { return this.schema; } }
+        public List<SampleData> Samples { get; set; }
+    }
 
-        public ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Sample data for different data sources.
+    /// </summary>
+    public class SampleData
+    {
+        public SampleData()
         {
-            RecordBatch batch = this.batch;
-            this.batch = null;
-            return new ValueTask<RecordBatch>(batch);
+            this.ExpectedValues = new List<ColumnNetTypeArrowTypeValue>();
         }
 
-        public void Dispose()
-        {
-            this.batch?.Dispose();
-            this.batch = null;
-        }
+        /// <summary>
+        /// The query to run.
+        /// </summary>
+        public string Query { get; set; }
+
+        /// <summary>
+        /// The expected values.
+        /// </summary>
+        public List<ColumnNetTypeArrowTypeValue> ExpectedValues { get; set; }
     }
 }

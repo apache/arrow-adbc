@@ -180,8 +180,7 @@ Multi-Arch: same
 Depends:
   ${misc:Depends},
   gir1.2-adbc-1.0 (= ${binary:Version}),
-  libadbc-driver-manager-dev (= ${binary:Version}),
-  libarrow-glib-dev
+  libadbc-driver-manager-dev (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) driver manager
  .
  This package provides GLib based header files.
