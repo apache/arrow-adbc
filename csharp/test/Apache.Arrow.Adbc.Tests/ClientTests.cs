@@ -222,6 +222,22 @@ namespace Apache.Arrow.Adbc.Tests
                         Console.WriteLine($"Could not validate the values inside of {netType.Name} because it is empty for query [{query}]");
                     }
                 }
+                else if (value is IList && !(value is byte[]))
+                {
+                    IList values = value as IList;
+                    int length = values.Count;
+
+                    if (length > 0)
+                    {
+                        object internalValue = values[0];
+
+                        Assert.True(internalValue.GetType() == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader for query [{query}]");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Could not validate the values inside of {netType.Name} because it is empty for query [{query}]");
+                    }
+                }
                 else
                 {
                     Assert.True(netType == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader for query [{query}]");
@@ -230,7 +246,29 @@ namespace Apache.Arrow.Adbc.Tests
 
             if (value != null)
             {
-                if (!value.GetType().BaseType.Name.Contains("PrimitiveArray"))
+                if (value is IList && !(value is byte[]))
+                {
+                    IList list = value as IList;
+                    IList expectedList = ctv.ExpectedValue as IList;
+                    int i = -1;
+
+                    foreach (var actual in list)
+                    {
+                        i++;
+                        int j = -1;
+
+                        foreach (var expected in expectedList)
+                        {
+                            j++;
+
+                            if (i == j)
+                            {
+                                Assert.True(expected.Equals(actual), $"Expected value does not match actual value for {ctv.Name} at {i} for query [{query}]");
+                            }
+                        }
+                    }
+                }
+                else if (!value.GetType().BaseType.Name.Contains("PrimitiveArray"))
                 {
                     Assert.True(ctv.ExpectedNetType == value.GetType(), $"Expected type does not match actual type for {ctv.Name} for query [{query}]");
 

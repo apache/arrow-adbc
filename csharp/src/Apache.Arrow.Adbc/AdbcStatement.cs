@@ -16,6 +16,9 @@
  */
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.IO;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -140,17 +143,12 @@ namespace Apache.Arrow.Adbc
         /// <param name="arrowArray">
         /// The Arrow array.
         /// </param>
-        /// <param name="field">
-        /// The <see cref="Field"/> from the <see cref="Schema"/> that can
-        /// be used for metadata inspection.
-        /// </param>
         /// <param name="index">
         /// The index in the array to get the value from.
         /// </param>
-        public virtual object GetValue(IArrowArray arrowArray, Field field, int index)
+        public virtual object GetValue(IArrowArray arrowArray, int index)
         {
             if (arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
-            if (field == null) throw new ArgumentNullException(nameof(field));
             if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
 
             switch (arrowArray)

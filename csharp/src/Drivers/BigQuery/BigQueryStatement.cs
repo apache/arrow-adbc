@@ -16,9 +16,12 @@
 */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -87,18 +90,95 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new Field(field.Name, TranslateType(field), field.Mode == "NULLABLE");
         }
 
-        public override object GetValue(IArrowArray arrowArray, Field field, int index)
+        public override object GetValue(IArrowArray arrowArray, int index)
         {
             switch(arrowArray)
             {
                 case StructArray structArray:
                     return SerializeToJson(structArray, index);
                 case ListArray listArray:
-                    return listArray.GetSlicedValues(index);
+                    IArrowArray array = listArray.GetSlicedValues(index);
+                    IList values = CreateList(array);
+
+                    for(int i=0;i<array.Length;i++)
+                    {
+                        values.Add(base.GetValue(array, i));
+                    }
+
+                    return values;
+
                 default:
-                    return base.GetValue(arrowArray, field, index);
+                    return base.GetValue(arrowArray, index);
             }
         }
+
+        private IList CreateList(IArrowArray arrowArray)
+        {
+            if (arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
+
+            switch (arrowArray)
+            {
+                case BooleanArray booleanArray:
+                    return new List<bool>();
+                case Date32Array date32Array:
+                case Date64Array date64Array:
+                    return new List<DateTime>();
+                case Decimal128Array decimal128Array:
+                    return new List<SqlDecimal>();
+                case Decimal256Array decimal256Array:
+                    return new List<string>();
+                case DoubleArray doubleArray:
+                    return new List<double>();
+                case FloatArray floatArray:
+                    return new List<float>();
+#if NET5_0_OR_GREATER
+                case PrimitiveArray<Half> halfFloatArray:
+                    return new List<Half>();
+#endif
+                case Int8Array int8Array:
+                    return new List<sbyte>();
+                case Int16Array int16Array:
+                    return new List<short>();
+                case Int32Array int32Array:
+                    return new List<int>();
+                case Int64Array int64Array:
+                    return new List<long>();
+                case StringArray stringArray:
+                    return new List<string>();
+#if NET6_0_OR_GREATER
+                case Time32Array time32Array:
+                case Time64Array time64Array:
+                    return new List<TimeOnly>();
+#else
+                case Time32Array time32Array:
+                case Time64Array time64Array:
+                    return new List<TimeSpan>();
+#endif
+                case TimestampArray timestampArray:
+                    return new List<DateTimeOffset>();
+                case UInt8Array uInt8Array:
+                    return new List<byte>();
+                case UInt16Array uInt16Array:
+                    return new List<ushort>();
+                case UInt32Array uInt32Array:
+                    return new List<uint>();
+                case UInt64Array uInt64Array:
+                    return new List<ulong>();
+
+                case BinaryArray binaryArray:
+                    return new List<byte>();
+
+                    // not covered:
+                    // -- struct array
+                    // -- dictionary array
+                    // -- fixed size binary
+                    // -- list array
+                    // -- union array
+            }
+
+            return null;
+        }
+
 
         private IArrowType TranslateType(TableFieldSchema field)
         {
@@ -187,7 +267,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             for (int i = 0; i < structArray.Data.Children.Length; i++)
             {
                 jsonDictionary.Add(structType.Fields[i].Name,
-                    GetValue(structArray.Fields[i], structType.GetFieldByName(structType.Fields[i].Name), index));
+                    GetValue(structArray.Fields[i], index));
             }
             return JsonSerializer.Serialize(jsonDictionary);
         }
