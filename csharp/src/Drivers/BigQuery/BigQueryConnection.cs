@@ -105,7 +105,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (!this.properties.TryGetValue(BigQueryParameters.RefreshToken, out refreshToken))
                     throw new ArgumentException($"The {BigQueryParameters.RefreshToken} parameter is not present");
 
-                this.credential = GoogleCredential.FromAccessToken(GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint));
+                this.credential = ApplyScopes(GoogleCredential.FromAccessToken(GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint)));
             }
             else
             {
@@ -114,10 +114,29 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (!this.properties.TryGetValue(BigQueryParameters.JsonCredential, out json))
                     throw new ArgumentException($"The {BigQueryParameters.JsonCredential} parameter is not present");
 
-                this.credential = GoogleCredential.FromJson(json);
+                this.credential = ApplyScopes(GoogleCredential.FromJson(json));
             }
 
             this.client = BigQueryClient.Create(projectId, this.credential);
+        }
+
+        /// <summary>
+        /// Apply any additional scopes to the credential.
+        /// </summary>
+        /// <param name="credential"><see cref="GoogleCredential"/></param>
+        /// <returns></returns>
+        private GoogleCredential ApplyScopes(GoogleCredential credential)
+        {
+            if (credential == null) throw new ArgumentNullException(nameof(credential));
+
+            if (this.properties.TryGetValue(BigQueryParameters.Scopes, out string scopes))
+            {
+                IEnumerable<string> parsedScopes = scopes.Split(',').Where(x => x.Length > 0);
+
+                return credential.CreateScoped(parsedScopes);
+            }
+
+            return credential;
         }
 
         public override IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)

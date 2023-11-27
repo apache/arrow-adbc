@@ -55,6 +55,9 @@ https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/G
 **adbc.bigquery.refresh_token**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The refresh token used for when the generated OAuth token expires. Required for `user` authentication.
 
+**adbc.bigquery.scopes**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. Comma separated list of scopes to include for the credential.
+
 **adbc.bigquery.use_legacy_sql**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Sets the [UseLegacySql](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_UseLegacySql) value of the QueryOptions to `true` if configured; otherwise, the default is `false`.
 
