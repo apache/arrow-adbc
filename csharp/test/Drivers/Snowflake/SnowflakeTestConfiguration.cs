@@ -79,7 +79,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public string AuthenticationType { get; set; }
 
         /// <summary>
-        /// The Snowflake authentication type.
+        /// The Snowflake use high precision
         /// </summary>
         [JsonPropertyName("useHighPrecision")]
         public bool UseHighPrecision { get; set; } = true;
@@ -90,11 +90,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [JsonPropertyName("authentication")]
         public SnowflakeAuthentication Authentication { get; set; }
 
-        /// <summary>
-        /// The Authentication token.
-        /// </summary>
-        [JsonPropertyName("authenticationToken")]
-        public string AuthenticationToken { get; set; }
     }
 
     public class SnowflakeAuthentication
