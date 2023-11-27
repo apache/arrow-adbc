@@ -37,73 +37,22 @@ permissions:
   contents: read
 
 jobs:
-
-  ubuntu:
-    name: AMD64 Ubuntu 18.04 C# ${{ matrix.dotnet }}
-    runs-on: ubuntu-latest
+  csharp:
+    name: "C# ${{ matrix.os }} ${{ matrix.dotnet }}"
+    runs-on: ${{ matrix.os }}
     if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        dotnet: ['7.0.x']
+        version: ['7.0.x']
+        os: [ubuntu-latest, windows-2019, macos-latest]
     steps:
       - name: Install C#
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: ${{ matrix.dotnet }}
       - name: Checkout ADBC
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: recursive
-      - name: Install Source Link
-        shell: bash
-        run: dotnet tool install --global sourcelink
-      - name: Build
-        shell: bash
-        run: ci/scripts/csharp_build.sh $(pwd)
-
-  windows:
-    name: AMD64 Windows 2019 18.04 C# ${{ matrix.dotnet }}
-    runs-on: windows-2019
-    if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        dotnet: ['7.0.x']
-    steps:
-      - name: Install C#
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: ${{ matrix.dotnet }}
-      - name: Checkout ADBC
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: recursive
-      - name: Install Source Link
-        run: dotnet tool install --global sourcelink
-      - name: Build
-        shell: bash
-        run: ci/scripts/csharp_build.sh $(pwd)
-
-  macos:
-    name: AMD64 macOS 11 C# ${{ matrix.dotnet }}
-    runs-on: macos-latest
-    if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        dotnet: ['7.0.x']
-    steps:
-      - name: Install C#
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: ${{ matrix.dotnet }}
-      - name: Checkout Arrow
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
