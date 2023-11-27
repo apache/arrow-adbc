@@ -33,10 +33,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// </summary>
         public static SampleDataBuilder GetSampleData()
         {
-            Int64Array.Builder numbersBuilder = new Int64Array.Builder();
-            numbersBuilder.AppendRange(new List<long>() { 1, 2, 3 });
-            Int64Array numbersArray = numbersBuilder.Build();
-
             SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
 
             // standard values
@@ -100,7 +96,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 });
 
             // nulls
-
             sampleDataBuilder.Samples.Add(
                 new SampleData()
                 {
