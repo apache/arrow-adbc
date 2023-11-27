@@ -330,9 +330,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 .FirstOrDefault();
 
             Assert.True(columns != null, "Columns cannot be null");
-            Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
+            Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
 
-            if (testConfiguration.UseHighPrecision)
+            if (_testConfiguration.UseHighPrecision)
             {
                 IEnumerable<AdbcColumn> highPrecisionColumns = columns.Where(c => c.XdbcTypeName == "NUMBER");
 
