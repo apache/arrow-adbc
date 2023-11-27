@@ -25,4 +25,4 @@
 #![allow(non_upper_case_globals, non_camel_case_types, non_snake_case)]
 #![cfg_attr(doc, allow(rustdoc::invalid_html_tags))]
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+include!("../adbc.rs");

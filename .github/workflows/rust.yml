@@ -85,3 +85,6 @@ jobs:
           cargo test --workspace --doc ${{ matrix.features }}
       - name: Check docs
         run: cargo doc --workspace ${{ matrix.features }}
+      - name: Check bindings
+        run: |
+          git diff --exit-code || ( echo ":x: rust/bindings/adbc.rs are outdated" >> $GITHUB_STEP_SUMMARY && exit 1 )

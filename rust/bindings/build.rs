@@ -15,26 +15,35 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use bindgen::{callbacks::ParseCallbacks, Builder};
-use std::{env, path::Path};
-
-/// Transforms doxygen comments.
-#[derive(Debug)]
-struct Doxygen;
-
-impl ParseCallbacks for Doxygen {
-    fn process_comment(&self, comment: &str) -> Option<String> {
-        Some(doxygen_rs::transform(comment))
-    }
-}
-
+#[cfg(feature = "generate")]
 fn main() {
+    use bindgen::{callbacks::ParseCallbacks, Builder, Formatter};
+
+    /// Transforms doxygen comments.
+    #[derive(Debug)]
+    struct Doxygen;
+
+    impl ParseCallbacks for Doxygen {
+        fn process_comment(&self, comment: &str) -> Option<String> {
+            Some(doxygen_rs::transform(comment))
+        }
+    }
+
     Builder::default()
         .header("adbc.h")
         .parse_callbacks(Box::new(Doxygen))
+        .formatter(Formatter::Prettyplease)
         .allowlist_item("(?i)adbc.*")
         .generate()
         .expect("failed to generate bindings")
-        .write_to_file(Path::new(&env::var("OUT_DIR").unwrap()).join("bindings.rs"))
+        .write_to_file("adbc.rs")
         .expect("failed to write bindings");
+
+    println!("cargo:rerun-if-changed=adbc.h");
+}
+
+#[cfg(not(feature = "generate"))]
+fn main() {
+    // Prevent rerun
+    println!("cargo:rerun-if-changed=build.rs");
 }

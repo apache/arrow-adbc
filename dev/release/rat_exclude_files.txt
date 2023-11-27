@@ -31,3 +31,4 @@ r/*/.Rbuildignore
 r/*/tests/testthat/_snaps/*
 rust/Cargo.lock
 rust/bindings/adbc.h
+rust/bindings/adbc.rs

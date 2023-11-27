@@ -27,6 +27,10 @@ authors.workspace = true
 license.workspace = true
 keywords.workspace = true
 
+[features]
+default = []
+generate = ["dep:bindgen", "dep:doxygen-rs"]
+
 [build-dependencies]
-bindgen = "0.69.1"
-doxygen-rs = "0.4.2"
+bindgen = { version = "0.69.1", optional = true }
+doxygen-rs = {version = "0.4.2", optional = true }
