@@ -15,4 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 
-/target
+[package]
+name = "arrow-adbc-sys"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Rust bindings for Arrow Database Connectivity (ADBC)"
+homepage.workspace = true
+repository.workspace = true
+authors.workspace = true
+license.workspace = true
+keywords.workspace = true
+
+[build-dependencies]
+bindgen = "0.69.1"
+doxygen-rs = "0.4.2"

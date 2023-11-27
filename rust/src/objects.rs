@@ -17,7 +17,7 @@
 
 //! Structs and traits for representing database objects (tables, columns, schemas).
 //!
-//! When [crate::AdbcConnection::get_objects] is called, it returns an associated type that
+//! When [crate::Connection::get_objects] is called, it returns an associated type that
 //! implements [DatabaseCatalogCollection]. This collection contains a hierarchical data
 //! structure representing:
 //!
@@ -52,7 +52,7 @@
 //! | [TableConstraint] | [TableConstraintRef] |
 //! | [ForeignKeyUsage] | [ForeignKeyUsageRef] |
 
-/// A collection of database catalogs, returned by [crate::AdbcConnection::get_objects].
+/// A collection of database catalogs, returned by [crate::Connection::get_objects].
 pub trait DatabaseCatalogCollection {
     type CatalogEntryType<'a>: DatabaseCatalogEntry<'a>
     where
@@ -122,7 +122,7 @@ pub trait DatabaseTableEntry<'a> {
 
     /// The table type.
     ///
-    /// Use [crate::AdbcConnection::get_table_types] to get a list of supported types for
+    /// Use [crate::Connection::get_table_types] to get a list of supported types for
     /// the database.
     fn table_type(&self) -> &'a str;
 

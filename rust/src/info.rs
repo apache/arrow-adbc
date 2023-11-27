@@ -17,7 +17,7 @@
 
 //! Utilities for driver info
 //!
-//! For use with [crate::AdbcConnection::get_info].
+//! For use with [crate::Connection::get_info].
 
 use arrow_array::builder::{
     ArrayBuilder, BooleanBuilder, Int32Builder, Int64Builder, ListBuilder, MapBuilder,
@@ -176,7 +176,7 @@ pub fn export_info_data(
     let children = union_fields
         .iter()
         .map(|f| (**f.1).clone())
-        .zip(arrays.into_iter())
+        .zip(arrays)
         .collect();
 
     let info_value = UnionArray::try_new(

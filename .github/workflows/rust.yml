@@ -22,10 +22,12 @@ on:
     branches:
       - main
     paths:
+      - "adbc.h"
       - "rust/**"
       - ".github/workflows/rust.yml"
   push:
     paths:
+      - "adbc.h"
       - "rust/**"
       - ".github/workflows/rust.yml"
 
@@ -44,25 +46,42 @@ jobs:
   rust:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+          - os: macos-latest
+            features: "--all-features"
+          - os: ubuntu-latest
+            features: "--all-features"
     name: "Rust ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - id: rustc
+        run: |
+          rustup update stable
+          rustup default stable
+          echo "version=$(rustup run stable rustc --version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v3
         with:
-          components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ steps.rustc.outputs.version }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ steps.rustc.outputs.version }}-
       - name: Check format
-        run: cargo fmt -- --check
+        run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --tests
+        run: cargo clippy --workspace --all-targets ${{ matrix.features }} -- -Dwarnings
       - name: Test
-        shell: bash -l {0}
-        run: cargo test
+        run: |
+          cargo test --workspace --all-targets ${{ matrix.features }}
+          cargo test --workspace --doc ${{ matrix.features }}
       - name: Check docs
-        run: cargo doc
+        run: cargo doc --workspace ${{ matrix.features }}
