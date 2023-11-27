@@ -174,28 +174,67 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
+        [SkippableFact]
+        public void VerifySchemaTables()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
+            {
+                adbcConnection.Open();
+
+                var collections = adbcConnection.GetSchema("MetaDataCollections");
+                Assert.Equal(7, collections.Rows.Count);
+                Assert.Equal(2, collections.Columns.Count);
+
+                var restrictions = adbcConnection.GetSchema("Restrictions");
+                Assert.Equal(11, restrictions.Rows.Count);
+                Assert.Equal(3, restrictions.Columns.Count);
+
+                var catalogs = adbcConnection.GetSchema("Catalogs");
+                Assert.Equal(1, catalogs.Columns.Count);
+                var catalog = (string)catalogs.Rows[0].ItemArray[0];
+
+                catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
+                Assert.Equal(1, catalogs.Rows.Count);
+
+                var schemas = adbcConnection.GetSchema("Schemas", new[] { catalog });
+                Assert.Equal(2, schemas.Columns.Count);
+
+                var schema = "INFORMATION_SCHEMA";
+                schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, schema });
+                Assert.Equal(1, schemas.Rows.Count);
+
+                var tableTypes = adbcConnection.GetSchema("TableTypes");
+                Assert.Equal(1, tableTypes.Columns.Count);
+
+                var tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema });
+                Assert.Equal(4, tables.Columns.Count);
+                Assert.Equal(32, tables.Rows.Count);
+
+                var columns = adbcConnection.GetSchema("Columns", new[] { catalog, schema });
+                Assert.Equal(16, columns.Columns.Count);
+                Assert.Equal(441, columns.Rows.Count);
+            }
+        }
+
         private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(SnowflakeTestConfiguration testConfiguration)
         {
             // see https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html
 
             DbConnectionStringBuilder builder = new DbConnectionStringBuilder(true);
-
             builder[SnowflakeParameters.ACCOUNT] = testConfiguration.Account;
             builder[SnowflakeParameters.WAREHOUSE] = testConfiguration.Warehouse;
             builder[SnowflakeParameters.HOST] = testConfiguration.Host;
             builder[SnowflakeParameters.DATABASE] = testConfiguration.Database;
             builder[SnowflakeParameters.USERNAME] = testConfiguration.User;
-
             if (!string.IsNullOrEmpty(testConfiguration.AuthenticationTokenPath))
             {
                 builder[SnowflakeParameters.AUTH_TYPE] = testConfiguration.AuthenticationType;
-
                 string privateKey = File.ReadAllText(testConfiguration.AuthenticationTokenPath);
-
                 if (testConfiguration.AuthenticationType.Equals("auth_jwt", StringComparison.OrdinalIgnoreCase))
                 {
                     builder[SnowflakeParameters.PKCS8_VALUE] = privateKey;
-
                     if(!string.IsNullOrEmpty(testConfiguration.Pkcs8Passcode))
                     {
                         builder[SnowflakeParameters.PKCS8_PASS] = testConfiguration.Pkcs8Passcode;
@@ -206,15 +245,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             {
                 builder[SnowflakeParameters.PASSWORD] = testConfiguration.Password;
             }
-
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration);
-
             return new Adbc.Client.AdbcConnection(builder.ConnectionString)
             {
                 AdbcDriver = snowflakeDriver
             };
         }
-
         private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnection(SnowflakeTestConfiguration testConfiguration)
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();

@@ -28,25 +28,27 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     internal class BigQueryInfoArrowStream : IArrowArrayStream
     {
         private Schema schema;
-        private IEnumerable<IArrowArray> data;
-        private int length;
+        private RecordBatch batch;
 
-        public BigQueryInfoArrowStream(Schema schema, IEnumerable<IArrowArray> data, int length)
+        public BigQueryInfoArrowStream(Schema schema, List<IArrowArray> data)
         {
             this.schema = schema;
-            this.data = data;
-            this.length = length;
+            this.batch = new RecordBatch(schema, data, data[0].Length);
         }
 
         public Schema Schema { get { return this.schema; } }
 
         public ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            return new ValueTask<RecordBatch>(new RecordBatch(schema, data, length));
+            RecordBatch batch = this.batch;
+            this.batch = null;
+            return new ValueTask<RecordBatch>(batch);
         }
 
         public void Dispose()
         {
+            this.batch?.Dispose();
+            this.batch = null;
         }
     }
 }

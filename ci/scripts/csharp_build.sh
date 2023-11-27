@@ -21,13 +21,6 @@ set -ex
 
 source_dir=${1}/csharp
 
-# need the arrow project for C# until the nugets are available with the right functionality
-arrow_sub_dir=${source_dir}/src
-pushd ${arrow_sub_dir}
-git clone https://github.com/apache/arrow.git
-popd
-
 pushd ${source_dir}
-
 dotnet build
 popd
