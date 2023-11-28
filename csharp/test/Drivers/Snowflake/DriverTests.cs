@@ -54,31 +54,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public static IEnumerable<object[]> CatalogNamePatternData()
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-            string databaseName = testConfiguration.Metadata.Catalog;
+            string databaseName = SnowflakeTestingUtils.TestConfiguration?.Metadata.Catalog;
             return GetPatterns(databaseName);
         }
 
         public static IEnumerable<object[]> DbSchemasNamePatternData()
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-            string dbSchemaName = testConfiguration.Metadata.Schema;
+            string dbSchemaName = SnowflakeTestingUtils.TestConfiguration?.Metadata.Schema;
             return GetPatterns(dbSchemaName);
         }
 
         public static IEnumerable<object[]> TableNamePatternData()
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-            string tableName = testConfiguration.Metadata.Table;
+            string tableName = SnowflakeTestingUtils.TestConfiguration?.Metadata.Table;
             return GetPatterns(tableName);
         }
 
         public DriverTests()
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-            _testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            _testConfiguration = SnowflakeTestingUtils.TestConfiguration;
 
             Dictionary<string, string> parameters = new Dictionary<string, string>();
             Dictionary<string, string> options = new Dictionary<string, string>();

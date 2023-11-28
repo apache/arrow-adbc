@@ -20,6 +20,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Apache.Arrow.Adbc.C;
+using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
@@ -40,7 +41,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
     internal class SnowflakeTestingUtils
     {
+        internal static readonly SnowflakeTestConfiguration TestConfiguration;
+
         internal const string SNOWFLAKE_TEST_CONFIG_VARIABLE = "SNOWFLAKE_TEST_CONFIG_FILE";
+
+        static SnowflakeTestingUtils()
+        {
+            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
+            TestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+        }
 
         /// <summary>
         /// Gets a the Snowflake ADBC driver with settings from the
