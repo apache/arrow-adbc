@@ -668,7 +668,6 @@ class Cursor(_Closeable):
         self._prepare_execute(operation, parameters)
         handle, self._rowcount = self._stmt.execute_query()
         self._results = _RowIterator(
-            # pyarrow.RecordBatchReader._import_from_c(handle.address)
             _reader.AdbcRecordBatchReader._import_from_c(handle.address)
         )
 

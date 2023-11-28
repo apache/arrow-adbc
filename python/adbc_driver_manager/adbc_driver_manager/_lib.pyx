@@ -24,10 +24,12 @@ import threading
 import typing
 from typing import List, Tuple
 
+cimport cpython
 import cython
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t, uintptr_t
-from libc.string cimport memset
+from libc.stdlib cimport malloc, free
+from libc.string cimport memcpy, memset
 from libcpp.vector cimport vector as c_vector
 
 if typing.TYPE_CHECKING:
@@ -304,9 +306,44 @@ cdef class _AdbcHandle:
                     f"with open {self._child_type}")
 
 
+cdef void release_schema_pycapsule(object capsule) noexcept:
+    cdef CArrowSchema* allocated = \
+        <CArrowSchema*> cpython.PyCapsule_GetPointer(
+            capsule,
+            "arrow_schema",
+        )
+    if allocated.release != NULL:
+        allocated.release(allocated)
+    free(allocated)
+
+
+cdef void release_array_pycapsule(object capsule) noexcept:
+    cdef CArrowArray* allocated = \
+        <CArrowArray*> cpython.PyCapsule_GetPointer(
+            capsule,
+            "arrow_array",
+        )
+    if allocated.release != NULL:
+        allocated.release(allocated)
+    free(allocated)
+
+
+cdef void release_stream_pycapsule(object capsule) noexcept:
+    cdef CArrowArrayStream* allocated = \
+        <CArrowArrayStream*> cpython.PyCapsule_GetPointer(
+            capsule,
+            "arrow_array_stream",
+        )
+    if allocated.release != NULL:
+        allocated.release(allocated)
+    free(allocated)
+
+
 cdef class ArrowSchemaHandle:
     """
     A wrapper for an allocated ArrowSchema.
+
+    This object implements the Arrow PyCapsule interface.
     """
     cdef:
         CArrowSchema schema
@@ -316,23 +353,59 @@ cdef class ArrowSchemaHandle:
         """The address of the ArrowSchema."""
         return <uintptr_t> &self.schema
 
+    def __arrow_c_schema__(self) -> object:
+        """Consume this object to get a PyCapsule."""
+        # Reference:
+        # https://arrow.apache.org/docs/dev/format/CDataInterface/PyCapsuleInterface.html#create-a-pycapsule
+        cdef CArrowSchema* allocated = \
+            <CArrowSchema*> malloc(sizeof(CArrowSchema))
+        allocated.release = NULL
+        capsule = cpython.PyCapsule_New(
+            <void*>allocated,
+            "arrow_schema",
+            release_schema_pycapsule,
+        )
+        memcpy(allocated, &self.schema, sizeof(CArrowSchema))
+        self.schema.release = NULL
+        return capsule
+
 
 cdef class ArrowArrayHandle:
     """
     A wrapper for an allocated ArrowArray.
+
+    This object implements the Arrow PyCapsule interface.
     """
     cdef:
         CArrowArray array
 
     @property
     def address(self) -> int:
-        """The address of the ArrowArray."""
+        """
+        The address of the ArrowArray.
+        """
         return <uintptr_t> &self.array
+
+    def __arrow_c_array__(self) -> object:
+        """Consume this object to get a PyCapsule."""
+        cdef CArrowArray* allocated = \
+            <CArrowArray*> malloc(sizeof(CArrowArray))
+        allocated.release = NULL
+        capsule = cpython.PyCapsule_New(
+            <void*>allocated,
+            "arrow_array",
+            release_array_pycapsule,
+        )
+        memcpy(allocated, &self.array, sizeof(CArrowArray))
+        self.array.release = NULL
+        return capsule
 
 
 cdef class ArrowArrayStreamHandle:
     """
     A wrapper for an allocated ArrowArrayStream.
+
+    This object implements the Arrow PyCapsule interface.
     """
     cdef:
         CArrowArrayStream stream
@@ -341,6 +414,20 @@ cdef class ArrowArrayStreamHandle:
     def address(self) -> int:
         """The address of the ArrowArrayStream."""
         return <uintptr_t> &self.stream
+
+    def __arrow_c_array_stream__(self) -> object:
+        """Consume this object to get a PyCapsule."""
+        cdef CArrowArrayStream* allocated = \
+            <CArrowArrayStream*> malloc(sizeof(CArrowArrayStream))
+        allocated.release = NULL
+        capsule = cpython.PyCapsule_New(
+            <void*>allocated,
+            "arrow_array_stream",
+            release_stream_pycapsule,
+        )
+        memcpy(allocated, &self.stream, sizeof(CArrowArrayStream))
+        self.stream.release = NULL
+        return capsule
 
 
 class GetObjectsDepth(enum.IntEnum):

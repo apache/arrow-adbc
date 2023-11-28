@@ -390,3 +390,13 @@ def test_child_tracking(sqlite):
                 RuntimeError, match="Cannot close AdbcDatabase with open AdbcConnection"
             ):
                 db.close()
+
+
+@pytest.mark.sqlite
+def test_pycapsule(sqlite):
+    _, conn = sqlite
+    handle = conn.get_table_types()
+    with pyarrow.RecordBatchReader._import_from_c_capsule(handle.__arrow_c_array_stream__()) as reader:
+        reader.read_all()
+
+    # TODO: also need to import from things supporting protocol
