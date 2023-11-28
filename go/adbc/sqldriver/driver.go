@@ -475,7 +475,9 @@ func arrFromVal(val any) arrow.Array {
 		panic(fmt.Sprintf("unsupported type %T", val))
 	}
 	for _, b := range buffers {
-		defer b.Release()
+		if b != nil {
+			defer b.Release()
+		}
 	}
 	data := array.NewData(dt, 1, buffers, nil, 0, 0)
 	defer data.Release()
