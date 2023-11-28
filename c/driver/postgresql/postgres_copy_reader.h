@@ -1225,7 +1225,7 @@ public:
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
     struct ArrowDecimal decimal;
     // TODO: these need to be inferred from the schema not hard coded
-    constexpr int16_t precision = 19;
+    constexpr int16_t precision = 38;
     constexpr int16_t scale = 8;
     ArrowDecimalInit(&decimal, 128, precision, scale);
     ArrowArrayViewGetDecimalUnsafe(array_view_, index, &decimal);
@@ -1235,11 +1235,15 @@ public:
     // Number of decimal digits per Postgres digit
     constexpr int kDecDigits = 4;
 
-    // TODO: need some kind of bounds check on this
-    const int64_t decimal_int = ArrowDecimalGetIntUnsafe(&decimal);
+    // This assumes that we are dealing with Decimal128
+    // more work required for 256 support
+    uint8_t bytes_tmp[32];
+    ArrowDecimalGetBytes(&decimal, bytes_tmp);
+    __int128 tmp;
+    std::memcpy(&tmp, bytes_tmp, sizeof(tmp));
 
     // TODO: is -INT64_MIN possible? If so how do we handle?
-    int64_t value = decimal_int < 0 ? -decimal_int : decimal_int;
+    unsigned __int128 value = tmp < 0 ? -tmp : tmp;
     std::vector<int16_t> pg_digits;
 
     int16_t weight = -(scale / kDecDigits);
@@ -1249,7 +1253,7 @@ public:
     bool truncating_trailing_zeros = true;
 
     for (size_t i = 0; i < nloops; i++) {
-      const int64_t rem = value % kNBase;
+      const unsigned __int128 rem = value % kNBase;
       // TODO: postgres seems to pack records to the left of a decimal place
       // internally, so 1000000.0 would be sent as one digit of 100 with
       // a weight of 1 (there are weight + 1 pg digits to the left of a decimal place)
