@@ -176,7 +176,7 @@ struct ArrowArrayStream {
 typedef uint8_t AdbcStatusCode;
 
 /// \brief No error.
-#define ADBC_STATUS_OK 0
+#define ADBC_STATUS_OK 100
 /// \brief An unknown error occurred.
 ///
 /// May indicate a driver-side or database-side error.
