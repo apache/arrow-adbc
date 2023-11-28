@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.Build.NoTargets">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+  </PropertyGroup>
+  <!--<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="powershell -ExecutionPolicy Unrestricted -File $(ProjectDir)build-SnowflakeDriver.ps1 -netversion $(TargetFramework)" />
+  </Target>-->
+
+  <!-- use Build-SnowflakeDriver.ps1 to build the dll -->
+
+  <!-- libadbc_driver_snowflake.dll is listed for each framework because Condition doesn't work here -->
+
+  <ItemGroup>
+    <Content Include="libadbc_driver_snowflake.dll">
+      <Pack>true</Pack>
+      <PackagePath>lib\netstandard2.0</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="libadbc_driver_snowflake.dll">
+      <Pack>true</Pack>
+      <PackagePath>lib\net6.0</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="readme.md">
+      <Pack>true</Pack>
+      <PackagePath>\</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>
