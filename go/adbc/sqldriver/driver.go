@@ -22,6 +22,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 	"strconv"
@@ -470,6 +471,8 @@ func arrFromVal(val any) arrow.Array {
 		var buf = *(*[]byte)(unsafe.Pointer(&v))
 		(*reflect.SliceHeader)(unsafe.Pointer(&buf)).Cap = len(v)
 		buffers[2] = memory.NewBufferBytes(buf)
+	default:
+		panic(fmt.Sprintf("unsupported type %T", val))
 	}
 	for _, b := range buffers {
 		defer b.Release()
