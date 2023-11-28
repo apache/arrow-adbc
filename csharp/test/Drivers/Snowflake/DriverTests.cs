@@ -46,9 +46,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name)}%" };
             yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name).ToLower()}%" };
             yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name).ToUpper()}%" };
-            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name)}%" };
-            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name).ToLower()}%" };
-            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name).ToUpper()}%" };
+            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name)}" };
+            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name).ToLower()}" };
+            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name).ToUpper()}" };
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()
