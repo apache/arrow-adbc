@@ -74,13 +74,15 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
+            rust/target/
           key: ${{ runner.os }}-cargo-${{ steps.rustc.outputs.version }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ steps.rustc.outputs.version }}-
       - name: Check format
         if: matrix.os == 'ubuntu-latest'
         run: cargo fmt --all -- --check
+      - name: Check
+        run: cargo check --workspace --all-targets ${{ matrix.features }}
       - name: Clippy
         run: cargo clippy --workspace --all-targets ${{ matrix.features }} -- -Dwarnings
       - name: Test
