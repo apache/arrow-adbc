@@ -600,9 +600,11 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 				return rr.Err()
 			})
 		}
-	}()
 
-	go func() {
+		// place this here so that we always clean up, but they can't be in a
+		// separate goroutine. Otherwise we'll have a race condition between
+		// the call to wait and the calls to group.Go to kick off the jobs
+		// to perform the pre-fetching (GH-1283).
 		rdr.err = group.Wait()
 		// don't close the last channel until after the group is finished,
 		// so that Next() can only return after reader.err may have been set
