@@ -94,4 +94,8 @@ jobs:
       - name: Check bindings
         if: matrix.os == 'ubuntu-latest'
         run: |
-          git diff --exit-code || ( echo ":x: rust/bindings/adbc.rs are outdated, please regenerate" >> $GITHUB_STEP_SUMMARY && exit 1 )
+          git diff --exit-code || ( \
+            echo '# :x: rust/bindings/adbc.rs is outdated and needs to be updated' >> $GITHUB_STEP_SUMMARY && \
+            echo 'Run `cargo build -p arrow-adbc-sys --features generate` to regenerate' >> $GITHUB_STEP_SUMMARY && \
+            exit 1 \
+          )
