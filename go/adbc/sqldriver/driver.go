@@ -464,13 +464,13 @@ func arrFromVal(val any) arrow.Array {
 	case []byte:
 		dt = arrow.BinaryTypes.Binary
 		buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
-		buffers[2] = memory.NewBufferBytes(v)
+		buffers = append(buffers, memory.NewBufferBytes(v))
 	case string:
 		dt = arrow.BinaryTypes.String
 		buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
 		var buf = *(*[]byte)(unsafe.Pointer(&v))
 		(*reflect.SliceHeader)(unsafe.Pointer(&buf)).Cap = len(v)
-		buffers[2] = memory.NewBufferBytes(buf)
+		buffers = append(buffers, memory.NewBufferBytes(buf))
 	default:
 		panic(fmt.Sprintf("unsupported type %T", val))
 	}
