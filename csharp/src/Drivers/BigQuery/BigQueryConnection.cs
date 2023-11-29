@@ -852,7 +852,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (data == null)
             {
-                EmptyArrayCreationVisitor visitor = new EmptyArrayCreationVisitor(0);
+                EmptyArrayCreationVisitor visitor = new EmptyArrayCreationVisitor();
                 dataType.Accept(visitor);
                 data = visitor.Result;
             }
@@ -992,31 +992,27 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             IArrowTypeVisitor<MapType>
         {
             public ArrayData Result { get; private set; }
-            private readonly int _length;
 
-            public EmptyArrayCreationVisitor(int length)
-            {
-                _length = length;
-            }
+            const int Length = 0;
 
             public void Visit(BooleanType type)
             {
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
+                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
             }
 
             public void Visit(FixedWidthType type)
             {
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
+                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
             }
 
             public void Visit(BinaryType type)
             {
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty, ArrowBuffer.Empty });
+                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty, ArrowBuffer.Empty });
             }
 
             public void Visit(StringType type)
             {
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty, ArrowBuffer.Empty });
+                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty, ArrowBuffer.Empty });
             }
 
             public void Visit(ListType type)
@@ -1024,7 +1020,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 type.ValueDataType.Accept(this);
                 ArrayData child = Result;
 
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty }, new[] { child });
+                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty }, new[] { child });
             }
 
             public void Visit(FixedSizeListType type)
@@ -1032,7 +1028,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 type.ValueDataType.Accept(this);
                 ArrayData child = Result;
 
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty }, new[] { child });
+                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty }, new[] { child });
             }
 
             public void Visit(StructType type)
@@ -1044,7 +1040,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     children[i] = Result;
                 }
 
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty }, children);
+                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty }, children);
             }
 
             public void Visit(UnionType type)
@@ -1070,7 +1066,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     buffers[1] = ArrowBuffer.Empty;
                 }
 
-                Result = new ArrayData(type, _length, _length, 0, buffers, children);
+                Result = new ArrayData(type, Length, Length, 0, buffers, children);
             }
 
             public void Visit(MapType type)
@@ -1081,7 +1077,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 type.ValueField.DataType.Accept(this);
                 children[1] = Result;
 
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty }, children);
+                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty }, children);
             }
 
             public void Visit(IArrowType type)
