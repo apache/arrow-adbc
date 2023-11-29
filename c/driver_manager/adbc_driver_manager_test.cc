@@ -279,6 +279,9 @@ class SqliteStatementTest : public ::testing::Test,
   void TestSqlIngestInterval() {
     GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
   }
+  void TestSqlIngestDecimal128() {
+    GTEST_SKIP() << "Cannot ingest Decimal128 (not implemented)";
+  }
 
  protected:
   SqliteQuirks quirks_;

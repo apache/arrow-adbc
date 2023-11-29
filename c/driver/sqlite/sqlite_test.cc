@@ -326,6 +326,10 @@ class SqliteStatementTest : public ::testing::Test,
     GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
   }
 
+  void TestSqlIngestDecimal128() {
+    GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
+  }
+
  protected:
   void ValidateIngestedTemporalData(struct ArrowArrayView* values, ArrowType type,
                                     enum ArrowTimeUnit unit,
