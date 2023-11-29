@@ -1557,7 +1557,7 @@ void StatementTest::TestSqlIngestDecimal128() {
   struct ArrowDecimal decimal6;
 
   ArrowDecimalInit(&decimal1, size, 38, 8);
-  ArrowDecimalSetInt(&decimal1, 12345600000);
+  ArrowDecimalSetInt(&decimal1, -12345600000);
   ArrowDecimalInit(&decimal2, size, 38, 8);
   ArrowDecimalSetInt(&decimal2, 1234);
   ArrowDecimalInit(&decimal3, size, 38, 8);
@@ -1624,7 +1624,7 @@ void StatementTest::TestSqlIngestDecimal128() {
     //}
 
     const std::vector<std::optional<std::string>> str_values = {
-      std::nullopt, "0.00001234", "1", "123.456", "123.456", "1000000",
+      std::nullopt, "-123.456", "0.00001234", "1",  "123.456", "1000000",
     "23423942305922323.49023094"};
     ASSERT_NO_FATAL_FAILURE(
             CompareArray<std::string>(reader.array_view->children[0], str_values));

@@ -1240,6 +1240,11 @@ public:
     ArrowDecimalGetBytes(&decimal, bytes_tmp);
     uint64_t tmp[2];
     std::memcpy(tmp, bytes_tmp, sizeof(tmp));
+    const int16_t sign = ArrowDecimalSign(&decimal) > 0 ? kNumericPos : kNumericNeg;
+    if (sign == kNumericNeg) {
+      tmp[0] = ~tmp[0] + 1;
+      tmp[1] = ~tmp[1];
+    }
 
     std::vector<int16_t> pg_digits;
 
@@ -1290,8 +1295,6 @@ public:
     } while (true);
 
     int16_t ndigits = pg_digits.size();
-    const int16_t sign = ArrowDecimalSign(&decimal) > 0 ? kNumericPos : kNumericNeg;
-
     int32_t field_size_bytes = sizeof(ndigits)
       + sizeof(weight)
       + sizeof(sign)
