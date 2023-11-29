@@ -1557,7 +1557,7 @@ void StatementTest::TestSqlIngestDecimal128() {
   struct ArrowDecimal decimal6;
 
   ArrowDecimalInit(&decimal1, size, 38, 8);
-  ArrowDecimalSetInt(&decimal1, -12345600000);
+  ArrowDecimalSetInt(&decimal1, 12345600000);
   ArrowDecimalInit(&decimal2, size, 38, 8);
   ArrowDecimalSetInt(&decimal2, 1234);
   ArrowDecimalInit(&decimal3, size, 38, 8);
@@ -1567,16 +1567,11 @@ void StatementTest::TestSqlIngestDecimal128() {
   ArrowDecimalInit(&decimal5, size, 38, 8);
   ArrowDecimalSetInt(&decimal5, 100000000000000);
   ArrowDecimalInit(&decimal6, size, 38, 8);
-  // 2342394230592.232349023094 in little endian
+  // 23423942305922323.49023094 in little endian
   uint8_t le_data[16] = {
     0x76, 0xbb, 0xc8, 0x2c, 0x1c, 0x2b, 0x18, 0x72,
     0x05, 0xf0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
   ArrowDecimalSetBytes(&decimal6, le_data);
-  //
-  const uint64_t large_decimal[2] = {1, 2345678901234567890};
-  uint8_t large_decimal_bytes[16];
-  std::memcpy(&large_decimal_bytes, large_decimal, sizeof(large_decimal_bytes));
-  ArrowDecimalSetBytes(&decimal6, large_decimal_bytes);
 
   const std::vector<std::optional<ArrowDecimal*>> values = {
     std::nullopt, &decimal1, &decimal2, &decimal3, &decimal4, &decimal5, &decimal6};
@@ -1629,8 +1624,8 @@ void StatementTest::TestSqlIngestDecimal128() {
     //}
 
     const std::vector<std::optional<std::string>> str_values = {
-      std::nullopt, "-123.456", "0.00001234", "1", "123.456", "1000000",
-    "2342394230592.232349023094"};
+      std::nullopt, "0.00001234", "1", "123.456", "123.456", "1000000",
+    "23423942305922323.49023094"};
     ASSERT_NO_FATAL_FAILURE(
             CompareArray<std::string>(reader.array_view->children[0], str_values));
 

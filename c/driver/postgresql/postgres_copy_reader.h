@@ -1231,7 +1231,6 @@ public:
     ArrowArrayViewGetDecimalUnsafe(array_view_, index, &decimal);
     constexpr uint16_t kNumericPos = 0x0000;
     constexpr uint16_t kNumericNeg = 0x4000;
-    constexpr int64_t kNBase = 10000;
     // Number of decimal digits per Postgres digit
     constexpr int kDecDigits = 4;
 
@@ -1239,55 +1238,56 @@ public:
     // more work required for 256 support
     uint8_t bytes_tmp[32];
     ArrowDecimalGetBytes(&decimal, bytes_tmp);
-    __int128 tmp;
-    std::memcpy(&tmp, bytes_tmp, sizeof(tmp));
+    uint64_t tmp[2];
+    std::memcpy(tmp, bytes_tmp, sizeof(tmp));
 
-    // TODO: is -INT64_MIN possible? If so how do we handle?
-    unsigned __int128 value = tmp < 0 ? -tmp : tmp;
     std::vector<int16_t> pg_digits;
 
     int16_t weight = -(scale / kDecDigits);
     int16_t dscale = scale;
-    constexpr size_t nloops = (precision + kDecDigits - 1) / kDecDigits;
     bool seen_decimal = scale == 0;
     bool truncating_trailing_zeros = true;
 
-    for (size_t i = 0; i < nloops; i++) {
-      const unsigned __int128 rem = value % kNBase;
-      // TODO: postgres seems to pack records to the left of a decimal place
-      // internally, so 1000000.0 would be sent as one digit of 100 with
-      // a weight of 1 (there are weight + 1 pg digits to the left of a decimal place)
-      // Here we still send two digits of 100 and 0000
-      if (rem == 0) {
+    const std::string decimal_string = DecimalBytesToString(tmp, 2);
+    const std::string_view vw = decimal_string;
+    int digits_remaining = vw.size();
+    do {
+      const int start_pos = digits_remaining < kDecDigits ?
+        0 : digits_remaining - kDecDigits;
+      // TODO: would be great to use a string_view here but wasn't sure
+      // how to make that work with stoi
+      const size_t len = digits_remaining < 4 ? digits_remaining : kDecDigits;
+      std::string substr{vw.substr(start_pos, len)};
+      //size_t ndigits;  TODO: maybe should use ndigits output
+      int16_t val = static_cast<int16_t>(std::stoi(substr.data()));
+
+      if (val == 0) {
         if (!seen_decimal && truncating_trailing_zeros) {
           dscale -= kDecDigits;
         }
       } else {
-        pg_digits.insert(pg_digits.begin(), rem);
+        pg_digits.insert(pg_digits.begin(), val);
         if (!seen_decimal && truncating_trailing_zeros) {
-          if (rem % 1000 == 0) {
+          if (val % 1000 == 0) {
             dscale -= 3;
-          } else if (rem % 100 == 0) {
+          } else if (val % 100 == 0) {
             dscale -= 2;
-          } else if (rem % 10 == 0) {
+          } else if (val % 10 == 0) {
             dscale -= 1;
           }
         }
         truncating_trailing_zeros = false;
       }
-
-      // TODO: how does pg deal with words when integer and decimal part are sent
-      // in same word?
-      value /= kNBase;
-      if (value == 0) {
+      digits_remaining -= kDecDigits;
+      if (digits_remaining <= 0) {
         break;
       }
       weight++;
 
-      if (i >= scale / kDecDigits - 1) {
+      if (start_pos <= static_cast<int>(vw.size()) - scale) {
         seen_decimal = true;
       }
-    }
+    } while (true);
 
     int16_t ndigits = pg_digits.size();
     const int16_t sign = ArrowDecimalSign(&decimal) > 0 ? kNumericPos : kNumericNeg;
@@ -1309,6 +1309,42 @@ public:
     }
 
     return ADBC_STATUS_OK;
+  }
+
+private:
+  std::string DecimalBytesToString(const uint64_t* decimal_bytes, size_t size) {
+    // Basic approach adopted from https://stackoverflow.com/a/8023862/621736
+    // This currently only works with decimal128
+    char s[38];
+    uint64_t buf[2];
+
+    std::memset(s, '0', sizeof(s) - 1);
+    s[sizeof(s) - 1] = '\0';
+
+    std::memcpy(buf, decimal_bytes, sizeof(buf));
+
+    for (size_t i = 0; i < 128; i++) {
+      int carry;
+
+      carry = (buf[1] >= 0x7FFFFFFFFFFFFFFF);
+      buf[1] = ((buf[1] << 1) & 0xFFFFFFFFFFFFFFFF) + (buf[0] >= 0x7FFFFFFFFFFFFFFF);
+      buf[0] = ((buf[0] << 1) & 0xFFFFFFFFFFFFFFFF);
+
+      for (int j = sizeof(s) - 2; j>= 0; j--) {
+        s[j] += s[j] - '0' + carry;
+        carry = (s[j] > '9');
+        if (carry) {
+          s[j] -= 10;
+        }
+      }
+    }
+
+    char* p = s;
+    while ((p[0] == '0') && (p < &s[sizeof(s) - 2])) {
+      p++;
+    }
+
+    return std::string{p};
   }
 };
 
