@@ -1217,41 +1217,36 @@ class PostgresCopyIntervalFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
-
 // Inspiration for this taken from get_str_from_var in the pg source
 // src/backend/utils/adt/numeric.c
+template<enum ArrowType T>
 class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
 public:
+  PostgresCopyNumericFieldWriter<T>(int32_t precision, int32_t scale) :
+    precision_{precision}, scale_{scale} {}
+
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
     struct ArrowDecimal decimal;
-    // TODO: these need to be inferred from the schema not hard coded
-    constexpr int16_t precision = 38;
-    constexpr int16_t scale = 8;
-    constexpr int32_t decimal_width = 128;
-
-    ArrowDecimalInit(&decimal, decimal_width, precision, scale);
+    ArrowDecimalInit(&decimal, bitwidth_, precision_, scale_);
     ArrowArrayViewGetDecimalUnsafe(array_view_, index, &decimal);
-    // Number of decimal digits per Postgres digit
-    constexpr int kDecDigits = 4;
 
     const int16_t sign = ArrowDecimalSign(&decimal) > 0 ? kNumericPos : kNumericNeg;
 
+    // Number of decimal digits per Postgres digit
+    constexpr int kDecDigits = 4;
     std::vector<int16_t> pg_digits;
-    int16_t weight = -(scale / kDecDigits);
-    int16_t dscale = scale;
-    bool seen_decimal = scale == 0;
+    int16_t weight = -(scale_ / kDecDigits);
+    int16_t dscale = scale_;
+    bool seen_decimal = scale_ == 0;
     bool truncating_trailing_zeros = true;
 
-    const std::string decimal_string = DecimalToString<decimal_width>(&decimal);
+    const std::string decimal_string = DecimalToString<bitwidth_>(&decimal);
     int digits_remaining = decimal_string.size();
     do {
       const int start_pos = digits_remaining < kDecDigits ?
         0 : digits_remaining - kDecDigits;
-      // TODO: would be great to use a string_view here but wasn't sure
-      // how to make that work with stoi
       const size_t len = digits_remaining < 4 ? digits_remaining : kDecDigits;
       std::string substr{decimal_string.substr(start_pos, len)};
-      //size_t ndigits;  TODO: maybe should use ndigits output
       int16_t val = static_cast<int16_t>(std::stoi(substr.data()));
 
       if (val == 0) {
@@ -1277,7 +1272,7 @@ public:
       }
       weight++;
 
-      if (start_pos <= static_cast<int>(decimal_string.size()) - scale) {
+      if (start_pos <= static_cast<int>(decimal_string.size()) - scale_) {
         seen_decimal = true;
       }
     } while (true);
@@ -1303,9 +1298,6 @@ public:
   }
 
 private:
-  static constexpr uint16_t kNumericPos = 0x0000;
-  static constexpr uint16_t kNumericNeg = 0x4000;
-
   template <int32_t DEC_WIDTH>
   std::string DecimalToString(struct ArrowDecimal* decimal) {
     constexpr size_t nwords = (DEC_WIDTH == 128) ? 2 : 4;
@@ -1353,6 +1345,12 @@ private:
 
     return std::string{p};
   }
+
+  static constexpr uint16_t kNumericPos = 0x0000;
+  static constexpr uint16_t kNumericNeg = 0x4000;
+  static constexpr int32_t bitwidth_ = (T == NANOARROW_TYPE_DECIMAL128) ? 128 : 256;
+  const int32_t precision_;
+  const int32_t scale_;
 };
 
 template <enum ArrowTimeUnit TU>
@@ -1517,9 +1515,13 @@ static inline ArrowErrorCode MakeCopyFieldWriter(struct ArrowSchema* schema,
     case NANOARROW_TYPE_DOUBLE:
       *out = new PostgresCopyDoubleFieldWriter();
       return NANOARROW_OK;
-    case NANOARROW_TYPE_DECIMAL128:
-      *out = new PostgresCopyNumericFieldWriter();
+    case NANOARROW_TYPE_DECIMAL128: {
+      const auto precision = schema_view.decimal_precision;
+      const auto scale = schema_view.decimal_scale;
+      *out = new PostgresCopyNumericFieldWriter<
+        NANOARROW_TYPE_DECIMAL128>(precision, scale);
       return NANOARROW_OK;
+    }
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
