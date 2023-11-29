@@ -1227,33 +1227,22 @@ public:
     // TODO: these need to be inferred from the schema not hard coded
     constexpr int16_t precision = 38;
     constexpr int16_t scale = 8;
-    ArrowDecimalInit(&decimal, 128, precision, scale);
+    constexpr int32_t decimal_width = 128;
+
+    ArrowDecimalInit(&decimal, decimal_width, precision, scale);
     ArrowArrayViewGetDecimalUnsafe(array_view_, index, &decimal);
-    constexpr uint16_t kNumericPos = 0x0000;
-    constexpr uint16_t kNumericNeg = 0x4000;
     // Number of decimal digits per Postgres digit
     constexpr int kDecDigits = 4;
 
-    // This assumes that we are dealing with Decimal128
-    // more work required for 256 support
-    uint8_t bytes_tmp[32];
-    ArrowDecimalGetBytes(&decimal, bytes_tmp);
-    uint64_t tmp[2];
-    std::memcpy(tmp, bytes_tmp, sizeof(tmp));
     const int16_t sign = ArrowDecimalSign(&decimal) > 0 ? kNumericPos : kNumericNeg;
-    if (sign == kNumericNeg) {
-      tmp[0] = ~tmp[0] + 1;
-      tmp[1] = ~tmp[1];
-    }
 
     std::vector<int16_t> pg_digits;
-
     int16_t weight = -(scale / kDecDigits);
     int16_t dscale = scale;
     bool seen_decimal = scale == 0;
     bool truncating_trailing_zeros = true;
 
-    const std::string decimal_string = DecimalBytesToString(tmp, 2);
+    const std::string decimal_string = DecimalToString<decimal_width>(&decimal);
     int digits_remaining = decimal_string.size();
     do {
       const int start_pos = digits_remaining < kDecDigits ?
@@ -1314,22 +1303,38 @@ public:
   }
 
 private:
-  std::string DecimalBytesToString(const uint64_t* decimal_bytes, size_t size) {
-    // Basic approach adopted from https://stackoverflow.com/a/8023862/621736
-    // This currently only works with decimal128
-    char s[38];
-    uint64_t buf[2];
+  static constexpr uint16_t kNumericPos = 0x0000;
+  static constexpr uint16_t kNumericNeg = 0x4000;
 
+  template <int32_t DEC_WIDTH>
+  std::string DecimalToString(struct ArrowDecimal* decimal) {
+    constexpr size_t nwords = (DEC_WIDTH == 128) ? 2 : 4;
+    uint8_t tmp[DEC_WIDTH / 8];
+    ArrowDecimalGetBytes(decimal, tmp);
+    uint64_t buf[DEC_WIDTH / 64];
+    std::memcpy(buf, tmp, sizeof(buf));
+    const int16_t sign = ArrowDecimalSign(decimal) > 0 ? kNumericPos : kNumericNeg;
+    const bool is_negative = sign == kNumericNeg ? true : false;
+    if (is_negative) {
+      buf[0] = ~buf[0] + 1;
+      for (size_t i = 1; i < nwords; i++) {
+        buf[i] = ~buf[i];
+      }
+    }
+
+    constexpr size_t max_decimal_digits = (DEC_WIDTH == 128) ? 39 : 78;
+    // Basic approach adopted from https://stackoverflow.com/a/8023862/621736
+    char s[max_decimal_digits + 1];
     std::memset(s, '0', sizeof(s) - 1);
     s[sizeof(s) - 1] = '\0';
 
-    std::memcpy(buf, decimal_bytes, sizeof(buf));
-
-    for (size_t i = 0; i < 128; i++) {
+    for (size_t i = 0; i < DEC_WIDTH; i++) {
       int carry;
 
-      carry = (buf[1] >= 0x7FFFFFFFFFFFFFFF);
-      buf[1] = ((buf[1] << 1) & 0xFFFFFFFFFFFFFFFF) + (buf[0] >= 0x7FFFFFFFFFFFFFFF);
+      carry = (buf[nwords - 1] >= 0x7FFFFFFFFFFFFFFF);
+      for (size_t j = nwords - 1; j > 0; j--) {
+        buf[j] = ((buf[j] << 1) & 0xFFFFFFFFFFFFFFFF) + (buf[j-1] >= 0x7FFFFFFFFFFFFFFF);
+      }
       buf[0] = ((buf[0] << 1) & 0xFFFFFFFFFFFFFFFF);
 
       for (int j = sizeof(s) - 2; j>= 0; j--) {
