@@ -1615,14 +1615,6 @@ void StatementTest::TestSqlIngestDecimal128() {
     ASSERT_EQ(values.size(), reader.array->length);
     ASSERT_EQ(1, reader.array->n_children);
 
-    // Currently postgres roundtrips to string, but in the future we should
-    // roundtrip to a decimal
-    //
-    //if (round_trip_type == type) {
-    //  ASSERT_NO_FATAL_FAILURE(
-    //      CompareArray<ArrowDecimal*>(reader.array_view->children[0], values));
-    //}
-
     const std::vector<std::optional<std::string>> str_values = {
       std::nullopt, "-123.456", "0.00001234", "1",  "123.456", "1000000",
     "23423942305922323.49023094"};
