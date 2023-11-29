@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.Data;
 using Apache.Arrow.Adbc.Client;
@@ -129,6 +130,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
                 Assert.Equal(1, catalogs.Rows.Count);
 
+                string random = "X" + Guid.NewGuid().ToString("N");
+
+                catalogs = adbcConnection.GetSchema("Catalogs", new[] { random });
+                Assert.Equal(0, catalogs.Rows.Count);
+
                 var schemas = adbcConnection.GetSchema("Schemas", new[] { catalog });
                 Assert.Equal(2, schemas.Columns.Count);
                 var schema = (string)schemas.Rows[0].ItemArray[1];
@@ -136,11 +142,32 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, schema });
                 Assert.Equal(1, schemas.Rows.Count);
 
+                schemas = adbcConnection.GetSchema("Schemas", new[] { random });
+                Assert.Equal(0, schemas.Rows.Count);
+
+                schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, random });
+                Assert.Equal(0, schemas.Rows.Count);
+
+                schemas = adbcConnection.GetSchema("Schemas", new[] { random, random });
+                Assert.Equal(0, schemas.Rows.Count);
+
                 var tableTypes = adbcConnection.GetSchema("TableTypes");
                 Assert.Equal(1, tableTypes.Columns.Count);
 
                 var tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema });
                 Assert.Equal(4, tables.Columns.Count);
+
+                tables = adbcConnection.GetSchema("Tables", new[] { catalog, random });
+                Assert.Equal(0, tables.Rows.Count);
+
+                tables = adbcConnection.GetSchema("Tables", new[] { random, schema });
+                Assert.Equal(0, tables.Rows.Count);
+
+                tables = adbcConnection.GetSchema("Tables", new[] { random, random });
+                Assert.Equal(0, tables.Rows.Count);
+
+                tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema, random });
+                Assert.Equal(0, tables.Rows.Count);
 
                 var columns = adbcConnection.GetSchema("Columns", new[] { catalog, schema });
                 Assert.Equal(16, columns.Columns.Count);
