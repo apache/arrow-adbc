@@ -1254,15 +1254,14 @@ public:
     bool truncating_trailing_zeros = true;
 
     const std::string decimal_string = DecimalBytesToString(tmp, 2);
-    const std::string_view vw = decimal_string;
-    int digits_remaining = vw.size();
+    int digits_remaining = decimal_string.size();
     do {
       const int start_pos = digits_remaining < kDecDigits ?
         0 : digits_remaining - kDecDigits;
       // TODO: would be great to use a string_view here but wasn't sure
       // how to make that work with stoi
       const size_t len = digits_remaining < 4 ? digits_remaining : kDecDigits;
-      std::string substr{vw.substr(start_pos, len)};
+      std::string substr{decimal_string.substr(start_pos, len)};
       //size_t ndigits;  TODO: maybe should use ndigits output
       int16_t val = static_cast<int16_t>(std::stoi(substr.data()));
 
@@ -1289,7 +1288,7 @@ public:
       }
       weight++;
 
-      if (start_pos <= static_cast<int>(vw.size()) - scale) {
+      if (start_pos <= static_cast<int>(decimal_string.size()) - scale) {
         seen_decimal = true;
       }
     } while (true);
