@@ -19,7 +19,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Apache.Arrow.Adbc.C;
+using Apache.Arrow.Adbc.Drivers.Interop.Snowflake;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
@@ -77,7 +77,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
 
             Dictionary<string, string> options = new Dictionary<string, string>() { };
-            AdbcDriver snowflakeDriver = CAdbcDriverImporter.Load(testConfiguration.DriverPath, testConfiguration.DriverEntryPoint);
+            AdbcDriver snowflakeDriver = SnowflakeDriverLoader.LoadDriver();
 
             return snowflakeDriver;
         }
@@ -93,7 +93,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             SnowflakeTestConfiguration testConfiguration
            )
         {
-            AdbcDriver snowflakeDriver = CAdbcDriverImporter.Load(testConfiguration.DriverPath, testConfiguration.DriverEntryPoint);
+            AdbcDriver snowflakeDriver = SnowflakeDriverLoader.LoadDriver();
 
             return snowflakeDriver;
         }

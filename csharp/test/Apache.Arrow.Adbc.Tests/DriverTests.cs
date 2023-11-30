@@ -45,7 +45,7 @@ namespace Apache.Arrow.Adbc.Tests
                 count += nextBatch.Length;
             }
 
-            Assert.True(expectedNumberOfResults == count, "The parsed records differ from the specified amount");
+            Assert.True(expectedNumberOfResults == count, $"The parsed records ({count}) differ from the expected amount ({expectedNumberOfResults})");
 
             // if the values were set, make sure they are correct
             if (queryResult.RowCount != -1)

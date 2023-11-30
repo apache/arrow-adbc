@@ -24,7 +24,7 @@ $location = Get-Location
 
 $file = "libadbc_driver_snowflake.dll"
 
-cd ..\..\..\..\go\adbc\pkg
+cd ..\..\..\..\..\go\adbc\pkg
 del $file
 go build -tags driverlib -o $file -buildmode=c-shared -ldflags "-s -w" ./snowflake
 COPY $file $location
