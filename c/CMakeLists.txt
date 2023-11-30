@@ -68,7 +68,7 @@ if(ADBC_INTEGRATION_DUCKDB)
 endif()
 
 if(ADBC_BUILD_PYTHON)
-  find_package(Python REQUIRED COMPONENTS Interpreter Development)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 
   if(NOT ADBC_BUILD_SHARED)
     message(FATAL_ERROR "Building Python requires ADBC_BUILD_SHARED=ON")
@@ -78,7 +78,7 @@ if(ADBC_BUILD_PYTHON)
   # but you don't technically need -DADBC_DRIVER_MANAGER=ON when installing
   # other Python packages. To be safe then, we always install the driver
   # manager package, regardless of the value of -DABC_DRIVER_MANAGER
-  add_custom_target(python COMMAND ${Python_EXECUTABLE} -m pip install --no-deps -e
+  add_custom_target(python COMMAND ${Python3_EXECUTABLE} -m pip install --no-deps -e
                                    "${REPOSITORY_ROOT}/python/adbc_driver_manager")
 
   macro(adbc_install_python_package TARGET)
@@ -86,7 +86,7 @@ if(ADBC_BUILD_PYTHON)
     add_custom_command(TARGET python
                        POST_BUILD
                        COMMAND ${CMAKE_COMMAND} -E env "ADBC_${${TARGET}_LIB_upper}_\
-LIBRARY=$<TARGET_FILE:adbc_driver_${TARGET}_shared>" ${Python_EXECUTABLE} -m pip install
+LIBRARY=$<TARGET_FILE:adbc_driver_${TARGET}_shared>" ${Python3_EXECUTABLE} -m pip install
                                --no-deps -e
                                "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}"
                        COMMENT "pip installing the adbc_driver_${TARGET} library..."
