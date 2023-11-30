@@ -16,7 +16,9 @@
 # under the License.
 
 new_env <- function() {
-  new.env(parent = emptyenv())
+  env <- new.env(parent = emptyenv())
+  env$.child_count = 0L
+  env
 }
 
 xptr_env <- function(xptr) {
