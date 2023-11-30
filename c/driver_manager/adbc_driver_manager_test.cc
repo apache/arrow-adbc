@@ -282,6 +282,9 @@ class SqliteStatementTest : public ::testing::Test,
   void TestSqlIngestDecimal128() {
     GTEST_SKIP() << "Cannot ingest Decimal128 (not implemented)";
   }
+  void TestSqlIngestDecimal256() {
+    GTEST_SKIP() << "Cannot ingest Decimal256 (not implemented)";
+  }
 
  protected:
   SqliteQuirks quirks_;

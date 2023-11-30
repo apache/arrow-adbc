@@ -143,10 +143,17 @@ int MakeSchema(struct ArrowSchema* schema, const std::vector<SchemaField>& field
   for (const SchemaField& field : fields) {
     switch (field.type) {
     case NANOARROW_TYPE_DECIMAL128:
-      // TODO: don't hardcore 19, 8
+      // TODO: how can we avoid hard-coding precision and scale?
       CHECK_ERRNO(AdbcNsArrowSchemaSetTypeDecimal(schema->children[i],
                                                   field.type,
-                                                  19,
+                                                  38,
+                                                  8));
+      break;
+    case NANOARROW_TYPE_DECIMAL256:
+      // TODO: how can we avoid hard-coding precision and scale?
+      CHECK_ERRNO(AdbcNsArrowSchemaSetTypeDecimal(schema->children[i],
+                                                  field.type,
+                                                  76,
                                                   8));
       break;
     default:

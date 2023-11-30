@@ -1522,6 +1522,13 @@ static inline ArrowErrorCode MakeCopyFieldWriter(struct ArrowSchema* schema,
         NANOARROW_TYPE_DECIMAL128>(precision, scale);
       return NANOARROW_OK;
     }
+    case NANOARROW_TYPE_DECIMAL256: {
+      const auto precision = schema_view.decimal_precision;
+      const auto scale = schema_view.decimal_scale;
+      *out = new PostgresCopyNumericFieldWriter<
+        NANOARROW_TYPE_DECIMAL256>(precision, scale);
+      return NANOARROW_OK;
+    }
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:

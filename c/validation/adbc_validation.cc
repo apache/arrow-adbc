@@ -1627,6 +1627,100 @@ void StatementTest::TestSqlIngestDecimal128() {
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
+void StatementTest::TestSqlIngestDecimal256() {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
+
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  constexpr int32_t bitwidth = 256;
+  constexpr enum ArrowType type = NANOARROW_TYPE_DECIMAL256;
+
+  struct ArrowDecimal decimal1;
+  struct ArrowDecimal decimal2;
+  struct ArrowDecimal decimal3;
+  struct ArrowDecimal decimal4;
+  struct ArrowDecimal decimal5;
+  struct ArrowDecimal decimal6;
+
+  ArrowDecimalInit(&decimal1, bitwidth, 38, 8);
+  ArrowDecimalSetInt(&decimal1, -12345600000);
+  ArrowDecimalInit(&decimal2, bitwidth, 38, 8);
+  ArrowDecimalSetInt(&decimal2, 1234);
+  ArrowDecimalInit(&decimal3, bitwidth, 38, 8);
+  ArrowDecimalSetInt(&decimal3, 100000000);
+  ArrowDecimalInit(&decimal4, bitwidth, 38, 8);
+  ArrowDecimalSetInt(&decimal4, 12345600000);
+  ArrowDecimalInit(&decimal5, bitwidth, 38, 8);
+  ArrowDecimalSetInt(&decimal5, 100000000000000);
+  ArrowDecimalInit(&decimal6, bitwidth, 38, 8);
+
+  uint64_t le_data64[4] = {17877984925544397504ULL, 5352188884907840935ULL,
+                        234631617561833724ULL, 196678011949953713ULL};
+  uint8_t le_data[32];
+  memcpy(le_data, le_data64, sizeof(le_data64));
+  ArrowDecimalSetBytes(&decimal6, le_data);
+
+  const std::vector<std::optional<ArrowDecimal*>> values = {
+    std::nullopt, &decimal1, &decimal2, &decimal3, &decimal4, &decimal5, &decimal6};
+
+  ASSERT_THAT(MakeSchema(&schema.value, {{"col", type}}), IsOkErrno());
+  ASSERT_THAT(MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                       &na_error, values), IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+
+  int64_t rows_affected = 0;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(rows_affected,
+              ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error),
+              IsOkStatus(&error));
+  {
+    StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ArrowType round_trip_type = quirks()->IngestSelectRoundTripType(type);
+    ASSERT_NO_FATAL_FAILURE(
+        CompareSchema(&reader.schema.value, {{"col", round_trip_type, NULLABLE}}));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_EQ(values.size(), reader.array->length);
+    ASSERT_EQ(1, reader.array->n_children);
+
+    const std::vector<std::optional<std::string>> str_values = {
+      std::nullopt, "-123.456", "0.00001234", "1",  "123.456", "1000000",
+    "12345678901234567890123456789012345678901234567890123456789012345678.90123456"};
+    ASSERT_NO_FATAL_FAILURE(
+            CompareArray<std::string>(reader.array_view->children[0], str_values));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  }
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
+
 void StatementTest::TestSqlIngestString() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
       NANOARROW_TYPE_STRING, {std::nullopt, "", "", "1234", "例"}, false));

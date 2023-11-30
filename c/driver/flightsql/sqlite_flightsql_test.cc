@@ -277,6 +277,9 @@ class SqliteFlightSqlStatementTest : public ::testing::Test,
   void TestSqlIngestDecimal128() {
     GTEST_SKIP() << "Cannot ingest Decimal128 (not implemented)";
   }
+  void TestSqlIngestDecimal256() {
+    GTEST_SKIP() << "Cannot ingest Decimal256 (not implemented)";
+  }
   void TestSqlQueryRowsAffectedDelete() {
     GTEST_SKIP() << "Cannot query rows affected in delete (not implemented)";
   }

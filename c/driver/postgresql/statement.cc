@@ -211,6 +211,7 @@ struct BindStream {
           param_lengths[i] = 16;
           break;
         case ArrowType::NANOARROW_TYPE_DECIMAL128:
+        case ArrowType::NANOARROW_TYPE_DECIMAL256:
           type_id = PostgresTypeId::kNumeric;
           param_lengths[i] = 0;
           break;
@@ -1061,6 +1062,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         create += " INTERVAL";
         break;
       case ArrowType::NANOARROW_TYPE_DECIMAL128:
+      case ArrowType::NANOARROW_TYPE_DECIMAL256:
         create += " DECIMAL";
         break;
       case ArrowType::NANOARROW_TYPE_DICTIONARY: {
