@@ -87,6 +87,12 @@ repos:
     hooks:
     - id: isort
       types_or: [python]
+  # TODO: Change this to vala-lang/vala-lint after
+  # https://github.com/vala-lang/vala-lint/pull/179 is merged.
+  - repo: https://github.com/kou/vala-lint
+    rev: pre-commit-hook
+    hooks:
+    - id: vala-lint
   - repo: local
     hooks:
     - id: apache-rat

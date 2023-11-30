@@ -87,6 +87,19 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new Field(field.Name, TranslateType(field), field.Mode == "NULLABLE");
         }
 
+        public override object GetValue(IArrowArray arrowArray, Field field, int index)
+        {
+            switch(arrowArray)
+            {
+                case StructArray structArray:
+                    return SerializeToJson(structArray, index);
+                case ListArray listArray:
+                    return listArray.GetSlicedValues(index);
+                default:
+                    return base.GetValue(arrowArray, field, index);
+            }
+        }
+
         private IArrowType TranslateType(TableFieldSchema field)
         {
             // per https://developers.google.com/resources/api-libraries/documentation/bigquery/v2/java/latest/com/google/api/services/bigquery/model/TableFieldSchema.html#getType--
@@ -116,7 +129,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return StringType.Default;
 
                 // treat these values as strings
-                case "GEOGRAPHY":
+                case "GEOGRAPHY" or "JSON":
                     return StringType.Default;
 
                 // get schema cannot get precision and scale for NUMERIC or BIGNUMERIC types
@@ -130,8 +143,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 case "BIGNUMERIC" or "BIGDECIMAL":
                     return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? StringType.Default : new Decimal256Type(76, 38);
 
-                // Google.Apis.Bigquery.v2.Data.TableFieldSchema do not include Array and Geography in types
-                default: throw new InvalidOperationException();
+                default: throw new InvalidOperationException($"{field.Type} cannot be translated");
             }
         }
 

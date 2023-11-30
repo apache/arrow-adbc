@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlTypes;
@@ -53,22 +52,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
             {
-                adbcConnection.Open();
-
                 string[] queries = SnowflakeTestingUtils.GetQueries(testConfiguration);
 
                 List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
-                for (int i = 0; i < queries.Length; i++)
-                {
-                    string query = queries[i];
-                    AdbcCommand adbcCommand = adbcConnection.CreateCommand();
-                    adbcCommand.CommandText = query;
-
-                    int rows = adbcCommand.ExecuteNonQuery();
-
-                    Assert.Equal(expectedResults[i], rows);
-                }
+                Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, testConfiguration, queries, expectedResults);
             }
         }
 
@@ -118,16 +106,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
             {
-                AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
-
-                adbcConnection.Open();
-
-                AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.SchemaOnly);
-
-                DataTable table = reader.GetSchemaTable();
-
-                // there is one row per field
-                Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, table.Rows.Count);
+                Tests.ClientTests.CanClientGetSchema(adbcConnection, testConfiguration);
             }
         }
 
@@ -140,37 +119,27 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-            long count = 0;
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
+            {
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
+            }
+        }
+
+        // <summary>
+        /// Validates if the client can connect to a live server
+        /// and parse the results.
+        /// </summary>
+        [SkippableFact, Order(4)]
+        public void CanClientExecuteQueryWithNoResults()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            testConfiguration.Query = "SELECT * WHERE 0=1";
+            testConfiguration.ExpectedResultsCount = 0;
 
             using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
             {
-                AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
-
-                adbcConnection.Open();
-
-                AdbcDataReader reader = adbcCommand.ExecuteReader();
-
-                try
-                {
-                    while (reader.Read())
-                    {
-                        count++;
-
-                        for (int i = 0; i < reader.FieldCount; i++)
-                        {
-                            object value = reader.GetValue(i);
-
-                            if (value == null)
-                                value = "(null)";
-
-                            Console.WriteLine($"{reader.GetName(i)}: {value}");
-                        }
-                    }
-                }
-                finally { reader.Close(); }
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
             }
-
-            Assert.Equal(testConfiguration.ExpectedResultsCount, count);
         }
 
         /// <summary>
@@ -182,37 +151,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-            long count = 0;
-
             using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
             {
-                AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
-
-                adbcConnection.Open();
-
-                AdbcDataReader reader = adbcCommand.ExecuteReader();
-
-                try
-                {
-                    while (reader.Read())
-                    {
-                        count++;
-
-                        for (int i = 0; i < reader.FieldCount; i++)
-                        {
-                            object value = reader.GetValue(i);
-
-                            if (value == null)
-                                value = "(null)";
-
-                            Console.WriteLine($"{reader.GetName(i)}: {value}");
-                        }
-                    }
-                }
-                finally { reader.Close(); }
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
             }
-
-            Assert.Equal(testConfiguration.ExpectedResultsCount, count);
         }
 
         /// <summary>
@@ -224,36 +166,55 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-            Adbc.Client.AdbcConnection dbConnection = GetSnowflakeAdbcConnection(testConfiguration);
-            dbConnection.Open();
-
-            DbCommand dbCommand = dbConnection.CreateCommand();
-            dbCommand.CommandText = testConfiguration.Query;
-
-            DbDataReader reader = dbCommand.ExecuteReader(CommandBehavior.Default);
-
-            if (reader.Read())
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
             {
-                ReadOnlyCollection<DbColumn> column_schema = reader.GetColumnSchema();
+                SampleDataBuilder sampleDataBuilder = SnowflakeData.GetSampleData();
 
-                DataTable dataTable = reader.GetSchemaTable();
+                Tests.ClientTests.VerifyTypesAndValues(adbcConnection, sampleDataBuilder);
+            }
+        }
 
-                List<ColumnNetTypeArrowTypeValue> expectedValues = SampleData.GetSampleData();
+        [SkippableFact]
+        public void VerifySchemaTables()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-                for (int i = 0; i < reader.FieldCount; i++)
-                {
-                    object value = reader.GetValue(i);
-                    ColumnNetTypeArrowTypeValue ctv = expectedValues[i];
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
+            {
+                adbcConnection.Open();
 
-                    string readerColumnName = reader.GetName(i);
-                    string dataTableColumnName = dataTable.Rows[i][SchemaTableColumn.ColumnName].ToString();
+                var collections = adbcConnection.GetSchema("MetaDataCollections");
+                Assert.Equal(7, collections.Rows.Count);
+                Assert.Equal(2, collections.Columns.Count);
 
-                    Assert.True(readerColumnName.Equals(ctv.Name, StringComparison.OrdinalIgnoreCase), $"`{readerColumnName}` != `{ctv.Name}` at position {i}. Verify the test query and sample data return in the same order in the reader.");
+                var restrictions = adbcConnection.GetSchema("Restrictions");
+                Assert.Equal(11, restrictions.Rows.Count);
+                Assert.Equal(3, restrictions.Columns.Count);
 
-                    Assert.True(dataTableColumnName.Equals(ctv.Name, StringComparison.OrdinalIgnoreCase), $"`{dataTableColumnName}` != `{ctv.Name}` at position {i}. Verify the test query and sample data return in the same order in the data table.");
+                var catalogs = adbcConnection.GetSchema("Catalogs");
+                Assert.Equal(1, catalogs.Columns.Count);
+                var catalog = (string)catalogs.Rows[0].ItemArray[0];
 
-                    Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
-                }
+                catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
+                Assert.Equal(1, catalogs.Rows.Count);
+
+                var schemas = adbcConnection.GetSchema("Schemas", new[] { catalog });
+                Assert.Equal(2, schemas.Columns.Count);
+
+                var schema = "INFORMATION_SCHEMA";
+                schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, schema });
+                Assert.Equal(1, schemas.Rows.Count);
+
+                var tableTypes = adbcConnection.GetSchema("TableTypes");
+                Assert.Equal(1, tableTypes.Columns.Count);
+
+                var tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema });
+                Assert.Equal(4, tables.Columns.Count);
+                Assert.Equal(32, tables.Rows.Count);
+
+                var columns = adbcConnection.GetSchema("Columns", new[] { catalog, schema });
+                Assert.Equal(16, columns.Columns.Count);
+                Assert.Equal(441, columns.Rows.Count);
             }
         }
 
@@ -262,23 +223,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             // see https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html
 
             DbConnectionStringBuilder builder = new DbConnectionStringBuilder(true);
-
             builder[SnowflakeParameters.ACCOUNT] = testConfiguration.Account;
             builder[SnowflakeParameters.WAREHOUSE] = testConfiguration.Warehouse;
             builder[SnowflakeParameters.HOST] = testConfiguration.Host;
             builder[SnowflakeParameters.DATABASE] = testConfiguration.Database;
             builder[SnowflakeParameters.USERNAME] = testConfiguration.User;
-
             if (!string.IsNullOrEmpty(testConfiguration.AuthenticationTokenPath))
             {
                 builder[SnowflakeParameters.AUTH_TYPE] = testConfiguration.AuthenticationType;
-
                 string privateKey = File.ReadAllText(testConfiguration.AuthenticationTokenPath);
-
                 if (testConfiguration.AuthenticationType.Equals("auth_jwt", StringComparison.OrdinalIgnoreCase))
                 {
                     builder[SnowflakeParameters.PKCS8_VALUE] = privateKey;
-
                     if(!string.IsNullOrEmpty(testConfiguration.Pkcs8Passcode))
                     {
                         builder[SnowflakeParameters.PKCS8_PASS] = testConfiguration.Pkcs8Passcode;
@@ -289,15 +245,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             {
                 builder[SnowflakeParameters.PASSWORD] = testConfiguration.Password;
             }
-
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration);
-
             return new Adbc.Client.AdbcConnection(builder.ConnectionString)
             {
                 AdbcDriver = snowflakeDriver
             };
         }
-
         private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnection(SnowflakeTestConfiguration testConfiguration)
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();

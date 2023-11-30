@@ -15,27 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#define R_NO_REMAP
-#include <R.h>
-#include <Rinternals.h>
+#include <sqlite3.h>
+#include <stddef.h>
 
-#include "driver_base.h"
-
-#include <adbc.h>
-
-using VoidDriver =
-    adbc::r::Driver<adbc::r::DatabaseObjectBase, adbc::r::ConnectionObjectBase,
-                    adbc::r::StatementObjectBase>;
-
-static AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver,
-                                         struct AdbcError* error) {
-  return VoidDriver::Init(version, raw_driver, error);
-}
-
-extern "C" SEXP RAdbcVoidDriverInitFunc(void) {
-  SEXP xptr =
-      PROTECT(R_MakeExternalPtrFn((DL_FUNC)VoidDriverInitFunc, R_NilValue, R_NilValue));
-  Rf_setAttrib(xptr, R_ClassSymbol, Rf_mkString("adbc_driver_init_func"));
-  UNPROTECT(1);
-  return xptr;
-}
+void try_load_extension() { sqlite3_load_extension(NULL, NULL, NULL, NULL); }

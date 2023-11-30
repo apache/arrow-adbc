@@ -159,7 +159,7 @@ static inline SEXP adbc_get_option(SEXP obj_xptr, SEXP key_sexp, SEXP error_xptr
   PROTECT(bytes_sexp);
 
   char* result = reinterpret_cast<char*>(RAW(bytes_sexp));
-  SEXP result_char = PROTECT(Rf_mkCharLenCE(result, Rf_length(bytes_sexp), CE_UTF8));
+  SEXP result_char = PROTECT(Rf_mkCharLenCE(result, Rf_length(bytes_sexp) - 1, CE_UTF8));
   SEXP result_string = PROTECT(Rf_ScalarString(result_char));
   UNPROTECT(3);
   return result_string;

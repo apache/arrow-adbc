@@ -26,6 +26,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 	"strconv"
@@ -38,6 +39,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow/go/v14/arrow"
 	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v14/arrow/decimal128"
 	"github.com/apache/arrow/go/v14/arrow/memory"
 	"github.com/google/uuid"
 	"github.com/snowflakedb/gosnowflake"
@@ -194,7 +196,7 @@ func (s *SnowflakeQuirks) BindParameter(_ int) string            { return "?" }
 func (s *SnowflakeQuirks) SupportsBulkIngest(string) bool        { return true }
 func (s *SnowflakeQuirks) SupportsConcurrentStatements() bool    { return true }
 func (s *SnowflakeQuirks) SupportsCurrentCatalogSchema() bool    { return true }
-func (s *SnowflakeQuirks) SupportsExecuteSchema() bool           { return false }
+func (s *SnowflakeQuirks) SupportsExecuteSchema() bool           { return true }
 func (s *SnowflakeQuirks) SupportsGetSetOptions() bool           { return true }
 func (s *SnowflakeQuirks) SupportsPartitionedData() bool         { return false }
 func (s *SnowflakeQuirks) SupportsStatistics() bool              { return false }
@@ -236,7 +238,7 @@ func (s *SnowflakeQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.Dat
 	return arrow.Metadata{}
 }
 
-func createTempSchema(uri string) string {
+func createTempSchema(database string, uri string) string {
 	db, err := sql.Open("snowflake", uri)
 	if err != nil {
 		panic(err)
@@ -244,7 +246,7 @@ func createTempSchema(uri string) string {
 	defer db.Close()
 
 	schemaName := strings.ToUpper("ADBC_TESTING_" + strings.ReplaceAll(uuid.New().String(), "-", "_"))
-	_, err = db.Exec(`CREATE SCHEMA ADBC_TESTING.` + schemaName)
+	_, err = db.Exec(`CREATE SCHEMA ` + database + `.` + schemaName)
 	if err != nil {
 		panic(err)
 	}
@@ -277,7 +279,7 @@ func withQuirks(t *testing.T, fn func(*SnowflakeQuirks)) {
 
 	// avoid multiple runs clashing by operating in a fresh schema and then
 	// dropping that schema when we're done.
-	q := &SnowflakeQuirks{dsn: uri, catalogName: database, schemaName: createTempSchema(uri)}
+	q := &SnowflakeQuirks{dsn: uri, catalogName: database, schemaName: createTempSchema(database, uri)}
 	defer dropTempSchema(uri, q.schemaName)
 
 	fn(q)
@@ -677,6 +679,109 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 
 	suite.Equal(1234567.89, rec.Column(1).(*array.Float64).Value(0))
 	suite.Equal(9876543210.99, rec.Column(1).(*array.Float64).Value(1))
+}
+
+func (suite *SnowflakeTests) TestDecimalHighPrecision() {
+	for sign := 0; sign <= 1; sign++ {
+		for scale := 0; scale <= 2; scale++ {
+			for precision := 3; precision <= 38; precision++ {
+				numberString := strings.Repeat("9", precision-scale) + "." + strings.Repeat("9", scale)
+				if sign == 1 {
+					numberString = "-" + numberString
+				}
+				query := "SELECT CAST('" + numberString + fmt.Sprintf("' AS NUMBER(%d, %d)) AS RESULT", precision, scale)
+				number, err := decimal128.FromString(numberString, int32(precision), int32(scale))
+				suite.NoError(err)
+
+				suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueEnabled))
+				suite.Require().NoError(suite.stmt.SetSqlQuery(query))
+				rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+				suite.Require().NoError(err)
+				defer rdr.Release()
+
+				suite.EqualValues(1, n)
+				suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: int32(precision), Scale: int32(scale)}, rdr.Schema().Field(0).Type), "expected decimal(%d, %d), got %s", precision, scale, rdr.Schema().Field(0).Type)
+				suite.True(rdr.Next())
+				rec := rdr.Record()
+
+				suite.Equal(number, rec.Column(0).(*array.Decimal128).Value(0))
+			}
+		}
+	}
+}
+
+func (suite *SnowflakeTests) TestNonIntDecimalLowPrecision() {
+	for sign := 0; sign <= 1; sign++ {
+		for precision := 3; precision <= 38; precision++ {
+			scale := 2
+			numberString := strings.Repeat("9", precision-scale) + ".99"
+			if sign == 1 {
+				numberString = "-" + numberString
+			}
+			query := "SELECT CAST('" + numberString + fmt.Sprintf("' AS NUMBER(%d, %d)) AS RESULT", precision, scale)
+			decimalNumber, err := decimal128.FromString(numberString, int32(precision), int32(scale))
+			suite.NoError(err)
+			number := decimalNumber.ToFloat64(int32(scale))
+
+			suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+			suite.Require().NoError(suite.stmt.SetSqlQuery(query))
+			rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+			suite.Require().NoError(err)
+			defer rdr.Release()
+
+			suite.EqualValues(1, n)
+			suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, rdr.Schema().Field(0).Type), "expected float64, got %s", rdr.Schema().Field(0).Type)
+			suite.True(rdr.Next())
+			rec := rdr.Record()
+
+			value := rec.Column(0).(*array.Float64).Value(0)
+			difference := math.Abs(number - value)
+			suite.Truef(difference < 1e-13, "expected %f, got %f", number, value)
+		}
+	}
+}
+
+func (suite *SnowflakeTests) TestIntDecimalLowPrecision() {
+	for sign := 0; sign <= 1; sign++ {
+		for precision := 3; precision <= 38; precision++ {
+			scale := 0
+			numberString := strings.Repeat("9", precision-scale)
+			if sign == 1 {
+				numberString = "-" + numberString
+			}
+			query := "SELECT CAST('" + numberString + fmt.Sprintf("' AS NUMBER(%d, %d)) AS RESULT", precision, scale)
+			decimalNumber, err := decimal128.FromString(numberString, int32(precision), int32(scale))
+			suite.NoError(err)
+			// The current behavior of the driver for decimal128 values too large to fit into 64 bits is to simply
+			// return the low 64 bits of the value.
+			number := int64(decimalNumber.LowBits())
+
+			suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+			suite.Require().NoError(suite.stmt.SetSqlQuery(query))
+			rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+			suite.Require().NoError(err)
+			defer rdr.Release()
+
+			suite.EqualValues(1, n)
+			suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, rdr.Schema().Field(0).Type), "expected int64, got %s", rdr.Schema().Field(0).Type)
+			suite.True(rdr.Next())
+			rec := rdr.Record()
+
+			value := rec.Column(0).(*array.Int64).Value(0)
+			suite.Equal(number, value)
+		}
+	}
+}
+
+func (suite *SnowflakeTests) TestDescribeOnly() {
+	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueEnabled))
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT CAST('9999.99' AS NUMBER(6, 2)) AS RESULT"))
+	schema, err := suite.stmt.(adbc.StatementExecuteSchema).ExecuteSchema(suite.ctx)
+	suite.Require().NoError(err)
+
+	suite.Equal(1, len(schema.Fields()))
+	suite.Equal("RESULT", schema.Field(0).Name)
+	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 6, Scale: 2}, schema.Field(0).Type), "expected decimal(6, 2), got %s", schema.Field(0).Type)
 }
 
 func TestJwtAuthenticationUnencryptedValue(t *testing.T) {

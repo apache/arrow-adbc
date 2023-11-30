@@ -110,9 +110,15 @@ namespace Apache.Arrow.Adbc.Client
                 case ArrowTypeId.Decimal256:
                     return typeof(string);
 
+#if NET6_0_OR_GREATER
                 case ArrowTypeId.Time32:
                 case ArrowTypeId.Time64:
-                    return typeof(long);
+                    return typeof(TimeOnly);
+#else
+                case ArrowTypeId.Time32:
+                case ArrowTypeId.Time64:
+                    return typeof(TimeSpan);
+#endif
 
                 case ArrowTypeId.Date32:
                 case ArrowTypeId.Date64:
