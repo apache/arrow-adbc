@@ -988,31 +988,28 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             IArrowTypeVisitor<ListType>,
             IArrowTypeVisitor<FixedSizeListType>,
             IArrowTypeVisitor<StructType>,
-            IArrowTypeVisitor<UnionType>,
             IArrowTypeVisitor<MapType>
         {
             public ArrayData Result { get; private set; }
 
-            const int Length = 0;
-
             public void Visit(BooleanType type)
             {
-                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
+                Result = new BooleanArray.Builder().Build().Data;
             }
 
             public void Visit(FixedWidthType type)
             {
-                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
+                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
             }
 
             public void Visit(BinaryType type)
             {
-                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty, ArrowBuffer.Empty });
+                Result = new BinaryArray.Builder().Build().Data;
             }
 
             public void Visit(StringType type)
             {
-                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty, ArrowBuffer.Empty });
+                Result = new StringArray.Builder().Build().Data;
             }
 
             public void Visit(ListType type)
@@ -1020,7 +1017,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 type.ValueDataType.Accept(this);
                 ArrayData child = Result;
 
-                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty }, new[] { child });
+                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty, MakeInt0Buffer() }, new[] { child });
             }
 
             public void Visit(FixedSizeListType type)
@@ -1028,7 +1025,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 type.ValueDataType.Accept(this);
                 ArrayData child = Result;
 
-                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty }, new[] { child });
+                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty }, new[] { child });
             }
 
             public void Visit(StructType type)
@@ -1040,49 +1037,24 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     children[i] = Result;
                 }
 
-                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty }, children);
-            }
-
-            public void Visit(UnionType type)
-            {
-                int bufferCount = type.Mode switch
-                {
-                    UnionMode.Sparse => 1,
-                    UnionMode.Dense => 2,
-                    _ => throw new InvalidOperationException($"Unknown UnionMode {type.Mode}"),
-                };
-
-                ArrayData[] children = new ArrayData[type.Fields.Count];
-                for (int i = 0; i < type.Fields.Count; i++)
-                {
-                    type.Fields[i].DataType.Accept(this);
-                    children[i] = Result;
-                }
-
-                ArrowBuffer[] buffers = new ArrowBuffer[bufferCount];
-                buffers[0] = ArrowBuffer.Empty;
-                if (bufferCount > 1)
-                {
-                    buffers[1] = ArrowBuffer.Empty;
-                }
-
-                Result = new ArrayData(type, Length, Length, 0, buffers, children);
+                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty }, children);
             }
 
             public void Visit(MapType type)
             {
-                ArrayData[] children = new ArrayData[2];
-                type.KeyField.DataType.Accept(this);
-                children[0] = Result;
-                type.ValueField.DataType.Accept(this);
-                children[1] = Result;
-
-                Result = new ArrayData(type, Length, Length, 0, new[] { ArrowBuffer.Empty }, children);
+                Result = new MapArray.Builder(type).Build().Data;
             }
 
             public void Visit(IArrowType type)
             {
                 throw new NotImplementedException($"EmptyArrayCreationVisitor for {type.Name} is not supported yet.");
+            }
+
+            private static ArrowBuffer MakeInt0Buffer()
+            {
+                ArrowBuffer.Builder<int> builder = new ArrowBuffer.Builder<int>();
+                builder.Append(0);
+                return builder.Build();
             }
         }
     }
