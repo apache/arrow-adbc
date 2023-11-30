@@ -416,17 +416,6 @@ void CompareArray(struct ArrowArrayView* array,
         ASSERT_EQ(interval.months, (*v)->months);
         ASSERT_EQ(interval.days, (*v)->days);
         ASSERT_EQ(interval.ns, (*v)->ns);
-      } else if constexpr (std::is_same<T, ArrowDecimal*>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        struct ArrowDecimal decimal;
-        // For now assuming Decimal128 so set as bitwidth
-        ArrowDecimalInit(&decimal, 128, (*v)->precision, (*v)->scale);
-        ArrowArrayViewGetDecimalUnsafe(array, i, &decimal);
-
-        ASSERT_EQ(decimal.n_words, (*v)->n_words);
-        // For now assuming Decimal128 so only need to check first two words
-        ASSERT_EQ(decimal.words[0], (*v)->words[0]);
-        ASSERT_EQ(decimal.words[1], (*v)->words[1]);
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
       }
