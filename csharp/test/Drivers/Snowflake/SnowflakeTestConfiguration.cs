@@ -73,12 +73,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public string Warehouse { get; set; }
 
         /// <summary>
-        /// The Snowflake authentication type.
-        /// </summary>
-        [JsonPropertyName("authenticationType")]
-        public string AuthenticationType { get; set; }
-
-        /// <summary>
         /// The Snowflake use high precision
         /// </summary>
         [JsonPropertyName("useHighPrecision")]
@@ -96,7 +90,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     {
         public const string AuthOAuth = "auth_oauth";
         public const string AuthJwt = "auth_jwt";
-        public const string AuthDefault = "default";
+        public const string AuthSnowflake = "auth_snowflake";
 
         [JsonPropertyName(AuthOAuth)]
         public OAuthAuthentication OAuth { get; set; }
@@ -104,7 +98,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [JsonPropertyName(AuthJwt)]
         public JwtAuthentication SnowflakeJwt { get; set; }
 
-        [JsonPropertyName(AuthDefault)]
+        [JsonPropertyName(AuthSnowflake)]
         public DefaultAuthentication Default { get; set; }
     }
 

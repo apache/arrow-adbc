@@ -39,7 +39,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     {
         public ClientTests()
         {
-           Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
+            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
         }
 
         /// <summary>
@@ -151,6 +151,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
+            Skip.If(testConfiguration.Authentication.SnowflakeJwt is null, "JWT authentication is not configured");
+
             using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration, SnowflakeAuthentication.AuthJwt))
             {
                 Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
@@ -218,7 +220,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
-        private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(SnowflakeTestConfiguration testConfiguration, string authType=null)
+        private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(SnowflakeTestConfiguration testConfiguration, string authType = null)
         {
             // see https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html
 
@@ -230,13 +232,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             builder[SnowflakeParameters.USERNAME] = testConfiguration.User;
             if (authType == SnowflakeAuthentication.AuthJwt)
             {
-                string privateKeyFile = testConfiguration.Authentication.SnowflakeJwt.PrivateKeyFile;
                 string privateKey = testConfiguration.Authentication.SnowflakeJwt.PrivateKey;
-
-                if (privateKeyFile != null)
-                {
-                    privateKey = File.ReadAllText(privateKeyFile);
-                }
                 builder[SnowflakeParameters.AUTH_TYPE] = SnowflakeAuthentication.AuthJwt;
                 builder[SnowflakeParameters.PKCS8_VALUE] = privateKey;
                 builder[SnowflakeParameters.USERNAME] = testConfiguration.Authentication.SnowflakeJwt.User;
@@ -254,9 +250,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                     builder[SnowflakeParameters.USERNAME] = testConfiguration.Authentication.OAuth.User;
                 }
             }
-            else
+            else if (string.IsNullOrEmpty(authType) || authType == SnowflakeAuthentication.AuthSnowflake)
             {
-                // default basic auth
+                // if no auth type is specified, use the snowflake auth
                 builder[SnowflakeParameters.USERNAME] = testConfiguration.Authentication.Default.User;
                 builder[SnowflakeParameters.PASSWORD] = testConfiguration.Authentication.Default.Password;
             }
@@ -265,20 +261,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             {
                 AdbcDriver = snowflakeDriver
             };
-        }
-        private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnection(SnowflakeTestConfiguration testConfiguration)
-        {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-
-            AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
-            Adbc.Client.AdbcConnection adbcConnection = new Adbc.Client.AdbcConnection(
-                snowflakeDriver,
-                parameters: parameters,
-                options: new Dictionary<string, string>()
-            );
-
-            return adbcConnection;
         }
     }
 }
