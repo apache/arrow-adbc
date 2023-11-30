@@ -21,7 +21,7 @@
             "private_key_pwd": "",
             "user": ""
         },
-        "default": {
+        "auth_snowflake": {
             "user": "",
             "password": ""
         }
