@@ -70,6 +70,8 @@ adbc_database_init_default <- function(driver, options = NULL, subclass = charac
 #' @rdname adbc_database_init
 #' @export
 adbc_database_release <- function(database) {
+  stop_for_nonzero_child_count(database)
+
   error <- adbc_allocate_error()
   status <- .Call(RAdbcDatabaseRelease, database, error)
   stop_for_error(status, error)
@@ -119,6 +121,8 @@ adbc_connection_init_default <- function(database, options = NULL, subclass = ch
 #' @rdname adbc_connection_init
 #' @export
 adbc_connection_release <- function(connection) {
+  stop_for_nonzero_child_count(connection)
+
   if (isTRUE(connection$.release_database)) {
     database <- connection$database
     on.exit(adbc_database_release(database))
@@ -384,6 +388,8 @@ adbc_statement_init_default <- function(connection, options = NULL, subclass = c
 #' @rdname adbc_statement_init
 #' @export
 adbc_statement_release <- function(statement) {
+  stop_for_nonzero_child_count(statement)
+
   if (isTRUE(statement$.release_connection)) {
     connection <- statement$connection
     on.exit(adbc_connection_release(connection))

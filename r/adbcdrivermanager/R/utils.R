@@ -17,7 +17,7 @@
 
 new_env <- function() {
   env <- new.env(parent = emptyenv())
-  env$.child_count = 0L
+  env$.child_count <- 0L
   env
 }
 
@@ -82,6 +82,17 @@ str.adbc_xptr <- function(object, ...) {
   invisible(object)
 }
 
+stop_for_nonzero_child_count <- function(obj) {
+  child_count <- obj$.child_count
+  if (!identical(child_count, 0L)) {
+    stop(
+      sprintf(
+        "Object has %d child objects that have not yet been released",
+        child_count
+      )
+    )
+  }
+}
 
 #' Low-level pointer details
 #'
