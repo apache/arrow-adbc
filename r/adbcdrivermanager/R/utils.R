@@ -82,6 +82,10 @@ str.adbc_xptr <- function(object, ...) {
   invisible(object)
 }
 
+update_child_count <- function(obj, count_delta) {
+  obj$.child_count <-  obj$.child_count + count_delta
+}
+
 stop_for_nonzero_child_count <- function(obj) {
   child_count <- obj$.child_count
   if (!identical(child_count, 0L)) {
