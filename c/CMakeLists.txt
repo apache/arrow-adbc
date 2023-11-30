@@ -78,8 +78,12 @@ if(ADBC_BUILD_PYTHON)
   # but you don't technically need -DADBC_DRIVER_MANAGER=ON when installing
   # other Python packages. To be safe then, we always install the driver
   # manager package, regardless of the value of -DABC_DRIVER_MANAGER
-  add_custom_target(python COMMAND ${Python3_EXECUTABLE} -m pip install --no-deps -e
-                                   "${REPOSITORY_ROOT}/python/adbc_driver_manager")
+  # --config-settings eidtable_mode=compat required due to
+  # https://github.com/python/mypy/issues/13392
+  add_custom_target(python
+                    COMMAND ${Python3_EXECUTABLE} -m pip install --no-deps -e
+                            "${REPOSITORY_ROOT}/python/adbc_driver_manager"
+                            --config-settings editable_mode=compat)
 
   macro(adbc_install_python_package TARGET)
     string(TOUPPER ${TARGET} ${TARGET}_LIB_upper)
