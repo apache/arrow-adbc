@@ -253,6 +253,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             else if (string.IsNullOrEmpty(authType) || authType == SnowflakeAuthentication.AuthSnowflake)
             {
                 // if no auth type is specified, use the snowflake auth
+                builder[SnowflakeParameters.AUTH_TYPE] = SnowflakeAuthentication.AuthSnowflake;
                 builder[SnowflakeParameters.USERNAME] = testConfiguration.Authentication.Default.User;
                 builder[SnowflakeParameters.PASSWORD] = testConfiguration.Authentication.Default.Password;
             }
