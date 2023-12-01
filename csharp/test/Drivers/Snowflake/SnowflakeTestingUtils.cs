@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -47,8 +48,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
         static SnowflakeTestingUtils()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-            TestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            try
+            {
+                TestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
 
         /// <summary>
@@ -75,12 +82,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 { SnowflakeParameters.USE_HIGH_PRECISION, testConfiguration.UseHighPrecision.ToString().ToLowerInvariant() }
             };
 
-            if(!string.IsNullOrWhiteSpace(testConfiguration.Host))
+            if (!string.IsNullOrWhiteSpace(testConfiguration.Host))
             {
                 parameters[SnowflakeParameters.HOST] = testConfiguration.Host;
             }
 
-            if(!string.IsNullOrWhiteSpace(testConfiguration.Database))
+            if (!string.IsNullOrWhiteSpace(testConfiguration.Database))
             {
                 parameters[SnowflakeParameters.DATABASE] = testConfiguration.Database;
             }
@@ -129,9 +136,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 {
                     string modifiedLine = line;
 
-                    foreach(string key in placeholderValues.Keys)
+                    foreach (string key in placeholderValues.Keys)
                     {
-                        if(modifiedLine.Contains(key))
+                        if (modifiedLine.Contains(key))
                             modifiedLine = modifiedLine.Replace(key, placeholderValues[key]);
                     }
 
