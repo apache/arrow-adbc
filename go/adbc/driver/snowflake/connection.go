@@ -281,11 +281,14 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 	}
 
 	conditions := make([]string, 0)
+	queryArgs := make([]interface{}, 0, 2)
 	if catalog != nil && *catalog != "" {
-		conditions = append(conditions, ` CATALOG_NAME LIKE '`+*catalog+`'`)
+		conditions = append(conditions, ` CATALOG_NAME ILIKE ? `)
+		queryArgs = append(queryArgs, *catalog)
 	}
 	if dbSchema != nil && *dbSchema != "" {
-		conditions = append(conditions, ` SCHEMA_NAME LIKE '`+*dbSchema+`'`)
+		conditions = append(conditions, ` SCHEMA_NAME ILIKE ? `)
+		queryArgs = append(queryArgs, *dbSchema)
 	}
 
 	cond := strings.Join(conditions, " AND ")
@@ -297,7 +300,7 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 		query += " WHERE " + cond
 	}
 	var rows *sql.Rows
-	rows, err = c.sqldb.QueryContext(ctx, query)
+	rows, err = c.sqldb.QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		err = errToAdbcErr(adbc.StatusIO, err)
 		return
@@ -486,14 +489,18 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	includeSchema := depth == adbc.ObjectDepthAll || depth == adbc.ObjectDepthColumns
 
 	conditions := make([]string, 0)
+	queryArgs := make([]interface{}, 0, 3)
 	if catalog != nil && *catalog != "" {
-		conditions = append(conditions, ` TABLE_CATALOG ILIKE '`+*catalog+`'`)
+		conditions = append(conditions, ` TABLE_CATALOG ILIKE ? `)
+		queryArgs = append(queryArgs, *catalog)
 	}
 	if dbSchema != nil && *dbSchema != "" {
-		conditions = append(conditions, ` TABLE_SCHEMA ILIKE '`+*dbSchema+`'`)
+		conditions = append(conditions, ` TABLE_SCHEMA ILIKE ? `)
+		queryArgs = append(queryArgs, *dbSchema)
 	}
 	if tableName != nil && *tableName != "" {
-		conditions = append(conditions, ` TABLE_NAME ILIKE '`+*tableName+`'`)
+		conditions = append(conditions, ` TABLE_NAME ILIKE ? `)
+		queryArgs = append(queryArgs, *tableName)
 	}
 
 	// first populate the tables and table types
@@ -510,7 +517,8 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	if cond != "" {
 		query += " WHERE " + cond
 	}
-	rows, err = c.sqldb.QueryContext(ctx, query)
+
+	rows, err = c.sqldb.QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		err = errToAdbcErr(adbc.StatusIO, err)
 		return
@@ -828,7 +836,7 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 	if dbSchema != nil {
 		tblParts = append(tblParts, strconv.Quote(strings.ToUpper(*dbSchema)))
 	}
-	tblParts = append(tblParts, strconv.Quote(strings.ToUpper(tableName)))
+	tblParts = append(tblParts, strconv.Quote(tableName))
 	fullyQualifiedTable := strings.Join(tblParts, ".")
 
 	rows, err := c.sqldb.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable)

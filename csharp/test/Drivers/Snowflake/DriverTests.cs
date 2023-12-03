@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -39,6 +39,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         readonly AdbcDriver _snowflakeDriver;
         readonly AdbcDatabase _database;
         readonly AdbcConnection _connection;
+        readonly AdbcStatement _statement;
+        readonly string _catalogSchema;
 
         public DriverTests()
         {
@@ -57,6 +59,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             _database = _snowflakeDriver.Open(parameters);
             _connection = _database.Connect(options);
+            _statement = _connection.CreateStatement();
         }
 
         /// <summary>
@@ -130,7 +133,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, null);
 
-            AdbcCatalog catalog = catalogs.FirstOrDefault();
+            AdbcCatalog catalog = catalogs
+                .Where(s => s.Name.Equals(databaseName))
+                .FirstOrDefault();
 
             Assert.True(catalog != null, "catalog should not be null");
             Assert.Equal(databaseName, catalog.Name);
@@ -159,7 +164,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, null);
 
-            AdbcCatalog catalog = catalogs.FirstOrDefault();
+            AdbcCatalog catalog = catalogs
+                .Where(s => s.Name.Equals(databaseName))
+                .FirstOrDefault();
 
             Assert.True(catalog != null, "catalog should not be null");
             Assert.StartsWith(databaseName, catalog.Name);
@@ -188,6 +195,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
             List<AdbcDbSchema> dbSchemas = catalogs
+                .Where(s => s.Name.Equals(databaseName))
                 .Select(s => s.DbSchemas)
                 .FirstOrDefault();
             AdbcDbSchema dbSchema = dbSchemas.FirstOrDefault();
@@ -220,6 +228,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
             List<AdbcDbSchema> dbSchemas = catalogs
+                .Where(s => s.Name.Equals(databaseName))
                 .Select(s => s.DbSchemas)
                 .FirstOrDefault();
             AdbcDbSchema dbSchema = dbSchemas.FirstOrDefault();
@@ -252,6 +261,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
             List<AdbcTable> tables = catalogs
+                .Where(s => s.Name.Equals(databaseName))
                 .Select(s => s.DbSchemas)
                 .FirstOrDefault()
                 .Select(t => t.Tables)
@@ -259,7 +269,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             AdbcTable table = tables.FirstOrDefault();
 
             Assert.True(table != null, "table should not be null");
-            Assert.Equal(tableName, table.Name);
+            Assert.Equal(tableName, table.Name, true);
         }
 
         /// <summary>
@@ -287,6 +297,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
             List<AdbcTable> tables = catalogs
+                .Where(s => s.Name.Equals(databaseName))
                 .Select(s => s.DbSchemas)
                 .FirstOrDefault()
                 .Select(t => t.Tables)
@@ -322,6 +333,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
             List<AdbcColumn> columns = catalogs
+                .Where(s => s.Name.Equals(databaseName))
                 .Select(s => s.DbSchemas)
                 .FirstOrDefault()
                 .Select(t => t.Tables)
@@ -350,7 +362,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if the driver can call GetTableSchema.
         /// </summary>
-        [SkippableFact, Order(4)]
+        [SkippableFact, Order(3)]
         public void CanGetTableSchema()
         {
             string databaseName = _testConfiguration.Metadata.Catalog;
@@ -361,6 +373,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             int numberOfFields = schema.FieldsList.Count;
 
+            //Assert.Equal(tableName, table.Name, true);
             Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
         }
 
@@ -423,6 +436,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             _connection.Dispose();
             _database.Dispose();
             _snowflakeDriver.Dispose();
+        }
+
+        private string CreateTemporaryTable(string databaseName, string schemaName, string tableName)
+        {
+            tableName = string.Format("\"{0}\".\"{1}\".\"{2}\"", databaseName, schemaName, tableName);
+            string createTableStatement = string.Format("CREATE TEMPORARY TABLE {0} (index int)", tableName);
+            _statement.SqlQuery = createTableStatement;
+            _statement.ExecuteUpdate();
+            return tableName;
         }
     }
 }
