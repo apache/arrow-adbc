@@ -238,6 +238,40 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         }
 
         /// <summary>
+        /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables with TableName as a Special Character.
+        /// </summary>
+        [SkippableFact, Order(3)]
+        public void CanGetObjectsTablesWithSpecialCharacter()
+        {
+            string databaseName = _testConfiguration.Metadata.Catalog;
+            string schemaName = _testConfiguration.Metadata.Schema;
+            string tableName = _testConfiguration.Metadata.Table;
+
+            using IArrowArrayStream stream = _connection.GetObjects(
+                    depth: AdbcConnection.GetObjectsDepth.Tables,
+                    catalogPattern: databaseName,
+                    dbSchemaPattern: schemaName,
+                    tableNamePattern: tableName,
+                    tableTypes: new List<string> { "BASE TABLE", "VIEW" },
+                    columnNamePattern: null);
+
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+
+            List<AdbcTable> tables = catalogs
+                .Where(s => s.Name.Equals(databaseName))
+                .Select(s => s.DbSchemas)
+                .FirstOrDefault()
+                .Select(t => t.Tables)
+                .FirstOrDefault();
+            AdbcTable table = tables.FirstOrDefault();
+
+            Assert.True(table != null, "table should not be null");
+            Assert.Equal(tableName, table.Name, true);
+        }
+
+        /// <summary>
         /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables.
         /// </summary>
         [SkippableFact, Order(3)]
