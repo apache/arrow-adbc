@@ -282,10 +282,10 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 
 	conditions := make([]string, 0)
 	if catalog != nil && *catalog != "" {
-		conditions = append(conditions, ` CATALOG_NAME LIKE '`+*catalog+`'`)
+		conditions = append(conditions, ` CATALOG_NAME ILIKE '`+*catalog+`'`)
 	}
 	if dbSchema != nil && *dbSchema != "" {
-		conditions = append(conditions, ` SCHEMA_NAME LIKE '`+*dbSchema+`'`)
+		conditions = append(conditions, ` SCHEMA_NAME ILIKE '`+*dbSchema+`'`)
 	}
 
 	cond := strings.Join(conditions, " AND ")
