@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,27 +17,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# All of the following environment variables are required to set default values
-# for the parameters in docker-compose.yml.
+set -ex
 
-# Default repository to pull and push images from
-REPO=apache/arrow-dev
+source_dir=${1}/csharp
 
-# different architecture notations
-ARCH=amd64
-ARCH_ALIAS=x86_64
-ARCH_SHORT=amd64
-ARCH_CONDA_FORGE=linux_64_
-
-# Default versions for various dependencies
-JDK=8
-MANYLINUX=2014
-MAVEN=3.5.4
-PYTHON=3.10
-GO=1.19.5
-ARROW_MAJOR_VERSION=14
-DOTNET=7.0
-
-# Used through docker-compose.yml and serves as the default version for the
-# ci/scripts/install_vcpkg.sh script.
-VCPKG="2871ddd918cecb9cb642bcb9c56897f397283192"
+pushd ${source_dir}
+dotnet build
+popd
