@@ -4,18 +4,27 @@
     "account": "",
     "host": "",
     "database": "",
-    "user": "",
-    "password": "",
     "warehouse": "",
-    "authenticationType": "",
-    "authenticationTokenPath": "",
-    "pkcs8Passcode": "",
-    "useHighPrecision":  true,
+    "useHighPrecision": true,
     "metadata": {
         "catalog": "",
         "schema": "",
         "table": "",
         "expectedColumnCount": 0
+    },
+    "authentication": {
+        "auth_oauth": {
+            "token": ""
+        },
+        "auth_jwt": {
+            "private_key_file": "",
+            "private_key_pwd": "",
+            "user": ""
+        },
+        "auth_snowflake": {
+            "user": "",
+            "password": ""
+        }
     },
     "query": "",
     "expectedResults": 0
