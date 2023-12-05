@@ -98,21 +98,28 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return SerializeToJson(structArray, index);
                 case ListArray listArray:
                     IArrowArray array = listArray.GetSlicedValues(index);
-                    IList values = CreateList(array);
+                    IList? values = CreateList(array);
 
-                    for(int i=0;i<array.Length;i++)
+                    if (values != null)
                     {
-                        values.Add(base.GetValue(array, i));
-                    }
+                        for (int i = 0; i < array.Length; i++)
+                        {
+                            values.Add(base.GetValue(array, i));
+                        }
 
-                    return values;
+                        return values;
+                    }
+                    else
+                    {
+                        return new List<object>();
+                    }
 
                 default:
                     return base.GetValue(arrowArray, index);
             }
         }
 
-        private IList CreateList(IArrowArray arrowArray)
+        private IList? CreateList(IArrowArray arrowArray)
         {
             if (arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
 
@@ -221,6 +228,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return new Decimal128Type(38, 9);
 
                 case "BIGNUMERIC" or "BIGDECIMAL":
+                    if (this.Options == null || this.Options.Count == 0)
+                        return StringType.Default;
+
                     return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? StringType.Default : new Decimal256Type(76, 38);
 
                 default: throw new InvalidOperationException($"{field.Type} cannot be translated");

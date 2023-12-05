@@ -83,8 +83,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
                 throw new ArgumentException($"The {BigQueryParameters.ProjectId} parameter is not present");
 
-            //if (this.properties.ContainsKey(BigQueryParameters.AuthenticationType))
-            if (this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType))
+            if(this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType))
             {
                 if (!authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase) &&
                     !authenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase))
@@ -93,7 +92,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
             }
 
-            if (authenticationType is not null && authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(authenticationType) && authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase))
             {
                 if (!this.properties.TryGetValue(BigQueryParameters.ClientId, out clientId))
                     throw new ArgumentException($"The {BigQueryParameters.ClientId} parameter is not present");
@@ -104,7 +103,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (!this.properties.TryGetValue(BigQueryParameters.RefreshToken, out refreshToken))
                     throw new ArgumentException($"The {BigQueryParameters.RefreshToken} parameter is not present");
 
-                this.credential = GoogleCredential.FromAccessToken(GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint));
+                this.credential = ApplyScopes(GoogleCredential.FromAccessToken(GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint)));
             }
             else
             {
@@ -113,10 +112,32 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (!this.properties.TryGetValue(BigQueryParameters.JsonCredential, out json))
                     throw new ArgumentException($"The {BigQueryParameters.JsonCredential} parameter is not present");
 
-                this.credential = GoogleCredential.FromJson(json);
+                this.credential = ApplyScopes(GoogleCredential.FromJson(json));
             }
 
             this.client = BigQueryClient.Create(projectId, this.credential);
+        }
+
+        /// <summary>
+        /// Apply any additional scopes to the credential.
+        /// </summary>
+        /// <param name="credential"><see cref="GoogleCredential"/></param>
+        /// <returns></returns>
+        private GoogleCredential ApplyScopes(GoogleCredential credential)
+        {
+            if (credential == null) throw new ArgumentNullException(nameof(credential));
+
+            if (this.properties.TryGetValue(BigQueryParameters.Scopes, out string? scopes))
+            {
+                if (!string.IsNullOrEmpty(scopes))
+                {
+                    IEnumerable<string> parsedScopes = scopes.Split(',').Where(x => x.Length > 0);
+
+                    return credential.CreateScoped();
+                }
+            }
+
+            return credential;
         }
 
         public override IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
@@ -261,7 +282,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string catalogRegexp = PatternToRegEx(catalogPattern);
             PagedEnumerable<ProjectList, CloudProject>? catalogs = this.client?.ListProjects();
 
-            if (catalogs is not null)
+            if (catalogs != null)
             {
                 foreach (CloudProject catalog in catalogs)
                 {
@@ -309,9 +330,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             PagedEnumerable<DatasetList, BigQueryDataset>? schemas = this.client?.ListDatasets(catalog);
 
-            if (schemas is not null)
+            if (schemas != null)
             {
-                foreach (BigQueryDataset? schema in schemas)
+                foreach (BigQueryDataset schema in schemas)
                 {
                     if (Regex.IsMatch(schema.Reference.DatasetId, dbSchemaRegexp, RegexOptions.IgnoreCase))
                     {
@@ -385,8 +406,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-
-            if (result is not null)
+            if (result != null)
             {
                 foreach (BigQueryRow row in result)
                 {
@@ -462,8 +482,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-
-            if (result is not null)
+            if (result != null)
             {
                 foreach (BigQueryRow row in result)
                 {
@@ -541,7 +560,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            if (result is not null)
+            if (result != null)
             {
                 foreach (BigQueryRow row in result)
                 {
@@ -556,8 +575,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     {
                         constraintColumnNamesValues.Add(GetConstraintColumnNames(
                             catalog, dbSchema, table, constraintName));
-
-                        if (constraintType?.ToUpper() == "FOREIGN KEY")
+                        if (constraintType.ToUpper() == "FOREIGN KEY")
                         {
                             constraintColumnUsageValues.Add(GetConstraintsUsage(
                                 catalog, dbSchema, table, constraintName));
@@ -603,7 +621,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            if (result is not null)
+            if (result != null)
             {
                 foreach (BigQueryRow row in result)
                 {
@@ -632,7 +650,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            if(result is not null)
+            if (result != null)
             {
                 foreach (BigQueryRow row in result)
                 {
@@ -721,7 +739,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             List<Field> fields = new List<Field>();
 
-            if (result is not null)
+            if (result != null)
             {
                 foreach (BigQueryRow row in result)
                 {
@@ -752,7 +770,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return fieldBuilder.Build();
         }
 
-        private string GetValue(object? value)
+        private string GetValue(object value)
         {
             switch (value)
             {
@@ -762,8 +780,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return sValue;
                 default:
                     if (value != null)
-                        return value.ToString();
+                    {
+                        string? sValue = value.ToString();
 
+                        if (string.IsNullOrEmpty(sValue))
+                            return string.Empty;
+
+                        return sValue;
+                    }
                     throw new InvalidOperationException($"Cannot parse {value}");
             }
         }
@@ -890,15 +914,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             ArrowBuffer validityBuffer = nullCount > 0
                 ? validityBufferBuilder.Build() : ArrowBuffer.Empty;
 
-            ArrayData data = ArrayDataConcatenator.Concatenate(arrayDataList);
+            ArrayData? data = ArrayDataConcatenator.Concatenate(arrayDataList);
 
             if (data == null)
             {
-                EmptyArrayCreationVisitor visitor = new EmptyArrayCreationVisitor(0);
+                EmptyArrayCreationVisitor visitor = new EmptyArrayCreationVisitor();
                 dataType.Accept(visitor);
-
-                if(visitor.Result is not null)
-                    data = visitor.Result;
+                data = visitor.Result;
             }
 
             IArrowArray value = ArrowArrayFactory.BuildArray(data);
@@ -1035,121 +1057,73 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             IArrowTypeVisitor<ListType>,
             IArrowTypeVisitor<FixedSizeListType>,
             IArrowTypeVisitor<StructType>,
-            IArrowTypeVisitor<UnionType>,
             IArrowTypeVisitor<MapType>
         {
             public ArrayData? Result { get; private set; }
-            private readonly int _length;
-
-            public EmptyArrayCreationVisitor(int length)
-            {
-                _length = length;
-            }
 
             public void Visit(BooleanType type)
             {
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
+                Result = new BooleanArray.Builder().Build().Data;
             }
 
             public void Visit(FixedWidthType type)
             {
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
+                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
             }
 
             public void Visit(BinaryType type)
             {
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty, ArrowBuffer.Empty });
+                Result = new BinaryArray.Builder().Build().Data;
             }
 
             public void Visit(StringType type)
             {
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty, ArrowBuffer.Empty });
+                Result = new StringArray.Builder().Build().Data;
             }
 
             public void Visit(ListType type)
             {
                 type.ValueDataType.Accept(this);
+                ArrayData? child = Result;
 
-                if (Result is not null)
-                {
-                    ArrayData child = Result;
-
-                    Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty }, new[] { child });
-                }
+                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty, MakeInt0Buffer() }, new[] { child });
             }
 
             public void Visit(FixedSizeListType type)
             {
                 type.ValueDataType.Accept(this);
+                ArrayData? child = Result;
 
-                if (Result is not null)
-                {
-                    ArrayData child = Result;
-
-                    Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty }, new[] { child });
-                }
+                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty }, new[] { child });
             }
 
             public void Visit(StructType type)
             {
-                ArrayData[] children = new ArrayData[type.Fields.Count];
-
+                ArrayData?[] children = new ArrayData[type.Fields.Count];
                 for (int i = 0; i < type.Fields.Count; i++)
                 {
                     type.Fields[i].DataType.Accept(this);
-
-                    if(Result is not null)
-                        children[i] = Result;
+                    children[i] = Result;
                 }
 
-                Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty }, children);
-            }
-
-            public void Visit(UnionType type)
-            {
-                int bufferCount = type.Mode switch
-                {
-                    UnionMode.Sparse => 1,
-                    UnionMode.Dense => 2,
-                    _ => throw new InvalidOperationException($"Unknown UnionMode {type.Mode}"),
-                };
-
-                ArrayData[] children = new ArrayData[type.Fields.Count];
-                for (int i = 0; i < type.Fields.Count; i++)
-                {
-                    type.Fields[i].DataType.Accept(this);
-
-                    if(Result is not null)
-                        children[i] = Result;
-                }
-
-                ArrowBuffer[] buffers = new ArrowBuffer[bufferCount];
-                buffers[0] = ArrowBuffer.Empty;
-                if (bufferCount > 1)
-                {
-                    buffers[1] = ArrowBuffer.Empty;
-                }
-
-                Result = new ArrayData(type, _length, _length, 0, buffers, children);
+                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty }, children);
             }
 
             public void Visit(MapType type)
             {
-                if (Result is not null)
-                {
-                    ArrayData[] children = new ArrayData[2];
-                    type.KeyField.DataType.Accept(this);
-                    children[0] = Result;
-                    type.ValueField.DataType.Accept(this);
-                    children[1] = Result;
-
-                    Result = new ArrayData(type, _length, _length, 0, new[] { ArrowBuffer.Empty }, children);
-                }
+                Result = new MapArray.Builder(type).Build().Data;
             }
 
             public void Visit(IArrowType type)
             {
                 throw new NotImplementedException($"EmptyArrayCreationVisitor for {type.Name} is not supported yet.");
+            }
+
+            private static ArrowBuffer MakeInt0Buffer()
+            {
+                ArrowBuffer.Builder<int> builder = new ArrowBuffer.Builder<int>();
+                builder.Append(0);
+                return builder.Build();
             }
         }
     }

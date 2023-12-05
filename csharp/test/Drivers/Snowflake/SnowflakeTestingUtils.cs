@@ -15,11 +15,13 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using Apache.Arrow.Adbc.C;
+using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
@@ -40,7 +42,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
     internal class SnowflakeTestingUtils
     {
+        internal static readonly SnowflakeTestConfiguration TestConfiguration;
+
         internal const string SNOWFLAKE_TEST_CONFIG_VARIABLE = "SNOWFLAKE_TEST_CONFIG_FILE";
+
+        static SnowflakeTestingUtils()
+        {
+            try
+            {
+                TestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
 
         /// <summary>
         /// Gets a the Snowflake ADBC driver with settings from the
@@ -66,12 +82,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 { SnowflakeParameters.USE_HIGH_PRECISION, testConfiguration.UseHighPrecision.ToString().ToLowerInvariant() }
             };
 
-            if(!string.IsNullOrWhiteSpace(testConfiguration.Host))
+            if (!string.IsNullOrWhiteSpace(testConfiguration.Host))
             {
                 parameters[SnowflakeParameters.HOST] = testConfiguration.Host;
             }
 
-            if(!string.IsNullOrWhiteSpace(testConfiguration.Database))
+            if (!string.IsNullOrWhiteSpace(testConfiguration.Database))
             {
                 parameters[SnowflakeParameters.DATABASE] = testConfiguration.Database;
             }
@@ -120,9 +136,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 {
                     string modifiedLine = line;
 
-                    foreach(string key in placeholderValues.Keys)
+                    foreach (string key in placeholderValues.Keys)
                     {
-                        if(modifiedLine.Contains(key))
+                        if (modifiedLine.Contains(key))
                             modifiedLine = modifiedLine.Replace(key, placeholderValues[key]);
                     }
 
