@@ -14,12 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#param (
-#    [string]$netversion
-#)
-
-#Write-Host "Building for $netversion"
-
 $location = Get-Location
 
 $file = "libadbc_driver_snowflake.dll"

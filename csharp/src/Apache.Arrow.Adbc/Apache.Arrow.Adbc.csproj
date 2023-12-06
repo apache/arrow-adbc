@@ -5,15 +5,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Remove="readme.md" />
-  </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\arrow\csharp\src\Apache.Arrow\Apache.Arrow.csproj" />
   </ItemGroup>
-
   <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible($(TargetFramework), 'net5.0'))">
     <Compile Remove="C\NativeLibrary.cs" />
   </ItemGroup>

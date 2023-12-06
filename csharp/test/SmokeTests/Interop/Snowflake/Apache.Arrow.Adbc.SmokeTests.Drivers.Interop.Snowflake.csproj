@@ -22,7 +22,9 @@
       <Folder Include="Resources\" />
     </ItemGroup>
     <ItemGroup>
-      <None Include="..\..\..\Drivers\Interop\Snowflake\Resources\SnowflakeData.sql" Link="Resources\SnowflakeData.sql" />
+      <None Include="..\..\..\Drivers\Interop\Snowflake\Resources\SnowflakeData.sql" Link="Resources\SnowflakeData.sql">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\..\Apache.Arrow.Adbc.SmokeTests\Apache.Arrow.Adbc.SmokeTests.csproj" />

@@ -18,10 +18,13 @@
 -->
 
 # About
-This project generates a NuGet package containing the Snowflake ADBC Go Driver for use in other .NET projects.
+This project generates a NuGet package containing the Snowflake ADBC Go Driver for use in other .NET projects. It contains a lightweight loader for loading the driver.
 
 For details, see:
 
 [Snowflake Driver](https://arrow.apache.org/adbc/main/driver/snowflake.html) for docs
 
 [GitHub](https://github.com/apache/arrow-adbc/tree/main/go/adbc/driver/snowflake) for source code
+
+## Build the Snowflake Driver
+Run the `Build-SnowflakeDriver.ps1` script to build the Snowflake driver.

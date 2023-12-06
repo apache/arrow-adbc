@@ -16,10 +16,6 @@
  limitations under the License.
 
 -->
-# About
+# Apache Arrow ADBC
 
-This is a C# implementation of the ADBC spec. It is designed so drivers can be written in any C-based language and leveraged from .NET.
-
-Current C#-implemented drivers include BigQuery and FlightSQL.
-
-The Snowflake Go driver can also be used from .NET.
+An implementation of Arrow ADBC targeting .NET Standard 2.0 and .NET 6 or later.

@@ -32,7 +32,7 @@ $location = Get-Location
 
 Write-Host "Building Snowflake Go driver"
 
-cd ..\src\Drivers\Snowflake
+cd ..\src\Drivers\Interop\Snowflake
 
 powershell -ExecutionPolicy Unrestricted -File .\Build-SnowflakeDriver.ps1
 
