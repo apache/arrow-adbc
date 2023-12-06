@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -32,6 +33,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public const string PASSWORD = "password";
         public const string WAREHOUSE = "adbc.snowflake.sql.warehouse";
         public const string AUTH_TYPE = "adbc.snowflake.sql.auth_type";
+        public const string AUTH_TOKEN = "adbc.snowflake.sql.client_option.auth_token";
         public const string HOST = "adbc.snowflake.sql.uri.host";
         public const string PKCS8_VALUE = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value";
         public const string PKCS8_PASS = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password";
@@ -40,7 +42,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
     internal class SnowflakeTestingUtils
     {
+        internal static readonly SnowflakeTestConfiguration TestConfiguration;
+
         internal const string SNOWFLAKE_TEST_CONFIG_VARIABLE = "SNOWFLAKE_TEST_CONFIG_FILE";
+
+        static SnowflakeTestingUtils()
+        {
+            try
+            {
+                TestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
 
         /// <summary>
         /// Gets a the Snowflake ADBC driver with settings from the
@@ -62,16 +78,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 { SnowflakeParameters.USERNAME, testConfiguration.User },
                 { SnowflakeParameters.PASSWORD, testConfiguration.Password },
                 { SnowflakeParameters.WAREHOUSE, testConfiguration.Warehouse },
-                { SnowflakeParameters.AUTH_TYPE, testConfiguration.AuthenticationType },
                 { SnowflakeParameters.USE_HIGH_PRECISION, testConfiguration.UseHighPrecision.ToString().ToLowerInvariant() }
             };
+
+            if(testConfiguration.Authentication.Default is not null)
+            {
+                parameters[SnowflakeParameters.AUTH_TYPE] = SnowflakeAuthentication.AuthSnowflake;
+                parameters[SnowflakeParameters.USERNAME] = testConfiguration.Authentication.Default.User;
+                parameters[SnowflakeParameters.PASSWORD] = testConfiguration.Authentication.Default.Password;
+            }
 
             if(!string.IsNullOrWhiteSpace(testConfiguration.Host))
             {
                 parameters[SnowflakeParameters.HOST] = testConfiguration.Host;
             }
 
-            if(!string.IsNullOrWhiteSpace(testConfiguration.Database))
+            if (!string.IsNullOrWhiteSpace(testConfiguration.Database))
             {
                 parameters[SnowflakeParameters.DATABASE] = testConfiguration.Database;
             }
@@ -120,9 +142,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 {
                     string modifiedLine = line;
 
-                    foreach(string key in placeholderValues.Keys)
+                    foreach (string key in placeholderValues.Keys)
                     {
-                        if(modifiedLine.Contains(key))
+                        if (modifiedLine.Contains(key))
                             modifiedLine = modifiedLine.Replace(key, placeholderValues[key]);
                     }
 
