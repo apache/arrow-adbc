@@ -99,7 +99,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
 
             Dictionary<string, string> options = new Dictionary<string, string>() { };
-            AdbcDriver snowflakeDriver = SnowflakeDriverLoader.LoadDriver();
+            AdbcDriver snowflakeDriver = GetSnowflakeAdbcDriver(testConfiguration);
 
             return snowflakeDriver;
         }
@@ -115,7 +115,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             SnowflakeTestConfiguration testConfiguration
            )
         {
-            AdbcDriver snowflakeDriver = SnowflakeDriverLoader.LoadDriver();
+            AdbcDriver snowflakeDriver;
+
+            if (testConfiguration == null || string.IsNullOrEmpty(testConfiguration.DriverPath) || string.IsNullOrEmpty(testConfiguration.DriverEntryPoint))
+            {
+                snowflakeDriver = SnowflakeDriverLoader.LoadDriver();
+            }
+            else
+            {
+                snowflakeDriver = SnowflakeDriverLoader.LoadDriver(testConfiguration.DriverPath, testConfiguration.DriverEntryPoint);
+            }
 
             return snowflakeDriver;
         }
