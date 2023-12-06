@@ -399,6 +399,7 @@ def test_pycapsule(sqlite):
     with pyarrow.RecordBatchReader._import_from_c_capsule(handle.__arrow_c_stream__()) as reader:
         reader.read_all()
 
+    # set up some data
     data = pyarrow.record_batch(
         [
             [1, 2, 3, 4],
@@ -411,11 +412,19 @@ def test_pycapsule(sqlite):
         _bind(stmt, data)
         stmt.execute_update()
 
+    # importing a schema
+
     handle = conn.get_table_schema(catalog=None, db_schema=None, table_name="foo")
     assert data.schema == pyarrow.schema(handle)
     # ensure consumed schema was marked as such
     with pytest.raises(ValueError, match="Cannot import released ArrowSchema"):
         pyarrow.schema(handle)
+
+    # smoke test for the capsule calling release
+    capsule = conn.get_table_schema(catalog=None, db_schema=None, table_name="foo").__arrow_c_schema__()
+    del capsule
+
+    # importing a stream
 
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_sql_query("SELECT * FROM foo")
@@ -423,5 +432,15 @@ def test_pycapsule(sqlite):
 
     result = pyarrow.table(handle)
     assert result.to_batches()[0] == data
+
+    # ensure consumed schema was marked as such
+    with pytest.raises(ValueError, match="Cannot import released ArrowArrayStream"):
+        pyarrow.table(handle)
+
+    # smoke test for the capsule calling release
+    with adbc_driver_manager.AdbcStatement(conn) as stmt:
+        stmt.set_sql_query("SELECT * FROM foo")
+        capsule = stmt.execute_query()[0].__arrow_c_stream__()
+    del capsule
 
     # TODO: also need to import from things supporting protocol

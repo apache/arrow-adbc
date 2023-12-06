@@ -27,7 +27,7 @@ from typing import List, Tuple
 cimport cpython
 import cython
 from cpython.bytes cimport PyBytes_FromStringAndSize
-from cpython.pycapsule cimport PyCapsule_CheckExact, PyCapsule_GetPointer, PyCapsule_New, PyCapsule_IsValid
+from cpython.pycapsule cimport PyCapsule_GetPointer, PyCapsule_New
 from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t, uintptr_t
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy, memset
@@ -416,7 +416,7 @@ cdef class ArrowArrayStreamHandle:
             <CArrowArrayStream*> malloc(sizeof(CArrowArrayStream))
         allocated.release = NULL
         capsule = PyCapsule_New(
-            <void*>allocated, "arrow_array_stream", pycapsule_stream_deleter,
+            <void*>allocated, "arrow_array_stream", &pycapsule_stream_deleter,
         )
         memcpy(allocated, &self.stream, sizeof(CArrowArrayStream))
         self.stream.release = NULL
