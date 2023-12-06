@@ -25,7 +25,6 @@ on:
       - "adbc.h"
       - "c/**"
       - "ci/**"
-      - "csharp/**"
       - "glib/**"
       - "python/**"
       - "ruby/**"
@@ -828,89 +827,6 @@ jobs:
           docker-compose run python-sdist-test
           popd
 
-  csharp-ubuntu:
-    name: AMD64 Ubuntu 18.04 C# ${{ matrix.dotnet }}
-    runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        dotnet: ['7.0.x']
-    steps:
-      - name: Install C#
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: ${{ matrix.dotnet }}
-      - name: Checkout Arrow
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Install Source Link
-        shell: bash
-        run: dotnet tool install --global sourcelink
-      - name: Build
-        shell: bash
-        run: ci/scripts/csharp_build.sh $(pwd)
-      - name: Test
-        shell: bash
-        run: ci/scripts/csharp_test.sh $(pwd)
-
-  csharp-windows:
-    name: AMD64 Windows 2019 18.04 C# ${{ matrix.dotnet }}
-    runs-on: windows-2019
-    if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        dotnet: ['4.7.2','7.0.x']
-    steps:
-      - name: Install C#
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: ${{ matrix.dotnet }}
-      - name: Checkout Arrow
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Install Source Link
-        run: dotnet tool install --global sourcelink
-      - name: Build
-        shell: bash
-        run: ci/scripts/csharp_build.sh $(pwd)
-      - name: Test
-        shell: bash
-        run: ci/scripts/csharp_test.sh $(pwd)
-
-  csharp-macos:
-    name: AMD64 macOS 11 C# ${{ matrix.dotnet }}
-    runs-on: macos-latest
-    if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        dotnet: ['7.0.x']
-    steps:
-      - name: Install C#
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: ${{ matrix.dotnet }}
-      - name: Checkout Arrow
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Install Source Link
-        shell: bash
-        run: dotnet tool install --global sourcelink
-      - name: Build
-        shell: bash
-        run: ci/scripts/csharp_build.sh $(pwd)
-      - name: Test
-        shell: bash
-        run: ci/scripts/csharp_test.sh $(pwd)
-
   release:
     name: "Create release"
     runs-on: ubuntu-latest
@@ -924,9 +840,6 @@ jobs:
       - python-macos
       - python-windows
       - python-sdist
-      - csharp-ubuntu
-      - csharp-windows
-      - csharp-macos
     steps:
       - name: Get All Artifacts
         uses: actions/download-artifact@v3

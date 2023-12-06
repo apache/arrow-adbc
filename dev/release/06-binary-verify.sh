@@ -76,8 +76,8 @@ I would like to propose the following release candidate (RC${rc_number}) of Apac
 This release candidate is based on commit: ${commit} [2]
 
 The source release rc${rc_number} is hosted at [3].
-The binary artifacts are hosted at [4][5][6][7][8][9].
-The changelog is located at [10].
+The binary artifacts are hosted at [4][5][6][7][8].
+The changelog is located at [9].
 
 Please download, verify checksums and signatures, run the unit tests, and vote on the release. See [10] for how to validate a release candidate.
 
@@ -99,11 +99,9 @@ Note: to verify APT/YUM packages on macOS/AArch64, you must \`export DOCKER_DEFA
 [6]: https://apache.jfrog.io/artifactory/arrow/ubuntu-rc/
 [7]: https://repository.apache.org/content/repositories/staging/org/apache/arrow/adbc/
 [8]: https://github.com/apache/arrow-adbc/releases/tag/${tag}
-[9]: https://apache.jfrog.io/artifactory/arrow/nuget-rc/${version}-rc${rc}
-[10]: https://github.com/apache/arrow-adbc/blob/${tag}/CHANGELOG.md
-[11]: https://arrow.apache.org/adbc/main/development/releasing.html#how-to-verify-release-candidates
-[12]: https://github.com/apache/arrow-adbc/actions/runs/${run_id}
-
+[9]: https://github.com/apache/arrow-adbc/blob/${tag}/CHANGELOG.md
+[10]: https://arrow.apache.org/adbc/main/development/releasing.html#how-to-verify-release-candidates
+[11]: https://github.com/apache/arrow-adbc/actions/runs/${run_id}
 MAIL
 }
 
