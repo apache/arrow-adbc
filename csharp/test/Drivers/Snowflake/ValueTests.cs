@@ -41,7 +41,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public ValueTests()
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-            _snowflakeTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            _snowflakeTestConfiguration = SnowflakeTestingUtils.TestConfiguration;
             Dictionary<string, string> parameters = new Dictionary<string,string>();
             Dictionary<string, string> options = new Dictionary<string, string>();
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_snowflakeTestConfiguration, out parameters);
@@ -55,7 +55,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Validates if driver can send and receive specific Integer values correctly
         /// These Snowflake types are equivalent: NUMBER(38,0),INT,INTEGER,BIGINT,SMALLINT,TINYINT,BYTEINT
         /// </summary>
-        [Theory]
+        [SkippableTheory]
         [InlineData(-1)]
         [InlineData(0)]
         [InlineData(1)]
@@ -69,7 +69,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if driver can handle the largest / smallest numbers
         /// </summary>
-        [Theory]
+        [SkippableTheory]
         [InlineData("99999999999999999999999999999999999999")]
         [InlineData("-99999999999999999999999999999999999999")]
         public void TestIntegerMinMax(string value)
@@ -82,7 +82,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if driver can handle smaller Number type correctly
         /// </summary>
-        [Theory]
+        [SkippableTheory]
         [InlineData(-1)]
         [InlineData(0)]
         [InlineData(1)]
@@ -98,7 +98,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if driver correctly errors out when the values exceed the column's limit
         /// </summary>
-        [Theory]
+        [SkippableTheory]
         [InlineData(-100)]
         [InlineData(100)]
         [InlineData(int.MaxValue)]
@@ -113,7 +113,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if driver can handle a large scale Number type correctly
         /// </summary>
-        [Theory]
+        [SkippableTheory]
         [InlineData("0")]
         [InlineData("-2.003")]
         [InlineData("4.85")]
@@ -129,7 +129,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if driver can error handle when input goes beyond a large scale Number type
         /// </summary>
-        [Theory]
+        [SkippableTheory]
         [InlineData("-10")]
         [InlineData("10")]
         [InlineData("99999999999999999999999999999999999999")]
@@ -144,7 +144,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if driver can handle a small scale Number type correctly
         /// </summary>
-        [Theory]
+        [SkippableTheory]
         [InlineData("0")]
         [InlineData("4.85")]
         [InlineData("-999999999999999999999999999999999999.99")]
@@ -159,7 +159,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if driver can error handle when an insert goes beyond a small scale Number type correctly
         /// </summary>
-        [Theory]
+        [SkippableTheory]
         [InlineData("-99999999999999999999999999999999999999")]
         [InlineData("99999999999999999999999999999999999999")]
         public void TestSmallScaleNumberOverlimit(string value)
@@ -174,7 +174,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Tests that decimals are rounded as expected.
         /// Snowflake allows inserts of scales beyond the data type size, but storage of value will round it up or down
         /// </summary>
-        [Theory]
+        [SkippableTheory]
         [InlineData(2.467, 2.47)]
         [InlineData(-672.613, -672.61)]
         public void TestRoundingNumbers(decimal input, decimal output)
@@ -192,7 +192,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Validates if driver can handle floating point number type correctly
         /// These Snowflake types are equivalent: FLOAT,FLOAT4,FLOAT8,DOUBLE,DOUBLE PRECISION,REAL
         /// </summary>
-        [Theory]
+        [SkippableTheory]
         [InlineData(0)]
         [InlineData(0.2)]
         [InlineData(15e-03)]
