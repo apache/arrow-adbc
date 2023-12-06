@@ -396,7 +396,32 @@ def test_child_tracking(sqlite):
 def test_pycapsule(sqlite):
     _, conn = sqlite
     handle = conn.get_table_types()
-    with pyarrow.RecordBatchReader._import_from_c_capsule(handle.__arrow_c_array_stream__()) as reader:
+    with pyarrow.RecordBatchReader._import_from_c_capsule(handle.__arrow_c_stream__()) as reader:
         reader.read_all()
+
+    data = pyarrow.record_batch(
+        [
+            [1, 2, 3, 4],
+            ["a", "b", "c", "d"],
+        ],
+        names=["ints", "strs"],
+    )
+    with adbc_driver_manager.AdbcStatement(conn) as stmt:
+        stmt.set_options(**{adbc_driver_manager.INGEST_OPTION_TARGET_TABLE: "foo"})
+        _bind(stmt, data)
+        stmt.execute_update()
+
+    handle = conn.get_table_schema(catalog=None, db_schema=None, table_name="foo")
+    assert data.schema == pyarrow.schema(handle)
+    # ensure consumed schema was marked as such
+    with pytest.raises(ValueError, match="Cannot import released ArrowSchema"):
+        pyarrow.schema(handle)
+
+    with adbc_driver_manager.AdbcStatement(conn) as stmt:
+        stmt.set_sql_query("SELECT * FROM foo")
+        handle, _ = stmt.execute_query()
+
+    result = pyarrow.table(handle)
+    assert result.to_batches()[0] == data
 
     # TODO: also need to import from things supporting protocol

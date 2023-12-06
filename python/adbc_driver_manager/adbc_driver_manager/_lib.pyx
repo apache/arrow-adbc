@@ -27,6 +27,7 @@ from typing import List, Tuple
 cimport cpython
 import cython
 from cpython.bytes cimport PyBytes_FromStringAndSize
+from cpython.pycapsule cimport PyCapsule_CheckExact, PyCapsule_GetPointer, PyCapsule_New, PyCapsule_IsValid
 from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t, uintptr_t
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy, memset
@@ -306,34 +307,28 @@ cdef class _AdbcHandle:
                     f"with open {self._child_type}")
 
 
-cdef void release_schema_pycapsule(object capsule) noexcept:
-    cdef CArrowSchema* allocated = \
-        <CArrowSchema*> cpython.PyCapsule_GetPointer(
-            capsule,
-            "arrow_schema",
-        )
+cdef void pycapsule_schema_deleter(object capsule) noexcept:
+    cdef CArrowSchema* allocated = <CArrowSchema*>PyCapsule_GetPointer(
+        capsule, "arrow_schema"
+    )
     if allocated.release != NULL:
         allocated.release(allocated)
     free(allocated)
 
 
-cdef void release_array_pycapsule(object capsule) noexcept:
-    cdef CArrowArray* allocated = \
-        <CArrowArray*> cpython.PyCapsule_GetPointer(
-            capsule,
-            "arrow_array",
-        )
+cdef void pycapsule_array_deleter(object capsule) noexcept:
+    cdef CArrowArray* allocated = <CArrowArray*> PyCapsule_GetPointer(
+        capsule, "arrow_array"
+    )
     if allocated.release != NULL:
         allocated.release(allocated)
     free(allocated)
 
 
-cdef void release_stream_pycapsule(object capsule) noexcept:
-    cdef CArrowArrayStream* allocated = \
-        <CArrowArrayStream*> cpython.PyCapsule_GetPointer(
-            capsule,
-            "arrow_array_stream",
-        )
+cdef void pycapsule_stream_deleter(object capsule) noexcept:
+    cdef CArrowArrayStream* allocated = <CArrowArrayStream*> PyCapsule_GetPointer(
+        capsule, "arrow_array_stream"
+    )
     if allocated.release != NULL:
         allocated.release(allocated)
     free(allocated)
@@ -357,13 +352,10 @@ cdef class ArrowSchemaHandle:
         """Consume this object to get a PyCapsule."""
         # Reference:
         # https://arrow.apache.org/docs/dev/format/CDataInterface/PyCapsuleInterface.html#create-a-pycapsule
-        cdef CArrowSchema* allocated = \
-            <CArrowSchema*> malloc(sizeof(CArrowSchema))
+        cdef CArrowSchema* allocated = <CArrowSchema*> malloc(sizeof(CArrowSchema))
         allocated.release = NULL
-        capsule = cpython.PyCapsule_New(
-            <void*>allocated,
-            "arrow_schema",
-            release_schema_pycapsule,
+        capsule = PyCapsule_New(
+            <void*>allocated, "arrow_schema", &pycapsule_schema_deleter,
         )
         memcpy(allocated, &self.schema, sizeof(CArrowSchema))
         self.schema.release = NULL
@@ -386,15 +378,15 @@ cdef class ArrowArrayHandle:
         """
         return <uintptr_t> &self.array
 
-    def __arrow_c_array__(self) -> object:
+    def __arrow_c_array__(self, requested_schema=None) -> object:
         """Consume this object to get a PyCapsule."""
-        cdef CArrowArray* allocated = \
-            <CArrowArray*> malloc(sizeof(CArrowArray))
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
+
+        cdef CArrowArray* allocated = <CArrowArray*> malloc(sizeof(CArrowArray))
         allocated.release = NULL
-        capsule = cpython.PyCapsule_New(
-            <void*>allocated,
-            "arrow_array",
-            release_array_pycapsule,
+        capsule = PyCapsule_New(
+            <void*>allocated, "arrow_array", pycapsule_array_deleter,
         )
         memcpy(allocated, &self.array, sizeof(CArrowArray))
         self.array.release = NULL
@@ -415,15 +407,16 @@ cdef class ArrowArrayStreamHandle:
         """The address of the ArrowArrayStream."""
         return <uintptr_t> &self.stream
 
-    def __arrow_c_array_stream__(self) -> object:
+    def __arrow_c_stream__(self, requested_schema=None) -> object:
         """Consume this object to get a PyCapsule."""
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
+
         cdef CArrowArrayStream* allocated = \
             <CArrowArrayStream*> malloc(sizeof(CArrowArrayStream))
         allocated.release = NULL
-        capsule = cpython.PyCapsule_New(
-            <void*>allocated,
-            "arrow_array_stream",
-            release_stream_pycapsule,
+        capsule = PyCapsule_New(
+            <void*>allocated, "arrow_array_stream", pycapsule_stream_deleter,
         )
         memcpy(allocated, &self.stream, sizeof(CArrowArrayStream))
         self.stream.release = NULL
