@@ -104,11 +104,7 @@ execute_adbc.default <- function(db_or_con, query, ..., bind = NULL, stream = NU
     adbc_statement_prepare(stmt)
   }
 
-  adbc_statement_execute_query(stmt, stream)
-
-  if (!is.null(stream)) {
-    adbc_stream_join(stream, stmt)
-  }
+  adbc_statement_execute_query(stmt, stream, stream_join_parent = TRUE)
 
   invisible(db_or_con)
 }
@@ -275,10 +271,6 @@ adbc_statement_join <- function(statement, connection) {
 #' @rdname adbc_connection_join
 #' @export
 adbc_stream_join <- function(stream, x) {
-  if (utils::packageVersion("nanoarrow") < "0.1.0.9000") {
-    stop("adbc_stream_join_statement() requires nanoarrow >= 0.2.0")
-  }
-
   assert_adbc(stream, "nanoarrow_array_stream")
   assert_adbc(x)
 
@@ -300,7 +292,44 @@ adbc_stream_join <- function(stream, x) {
   # Until the release version of nanoarrow contains this we will get a check
   # warning for nanoarrow::array_stream_set_finalizer()
   set_finalizer <- asNamespace("nanoarrow")[["array_stream_set_finalizer"]]
-  set_finalizer(stream, self_contained_finalizer)
+  nanoarrow::array_stream_set_finalizer(stream, self_contained_finalizer)
+}
 
-  invisible(stream)
+adbc_child_stream <- function(parent, stream, release_parent = FALSE) {
+  assert_adbc(parent)
+
+  # This finalizer will run immediately on release (if released explicitly
+  # on the main R thread) or on garbage collection otherwise.
+  self_contained_finalizer <- function() {
+    try({
+      parent$.child_count <- parent$.child_count - 1L
+      if (release_parent) {
+        adbc_release_non_null(parent)
+      }
+    })
+  }
+
+  # Make sure we don't keep any variables around that aren't needed
+  # for the finalizer and make sure we do keep around a strong reference
+  # to parent.
+  self_contained_finalizer_env <- as.environment(
+    list(
+      parent = if (release_parent) adbc_xptr_move(parent) else parent,
+      release_parent = release_parent
+    )
+  )
+  parent.env(self_contained_finalizer_env) <- asNamespace("adbcdrivermanager")
+  environment(self_contained_finalizer) <- self_contained_finalizer_env
+
+  # Set the finalizer using nanoarrow's method for this
+  stream_out <- nanoarrow::array_stream_set_finalizer(
+    stream,
+    self_contained_finalizer
+  )
+
+  # Once we're sure this will succeed, increment the parent child count
+  # Use whatever version is in the finalizer env (we might have moved parent)
+  self_contained_finalizer_env$parent$.child_count <-
+    self_contained_finalizer_env$parent$.child_count + 1L
+  stream_out
 }

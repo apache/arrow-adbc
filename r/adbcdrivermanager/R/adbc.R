@@ -413,6 +413,8 @@ adbc_statement_release <- function(statement) {
 #'   or object that can be coerced to one.
 #' @param schema A [nanoarrow_schema][nanoarrow::as_nanoarrow_schema] or object
 #'   that can be coerced to one.
+#' @param stream_join_parent Use `TRUE` to invalidate `statement` and tie its
+#'   lifecycle to `stream`.
 #'
 #' @return
 #'   - `adbc_statement_set_sql_query()`, `adbc_statement_set_substrait_plan()`,
@@ -489,9 +491,25 @@ adbc_statement_bind_stream <- function(statement, stream, schema = NULL) {
 
 #' @rdname adbc_statement_set_sql_query
 #' @export
-adbc_statement_execute_query <- function(statement, stream = NULL) {
+adbc_statement_execute_query <- function(statement, stream = NULL,
+                                         stream_join_parent = FALSE) {
   error <- adbc_allocate_error()
-  result <- .Call(RAdbcStatementExecuteQuery, statement, stream, error)
+
+  if (is.null(stream)) {
+    result <- .Call(RAdbcStatementExecuteQuery, statement, NULL, error)
+  } else {
+    stream_tmp <- nanoarrow::nanoarrow_allocate_array_stream()
+    result <- .Call(RAdbcStatementExecuteQuery, statement, stream_tmp, error)
+    if (identical(result$status, 0L)) {
+      stream_tmp <- adbc_child_stream(
+        statement,
+        stream_tmp,
+        release_parent = stream_join_parent
+      )
+      nanoarrow::nanoarrow_pointer_export(stream_tmp, stream)
+    }
+  }
+
   stop_for_error(result$status, error)
   result$rows_affected
 }
