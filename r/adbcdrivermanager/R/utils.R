@@ -17,6 +17,10 @@
 
 new_env <- function() {
   env <- new.env(parent = emptyenv())
+  # A previous version of this just did env$.child_count <- 0L,
+  # which, perhaps because of compilation, results in env$.child_count
+  # referring to the exact same SEXP for every ADBC object! Use vector()
+  # to ensure a fresh allocation.
   env$.child_count <- vector("integer", length = 1L)
   env
 }
