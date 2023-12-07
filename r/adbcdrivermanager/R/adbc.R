@@ -192,7 +192,7 @@ adbc_connection_get_info <- function(connection, info_codes = NULL) {
   )
   stop_for_error(status, error)
 
-  out_stream
+  adbc_child_stream(connection, out_stream)
 }
 
 #' @rdname adbc_connection_get_info
@@ -215,7 +215,7 @@ adbc_connection_get_objects <- function(connection, depth = 0L, catalog = NULL, 
   )
   stop_for_error(status, error)
 
-  out_stream
+  adbc_child_stream(connection, out_stream)
 }
 
 #' @rdname adbc_connection_get_info
@@ -245,7 +245,7 @@ adbc_connection_get_table_types <- function(connection) {
   status <- .Call(RAdbcConnectionGetTableTypes, connection, out_stream, error)
   stop_for_error(status, error)
 
-  out_stream
+  adbc_child_stream(connection, out_stream)
 }
 
 #' @rdname adbc_connection_get_info
@@ -262,7 +262,7 @@ adbc_connection_read_partition <- function(connection, serialized_partition) {
   )
   stop_for_error(status, error)
 
-  out_stream
+  adbc_child_stream(connection, out_stream)
 }
 
 #' @rdname adbc_connection_get_info
@@ -301,7 +301,7 @@ adbc_connection_get_statistic_names <- function(connection) {
   status <- .Call(RAdbcConnectionGetStatisticNames, connection, out_stream, error)
   stop_for_error(status, error)
 
-  out_stream
+  adbc_child_stream(connection, out_stream)
 }
 
 #' @rdname adbc_connection_get_info
@@ -323,7 +323,7 @@ adbc_connection_get_statistics <- function(connection, catalog, db_schema,
   )
   stop_for_error(status, error)
 
-  out_stream
+  adbc_child_stream(connection, out_stream)
 }
 
 #' @rdname adbc_connection_get_info
