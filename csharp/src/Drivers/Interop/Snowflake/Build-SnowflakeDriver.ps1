@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-Write-Host "Building the Snowflake Go driver"
+Write-Host "Building the Snowflake ADBC Go driver"
 
 $location = Get-Location
 
@@ -24,6 +24,7 @@ cd ..\..\..\..\..\go\adbc\pkg
 
 if(Test-Path $file)
 {
+    #because each framework build will run the script, avoid building it each time
     $diff=((ls $file).LastWriteTime - (Get-Date)).TotalSeconds
     if ($diff -gt -30)
     {
