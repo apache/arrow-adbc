@@ -1165,6 +1165,6 @@ def _is_arrow_data(data):
         hasattr(data, "__arrow_c_array__")
         or hasattr(data, "__arrow_c_stream__")
         or isinstance(
-            data, (pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader),
+            data, (pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader)
         )
     )

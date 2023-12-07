@@ -396,7 +396,9 @@ def test_child_tracking(sqlite):
 def test_pycapsule(sqlite):
     _, conn = sqlite
     handle = conn.get_table_types()
-    with pyarrow.RecordBatchReader._import_from_c_capsule(handle.__arrow_c_stream__()) as reader:
+    with pyarrow.RecordBatchReader._import_from_c_capsule(
+        handle.__arrow_c_stream__()
+    ) as reader:
         reader.read_all()
 
     # set up some data
