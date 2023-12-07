@@ -146,12 +146,13 @@ write_adbc.default <- function(tbl, db_or_con, target_table, ...,
 #' it is good practice to explicitly clean up these objects. These helpers
 #' are designed to make explicit and predictable cleanup easy to accomplish.
 #'
-#' Note that you can use [adbc_connection_join()],
-#' [adbc_statement_join()], and [adbc_stream_join()]
+#' Note that you can use [adbc_connection_join()] and [adbc_statement_join()]
 #' to tie the lifecycle of the parent object to that of the child object.
 #' These functions mark any previous references to the parent object as
 #' released so you can still use local and with helpers to manage the parent
-#' object before it is joined.
+#' object before it is joined. Use `stream_join_parent = TRUE` in
+#' [adbc_statement_execute_query()] to tie the lifecycle of a statement to
+#' the output stream.
 #'
 #' @param x An ADBC database, ADBC connection, ADBC statement, or
 #'   nanoarrow_array_stream returned from calls to an ADBC function.
@@ -213,8 +214,6 @@ local_adbc <- function(x, .local_envir = parent.frame()) {
 #' @param database A database created with [adbc_database_init()]
 #' @param connection A connection created with [adbc_connection_init()]
 #' @param statement A statement created with [adbc_statement_init()]
-#' @param stream A [nanoarrow_array_stream][nanoarrow::as_nanoarrow_array_stream]
-#' @inheritParams with_adbc
 #'
 #' @return The input, invisibly.
 #' @export
@@ -266,33 +265,6 @@ adbc_statement_join <- function(statement, connection) {
   statement$connection <- adbc_xptr_move(connection)
   xptr_set_protected(statement, statement$connection)
   invisible(statement)
-}
-
-#' @rdname adbc_connection_join
-#' @export
-adbc_stream_join <- function(stream, x) {
-  assert_adbc(stream, "nanoarrow_array_stream")
-  assert_adbc(x)
-
-  self_contained_finalizer <- function() {
-    try(adbc_release_non_null(x))
-  }
-
-  # Make sure we don't keep any variables around that aren't needed
-  # for the finalizer and make sure we invalidate the original statement
-  self_contained_finalizer_env <- as.environment(
-    list(x = adbc_xptr_move(x))
-  )
-  parent.env(self_contained_finalizer_env) <- asNamespace("adbcdrivermanager")
-  environment(self_contained_finalizer) <- self_contained_finalizer_env
-
-  # This finalizer will run immediately on release (if released explicitly
-  # on the main R thread) or on garbage collection otherwise.
-
-  # Until the release version of nanoarrow contains this we will get a check
-  # warning for nanoarrow::array_stream_set_finalizer()
-  set_finalizer <- asNamespace("nanoarrow")[["array_stream_set_finalizer"]]
-  nanoarrow::array_stream_set_finalizer(stream, self_contained_finalizer)
 }
 
 adbc_child_stream <- function(parent, stream, release_parent = FALSE) {
