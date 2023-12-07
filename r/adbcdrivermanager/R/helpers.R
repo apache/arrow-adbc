@@ -270,6 +270,12 @@ adbc_statement_join <- function(statement, connection) {
 adbc_child_stream <- function(parent, stream, release_parent = FALSE) {
   assert_adbc(parent)
 
+  if (release_parent) {
+    stopifnot(
+      identical(parent$.child_count, 0L)
+    )
+  }
+
   # This finalizer will run immediately on release (if released explicitly
   # on the main R thread) or on garbage collection otherwise.
   self_contained_finalizer <- function() {
