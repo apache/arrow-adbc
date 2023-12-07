@@ -14,21 +14,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+Write-Host "Building the Snowflake Go driver"
+
 $location = Get-Location
 
 $file = "libadbc_driver_snowflake.dll"
 
 cd ..\..\..\..\..\go\adbc\pkg
 
-
-$diff=((ls $file).LastWriteTime - (Get-Date)).TotalSeconds
-
-if ($diff -gt -5)
+if(Test-Path $file)
 {
-    Write-Output "Skipping build of $file because it is too recent"
-    exit
+    $diff=((ls $file).LastWriteTime - (Get-Date)).TotalSeconds
+    if ($diff -gt -30)
+    {
+        Write-Output "Skipping build of $file because it is too recent"
+        exit
+    }
 }
 
-del $file
 go build -tags driverlib -o $file -buildmode=c-shared -ldflags "-s -w" ./snowflake
 COPY $file $location
