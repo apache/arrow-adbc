@@ -244,10 +244,15 @@ local_adbc <- function(x, .local_envir = parent.frame()) {
 #'
 adbc_connection_join <- function(connection, database) {
   assert_adbc(connection, "adbc_connection")
-  assert_adbc(database, "adbc_database")
+
+  stopifnot(
+    identical(database, connection$database),
+    identical(database$.child_count, 1L)
+  )
 
   connection$.release_database <- TRUE
   connection$database <- adbc_xptr_move(database)
+  xptr_set_protected(connection, connection$database)
   invisible(connection)
 }
 
@@ -255,10 +260,15 @@ adbc_connection_join <- function(connection, database) {
 #' @export
 adbc_statement_join <- function(statement, connection) {
   assert_adbc(statement, "adbc_statement")
-  assert_adbc(connection, "adbc_connection")
+
+  stopifnot(
+    identical(connection, statement$connection),
+    identical(connection$.child_count, 1L)
+  )
 
   statement$.release_connection <- TRUE
   statement$connection <- adbc_xptr_move(connection)
+  xptr_set_protected(statement, statement$connection)
   invisible(statement)
 }
 

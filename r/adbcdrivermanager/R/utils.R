@@ -17,12 +17,16 @@
 
 new_env <- function() {
   env <- new.env(parent = emptyenv())
-  env$.child_count <- 0L
+  env$.child_count <- vector("integer", length = 1L)
   env
 }
 
 xptr_env <- function(xptr) {
   .Call(RAdbcXptrEnv, xptr)
+}
+
+xptr_set_protected <- function(xptr, prot) {
+  .Call(RAdbcXptrSetProtected, xptr, prot)
 }
 
 #' @export
@@ -82,19 +86,18 @@ str.adbc_xptr <- function(object, ...) {
   invisible(object)
 }
 
-update_child_count <- function(obj, count_delta) {
-  obj$.child_count <-  obj$.child_count + count_delta
-}
-
 stop_for_nonzero_child_count <- function(obj) {
   child_count <- obj$.child_count
   if (!identical(child_count, 0L)) {
-    stop(
-      sprintf(
-        "Object has %d child objects that have not yet been released",
-        child_count
-      )
+    msg <- sprintf(
+      "<%s> has %d unreleased child object%s",
+      paste(class(obj), collapse = "/"),
+      child_count,
+      if (child_count != 1) "s" else ""
     )
+    cnd <- simpleError(msg, call = sys.call(-1))
+    class(cnd) <- union("adbc_error_child_count_not_zero", class(cnd))
+    stop(cnd)
   }
 }
 
