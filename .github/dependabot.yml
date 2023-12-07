@@ -22,13 +22,13 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "MINOR: [CI] "
+      prefix: "chore: "
   - package-ecosystem: "nuget"
     directory: "/csharp/"
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "MINOR: [C#] "
+      prefix: "chore(csharp): "
     ignore:
       - dependency-name: "Microsoft.Extensions.*"
         update-types:

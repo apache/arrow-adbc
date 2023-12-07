@@ -19,6 +19,16 @@ $location = Get-Location
 $file = "libadbc_driver_snowflake.dll"
 
 cd ..\..\..\..\..\go\adbc\pkg
+
+
+$diff=((ls $file).LastWriteTime - (Get-Date)).TotalSeconds
+
+if ($diff -gt -5)
+{
+    Write-Output "Skipping build of $file because it is too recent"
+    exit
+}
+
 del $file
 go build -tags driverlib -o $file -buildmode=c-shared -ldflags "-s -w" ./snowflake
 COPY $file $location

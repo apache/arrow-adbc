@@ -28,17 +28,17 @@ Write-Host "  - Runs smoke tests using the NuGet packages"
 
 Write-Host ""
 
-$location = Get-Location
+# $location = Get-Location
 
-Write-Host "Building Snowflake Go driver"
+# Write-Host "Building Snowflake Go driver"
 
-cd ..\src\Drivers\Interop\Snowflake
+# cd ..\..\csharp\src\Drivers\Interop\Snowflake
 
-powershell -ExecutionPolicy Unrestricted -File .\Build-SnowflakeDriver.ps1
+# powershell -ExecutionPolicy Unrestricted -File .\Build-SnowflakeDriver.ps1
 
-cd $location
+# cd $location
 
-cd ..
+cd ..\..\csharp
 
 Write-Host "Running dotnet test"
 

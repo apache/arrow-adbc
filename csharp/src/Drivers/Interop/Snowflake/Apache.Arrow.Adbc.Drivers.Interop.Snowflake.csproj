@@ -3,10 +3,12 @@
     <TargetFrameworks>netstandard2.0;net472;net6.0</TargetFrameworks>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
-
   <!-- use Build-SnowflakeDriver.ps1 to build the dll -->
-  <!-- libadbc_driver_snowflake.dll is listed for each framework because Condition doesn't work here -->
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="powershell -ExecutionPolicy Unrestricted -File $(ProjectDir)Build-SnowflakeDriver.ps1" />
+  </Target>
 
+  <!-- libadbc_driver_snowflake.dll is listed for each framework because $(TargetFramework) doesn't work here -->
   <ItemGroup>
     <Content Include="libadbc_driver_snowflake.dll">
       <Pack>true</Pack>
