@@ -246,7 +246,7 @@ adbc_connection_join <- function(connection, database) {
   )
 
   connection$.release_database <- TRUE
-  connection$database <- adbc_xptr_move(database)
+  connection$database <- adbc_xptr_move(database, check_child_count = FALSE)
   xptr_set_protected(connection, connection$database)
   invisible(connection)
 }
@@ -262,19 +262,13 @@ adbc_statement_join <- function(statement, connection) {
   )
 
   statement$.release_connection <- TRUE
-  statement$connection <- adbc_xptr_move(connection)
+  statement$connection <- adbc_xptr_move(connection, check_child_count = FALSE)
   xptr_set_protected(statement, statement$connection)
   invisible(statement)
 }
 
 adbc_child_stream <- function(parent, stream, release_parent = FALSE) {
   assert_adbc(parent)
-
-  if (release_parent) {
-    stopifnot(
-      identical(parent$.child_count, 0L)
-    )
-  }
 
   # This finalizer will run immediately on release (if released explicitly
   # on the main R thread) or on garbage collection otherwise.

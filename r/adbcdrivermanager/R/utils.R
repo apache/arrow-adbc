@@ -117,6 +117,8 @@ stop_for_nonzero_child_count <- function(obj) {
 #'
 #' @param x An 'adbc_database', 'adbc_connection', 'adbc_statement', or
 #'   'nanoarrow_array_stream'
+#' @param check_child_count Ensures that `x` has a zero child count before
+#'   performing the move. This should almost always be `TRUE`.
 #'
 #' @return
 #' - `adbc_xptr_move()`: A freshly-allocated R object identical to `x`
@@ -131,7 +133,11 @@ stop_for_nonzero_child_count <- function(obj) {
 #' adbc_xptr_is_valid(db)
 #' adbc_xptr_is_valid(db_new)
 #'
-adbc_xptr_move <- function(x) {
+adbc_xptr_move <- function(x, check_child_count = TRUE) {
+  if (check_child_count && (".child_count" %in% names(x))) {
+    stop_for_nonzero_child_count(x)
+  }
+
   if (inherits(x, "adbc_database")) {
     .Call(RAdbcMoveDatabase, x)
   } else if (inherits(x, "adbc_connection")) {
