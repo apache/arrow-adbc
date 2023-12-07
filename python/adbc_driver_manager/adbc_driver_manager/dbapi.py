@@ -612,17 +612,22 @@ class Cursor(_Closeable):
         self._closed = True
 
     def _bind(self, parameters) -> None:
-        if isinstance(parameters, pyarrow.RecordBatch):
+        if hasattr(parameters, "__arrow_c_array__"):
+            schema_capsule, array_capsule = parameters.__arrow_c_array__()
+            self._stmt.bind(array_capsule, schema_capsule)
+        elif hasattr(parameters, "__arrow_c_stream__"):
+            self._stmt.bind_stream(parameters.__arrow_c_stream__())
+        elif isinstance(parameters, pyarrow.RecordBatch):
             arr_handle = _lib.ArrowArrayHandle()
             sch_handle = _lib.ArrowSchemaHandle()
             parameters._export_to_c(arr_handle.address, sch_handle.address)
             self._stmt.bind(arr_handle, sch_handle)
-            return
-        if isinstance(parameters, pyarrow.Table):
-            parameters = parameters.to_reader()
-        stream_handle = _lib.ArrowArrayStreamHandle()
-        parameters._export_to_c(stream_handle.address)
-        self._stmt.bind_stream(stream_handle)
+        else:
+            if isinstance(parameters, pyarrow.Table):
+                parameters = parameters.to_reader()
+            stream_handle = _lib.ArrowArrayStreamHandle()
+            parameters._export_to_c(stream_handle.address)
+            self._stmt.bind_stream(stream_handle)
 
     def _prepare_execute(self, operation, parameters=None) -> None:
         self._results = None
@@ -639,9 +644,7 @@ class Cursor(_Closeable):
                 # Not all drivers support it
                 pass
 
-        if isinstance(
-            parameters, (pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader)
-        ):
+        if _is_arrow_data(parameters):
             self._bind(parameters)
         elif parameters:
             rb = pyarrow.record_batch(
@@ -682,7 +685,7 @@ class Cursor(_Closeable):
         operation : bytes or str
             The query to execute.  Pass SQL queries as strings,
             (serialized) Substrait plans as bytes.
-        parameters
+        seq_of_parameters
             Parameters to bind.  Can be a list of Python sequences, or
             an Arrow record batch, table, or record batch reader.  If
             None, then the query will be executed once, else it will
@@ -694,10 +697,7 @@ class Cursor(_Closeable):
             self._stmt.set_sql_query(operation)
             self._stmt.prepare()
 
-        if isinstance(
-            seq_of_parameters,
-            (pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader),
-        ):
+        if _is_arrow_data(seq_of_parameters):
             arrow_parameters = seq_of_parameters
         elif seq_of_parameters:
             arrow_parameters = pyarrow.RecordBatch.from_pydict(
@@ -805,7 +805,10 @@ class Cursor(_Closeable):
         table_name
             The table to insert into.
         data
-            The Arrow data to insert.
+            The Arrow data to insert. This can be a pyarrow RecordBatch, Table
+            or RecordBatchReader, or any Arrow-compatible data that implements
+            the Arrow PyCapsule Protocol (i.e. has an ``__arrow_c_array__``
+            or ``__arrow_c_stream__ ``method).
         mode
             How to deal with existing data:
 
@@ -877,7 +880,12 @@ class Cursor(_Closeable):
             except NotSupportedError:
                 pass
 
-        if isinstance(data, pyarrow.RecordBatch):
+        if hasattr(data, "__arrow_c_array__"):
+            schema_capsule, array_capsule = data.__arrow_c_array__()
+            self._stmt.bind(array_capsule, schema_capsule)
+        elif hasattr(data, "__arrow_c_stream__"):
+            self._stmt.bind_stream(data.__arrow_c_stream__())
+        elif isinstance(data, pyarrow.RecordBatch):
             array = _lib.ArrowArrayHandle()
             schema = _lib.ArrowSchemaHandle()
             data._export_to_c(array.address, schema.address)
@@ -1150,3 +1158,13 @@ def _warn_unclosed(name):
             category=ResourceWarning,
             stacklevel=2,
         )
+
+
+def _is_arrow_data(data):
+    return (
+        hasattr(data, "__arrow_c_array__")
+        or hasattr(data, "__arrow_c_stream__")
+        or isinstance(
+            data, (pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader),
+        )
+    )
