@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\Build.props" />
 
   <PropertyGroup>
     <TargetFrameworks>net472;net6.0</TargetFrameworks>
@@ -27,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Apache.Arrow.Adbc.Client" Version="0.8.0" />
+    <PackageReference Include="Apache.Arrow.Adbc.Client" Version="[$(ApacheArrowAdbcClientVersion)]" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
     <PackageReference Include="Moq" Version="4.20.69" />
     <PackageReference Include="System.Text.Json" Version="7.0.2" />
