@@ -32,6 +32,5 @@ if(Test-Path $file)
         exit
     }
 }
-
-go build -tags driverlib -o $file -buildmode=c-shared -ldflags "-s -w" ./snowflake
+make $file
 COPY $file $location
