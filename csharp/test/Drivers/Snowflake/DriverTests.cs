@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Apache.Arrow.Adbc.Tests.Metadata;
@@ -110,10 +111,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             for (int i = 0; i < queries.Length; i++)
             {
                 string query = queries[i];
-                using AdbcStatement statement = _connection.CreateStatement();
-                statement.SqlQuery = query;
-
-                UpdateResult updateResult = statement.ExecuteUpdate();
+                UpdateResult updateResult = ExecuteUpdateStatement(query);
 
                 Assert.Equal(expectedResults[i], updateResult.AffectedRows);
             }
@@ -293,12 +291,23 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables with TableName as a Special Character.
         /// </summary>
-        [SkippableFact, Order(3)]
-        public void CanGetObjectsTablesWithSpecialCharacter()
+        [SkippableTheory, Order(3)]
+        [InlineData(@"DEMO_DB",@"PUBLIC","MyIdentifier")]
+        [InlineData(@"DEMO_DB", @"PUBLIC_SCHEMA","my.identifier")]
+        [InlineData(@"DEMO_DB", @"PUBLIC", "my identifier")]
+        [InlineData(@"DEMO_DB", @"PUBLIC", "My 'Identifier'")]
+        [InlineData(@"DEMO_DB", @"PUBLIC", "3rd_identifier")]
+        [InlineData(@"DEMO_DB", @"PUBLIC", "$Identifier")]
+        [InlineData(@"DEMO_DB", @"PUBLIC", "My ^Identifier")]
+        [InlineData(@"DEMO_DB", @"PUBLIC", "My ^Ident~ifier")]
+        [InlineData(@"DEMO_DB", @"PUBLIC", @"My\^Ident~ifier")]
+        [InlineData(@"DEMO_DB", @"PUBLIC", "идентификатор")]
+        [InlineData(@"DEMO_DB", @"PUBLIC", @"ADBCTest_""ALL""TYPES")]
+        [InlineData(@"DEMO_DB", @"PUBLIC", @"ADBC\TEST""\TAB_""LE")]
+        [InlineData(@"DEMO_DB", @"PUBLIC", "ONE")]
+        public void CanGetObjectsTablesWithSpecialCharacter(string databaseName, string schemaName, string tableName)
         {
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
-            string tableName = _testConfiguration.Metadata.Table;
+            CreateTemporaryTable(databaseName, schemaName, tableName);
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Tables,
@@ -313,11 +322,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
             List<AdbcTable> tables = catalogs
-                .Where(s => s.Name.Equals(databaseName))
-                .Select(s => s.DbSchemas)
+                .Where(c => string.Equals(c.Name, databaseName))
+                .Select(c => c.DbSchemas)
                 .FirstOrDefault()
-                .Select(t => t.Tables)
+                .Where(s => string.Equals(s.Name, schemaName))
+                .Select(s => s.Tables)
                 .FirstOrDefault();
+               
             AdbcTable table = tables.FirstOrDefault();
 
             Assert.True(table != null, "table should not be null");
@@ -386,6 +397,31 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             QueryResult queryResult = statement.ExecuteQuery();
 
             Tests.DriverTests.CanExecuteQuery(queryResult, _testConfiguration.ExpectedResultsCount);
+        }
+
+        private void CreateTemporaryTable(string databaseName, string schemaName, string tableName)
+        {
+            databaseName = databaseName.Replace("\"", "\"\"");
+            string createDatabase = string.Format("CREATE DATABASE IF NOT EXISTS \"{0}\"", databaseName);
+           ExecuteUpdateStatement(createDatabase);
+
+            schemaName = schemaName.Replace("\"", "\"\"");
+            string createSchema = string.Format("CREATE SCHEMA  IF NOT EXISTS \"{0}\".\"{1}\"", databaseName, schemaName);
+            ExecuteUpdateStatement(createSchema);
+
+            tableName = tableName.Replace("\"", "\"\"");
+            string fullyQualifiedTableName = string.Format("\"{0}\".\"{1}\".\"{2}\"", databaseName, schemaName, tableName);
+            string createTableStatement = string.Format("CREATE OR REPLACE TABLE {0} (INDEX INT)", fullyQualifiedTableName);
+            ExecuteUpdateStatement(createTableStatement);
+
+        }
+
+        private UpdateResult ExecuteUpdateStatement(string query)
+        {
+            using AdbcStatement statement = _connection.CreateStatement();
+            statement.SqlQuery = query;
+            UpdateResult updateResult = statement.ExecuteUpdate();
+            return updateResult;
         }
 
         private static string GetPartialNameForPatternMatch(string name)
