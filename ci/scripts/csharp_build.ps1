@@ -14,32 +14,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-param (
-    [string]$destination=".\packages"
-)
-
-$ErrorActionPreference = "Stop"
-
-Write-Host "This script performs the following steps:"
-Write-Host "  - Build the unmanaged drivers in their respective folders"
-Write-Host "  - Runs unit tests against all projects"
-Write-Host "  - Packages everything to NuGet packages in $destination"
-Write-Host "  - Runs smoke tests using the NuGet packages"
-
-Write-Host ""
-
 cd ..\..\csharp
 
-Write-Host "Running dotnet test"
-
-dotnet test
-
-Write-Host "Running dotnet pack"
-
-dotnet pack -o $destination -c Release
-
-Write-Host "Running smoke tests"
-
-cd test\SmokeTests
-
-dotnet test
+dotnet build
