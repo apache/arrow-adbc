@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\Build.props" />
+
+  <PropertyGroup>
+    <TargetFrameworks>net472;net6.0</TargetFrameworks>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <SignAssembly>True</SignAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\AdbcTests.cs" Link="AdbcTests.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\ClientTests.cs" Link="ClientTests.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\Client\ClientTests.cs" Link="Client\ClientTests.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\ColumnNetTypeArrowTypeValue.cs" Link="ColumnNetTypeArrowTypeValue.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\DriverTests.cs" Link="DriverTests.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\Metadata\AdbcCatalog.cs" Link="Metadata\AdbcCatalog.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\Metadata\AdbcColumn.cs" Link="Metadata\AdbcColumn.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\Metadata\AdbcDbSchema.cs" Link="Metadata\AdbcDbSchema.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\Metadata\AdbcTable.cs" Link="Metadata\AdbcTable.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\Metadata\GetObjectsParser.cs" Link="Metadata\GetObjectsParser.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\SampleDataBuilder.cs" Link="SampleDataBuilder.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\TestConfiguration.cs" Link="TestConfiguration.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\Utils.cs" Link="Utils.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\Xunit\OrderAttribute.cs" Link="Xunit\OrderAttribute.cs" />
+    <Compile Include="..\..\Apache.Arrow.Adbc.Tests\Xunit\TestOrderer.cs" Link="Xunit\TestOrderer.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Apache.Arrow.Adbc.Client" Version="[$(ApacheArrowAdbcClientVersion)]" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
+    <PackageReference Include="Moq" Version="4.20.69" />
+    <PackageReference Include="System.Text.Json" Version="7.0.2" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Client\" />
+    <Folder Include="Metadata\" />
+    <Folder Include="Xunit\" />
+  </ItemGroup>
+
+</Project>

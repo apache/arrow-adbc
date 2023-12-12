@@ -15,9 +15,7 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Drivers.FlightSql;
 using Xunit;
 

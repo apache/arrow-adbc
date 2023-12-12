@@ -12,11 +12,10 @@
      <PackageReference Include="Xunit.SkippableFact" Version="1.4.13" />
    </ItemGroup>
     <ItemGroup>
-     <ProjectReference Include="..\..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
-     <ProjectReference Include="..\..\..\src\arrow\csharp\src\Apache.Arrow\Apache.Arrow.csproj" />
-     <ProjectReference Include="..\..\..\src\Client\Apache.Arrow.Adbc.Client.csproj" />
-     <ProjectReference Include="..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
-   </ItemGroup>
+      <ProjectReference Include="..\..\..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
+      <ProjectReference Include="..\..\..\..\src\Drivers\Interop\Snowflake\Apache.Arrow.Adbc.Drivers.Interop.Snowflake.csproj" />
+      <ProjectReference Include="..\..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
+    </ItemGroup>
     <ItemGroup>
      <None Update="Resources\SnowflakeData.sql">
        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

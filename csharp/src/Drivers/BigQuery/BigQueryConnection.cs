@@ -868,9 +868,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override AdbcStatement CreateStatement()
         {
-            if (this.client == null || this.credential == null)
+            if (this.credential == null)
             {
                 throw new InvalidOperationException();
+            }
+
+            if(this.client == null)
+            {
+                Open();
             }
 
             BigQueryStatement statement = new BigQueryStatement(this.client, this.credential);

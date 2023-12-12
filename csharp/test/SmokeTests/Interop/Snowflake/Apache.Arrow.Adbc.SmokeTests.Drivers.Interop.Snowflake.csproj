@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\..\Build.props" />
+    <PropertyGroup>
+     <TargetFrameworks>net472;net6.0</TargetFrameworks>
+   </PropertyGroup>
+    <ItemGroup>
+      <Compile Include="..\..\..\Drivers\Interop\Snowflake\ClientTests.cs" Link="ClientTests.cs" />
+      <Compile Include="..\..\..\Drivers\Interop\Snowflake\SnowflakeData.cs" Link="SnowflakeData.cs" />
+      <Compile Include="..\..\..\Drivers\Interop\Snowflake\SnowflakeTestConfiguration.cs" Link="SnowflakeTestConfiguration.cs" />
+      <Compile Include="..\..\..\Drivers\Interop\Snowflake\SnowflakeTestingUtils.cs" Link="SnowflakeTestingUtils.cs" />
+    </ItemGroup>
+    <ItemGroup>
+     <PackageReference Include="Apache.Arrow.Adbc.Drivers.Interop.Snowflake" Version="[$(ApacheArrowAdbcDriversInteropSnowflakeVersion)]" />
+     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
+     <PackageReference Include="xunit" Version="2.5.3" />
+     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3">
+       <PrivateAssets>all</PrivateAssets>
+       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+     </PackageReference>
+     <PackageReference Include="Xunit.SkippableFact" Version="1.4.13" />
+   </ItemGroup>
+    <ItemGroup>
+      <Folder Include="Resources\" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Include="..\..\..\Drivers\Interop\Snowflake\Resources\SnowflakeData.sql" Link="Resources\SnowflakeData.sql">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\..\Apache.Arrow.Adbc.SmokeTests\Apache.Arrow.Adbc.SmokeTests.csproj" />
+    </ItemGroup>
+ </Project>
