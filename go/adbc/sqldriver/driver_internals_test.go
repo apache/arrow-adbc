@@ -19,6 +19,7 @@ package sqldriver
 
 import (
 	"database/sql/driver"
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"testing"
@@ -270,6 +271,100 @@ func TestNextRowTypes(t *testing.T) {
 			assert.NoError(t, err)
 			assert.IsType(t, test.golangValue, dest[0])
 			assert.Equal(t, test.golangValue, dest[0])
+		})
+	}
+}
+
+func TestArrFromVal(t *testing.T) {
+	tests := []struct {
+		value               any
+		expectedDataType    arrow.DataType
+		expectedStringValue string
+	}{
+		{
+			value:               true,
+			expectedDataType:    arrow.FixedWidthTypes.Boolean,
+			expectedStringValue: "true",
+		},
+		{
+			value:               int8(1),
+			expectedDataType:    arrow.PrimitiveTypes.Int8,
+			expectedStringValue: "1",
+		},
+		{
+			value:               uint8(1),
+			expectedDataType:    arrow.PrimitiveTypes.Uint8,
+			expectedStringValue: "1",
+		},
+		{
+			value:               int16(1),
+			expectedDataType:    arrow.PrimitiveTypes.Int16,
+			expectedStringValue: "1",
+		},
+		{
+			value:               uint16(1),
+			expectedDataType:    arrow.PrimitiveTypes.Uint16,
+			expectedStringValue: "1",
+		},
+		{
+			value:               int32(1),
+			expectedDataType:    arrow.PrimitiveTypes.Int32,
+			expectedStringValue: "1",
+		},
+		{
+			value:               uint32(1),
+			expectedDataType:    arrow.PrimitiveTypes.Uint32,
+			expectedStringValue: "1",
+		},
+		{
+			value:               int64(1),
+			expectedDataType:    arrow.PrimitiveTypes.Int64,
+			expectedStringValue: "1",
+		},
+		{
+			value:               uint64(1),
+			expectedDataType:    arrow.PrimitiveTypes.Uint64,
+			expectedStringValue: "1",
+		},
+		{
+			value:               float32(1),
+			expectedDataType:    arrow.PrimitiveTypes.Float32,
+			expectedStringValue: "1",
+		},
+		{
+			value:               float64(1),
+			expectedDataType:    arrow.PrimitiveTypes.Float64,
+			expectedStringValue: "1",
+		},
+		{
+			value:               arrow.Date32FromTime(testTime),
+			expectedDataType:    arrow.PrimitiveTypes.Date32,
+			expectedStringValue: testTime.UTC().Truncate(24 * time.Hour).Format("2006-01-02"),
+		},
+		{
+			value:               arrow.Date64FromTime(testTime),
+			expectedDataType:    arrow.PrimitiveTypes.Date64,
+			expectedStringValue: testTime.UTC().Truncate(24 * time.Hour).Format("2006-01-02"),
+		},
+		{
+			value:               []byte("my-string"),
+			expectedDataType:    arrow.BinaryTypes.Binary,
+			expectedStringValue: base64.StdEncoding.EncodeToString([]byte("my-string")),
+		},
+		{
+			value:               "my-string",
+			expectedDataType:    arrow.BinaryTypes.String,
+			expectedStringValue: "my-string",
+		},
+	}
+	for i, test := range tests {
+		t.Run(fmt.Sprintf("%d-%T", i, test.value), func(t *testing.T) {
+			arr := arrFromVal(test.value)
+
+			assert.Equal(t, test.expectedDataType, arr.DataType())
+			require.Equal(t, 1, arr.Len())
+			assert.True(t, arr.IsValid(0))
+			assert.Equal(t, test.expectedStringValue, arr.ValueStr(0))
 		})
 	}
 }

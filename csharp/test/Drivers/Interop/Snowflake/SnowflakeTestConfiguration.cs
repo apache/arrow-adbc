@@ -73,27 +73,65 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public string Warehouse { get; set; }
 
         /// <summary>
-        /// The Snowflake authentication type.
-        /// </summary>
-        [JsonPropertyName("authenticationType")]
-        public string AuthenticationType { get; set; }
-
-        /// <summary>
-        /// The file location of the authentication token (if using).
-        /// </summary>
-        [JsonPropertyName("authenticationTokenPath"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string AuthenticationTokenPath { get; set; }
-
-        /// <summary>
-        /// The passcode to use if the JWT token is encrypted.
-        /// </summary>
-        [JsonPropertyName("pkcs8Passcode"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string Pkcs8Passcode { get; set; }
-
-        /// <summary>
-        /// The Snowflake authentication type.
+        /// The Snowflake use high precision
         /// </summary>
         [JsonPropertyName("useHighPrecision")]
         public bool UseHighPrecision { get; set; } = true;
+
+        /// <summary>
+        /// The snowflake Authentication
+        /// </summary>
+        [JsonPropertyName("authentication")]
+        public SnowflakeAuthentication Authentication { get; set; }
+
+    }
+
+    public class SnowflakeAuthentication
+    {
+        public const string AuthOAuth = "auth_oauth";
+        public const string AuthJwt = "auth_jwt";
+        public const string AuthSnowflake = "auth_snowflake";
+
+        [JsonPropertyName(AuthOAuth)]
+        public OAuthAuthentication OAuth { get; set; }
+
+        [JsonPropertyName(AuthJwt)]
+        public JwtAuthentication SnowflakeJwt { get; set; }
+
+        [JsonPropertyName(AuthSnowflake)]
+        public DefaultAuthentication Default { get; set; }
+    }
+
+    public class OAuthAuthentication
+    {
+        [JsonPropertyName("token")]
+        public string Token { get; set; }
+
+        [JsonPropertyName("user")]
+        public string User { get; set; }
+    }
+
+    public class JwtAuthentication
+    {
+        [JsonPropertyName("private_key")]
+        public string PrivateKey { get; set; }
+
+        [JsonPropertyName("private_key_file")]
+        public string PrivateKeyFile { get; set; }
+
+        [JsonPropertyName("private_key_pwd")]
+        public string PrivateKeyPassPhrase{ get; set; }
+
+        [JsonPropertyName("user")]
+        public string User { get; set; }
+    }
+
+    public class DefaultAuthentication
+    {
+        [JsonPropertyName("user")]
+        public string User { get; set; }
+
+        [JsonPropertyName("password")]
+        public string Password { get; set; }
     }
 }

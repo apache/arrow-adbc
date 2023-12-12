@@ -77,24 +77,3 @@ VALUES (
     ARRAY[4, 5, 6],
     STRUCT('Jane Doe', 40)
 );
-
-INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
-    id, number, decimal,
-    big_decimal,
-    is_active,
-    name, data,
-    date, time, datetime, timestamp,
-    point, numbers,
-    person
-)
-VALUES (
-    null, null, null,
-    null,
-    null,
-    null,
-    null,
-    null, null, null, null,
-    null,
-    null,
-    null
-);
