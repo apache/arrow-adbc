@@ -380,20 +380,6 @@ cdef class ArrowArrayHandle:
         """
         return <uintptr_t> &self.array
 
-    def __arrow_c_array__(self, requested_schema=None) -> object:
-        """Consume this object to get a PyCapsule."""
-        if requested_schema is not None:
-            raise NotImplementedError("requested_schema")
-
-        cdef CArrowArray* allocated = <CArrowArray*> malloc(sizeof(CArrowArray))
-        allocated.release = NULL
-        capsule = PyCapsule_New(
-            <void*>allocated, "arrow_array", pycapsule_array_deleter,
-        )
-        memcpy(allocated, &self.array, sizeof(CArrowArray))
-        self.array.release = NULL
-        return capsule
-
 
 cdef class ArrowArrayStreamHandle:
     """
