@@ -613,10 +613,9 @@ class Cursor(_Closeable):
 
     def _bind(self, parameters) -> None:
         if hasattr(parameters, "__arrow_c_array__"):
-            schema_capsule, array_capsule = parameters.__arrow_c_array__()
-            self._stmt.bind(array_capsule, schema_capsule)
+            self._stmt.bind(parameters)
         elif hasattr(parameters, "__arrow_c_stream__"):
-            self._stmt.bind_stream(parameters.__arrow_c_stream__())
+            self._stmt.bind_stream(parameters)
         elif isinstance(parameters, pyarrow.RecordBatch):
             arr_handle = _lib.ArrowArrayHandle()
             sch_handle = _lib.ArrowSchemaHandle()
@@ -881,10 +880,9 @@ class Cursor(_Closeable):
                 pass
 
         if hasattr(data, "__arrow_c_array__"):
-            schema_capsule, array_capsule = data.__arrow_c_array__()
-            self._stmt.bind(array_capsule, schema_capsule)
+            self._stmt.bind(data)
         elif hasattr(data, "__arrow_c_stream__"):
-            self._stmt.bind_stream(data.__arrow_c_stream__())
+            self._stmt.bind_stream(data)
         elif isinstance(data, pyarrow.RecordBatch):
             array = _lib.ArrowArrayHandle()
             schema = _lib.ArrowSchemaHandle()

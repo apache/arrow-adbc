@@ -1068,7 +1068,7 @@ cdef class AdbcStatement(_AdbcHandle):
 
         connection._open_child()
 
-    def bind(self, data, schema) -> None:
+    def bind(self, data, schema=None) -> None:
         """
         Bind an ArrowArray to this statement.
 
@@ -1081,6 +1081,14 @@ cdef class AdbcStatement(_AdbcHandle):
         cdef CArrowArray* c_array
         cdef CArrowSchema* c_schema
 
+        if hasattr(data, "__arrow_c_array__"):
+            if schema is not None:
+                raise ValueError(
+                    "Can not provide a schema when passing Arrow-compatible "
+                    "data that implements the Arrow PyCapsule Protocol"
+                )
+            schema, data = data.__arrow_c_array__()
+
         if PyCapsule_CheckExact(data):
             c_array = <CArrowArray*> PyCapsule_GetPointer(data, "arrow_array")
         elif isinstance(data, ArrowArrayHandle):
@@ -1089,7 +1097,9 @@ cdef class AdbcStatement(_AdbcHandle):
             c_array = <CArrowArray*> data
         else:
             raise TypeError(
-                f"data must be a PyCapsule, int or ArrowArrayHandle, not {type(data)}")
+                "data must be Arrow-compatible data (implementing the Arrow PyCapsule "
+                f"Protocol), a PyCapsule, int or ArrowArrayHandle, not {type(data)}"
+            )
 
         if PyCapsule_CheckExact(schema):
             c_schema = <CArrowSchema*> PyCapsule_GetPointer(schema, "arrow_schema")
@@ -1119,6 +1129,9 @@ cdef class AdbcStatement(_AdbcHandle):
         """
         cdef CAdbcError c_error = empty_error()
         cdef CArrowArrayStream* c_stream
+
+        if hasattr(stream, "__arrow_c_stream__"):
+            stream = stream.__arrow_c_stream__()
 
         if PyCapsule_CheckExact(stream):
             c_stream = <CArrowArrayStream*> PyCapsule_GetPointer(
