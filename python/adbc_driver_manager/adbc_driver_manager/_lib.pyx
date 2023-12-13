@@ -1072,7 +1072,7 @@ cdef class AdbcStatement(_AdbcHandle):
         cdef CArrowArray* c_array
         cdef CArrowSchema* c_schema
 
-        if hasattr(data, "__arrow_c_array__"):
+        if hasattr(data, "__arrow_c_array__") and not isinstance(data, ArrowArrayHandle):
             if schema is not None:
                 raise ValueError(
                     "Can not provide a schema when passing Arrow-compatible "
@@ -1121,7 +1121,10 @@ cdef class AdbcStatement(_AdbcHandle):
         cdef CAdbcError c_error = empty_error()
         cdef CArrowArrayStream* c_stream
 
-        if hasattr(stream, "__arrow_c_stream__"):
+        if (
+            hasattr(stream, "__arrow_c_stream__")
+            and not isinstance(stream, ArrowArrayStreamHandle)
+        ):
             stream = stream.__arrow_c_stream__()
 
         if PyCapsule_CheckExact(stream):
