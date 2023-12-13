@@ -10,6 +10,7 @@ ci/linux-packages/changelog
 ci/linux-packages/*.install
 csharp/*.sln
 csharp/*.csproj
+csharp/*.props
 dev/release/rat_exclude_files.txt
 docs/source/format/*.drawio
 docs/source/format/*.svg
