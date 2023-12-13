@@ -318,15 +318,6 @@ cdef void pycapsule_schema_deleter(object capsule) noexcept:
     free(allocated)
 
 
-cdef void pycapsule_array_deleter(object capsule) noexcept:
-    cdef CArrowArray* allocated = <CArrowArray*> PyCapsule_GetPointer(
-        capsule, "arrow_array"
-    )
-    if allocated.release != NULL:
-        allocated.release(allocated)
-    free(allocated)
-
-
 cdef void pycapsule_stream_deleter(object capsule) noexcept:
     cdef CArrowArrayStream* allocated = <CArrowArrayStream*> PyCapsule_GetPointer(
         capsule, "arrow_array_stream"
