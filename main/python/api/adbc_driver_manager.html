@@ -972,7 +972,7 @@ serialize accesses to a connection.</p>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.bind" title="adbc_driver_manager.AdbcStatement.bind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bind</span></code></a>(data, schema)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.bind" title="adbc_driver_manager.AdbcStatement.bind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bind</span></code></a>(data[, schema])</p></td>
 <td><p>Bind an ArrowArray to this statement.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.bind_stream" title="adbc_driver_manager.AdbcStatement.bind_stream"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bind_stream</span></code></a>(stream)</p></td>
@@ -1028,13 +1028,13 @@ serialize accesses to a connection.</p>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.bind">
-<span class="sig-name descname"><span class="pre">bind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.bind" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">bind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.bind" title="Permalink to this definition">#</a></dt>
 <dd><p>Bind an ArrowArray to this statement.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>data</strong><span class="classifier">int or ArrowArrayHandle</span></dt><dd></dd>
-<dt><strong>schema</strong><span class="classifier">int or ArrowSchemaHandle</span></dt><dd></dd>
+<dt><strong>data</strong><span class="classifier">PyCapsule or int or ArrowArrayHandle</span></dt><dd></dd>
+<dt><strong>schema</strong><span class="classifier">PyCapsule or int or ArrowSchemaHandle</span></dt><dd></dd>
 </dl>
 </dd>
 </dl>
@@ -1047,7 +1047,7 @@ serialize accesses to a connection.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>stream</strong><span class="classifier">int or ArrowArrayStreamHandle</span></dt><dd></dd>
+<dt><strong>stream</strong><span class="classifier">PyCapsule or int or ArrowArrayStreamHandle</span></dt><dd></dd>
 </dl>
 </dd>
 </dl>
@@ -1230,6 +1230,7 @@ the type of the corresponding field will be NA (NullType).</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">ArrowArrayHandle</span></span><a class="headerlink" href="#adbc_driver_manager.ArrowArrayHandle" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>A wrapper for an allocated ArrowArray.</p>
+<p>This object implements the Arrow PyCapsule interface.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Attributes<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -1251,6 +1252,7 @@ the type of the corresponding field will be NA (NullType).</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">ArrowArrayStreamHandle</span></span><a class="headerlink" href="#adbc_driver_manager.ArrowArrayStreamHandle" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>A wrapper for an allocated ArrowArrayStream.</p>
+<p>This object implements the Arrow PyCapsule interface.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Attributes<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -1272,6 +1274,7 @@ the type of the corresponding field will be NA (NullType).</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">ArrowSchemaHandle</span></span><a class="headerlink" href="#adbc_driver_manager.ArrowSchemaHandle" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>A wrapper for an allocated ArrowSchema.</p>
+<p>This object implements the Arrow PyCapsule interface.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Attributes<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -1774,7 +1777,10 @@ would result from a typical prepare-bind-insert loop.</p>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>table_name</strong></dt><dd><p>The table to insert into.</p>
 </dd>
-<dt><strong>data</strong></dt><dd><p>The Arrow data to insert.</p>
+<dt><strong>data</strong></dt><dd><p>The Arrow data to insert. This can be a pyarrow RecordBatch, Table
+or RecordBatchReader, or any Arrow-compatible data that implements
+the Arrow PyCapsule Protocol (i.e. has an <code class="docutils literal notranslate"><span class="pre">__arrow_c_array__</span></code>
+or <a href="#id3"><span class="problematic" id="id4">``</span></a>__arrow_c_stream__ <a href="#id5"><span class="problematic" id="id6">``</span></a>method).</p>
 </dd>
 <dt><strong>mode</strong></dt><dd><p>How to deal with existing data:</p>
 <ul class="simple">
@@ -1907,7 +1913,7 @@ parameters, which will each be bound in turn).</p>
 <dt><strong>operation</strong><span class="classifier">bytes or str</span></dt><dd><p>The query to execute.  Pass SQL queries as strings,
 (serialized) Substrait plans as bytes.</p>
 </dd>
-<dt><strong>parameters</strong></dt><dd><p>Parameters to bind.  Can be a list of Python sequences, or
+<dt><strong>seq_of_parameters</strong></dt><dd><p>Parameters to bind.  Can be a list of Python sequences, or
 an Arrow record batch, table, or record batch reader.  If
 None, then the query will be executed once, else it will
 be executed once per row.</p>
