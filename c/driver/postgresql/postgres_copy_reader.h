@@ -1240,14 +1240,17 @@ public:
     bool seen_decimal = scale_ == 0;
     bool truncating_trailing_zeros = true;
 
-    const std::string decimal_string = DecimalToString<bitwidth_>(&decimal);
-    int digits_remaining = decimal_string.size();
+    char decimal_string[max_decimal_digits_ + 1];
+    DecimalToString<bitwidth_>(&decimal, decimal_string);
+    int digits_remaining = std::strlen(decimal_string);
     do {
       const int start_pos = digits_remaining < kDecDigits ?
         0 : digits_remaining - kDecDigits;
       const size_t len = digits_remaining < 4 ? digits_remaining : kDecDigits;
-      std::string substr{decimal_string.substr(start_pos, len)};
-      int16_t val = static_cast<int16_t>(std::stoi(substr.data()));
+      char substr[kDecDigits + 1];
+      std::memcpy(substr, decimal_string + start_pos, len);
+      substr[len] = '\0';
+      int16_t val = static_cast<int16_t>(std::atoi(substr));
 
       if (val == 0) {
         if (!seen_decimal && truncating_trailing_zeros) {
@@ -1272,7 +1275,7 @@ public:
       }
       weight++;
 
-      if (start_pos <= static_cast<int>(decimal_string.size()) - scale_) {
+      if (start_pos <= static_cast<int>(std::strlen(decimal_string)) - scale_) {
         seen_decimal = true;
       }
     } while (true);
@@ -1298,8 +1301,9 @@ public:
   }
 
 private:
+  // TODO: maybe we should return strlen here
   template <int32_t DEC_WIDTH>
-  std::string DecimalToString(struct ArrowDecimal* decimal) {
+  void DecimalToString(struct ArrowDecimal* decimal, char* out) {
     constexpr size_t nwords = (DEC_WIDTH == 128) ? 2 : 4;
     uint8_t tmp[DEC_WIDTH / 8];
     ArrowDecimalGetBytes(decimal, tmp);
@@ -1314,9 +1318,8 @@ private:
       }
     }
 
-    constexpr size_t max_decimal_digits = (DEC_WIDTH == 128) ? 39 : 78;
     // Basic approach adopted from https://stackoverflow.com/a/8023862/621736
-    char s[max_decimal_digits + 1];
+    char s[max_decimal_digits_ + 1];
     std::memset(s, '0', sizeof(s) - 1);
     s[sizeof(s) - 1] = '\0';
 
@@ -1343,12 +1346,15 @@ private:
       p++;
     }
 
-    return std::string{p};
+    const size_t ndigits = sizeof(s) - (p - s);
+    std::memcpy(out, p, ndigits);
+    out[ndigits] = '\0';
   }
 
   static constexpr uint16_t kNumericPos = 0x0000;
   static constexpr uint16_t kNumericNeg = 0x4000;
   static constexpr int32_t bitwidth_ = (T == NANOARROW_TYPE_DECIMAL128) ? 128 : 256;
+  static constexpr size_t max_decimal_digits_ = (T == NANOARROW_TYPE_DECIMAL128) ? 39 : 78;
   const int32_t precision_;
   const int32_t scale_;
 };
