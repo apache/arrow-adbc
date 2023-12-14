@@ -666,10 +666,10 @@ func prepareDbSchemasSQL(catalogNames []string, catalog *string, dbSchema *strin
 		if query != "" {
 			query += " UNION ALL "
 		}
-		query += `SELECT CATALOG_NAME, SCHEMA_NAME FROM "` + catalog_name + `".INFORMATION_SCHEMA.SCHEMATA`
+		query += `SELECT * FROM "` + catalog_name + `".INFORMATION_SCHEMA.SCHEMATA`
 	}
 
-	query = `SELECT * FROM (` + query + `)`
+	query = `SELECT CATALOG_NAME, SCHEMA_NAME FROM (` + query + `)`
 	if cond != "" {
 		query += " WHERE " + cond
 	}
@@ -702,10 +702,10 @@ func prepareTablesSQL(catalogNames []string, catalog *string, dbSchema *string, 
 		if query != "" {
 			query += " UNION ALL "
 		}
-		query += `SELECT table_catalog, table_schema, table_name, table_type FROM "` + catalog_name + `".INFORMATION_SCHEMA.TABLES`
+		query += `SELECT * FROM "` + catalog_name + `".INFORMATION_SCHEMA.TABLES`
 	}
 
-	query = `SELECT * FROM (` + query + `)`
+	query = `SELECT table_catalog, table_schema, table_name, table_type FROM (` + query + `)`
 	if cond != "" {
 		query += " WHERE " + cond
 	}
@@ -737,11 +737,7 @@ func prepareColumnsSQL(catalogNames []string, catalog *string, dbSchema *string,
 			prefixQuery += " UNION ALL "
 		}
 		prefixQuery += `SELECT T.table_type,
-				C.table_catalog, C.table_schema, C.table_name, C.column_name,
-						C.ordinal_position, C.is_nullable::boolean, C.data_type, C.numeric_precision,
-						C.numeric_precision_radix, C.numeric_scale, C.is_identity::boolean,
-						C.identity_generation, C.identity_increment,
-						C.character_maximum_length, C.character_octet_length, C.datetime_precision, C.comment
+					C.*
 				FROM
 				"` + catalog_name + `".INFORMATION_SCHEMA.TABLES AS T
 			JOIN
@@ -752,7 +748,11 @@ func prepareColumnsSQL(catalogNames []string, catalog *string, dbSchema *string,
 				AND t.table_name = C.table_name`
 	}
 
-	prefixQuery = `SELECT * FROM (` + prefixQuery + `)`
+	prefixQuery = `SELECT table_type, table_catalog, table_schema, table_name, column_name,
+						ordinal_position, is_nullable::boolean, data_type, numeric_precision,
+						numeric_precision_radix, numeric_scale, is_identity::boolean,
+						identity_generation, identity_increment,
+						character_maximum_length, character_octet_length, datetime_precision, comment FROM (` + prefixQuery + `)`
 	ordering := ` ORDER BY table_catalog, table_schema, table_name, ordinal_position`
 	query := prefixQuery + cond + ordering
 	return query
