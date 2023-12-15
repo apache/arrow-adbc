@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Data.SqlTypes;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -683,8 +684,44 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return XdbcDataType.XdbcDataType_XDBC_VARBINARY;
                 case "NUMERIC" or "DECIMAL" or "BIGNUMERIC" or "BIGDECIMAL":
                     return XdbcDataType.XdbcDataType_XDBC_NUMERIC;
-
                 default:
+
+                    int decimalMaxScale = 28;
+
+                    if(type.StartsWith("NUMERIC("))
+                    {
+                        ParsedDecimalValues parsedDecimalValues = ParsePrecisionAndScale(type);
+
+                        if (parsedDecimalValues.Scale <= decimalMaxScale)
+                            return XdbcDataType.XdbcDataType_XDBC_DECIMAL;
+                        else
+                            return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
+                    }
+
+                    if (type.StartsWith("BIGNUMERIC("))
+                    {
+                        if(bool.Parse(this.properties[BigQueryParameters.LargeDecimalsAsString]))
+                        {
+                            return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
+                        }
+                        else
+                        {
+                            ParsedDecimalValues parsedDecimalValues = ParsePrecisionAndScale(type);
+
+                            if (parsedDecimalValues.Scale <= decimalMaxScale)
+                                return XdbcDataType.XdbcDataType_XDBC_DECIMAL;
+                            else
+                                return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
+                        }
+                    }
+
+                    if (type.StartsWith("STRUCT"))
+                        return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
+
+                    //if (type.StartsWith("ARRAY<"))
+                    //    return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
+
+
                     return XdbcDataType.XdbcDataType_XDBC_UNKNOWN_TYPE;
             }
         }
