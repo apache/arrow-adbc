@@ -678,16 +678,6 @@ func prepareCatalogsSQL() string {
 }
 
 func prepareDbSchemasSQL(matchingCatalogNames []string, catalog *string, dbSchema *string) string {
-	conditions := make([]string, 0)
-	if catalog != nil && *catalog != "" {
-		conditions = append(conditions, ` CATALOG_NAME ILIKE '`+*catalog+`'`)
-	}
-	if dbSchema != nil && *dbSchema != "" {
-		conditions = append(conditions, ` SCHEMA_NAME ILIKE '`+*dbSchema+`'`)
-	}
-
-	cond := strings.Join(conditions, " AND ")
-
 	query := ""
 	for _, catalog_name := range matchingCatalogNames {
 		if query != "" {
@@ -697,8 +687,9 @@ func prepareDbSchemasSQL(matchingCatalogNames []string, catalog *string, dbSchem
 	}
 
 	query = `SELECT CATALOG_NAME, SCHEMA_NAME FROM (` + query + `)`
-	if cond != "" {
-		query += " WHERE " + cond
+	conditions := prepareFilterConditions(adbc.ObjectDepthDBSchemas, catalog, dbSchema, nil, nil, make([]string, 0))
+	if conditions != "" {
+		query += " WHERE " + conditions
 	}
 
 	return query
@@ -714,7 +705,7 @@ func prepareTablesSQL(matchingCatalogNames []string, catalog *string, dbSchema *
 	}
 
 	query = `SELECT table_catalog, table_schema, table_name, table_type FROM (` + query + `)`
-	conditions := prepareFilterConditionsTablesAndColumns(catalog, dbSchema, tableName, nil, tableType)
+	conditions := prepareFilterConditions(adbc.ObjectDepthTables, catalog, dbSchema, tableName, nil, tableType)
 	if conditions != "" {
 		query += " WHERE " + conditions
 	}
@@ -745,7 +736,7 @@ func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema 
 						identity_generation, identity_increment,
 						character_maximum_length, character_octet_length, datetime_precision, comment FROM (` + prefixQuery + `)`
 	ordering := ` ORDER BY table_catalog, table_schema, table_name, ordinal_position`
-	conditions := prepareFilterConditionsTablesAndColumns(catalog, dbSchema, tableName, columnName, tableType)
+	conditions := prepareFilterConditions(adbc.ObjectDepthColumns, catalog, dbSchema, tableName, columnName, tableType)
 	query := prefixQuery
 
 	if conditions != "" {
@@ -756,13 +747,21 @@ func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema 
 	return query
 }
 
-func prepareFilterConditionsTablesAndColumns(catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) string {
+func prepareFilterConditions(depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) string {
 	conditions := make([]string, 0)
 	if catalog != nil && *catalog != "" {
-		conditions = append(conditions, ` TABLE_CATALOG ILIKE '`+*catalog+`'`)
+		if depth == adbc.ObjectDepthDBSchemas {
+			conditions = append(conditions, ` CATALOG_NAME ILIKE '`+*catalog+`'`)
+		} else {
+			conditions = append(conditions, ` TABLE_CATALOG ILIKE '`+*catalog+`'`)
+		}
 	}
 	if dbSchema != nil && *dbSchema != "" {
-		conditions = append(conditions, ` TABLE_SCHEMA ILIKE '`+*dbSchema+`'`)
+		if depth == adbc.ObjectDepthDBSchemas {
+			conditions = append(conditions, ` SCHEMA_NAME ILIKE '`+*dbSchema+`'`)
+		} else {
+			conditions = append(conditions, ` TABLE_SCHEMA ILIKE '`+*dbSchema+`'`)
+		}
 	}
 	if tableName != nil && *tableName != "" {
 		conditions = append(conditions, ` TABLE_NAME ILIKE '`+*tableName+`'`)
