@@ -717,10 +717,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     if (type.StartsWith("STRUCT"))
                         return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
 
-                    //if (type.StartsWith("ARRAY<"))
-                    //    return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
-
-
                     return XdbcDataType.XdbcDataType_XDBC_UNKNOWN_TYPE;
             }
         }
