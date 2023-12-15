@@ -94,7 +94,7 @@ namespace Apache.Arrow.Adbc
         {
             new Field("constraint_name", StringType.Default, false),
             new Field("constraint_type", StringType.Default, false),
-            new Field("constraint_column_usage",
+            new Field("constraint_column_names",
                 new ListType(
                     new Field("item", StringType.Default, true)
                 ),

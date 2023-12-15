@@ -537,7 +537,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 nullBitmapBuffer.Append(true);
                 length++;
 
-                if (depth == GetObjectsDepth.All)
+                if (depth == GetObjectsDepth.All || depth == GetObjectsDepth.Tables)
                 {
                     constraintColumnNamesValues.Add(GetConstraintColumnNames(
                         catalog, dbSchema, table, constraintName));
