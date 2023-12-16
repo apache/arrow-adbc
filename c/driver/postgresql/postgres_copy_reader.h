@@ -1293,8 +1293,10 @@ public:
     NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, sign, error));
     NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, dscale, error));
 
+    const size_t pg_digit_bytes = sizeof(int16_t) * pg_digits.size();
+    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, pg_digit_bytes));    
     for (auto pg_digit : pg_digits) {
-      NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, pg_digit, error));
+      WriteUnsafe<int16_t>(buffer, pg_digit);
     }
 
     return ADBC_STATUS_OK;
