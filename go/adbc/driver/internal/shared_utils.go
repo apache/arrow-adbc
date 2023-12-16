@@ -19,9 +19,11 @@ package internal
 
 import (
 	"context"
+	"database/sql"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v14/arrow"
@@ -38,8 +40,18 @@ type TableInfo struct {
 	Schema          *arrow.Schema
 }
 
-type GetObjDBSchemasFn func(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string) (map[string][]string, error)
-type GetObjTablesFn func(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, tableName *string, columnName *string, tableType []string) (map[CatalogAndSchema][]TableInfo, error)
+type Metadata struct {
+	Created                                                                   time.Time
+	ColName, DataType                                                         string
+	Dbname, Kind, Schema, TblName, TblType, IdentGen, IdentIncrement, Comment sql.NullString
+	OrdinalPos                                                                int
+	NumericPrec, NumericPrecRadix, NumericScale, DatetimePrec                 sql.NullInt16
+	IsNullable, IsIdent                                                       bool
+	CharMaxLength, CharOctetLength                                            sql.NullInt32
+}
+
+type GetObjDBSchemasFn func(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, metadataRecords []Metadata) (map[string][]string, error)
+type GetObjTablesFn func(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, tableName *string, columnName *string, tableType []string, metadataRecords []Metadata) (map[CatalogAndSchema][]TableInfo, error)
 type SchemaToTableInfo = map[CatalogAndSchema][]TableInfo
 
 // Helper function that compiles a SQL-style pattern (%, _) to a regex
@@ -87,6 +99,7 @@ type GetObjects struct {
 	builder           *array.RecordBuilder
 	schemaLookup      map[string][]string
 	tableLookup       map[CatalogAndSchema][]TableInfo
+	MetadataRecords   []Metadata
 	catalogPattern    *regexp.Regexp
 	columnNamePattern *regexp.Regexp
 
@@ -123,13 +136,13 @@ type GetObjects struct {
 }
 
 func (g *GetObjects) Init(mem memory.Allocator, getObj GetObjDBSchemasFn, getTbls GetObjTablesFn) error {
-	if catalogToDbSchemas, err := getObj(g.Ctx, g.Depth, g.Catalog, g.DbSchema); err != nil {
+	if catalogToDbSchemas, err := getObj(g.Ctx, g.Depth, g.Catalog, g.DbSchema, g.MetadataRecords); err != nil {
 		return err
 	} else {
 		g.schemaLookup = catalogToDbSchemas
 	}
 
-	if tableLookup, err := getTbls(g.Ctx, g.Depth, g.Catalog, g.DbSchema, g.TableName, g.ColumnName, g.TableType); err != nil {
+	if tableLookup, err := getTbls(g.Ctx, g.Depth, g.Catalog, g.DbSchema, g.TableName, g.ColumnName, g.TableType, g.MetadataRecords); err != nil {
 		return err
 	} else {
 		g.tableLookup = tableLookup

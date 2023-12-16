@@ -292,22 +292,23 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables with TableName as a Special Character.
         /// </summary>
         [SkippableTheory, Order(3)]
-        [InlineData(@"DEMO_DB",@"PUBLIC","MyIdentifier")]
-        [InlineData(@"DEMO_DB", @"PUBLIC_SCHEMA","my.identifier")]
-        [InlineData(@"DEMO_DB", @"PUBLIC", "my identifier")]
-        [InlineData(@"DEMO_DB", @"PUBLIC", "My 'Identifier'")]
-        [InlineData(@"DEMO_DB", @"PUBLIC", "3rd_identifier")]
-        [InlineData(@"DEMO_DB", @"PUBLIC", "$Identifier")]
-        [InlineData(@"DEMO_DB", @"PUBLIC", "My ^Identifier")]
-        [InlineData(@"DEMO_DB", @"PUBLIC", "My ^Ident~ifier")]
-        [InlineData(@"DEMO_DB", @"PUBLIC", @"My\^Ident~ifier")]
-        [InlineData(@"DEMO_DB", @"PUBLIC", "идентификатор")]
-        [InlineData(@"DEMO_DB", @"PUBLIC", @"ADBCTest_""ALL""TYPES")]
-        [InlineData(@"DEMO_DB", @"PUBLIC", @"ADBC\TEST""\TAB_""LE")]
-        [InlineData(@"DEMO_DB", @"PUBLIC", "ONE")]
+        [InlineData(@"ADBCDEMO_DB",@"PUBLIC","MyIdentifier")]
+        [InlineData(@"ADBCDEMO'DB", @"PUBLIC'SCHEMA","my.identifier")]
+        [InlineData(@"ADBCDEM""DB", @"PUBLIC""SCHEMA", "my.identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "my identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "My 'Identifier'")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "3rd_identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "$Identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "My ^Identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "My ^Ident~ifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", @"My\^Ident~ifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "идентификатор")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", @"ADBCTest_""ALL""TYPES")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", @"ADBC\TEST""\TAB_""LE")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "ONE")]
         public void CanGetObjectsTablesWithSpecialCharacter(string databaseName, string schemaName, string tableName)
         {
-            CreateTemporaryTable(databaseName, schemaName, tableName);
+            CreateDatabaseAndTable(databaseName, schemaName, tableName);
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Tables,
@@ -333,6 +334,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             Assert.True(table != null, "table should not be null");
             Assert.Equal(tableName, table.Name, true);
+            DropDatabaseAndTable(databaseName, schemaName, tableName);
         }
 
         /// <summary>
@@ -399,20 +401,39 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             Tests.DriverTests.CanExecuteQuery(queryResult, _testConfiguration.ExpectedResultsCount);
         }
 
-        private void CreateTemporaryTable(string databaseName, string schemaName, string tableName)
+        private void CreateDatabaseAndTable(string databaseName, string schemaName, string tableName)
         {
             databaseName = databaseName.Replace("\"", "\"\"");
-            string createDatabase = string.Format("CREATE DATABASE IF NOT EXISTS \"{0}\"", databaseName);
-           ExecuteUpdateStatement(createDatabase);
-
             schemaName = schemaName.Replace("\"", "\"\"");
-            string createSchema = string.Format("CREATE SCHEMA  IF NOT EXISTS \"{0}\".\"{1}\"", databaseName, schemaName);
+            tableName = tableName.Replace("\"", "\"\"");
+
+            string createDatabase = string.Format("CREATE DATABASE IF NOT EXISTS \"{0}\"", databaseName);
+            ExecuteUpdateStatement(createDatabase);
+                       
+            string createSchema = string.Format("CREATE SCHEMA IF NOT EXISTS \"{0}\".\"{1}\"", databaseName, schemaName);
             ExecuteUpdateStatement(createSchema);
 
-            tableName = tableName.Replace("\"", "\"\"");
             string fullyQualifiedTableName = string.Format("\"{0}\".\"{1}\".\"{2}\"", databaseName, schemaName, tableName);
             string createTableStatement = string.Format("CREATE OR REPLACE TABLE {0} (INDEX INT)", fullyQualifiedTableName);
             ExecuteUpdateStatement(createTableStatement);
+
+        }
+
+        private void DropDatabaseAndTable(string databaseName, string schemaName, string tableName)
+        {
+            tableName = tableName.Replace("\"", "\"\"");
+            schemaName = schemaName.Replace("\"", "\"\"");
+            databaseName = databaseName.Replace("\"", "\"\"");
+
+            string fullyQualifiedTableName = string.Format("\"{0}\".\"{1}\".\"{2}\"", databaseName, schemaName, tableName);
+            string createTableStatement = string.Format("DROP TABLE IF EXISTS {0} ", fullyQualifiedTableName);
+            ExecuteUpdateStatement(createTableStatement);
+
+            string createSchema = string.Format("DROP SCHEMA IF EXISTS \"{0}\".\"{1}\"", databaseName, schemaName);
+            ExecuteUpdateStatement(createSchema);
+
+            string createDatabase = string.Format("DROP DATABASE IF EXISTS \"{0}\"", databaseName);
+            ExecuteUpdateStatement(createDatabase);
 
         }
 
