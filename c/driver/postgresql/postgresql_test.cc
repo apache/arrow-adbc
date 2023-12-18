@@ -1780,7 +1780,7 @@ TEST_P(PostgresDecimalTest, SelectValue) {
   }
 }
 
-static std::vector<std::array<uint8_t, 32>> kDecimal128Data = {
+static std::vector<std::array<uint8_t, 32>> kDecimalData = {
     // -12345600000
     {
       0x00, 0x18, 0x25, 0x20, 0xfd, 0xff, 0xff, 0xff,
@@ -1825,21 +1825,78 @@ static std::vector<std::array<uint8_t, 32>> kDecimal128Data = {
     },
 };
 
+static std::vector<std::array<uint8_t, 32>> kDecimal256Data = {
+    // 1234567890123456789012345678901234567890123456789012345678901234567890123456
+    {
+      0xf8, 0x1b, 0x5c, 0x91, 0x72, 0xdc, 0xba, 0xc0,
+      0x4a, 0x46, 0xcb, 0x6f, 0x07, 0xb9, 0xd5, 0xa7,
+      0x03, 0x41, 0x94, 0x36, 0x89, 0xd9, 0x30, 0xfc,
+      0x02, 0xba, 0xbd, 0x9c, 0x1d, 0x68, 0x32, 0xb1,
+    },
+    // -1234567890123456789012345678901234567890123456789012345678901234567890123456
+    {
+      0x07, 0xe4, 0xa3, 0x6e, 0x8d, 0x23, 0x45, 0x40,
+      0xb5, 0xb9, 0x34, 0x90, 0xf8, 0x46, 0x2a, 0x58,
+      0xfc, 0xbe, 0x6b, 0xc9, 0x76, 0x26, 0xcf, 0x03,
+      0xfd, 0x45, 0x42, 0x63, 0xe2, 0x97, 0xcd, 0x4e,
+    },
+};
+
 static std::initializer_list<DecimalTestCase> kDecimal128Cases = {
   {
-  NANOARROW_TYPE_DECIMAL128, 38, 8, kDecimal128Data,
+  NANOARROW_TYPE_DECIMAL128, 38, 8, kDecimalData,
   {"-123.456", "0.00001234", "1",  "123.456", "1000000",
     "23423942305922323.49023094"}
   }};
 
 static std::initializer_list<DecimalTestCase> kDecimal128NoScaleCases = {
   {
-  NANOARROW_TYPE_DECIMAL128, 38, 0, kDecimal128Data,
+  NANOARROW_TYPE_DECIMAL128, 38, 0, kDecimalData,
   {"-12345600000", "1234", "100000000",  "12345600000", "100000000000000",
     "2342394230592232349023094"}
+  }};
+
+static std::initializer_list<DecimalTestCase> kDecimal256Cases = {
+  {
+  NANOARROW_TYPE_DECIMAL256, 38, 8, kDecimalData,
+  {"-123.456", "0.00001234", "1",  "123.456", "1000000",
+    "23423942305922323.49023094"}
+  }};
+
+static std::initializer_list<DecimalTestCase> kDecimal256NoScaleCases = {
+  {
+  NANOARROW_TYPE_DECIMAL256, 38, 0, kDecimalData,
+  {"-12345600000", "1234", "100000000",  "12345600000", "100000000000000",
+    "2342394230592232349023094"}
+  }};
+
+static std::initializer_list<DecimalTestCase> kDecimal256LargeCases = {
+  {
+  NANOARROW_TYPE_DECIMAL256, 76, 8, kDecimal256Data,
+  {
+    "12345678901234567890123456789012345678901234567890123456789012345678.90123456",
+    "-12345678901234567890123456789012345678901234567890123456789012345678.90123456",
+  }
+  }};
+
+static std::initializer_list<DecimalTestCase> kDecimal256LargeNoScaleCases = {
+  {
+  NANOARROW_TYPE_DECIMAL256, 76, 0, kDecimal256Data,
+  {
+    "12345678901234567890123456789012345678901234567890123456789012345678.90123456",
+    "-12345678901234567890123456789012345678901234567890123456789012345678.90123456",
+  }
   }};
 
 INSTANTIATE_TEST_SUITE_P(Decimal128Tests, PostgresDecimalTest,
                          testing::ValuesIn(kDecimal128Cases));
 INSTANTIATE_TEST_SUITE_P(Decimal128NoScale, PostgresDecimalTest,
                          testing::ValuesIn(kDecimal128NoScaleCases));
+INSTANTIATE_TEST_SUITE_P(Decimal256Tests, PostgresDecimalTest,
+                         testing::ValuesIn(kDecimal128Cases));
+INSTANTIATE_TEST_SUITE_P(Decimal256NoScale, PostgresDecimalTest,
+                         testing::ValuesIn(kDecimal128NoScaleCases));
+INSTANTIATE_TEST_SUITE_P(Decimal256LargeTests, PostgresDecimalTest,
+                         testing::ValuesIn(kDecimal256LargeCases));
+INSTANTIATE_TEST_SUITE_P(Decimal256LargeNoScale, PostgresDecimalTest,
+                         testing::ValuesIn(kDecimal256LargeNoScaleCases));
