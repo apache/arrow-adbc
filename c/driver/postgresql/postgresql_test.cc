@@ -1721,8 +1721,12 @@ TEST_P(PostgresDecimalTest, SelectValue) {
     values.push_back(&decimals[i]);
   }
 
-  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"col", type}}),
-              adbc_validation::IsOkErrno());
+  ArrowSchemaInit(&schema.value);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+  ASSERT_EQ(AdbcNsArrowSchemaSetTypeDecimal(schema.value.children[0],
+                                            type, precision, scale), 0);
+  ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
+
   ASSERT_THAT(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
                                                         &na_error, values),
               adbc_validation::IsOkErrno());
