@@ -1700,7 +1700,7 @@ TEST_P(PostgresDecimalTest, SelectValue) {
     bitwidth = 256;
     break;
   default:
-    ASSERT_TRUE(false) << " unsupported type for decimal parametrization";
+    FAIL();
   }
 
   // this is a bit of a hack to make std::vector play nicely with
@@ -1708,7 +1708,7 @@ TEST_P(PostgresDecimalTest, SelectValue) {
   constexpr size_t max_decimals = 10;
   struct ArrowDecimal decimals[max_decimals];
   if (nrecords > max_decimals) {
-    ASSERT_TRUE(false) <<
+    FAIL() <<
       " max_decimals exceeded for test case - please change parametrization";
   }
 
