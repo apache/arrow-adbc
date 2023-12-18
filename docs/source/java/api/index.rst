@@ -15,11 +15,9 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-====================
+==================
 Java API Reference
-====================
+==================
 
-.. toctree::
-   :maxdepth: 1
-
-   adbc_driver_manager
+This is a stub page for the Javadocs. If you're seeing this page, it means
+that the actual Javadocs were not generated.
