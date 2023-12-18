@@ -30,6 +30,12 @@ main() {
     make doctest
     popd
 
+    pushd "$source_dir/java"
+    mvn site
+    rm -rf "$source_dir/docs/build/java/api"
+    cp -r target/site/apidocs "$source_dir/docs/build/java/api"
+    popd
+
     for desc_file in $(find "${source_dir}/r" -name DESCRIPTION); do
       local pkg=$(dirname "$desc_file")
       local pkg_name=$(basename $pkg)
