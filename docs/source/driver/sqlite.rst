@@ -211,7 +211,7 @@ Example
 
       .. code-block:: go
 
-         # TODO
+         // TODO
 
    .. tab-item:: Python
       :sync: python

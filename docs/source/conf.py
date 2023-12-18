@@ -43,6 +43,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_copybutton",
     "sphinx_design",
+    "sphinxext.opengraph",
 ]
 templates_path = ["_templates"]
 
@@ -90,7 +91,10 @@ except ImportError:
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_css_files = ["css/custom.css"]
+html_css_files = [
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css",
+    "css/custom.css",
+]
 html_static_path = ["_static"]
 html_theme = "furo"
 html_theme_options = {
@@ -110,3 +114,11 @@ intersphinx_mapping = {
 # -- Options for numpydoc ----------------------------------------------------
 
 numpydoc_class_members_toctree = False
+
+# -- Options for sphinxext.opengraph -----------------------------------------
+
+if "dev" in release:
+    ogp_site_url = "https://arrow.apache.org/adbc/main/"
+else:
+    ogp_site_url = f"https://arrow.apache.org/adbc/{release}/"
+ogp_image = "_static/banner.png"
