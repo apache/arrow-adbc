@@ -1425,7 +1425,6 @@ TEST_P(PostgresTypeTest, SelectValue) {
   ASSERT_NE(nullptr, reader.array->release);
   ASSERT_FALSE(ArrowArrayViewIsNull(&reader.array_view.value, 0));
   ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], 0));
-
   // check value
   ASSERT_NO_FATAL_FAILURE(std::visit(
       [&](auto&& arg) -> void {
@@ -1630,3 +1629,147 @@ INSTANTIATE_TEST_SUITE_P(TimeTypes, PostgresTypeTest, testing::ValuesIn(kTimeTyp
 INSTANTIATE_TEST_SUITE_P(TimestampTypes, PostgresTypeTest,
                          testing::ValuesIn(kTimestampTypeCases),
                          TypeTestCase::FormatName);
+
+struct DecimalTestCase {
+  const enum ArrowType type;
+  const int32_t precision;  
+  const int32_t scale;
+  const std::vector<std::array<uint8_t, 32>> data;
+  const std::vector<std::optional<std::string>> expected;
+};
+
+class PostgresDecimalTest : public ::testing::TestWithParam<DecimalTestCase> {
+public:
+  void SetUp() override {
+    ASSERT_THAT(AdbcDatabaseNew(&database_, &error_), IsOkStatus(&error_));
+    ASSERT_THAT(quirks_.SetupDatabase(&database_, &error_), IsOkStatus(&error_));
+    ASSERT_THAT(AdbcDatabaseInit(&database_, &error_), IsOkStatus(&error_));
+
+    ASSERT_THAT(AdbcConnectionNew(&connection_, &error_), IsOkStatus(&error_));
+    ASSERT_THAT(AdbcConnectionInit(&connection_, &database_, &error_),
+                IsOkStatus(&error_));
+
+    ASSERT_THAT(AdbcStatementNew(&connection_, &statement_, &error_),
+                IsOkStatus(&error_));
+
+    ASSERT_THAT(quirks_.DropTable(&connection_, "bulk_ingest", &error_), IsOkStatus(&error_));    
+  }
+
+  void TearDown() override {
+    if (statement_.private_data) {
+      ASSERT_THAT(AdbcStatementRelease(&statement_, &error_), IsOkStatus(&error_));
+    }
+    if (connection_.private_data) {
+      ASSERT_THAT(AdbcConnectionRelease(&connection_, &error_), IsOkStatus(&error_));
+    }
+    if (database_.private_data) {
+      ASSERT_THAT(AdbcDatabaseRelease(&database_, &error_), IsOkStatus(&error_));
+    }
+
+    if (error_.release) error_.release(&error_);
+  }
+
+protected:
+  PostgresQuirks quirks_;
+  struct AdbcError error_ = {};
+  struct AdbcDatabase database_ = {};
+  struct AdbcConnection connection_ = {};
+  struct AdbcStatement statement_ = {};  
+};
+
+TEST_P(PostgresDecimalTest, SelectValue) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+
+  const enum ArrowType type = GetParam().type;
+  const int32_t precision = GetParam().precision;
+  const int32_t scale = GetParam().scale;
+  const auto data = GetParam().data;
+  const auto expected = GetParam().expected;
+  const size_t nrecords = expected.size();
+  
+  int32_t bitwidth;
+  switch (type) {
+  case NANOARROW_TYPE_DECIMAL128:
+    bitwidth = 128;
+    break;
+  case NANOARROW_TYPE_DECIMAL256:
+    bitwidth = 256;
+    break;
+  default:
+    ASSERT_TRUE(false) << " unsupported type for decimal parametrization";
+  }
+
+  std::vector<std::optional<ArrowDecimal*>> values;
+  //values.push_back(std::nullopt);
+  for (size_t i = 0; i < nrecords; i++) {
+    const auto record = data[i];
+    struct ArrowDecimal decimal;
+    ArrowDecimalInit(&decimal, bitwidth, precision, scale);
+    ArrowDecimalSetBytes(&decimal, record.data());
+    values.push_back(&decimal);
+  }
+
+  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"col", type}}), adbc_validation::IsOkErrno());
+  ASSERT_THAT(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                        &na_error, values), adbc_validation::IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement_,
+                                                      ADBC_INGEST_OPTION_TARGET_TABLE,
+                                                      "bulk_ingest", &error_),
+              IsOkStatus(&error_));
+  ASSERT_THAT(AdbcStatementBind(&statement_, &array.value, &schema.value, &error_),
+              IsOkStatus(&error_));
+  
+  int64_t rows_affected = 0;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement_, nullptr, &rows_affected, &error_),
+              IsOkStatus(&error_));
+  ASSERT_THAT(rows_affected,
+              ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+              &statement_,
+              "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error_),
+              IsOkStatus(&error_));
+
+  {
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement_, &reader.stream.value,
+                                                           &reader.rows_affected, &error_),
+                IsOkStatus(&error_));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ArrowType round_trip_type = quirks_.IngestSelectRoundTripType(type);
+    ASSERT_NO_FATAL_FAILURE(
+                            adbc_validation::CompareSchema(&reader.schema.value, {{"col", round_trip_type, true}}));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_EQ(values.size(), reader.array->length);
+    ASSERT_EQ(1, reader.array->n_children);
+
+    ASSERT_NO_FATAL_FAILURE(
+                            adbc_validation::CompareArray<std::string>(reader.array_view->children[0], expected));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  }
+}
+
+static std::initializer_list<DecimalTestCase> kDecimal128Cases = {
+  {
+  NANOARROW_TYPE_DECIMAL128, 38, 8, {
+    {
+      0x0, 0x18, 0x25, 0x20, 0xfd, 0xff, 0xff, 0xff,
+      0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+      0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+      0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,      
+    },
+  },
+  {"-123.456"}
+  }};
+
+INSTANTIATE_TEST_SUITE_P(Decimal128Tests, PostgresDecimalTest, testing::ValuesIn(kDecimal128Cases));
