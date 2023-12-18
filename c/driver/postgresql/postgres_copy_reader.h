@@ -1294,7 +1294,7 @@ public:
     NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, dscale, error));
 
     const size_t pg_digit_bytes = sizeof(int16_t) * pg_digits.size();
-    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, pg_digit_bytes));    
+    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, pg_digit_bytes));
     for (auto pg_digit : pg_digits) {
       WriteUnsafe<int16_t>(buffer, pg_digit);
     }
@@ -1356,7 +1356,8 @@ private:
   static constexpr uint16_t kNumericPos = 0x0000;
   static constexpr uint16_t kNumericNeg = 0x4000;
   static constexpr int32_t bitwidth_ = (T == NANOARROW_TYPE_DECIMAL128) ? 128 : 256;
-  static constexpr size_t max_decimal_digits_ = (T == NANOARROW_TYPE_DECIMAL128) ? 39 : 78;
+  static constexpr size_t max_decimal_digits_ =
+    (T == NANOARROW_TYPE_DECIMAL128) ? 39 : 78;
   const int32_t precision_;
   const int32_t scale_;
 };
