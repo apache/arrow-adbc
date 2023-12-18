@@ -1713,13 +1713,16 @@ TEST_P(PostgresDecimalTest, SelectValue) {
   }
 
   std::vector<std::optional<ArrowDecimal*>> values;
-  //values.push_back(std::nullopt);
   for (size_t i = 0; i < nrecords; i++) {
     const auto record = data[i];
     ArrowDecimalInit(&decimals[i], bitwidth, precision, scale);
     ArrowDecimalSetBytes(&decimals[i], record.data());
     values.push_back(&decimals[i]);
   }
+
+  auto expected_with_null{expected};
+  expected_with_null.insert(expected_with_null.begin(), std::nullopt);
+  values.push_back(std::nullopt);
 
   ArrowSchemaInit(&schema.value);
   ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
@@ -1769,7 +1772,8 @@ TEST_P(PostgresDecimalTest, SelectValue) {
     ASSERT_EQ(1, reader.array->n_children);
 
     ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<
-                            std::string>(reader.array_view->children[0], expected));
+                            std::string>(reader.array_view->children[0],
+                                         expected_with_null));
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
