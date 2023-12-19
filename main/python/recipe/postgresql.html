@@ -361,7 +361,7 @@ for full details.</p>
 </div>
 </section>
 <section id="create-append-to-a-table-from-an-arrow-table">
-<h2>Create/append to a table from an Arrow table<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-table" title="Permalink to this heading">#</a></h2>
+<span id="recipe-postgresql-create-append"></span><h2>Create/append to a table from an Arrow table<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-table" title="Permalink to this heading">#</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_append_table.py">postgresql_create_append_table.py</a></p>
 <p>ADBC allows creating and appending to database tables using Arrow
 tables.</p>
@@ -375,25 +375,120 @@ tables.</p>
 <span class="linenos">29</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>For the purposes of testing, we’ll first make sure the table
-doesn’t exist.</p>
+<p>For the purposes of testing, we’ll first make sure the tables we’re about
+to use don’t exist.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">33</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">34</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS example&quot;</span><span class="p">)</span>
+<span class="linenos">35</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS example2&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Now we can create the table.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">37</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">38</span>    <span class="n">data</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">table</span><span class="p">(</span>
-<span class="linenos">39</span>        <span class="p">[</span>
-<span class="linenos">40</span>            <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
-<span class="linenos">41</span>        <span class="p">],</span>
-<span class="linenos">42</span>        <span class="n">schema</span><span class="o">=</span><span class="n">pyarrow</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span>
-<span class="linenos">43</span>            <span class="p">[</span>
-<span class="linenos">44</span>                <span class="p">(</span><span class="s2">&quot;ints&quot;</span><span class="p">,</span> <span class="s2">&quot;int32&quot;</span><span class="p">),</span>
-<span class="linenos">45</span>            <span class="p">]</span>
-<span class="linenos">46</span>        <span class="p">),</span>
-<span class="linenos">47</span>    <span class="p">)</span>
-<span class="linenos">48</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">38</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">39</span>    <span class="n">data</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">table</span><span class="p">(</span>
+<span class="linenos">40</span>        <span class="p">[</span>
+<span class="linenos">41</span>            <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+<span class="linenos">42</span>        <span class="p">],</span>
+<span class="linenos">43</span>        <span class="n">schema</span><span class="o">=</span><span class="n">pyarrow</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span>
+<span class="linenos">44</span>            <span class="p">[</span>
+<span class="linenos">45</span>                <span class="p">(</span><span class="s2">&quot;ints&quot;</span><span class="p">,</span> <span class="s2">&quot;int32&quot;</span><span class="p">),</span>
+<span class="linenos">46</span>            <span class="p">]</span>
+<span class="linenos">47</span>        <span class="p">),</span>
+<span class="linenos">48</span>    <span class="p">)</span>
+<span class="linenos">49</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
+<span class="linenos">50</span>
+<span class="linenos">51</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>After ingestion, we can fetch the result.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">54</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">55</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM example&quot;</span><span class="p">)</span>
+<span class="linenos">56</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+<span class="linenos">57</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">2</span><span class="p">,)</span>
+<span class="linenos">58</span>
+<span class="linenos">59</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM example&quot;</span><span class="p">)</span>
+<span class="linenos">60</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">4</span><span class="p">,)</span>
+</pre></div>
+</div>
+<p>If we try to ingest again, it’ll fail, because the table already
+exists.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">64</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">65</span>    <span class="k">try</span><span class="p">:</span>
+<span class="linenos">66</span>        <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
+<span class="linenos">67</span>    <span class="k">except</span> <span class="n">conn</span><span class="o">.</span><span class="n">ProgrammingError</span><span class="p">:</span>
+<span class="linenos">68</span>        <span class="k">pass</span>
+<span class="linenos">69</span>    <span class="k">else</span><span class="p">:</span>
+<span class="linenos">70</span>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Should have failed!&quot;</span><span class="p">)</span>
+<span class="linenos">71</span>
+<span class="linenos">72</span><span class="n">conn</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Instead, we can append to the table.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">75</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">76</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;append&quot;</span><span class="p">)</span>
+<span class="linenos">77</span>
+<span class="linenos">78</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM example&quot;</span><span class="p">)</span>
+<span class="linenos">79</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">8</span><span class="p">,)</span>
+</pre></div>
+</div>
+<p>We can also choose to create the table if it doesn’t exist, and otherwise
+append.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">84</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">85</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example2&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create_append&quot;</span><span class="p">)</span>
+<span class="linenos">86</span>
+<span class="linenos">87</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM example2&quot;</span><span class="p">)</span>
+<span class="linenos">88</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">4</span><span class="p">,)</span>
+<span class="linenos">89</span>
+<span class="linenos">90</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example2&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create_append&quot;</span><span class="p">)</span>
+<span class="linenos">91</span>
+<span class="linenos">92</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM example2&quot;</span><span class="p">)</span>
+<span class="linenos">93</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">8</span><span class="p">,)</span>
+</pre></div>
+</div>
+<p>Finally, we can replace the table.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 97</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos"> 98</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span>
+<span class="linenos"> 99</span>
+<span class="linenos">100</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM example&quot;</span><span class="p">)</span>
+<span class="linenos">101</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">2</span><span class="p">,)</span>
+<span class="linenos">102</span>
+<span class="linenos">103</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="create-append-to-a-temporary-table">
+<h2>Create/append to a temporary table<a class="headerlink" href="#create-append-to-a-temporary-table" title="Permalink to this heading">#</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_temp_table.py">postgresql_create_temp_table.py</a></p>
+<p>ADBC allows creating and appending to temporary tables as well.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">21</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">22</span>
+<span class="linenos">23</span><span class="kn">import</span> <span class="nn">pyarrow</span>
+<span class="linenos">24</span>
+<span class="linenos">25</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">26</span>
+<span class="linenos">27</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
+<span class="linenos">28</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For the purposes of testing, we’ll first make sure the tables we’re about
+to use don’t exist.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">33</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS example&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To create a temporary table, just specify the option “temporary”.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">36</span><span class="n">data</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">table</span><span class="p">(</span>
+<span class="linenos">37</span>    <span class="p">[</span>
+<span class="linenos">38</span>        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+<span class="linenos">39</span>    <span class="p">],</span>
+<span class="linenos">40</span>    <span class="n">schema</span><span class="o">=</span><span class="n">pyarrow</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span>
+<span class="linenos">41</span>        <span class="p">[</span>
+<span class="linenos">42</span>            <span class="p">(</span><span class="s2">&quot;ints&quot;</span><span class="p">,</span> <span class="s2">&quot;int32&quot;</span><span class="p">),</span>
+<span class="linenos">43</span>        <span class="p">]</span>
+<span class="linenos">44</span>    <span class="p">),</span>
+<span class="linenos">45</span><span class="p">)</span>
+<span class="linenos">46</span>
+<span class="linenos">47</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">48</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">,</span> <span class="n">temporary</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="linenos">49</span>
 <span class="linenos">50</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 </pre></div>
@@ -408,29 +503,37 @@ doesn’t exist.</p>
 <span class="linenos">59</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">4</span><span class="p">,)</span>
 </pre></div>
 </div>
-<p>If we try to ingest again, it’ll fail, because the table already
-exists.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">63</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">64</span>    <span class="k">try</span><span class="p">:</span>
-<span class="linenos">65</span>        <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
-<span class="linenos">66</span>    <span class="k">except</span> <span class="n">conn</span><span class="o">.</span><span class="n">ProgrammingError</span><span class="p">:</span>
-<span class="linenos">67</span>        <span class="k">pass</span>
-<span class="linenos">68</span>    <span class="k">else</span><span class="p">:</span>
-<span class="linenos">69</span>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Should have failed!&quot;</span><span class="p">)</span>
-<span class="linenos">70</span>
-<span class="linenos">71</span><span class="n">conn</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
+<p>Temporary tables are separate from regular tables, even if they have the
+same name.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">64</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">65</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">,</span> <span class="n">temporary</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="linenos">66</span>
+<span class="linenos">67</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+<span class="linenos">68</span>
+<span class="linenos">69</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 </pre></div>
 </div>
-<p>Instead, we can append to the table.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">74</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">75</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;append&quot;</span><span class="p">)</span>
-<span class="linenos">76</span>
-<span class="linenos">77</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM example&quot;</span><span class="p">)</span>
-<span class="linenos">78</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">8</span><span class="p">,)</span>
-<span class="linenos">79</span>
-<span class="linenos">80</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<p>Because we have two tables with the same name, we have to explicitly
+reference the normal temporary table here.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">72</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM public.example&quot;</span><span class="p">)</span>
+<span class="linenos">73</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">2</span><span class="p">,)</span>
+<span class="linenos">74</span>
+<span class="linenos">75</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM example&quot;</span><span class="p">)</span>
+<span class="linenos">76</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">4</span><span class="p">,)</span>
+<span class="linenos">77</span>
+<span class="linenos">78</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
+<p>After closing the connection, the temporary table is implicitly dropped.
+If we reconnect, the table won’t exist; we’ll see only the ‘normal’ table.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">83</span><span class="k">with</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+<span class="linenos">84</span>    <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">85</span>        <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM example&quot;</span><span class="p">)</span>
+<span class="linenos">86</span>        <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">2</span><span class="p">,)</span>
+</pre></div>
+</div>
+<p>All the regular ingestion options apply to temporary tables, too.  See
+<a class="reference internal" href="#recipe-postgresql-create-append"><span class="std std-ref">Create/append to a table from an Arrow table</span></a> for more examples.</p>
 </section>
 <section id="execute-a-statement-with-bind-parameters">
 <h2>Execute a statement with bind parameters<a class="headerlink" href="#execute-a-statement-with-bind-parameters" title="Permalink to this heading">#</a></h2>
@@ -517,6 +620,49 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 <span class="linenos">43</span><span class="p">)</span>
 <span class="linenos">44</span>
 <span class="linenos">45</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="get-the-arrow-schema-of-a-query">
+<h2>Get the Arrow schema of a query<a class="headerlink" href="#get-the-arrow-schema-of-a-query" title="Permalink to this heading">#</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_query_schema.py">postgresql_get_query_schema.py</a></p>
+<p>ADBC lets you get the schema of a result set, without executing the query.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">23</span>
+<span class="linenos">24</span><span class="kn">import</span> <span class="nn">pyarrow</span>
+<span class="linenos">25</span>
+<span class="linenos">26</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">27</span>
+<span class="linenos">28</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
+<span class="linenos">29</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We’ll create an example table to test.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">33</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS example&quot;</span><span class="p">)</span>
+<span class="linenos">34</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE example (ints INT, bigints BIGINT)&quot;</span><span class="p">)</span>
+<span class="linenos">35</span>
+<span class="linenos">36</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+<span class="linenos">37</span>
+<span class="linenos">38</span><span class="n">expected</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span>
+<span class="linenos">39</span>    <span class="p">[</span>
+<span class="linenos">40</span>        <span class="p">(</span><span class="s2">&quot;ints&quot;</span><span class="p">,</span> <span class="s2">&quot;int32&quot;</span><span class="p">),</span>
+<span class="linenos">41</span>        <span class="p">(</span><span class="s2">&quot;bigints&quot;</span><span class="p">,</span> <span class="s2">&quot;int64&quot;</span><span class="p">),</span>
+<span class="linenos">42</span>    <span class="p">]</span>
+<span class="linenos">43</span><span class="p">)</span>
+<span class="linenos">44</span>
+<span class="linenos">45</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">46</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">adbc_execute_schema</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM example&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">expected</span>
+</pre></div>
+</div>
+<p>PostgreSQL doesn’t know the type here, so it just returns a guess.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">49</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">adbc_execute_schema</span><span class="p">(</span><span class="s2">&quot;SELECT $1 AS res&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span>
+<span class="linenos">50</span>        <span class="p">[</span>
+<span class="linenos">51</span>            <span class="p">(</span><span class="s2">&quot;res&quot;</span><span class="p">,</span> <span class="s2">&quot;string&quot;</span><span class="p">),</span>
+<span class="linenos">52</span>        <span class="p">]</span>
+<span class="linenos">53</span>    <span class="p">)</span>
+<span class="linenos">54</span>
+<span class="linenos">55</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
 </section>
@@ -624,8 +770,10 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 <li><a class="reference internal" href="#">PostgreSQL Recipes</a><ul>
 <li><a class="reference internal" href="#authenticate-with-a-username-and-password">Authenticate with a username and password</a></li>
 <li><a class="reference internal" href="#create-append-to-a-table-from-an-arrow-table">Create/append to a table from an Arrow table</a></li>
+<li><a class="reference internal" href="#create-append-to-a-temporary-table">Create/append to a temporary table</a></li>
 <li><a class="reference internal" href="#execute-a-statement-with-bind-parameters">Execute a statement with bind parameters</a></li>
 <li><a class="reference internal" href="#get-the-arrow-schema-of-a-table">Get the Arrow schema of a table</a></li>
+<li><a class="reference internal" href="#get-the-arrow-schema-of-a-query">Get the Arrow schema of a query</a></li>
 <li><a class="reference internal" href="#list-catalogs-schemas-and-tables">List catalogs, schemas, and tables</a></li>
 </ul>
 </li>

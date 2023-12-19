@@ -31,7 +31,7 @@ overall approach.
 .. _libpq: https://www.postgresql.org/docs/current/libpq.html
 .. _pgeon: https://github.com/0x0L/pgeon
 
-.. note:: The PostgreSQL driver is experimental.
+.. note:: The PostgreSQL driver is in beta.
           Performance/optimization and support for complex types and
           different ADBC features is still ongoing.
 
@@ -188,6 +188,129 @@ PostgreSQL allows defining new types at runtime, so the driver must
 build a mapping of available types.  This is currently done once at
 startup.
 
-Type support is currently limited.  Parameter binding and bulk
-ingestion support int16, int32, int64, and string.  Reading result
-sets is limited to int32, int64, float, double, and string.
+Type support is currently limited depending on the type and whether it is
+being read or written.
+
+.. list-table:: Arrow type to PostgreSQL type mapping
+   :header-rows: 1
+
+   * - Arrow Type
+     - As Bind Parameter
+     - In Bulk Ingestion
+
+   * - binary
+     - Y
+     - BYTEA
+
+   * - bool
+     - Y
+     - BOOLEAN
+
+   * - date32
+     - Y
+     - DATE
+
+   * - date64
+     - N
+     - N
+
+   * - dictionary
+     - (as unpacked type)
+     - (as unpacked type, only for binary/string)
+
+   * - duration
+     - Y
+     - INTERVAL
+
+   * - float32
+     - Y
+     - REAL
+
+   * - float64
+     - Y
+     - DOUBLE PRECISION
+
+   * - int8
+     - Y
+     - SMALLINT
+
+   * - int16
+     - Y
+     - SMALLINT
+
+   * - int32
+     - Y
+     - INTEGER
+
+   * - int64
+     - Y
+     - BIGINT
+
+   * - large_binary
+     - N
+     - N
+
+   * - large_string
+     - Y
+     - TEXT
+
+   * - month_day_nano_interval
+     - Y
+     - INTERVAL
+
+   * - NA
+     - N
+     - N
+
+   * - string
+     - Y
+     - TEXT
+
+   * - timestamp
+     - Y
+     - TIMESTAMP/TIMESTAMP WITH TIMEZONE
+
+.. list-table:: PostgreSQL type to Arrow type mapping
+   :header-rows: 1
+
+   * - PostgreSQL Type
+     - In Result Set
+
+   * - ARRAY
+     - list
+   * - BIGINT
+     - int64
+   * - BINARY
+     - binary
+   * - BOOLEAN
+     - bool
+   * - CHAR
+     - utf8
+   * - DATE
+     - date32
+   * - DOUBLE PRECISION
+     - float64
+   * - INTEGER
+     - int32
+   * - INTERVAL
+     - month_day_nano_interval
+   * - NUMERIC
+     - utf8 [#numeric-utf8]_
+   * - REAL
+     - float32
+   * - SMALLINT
+     - int16
+   * - TEXT
+     - utf8
+   * - TIME
+     - time64
+   * - TIMESTAMP WITH TIME ZONE
+     - timestamp[unit, UTC]
+   * - TIMESTAMP WITHOUT TIME ZONE
+     - timestamp[unit]
+   * - VARCHAR
+     - utf8
+
+.. [#numeric-utf8] NUMERIC types are read as the string representation of the
+                   value, because the PostgreSQL NUMERIC type cannot be
+                   losslessly converted to the Arrow decimal types.

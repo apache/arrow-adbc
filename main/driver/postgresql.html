@@ -346,7 +346,7 @@ overall approach.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The PostgreSQL driver is experimental.
+<p>The PostgreSQL driver is in beta.
 Performance/optimization and support for complex types and
 different ADBC features is still ongoing.</p>
 </div>
@@ -490,9 +490,164 @@ PostgreSQL types is the same as below.</p>
 <p>PostgreSQL allows defining new types at runtime, so the driver must
 build a mapping of available types.  This is currently done once at
 startup.</p>
-<p>Type support is currently limited.  Parameter binding and bulk
-ingestion support int16, int32, int64, and string.  Reading result
-sets is limited to int32, int64, float, double, and string.</p>
+<p>Type support is currently limited depending on the type and whether it is
+being read or written.</p>
+<div class="table-wrapper docutils container" id="id2">
+<table class="docutils align-default" id="id2">
+<caption><span class="caption-text">Arrow type to PostgreSQL type mapping</span><a class="headerlink" href="#id2" title="Permalink to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Arrow Type</p></th>
+<th class="head"><p>As Bind Parameter</p></th>
+<th class="head"><p>In Bulk Ingestion</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>binary</p></td>
+<td><p>Y</p></td>
+<td><p>BYTEA</p></td>
+</tr>
+<tr class="row-odd"><td><p>bool</p></td>
+<td><p>Y</p></td>
+<td><p>BOOLEAN</p></td>
+</tr>
+<tr class="row-even"><td><p>date32</p></td>
+<td><p>Y</p></td>
+<td><p>DATE</p></td>
+</tr>
+<tr class="row-odd"><td><p>date64</p></td>
+<td><p>N</p></td>
+<td><p>N</p></td>
+</tr>
+<tr class="row-even"><td><p>dictionary</p></td>
+<td><p>(as unpacked type)</p></td>
+<td><p>(as unpacked type, only for binary/string)</p></td>
+</tr>
+<tr class="row-odd"><td><p>duration</p></td>
+<td><p>Y</p></td>
+<td><p>INTERVAL</p></td>
+</tr>
+<tr class="row-even"><td><p>float32</p></td>
+<td><p>Y</p></td>
+<td><p>REAL</p></td>
+</tr>
+<tr class="row-odd"><td><p>float64</p></td>
+<td><p>Y</p></td>
+<td><p>DOUBLE PRECISION</p></td>
+</tr>
+<tr class="row-even"><td><p>int8</p></td>
+<td><p>Y</p></td>
+<td><p>SMALLINT</p></td>
+</tr>
+<tr class="row-odd"><td><p>int16</p></td>
+<td><p>Y</p></td>
+<td><p>SMALLINT</p></td>
+</tr>
+<tr class="row-even"><td><p>int32</p></td>
+<td><p>Y</p></td>
+<td><p>INTEGER</p></td>
+</tr>
+<tr class="row-odd"><td><p>int64</p></td>
+<td><p>Y</p></td>
+<td><p>BIGINT</p></td>
+</tr>
+<tr class="row-even"><td><p>large_binary</p></td>
+<td><p>N</p></td>
+<td><p>N</p></td>
+</tr>
+<tr class="row-odd"><td><p>large_string</p></td>
+<td><p>Y</p></td>
+<td><p>TEXT</p></td>
+</tr>
+<tr class="row-even"><td><p>month_day_nano_interval</p></td>
+<td><p>Y</p></td>
+<td><p>INTERVAL</p></td>
+</tr>
+<tr class="row-odd"><td><p>NA</p></td>
+<td><p>N</p></td>
+<td><p>N</p></td>
+</tr>
+<tr class="row-even"><td><p>string</p></td>
+<td><p>Y</p></td>
+<td><p>TEXT</p></td>
+</tr>
+<tr class="row-odd"><td><p>timestamp</p></td>
+<td><p>Y</p></td>
+<td><p>TIMESTAMP/TIMESTAMP WITH TIMEZONE</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper docutils container" id="id3">
+<table class="docutils align-default" id="id3">
+<caption><span class="caption-text">PostgreSQL type to Arrow type mapping</span><a class="headerlink" href="#id3" title="Permalink to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>PostgreSQL Type</p></th>
+<th class="head"><p>In Result Set</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>ARRAY</p></td>
+<td><p>list</p></td>
+</tr>
+<tr class="row-odd"><td><p>BIGINT</p></td>
+<td><p>int64</p></td>
+</tr>
+<tr class="row-even"><td><p>BINARY</p></td>
+<td><p>binary</p></td>
+</tr>
+<tr class="row-odd"><td><p>BOOLEAN</p></td>
+<td><p>bool</p></td>
+</tr>
+<tr class="row-even"><td><p>CHAR</p></td>
+<td><p>utf8</p></td>
+</tr>
+<tr class="row-odd"><td><p>DATE</p></td>
+<td><p>date32</p></td>
+</tr>
+<tr class="row-even"><td><p>DOUBLE PRECISION</p></td>
+<td><p>float64</p></td>
+</tr>
+<tr class="row-odd"><td><p>INTEGER</p></td>
+<td><p>int32</p></td>
+</tr>
+<tr class="row-even"><td><p>INTERVAL</p></td>
+<td><p>month_day_nano_interval</p></td>
+</tr>
+<tr class="row-odd"><td><p>NUMERIC</p></td>
+<td><p>utf8 <a class="footnote-reference brackets" href="#numeric-utf8" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>REAL</p></td>
+<td><p>float32</p></td>
+</tr>
+<tr class="row-odd"><td><p>SMALLINT</p></td>
+<td><p>int16</p></td>
+</tr>
+<tr class="row-even"><td><p>TEXT</p></td>
+<td><p>utf8</p></td>
+</tr>
+<tr class="row-odd"><td><p>TIME</p></td>
+<td><p>time64</p></td>
+</tr>
+<tr class="row-even"><td><p>TIMESTAMP WITH TIME ZONE</p></td>
+<td><p>timestamp[unit, UTC]</p></td>
+</tr>
+<tr class="row-odd"><td><p>TIMESTAMP WITHOUT TIME ZONE</p></td>
+<td><p>timestamp[unit]</p></td>
+</tr>
+<tr class="row-even"><td><p>VARCHAR</p></td>
+<td><p>utf8</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="numeric-utf8" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>NUMERIC types are read as the string representation of the
+value, because the PostgreSQL NUMERIC type cannot be
+losslessly converted to the Arrow decimal types.</p>
+</aside>
+</aside>
 </section>
 </section>
 </section>
