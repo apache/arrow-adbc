@@ -16,8 +16,7 @@
 # under the License.
 
 # RECIPE STARTS HERE
-#: ADBC allows creating and appending to database tables using Arrow
-#: tables.
+#: ADBC allows creating and appending to temporary tables as well.
 
 import os
 
@@ -32,21 +31,21 @@ conn = adbc_driver_postgresql.dbapi.connect(uri)
 #: to use don't exist.
 with conn.cursor() as cur:
     cur.execute("DROP TABLE IF EXISTS example")
-    cur.execute("DROP TABLE IF EXISTS example2")
 
-#: Now we can create the table.
-with conn.cursor() as cur:
-    data = pyarrow.table(
+#: To create a temporary table, just specify the option "temporary".
+data = pyarrow.table(
+    [
+        [1, 2, None, 4],
+    ],
+    schema=pyarrow.schema(
         [
-            [1, 2, None, 4],
-        ],
-        schema=pyarrow.schema(
-            [
-                ("ints", "int32"),
-            ]
-        ),
-    )
-    cur.adbc_ingest("example", data, mode="create")
+            ("ints", "int32"),
+        ]
+    ),
+)
+
+with conn.cursor() as cur:
+    cur.adbc_ingest("example", data, mode="create", temporary=True)
 
 conn.commit()
 
@@ -59,45 +58,32 @@ with conn.cursor() as cur:
     cur.execute("SELECT COUNT(*) FROM example")
     assert cur.fetchone() == (4,)
 
-#: If we try to ingest again, it'll fail, because the table already
-#: exists.
-with conn.cursor() as cur:
-    try:
-        cur.adbc_ingest("example", data, mode="create")
-    except conn.ProgrammingError:
-        pass
-    else:
-        raise RuntimeError("Should have failed!")
-
-conn.rollback()
-
-#: Instead, we can append to the table.
-with conn.cursor() as cur:
-    cur.adbc_ingest("example", data, mode="append")
-
-    cur.execute("SELECT COUNT(*) FROM example")
-    assert cur.fetchone() == (8,)
-
-#: We can also choose to create the table if it doesn't exist, and otherwise
-#: append.
+#: Temporary tables are separate from regular tables, even if they have the
+#: same name.
 
 with conn.cursor() as cur:
-    cur.adbc_ingest("example2", data, mode="create_append")
+    cur.adbc_ingest("example", data.slice(0, 2), mode="create", temporary=False)
 
-    cur.execute("SELECT COUNT(*) FROM example2")
-    assert cur.fetchone() == (4,)
-
-    cur.adbc_ingest("example2", data, mode="create_append")
-
-    cur.execute("SELECT COUNT(*) FROM example2")
-    assert cur.fetchone() == (8,)
-
-#: Finally, we can replace the table.
+conn.commit()
 
 with conn.cursor() as cur:
-    cur.adbc_ingest("example", data.slice(0, 2), mode="replace")
-
-    cur.execute("SELECT COUNT(*) FROM example")
+    #: Because we have two tables with the same name, we have to explicitly
+    #: reference the normal temporary table here.
+    cur.execute("SELECT COUNT(*) FROM public.example")
     assert cur.fetchone() == (2,)
 
+    cur.execute("SELECT COUNT(*) FROM example")
+    assert cur.fetchone() == (4,)
+
 conn.close()
+
+#: After closing the connection, the temporary table is implicitly dropped.
+#: If we reconnect, the table won't exist; we'll see only the 'normal' table.
+
+with adbc_driver_postgresql.dbapi.connect(uri) as conn:
+    with conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM example")
+        assert cur.fetchone() == (2,)
+
+#: All the regular ingestion options apply to temporary tables, too.  See
+#: :ref:`recipe-postgresql-create-append` for more examples.

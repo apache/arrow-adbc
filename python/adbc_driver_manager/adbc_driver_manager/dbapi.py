@@ -807,7 +807,7 @@ class Cursor(_Closeable):
             The Arrow data to insert. This can be a pyarrow RecordBatch, Table
             or RecordBatchReader, or any Arrow-compatible data that implements
             the Arrow PyCapsule Protocol (i.e. has an ``__arrow_c_array__``
-            or ``__arrow_c_stream__ ``method).
+            or ``__arrow_c_stream__`` method).
         mode
             How to deal with existing data:
 
