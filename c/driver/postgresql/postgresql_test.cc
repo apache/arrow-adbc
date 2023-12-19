@@ -824,12 +824,6 @@ class PostgresStatementTest : public ::testing::Test,
   void TestSqlPrepareErrorParamCountMismatch() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareGetParameterSchema() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareSelectParams() { GTEST_SKIP() << "Not yet implemented"; }
-  void TestSqlQueryRowsAffectedDelete() {
-    GTEST_SKIP() << "Cannot query rows affected in delete (not implemented)";
-  }
-  void TestSqlQueryRowsAffectedDeleteStream() {
-    GTEST_SKIP() << "Cannot query rows affected in delete stream (not implemented)";
-  }
 
   void TestConcurrentStatements() {
     // TODO: refactor driver so that we read all the data as soon as

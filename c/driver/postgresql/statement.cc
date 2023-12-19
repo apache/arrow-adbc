@@ -1306,7 +1306,18 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateQuery(int64_t* rows_affected,
     PQclear(result);
     return code;
   }
-  if (rows_affected) *rows_affected = PQntuples(reader_.result_);
+  if (rows_affected) {
+    if (status == PGRES_TUPLES_OK) {
+      *rows_affected = PQntuples(reader_.result_);
+    } else {
+      // In theory, PQcmdTuples would work here, but experimentally it gives
+      // an empty string even for a DELETE.  (Also, why does it return a
+      // string...)  Possibly, it doesn't work because we use PQexecPrepared
+      // but the docstring is careful to specify it works on an EXECUTE of a
+      // prepared statement.
+      *rows_affected = -1;
+    }
+  }
   PQclear(result);
   return ADBC_STATUS_OK;
 }
