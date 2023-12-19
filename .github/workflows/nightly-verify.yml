@@ -125,7 +125,7 @@ jobs:
         run: |
           mv apache-arrow-adbc-${{ env.VERSION }}-rc0/KEYS .
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         # The Unix script will set up conda itself
         if: matrix.os == 'windows-latest'
         with:
