@@ -61,7 +61,7 @@ jobs:
     # For cron: only run on the main repo, not forks
     if: github.event_name != 'schedule' || github.repository == 'apache/arrow-adbc'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -228,7 +228,7 @@ jobs:
         with:
           name: source
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: apache/arrow
           path: arrow
@@ -890,7 +890,7 @@ jobs:
       run:
         shell: bash -l {0}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -933,7 +933,7 @@ jobs:
       - python-windows
       - python-sdist
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
