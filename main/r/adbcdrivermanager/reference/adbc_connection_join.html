@@ -69,9 +69,7 @@ These functions will invalidate all references to the previous R object.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">adbc_connection_join</span><span class="op">(</span><span class="va">connection</span>, <span class="va">database</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">adbc_statement_join</span><span class="op">(</span><span class="va">statement</span>, <span class="va">connection</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu">adbc_stream_join</span><span class="op">(</span><span class="va">stream</span>, <span class="va">x</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">adbc_statement_join</span><span class="op">(</span><span class="va">statement</span>, <span class="va">connection</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -86,15 +84,6 @@ These functions will invalidate all references to the previous R object.</p>
 
 <dt>statement</dt>
 <dd><p>A statement created with <code><a href="adbc_statement_init.html">adbc_statement_init()</a></code></p></dd>
-
-
-<dt>stream</dt>
-<dd><p>A <a href="https://rdrr.io/pkg/nanoarrow/man/as_nanoarrow_array_stream.html" class="external-link">nanoarrow_array_stream</a></p></dd>
-
-
-<dt>x</dt>
-<dd><p>An ADBC database, ADBC connection, ADBC statement, or
-nanoarrow_array_stream returned from calls to an ADBC function.</p></dd>
 
 </dl></div>
     <div class="section level2">

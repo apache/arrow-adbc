@@ -82,7 +82,7 @@ pointer.</p></li>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">adbc_xptr_move</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">adbc_xptr_move</span><span class="op">(</span><span class="va">x</span>, check_child_count <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">adbc_xptr_is_valid</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -92,6 +92,11 @@ pointer.</p></li>
     <dl><dt>x</dt>
 <dd><p>An 'adbc_database', 'adbc_connection', 'adbc_statement', or
 'nanoarrow_array_stream'</p></dd>
+
+
+<dt>check_child_count</dt>
+<dd><p>Ensures that <code>x</code> has a zero child count before
+performing the move. This should almost always be <code>TRUE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

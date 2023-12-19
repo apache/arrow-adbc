@@ -67,7 +67,11 @@
 <span></span>
 <span><span class="fu">adbc_statement_bind_stream</span><span class="op">(</span><span class="va">statement</span>, <span class="va">stream</span>, schema <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">adbc_statement_execute_query</span><span class="op">(</span><span class="va">statement</span>, stream <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">adbc_statement_execute_query</span><span class="op">(</span></span>
+<span>  <span class="va">statement</span>,</span>
+<span>  stream <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  stream_join_parent <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">adbc_statement_execute_schema</span><span class="op">(</span><span class="va">statement</span><span class="op">)</span></span>
 <span></span>
@@ -101,6 +105,11 @@ that can be coerced to one.</p></dd>
 <dt>stream</dt>
 <dd><p>A <a href="https://rdrr.io/pkg/nanoarrow/man/as_nanoarrow_array_stream.html" class="external-link">nanoarrow_array_stream</a>
 or object that can be coerced to one.</p></dd>
+
+
+<dt>stream_join_parent</dt>
+<dd><p>Use <code>TRUE</code> to invalidate <code>statement</code> and tie its
+lifecycle to <code>stream</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

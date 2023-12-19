@@ -100,12 +100,13 @@ to the input.</p></dd>
 </ul></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Note that you can use <code><a href="adbc_connection_join.html">adbc_connection_join()</a></code>,
-<code><a href="adbc_connection_join.html">adbc_statement_join()</a></code>, and <code><a href="adbc_connection_join.html">adbc_stream_join()</a></code>
+    <p>Note that you can use <code><a href="adbc_connection_join.html">adbc_connection_join()</a></code> and <code><a href="adbc_connection_join.html">adbc_statement_join()</a></code>
 to tie the lifecycle of the parent object to that of the child object.
 These functions mark any previous references to the parent object as
 released so you can still use local and with helpers to manage the parent
-object before it is joined.</p>
+object before it is joined. Use <code>stream_join_parent = TRUE</code> in
+<code><a href="adbc_statement_set_sql_query.html">adbc_statement_execute_query()</a></code> to tie the lifecycle of a statement to
+the output stream.</p>
     </div>
 
     <div class="section level2">
