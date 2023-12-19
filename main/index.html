@@ -1,19 +1,28 @@
 
 
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<meta property="og:title" content="Apache Arrow ADBC" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://arrow.apache.org/adbc/main/index.html" />
+<meta property="og:site_name" content="ADBC" />
+<meta property="og:description" content="ADBC: Arrow Database Connectivity Cross-language, Arrow-native database access. ADBC is a set of APIs and libraries for Arrow-native access to databases. Execute SQL and Substrait queries, query da..." />
+<meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
+<meta property="og:image:alt" content="ADBC" />
+<meta name="description" content="ADBC: Arrow Database Connectivity Cross-language, Arrow-native database access. ADBC is a set of APIs and libraries for Arrow-native access to databases. Execute SQL and Substrait queries, query da..." />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Frequently Asked Questions (FAQ)" href="faq.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2023.07.26 -->
+    <!-- Generated with Sphinx 6.2.1 and Furo 2023.09.10 -->
         <title>ADBC 0.9.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
     <link rel="stylesheet" type="text/css" href="_static/css/custom.css" />
     
     
@@ -325,72 +334,146 @@
         </div>
         <article role="main">
           <section id="apache-arrow-adbc">
-<h1>Apache Arrow ADBC<a class="headerlink" href="#apache-arrow-adbc" title="Permalink to this heading">#</a></h1>
-<p>To get started, choose a language and follow the Quickstart page.</p>
-<p>To learn more about ADBC, see the <a class="reference external" href="https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/">introductory blog post</a>.</p>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions (FAQ)</a></li>
-</ul>
+<h1 class="sd-d-none">Apache Arrow ADBC<a class="headerlink" href="#apache-arrow-adbc" title="Permalink to this heading">#</a></h1>
+<div class="docutils" style="border-bottom: 1px solid var(--color-foreground-border);">
+<div class="sd-container-fluid sd-sphinx-override sd-mt-4 sd-mb-3 sd-ml-0 sd-mr-0 docutils">
+<div class="sd-row docutils">
+<div class="sd-col sd-d-flex-column sd-col-12 sd-col-xs-12 sd-col-sm-12 sd-col-md-12 sd-col-lg-12 sd-fs-2 docutils">
+<p>ADBC: Arrow Database Connectivity</p>
+</div>
+<div class="sd-col sd-d-flex-column sd-col-12 sd-col-xs-12 sd-col-sm-12 sd-col-md-12 sd-col-lg-12 sd-fs-4 docutils">
+<p><strong>Cross-language</strong>, <strong>Arrow-native</strong> database access.</p>
+</div>
+</div>
+</div>
+</div>
+<p>ADBC is a set of APIs and libraries for Arrow-native access to databases.
+Execute SQL and Substrait queries, query database catalogs, and more, all
+using Arrow data to eliminate unnecessary data copies, speed up access, and
+make it more convenient to build analytical applications.</p>
+<div class="docutils">
+<div class="sd-container-fluid sd-sphinx-override sd-mt-4 sd-mb-4 sd-ml-0 sd-mr-0 docutils">
+<div class="sd-row sd-g-1 sd-g-xs-1 sd-g-sm-1 sd-g-md-1 sd-g-lg-1 docutils">
+<div class="sd-col sd-d-flex-row sd-col-12 sd-col-xs-12 sd-col-sm-12 sd-col-md-4 sd-col-lg-4 docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-header docutils">
+<p class="sd-card-text">Quickstart</p>
+</div>
+<div class="sd-card-body docutils">
+<p class="sd-card-text">Get started with simple examples in your language of choice.</p>
+</div>
+<div class="sd-card-footer docutils">
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="cpp/quickstart.html"><span class="doc">C/C++</span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc"><span>Go</span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="java/quickstart.html"><span class="doc">Java</span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="python/quickstart.html"><span class="doc">Python</span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="r/index.html"><span class="doc">R</span></a></span></p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row sd-col-12 sd-col-xs-12 sd-col-sm-4 sd-col-md-4 sd-col-lg-4 docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-header docutils">
+<p class="sd-card-text">Specification</p>
+</div>
+<div class="sd-card-body docutils">
+<p class="sd-card-text">Learn about the underlying API specification.</p>
+</div>
+<div class="sd-card-footer docutils">
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/"><span>Introducing ADBC <svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-cross-reference" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M16 1.25v4.146a.25.25 0 01-.427.177L14.03 4.03l-3.75 3.75a.75.75 0 11-1.06-1.06l3.75-3.75-1.543-1.543A.25.25 0 0111.604 1h4.146a.25.25 0 01.25.25zM2.75 3.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 01.75.75v2.19l2.72-2.72a.75.75 0 01.53-.22h4.5a.25.25 0 00.25-.25v-2.5a.75.75 0 111.5 0v2.5A1.75 1.75 0 0113.25 13H9.06l-2.573 2.573A1.457 1.457 0 014 14.543V13H2.75A1.75 1.75 0 011 11.25v-7.5C1 2.784 1.784 2 2.75 2h5.5a.75.75 0 010 1.5h-5.5z"></path></svg></span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="format/specification.html"><span class="doc">Specification</span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="faq.html"><span class="doc">FAQ</span></a></span></p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row sd-col-12 sd-col-xs-12 sd-col-sm-4 sd-col-md-4 sd-col-lg-4 docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-header docutils">
+<p class="sd-card-text">Development</p>
+</div>
+<div class="sd-card-body docutils">
+<p class="sd-card-text">Report bugs, ask questions, and contribute to Apache Arrow.</p>
+</div>
+<div class="sd-card-footer docutils">
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://github.com/apache/arrow-adbc/issues"><span><span class="fab fa-github"></span> Issues/Questions</span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://arrow.apache.org/community/"><span>Mailing List <svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-cross-reference" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M16 1.25v4.146a.25.25 0 01-.427.177L14.03 4.03l-3.75 3.75a.75.75 0 11-1.06-1.06l3.75-3.75-1.543-1.543A.25.25 0 0111.604 1h4.146a.25.25 0 01.25.25zM2.75 3.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 01.75.75v2.19l2.72-2.72a.75.75 0 01.53-.22h4.5a.25.25 0 00.25-.25v-2.5a.75.75 0 111.5 0v2.5A1.75 1.75 0 0113.25 13H9.06l-2.573 2.573A1.457 1.457 0 014 14.543V13H2.75A1.75 1.75 0 011 11.25v-7.5C1 2.784 1.784 2 2.75 2h5.5a.75.75 0 010 1.5h-5.5z"></path></svg></span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md"><span>Contributing <svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-cross-reference" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M16 1.25v4.146a.25.25 0 01-.427.177L14.03 4.03l-3.75 3.75a.75.75 0 11-1.06-1.06l3.75-3.75-1.543-1.543A.25.25 0 0111.604 1h4.146a.25.25 0 01.25.25zM2.75 3.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 01.75.75v2.19l2.72-2.72a.75.75 0 01.53-.22h4.5a.25.25 0 00.25-.25v-2.5a.75.75 0 111.5 0v2.5A1.75 1.75 0 0113.25 13H9.06l-2.573 2.573A1.457 1.457 0 014 14.543V13H2.75A1.75 1.75 0 011 11.25v-7.5C1 2.784 1.784 2 2.75 2h5.5a.75.75 0 010 1.5h-5.5z"></path></svg></span></a></span></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<section id="why-adbc">
+<h2>Why ADBC?<a class="headerlink" href="#why-adbc" title="Permalink to this heading">#</a></h2>
+<div class="sd-container-fluid sd-sphinx-override sd-mt-4 sd-mb-4 sd-ml-0 sd-mr-0 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-1 sd-g-xs-1 sd-g-sm-1 sd-g-md-1 sd-g-lg-1 docutils">
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Arrow-native</div>
+<p class="sd-card-text">Execute queries and get back results in Arrow format, eliminating extra
+data copies for Arrow-native backends.</p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Backend-agnostic</div>
+<p class="sd-card-text">Connect to all kinds of databases, even ones that aren’t Arrow-native.
+ADBC drivers optimize conversion to/from Arrow where required, saving
+work for developers.</p>
+</div>
+<div class="sd-card-footer docutils">
+<p class="sd-card-text">See Supported Drivers</p>
+</div>
+<a class="sd-stretched-link reference internal" href="driver/status.html"><span class="doc"></span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Cross-language</div>
+<p class="sd-card-text">Work in C/C++, C#, Go, Java, Python, R, Ruby, and more.</p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Full-featured</div>
+<p class="sd-card-text">Execute SQL and Substrait, query database catalogs, inspect table
+schemas, and more.  ADBC handles common tasks without having to pull in
+another database client.</p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Language-native</div>
+<p class="sd-card-text">Use language-native APIs that you’re already familiar with, like DBAPI
+in Python, <code class="docutils literal notranslate"><span class="pre">database/sql</span></code> in Go, or DBI in R.</p>
+</div>
+</div>
+</div>
+</div>
 </div>
 <div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="cpp/index.html">C/C++</a></li>
-<li class="toctree-l1"><a class="reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc">Go</a></li>
-<li class="toctree-l1"><a class="reference internal" href="java/index.html">Java</a></li>
-<li class="toctree-l1"><a class="reference internal" href="python/index.html">Python</a></li>
-<li class="toctree-l1"><a class="reference internal" href="r/index.html">R</a></li>
-</ul>
 </div>
 <div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/duckdb.html">DuckDB Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/snowflake.html">Snowflake Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/sqlite.html">SQLite Driver</a></li>
-</ul>
 </div>
 <div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Specification</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="format/specification.html">ADBC API Standard</a></li>
-<li class="toctree-l1"><a class="reference internal" href="format/versioning.html">Versioning and Compatibility</a></li>
-<li class="toctree-l1"><a class="reference internal" href="format/comparison.html">Comparison with Other APIs</a></li>
-</ul>
 </div>
 <div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Development</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="development/contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="development/nightly.html">Nightly Packages</a></li>
-<li class="toctree-l1"><a class="reference internal" href="development/releasing.html">Release Management Guide</a></li>
-</ul>
 </div>
-<p>ADBC (Arrow Database Connectivity) is an API specification for
-Arrow-based database access.  It provides a set of APIs in C, Go, and
-Java that define how to interact with databases, including executing
-queries and fetching metadata, that use Arrow data for result sets and
-query parameters.  These APIs are then implemented by drivers (or a
-driver manager) that use some underlying protocol to work with
-specific databases.</p>
-<p>ADBC aims to provide applications with a single, Arrow-based API to
-work with multiple databases, whether Arrow-native or not.
-Application code should not need to juggle conversions from
-non-Arrow-native datasources alongside bindings for multiple
-Arrow-native database protocols.</p>
-<section id="indices-and-tables">
-<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this heading">#</a></h2>
-<ul class="simple">
-<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
-<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
-<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
-</ul>
+<div class="toctree-wrapper compound">
+</div>
 </section>
 </section>
 
@@ -440,7 +523,9 @@ Arrow-native database protocols.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Apache Arrow ADBC</a><ul>
-<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+<li><a class="reference internal" href="#why-adbc">Why ADBC?</a><ul>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
