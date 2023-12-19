@@ -27,6 +27,11 @@ test_that("the monkey driver sees, and the monkey driver does", {
   stream <- nanoarrow::nanoarrow_allocate_array_stream()
   expect_identical(adbc_statement_execute_query(stmt, stream), -1)
   expect_identical(as.data.frame(stream$get_next()), input)
+  expect_error(
+    adbc_statement_release(stmt),
+    class = "adbc_error_child_count_not_zero"
+  )
+  stream$release()
   adbc_statement_release(stmt)
 
   stmt <- adbc_statement_init(con, input)

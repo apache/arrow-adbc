@@ -41,6 +41,24 @@ static void adbc_error_warn(int code, AdbcError* error, const char* context) {
   }
 }
 
+static int adbc_update_parent_child_count(SEXP xptr, int delta) {
+  SEXP parent_xptr = R_ExternalPtrProtected(xptr);
+  if (parent_xptr == R_NilValue) {
+    return NA_INTEGER;
+  }
+
+  SEXP parent_env = R_ExternalPtrTag(parent_xptr);
+  if (parent_env == R_NilValue) {
+    return NA_INTEGER;
+  }
+
+  SEXP child_count_sexp = Rf_findVarInFrame(parent_env, Rf_install(".child_count"));
+  int* child_count = INTEGER(child_count_sexp);
+  int old_value = child_count[0];
+  child_count[0] = child_count[0] + delta;
+  return old_value;
+}
+
 static void finalize_driver_xptr(SEXP driver_xptr) {
   auto driver = reinterpret_cast<AdbcDriver*>(R_ExternalPtrAddr(driver_xptr));
   if (driver == nullptr) {
@@ -186,6 +204,9 @@ static void finalize_connection_xptr(SEXP connection_xptr) {
     AdbcError error = ADBC_ERROR_INIT;
     int status = AdbcConnectionRelease(connection, &error);
     adbc_error_warn(status, &error, "finalize_connection_xptr()");
+    if (status == ADBC_STATUS_OK) {
+      adbc_update_parent_child_count(connection_xptr, -1);
+    }
   }
 
   adbc_xptr_default_finalize<AdbcConnection>(connection_xptr);
@@ -236,6 +257,7 @@ extern "C" SEXP RAdbcConnectionInit(SEXP connection_xptr, SEXP database_xptr,
     // Keep the database pointer alive for as long as the connection pointer
     // is alive
     R_SetExternalPtrProtected(connection_xptr, database_xptr);
+    adbc_update_parent_child_count(connection_xptr, 1);
   }
 
   return adbc_wrap_status(result);
@@ -245,6 +267,10 @@ extern "C" SEXP RAdbcConnectionRelease(SEXP connection_xptr, SEXP error_xptr) {
   auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   int status = AdbcConnectionRelease(connection, error);
+  if (status == ADBC_STATUS_OK) {
+    adbc_update_parent_child_count(connection_xptr, -1);
+  }
+
   return adbc_wrap_status(status);
 }
 
@@ -384,6 +410,9 @@ static void finalize_statement_xptr(SEXP statement_xptr) {
     AdbcError error = ADBC_ERROR_INIT;
     int status = AdbcStatementRelease(statement, &error);
     adbc_error_warn(status, &error, "finalize_statement_xptr()");
+    if (status == ADBC_STATUS_OK) {
+      adbc_update_parent_child_count(statement_xptr, -1);
+    }
   }
 
   adbc_xptr_default_finalize<AdbcStatement>(statement_xptr);
@@ -401,6 +430,7 @@ extern "C" SEXP RAdbcStatementNew(SEXP connection_xptr) {
   adbc_error_stop(status, &error);
 
   R_SetExternalPtrProtected(statement_xptr, connection_xptr);
+  adbc_update_parent_child_count(statement_xptr, 1);
 
   UNPROTECT(1);
   return statement_xptr;
@@ -430,6 +460,10 @@ extern "C" SEXP RAdbcStatementRelease(SEXP statement_xptr, SEXP error_xptr) {
   auto statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   int status = AdbcStatementRelease(statement, error);
+  if (status == ADBC_STATUS_OK) {
+    adbc_update_parent_child_count(statement_xptr, -1);
+  }
+
   return adbc_wrap_status(status);
 }
 
