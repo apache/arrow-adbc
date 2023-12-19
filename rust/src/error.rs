@@ -17,33 +17,39 @@
 
 //! ADBC error enums and structs
 
+use std::result;
+
+use arrow_adbc_sys as adbc;
 use arrow_schema::ArrowError;
+
+/// An ADBC result type with [Error] as failure type.
+pub type Result<T> = result::Result<T, Error>;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 #[repr(u8)]
-pub enum AdbcStatusCode {
+pub enum StatusCode {
     /// No error.
-    Ok = 0,
+    Ok = adbc::ADBC_STATUS_OK as adbc::AdbcStatusCode,
     /// An unknown error occurred.
     ///
     /// May indicate a driver-side or database-side error.
-    Unknown = 1,
+    Unknown = adbc::ADBC_STATUS_UNKNOWN as adbc::AdbcStatusCode,
     /// The operation is not implemented or supported.
     ///
     /// May indicate a driver-side or database-side error.
-    NotImplemented = 2,
+    NotImplemented = adbc::ADBC_STATUS_NOT_IMPLEMENTED as adbc::AdbcStatusCode,
     /// A requested resource was not found.
     ///
     /// May indicate a driver-side or database-side error.
-    NotFound = 3,
+    NotFound = adbc::ADBC_STATUS_NOT_FOUND as adbc::AdbcStatusCode,
     /// A requested resource already exists.
     ///
     /// May indicate a driver-side or database-side error.
-    AlreadyExists = 4,
+    AlreadyExists = adbc::ADBC_STATUS_ALREADY_EXISTS as adbc::AdbcStatusCode,
     /// The arguments are invalid, likely a programming error.
     ///
     /// May indicate a driver-side or database-side error.
-    InvalidArguments = 5,
+    InvalidArgument = adbc::ADBC_STATUS_INVALID_ARGUMENT as adbc::AdbcStatusCode,
     /// The preconditions for the operation are not met, likely a
     ///   programming error.
     ///
@@ -51,74 +57,74 @@ pub enum AdbcStatusCode {
     /// been fully configured.
     ///
     /// May indicate a driver-side or database-side error.
-    InvalidState = 6,
+    InvalidState = adbc::ADBC_STATUS_INVALID_STATE as adbc::AdbcStatusCode,
     /// Invalid data was processed (not a programming error).
     ///
     /// For instance, a division by zero may have occurred during query
     /// execution.
     ///
     /// May indicate a database-side error only.
-    InvalidData = 7,
+    InvalidData = adbc::ADBC_STATUS_INVALID_DATA as adbc::AdbcStatusCode,
     /// The database's integrity was affected.
     ///
     /// For instance, a foreign key check may have failed, or a uniqueness
     /// constraint may have been violated.
     ///
     /// May indicate a database-side error only.
-    Integrity = 8,
+    Integrity = adbc::ADBC_STATUS_INTEGRITY as adbc::AdbcStatusCode,
     /// An error internal to the driver or database occurred.
     ///
     /// May indicate a driver-side or database-side error.
-    Internal = 9,
+    Internal = adbc::ADBC_STATUS_INTERNAL as adbc::AdbcStatusCode,
     /// An I/O error occurred.
     ///
     /// For instance, a remote service may be unavailable.
     ///
     /// May indicate a driver-side or database-side error.
-    IO = 10,
+    IO = adbc::ADBC_STATUS_IO as adbc::AdbcStatusCode,
     /// The operation was cancelled, not due to a timeout.
     ///
     /// May indicate a driver-side or database-side error.
-    Cancelled = 11,
+    Cancelled = adbc::ADBC_STATUS_CANCELLED as adbc::AdbcStatusCode,
     /// The operation was cancelled due to a timeout.
     ///
     /// May indicate a driver-side or database-side error.
-    Timeout = 12,
+    Timeout = adbc::ADBC_STATUS_TIMEOUT as adbc::AdbcStatusCode,
     /// Authentication failed.
     ///
     /// May indicate a database-side error only.
-    Unauthenticated = 13,
+    Unauthenticated = adbc::ADBC_STATUS_UNAUTHENTICATED as adbc::AdbcStatusCode,
     /// The client is not authorized to perform the given operation.
     ///
     /// May indicate a database-side error only.
-    Unauthorized = 14,
+    Unauthorized = adbc::ADBC_STATUS_UNAUTHORIZED as adbc::AdbcStatusCode,
 }
 
-impl std::fmt::Display for AdbcStatusCode {
+impl std::fmt::Display for StatusCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AdbcStatusCode::Ok => write!(f, "Ok"),
-            AdbcStatusCode::Unknown => write!(f, "Unknown"),
-            AdbcStatusCode::NotImplemented => write!(f, "Not Implemented"),
-            AdbcStatusCode::NotFound => write!(f, "Not Found"),
-            AdbcStatusCode::AlreadyExists => write!(f, "Already Exists"),
-            AdbcStatusCode::InvalidArguments => write!(f, "Invalid Arguments"),
-            AdbcStatusCode::InvalidState => write!(f, "Invalid State"),
-            AdbcStatusCode::InvalidData => write!(f, "Invalid Data"),
-            AdbcStatusCode::Integrity => write!(f, "Integrity"),
-            AdbcStatusCode::Internal => write!(f, "Internal Error"),
-            AdbcStatusCode::IO => write!(f, "IO Error"),
-            AdbcStatusCode::Cancelled => write!(f, "Cancelled"),
-            AdbcStatusCode::Timeout => write!(f, "Timeout"),
-            AdbcStatusCode::Unauthenticated => write!(f, "Unauthenticated"),
-            AdbcStatusCode::Unauthorized => write!(f, "Unauthorized"),
+            StatusCode::Ok => write!(f, "Ok"),
+            StatusCode::Unknown => write!(f, "Unknown"),
+            StatusCode::NotImplemented => write!(f, "Not Implemented"),
+            StatusCode::NotFound => write!(f, "Not Found"),
+            StatusCode::AlreadyExists => write!(f, "Already Exists"),
+            StatusCode::InvalidArgument => write!(f, "Invalid Argument"),
+            StatusCode::InvalidState => write!(f, "Invalid State"),
+            StatusCode::InvalidData => write!(f, "Invalid Data"),
+            StatusCode::Integrity => write!(f, "Integrity"),
+            StatusCode::Internal => write!(f, "Internal Error"),
+            StatusCode::IO => write!(f, "IO Error"),
+            StatusCode::Cancelled => write!(f, "Cancelled"),
+            StatusCode::Timeout => write!(f, "Timeout"),
+            StatusCode::Unauthenticated => write!(f, "Unauthenticated"),
+            StatusCode::Unauthorized => write!(f, "Unauthorized"),
         }
     }
 }
 
 /// An error from an ADBC driver.
 #[derive(Debug, Clone)]
-pub struct AdbcError {
+pub struct Error {
     /// An error message
     pub message: String,
     /// A vendor-specific error code.
@@ -127,10 +133,10 @@ pub struct AdbcError {
     /// If not set, it is left as `[0; 5]`.
     pub sqlstate: [i8; 5usize],
     /// The status code indicating the type of error.
-    pub status_code: AdbcStatusCode,
+    pub status_code: StatusCode,
 }
 
-impl std::fmt::Display for AdbcError {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -140,13 +146,9 @@ impl std::fmt::Display for AdbcError {
     }
 }
 
-impl std::error::Error for AdbcError {
-    fn description(&self) -> &str {
-        &self.message
-    }
-}
+impl std::error::Error for Error {}
 
-impl From<std::str::Utf8Error> for AdbcError {
+impl From<std::str::Utf8Error> for Error {
     fn from(value: std::str::Utf8Error) -> Self {
         Self {
             message: format!(
@@ -156,12 +158,12 @@ impl From<std::str::Utf8Error> for AdbcError {
             vendor_code: -1,
             // A character is not in the coded character set or the conversion is not supported.
             sqlstate: [2, 2, 0, 2, 1],
-            status_code: AdbcStatusCode::InvalidArguments,
+            status_code: StatusCode::InvalidArgument,
         }
     }
 }
 
-impl From<std::ffi::NulError> for AdbcError {
+impl From<std::ffi::NulError> for Error {
     fn from(value: std::ffi::NulError) -> Self {
         Self {
             message: format!(
@@ -170,12 +172,12 @@ impl From<std::ffi::NulError> for AdbcError {
             ),
             vendor_code: -1,
             sqlstate: [0; 5],
-            status_code: AdbcStatusCode::InvalidArguments,
+            status_code: StatusCode::InvalidArgument,
         }
     }
 }
 
-impl From<ArrowError> for AdbcError {
+impl From<ArrowError> for Error {
     fn from(value: ArrowError) -> Self {
         let message = match value {
             ArrowError::CDataInterface(msg) => msg,
@@ -187,7 +189,7 @@ impl From<ArrowError> for AdbcError {
             message,
             vendor_code: -1,
             sqlstate: [0; 5],
-            status_code: AdbcStatusCode::Internal,
+            status_code: StatusCode::Internal,
         }
     }
 }

@@ -35,7 +35,7 @@
 //! There are two flavors of ADBC that this library supports:
 //!
 //!  * **Native Rust implementations**. These implement the traits at the top level of
-//!    this crate, starting with [AdbcDatabase].
+//!    this crate, starting with [Database].
 //!  * **C API ADBC drivers**. These can be implemented in any language (that compiles
 //!    to native code) and can be used by any language.
 //!
@@ -43,9 +43,9 @@
 //!
 //! Native Rust drivers will implement the traits:
 //!
-//!  * [AdbcDatabase]
-//!  * [AdbcConnection]
-//!  * [AdbcStatement]
+//!  * [Database]
+//!  * [Connection]
+//!  * [Statement]
 //!
 //! For drivers implemented in Rust, using these will be more efficient and safe,
 //! since it avoids the overhead of going through C FFI.
@@ -64,25 +64,26 @@ pub mod objects;
 
 use std::collections::HashMap;
 
+use arrow_adbc_sys as adbc;
 use arrow_array::{RecordBatch, RecordBatchReader};
 use arrow_schema::Schema;
 use async_trait::async_trait;
 use info::InfoCode;
 
-use crate::error::AdbcError;
+use crate::error::Result;
 use crate::info::InfoData;
 
 /// Databases hold state shared by multiple connections. This typically means
 /// configuration and caches. For in-memory databases, it provides a place to
 /// hold ownership of the in-memory database.
 #[async_trait]
-pub trait AdbcDatabase {
-    type ConnectionType: AdbcConnection;
+pub trait Database {
+    type ConnectionType: Connection;
 
     /// Set an option on the database.
     ///
     /// Some databases may not allow setting options after it has been initialized.
-    fn set_option(&self, key: impl AsRef<str>, value: impl AsRef<str>) -> Result<(), AdbcError>;
+    fn set_option(&self, key: impl AsRef<str>, value: impl AsRef<str>) -> Result<()>;
 
     /// Initialize a connection to the database.
     ///
@@ -91,7 +92,7 @@ pub trait AdbcDatabase {
     async fn connect<K, V>(
         &self,
         options: impl IntoIterator<Item = (K, V)>,
-    ) -> Result<Self::ConnectionType, AdbcError>
+    ) -> Result<Self::ConnectionType>
     where
         K: AsRef<str>,
         V: AsRef<str>;
@@ -104,21 +105,21 @@ pub trait AdbcDatabase {
 /// # Autocommit
 ///
 /// Connections should start in autocommit mode. They can be moved out by
-/// setting [options::AdbcOptionKey::AutoCommit] to `"false"` (using
-/// [AdbcConnection::set_option]). Turning off autocommit allows customizing
+/// setting [options::OptionKey::AutoCommit] to `"false"` (using
+/// [Connection::set_option]). Turning off autocommit allows customizing
 /// the isolation level. Read more in [adbc.h](https://github.com/apache/arrow-adbc/blob/main/adbc.h).
 #[async_trait]
-pub trait AdbcConnection {
-    type StatementType: AdbcStatement;
+pub trait Connection {
+    type StatementType: Statement;
     type ObjectCollectionType: objects::DatabaseCatalogCollection;
 
     /// Set an option on the connection.
     ///
     /// Some connections may not allow setting options after it has been initialized.
-    fn set_option(&self, key: impl AsRef<str>, value: impl AsRef<str>) -> Result<(), AdbcError>;
+    fn set_option(&self, key: impl AsRef<str>, value: impl AsRef<str>) -> Result<()>;
 
-    /// Create a new [AdbcStatement].
-    fn new_statement(&self) -> Result<Self::StatementType, AdbcError>;
+    /// Create a new [Statement].
+    fn new_statement(&self) -> Result<Self::StatementType>;
 
     /// Get metadata about the database/driver.
     ///
@@ -131,15 +132,12 @@ pub trait AdbcConnection {
     /// for ADBC usage.  Drivers/vendors will ignore requests for
     /// unrecognized codes (the row will be omitted from the result).
     /// Known codes are provided in [info::InfoCode].
-    async fn get_info(
-        &self,
-        info_codes: Option<&[InfoCode]>,
-    ) -> Result<HashMap<u32, InfoData>, AdbcError>;
+    async fn get_info(&self, info_codes: Option<&[InfoCode]>) -> Result<HashMap<u32, InfoData>>;
 
-    /// Get a single data base metadata. See [AdbcConnection::get_info()].
+    /// Get a single data base metadata. See [Connection::get_info()].
     ///
     /// Will return `None` if the code is not recognized.
-    async fn get_single_info(&self, info_code: InfoCode) -> Result<Option<InfoData>, AdbcError> {
+    async fn get_single_info(&self, info_code: InfoCode) -> Result<Option<InfoData>> {
         let info_codes = &[info_code];
         Ok(self
             .get_info(Some(info_codes.as_slice()))
@@ -153,9 +151,9 @@ pub trait AdbcConnection {
     ///
     /// # Parameters
     ///
-    /// * **depth**: The level of nesting to display. If [AdbcObjectDepth::All], display
-    ///   all levels. If [AdbcObjectDepth::Catalogs], display only catalogs (i.e.  `catalog_schemas`
-    ///   will be null). If [AdbcObjectDepth::DBSchemas], display only catalogs and schemas
+    /// * **depth**: The level of nesting to display. If [ObjectDepth::All], display
+    ///   all levels. If [ObjectDepth::Catalogs], display only catalogs (i.e.  `catalog_schemas`
+    ///   will be null). If [ObjectDepth::DBSchemas], display only catalogs and schemas
     ///   (i.e. `db_schema_tables` will be null), and so on.
     /// * **catalog**: Only show tables in the given catalog. If None,
     ///   do not filter by catalog. If an empty string, only show tables
@@ -167,7 +165,7 @@ pub trait AdbcConnection {
     ///   filter by name. May be a search pattern (see next section).
     /// * **table_type**: Only show tables matching one of the given table
     ///   types. If None, show tables of any type. Valid table types should
-    ///   match those returned by [AdbcConnection::get_table_schema].
+    ///   match those returned by [Connection::get_table_schema].
     /// * **column_name**: Only show columns with the given name. If
     ///   None, do not filter by name.  May be a search pattern (see next section).
     ///
@@ -180,13 +178,13 @@ pub trait AdbcConnection {
     /// Arguments" in the ODBC documentation.)
     async fn get_objects(
         &self,
-        depth: AdbcObjectDepth,
+        depth: ObjectDepth,
         catalog: Option<&str>,
         db_schema: Option<&str>,
         table_name: Option<&str>,
         table_type: Option<&[&str]>,
         column_name: Option<&str>,
-    ) -> Result<Self::ObjectCollectionType, AdbcError>;
+    ) -> Result<Self::ObjectCollectionType>;
 
     /// Get the Arrow schema of a table.
     ///
@@ -196,7 +194,7 @@ pub trait AdbcConnection {
         catalog: Option<&str>,
         db_schema: Option<&str>,
         table_name: &str,
-    ) -> Result<Schema, AdbcError>;
+    ) -> Result<Schema>;
 
     /// Get a list of table types in the database.
     ///
@@ -205,33 +203,30 @@ pub trait AdbcConnection {
     /// Field Name       | Field Type
     /// -----------------|--------------
     /// `table_type`     | `utf8 not null`
-    async fn get_table_types(&self) -> Result<Vec<String>, AdbcError>;
+    async fn get_table_types(&self) -> Result<Vec<String>>;
 
     /// Read part of a partitioned result set.
-    async fn read_partition(
-        &self,
-        partition: &[u8],
-    ) -> Result<Box<dyn RecordBatchReader>, AdbcError>;
+    async fn read_partition(&self, partition: &[u8]) -> Result<Box<dyn RecordBatchReader>>;
 
     /// Commit any pending transactions. Only used if autocommit is disabled.
-    async fn commit(&self) -> Result<(), AdbcError>;
+    async fn commit(&self) -> Result<()>;
 
     /// Roll back any pending transactions. Only used if autocommit is disabled.
-    async fn rollback(&self) -> Result<(), AdbcError>;
+    async fn rollback(&self) -> Result<()>;
 }
 
 /// Depth parameter for GetObjects method.
 #[derive(Debug, Copy, Clone)]
 #[repr(i32)]
-pub enum AdbcObjectDepth {
+pub enum ObjectDepth {
     /// Metadata on catalogs, schemas, tables, and columns.
-    All = 0,
+    All = adbc::ADBC_OBJECT_DEPTH_ALL as i32,
     /// Metadata on catalogs only.
-    Catalogs = 1,
+    Catalogs = adbc::ADBC_OBJECT_DEPTH_CATALOGS as i32,
     /// Metadata on catalogs and schemas.
-    DBSchemas = 2,
+    DBSchemas = adbc::ADBC_OBJECT_DEPTH_DB_SCHEMAS as i32,
     /// Metadata on catalogs, schemas, and tables.
-    Tables = 3,
+    Tables = adbc::ADBC_OBJECT_DEPTH_TABLES as i32,
 }
 
 /// A container for all state needed to execute a database query, such as the
@@ -248,18 +243,17 @@ pub enum AdbcObjectDepth {
 /// However, the driver may block or error if they are used
 /// concurrently (whether from a single thread or multiple threads).
 #[async_trait]
-pub trait AdbcStatement {
+pub trait Statement {
     /// Turn this statement into a prepared statement to be executed multiple time.
     ///
-    /// This should return an error if called before [AdbcStatement::set_sql_query].
-    async fn prepare(&mut self) -> Result<(), AdbcError>;
+    /// This should return an error if called before [Statement::set_sql_query].
+    async fn prepare(&mut self) -> Result<()>;
 
     /// Set a string option on a statement.
-    fn set_option(&mut self, key: impl AsRef<str>, value: impl AsRef<str>)
-        -> Result<(), AdbcError>;
+    fn set_option(&mut self, key: impl AsRef<str>, value: impl AsRef<str>) -> Result<()>;
 
     /// Set the SQL query to execute.
-    fn set_sql_query(&mut self, query: &str) -> Result<(), AdbcError>;
+    fn set_sql_query(&mut self, query: &str) -> Result<()>;
 
     /// Get the schema for bound parameters.
     ///
@@ -273,25 +267,25 @@ pub trait AdbcStatement {
     /// be an empty string.  If the type cannot be determined, the type of
     /// the corresponding field will be NA (NullType).
     ///
-    /// This should return an error if this was called before [AdbcStatement::prepare].
-    async fn get_param_schema(&self) -> Result<Schema, AdbcError>;
+    /// This should return an error if this was called before [Statement::prepare].
+    async fn get_param_schema(&self) -> Result<Schema>;
 
     /// Bind Arrow data, either for bulk inserts or prepared statements.
-    fn bind_data(&mut self, batch: RecordBatch) -> Result<(), AdbcError>;
+    fn bind_data(&mut self, batch: RecordBatch) -> Result<()>;
 
     /// Bind Arrow data, either for bulk inserts or prepared statements.
-    fn bind_stream(&mut self, stream: Box<dyn RecordBatchReader>) -> Result<(), AdbcError>;
+    fn bind_stream(&mut self, stream: Box<dyn RecordBatchReader>) -> Result<()>;
 
     /// Execute a statement and get the results.
     ///
     /// See [StatementResult].
-    async fn execute(&mut self) -> Result<StatementResult, AdbcError>;
+    async fn execute(&mut self) -> Result<StatementResult>;
 
     /// Execute a query that doesn't have a result set.
     ///
     /// Will return the number of rows affected. If the affected row count is
     /// unknown or unsupported by the database, will return `Ok(-1)`.
-    async fn execute_update(&mut self) -> Result<i64, AdbcError>;
+    async fn execute_update(&mut self) -> Result<i64>;
 
     /// Execute a statement with a partitioned result set.
     ///
@@ -300,16 +294,16 @@ pub trait AdbcStatement {
     /// to support threaded or distributed clients.
     ///
     /// See [PartitionedStatementResult].
-    async fn execute_partitioned(&mut self) -> Result<PartitionedStatementResult, AdbcError>;
+    async fn execute_partitioned(&mut self) -> Result<PartitionedStatementResult>;
 }
 
 #[cfg(substrait)]
-pub trait AdbcStatementSubstrait: AdbcStatement {
+pub trait StatementSubstrait: Statement {
     /// Set the Substrait plan to execute.
-    fn set_substrait_plan(&mut self, plan: substrait::proto::Plan) -> Result<(), AdbcError>;
+    fn set_substrait_plan(&mut self, plan: substrait::proto::Plan) -> Result<()>;
 }
 
-/// Result of calling [AdbcStatement::execute].
+/// Result of calling [Statement::execute].
 ///
 /// `result` may be None if there is no meaningful result.
 /// `row_affected` may be -1 if not applicable or if it is not supported.
@@ -320,7 +314,7 @@ pub struct StatementResult {
 
 /// Partitioned results
 ///
-/// [AdbcConnection::read_partition] will be called to get the output stream
+/// [Connection::read_partition] will be called to get the output stream
 /// for each partition.
 ///
 /// These may be used by a multi-threaded or a distributed client. Each partition
@@ -336,14 +330,28 @@ pub struct PartitionedStatementResult {
 
 /// Known options that can be set on databases, connections, and statements.
 ///
-/// For use with [crate::AdbcDatabase::set_option],
-/// [crate::AdbcConnection::set_option],
-/// and [crate::AdbcStatement::set_option].
+/// For use with [crate::Database::set_option],
+/// [crate::Connection::set_option],
+/// and [crate::Statement::set_option].
 pub mod options {
+    use arrow_adbc_sys as adbc;
+    use std::ffi::CStr;
+
+    /// Const function to extract string slices from nul-terminated strings.
+    const fn as_str(bytes: &[u8]) -> &str {
+        match CStr::from_bytes_with_nul(bytes) {
+            Ok(key) => match key.to_str() {
+                Ok(key) => key,
+                Err(_) => panic!("Non-utf8 input"),
+            },
+            Err(_) => panic!("Invalid input"),
+        }
+    }
+
     /// Various known options for ADBC connections.
     ///
     /// These convert to canonical option strings as defined in the C API.
-    pub enum AdbcOptionKey {
+    pub enum OptionKey {
         /// When ingesting a data stream, table name to write to.
         IngestTargetTable,
         /// How to ingest a table. See [IngestMode] for canonical possible values.
@@ -356,7 +364,7 @@ pub mod options {
         /// transaction.
         ///
         /// Should only be used in conjunction with autocommit disabled and
-        /// AdbcConnectionCommit / AdbcConnectionRollback. If the desired
+        /// ConnectionCommit / ConnectionRollback. If the desired
         /// isolation level is not supported by a driver, it should return an
         /// appropriate error.
         ///
@@ -364,36 +372,40 @@ pub mod options {
         IsolationLevel,
     }
 
-    impl AsRef<str> for AdbcOptionKey {
+    impl AsRef<str> for OptionKey {
         fn as_ref(&self) -> &str {
             match self {
-                Self::IngestTargetTable => "adbc.ingest.target_table",
-                Self::IngestMode => "adbc.ingest.mode",
-                Self::AutoCommit => "adbc.connection.autocommit",
-                Self::ReadOnly => "adbc.connection.readonly",
-                Self::IsolationLevel => "adbc.connection.transaction.isolation_level",
+                Self::IngestTargetTable => as_str(adbc::ADBC_INGEST_OPTION_TARGET_TABLE),
+                Self::IngestMode => as_str(adbc::ADBC_INGEST_OPTION_MODE),
+                Self::AutoCommit => as_str(adbc::ADBC_CONNECTION_OPTION_AUTOCOMMIT),
+                Self::ReadOnly => as_str(adbc::ADBC_CONNECTION_OPTION_READ_ONLY),
+                Self::IsolationLevel => as_str(adbc::ADBC_CONNECTION_OPTION_ISOLATION_LEVEL),
             }
         }
     }
 
-    /// Possible ingest mode for use with option [AdbcOptionKey::IngestMode].
+    /// Possible ingest mode for use with option [OptionKey::IngestMode].
     ///
     /// These convert to canonical option strings as defined in the C API.
     pub enum IngestMode {
         Create,
         Append,
+        Replace,
+        CreateAppend,
     }
 
     impl AsRef<str> for IngestMode {
         fn as_ref(&self) -> &str {
             match self {
-                Self::Create => "adbc.ingest.mode.create",
-                Self::Append => "adbc.ingest.mode.append",
+                Self::Create => as_str(adbc::ADBC_INGEST_OPTION_MODE_CREATE),
+                Self::Append => as_str(adbc::ADBC_INGEST_OPTION_MODE_APPEND),
+                Self::Replace => as_str(adbc::ADBC_INGEST_OPTION_MODE_REPLACE),
+                Self::CreateAppend => as_str(adbc::ADBC_INGEST_OPTION_MODE_CREATE_APPEND),
             }
         }
     }
 
-    /// Possible isolation level values for use with option [AdbcOptionKey::IsolationLevel].
+    /// Possible isolation level values for use with option [OptionKey::IsolationLevel].
     pub enum IsolationLevel {
         /// Use database or driver default isolation level
         Default,
@@ -442,13 +454,13 @@ pub mod options {
     impl AsRef<str> for IsolationLevel {
         fn as_ref(&self) -> &str {
             match self {
-                Self::Default => "adbc.connection.transaction.isolation.default",
-                Self::ReadUncommitted => "adbc.connection.transaction.isolation.read_uncommitted",
-                Self::ReadCommitted => "adbc.connection.transaction.isolation.read_committed",
-                Self::RepeatableRead => "adbc.connection.transaction.isolation.repeatable_read",
-                Self::Snapshot => "adbc.connection.transaction.isolation.snapshot",
-                Self::Serializable => "adbc.connection.transaction.isolation.serializable",
-                Self::Linearizable => "adbc.connection.transaction.isolation.linearizable",
+                Self::Default => as_str(adbc::ADBC_OPTION_ISOLATION_LEVEL_DEFAULT),
+                Self::ReadUncommitted => as_str(adbc::ADBC_OPTION_ISOLATION_LEVEL_READ_UNCOMMITTED),
+                Self::ReadCommitted => as_str(adbc::ADBC_OPTION_ISOLATION_LEVEL_READ_COMMITTED),
+                Self::RepeatableRead => as_str(adbc::ADBC_OPTION_ISOLATION_LEVEL_REPEATABLE_READ),
+                Self::Snapshot => as_str(adbc::ADBC_OPTION_ISOLATION_LEVEL_SNAPSHOT),
+                Self::Serializable => as_str(adbc::ADBC_OPTION_ISOLATION_LEVEL_SERIALIZABLE),
+                Self::Linearizable => as_str(adbc::ADBC_OPTION_ISOLATION_LEVEL_LINEARIZABLE),
             }
         }
     }

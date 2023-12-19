@@ -22,10 +22,12 @@ on:
     branches:
       - main
     paths:
+      - "adbc.h"
       - "rust/**"
       - ".github/workflows/rust.yml"
   push:
     paths:
+      - "adbc.h"
       - "rust/**"
       - ".github/workflows/rust.yml"
 
@@ -38,31 +40,62 @@ permissions:
 
 defaults:
   run:
+    shell: bash
     working-directory: rust
 
 jobs:
   rust:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+          - os: macos-latest
+            features: "--all-features"
+          - os: ubuntu-latest
+            features: "--all-features"
     name: "Rust ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Update Rust to latest stable
+        run: rustup update stable
+      - name: Set default Rust toolchain
+        run: rustup default stable
+      - name: Rust version
+        id: rustc
+        run: echo "version=$(rustup run stable rustc --version | base64)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v3
         with:
-          components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            rust/target/
+          key: ${{ runner.os }}-cargo-${{ steps.rustc.outputs.version }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ steps.rustc.outputs.version }}-
       - name: Check format
-        run: cargo fmt -- --check
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo fmt --all -- --check
+      - name: Check
+        run: cargo check --workspace --all-targets ${{ matrix.features }}
       - name: Clippy
-        run: cargo clippy --tests
+        run: cargo clippy --workspace --all-targets ${{ matrix.features }} -- -Dwarnings
       - name: Test
-        shell: bash -l {0}
-        run: cargo test
-      - name: Check docs
-        run: cargo doc
+        run: cargo test --workspace --all-targets ${{ matrix.features }}
+      - name: Documentation tests
+        run: cargo test --workspace --doc ${{ matrix.features }}
+      - name: Rustdoc
+        run: cargo doc --workspace ${{ matrix.features }}
+      - name: Check bindings
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          git diff --exit-code || ( \
+            echo '# :x: rust/bindings/adbc.rs is outdated and needs to be updated' >> $GITHUB_STEP_SUMMARY && \
+            echo 'Run `cargo build -p arrow-adbc-sys --features generate` to regenerate' >> $GITHUB_STEP_SUMMARY && \
+            exit 1 \
+          )
