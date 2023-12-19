@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import os
 import sys
 from pathlib import Path
 
@@ -35,7 +36,10 @@ version = release
 
 exclude_patterns = []
 extensions = [
+    # recipe directive
     "adbc_cookbook",
+    # generic directives to enable intersphinx for java
+    "adbc_java_domain",
     "breathe",
     "numpydoc",
     "sphinx.ext.autodoc",
@@ -110,6 +114,27 @@ html_theme_options = {
 intersphinx_mapping = {
     "arrow": ("https://arrow.apache.org/docs/", None),
 }
+
+# Add env vars like ADBC_INTERSPHINX_MAPPING_adbc_java = url;path
+# to inject more mappings
+
+
+def _find_intersphinx_mappings():
+    prefix = "ADBC_INTERSPHINX_MAPPING_"
+    for key, val in os.environ.items():
+        if key.startswith(prefix):
+            name = key[len(prefix) :]
+            url, _, path = val.partition(";")
+            print("[ADBC] Found Intersphinx mapping", name)
+            intersphinx_mapping[name] = (url, path)
+        #         "adbc_java": (
+        #     "http://localhost:8000/",
+        #     "/home/lidavidm/Code/arrow-adbc/java/target/site/apidocs/objects.inv",
+        # ),
+
+
+_find_intersphinx_mappings()
+
 
 # -- Options for numpydoc ----------------------------------------------------
 
