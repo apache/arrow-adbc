@@ -1052,12 +1052,14 @@ func (c *cnxn) Rollback(_ context.Context) error {
 
 // NewStatement initializes a new statement object tied to this connection
 func (c *cnxn) NewStatement() (adbc.Statement, error) {
+	defaultIngestOptions := DefaultIngestOptions()
 	return &statement{
 		alloc:               c.db.Alloc,
 		cnxn:                c,
 		queueSize:           defaultStatementQueueSize,
 		prefetchConcurrency: defaultPrefetchConcurrency,
 		useHighPrecision:    c.useHighPrecision,
+		ingestOptions:       defaultIngestOptions,
 	}, nil
 }
 

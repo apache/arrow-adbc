@@ -20,6 +20,7 @@ package snowflake
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -35,6 +36,8 @@ import (
 	"github.com/snowflakedb/gosnowflake"
 	"golang.org/x/sync/errgroup"
 )
+
+const MetadataKeySnowflakeType = "SNOWFLAKE_TYPE"
 
 func identCol(_ context.Context, a arrow.Array) (arrow.Array, error) {
 	a.Retain()
@@ -212,13 +215,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 							continue
 						}
 
-						q := int64(t) / int64(math.Pow10(int(srcMeta.Scale)))
-						r := int64(t) % int64(math.Pow10(int(srcMeta.Scale)))
-						v, err := arrow.TimestampFromTime(time.Unix(q, r), dt.Unit)
-						if err != nil {
-							return nil, err
-						}
-						tb.Append(v)
+						tb.Append(arrow.Timestamp(t))
 					}
 				}
 				return tb.NewArray(), nil
@@ -313,7 +310,7 @@ func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader
 			Name:     srcMeta.Name,
 			Nullable: srcMeta.Nullable,
 			Metadata: arrow.MetadataFrom(map[string]string{
-				"SNOWFLAKE_TYPE": srcMeta.Type,
+				MetadataKeySnowflakeType: srcMeta.Type,
 			}),
 		}
 		switch srcMeta.Type {
@@ -389,7 +386,15 @@ func jsonDataToArrow(ctx context.Context, bldr *array.RecordBuilder, ld gosnowfl
 					return nil, err
 				}
 
-				if tz != time.UTC {
+				snowflakeType, ok := bldr.Schema().Field(i).Metadata.GetValue(MetadataKeySnowflakeType)
+				if !ok {
+					return nil, errToAdbcErr(
+						adbc.StatusInvalidData,
+						fmt.Errorf("key %s not found in metadata for field %s", MetadataKeySnowflakeType, bldr.Schema().Field(i).Name),
+					)
+				}
+
+				if snowflakeType == "timestamp_ltz" {
 					sec, nsec, err := extractTimestamp(col)
 					if err != nil {
 						return nil, err
@@ -404,7 +409,6 @@ func jsonDataToArrow(ctx context.Context, bldr *array.RecordBuilder, ld gosnowfl
 					break
 				}
 
-				snowflakeType, _ := bldr.Schema().Field(i).Metadata.GetValue("SNOWFLAKE_TYPE")
 				if snowflakeType == "timestamp_ntz" {
 					sec, nsec, err := extractTimestamp(col)
 					if err != nil {
