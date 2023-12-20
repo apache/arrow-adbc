@@ -15,6 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// Windows
+#define NOMINMAX
+
 #include "statement.h"
 
 #include <array>
@@ -23,6 +26,7 @@
 #include <cinttypes>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -432,8 +436,6 @@ struct BindStream {
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
 
-              // 2000-01-01 00:00:00.000000 in microseconds
-              constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
               bool overflow_safe = true;
 
               auto unit = bind_schema_fields[col].time_unit;
@@ -464,6 +466,15 @@ struct BindStream {
                          "[libpq] Field #%" PRId64 " ('%s') Row #%" PRId64
                          " has value '%" PRIi64
                          "' which exceeds PostgreSQL timestamp limits",
+                         col + 1, bind_schema->children[col]->name, row + 1,
+                         array_view->children[col]->buffer_views[1].data.as_int64[row]);
+                return ADBC_STATUS_INVALID_ARGUMENT;
+              }
+
+              if (val < std::numeric_limits<int64_t>::min() + kPostgresTimestampEpoch) {
+                SetError(error,
+                         "[libpq] Field #%" PRId64 " ('%s') Row #%" PRId64
+                         " has value '%" PRIi64 "' which would underflow",
                          col + 1, bind_schema->children[col]->name, row + 1,
                          array_view->children[col]->buffer_views[1].data.as_int64[row]);
                 return ADBC_STATUS_INVALID_ARGUMENT;
