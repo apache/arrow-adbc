@@ -17,6 +17,9 @@
 
 #pragma once
 
+// Windows
+#define NOMINMAX
+
 #include <algorithm>
 #include <cerrno>
 #include <cinttypes>
