@@ -605,21 +605,48 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 <span class="linenos">29</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>We’ll create an example table to test.</p>
+<p>We’ll create some example tables to test.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">33</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS example&quot;</span><span class="p">)</span>
 <span class="linenos">34</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE example (ints INT, bigints BIGINT)&quot;</span><span class="p">)</span>
 <span class="linenos">35</span>
-<span class="linenos">36</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
-<span class="linenos">37</span>
-<span class="linenos">38</span><span class="k">assert</span> <span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_table_schema</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span>
-<span class="linenos">39</span>    <span class="p">[</span>
-<span class="linenos">40</span>        <span class="p">(</span><span class="s2">&quot;ints&quot;</span><span class="p">,</span> <span class="s2">&quot;int32&quot;</span><span class="p">),</span>
-<span class="linenos">41</span>        <span class="p">(</span><span class="s2">&quot;bigints&quot;</span><span class="p">,</span> <span class="s2">&quot;int64&quot;</span><span class="p">),</span>
-<span class="linenos">42</span>    <span class="p">]</span>
-<span class="linenos">43</span><span class="p">)</span>
-<span class="linenos">44</span>
-<span class="linenos">45</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="linenos">36</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE SCHEMA IF NOT EXISTS other_schema&quot;</span><span class="p">)</span>
+<span class="linenos">37</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS other_schema.example&quot;</span><span class="p">)</span>
+<span class="linenos">38</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE other_schema.example (strings TEXT, values NUMERIC)&quot;</span><span class="p">)</span>
+<span class="linenos">39</span>
+<span class="linenos">40</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>By default the “active” catalog/schema are assumed.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">43</span><span class="k">assert</span> <span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_table_schema</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span>
+<span class="linenos">44</span>    <span class="p">[</span>
+<span class="linenos">45</span>        <span class="p">(</span><span class="s2">&quot;ints&quot;</span><span class="p">,</span> <span class="s2">&quot;int32&quot;</span><span class="p">),</span>
+<span class="linenos">46</span>        <span class="p">(</span><span class="s2">&quot;bigints&quot;</span><span class="p">,</span> <span class="s2">&quot;int64&quot;</span><span class="p">),</span>
+<span class="linenos">47</span>    <span class="p">]</span>
+<span class="linenos">48</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can explicitly specify the PostgreSQL schema to get the Arrow schema of
+a table in a different namespace.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In PostgreSQL, you can only query the database (catalog) that you
+are connected to.  So we cannot specify the catalog here (or
+rather, there is no point in doing so).</p>
+</div>
+<p>Note that the NUMERIC column is read as a string, because PostgreSQL
+decimals do not map onto Arrow decimals.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">59</span><span class="k">assert</span> <span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_table_schema</span><span class="p">(</span>
+<span class="linenos">60</span>    <span class="s2">&quot;example&quot;</span><span class="p">,</span>
+<span class="linenos">61</span>    <span class="n">db_schema_filter</span><span class="o">=</span><span class="s2">&quot;other_schema&quot;</span><span class="p">,</span>
+<span class="linenos">62</span><span class="p">)</span> <span class="o">==</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span>
+<span class="linenos">63</span>    <span class="p">[</span>
+<span class="linenos">64</span>        <span class="p">(</span><span class="s2">&quot;strings&quot;</span><span class="p">,</span> <span class="s2">&quot;string&quot;</span><span class="p">),</span>
+<span class="linenos">65</span>        <span class="p">(</span><span class="s2">&quot;values&quot;</span><span class="p">,</span> <span class="s2">&quot;string&quot;</span><span class="p">),</span>
+<span class="linenos">66</span>    <span class="p">]</span>
+<span class="linenos">67</span><span class="p">)</span>
+<span class="linenos">68</span>
+<span class="linenos">69</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
 </section>
