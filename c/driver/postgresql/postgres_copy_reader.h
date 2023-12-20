@@ -21,6 +21,7 @@
 #include <cerrno>
 #include <cinttypes>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -67,6 +68,9 @@ constexpr int64_t kMaxSafeMicrosToNanos = 9223372036854775L;
 // The minimum value in microseconds that can be converted into nanoseconds
 // without overflow
 constexpr int64_t kMinSafeMicrosToNanos = -9223372036854775L;
+
+// 2000-01-01 00:00:00.000000 in microseconds
+constexpr int64_t kPostgresTimestampEpoch = 946684800000000L;
 
 // Read a value from the buffer without checking the buffer size. Advances
 // the cursor of data and reduces its size by sizeof(T).
@@ -1333,14 +1337,20 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
 
     if (!overflow_safe) {
       ArrowErrorSet(error,
-                    "Row %" PRId64 " timestamp value %" PRId64
+                    "[libpq] Row %" PRId64 " timestamp value %" PRId64
                     " with unit %d would overflow",
                     index, raw_value, TU);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
-    // 2000-01-01 00:00:00.000000 in microseconds
-    constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
+    if (value < std::numeric_limits<int64_t>::min() + kPostgresTimestampEpoch) {
+      ArrowErrorSet(error,
+                    "[libpq] Row %" PRId64 " timestamp value %" PRId64
+                    " with unit %d would underflow",
+                    index, raw_value, TU);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
     const int64_t scaled = value - kPostgresTimestampEpoch;
     NANOARROW_RETURN_NOT_OK(WriteChecked<int64_t>(buffer, scaled, error));
 
