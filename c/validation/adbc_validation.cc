@@ -70,7 +70,9 @@ bool iequals(std::string_view s1, std::string_view s2) {
 // DriverQuirks
 
 AdbcStatusCode DoIngestSampleTable(struct AdbcConnection* connection,
-                                   const std::string& name, struct AdbcError* error) {
+                                   const std::string& name,
+                                   std::optional<std::string> db_schema,
+                                   struct AdbcError* error) {
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
@@ -84,6 +86,10 @@ AdbcStatusCode DoIngestSampleTable(struct AdbcConnection* connection,
   CHECK_OK(AdbcStatementNew(connection, &statement.value, error));
   CHECK_OK(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
                                   name.c_str(), error));
+  if (db_schema.has_value()) {
+    CHECK_OK(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA,
+                                    db_schema->c_str(), error));
+  }
   CHECK_OK(AdbcStatementBind(&statement.value, &array.value, &schema.value, error));
   CHECK_OK(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
   CHECK_OK(AdbcStatementRelease(&statement.value, error));
@@ -91,7 +97,8 @@ AdbcStatusCode DoIngestSampleTable(struct AdbcConnection* connection,
 }
 
 void IngestSampleTable(struct AdbcConnection* connection, struct AdbcError* error) {
-  ASSERT_THAT(DoIngestSampleTable(connection, "bulk_ingest", error), IsOkStatus(error));
+  ASSERT_THAT(DoIngestSampleTable(connection, "bulk_ingest", std::nullopt, error),
+              IsOkStatus(error));
 }
 
 AdbcStatusCode DriverQuirks::EnsureSampleTable(struct AdbcConnection* connection,
@@ -107,7 +114,17 @@ AdbcStatusCode DriverQuirks::CreateSampleTable(struct AdbcConnection* connection
   if (!supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
-  return DoIngestSampleTable(connection, name, error);
+  return DoIngestSampleTable(connection, name, std::nullopt, error);
+}
+
+AdbcStatusCode DriverQuirks::CreateSampleTable(struct AdbcConnection* connection,
+                                               const std::string& name,
+                                               const std::string& schema,
+                                               struct AdbcError* error) const {
+  if (!supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+  return DoIngestSampleTable(connection, name, schema, error);
 }
 
 //------------------------------------------------------------
@@ -423,6 +440,34 @@ void ConnectionTest::TestMetadataGetTableSchema() {
   Handle<ArrowSchema> schema;
   ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
                                            /*db_schema=*/nullptr, "bulk_ingest",
+                                           &schema.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_NO_FATAL_FAILURE(
+      CompareSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64, NULLABLE},
+                                    {"strings", NANOARROW_TYPE_STRING, NULLABLE}}));
+}
+
+void ConnectionTest::TestMetadataGetTableSchemaDbSchema() {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  auto status = quirks()->EnsureDbSchema(&connection, "otherschema", &error);
+  if (status == ADBC_STATUS_NOT_IMPLEMENTED) {
+    GTEST_SKIP() << "Schema not supported";
+    return;
+  }
+  ASSERT_THAT(status, IsOkStatus(&error));
+
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", "otherschema", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(
+      quirks()->CreateSampleTable(&connection, "bulk_ingest", "otherschema", &error),
+      IsOkStatus(&error));
+
+  Handle<ArrowSchema> schema;
+  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                           /*db_schema=*/"otherschema", "bulk_ingest",
                                            &schema.value, &error),
               IsOkStatus(&error));
 
