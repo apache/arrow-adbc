@@ -32,11 +32,11 @@ repos:
     - id: mixed-line-ending
       name: "Mixed line endings (LF)"
       args: [--fix=lf]
-      exclude: '\.(bat|sln|csproj)$'
+      exclude: '\.(bat|sln)$'
     - id: mixed-line-ending
       name: "Mixed line endings (CRLF)"
       args: [--fix=crlf]
-      files: '\.(bat|sln|csproj)$'
+      files: '\.(bat|sln)$'
     - id: trailing-whitespace
       exclude: "^r/.*?/_snaps/.*?.md$"
   - repo: https://github.com/pocc/pre-commit-hooks
