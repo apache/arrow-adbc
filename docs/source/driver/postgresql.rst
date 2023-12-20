@@ -196,78 +196,74 @@ being read or written.
 
    * - Arrow Type
      - As Bind Parameter
-     - In Bulk Ingestion
+     - In Bulk Ingestion [#bulk-ingestion]_
 
    * - binary
-     - Y
+     - BYTEA
      - BYTEA
 
    * - bool
-     - Y
+     - BOOLEAN
      - BOOLEAN
 
    * - date32
-     - Y
+     - DATE
      - DATE
 
    * - date64
-     - N
-     - N
+     - ❌
+     - ❌
 
    * - dictionary
      - (as unpacked type)
      - (as unpacked type, only for binary/string)
 
    * - duration
-     - Y
+     - INTERVAL
      - INTERVAL
 
    * - float32
-     - Y
+     - REAL
      - REAL
 
    * - float64
-     - Y
+     - DOUBLE PRECISION
      - DOUBLE PRECISION
 
    * - int8
-     - Y
+     - SMALLINT
      - SMALLINT
 
    * - int16
-     - Y
+     - SMALLINT
      - SMALLINT
 
    * - int32
-     - Y
+     - INTEGER
      - INTEGER
 
    * - int64
-     - Y
+     - BIGINT
      - BIGINT
 
    * - large_binary
-     - N
-     - N
+     - ❌
+     - ❌
 
    * - large_string
-     - Y
+     - TEXT
      - TEXT
 
    * - month_day_nano_interval
-     - Y
+     - INTERVAL
      - INTERVAL
 
-   * - NA
-     - N
-     - N
-
    * - string
-     - Y
+     - TEXT
      - TEXT
 
    * - timestamp
-     - Y
+     - TIMESTAMP [#timestamp]_
      - TIMESTAMP/TIMESTAMP WITH TIMEZONE
 
 .. list-table:: PostgreSQL type to Arrow type mapping
@@ -311,6 +307,15 @@ being read or written.
    * - VARCHAR
      - utf8
 
+.. [#bulk-ingestion] This is the data type used when creating/appending to a
+                     table from Arrow data via the bulk ingestion feature.
+
 .. [#numeric-utf8] NUMERIC types are read as the string representation of the
                    value, because the PostgreSQL NUMERIC type cannot be
                    losslessly converted to the Arrow decimal types.
+
+.. [#timestamp] When binding a timestamp value, the time zone (if present) is
+                ignored.  The value will be converted to microseconds and
+                adjusted to the PostgreSQL epoch (2000-01-01) and so may
+                overflow/underflow; an error will be returned if this would be
+                the case.
