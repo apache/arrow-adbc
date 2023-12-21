@@ -565,7 +565,12 @@ struct BindStream {
   AdbcStatusCode ExecuteCopy(PGconn* conn, int64_t* rows_affected,
                              struct AdbcError* error) {
     if (rows_affected) *rows_affected = 0;
-    PGresult* result = nullptr;
+
+    PostgresCopyStreamWriter writer;
+    CHECK_NA(INTERNAL, writer.Init(&bind_schema.value), error);
+    CHECK_NA(INTERNAL, writer.InitFieldWriters(nullptr), error);
+
+    CHECK_NA(INTERNAL, writer.WriteHeader(nullptr), error);
 
     while (true) {
       Handle<struct ArrowArray> array;
@@ -579,20 +584,9 @@ struct BindStream {
       }
       if (!array->release) break;
 
-      Handle<struct ArrowArrayView> array_view;
-      CHECK_NA(
-          INTERNAL,
-          ArrowArrayViewInitFromSchema(&array_view.value, &bind_schema.value, nullptr),
-          error);
-      CHECK_NA(INTERNAL, ArrowArrayViewSetArray(&array_view.value, &array.value, nullptr),
-               error);
-
-      PostgresCopyStreamWriter writer;
-      CHECK_NA(INTERNAL, writer.Init(&bind_schema.value, &array.value), error);
-      CHECK_NA(INTERNAL, writer.InitFieldWriters(nullptr), error);
+      CHECK_NA(INTERNAL, writer.SetArray(&array.value), error);
 
       // build writer buffer
-      CHECK_NA(INTERNAL, writer.WriteHeader(nullptr), error);
       int write_result;
       do {
         write_result = writer.WriteRecord(nullptr);
@@ -611,25 +605,26 @@ struct BindStream {
         return ADBC_STATUS_IO;
       }
 
-      if (PQputCopyEnd(conn, NULL) <= 0) {
-        SetError(error, "Error message returned by PQputCopyEnd: %s",
-                 PQerrorMessage(conn));
-        return ADBC_STATUS_IO;
-      }
-
-      result = PQgetResult(conn);
-      ExecStatusType pg_status = PQresultStatus(result);
-      if (pg_status != PGRES_COMMAND_OK) {
-        AdbcStatusCode code =
-            SetError(error, result, "[libpq] Failed to execute COPY statement: %s %s",
-                     PQresStatus(pg_status), PQerrorMessage(conn));
-        PQclear(result);
-        return code;
-      }
-
-      PQclear(result);
       if (rows_affected) *rows_affected += array->length;
+      writer.Rewind();
     }
+
+    if (PQputCopyEnd(conn, NULL) <= 0) {
+      SetError(error, "Error message returned by PQputCopyEnd: %s", PQerrorMessage(conn));
+      return ADBC_STATUS_IO;
+    }
+
+    PGresult* result = PQgetResult(conn);
+    ExecStatusType pg_status = PQresultStatus(result);
+    if (pg_status != PGRES_COMMAND_OK) {
+      AdbcStatusCode code =
+          SetError(error, result, "[libpq] Failed to execute COPY statement: %s %s",
+                   PQresStatus(pg_status), PQerrorMessage(conn));
+      PQclear(result);
+      return code;
+    }
+
+    PQclear(result);
     return ADBC_STATUS_OK;
   }
 };
