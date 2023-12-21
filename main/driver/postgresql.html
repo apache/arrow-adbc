@@ -492,94 +492,90 @@ build a mapping of available types.  This is currently done once at
 startup.</p>
 <p>Type support is currently limited depending on the type and whether it is
 being read or written.</p>
-<div class="table-wrapper docutils container" id="id2">
-<table class="docutils align-default" id="id2">
-<caption><span class="caption-text">Arrow type to PostgreSQL type mapping</span><a class="headerlink" href="#id2" title="Permalink to this table">#</a></caption>
+<div class="table-wrapper docutils container" id="id5">
+<table class="docutils align-default" id="id5">
+<caption><span class="caption-text">Arrow type to PostgreSQL type mapping</span><a class="headerlink" href="#id5" title="Permalink to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Arrow Type</p></th>
 <th class="head"><p>As Bind Parameter</p></th>
-<th class="head"><p>In Bulk Ingestion</p></th>
+<th class="head"><p>In Bulk Ingestion <a class="footnote-reference brackets" href="#id4" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p>binary</p></td>
-<td><p>Y</p></td>
+<td><p>BYTEA</p></td>
 <td><p>BYTEA</p></td>
 </tr>
 <tr class="row-odd"><td><p>bool</p></td>
-<td><p>Y</p></td>
+<td><p>BOOLEAN</p></td>
 <td><p>BOOLEAN</p></td>
 </tr>
 <tr class="row-even"><td><p>date32</p></td>
-<td><p>Y</p></td>
+<td><p>DATE</p></td>
 <td><p>DATE</p></td>
 </tr>
 <tr class="row-odd"><td><p>date64</p></td>
-<td><p>N</p></td>
-<td><p>N</p></td>
+<td><p>❌</p></td>
+<td><p>❌</p></td>
 </tr>
 <tr class="row-even"><td><p>dictionary</p></td>
 <td><p>(as unpacked type)</p></td>
 <td><p>(as unpacked type, only for binary/string)</p></td>
 </tr>
 <tr class="row-odd"><td><p>duration</p></td>
-<td><p>Y</p></td>
+<td><p>INTERVAL</p></td>
 <td><p>INTERVAL</p></td>
 </tr>
 <tr class="row-even"><td><p>float32</p></td>
-<td><p>Y</p></td>
+<td><p>REAL</p></td>
 <td><p>REAL</p></td>
 </tr>
 <tr class="row-odd"><td><p>float64</p></td>
-<td><p>Y</p></td>
+<td><p>DOUBLE PRECISION</p></td>
 <td><p>DOUBLE PRECISION</p></td>
 </tr>
 <tr class="row-even"><td><p>int8</p></td>
-<td><p>Y</p></td>
+<td><p>SMALLINT</p></td>
 <td><p>SMALLINT</p></td>
 </tr>
 <tr class="row-odd"><td><p>int16</p></td>
-<td><p>Y</p></td>
+<td><p>SMALLINT</p></td>
 <td><p>SMALLINT</p></td>
 </tr>
 <tr class="row-even"><td><p>int32</p></td>
-<td><p>Y</p></td>
+<td><p>INTEGER</p></td>
 <td><p>INTEGER</p></td>
 </tr>
 <tr class="row-odd"><td><p>int64</p></td>
-<td><p>Y</p></td>
+<td><p>BIGINT</p></td>
 <td><p>BIGINT</p></td>
 </tr>
 <tr class="row-even"><td><p>large_binary</p></td>
-<td><p>N</p></td>
-<td><p>N</p></td>
+<td><p>❌</p></td>
+<td><p>❌</p></td>
 </tr>
 <tr class="row-odd"><td><p>large_string</p></td>
-<td><p>Y</p></td>
+<td><p>TEXT</p></td>
 <td><p>TEXT</p></td>
 </tr>
 <tr class="row-even"><td><p>month_day_nano_interval</p></td>
-<td><p>Y</p></td>
+<td><p>INTERVAL</p></td>
 <td><p>INTERVAL</p></td>
 </tr>
-<tr class="row-odd"><td><p>NA</p></td>
-<td><p>N</p></td>
-<td><p>N</p></td>
-</tr>
-<tr class="row-even"><td><p>string</p></td>
-<td><p>Y</p></td>
+<tr class="row-odd"><td><p>string</p></td>
+<td><p>TEXT</p></td>
 <td><p>TEXT</p></td>
 </tr>
-<tr class="row-odd"><td><p>timestamp</p></td>
-<td><p>Y</p></td>
+<tr class="row-even"><td><p>timestamp</p></td>
+<td><p>TIMESTAMP <a class="footnote-reference brackets" href="#timestamp" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a></p></td>
 <td><p>TIMESTAMP/TIMESTAMP WITH TIMEZONE</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<div class="table-wrapper docutils container" id="id3">
-<table class="docutils align-default" id="id3">
-<caption><span class="caption-text">PostgreSQL type to Arrow type mapping</span><a class="headerlink" href="#id3" title="Permalink to this table">#</a></caption>
+<div class="table-wrapper docutils container" id="id6">
+<table class="docutils align-default" id="id6">
+<caption><span class="caption-text">PostgreSQL type to Arrow type mapping</span><a class="headerlink" href="#id6" title="Permalink to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>PostgreSQL Type</p></th>
 <th class="head"><p>In Result Set</p></th>
@@ -614,7 +610,7 @@ being read or written.</p>
 <td><p>month_day_nano_interval</p></td>
 </tr>
 <tr class="row-odd"><td><p>NUMERIC</p></td>
-<td><p>utf8 <a class="footnote-reference brackets" href="#numeric-utf8" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p></td>
+<td><p>utf8 <a class="footnote-reference brackets" href="#numeric-utf8" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p>REAL</p></td>
 <td><p>float32</p></td>
@@ -641,11 +637,24 @@ being read or written.</p>
 </table>
 </div>
 <aside class="footnote-list brackets">
-<aside class="footnote brackets" id="numeric-utf8" role="note">
+<aside class="footnote brackets" id="id4" role="note">
 <span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>This is the data type used when creating/appending to a
+table from Arrow data via the bulk ingestion feature.</p>
+</aside>
+<aside class="footnote brackets" id="numeric-utf8" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">2</a><span class="fn-bracket">]</span></span>
 <p>NUMERIC types are read as the string representation of the
 value, because the PostgreSQL NUMERIC type cannot be
 losslessly converted to the Arrow decimal types.</p>
+</aside>
+<aside class="footnote brackets" id="timestamp" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">3</a><span class="fn-bracket">]</span></span>
+<p>When binding a timestamp value, the time zone (if present) is
+ignored.  The value will be converted to microseconds and
+adjusted to the PostgreSQL epoch (2000-01-01) and so may
+overflow/underflow; an error will be returned if this would be
+the case.</p>
 </aside>
 </aside>
 </section>
