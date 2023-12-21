@@ -40,9 +40,11 @@ Apache Arrow ADBC
          **Cross-language**, **Arrow-native** database access.
 
 ADBC is a set of APIs and libraries for Arrow-native access to databases.
-Execute SQL and Substrait queries, query database catalogs, and more, all
+Execute SQL and Substrait_ queries, query database catalogs, and more, all
 using Arrow data to eliminate unnecessary data copies, speed up access, and
 make it more convenient to build analytical applications.
+
+.. _Substrait: https://substrait.io/
 
 .. div::
 
@@ -160,9 +162,13 @@ Why ADBC?
    :gutter: 1
 
    .. grid-item-card:: Arrow-native
+      :link: https://arrow.apache.org/
 
       Execute queries and get back results in Arrow format, eliminating extra
       data copies for Arrow-native backends.
+
+      +++
+      Learn about Apache Arrow
 
    .. grid-item-card:: Backend-agnostic
       :link: driver/status
@@ -202,6 +208,7 @@ Why ADBC?
    :hidden:
 
    C/C++ <cpp/index>
+   C#/.NET <csharp/index>
    Go <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>
    Java <java/index>
    Python <python/index>
