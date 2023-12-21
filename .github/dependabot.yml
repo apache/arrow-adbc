@@ -15,18 +15,27 @@
 # specific language governing permissions and limitations
 # under the License.
 
-breathe
-doxygen
-# XXX(https://github.com/apache/arrow-adbc/issues/987)
-furo>=2023.09.10
-make
-# Needed to install mermaid
-nodejs
-numpydoc
-pytest
-sphinx>=5.0
-sphinx-autobuild
-sphinx-copybutton
-sphinx-design
-sphinxext-opengraph
-r-pkgdown
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore: "
+  - package-ecosystem: "nuget"
+    directory: "/csharp/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(csharp): "
+    ignore:
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "Microsoft.Bcl.*"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "System.*"
+        update-types:
+          - "version-update:semver-major"

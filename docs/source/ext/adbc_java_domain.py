@@ -15,18 +15,33 @@
 # specific language governing permissions and limitations
 # under the License.
 
-breathe
-doxygen
-# XXX(https://github.com/apache/arrow-adbc/issues/987)
-furo>=2023.09.10
-make
-# Needed to install mermaid
-nodejs
-numpydoc
-pytest
-sphinx>=5.0
-sphinx-autobuild
-sphinx-copybutton
-sphinx-design
-sphinxext-opengraph
-r-pkgdown
+"""A basic Java domain for Sphinx."""
+
+import typing
+
+from sphinx.application import Sphinx
+
+
+def setup(app: Sphinx) -> dict[str, typing.Any]:
+    # XXX: despite documentation, this is added to 'std' domain not 'rst'
+    # domain (look at the source)
+    app.add_object_type(
+        "javatype",
+        "jtype",
+        objname="Java Type",
+    )
+    app.add_object_type(
+        "javamember",
+        "jmember",
+        objname="Java Member",
+    )
+    app.add_object_type(
+        "javapackage",
+        "jpackage",
+        objname="Java Package",
+    )
+    return {
+        "version": "0.1",
+        "parallel_read_safe": True,
+        "parallel_write_safe": True,
+    }

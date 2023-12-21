@@ -15,24 +15,12 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-==============
-Driver Manager
-==============
+=======
+C#/.NET
+=======
 
-Installation
-============
+The ADBC C# libraries are under development, supporting:
 
-To include the ADBC Driver Manager in your Maven project, add the following dependency:
-
-.. code-block:: xml
-
-   <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-manager</artifactId>
-      <version>${adbc.version}</version>
-   </dependency>
-
-API Reference
-=============
-
-See the `API reference <./api/org/apache/arrow/adbc/drivermanager/package-summary.html>`_.
+- A native driver to Google BigQuery
+- A way to import/export native (C/C++) drivers
+- Bindings to the Snowflake driver

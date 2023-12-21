@@ -73,7 +73,7 @@ def test_polars_write_database(postgres_uri: str, df: "polars.DataFrame") -> Non
             connection=postgres_uri,
             # TODO(apache/arrow-adbc#541): polars doesn't map the semantics
             # properly here, and one of their modes isn't supported
-            if_exists="replace",
+            if_table_exists="replace",
             engine="adbc",
         )
     finally:

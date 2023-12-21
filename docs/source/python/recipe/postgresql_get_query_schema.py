@@ -17,7 +17,7 @@
 
 # RECIPE STARTS HERE
 
-#: ADBC lets you get the schema of a table as an Arrow schema.
+#: ADBC lets you get the schema of a result set, without executing the query.
 
 import os
 
@@ -28,42 +28,28 @@ import adbc_driver_postgresql.dbapi
 uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
 conn = adbc_driver_postgresql.dbapi.connect(uri)
 
-#: We'll create some example tables to test.
+#: We'll create an example table to test.
 with conn.cursor() as cur:
     cur.execute("DROP TABLE IF EXISTS example")
     cur.execute("CREATE TABLE example (ints INT, bigints BIGINT)")
 
-    cur.execute("CREATE SCHEMA IF NOT EXISTS other_schema")
-    cur.execute("DROP TABLE IF EXISTS other_schema.example")
-    cur.execute("CREATE TABLE other_schema.example (strings TEXT, values NUMERIC)")
-
 conn.commit()
 
-#: By default the "active" catalog/schema are assumed.
-assert conn.adbc_get_table_schema("example") == pyarrow.schema(
+expected = pyarrow.schema(
     [
         ("ints", "int32"),
         ("bigints", "int64"),
     ]
 )
 
-#: We can explicitly specify the PostgreSQL schema to get the Arrow schema of
-#: a table in a different namespace.
-#:
-#: .. note:: In PostgreSQL, you can only query the database (catalog) that you
-#:           are connected to.  So we cannot specify the catalog here (or
-#:           rather, there is no point in doing so).
-#:
-#: Note that the NUMERIC column is read as a string, because PostgreSQL
-#: decimals do not map onto Arrow decimals.
-assert conn.adbc_get_table_schema(
-    "example",
-    db_schema_filter="other_schema",
-) == pyarrow.schema(
-    [
-        ("strings", "string"),
-        ("values", "string"),
-    ]
-)
+with conn.cursor() as cur:
+    assert cur.adbc_execute_schema("SELECT * FROM example") == expected
+
+    #: PostgreSQL doesn't know the type here, so it just returns a guess.
+    assert cur.adbc_execute_schema("SELECT $1 AS res") == pyarrow.schema(
+        [
+            ("res", "string"),
+        ]
+    )
 
 conn.close()

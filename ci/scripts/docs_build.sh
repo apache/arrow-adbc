@@ -25,8 +25,25 @@ main() {
     doxygen
     popd
 
+    pushd "$source_dir/java"
+    mvn site
+    popd
+
     pushd "$source_dir/docs"
+    # The project name/version don't really matter here.
+    python "$source_dir/docs/source/ext/javadoc_inventory.py" \
+           "ADBC" \
+           "version" \
+           "$source_dir/java/target/site/apidocs" \
+           "java/api"
+
+    # We need to determine the base URL without knowing it...
+    # Inject a dummy URL here, and fix it up in website_build.sh
+    export ADBC_INTERSPHINX_MAPPING_java_adbc="http://javadocs.home.arpa/;$source_dir/java/target/site/apidocs/objects.inv"
+
     make html
+    rm -rf "$source_dir/docs/build/html/java/api"
+    cp -r "$source_dir/java/target/site/apidocs" "$source_dir/docs/build/html/java/api"
     make doctest
     popd
 

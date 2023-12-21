@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import os
 import sys
 from pathlib import Path
 
@@ -35,7 +36,10 @@ version = release
 
 exclude_patterns = []
 extensions = [
+    # recipe directive
     "adbc_cookbook",
+    # generic directives to enable intersphinx for java
+    "adbc_java_domain",
     "breathe",
     "numpydoc",
     "sphinx.ext.autodoc",
@@ -43,6 +47,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_copybutton",
     "sphinx_design",
+    "sphinxext.opengraph",
 ]
 templates_path = ["_templates"]
 
@@ -90,7 +95,10 @@ except ImportError:
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_css_files = ["css/custom.css"]
+html_css_files = [
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css",
+    "css/custom.css",
+]
 html_static_path = ["_static"]
 html_theme = "furo"
 html_theme_options = {
@@ -107,6 +115,35 @@ intersphinx_mapping = {
     "arrow": ("https://arrow.apache.org/docs/", None),
 }
 
+# Add env vars like ADBC_INTERSPHINX_MAPPING_adbc_java = url;path
+# to inject more mappings
+
+
+def _find_intersphinx_mappings():
+    prefix = "ADBC_INTERSPHINX_MAPPING_"
+    for key, val in os.environ.items():
+        if key.startswith(prefix):
+            name = key[len(prefix) :]
+            url, _, path = val.partition(";")
+            print("[ADBC] Found Intersphinx mapping", name)
+            intersphinx_mapping[name] = (url, path)
+        #         "adbc_java": (
+        #     "http://localhost:8000/",
+        #     "/home/lidavidm/Code/arrow-adbc/java/target/site/apidocs/objects.inv",
+        # ),
+
+
+_find_intersphinx_mappings()
+
+
 # -- Options for numpydoc ----------------------------------------------------
 
 numpydoc_class_members_toctree = False
+
+# -- Options for sphinxext.opengraph -----------------------------------------
+
+if "dev" in release:
+    ogp_site_url = "https://arrow.apache.org/adbc/main/"
+else:
+    ogp_site_url = f"https://arrow.apache.org/adbc/{release}/"
+ogp_image = "_static/banner.png"
