@@ -1241,8 +1241,7 @@ public:
     bool truncating_trailing_zeros = true;
 
     char decimal_string[max_decimal_digits_ + 1];
-    DecimalToString<bitwidth_>(&decimal, decimal_string);
-    int digits_remaining = std::strlen(decimal_string);
+    int digits_remaining = DecimalToString<bitwidth_>(&decimal, decimal_string);
     do {
       const int start_pos = digits_remaining < kDecDigits ?
         0 : digits_remaining - kDecDigits;
@@ -1303,9 +1302,9 @@ public:
   }
 
 private:
-  // TODO: maybe we should return strlen here
+  // returns the length of the string
   template <int32_t DEC_WIDTH>
-  void DecimalToString(struct ArrowDecimal* decimal, char* out) {
+  int DecimalToString(struct ArrowDecimal* decimal, char* out) {
     constexpr size_t nwords = (DEC_WIDTH == 128) ? 2 : 4;
     uint8_t tmp[DEC_WIDTH / 8];
     ArrowDecimalGetBytes(decimal, tmp);
@@ -1348,9 +1347,11 @@ private:
       p++;
     }
 
-    const size_t ndigits = sizeof(s) - (p - s);
+    const size_t ndigits = sizeof(s) - 1 - (p - s);
     std::memcpy(out, p, ndigits);
     out[ndigits] = '\0';
+
+    return ndigits;
   }
 
   static constexpr uint16_t kNumericPos = 0x0000;
