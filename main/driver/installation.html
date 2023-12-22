@@ -447,16 +447,18 @@ sudo<span class="w"> </span>subscription-manager<span class="w"> </span>repos<sp
 </section>
 <section id="r">
 <h2>R<a class="headerlink" href="#r" title="Permalink to this heading">#</a></h2>
-<p>Install the appropriate driver package from GitHub:</p>
-<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="c1"># install.packages(&quot;pak&quot;)</span>
-<span class="n">pak</span><span class="o">::</span><span class="nf">pak</span><span class="p">(</span><span class="s">&quot;apache/arrow-adbc/r/adbcflightsql&quot;</span><span class="p">)</span>
-<span class="n">pak</span><span class="o">::</span><span class="nf">pak</span><span class="p">(</span><span class="s">&quot;apache/arrow-adbc/r/adbcpostgresql&quot;</span><span class="p">)</span>
-<span class="n">pak</span><span class="o">::</span><span class="nf">pak</span><span class="p">(</span><span class="s">&quot;apache/arrow-adbc/r/adbcsnowflake&quot;</span><span class="p">)</span>
-<span class="n">pak</span><span class="o">::</span><span class="nf">pak</span><span class="p">(</span><span class="s">&quot;apache/arrow-adbc/r/adbcsqlite&quot;</span><span class="p">)</span>
+<p>Install the appropriate driver package from CRAN:</p>
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;adbcsqlite&quot;</span><span class="p">)</span>
+<span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;adbcpostgresql&quot;</span><span class="p">)</span>
+<span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;duckdb&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Installation of stable releases from CRAN is anticipated following the
-release of ADBC Libraries 0.6.0.</p>
+<p>Drivers not yet available on CRAN can be installed from GitHub:</p>
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="c1"># install.packages(&quot;pak&quot;)</span>
+<span class="n">pak</span><span class="o">::</span><span class="nf">pak</span><span class="p">(</span><span class="s">&quot;apache/arrow-adbc/r/adbcflightsql&quot;</span><span class="p">)</span>
+<span class="n">pak</span><span class="o">::</span><span class="nf">pak</span><span class="p">(</span><span class="s">&quot;apache/arrow-adbc/r/adbcsnowflake&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="ruby">
 <h2>Ruby<a class="headerlink" href="#ruby" title="Permalink to this heading">#</a></h2>

@@ -75,8 +75,7 @@ Installation
 
       .. code-block:: r
 
-         # install.packages("pak")
-         pak::pak("apache/arrow-adbc/r/adbcpostgresql")
+         install.packages("adbcpostgresql")
 
 Usage
 =====

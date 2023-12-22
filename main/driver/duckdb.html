@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/driver/duckdb.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Available for: C/C++, GLib/Ruby, Go, Python DuckDB provides ADBC support since version 0.8.0. Installation: See the DuckDB documentation. Usage: ADBC support in DuckDB requires the driver manager. ..." />
+<meta property="og:description" content="Available for: C/C++, GLib/Ruby, Go, Python, R DuckDB provides ADBC support since version 0.8.0. Installation: See the DuckDB documentation. Usage: ADBC support in DuckDB requires the driver manage..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Available for: C/C++, GLib/Ruby, Go, Python DuckDB provides ADBC support since version 0.8.0. Installation: See the DuckDB documentation. Usage: ADBC support in DuckDB requires the driver manager. ..." />
+<meta name="description" content="Available for: C/C++, GLib/Ruby, Go, Python, R DuckDB provides ADBC support since version 0.8.0. Installation: See the DuckDB documentation. Usage: ADBC support in DuckDB requires the driver manage..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Flight SQL Driver" href="flight_sql.html" /><link rel="prev" title="Driver Implementation Status" href="status.html" />
 
     <!-- Generated with Sphinx 6.2.1 and Furo 2023.09.10 -->
@@ -336,7 +336,7 @@
         <article role="main">
           <section id="duckdb-support">
 <h1>DuckDB Support<a class="headerlink" href="#duckdb-support" title="Permalink to this heading">#</a></h1>
-<p><strong>Available for:</strong> C/C++, GLib/Ruby, Go, Python</p>
+<p><strong>Available for:</strong> C/C++, GLib/Ruby, Go, Python, R</p>
 <p><a class="reference external" href="https://duckdb.org/">DuckDB</a> provides ADBC support since <a class="reference external" href="https://duckdb.org/2023/05/17/announcing-duckdb-080.html">version 0.8.0</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -393,6 +393,16 @@ requires CGO and loads the DuckDB driver.</p>
 Python</label><div class="sd-tab-content docutils">
 <p>You must have DuckDB 0.9.1 or higher.</p>
 <p>See the <a class="reference external" href="https://duckdb.org/docs/api/adbc.html#python">DuckDB Python documentation</a>.</p>
+</div>
+<input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="r" for="sd-tab-item-3">
+R</label><div class="sd-tab-content docutils">
+<p>You must have DuckDB 0.9.1 or higher.</p>
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="c1"># install.packages(&quot;duckdb&quot;)</span>
+<span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
+<span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">duckdb</span><span class="o">::</span><span class="nf">duckdb_adbc</span><span class="p">(),</span><span class="w"> </span><span class="kc">...</span><span class="p">)</span>
+</pre></div>
+</div>
 </div>
 </div>
 </section>
