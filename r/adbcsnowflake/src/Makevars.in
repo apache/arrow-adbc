@@ -21,10 +21,11 @@ PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_snowflake @libs@
 CGO_CC = @cc@
 CGO_CXX = @cxx@
 CGO_CFLAGS = $(ALL_CPPFLAGS)
+GOMAXPROCS = @nproc@
 
 .PHONY: all gostatic
 all: $(SHLIB)
 $(SHLIB): gostatic
 
 gostatic:
-		(cd "$(CURDIR)/go/adbc"; CC="$(CGO_CC)" CXX="$(CGO_CXX)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(PKG_LIBS)" "@gobin@" build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_snowflake.a -buildmode=c-archive "./pkg/snowflake")
+		(cd "$(CURDIR)/go/adbc"; GOMAXPROCS=$(GOMAXPROCS) GOPATH="$(CURDIR)/.go-path" GOCACHE="$(CURDIR)/.go-cache" CC="$(CGO_CC)" CXX="$(CGO_CXX)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(PKG_LIBS)" "@gobin@" build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_snowflake.a -buildmode=c-archive "./pkg/snowflake")

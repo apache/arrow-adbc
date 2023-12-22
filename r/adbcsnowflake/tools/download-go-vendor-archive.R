@@ -25,4 +25,8 @@ if (identical(uri, "")) {
 
 cat(sprintf("Downloading vendored dependency archive from %s\n", uri))
 unlink("tools/src-go-adbc-vendor.zip")
-download.file(uri, "tools/src-go-adbc-vendor.zip")
+local({
+  opts <- options(timeout = max(300, getOption("timeout")))
+  on.exit(options(opts))
+  download.file(uri, "tools/src-go-adbc-vendor.zip", mode = "wb")
+})
