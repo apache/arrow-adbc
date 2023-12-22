@@ -19,6 +19,7 @@ RoxygenNote: 7.2.3
 SystemRequirements: SQLite3
 Suggests:
     nanoarrow,
+    adbi,
     DBItest,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
