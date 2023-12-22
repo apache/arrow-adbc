@@ -699,8 +699,10 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteNumeric) {
   adbc_validation::Handle<struct ArrowSchema> schema;
   adbc_validation::Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  constexpr int32_t size = 128;
   constexpr enum ArrowType type = NANOARROW_TYPE_DECIMAL128;
+  constexpr int32_t size = 128;
+  constexpr int32_t precision = 38;
+  constexpr int32_t scale = 8;
 
   struct ArrowDecimal decimal1;
   struct ArrowDecimal decimal2;
@@ -722,8 +724,11 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteNumeric) {
   const std::vector<std::optional<ArrowDecimal*>> values = {
     std::nullopt, &decimal1, &decimal2, &decimal3, &decimal4, &decimal5};
 
-  ASSERT_EQ(adbc_validation::MakeSchema(&schema.value, {{"col", type}}),
-            ADBC_STATUS_OK);
+  ArrowSchemaInit(&schema.value);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+  ASSERT_EQ(AdbcNsArrowSchemaSetTypeDecimal(schema.value.children[0],
+                                            type, precision, scale), 0);
+  ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
   ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
                                        &na_error, values), ADBC_STATUS_OK);
 
