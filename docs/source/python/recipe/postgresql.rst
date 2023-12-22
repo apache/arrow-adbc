@@ -26,6 +26,11 @@ Authenticate with a username and password
 
 .. _recipe-postgresql-create-append:
 
+Create/append to a table from an Arrow dataset
+==============================================
+
+.. recipe:: postgresql_create_dataset_table.py
+
 Create/append to a table from an Arrow table
 ============================================
 

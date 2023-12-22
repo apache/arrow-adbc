@@ -1460,13 +1460,17 @@ static inline ArrowErrorCode MakeCopyFieldWriter(struct ArrowSchema* schema,
 
 class PostgresCopyStreamWriter {
  public:
-  ArrowErrorCode Init(struct ArrowSchema* schema, struct ArrowArray* array) {
+  ArrowErrorCode Init(struct ArrowSchema* schema) {
     schema_ = schema;
     NANOARROW_RETURN_NOT_OK(
         ArrowArrayViewInitFromSchema(&array_view_.value, schema, nullptr));
-    NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(&array_view_.value, array, nullptr));
     root_writer_.Init(&array_view_.value);
     ArrowBufferInit(&buffer_.value);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetArray(struct ArrowArray* array) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(&array_view_.value, array, nullptr));
     return NANOARROW_OK;
   }
 
@@ -1507,6 +1511,11 @@ class PostgresCopyStreamWriter {
   }
 
   const struct ArrowBuffer& WriteBuffer() const { return buffer_.value; }
+
+  void Rewind() {
+    records_written_ = 0;
+    buffer_->size_bytes = 0;
+  }
 
  private:
   PostgresCopyFieldTupleWriter root_writer_;
