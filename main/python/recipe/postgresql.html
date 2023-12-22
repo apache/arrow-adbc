@@ -361,8 +361,186 @@ for full details.</p>
 </pre></div>
 </div>
 </section>
+<section id="create-append-to-a-table-from-an-arrow-dataset">
+<span id="recipe-postgresql-create-append"></span><h2>Create/append to a table from an Arrow dataset<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-dataset" title="Permalink to this heading">#</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_dataset_table.py">postgresql_create_dataset_table.py</a></p>
+<p>ADBC makes it easy to load PyArrow datasets into your datastore.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">23</span><span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="linenos">24</span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="linenos">25</span>
+<span class="linenos">26</span><span class="kn">import</span> <span class="nn">pyarrow</span>
+<span class="linenos">27</span><span class="kn">import</span> <span class="nn">pyarrow.csv</span>
+<span class="linenos">28</span><span class="kn">import</span> <span class="nn">pyarrow.dataset</span>
+<span class="linenos">29</span><span class="kn">import</span> <span class="nn">pyarrow.feather</span>
+<span class="linenos">30</span><span class="kn">import</span> <span class="nn">pyarrow.parquet</span>
+<span class="linenos">31</span>
+<span class="linenos">32</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">33</span>
+<span class="linenos">34</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
+<span class="linenos">35</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For the purposes of testing, we’ll first make sure the tables we’re about
+to use don’t exist.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">39</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">40</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS csvtable&quot;</span><span class="p">)</span>
+<span class="linenos">41</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS ipctable&quot;</span><span class="p">)</span>
+<span class="linenos">42</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS pqtable&quot;</span><span class="p">)</span>
+<span class="linenos">43</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS csvdataset&quot;</span><span class="p">)</span>
+<span class="linenos">44</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS ipcdataset&quot;</span><span class="p">)</span>
+<span class="linenos">45</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS pqdataset&quot;</span><span class="p">)</span>
+<span class="linenos">46</span>
+<span class="linenos">47</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<section id="generating-sample-data">
+<h3>Generating sample data<a class="headerlink" href="#generating-sample-data" title="Permalink to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">52</span><span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">(</span>
+<span class="linenos">53</span>    <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;adbc-docs-&quot;</span><span class="p">,</span>
+<span class="linenos">54</span>    <span class="n">ignore_cleanup_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="linenos">55</span><span class="p">)</span>
+<span class="linenos">56</span><span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tempdir</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<span class="linenos">57</span><span class="n">table</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">table</span><span class="p">(</span>
+<span class="linenos">58</span>    <span class="p">[</span>
+<span class="linenos">59</span>        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<span class="linenos">60</span>        <span class="p">[</span><span class="s2">&quot;foo&quot;</span><span class="p">,</span> <span class="s2">&quot;bar&quot;</span><span class="p">,</span> <span class="s2">&quot;baz&quot;</span><span class="p">],</span>
+<span class="linenos">61</span>    <span class="p">],</span>
+<span class="linenos">62</span>    <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ints&quot;</span><span class="p">,</span> <span class="s2">&quot;strs&quot;</span><span class="p">],</span>
+<span class="linenos">63</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>First we’ll write single files.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">67</span><span class="n">csv_file</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="s2">&quot;example.csv&quot;</span>
+<span class="linenos">68</span><span class="n">pyarrow</span><span class="o">.</span><span class="n">csv</span><span class="o">.</span><span class="n">write_csv</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">csv_file</span><span class="p">)</span>
+<span class="linenos">69</span>
+<span class="linenos">70</span><span class="n">ipc_file</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="s2">&quot;example.arrow&quot;</span>
+<span class="linenos">71</span><span class="n">pyarrow</span><span class="o">.</span><span class="n">feather</span><span class="o">.</span><span class="n">write_feather</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">ipc_file</span><span class="p">)</span>
+<span class="linenos">72</span>
+<span class="linenos">73</span><span class="n">parquet_file</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="s2">&quot;example.parquet&quot;</span>
+<span class="linenos">74</span><span class="n">pyarrow</span><span class="o">.</span><span class="n">parquet</span><span class="o">.</span><span class="n">write_table</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">parquet_file</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We’ll also generate some partitioned datasets.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 78</span><span class="n">csv_dataset</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="s2">&quot;csv_dataset&quot;</span>
+<span class="linenos"> 79</span><span class="n">pyarrow</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">write_dataset</span><span class="p">(</span>
+<span class="linenos"> 80</span>    <span class="n">table</span><span class="p">,</span>
+<span class="linenos"> 81</span>    <span class="n">csv_dataset</span><span class="p">,</span>
+<span class="linenos"> 82</span>    <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;csv&quot;</span><span class="p">,</span>
+<span class="linenos"> 83</span>    <span class="n">partitioning</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ints&quot;</span><span class="p">],</span>
+<span class="linenos"> 84</span><span class="p">)</span>
+<span class="linenos"> 85</span>
+<span class="linenos"> 86</span><span class="n">ipc_dataset</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="s2">&quot;ipc_dataset&quot;</span>
+<span class="linenos"> 87</span><span class="n">pyarrow</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">write_dataset</span><span class="p">(</span>
+<span class="linenos"> 88</span>    <span class="n">table</span><span class="p">,</span>
+<span class="linenos"> 89</span>    <span class="n">ipc_dataset</span><span class="p">,</span>
+<span class="linenos"> 90</span>    <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;feather&quot;</span><span class="p">,</span>
+<span class="linenos"> 91</span>    <span class="n">partitioning</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ints&quot;</span><span class="p">],</span>
+<span class="linenos"> 92</span><span class="p">)</span>
+<span class="linenos"> 93</span>
+<span class="linenos"> 94</span><span class="n">parquet_dataset</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="s2">&quot;parquet_dataset&quot;</span>
+<span class="linenos"> 95</span><span class="n">pyarrow</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">write_dataset</span><span class="p">(</span>
+<span class="linenos"> 96</span>    <span class="n">table</span><span class="p">,</span>
+<span class="linenos"> 97</span>    <span class="n">parquet_dataset</span><span class="p">,</span>
+<span class="linenos"> 98</span>    <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+<span class="linenos"> 99</span>    <span class="n">partitioning</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ints&quot;</span><span class="p">],</span>
+<span class="linenos">100</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="loading-csv-files-into-postgresql">
+<h3>Loading CSV Files into PostgreSQL<a class="headerlink" href="#loading-csv-files-into-postgresql" title="Permalink to this heading">#</a></h3>
+<p>We can directly pass a <a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader" title="(in Apache Arrow v14.0.2)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pyarrow.RecordBatchReader</span></code></a> (from
+<code class="docutils literal notranslate"><span class="pre">open_csv</span></code>) to <code class="docutils literal notranslate"><span class="pre">adbc_ingest</span></code>.  We can also pass a
+<a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.dataset.Dataset.html#pyarrow.dataset.Dataset" title="(in Apache Arrow v14.0.2)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pyarrow.dataset.Dataset</span></code></a>, or a
+<a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.dataset.Scanner.html#pyarrow.dataset.Scanner" title="(in Apache Arrow v14.0.2)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pyarrow.dataset.Scanner</span></code></a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">110</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">111</span>    <span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">csv</span><span class="o">.</span><span class="n">open_csv</span><span class="p">(</span><span class="n">csv_file</span><span class="p">)</span>
+<span class="linenos">112</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;csvtable&quot;</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
+<span class="linenos">113</span>
+<span class="linenos">114</span>    <span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">dataset</span><span class="p">(</span>
+<span class="linenos">115</span>        <span class="n">csv_dataset</span><span class="p">,</span>
+<span class="linenos">116</span>        <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;csv&quot;</span><span class="p">,</span>
+<span class="linenos">117</span>        <span class="n">partitioning</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ints&quot;</span><span class="p">],</span>
+<span class="linenos">118</span>    <span class="p">)</span>
+<span class="linenos">119</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;csvdataset&quot;</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
+<span class="linenos">120</span>
+<span class="linenos">121</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+<span class="linenos">122</span>
+<span class="linenos">123</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">124</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT ints, strs FROM csvtable ORDER BY ints, strs ASC&quot;</span><span class="p">)</span>
+<span class="linenos">125</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span> <span class="o">==</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;bar&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;foo&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;baz&quot;</span><span class="p">)]</span>
+<span class="linenos">126</span>
+<span class="linenos">127</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT ints, strs FROM csvdataset ORDER BY ints, strs ASC&quot;</span><span class="p">)</span>
+<span class="linenos">128</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span> <span class="o">==</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;bar&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;foo&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;baz&quot;</span><span class="p">)]</span>
+</pre></div>
+</div>
+</section>
+<section id="loading-arrow-ipc-feather-files-into-postgresql">
+<h3>Loading Arrow IPC (Feather) Files into PostgreSQL<a class="headerlink" href="#loading-arrow-ipc-feather-files-into-postgresql" title="Permalink to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">133</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">134</span>    <span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">ipc</span><span class="o">.</span><span class="n">RecordBatchFileReader</span><span class="p">(</span><span class="n">ipc_file</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Because of quirks in the PyArrow API, we have to read the file into
+memory.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">137</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;ipctable&quot;</span><span class="p">,</span> <span class="n">reader</span><span class="o">.</span><span class="n">read_all</span><span class="p">(),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The Dataset API will stream the data into memory and then into
+PostgreSQL, though.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">141</span>    <span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">dataset</span><span class="p">(</span>
+<span class="linenos">142</span>        <span class="n">ipc_dataset</span><span class="p">,</span>
+<span class="linenos">143</span>        <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;feather&quot;</span><span class="p">,</span>
+<span class="linenos">144</span>        <span class="n">partitioning</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ints&quot;</span><span class="p">],</span>
+<span class="linenos">145</span>    <span class="p">)</span>
+<span class="linenos">146</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;ipcdataset&quot;</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
+<span class="linenos">147</span>
+<span class="linenos">148</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+<span class="linenos">149</span>
+<span class="linenos">150</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">151</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT ints, strs FROM ipctable ORDER BY ints, strs ASC&quot;</span><span class="p">)</span>
+<span class="linenos">152</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span> <span class="o">==</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;bar&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;foo&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;baz&quot;</span><span class="p">)]</span>
+<span class="linenos">153</span>
+<span class="linenos">154</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT ints, strs FROM ipcdataset ORDER BY ints, strs ASC&quot;</span><span class="p">)</span>
+<span class="linenos">155</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span> <span class="o">==</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;bar&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;foo&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;baz&quot;</span><span class="p">)]</span>
+</pre></div>
+</div>
+</section>
+<section id="loading-parquet-files-into-postgresql">
+<h3>Loading Parquet Files into PostgreSQL<a class="headerlink" href="#loading-parquet-files-into-postgresql" title="Permalink to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">160</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">161</span>    <span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">parquet</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="n">parquet_file</span><span class="p">)</span>
+<span class="linenos">162</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;pqtable&quot;</span><span class="p">,</span> <span class="n">reader</span><span class="o">.</span><span class="n">iter_batches</span><span class="p">(),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
+<span class="linenos">163</span>
+<span class="linenos">164</span>    <span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">dataset</span><span class="p">(</span>
+<span class="linenos">165</span>        <span class="n">parquet_dataset</span><span class="p">,</span>
+<span class="linenos">166</span>        <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+<span class="linenos">167</span>        <span class="n">partitioning</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ints&quot;</span><span class="p">],</span>
+<span class="linenos">168</span>    <span class="p">)</span>
+<span class="linenos">169</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;pqdataset&quot;</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
+<span class="linenos">170</span>
+<span class="linenos">171</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+<span class="linenos">172</span>
+<span class="linenos">173</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">174</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT ints, strs FROM pqtable ORDER BY ints, strs ASC&quot;</span><span class="p">)</span>
+<span class="linenos">175</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span> <span class="o">==</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;bar&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;foo&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;baz&quot;</span><span class="p">)]</span>
+<span class="linenos">176</span>
+<span class="linenos">177</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT ints, strs FROM pqdataset ORDER BY ints, strs ASC&quot;</span><span class="p">)</span>
+<span class="linenos">178</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span> <span class="o">==</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;bar&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;foo&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;baz&quot;</span><span class="p">)]</span>
+</pre></div>
+</div>
+</section>
+<section id="cleanup">
+<h3>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">183</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="linenos">184</span><span class="n">tempdir</span><span class="o">.</span><span class="n">cleanup</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
 <section id="create-append-to-a-table-from-an-arrow-table">
-<span id="recipe-postgresql-create-append"></span><h2>Create/append to a table from an Arrow table<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-table" title="Permalink to this heading">#</a></h2>
+<h2>Create/append to a table from an Arrow table<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-table" title="Permalink to this heading">#</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_append_table.py">postgresql_create_append_table.py</a></p>
 <p>ADBC allows creating and appending to database tables using Arrow
 tables.</p>
@@ -534,7 +712,7 @@ If we reconnect, the table won’t exist; we’ll see only the ‘normal’ tabl
 </pre></div>
 </div>
 <p>All the regular ingestion options apply to temporary tables, too.  See
-<a class="reference internal" href="#recipe-postgresql-create-append"><span class="std std-ref">Create/append to a table from an Arrow table</span></a> for more examples.</p>
+<a class="reference internal" href="#recipe-postgresql-create-append"><span class="std std-ref">Create/append to a table from an Arrow dataset</span></a> for more examples.</p>
 </section>
 <section id="execute-a-statement-with-bind-parameters">
 <h2>Execute a statement with bind parameters<a class="headerlink" href="#execute-a-statement-with-bind-parameters" title="Permalink to this heading">#</a></h2>
@@ -797,6 +975,14 @@ decimals do not map onto Arrow decimals.</p>
             <ul>
 <li><a class="reference internal" href="#">PostgreSQL Recipes</a><ul>
 <li><a class="reference internal" href="#authenticate-with-a-username-and-password">Authenticate with a username and password</a></li>
+<li><a class="reference internal" href="#create-append-to-a-table-from-an-arrow-dataset">Create/append to a table from an Arrow dataset</a><ul>
+<li><a class="reference internal" href="#generating-sample-data">Generating sample data</a></li>
+<li><a class="reference internal" href="#loading-csv-files-into-postgresql">Loading CSV Files into PostgreSQL</a></li>
+<li><a class="reference internal" href="#loading-arrow-ipc-feather-files-into-postgresql">Loading Arrow IPC (Feather) Files into PostgreSQL</a></li>
+<li><a class="reference internal" href="#loading-parquet-files-into-postgresql">Loading Parquet Files into PostgreSQL</a></li>
+<li><a class="reference internal" href="#cleanup">Cleanup</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#create-append-to-a-table-from-an-arrow-table">Create/append to a table from an Arrow table</a></li>
 <li><a class="reference internal" href="#create-append-to-a-temporary-table">Create/append to a temporary table</a></li>
 <li><a class="reference internal" href="#execute-a-statement-with-bind-parameters">Execute a statement with bind parameters</a></li>
