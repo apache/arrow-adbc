@@ -1,0 +1,7 @@
+{
+    "name": "adbc-driver-postgresql",
+    "version-string": "1.0.0a0",
+    "dependencies": [
+        "libpq"
+    ]
+}
