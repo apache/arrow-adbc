@@ -17,6 +17,7 @@
                 "ADBC_DRIVER_FLIGHTSQL": "ON",
                 "ADBC_DRIVER_MANAGER": "ON",
                 "ADBC_DRIVER_POSTGRESQL": "ON",
+                "ADBC_DRIVER_NETEZZA": "ON",
                 "ADBC_DRIVER_SNOWFLAKE": "ON",
                 "ADBC_DRIVER_SQLITE": "ON",
                 "ADBC_USE_ASAN": "ON",
