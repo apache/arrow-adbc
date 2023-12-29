@@ -42,9 +42,9 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
-    const char* uri = std::getenv("ADBC_POSTGRESQL_TEST_URI");
+    const char* uri = std::getenv("ADBC_NETEZZA_TEST_URI");
     if (!uri) {
-      ADD_FAILURE() << "Must provide env var ADBC_POSTGRESQL_TEST_URI";
+      ADD_FAILURE() << "Must provide env var ADBC_NETEZZA_TEST_URI";
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
     return AdbcDatabaseSetOption(database, "uri", uri, error);
@@ -179,11 +179,11 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
       case ADBC_INFO_DRIVER_ADBC_VERSION:
         return ADBC_VERSION_1_1_0;
       case ADBC_INFO_DRIVER_NAME:
-        return "ADBC PostgreSQL Driver";
+        return "ADBC Netezza Driver";
       case ADBC_INFO_DRIVER_VERSION:
         return "(unknown)";
       case ADBC_INFO_VENDOR_NAME:
-        return "PostgreSQL";
+        return "Netezza";
       default:
         return std::nullopt;
     }
@@ -262,7 +262,7 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
       switch (code) {
         case ADBC_INFO_DRIVER_NAME: {
           ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
-          EXPECT_EQ("ADBC PostgreSQL Driver", std::string(val.data, val.size_bytes));
+          EXPECT_EQ("ADBC Netezza Driver", std::string(val.data, val.size_bytes));
           break;
         }
         case ADBC_INFO_DRIVER_VERSION: {
@@ -272,7 +272,7 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
         }
         case ADBC_INFO_VENDOR_NAME: {
           ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
-          EXPECT_EQ("PostgreSQL", std::string(val.data, val.size_bytes));
+          EXPECT_EQ("Netezza", std::string(val.data, val.size_bytes));
           break;
         }
         case ADBC_INFO_VENDOR_VERSION: {
@@ -1096,7 +1096,7 @@ TEST_F(PostgresStatementTest, SqlIngestTimestampOverflow) {
                 IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
     ASSERT_THAT(error.message,
                 ::testing::HasSubstr("Row #1 has value '9223372036854775807' which "
-                                     "exceeds PostgreSQL timestamp limits"));
+                                     "exceeds Netezza timestamp limits"));
   }
 
   {
@@ -1126,7 +1126,7 @@ TEST_F(PostgresStatementTest, SqlIngestTimestampOverflow) {
                 IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
     ASSERT_THAT(error.message,
                 ::testing::HasSubstr("Row #1 has value '-9223372036854775808' which "
-                                     "exceeds PostgreSQL timestamp limits"));
+                                     "exceeds Netezza timestamp limits"));
   }
 }
 
@@ -1236,15 +1236,15 @@ TEST_F(PostgresStatementTest, BatchSizeHint) {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
   // Setting the batch size hint to a negative or non-integer value should fail
-  ASSERT_EQ(AdbcStatementSetOption(&statement, "adbc.postgresql.batch_size_hint_bytes",
+  ASSERT_EQ(AdbcStatementSetOption(&statement, "adbc.netezza.batch_size_hint_bytes",
                                    "-1", nullptr),
             ADBC_STATUS_INVALID_ARGUMENT);
-  ASSERT_EQ(AdbcStatementSetOption(&statement, "adbc.postgresql.batch_size_hint_bytes",
+  ASSERT_EQ(AdbcStatementSetOption(&statement, "adbc.netezza.batch_size_hint_bytes",
                                    "not a valid number", nullptr),
             ADBC_STATUS_INVALID_ARGUMENT);
 
   // For this test, use a batch size of 1 byte to force every row to be its own batch
-  ASSERT_THAT(AdbcStatementSetOption(&statement, "adbc.postgresql.batch_size_hint_bytes",
+  ASSERT_THAT(AdbcStatementSetOption(&statement, "adbc.netezza.batch_size_hint_bytes",
                                      "1", &error),
               IsOkStatus(&error));
 

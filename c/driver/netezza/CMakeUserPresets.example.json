@@ -26,7 +26,7 @@
             "configurePreset": "user-local",
             "environment": {
               "CTEST_OUTPUT_ON_FAILURE": "1",
-              "ADBC_POSTGRESQL_TEST_URI": "postgresql://localhost:5432/postgres?user=postgres&password=password"
+              "ADBC_NETEZZA_TEST_URI": "netezza://localhost:5480/system?user=admin&password=password"
             }
         }
     ]

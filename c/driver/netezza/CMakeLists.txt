@@ -17,29 +17,30 @@
 
 if(WIN32)
   # XXX: for now, assume vcpkg
-  find_package(PostgreSQL REQUIRED)
-  set(LIBPQ_LINK_LIBRARIES PostgreSQL::PostgreSQL wsock32 ws2_32)
-  set(LIBPQ_STATIC_LIBRARIES PostgreSQL::PostgreSQL)
+  find_package(Netezza REQUIRED)
+  set(LIBPQ_LINK_LIBRARIES Netezza::Netezza wsock32 ws2_32)
+  set(LIBPQ_STATIC_LIBRARIES Netezza::Netezza)
   set(LIBPQ_INCLUDE_DIRS)
 else()
+  set(ENV{PKG_CONFIG_PATH} ${REPOSITORY_ROOT}/c/driver/netezza/)
   find_package(PkgConfig)
   pkg_check_modules(LIBPQ REQUIRED libpq)
 endif()
 
-add_arrow_lib(adbc_driver_postgresql
+add_arrow_lib(adbc_driver_netezza
               SOURCES
               connection.cc
               error.cc
               database.cc
-              postgresql.cc
+              netezza.cc
               result_helper.cc
               statement.cc
               OUTPUTS
               ADBC_LIBRARIES
               CMAKE_PACKAGE_NAME
-              AdbcDriverPostgreSQL
+              AdbcDriverNetezza
               PKG_CONFIG_NAME
-              adbc-driver-postgresql
+              adbc-driver-netezza
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
@@ -63,40 +64,40 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
 endforeach()
 
 if(ADBC_TEST_LINKAGE STREQUAL "shared")
-  set(TEST_LINK_LIBS adbc_driver_postgresql_shared)
+  set(TEST_LINK_LIBS adbc_driver_netezza_shared)
 else()
-  set(TEST_LINK_LIBS adbc_driver_postgresql_static)
+  set(TEST_LINK_LIBS adbc_driver_netezza_static)
 endif()
 
 if(ADBC_BUILD_TESTS)
-  add_test_case(driver_postgresql_test
+  add_test_case(driver_netezza_test
                 PREFIX
                 adbc
                 EXTRA_LABELS
-                driver-postgresql
+                driver-netezza
                 SOURCES
                 postgres_type_test.cc
                 postgres_copy_reader_test.cc
-                postgresql_test.cc
+                netezza_test.cc
                 EXTRA_LINK_LIBS
                 adbc_driver_common
                 adbc_validation
                 nanoarrow
                 ${TEST_LINK_LIBS})
-  target_compile_features(adbc-driver-postgresql-test PRIVATE cxx_std_17)
-  target_include_directories(adbc-driver-postgresql-test SYSTEM
+  target_compile_features(adbc-driver-netezza-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-driver-netezza-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}
                                      ${REPOSITORY_ROOT}/c/
                                      ${LIBPQ_INCLUDE_DIRS}
                                      ${REPOSITORY_ROOT}/c/vendor
                                      ${REPOSITORY_ROOT}/c/driver)
-  adbc_configure_target(adbc-driver-postgresql-test)
+  adbc_configure_target(adbc-driver-netezza-test)
 endif()
 
 if(ADBC_BUILD_BENCHMARKS)
   find_package(benchmark REQUIRED)
   # TODO: should add_benchmark be linking benchmark::benchmark for us?
-  add_benchmark(postgresql_benchmark
+  add_benchmark(netezza_benchmark
                 EXTRA_LINK_LIBS
                 adbc_driver_common
                 adbc_validation
@@ -104,7 +105,7 @@ if(ADBC_BUILD_BENCHMARKS)
                 ${TEST_LINK_LIBS}
                 benchmark::benchmark)
   # add_benchmark replaces _ with - when creating target
-  target_include_directories(postgresql-benchmark
+  target_include_directories(netezza-benchmark
                              PRIVATE ${REPOSITORY_ROOT} ${REPOSITORY_ROOT}/c/
                                      ${REPOSITORY_ROOT}/c/vendor
                                      ${REPOSITORY_ROOT}/c/driver)

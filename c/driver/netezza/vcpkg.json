@@ -1,5 +1,5 @@
 {
-    "name": "adbc-driver-postgresql",
+    "name": "adbc-driver-netezza",
     "version-string": "1.0.0a0",
     "dependencies": [
         "libpq"

@@ -650,7 +650,7 @@ AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
     switch (info_codes[i]) {
       case ADBC_INFO_VENDOR_NAME:
         RAISE_ADBC(
-            AdbcConnectionGetInfoAppendString(array, info_codes[i], "PostgreSQL", error));
+            AdbcConnectionGetInfoAppendString(array, info_codes[i], "Netezza", error));
         break;
       case ADBC_INFO_VENDOR_VERSION: {
         const char* stmt = "SHOW server_version_num";
@@ -659,7 +659,7 @@ AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
         RAISE_ADBC(result_helper.Execute());
         auto it = result_helper.begin();
         if (it == result_helper.end()) {
-          SetError(error, "[libpq] PostgreSQL returned no rows for '%s'", stmt);
+          SetError(error, "[libpq] Netezza returned no rows for '%s'", stmt);
           return ADBC_STATUS_INTERNAL;
         }
         const char* server_version_num = (*it)[0].data;
@@ -670,7 +670,7 @@ AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
       }
       case ADBC_INFO_DRIVER_NAME:
         RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
-                                                     "ADBC PostgreSQL Driver", error));
+                                                     "ADBC Netezza Driver", error));
         break;
       case ADBC_INFO_DRIVER_VERSION:
         // TODO(lidavidm): fill in driver version
@@ -759,7 +759,7 @@ AdbcStatusCode PostgresConnection::GetOption(const char* option, char* value,
     RAISE_ADBC(result_helper.Execute());
     auto it = result_helper.begin();
     if (it == result_helper.end()) {
-      SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
+      SetError(error, "[libpq] Netezza returned no rows for 'SELECT CURRENT_SCHEMA'");
       return ADBC_STATUS_INTERNAL;
     }
     output = (*it)[0].data;
@@ -1147,23 +1147,38 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
                                                   struct ArrowSchema* schema,
                                                   struct AdbcError* error) {
   AdbcStatusCode final_status = ADBC_STATUS_OK;
-
-  std::string query =
-      "SELECT attname, atttypid "
-      "FROM pg_catalog.pg_class AS cls "
-      "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
-      "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
-      "WHERE attr.attnum >= 0 AND cls.oid = $1::regclass::oid";
-
+  struct StringBuilder query;
+  std::memset(&query, 0, sizeof(query));
   std::vector<std::string> params;
+  if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
+
+  if (StringBuilderAppend(
+          &query, "%s",
+          "SELECT attname, atttypid "
+          "FROM pg_catalog.pg_class AS cls "
+          "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
+          "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
+          "WHERE attr.attnum >= 0 AND cls.oid = ") != 0)
+    return ADBC_STATUS_INTERNAL;
+
   if (db_schema != nullptr) {
-    params.push_back(std::string(db_schema) + "." + table_name);
-  } else {
-    params.push_back(table_name);
+    if (StringBuilderAppend(&query, "%s", "$1.")) {
+      StringBuilderReset(&query);
+      return ADBC_STATUS_INTERNAL;
+    }
+    params.push_back(db_schema);
   }
 
+  if (StringBuilderAppend(&query, "%s%" PRIu64 "%s", "$",
+                          static_cast<uint64_t>(params.size() + 1), "::regclass::oid")) {
+    StringBuilderReset(&query);
+    return ADBC_STATUS_INTERNAL;
+  }
+  params.push_back(table_name);
+
   PqResultHelper result_helper =
-      PqResultHelper{conn_, std::string(query.c_str()), params, error};
+      PqResultHelper{conn_, std::string(query.buffer), params, error};
+  StringBuilderReset(&query);
 
   RAISE_ADBC(result_helper.Prepare());
   auto result = result_helper.Execute();
@@ -1332,7 +1347,7 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     }
     return ADBC_STATUS_OK;
   } else if (std::strcmp(key, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
-    // PostgreSQL doesn't accept a parameter here
+    // Netezza doesn't accept a parameter here
     PqResultHelper result_helper{
         conn_, std::string("SET search_path TO ") + value, {}, error};
     RAISE_ADBC(result_helper.Prepare());

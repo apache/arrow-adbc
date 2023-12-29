@@ -1350,7 +1350,7 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
         result = ADBC_INGEST_OPTION_MODE_CREATE_APPEND;
         break;
     }
-  } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
+  } else if (std::strcmp(key, ADBC_NETEZZA_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     result = std::to_string(reader_.batch_size_hint_bytes_);
   } else {
     SetError(error, "[libpq] Unknown statement option '%s'", key);
@@ -1380,7 +1380,7 @@ AdbcStatusCode PostgresStatement::GetOptionDouble(const char* key, double* value
 AdbcStatusCode PostgresStatement::GetOptionInt(const char* key, int64_t* value,
                                                struct AdbcError* error) {
   std::string result;
-  if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
+  if (std::strcmp(key, ADBC_NETEZZA_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     *value = reader_.batch_size_hint_bytes_;
     return ADBC_STATUS_OK;
   }
@@ -1463,7 +1463,7 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
     prepared_ = false;
-  } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
+  } else if (std::strcmp(key, ADBC_NETEZZA_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     int64_t int_value = std::atol(value);
     if (int_value <= 0) {
       SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
@@ -1492,7 +1492,7 @@ AdbcStatusCode PostgresStatement::SetOptionDouble(const char* key, double value,
 
 AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
                                                struct AdbcError* error) {
-  if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
+  if (std::strcmp(key, ADBC_NETEZZA_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     if (value <= 0) {
       SetError(error, "[libpq] Invalid value '%" PRIi64 "' for option '%s'", value, key);
       return ADBC_STATUS_INVALID_ARGUMENT;

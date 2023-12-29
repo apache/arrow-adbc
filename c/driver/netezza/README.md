@@ -63,7 +63,7 @@ Then, to run the tests, set the environment variable specifying the
 PostgreSQL URI before running tests:
 
 ```shell
-$ export ADBC_POSTGRESQL_TEST_URI=postgresql://localhost:5432/postgres?user=postgres&password=password
+$ export ADBC_NETEZZA_TEST_URI=netezza://localhost:5480/system?user=admin&password=password
 $ ctest
 ```
 

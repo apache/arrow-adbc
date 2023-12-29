@@ -30,8 +30,8 @@
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
 
-#define ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES \
-  "adbc.postgresql.batch_size_hint_bytes"
+#define ADBC_NETEZZA_OPTION_BATCH_SIZE_HINT_BYTES \
+  "adbc.netezza.batch_size_hint_bytes"
 
 namespace adbcpq {
 class PostgresConnection;
