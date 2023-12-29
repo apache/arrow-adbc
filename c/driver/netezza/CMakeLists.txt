@@ -24,7 +24,7 @@ if(WIN32)
 else()
   set(ENV{PKG_CONFIG_PATH} ${REPOSITORY_ROOT}/c/driver/netezza/)
   find_package(PkgConfig)
-  pkg_check_modules(LIBPQ REQUIRED libpq)
+  pkg_check_modules(LIBPQ REQUIRED libnzpq)
 endif()
 
 add_arrow_lib(adbc_driver_netezza
