@@ -40,14 +40,14 @@ See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
 
 ## Testing
 
-A running instance of Netezza is required.  For example, using Docker:
+A running instance of PostgreSQL is required.  For example, using Docker:
 
 ```shell
 $ docker run -it --rm \
-    -e NZ_PASSWORD=password \
-    -e NZ_DB=tempdb \
-    -p 5480:5480 \
-    netezza
+    -e POSTGRES_PASSWORD=password \
+    -e POSTGRES_DB=tempdb \
+    -p 5432:5432 \
+    postgres
 ```
 
 Alternatively use the `docker compose` provided by ADBC to manage the test

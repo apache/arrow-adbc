@@ -38,9 +38,9 @@
 
 
 static void BM_PostgresqlExecute(benchmark::State& state) {
-  const char* uri = std::getenv("ADBC_NETEZZA_TEST_URI");
+  const char* uri = std::getenv("ADBC_POSTGRESQL_TEST_URI");
   if (!uri || !strcmp(uri, "")) {
-    state.SkipWithError("ADBC_NETEZZA_TEST_URI not set!");
+    state.SkipWithError("ADBC_POSTGRESQL_TEST_URI not set!");
     return;
   }
   adbc_validation::Handle<struct AdbcDatabase> database;

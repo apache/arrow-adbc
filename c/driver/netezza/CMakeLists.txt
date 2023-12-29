@@ -23,6 +23,7 @@ if(WIN32)
   set(LIBPQ_INCLUDE_DIRS)
 else()
   find_package(PkgConfig)
+  set(ENV{PKG_CONFIG_PATH} ${REPOSITORY_ROOT}/c/driver/netezza)
   pkg_check_modules(LIBPQ REQUIRED libpq)
 endif()
 

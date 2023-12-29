@@ -60,13 +60,14 @@ class PostgresCopyStreamTester {
 class PostgresCopyStreamWriteTester {
  public:
   ArrowErrorCode Init(struct ArrowSchema* schema, struct ArrowArray* array,
-                      ArrowError* error = nullptr) {
-    NANOARROW_RETURN_NOT_OK(writer_.Init(schema, array));
+                      struct ArrowError* error = nullptr) {
+    NANOARROW_RETURN_NOT_OK(writer_.Init(schema));
     NANOARROW_RETURN_NOT_OK(writer_.InitFieldWriters(error));
+    NANOARROW_RETURN_NOT_OK(writer_.SetArray(array));
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteAll(ArrowError* error = nullptr) {
+  ArrowErrorCode WriteAll(struct ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(writer_.WriteHeader(error));
 
     int result;
@@ -77,7 +78,19 @@ class PostgresCopyStreamWriteTester {
     return result;
   }
 
+  ArrowErrorCode WriteArray(struct ArrowArray* array, struct ArrowError* error) {
+    writer_.SetArray(array);
+    int result;
+    do {
+      result = writer_.WriteRecord(error);
+    } while (result == NANOARROW_OK);
+
+    return result;
+  }
+
   const struct ArrowBuffer& WriteBuffer() const { return writer_.WriteBuffer(); }
+
+  void Rewind() { writer_.Rewind(); }
 
  private:
   PostgresCopyStreamWriter writer_;
@@ -1259,6 +1272,42 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadCustomRecord) {
   ASSERT_DOUBLE_EQ(data_buffer2[0], 456.789);
   ASSERT_DOUBLE_EQ(data_buffer2[1], 345.678);
   ASSERT_DOUBLE_EQ(data_buffer2[2], 0);
+}
+
+TEST(PostgresCopyUtilsTest, PostgresCopyWriteMultiBatch) {
+  // Regression test for https://github.com/apache/arrow-adbc/issues/1310
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ASSERT_EQ(adbc_validation::MakeSchema(&schema.value, {{"col", NANOARROW_TYPE_INT32}}),
+            NANOARROW_OK);
+  ASSERT_EQ(adbc_validation::MakeBatch<int32_t>(&schema.value, &array.value, &na_error,
+                                                {-123, -1, 1, 123, std::nullopt}),
+            NANOARROW_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  struct ArrowBuffer buf = tester.WriteBuffer();
+  // The last 2 bytes of a message can be transmitted via PQputCopyData
+  // so no need to test those bytes from the Writer
+  size_t buf_size = sizeof(kTestPgCopyInteger) - 2;
+  ASSERT_EQ(buf.size_bytes, buf_size);
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyInteger[i]);
+  }
+
+  tester.Rewind();
+  ASSERT_EQ(tester.WriteArray(&array.value, nullptr), ENODATA);
+
+  buf = tester.WriteBuffer();
+  // Ignore the header and footer
+  buf_size = sizeof(kTestPgCopyInteger) - 21;
+  ASSERT_EQ(buf.size_bytes, buf_size);
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyInteger[i + 19]);
+  }
 }
 
 }  // namespace adbcpq

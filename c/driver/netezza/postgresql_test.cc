@@ -61,6 +61,18 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     return AdbcStatementRelease(&statement.value, error);
   }
 
+  AdbcStatusCode DropTable(struct AdbcConnection* connection, const std::string& name,
+                           const std::string& db_schema,
+                           struct AdbcError* error) const override {
+    Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
+
+    std::string query = "DROP TABLE IF EXISTS \"" + db_schema + "\".\"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
+  }
+
   AdbcStatusCode DropTempTable(struct AdbcConnection* connection, const std::string& name,
                                struct AdbcError* error) const override {
     Handle<struct AdbcStatement> statement;
@@ -78,6 +90,18 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
 
     std::string query = "DROP VIEW IF EXISTS \"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
+  }
+
+  AdbcStatusCode EnsureDbSchema(struct AdbcConnection* connection,
+                                const std::string& name,
+                                struct AdbcError* error) const override {
+    Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
+
+    std::string query = "CREATE SCHEMA IF NOT EXISTS \"" + name + "\"";
     RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
     RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
     return AdbcStatementRelease(&statement.value, error);
@@ -343,7 +367,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_EQ(reader.rows_affected, -1);
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
@@ -416,7 +440,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_EQ(reader.rows_affected, -1);
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
@@ -435,7 +459,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_EQ(reader.rows_affected, -1);
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
@@ -824,12 +848,6 @@ class PostgresStatementTest : public ::testing::Test,
   void TestSqlPrepareErrorParamCountMismatch() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareGetParameterSchema() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareSelectParams() { GTEST_SKIP() << "Not yet implemented"; }
-  void TestSqlQueryRowsAffectedDelete() {
-    GTEST_SKIP() << "Cannot query rows affected in delete (not implemented)";
-  }
-  void TestSqlQueryRowsAffectedDeleteStream() {
-    GTEST_SKIP() << "Cannot query rows affected in delete stream (not implemented)";
-  }
 
   void TestConcurrentStatements() {
     // TODO: refactor driver so that we read all the data as soon as
@@ -1168,7 +1186,7 @@ TEST_F(PostgresStatementTest, UpdateInExecuteQuery) {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_EQ(reader.rows_affected, -1);
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
@@ -1183,7 +1201,7 @@ TEST_F(PostgresStatementTest, UpdateInExecuteQuery) {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_EQ(reader.rows_affected, -1);
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
