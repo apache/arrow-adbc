@@ -42,6 +42,7 @@ function Build-Subproject {
       -DADBC_DRIVER_MANAGER="$($BuildDriverManager)" `
       -DADBC_DRIVER_FLIGHTSQL="$($BuildDriverFlightSql)" `
       -DADBC_DRIVER_POSTGRESQL="$($BuildDriverPostgreSQL)" `
+      -DADBC_DRIVER_NETEZZA="$($BuildDriverNetezza) " `
       -DADBC_DRIVER_SQLITE="$($BuildDriverSqlite)" `
       -DADBC_DRIVER_SNOWFLAKE="$($BuildDriverSnowflake)" `
       -DCMAKE_BUILD_TYPE=Release `

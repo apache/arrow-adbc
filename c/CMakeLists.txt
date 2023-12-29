@@ -55,6 +55,10 @@ if(ADBC_DRIVER_POSTGRESQL)
   add_subdirectory(driver/postgresql)
 endif()
 
+if(ADBC_DRIVER_NETEZZA)
+  add_subdirectory(driver/netezza)
+endif()
+
 if(ADBC_DRIVER_SQLITE)
   add_subdirectory(driver/sqlite)
 endif()

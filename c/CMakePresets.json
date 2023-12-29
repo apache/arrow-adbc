@@ -17,6 +17,7 @@
                 "ADBC_DRIVER_FLIGHTSQL": "ON",
                 "ADBC_DRIVER_MANAGER": "ON",
                 "ADBC_DRIVER_POSTGRESQL": "ON",
+                "ADBC_DRIVER_NETEZZA": "ON",
                 "ADBC_DRIVER_SNOWFLAKE": "ON",
                 "ADBC_DRIVER_SQLITE": "ON",
                 "ADBC_USE_ASAN": "ON",
@@ -34,6 +35,7 @@
                 "ADBC_DRIVER_FLIGHTSQL": "ON",
                 "ADBC_DRIVER_MANAGER": "ON",
                 "ADBC_DRIVER_POSTGRESQL": "ON",
+                "ADBC_DRIVER_NETEZZA": "ON",
                 "ADBC_DRIVER_SNOWFLAKE": "ON",
                 "ADBC_DRIVER_SQLITE": "ON",
                 "ADBC_USE_ASAN": "OFF",
@@ -52,6 +54,7 @@
                 "ADBC_DREMIO_FLIGHTSQL_URI": "grpc+tcp://localhost:32010",
                 "ADBC_DREMIO_FLIGHTSQL_USER": "dremio",
                 "ADBC_POSTGRESQL_TEST_URI": "postgresql://localhost:5432/postgres?user=postgres&password=password",
+                "ADBC_NETEZZA_TEST_URI": "netezza://localhost:5480/system?user=admin&password=password",
                 "ADBC_SQLITE_FLIGHTSQL_URI": "grpc://localhost:8080"
             },
             "execution": {

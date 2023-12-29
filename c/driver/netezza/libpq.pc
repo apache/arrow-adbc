@@ -1,0 +1,14 @@
+prefix=/home/nz/workspaces/concerto/nps/main
+exec_prefix=${prefix}
+libdir=${exec_prefix}/debug/lib
+includedir=${prefix}/debug/include
+
+Name: libpq
+Description: Netezza libpq library
+Url: https://www.ibm.com/products/netezza
+Version: 11.2.2.1
+Requires:
+Requires.private:
+Cflags: -I/home/nz/workspaces/concerto/abhishek_adbc/arrow-adbc/c/driver/netezza/nz_include
+Libs: -L${libdir} -lpq
+Libs.private: -lk5crypto -lkrb5 -lssl
