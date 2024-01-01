@@ -1,4 +1,4 @@
-prefix=/home/nz/workspaces/concerto/abhishek_adbc/arrow-adbc/c/driver/netezza
+prefix=$(pwd)
 libdir=${prefix}/nz_lib
 includedir=${prefix}/nz_include
 
@@ -9,5 +9,5 @@ Version: 11.2.2.1
 Requires:
 Requires.private:
 Cflags: -I${includedir}/
-Libs: ${libdir}/libpq.so
+Libs: ${libdir}/libnzpq.so
 Libs.private: -lk5crypto -lkrb5 -lssl
