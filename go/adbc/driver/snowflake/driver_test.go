@@ -871,6 +871,8 @@ func ConnectWithJwt(uri, keyValue, passcode string) {
 }
 
 func (suite *SnowflakeTests) TestJwtPrivateKey() {
+	suite.T().Skipf("apache/arrow-adbc#1364")
+
 	// grab the username from the DSN
 	cfg, err := gosnowflake.ParseDSN(suite.Quirks.dsn)
 	suite.NoError(err)

@@ -19,7 +19,7 @@
 DuckDB Support
 ==============
 
-**Available for:** C/C++, GLib/Ruby, Go, Python
+**Available for:** C/C++, GLib/Ruby, Go, Python, R
 
 `DuckDB`_ provides ADBC support since `version 0.8.0
 <https://duckdb.org/2023/05/17/announcing-duckdb-080.html>`_.
@@ -86,6 +86,18 @@ ADBC support in DuckDB requires the driver manager.
       You must have DuckDB 0.9.1 or higher.
 
       See the `DuckDB Python documentation`_.
+
+   .. tab-item:: R
+      :sync: r
+
+      You must have DuckDB 0.9.1 or higher.
+
+      .. code-block:: r
+
+         # install.packages("duckdb")
+         library(adbcdrivermanager)
+         db <- adbc_database_init(duckdb::duckdb_adbc(), ...)
+
 
 .. _DuckDB C++ documentation: https://duckdb.org/docs/api/adbc.html#c
 .. _DuckDB Python documentation: https://duckdb.org/docs/api/adbc.html#python

@@ -15,25 +15,208 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
+:sd_hide_title:
+
 =================
 Apache Arrow ADBC
 =================
 
-To get started, choose a language and follow the Quickstart page.
+.. div::
+   :style: border-bottom: 1px solid var(--color-foreground-border);
 
-To learn more about ADBC, see the `introductory blog post
-<https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/>`_.
+   .. grid::
+      :margin: 4 3 0 0
+
+      .. grid-item::
+         :columns: 12 12 12 12
+         :class: sd-fs-2
+
+         ADBC: Arrow Database Connectivity
+
+      .. grid-item::
+         :columns: 12 12 12 12
+         :class: sd-fs-4
+
+         **Cross-language**, **Arrow-native** database access.
+
+ADBC is a set of APIs and libraries for Arrow-native access to databases.
+Execute SQL and Substrait_ queries, query database catalogs, and more, all
+using Arrow data to eliminate unnecessary data copies, speed up access, and
+make it more convenient to build analytical applications.
+
+.. _Substrait: https://substrait.io/
+
+.. div::
+
+   .. grid::
+      :margin: 4 4 0 0
+      :gutter: 1
+
+      .. grid-item-card::
+         :columns: 12 12 4 4
+
+         Quickstart
+         ^^^
+
+         Get started with simple examples in your language of choice.
+
+         +++
+
+         .. button-ref:: cpp/quickstart
+            :ref-type: doc
+            :color: secondary
+            :expand:
+
+            C/C++
+
+         .. button-link:: https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc
+            :color: secondary
+            :expand:
+
+            Go
+
+         .. button-ref:: java/quickstart
+            :ref-type: doc
+            :color: secondary
+            :expand:
+
+            Java
+
+         .. button-ref:: python/quickstart
+            :ref-type: doc
+            :color: secondary
+            :expand:
+
+            Python
+
+         .. button-ref:: r/index
+            :ref-type: doc
+            :color: secondary
+            :expand:
+
+            R
+
+      .. grid-item-card::
+         :columns: 12 4 4 4
+
+         Specification
+         ^^^
+
+         Learn about the underlying API specification.
+
+         +++
+
+         .. button-link:: https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/
+            :color: secondary
+            :expand:
+
+            Introducing ADBC :octicon:`cross-reference`
+
+         .. button-ref:: format/specification
+            :ref-type: doc
+            :color: secondary
+            :expand:
+
+            Specification
+
+         .. button-ref:: faq
+            :ref-type: doc
+            :color: secondary
+            :expand:
+
+            FAQ
+
+         .. button-ref:: glossary
+            :ref-type: doc
+            :color: secondary
+            :expand:
+
+            Glossary
+
+      .. grid-item-card::
+         :columns: 12 4 4 4
+
+         Development
+         ^^^
+
+         Report bugs, ask questions, and contribute to Apache Arrow.
+
+         +++
+
+         .. button-link:: https://github.com/apache/arrow-adbc/issues
+            :color: secondary
+            :expand:
+
+            :fab:`github` Issues/Questions
+
+         .. button-link:: https://arrow.apache.org/community/
+            :color: secondary
+            :expand:
+
+            Mailing List :octicon:`cross-reference`
+
+         .. button-link:: https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md
+            :color: secondary
+            :expand:
+
+            Contributing :octicon:`cross-reference`
+
+Why ADBC?
+=========
+
+.. grid:: 1 2 2 2
+   :margin: 4 4 0 0
+   :gutter: 1
+
+   .. grid-item-card:: Arrow-native
+      :link: https://arrow.apache.org/
+
+      Execute queries and get back results in Arrow format, eliminating extra
+      data copies for Arrow-native backends.
+
+      +++
+      Learn about Apache Arrow
+
+   .. grid-item-card:: Backend-agnostic
+      :link: driver/status
+      :link-type: doc
+
+      Connect to all kinds of databases, even ones that aren't Arrow-native.
+      ADBC drivers optimize conversion to/from Arrow where required, saving
+      work for developers.
+
+      +++
+      See Supported Drivers
+
+   .. grid-item-card:: Cross-language
+
+      Work in C/C++, C#, Go, Java, Python, R, Ruby, and more.
+
+   .. grid-item-card:: Full-featured
+
+      Execute SQL and Substrait, query database catalogs, inspect table
+      schemas, and more.  ADBC handles common tasks without having to pull in
+      another database client.
+
+   .. grid-item-card:: Language-native
+
+      Use language-native APIs that you're already familiar with, like DBAPI
+      in Python, ``database/sql`` in Go, or DBI in R.
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
 
    faq
+   glossary
 
 .. toctree::
    :maxdepth: 1
    :caption: Supported Environments
+   :hidden:
 
    C/C++ <cpp/index>
+   C#/.NET <csharp/index>
    Go <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>
    Java <java/index>
    Python <python/index>
@@ -42,6 +225,7 @@ To learn more about ADBC, see the `introductory blog post
 .. toctree::
    :maxdepth: 1
    :caption: Drivers
+   :hidden:
 
    driver/installation
    driver/status
@@ -55,6 +239,7 @@ To learn more about ADBC, see the `introductory blog post
 .. toctree::
    :maxdepth: 1
    :caption: Specification
+   :hidden:
 
    format/specification
    format/versioning
@@ -63,28 +248,8 @@ To learn more about ADBC, see the `introductory blog post
 .. toctree::
    :maxdepth: 1
    :caption: Development
+   :hidden:
 
    development/contributing
    development/nightly
    development/releasing
-
-ADBC (Arrow Database Connectivity) is an API specification for
-Arrow-based database access.  It provides a set of APIs in C, Go, and
-Java that define how to interact with databases, including executing
-queries and fetching metadata, that use Arrow data for result sets and
-query parameters.  These APIs are then implemented by drivers (or a
-driver manager) that use some underlying protocol to work with
-specific databases.
-
-ADBC aims to provide applications with a single, Arrow-based API to
-work with multiple databases, whether Arrow-native or not.
-Application code should not need to juggle conversions from
-non-Arrow-native datasources alongside bindings for multiple
-Arrow-native database protocols.
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

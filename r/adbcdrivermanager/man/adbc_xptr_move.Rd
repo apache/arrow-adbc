@@ -5,13 +5,16 @@
 \alias{adbc_xptr_is_valid}
 \title{Low-level pointer details}
 \usage{
-adbc_xptr_move(x)
+adbc_xptr_move(x, check_child_count = TRUE)
 
 adbc_xptr_is_valid(x)
 }
 \arguments{
 \item{x}{An 'adbc_database', 'adbc_connection', 'adbc_statement', or
 'nanoarrow_array_stream'}
+
+\item{check_child_count}{Ensures that \code{x} has a zero child count before
+performing the move. This should almost always be \code{TRUE}.}
 }
 \value{
 \itemize{

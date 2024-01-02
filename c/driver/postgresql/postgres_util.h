@@ -166,9 +166,11 @@ struct Handle {
 
   Handle() { std::memset(&value, 0, sizeof(value)); }
 
-  ~Handle() { Releaser<Resource>::Release(&value); }
+  ~Handle() { reset(); }
 
   Resource* operator->() { return &value; }
+
+  void reset() { Releaser<Resource>::Release(&value);  }
 };
 
 }  // namespace adbcpq

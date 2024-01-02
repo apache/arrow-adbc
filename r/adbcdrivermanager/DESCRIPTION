@@ -24,4 +24,4 @@ Config/build/bootstrap: TRUE
 URL: https://github.com/apache/arrow-adbc
 BugReports: https://github.com/apache/arrow-adbc/issues
 Imports:
-    nanoarrow
+    nanoarrow (>= 0.3.0)

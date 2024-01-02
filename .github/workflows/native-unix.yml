@@ -69,7 +69,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -83,7 +83,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -94,7 +94,7 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.19.13
           check-latest: true
@@ -120,7 +120,7 @@ jobs:
           export PATH=$RUNNER_TOOL_CACHE/go/1.19.13/x64/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -141,7 +141,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -155,7 +155,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -192,7 +192,7 @@ jobs:
     name: "clang-tidy"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -206,7 +206,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -240,7 +240,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -254,7 +254,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -268,7 +268,7 @@ jobs:
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_glib.txt
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -294,11 +294,11 @@ jobs:
       matrix:
         os: ["macos-latest", "ubuntu-latest", "windows-latest"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version-file: 'go/adbc/go.mod'
           check-latest: true
@@ -332,7 +332,7 @@ jobs:
     env:
       CGO_ENABLED: "1"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -346,7 +346,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -357,7 +357,7 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.19.13
           check-latest: true
@@ -368,7 +368,7 @@ jobs:
         if: ${{ !contains('macos-latest', matrix.os) }}
         run: go install honnef.co/go/tools/cmd/staticcheck@v0.3.3
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -410,7 +410,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -424,7 +424,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -437,14 +437,14 @@ jobs:
             python=${{ matrix.python }} \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.19.13
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -530,7 +530,7 @@ jobs:
         os: ["ubuntu-latest"]
         python: ["3.11"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -544,7 +544,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -557,7 +557,7 @@ jobs:
             python=${{ matrix.python }} \
             --file ci/conda_env_docs.txt \
             --file ci/conda_env_python.txt
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -571,6 +571,13 @@ jobs:
         shell: bash -l {0}
         run: |
           ./ci/scripts/docs_build.sh "$(pwd)"
+      - name: Archive docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs
+          retention-days: 2
+          path: |
+            docs/build/html
       - name: Test Recipes (C++)
         shell: bash -l {0}
         run: |

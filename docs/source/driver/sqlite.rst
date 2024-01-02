@@ -65,10 +65,9 @@ Installation
    .. tab-item:: R
       :sync: r
 
-      .. code-block:: shell
+      .. code-block:: r
 
-         # install.packages("pak")
-         pak::pak("apache/arrow-adbc/r/adbcsqlite")
+         install.packages("adbcsqlite")
 
 Usage
 =====
@@ -211,7 +210,7 @@ Example
 
       .. code-block:: go
 
-         # TODO
+         // TODO
 
    .. tab-item:: Python
       :sync: python
