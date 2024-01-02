@@ -605,7 +605,7 @@ jobs:
           ci/scripts/install_vcpkg.sh $VCPKG_ROOT ${{ steps.vcpkg_version.outputs.VCPKG_VERSION }}
           popd
 
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.19.13
           check-latest: true
@@ -729,7 +729,7 @@ jobs:
 
       # Windows needs newer Go than 1.19
       # https://github.com/golang/go/issues/51007
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.20.8
           check-latest: true
