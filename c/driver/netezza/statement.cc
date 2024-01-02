@@ -317,7 +317,7 @@ struct BindStream {
 
     PGresult* result = PQprepare(conn, /*stmtName=*/"", query.c_str(),
                                  /*nParams=*/bind_schema->n_children, param_types.data());
-    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+    if (PQresultStatus(result) != PGRES_TUPLES_OK) {
       AdbcStatusCode code =
           SetError(error, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
                    PQerrorMessage(conn), query.c_str());
@@ -518,8 +518,8 @@ struct BindStream {
           }
         }
 
-        result = PQexecPrepared(conn, /*stmtName=*/"",
-                                /*nParams=*/bind_schema->n_children, param_values.data(),
+        result = PQexecParams(conn, /*query=*/"",
+                                /*nParams=*/bind_schema->n_children, nullptr, param_values.data(),
                                 param_lengths.data(), param_formats.data(),
                                 /*resultFormat=*/0 /*text*/);
 
@@ -599,7 +599,7 @@ struct BindStream {
       }
 
       ArrowBuffer buffer = writer.WriteBuffer();
-      if (PQputCopyData(conn, reinterpret_cast<char*>(buffer.data), buffer.size_bytes) <=
+      if (PQputnbytes(conn, reinterpret_cast<char*>(buffer.data), buffer.size_bytes) <=
           0) {
         SetError(error, "Error writing tuple field data: %s", PQerrorMessage(conn));
         return ADBC_STATUS_IO;
@@ -609,7 +609,7 @@ struct BindStream {
       writer.Rewind();
     }
 
-    if (PQputCopyEnd(conn, NULL) <= 0) {
+    if (PQputnbytes(conn, NULL, 0) <= 0) {
       SetError(error, "Error message returned by PQputCopyEnd: %s", PQerrorMessage(conn));
       return ADBC_STATUS_IO;
     }
@@ -649,7 +649,7 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
 
 int TupleReader::InitQueryAndFetchFirst(struct ArrowError* error) {
   // Fetch + parse the header
-  int get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
+  int get_copy_res = PQgetlineAsync(conn_, pgbuf_, /*async=*/8147);
   data_.size_bytes = get_copy_res;
   data_.data.as_char = pgbuf_;
 
@@ -683,9 +683,12 @@ int TupleReader::AppendRowAndFetchNext(struct ArrowError* error) {
   row_id_++;
 
   // Fetch + check
-  PQfreemem(pgbuf_);
+  /*
+  * https://www.postgresql.org/docs/current/libpq-misc.html#LIBPQ-PQFREEMEM
+  */
+  free(pgbuf_);
   pgbuf_ = nullptr;
-  int get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
+  int get_copy_res = PQgetlineAsync(conn_, pgbuf_, /*async=*/8147);;
   data_.size_bytes = get_copy_res;
   data_.data.as_char = pgbuf_;
 
@@ -765,7 +768,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   result_ = PQgetResult(conn_);
   const ExecStatusType pq_status = PQresultStatus(result_);
   if (pq_status != PGRES_COMMAND_OK) {
-    const char* sqlstate = PQresultErrorField(result_, PG_DIAG_SQLSTATE);
+    const char* sqlstate = PQresStatus(PQresultStatus(result_));
     SetError(&error_, result_, "[libpq] Query failed [%s]: %s", PQresStatus(pq_status),
              PQresultErrorMessage(result_));
 
@@ -798,7 +801,7 @@ void TupleReader::Release() {
   }
 
   if (pgbuf_) {
-    PQfreemem(pgbuf_);
+    free(pgbuf_);
     pgbuf_ = nullptr;
   }
 
@@ -932,8 +935,8 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
 
   {
     if (!ingest_.db_schema.empty()) {
-      char* escaped =
-          PQescapeIdentifier(conn, ingest_.db_schema.c_str(), ingest_.db_schema.size());
+      char* escaped = 
+          PQescapeIdentifier(conn, ingest_.db_schema.c_str(), ingest_.db_schema.size(), true);
       if (escaped == nullptr) {
         SetError(error, "[libpq] Failed to escape target schema %s for ingestion: %s",
                  ingest_.db_schema.c_str(), PQerrorMessage(conn));
@@ -941,30 +944,30 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
       }
       *escaped_table += escaped;
       *escaped_table += " . ";
-      PQfreemem(escaped);
+      free(escaped);
     } else if (ingest_.temporary) {
       // OK to be redundant (CREATE TEMPORARY TABLE pg_temp.foo)
       *escaped_table += "pg_temp . ";
     } else {
       // Explicitly specify the current schema to avoid any temporary tables
       // shadowing this table
-      char* escaped =
-          PQescapeIdentifier(conn, current_schema.c_str(), current_schema.size());
+      char* escaped = 
+          PQescapeIdentifier(conn, current_schema.c_str(), current_schema.size(), true);
       *escaped_table += escaped;
       *escaped_table += " . ";
-      PQfreemem(escaped);
+      free(escaped);
     }
 
     if (!ingest_.target.empty()) {
-      char* escaped =
-          PQescapeIdentifier(conn, ingest_.target.c_str(), ingest_.target.size());
+      char* escaped = 
+          PQescapeIdentifier(conn, ingest_.target.c_str(), ingest_.target.size(), true);
       if (escaped == nullptr) {
         SetError(error, "[libpq] Failed to escape target table %s for ingestion: %s",
                  ingest_.target.c_str(), PQerrorMessage(conn));
         return ADBC_STATUS_INTERNAL;
       }
       *escaped_table += escaped;
-      PQfreemem(escaped);
+      free(escaped);
     }
   }
 
@@ -1011,7 +1014,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
     }
 
     const char* unescaped = source_schema.children[i]->name;
-    char* escaped = PQescapeIdentifier(conn, unescaped, std::strlen(unescaped));
+    char* escaped = PQescapeIdentifier(conn, unescaped, std::strlen(unescaped), true);
     if (escaped == nullptr) {
       SetError(error, "[libpq] Failed to escape column %s for ingestion: %s", unescaped,
                PQerrorMessage(conn));
@@ -1019,7 +1022,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
     }
     create += escaped;
     *escaped_field_list += escaped;
-    PQfreemem(escaped);
+    free(escaped);
 
     switch (source_schema_fields[i].type) {
       case ArrowType::NANOARROW_TYPE_BOOL:
@@ -1301,7 +1304,7 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateQuery(int64_t* rows_affected,
                                                      struct AdbcError* error) {
   // NOTE: must prepare first (used in ExecuteQuery)
   PGresult* result =
-      PQexecPrepared(connection_->conn(), /*stmtName=*/"", /*nParams=*/0,
+      PQexecParams(connection_->conn(), /*command=*/query_.c_str(), /*nParams=*/0, /*paramTypes*/nullptr,
                      /*paramValues=*/nullptr, /*paramLengths=*/nullptr,
                      /*paramFormats=*/nullptr, /*resultFormat=*/kPgBinaryFormat);
   ExecStatusType status = PQresultStatus(result);
@@ -1509,7 +1512,7 @@ AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
   // TODO: we should pipeline here and assume this will succeed
   PGresult* result = PQprepare(connection_->conn(), /*stmtName=*/"", query_.c_str(),
                                /*nParams=*/0, nullptr);
-  if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+  if (PQresultStatus(result) != PGRES_TUPLES_OK) {
     AdbcStatusCode code =
         SetError(error, result,
                  "[libpq] Failed to execute query: could not infer schema: failed to "
