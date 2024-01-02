@@ -4,9 +4,20 @@
 <html class="no-js" lang="en" data-content_root="">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="#" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<meta property="og:title" content="Glossary" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://arrow.apache.org/adbc/main/glossary.html" />
+<meta property="og:site_name" content="ADBC" />
+<meta property="og:description" content="client API, The API that an application uses to interact with a database. May abstract over the underlying wire protocol and other details. For example, ADBC, JDBC, ODBC.,, driver, A library that i..." />
+<meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
+<meta property="og:image:alt" content="ADBC" />
+<meta name="description" content="client API, The API that an application uses to interact with a database. May abstract over the underlying wire protocol and other details. For example, ADBC, JDBC, ODBC.,, driver, A library that i..." />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="C and C++" href="cpp/index.html" /><link rel="prev" title="Frequently Asked Questions (FAQ)" href="faq.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2023.09.10 --><title>Search - ADBC 0.9.0 (dev) documentation</title><link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <!-- Generated with Sphinx 6.2.1 and Furo 2023.09.10 -->
+        <title>Glossary - ADBC 0.9.0 (dev) documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
@@ -210,15 +221,15 @@
   
   <span class="sidebar-brand-text">ADBC 0.9.0 (dev) documentation</span>
   
-</a><form class="sidebar-search-container" method="get" action="#" role="search">
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul>
+  <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions (FAQ)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Glossary</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
 <ul>
@@ -301,7 +312,16 @@
           <span>Back to top</span>
         </a>
         <div class="content-icon-container">
-          <div class="theme-toggle-container theme-toggle-content">
+          <div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/glossary.rst" title="Edit this page">
+    <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
+      <line x1="13.5" y1="6.5" x2="17.5" y2="10.5" />
+    </svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
             <button class="theme-toggle">
               <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
               <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
@@ -315,25 +335,61 @@
           </label>
         </div>
         <article role="main">
-          
-<noscript>
-<div class="admonition error">
-  <p class="admonition-title">Error</p>
-  <p>
-    Please activate JavaScript to enable the search functionality.
-  </p>
-</div>
-</noscript>
-
-<div id="search-results"></div>
+          <section id="glossary">
+<h1>Glossary<a class="headerlink" href="#glossary" title="Permalink to this heading">#</a></h1>
+<dl class="glossary">
+<dt id="term-client-API">client API<a class="headerlink" href="#term-client-API" title="Permalink to this term">#</a></dt><dd><p>The API that an application uses to interact with a database.  May
+abstract over the underlying <a class="reference internal" href="#term-wire-protocol"><span class="xref std std-term">wire protocol</span></a> and other details.
+For example, ADBC, JDBC, ODBC.</p>
+</dd>
+<dt id="term-driver">driver<a class="headerlink" href="#term-driver" title="Permalink to this term">#</a></dt><dd><p>A library that implements a <a class="reference internal" href="#term-client-API"><span class="xref std std-term">client API</span></a> using a <a class="reference internal" href="#term-wire-protocol"><span class="xref std std-term">wire
+protocol</span></a>.  For example, the ADBC PostgreSQL driver exposes the ADBC
+client API and interacts with a PostgreSQL database via the PostgreSQL
+wire protocol.  The JDBC PostgreSQL driver uses the same wire protocol,
+but exposes the JDBC client API instead.</p>
+</dd>
+<dt id="term-driver-manager">driver manager<a class="headerlink" href="#term-driver-manager" title="Permalink to this term">#</a></dt><dd><p>A library that helps manage multiple drivers for a given client API.
+For example, the JDBC driver manager can find a appropriate driver
+implementation for a database URI.</p>
+<p>The ADBC driver manager in each language is similar.  In C/C++, it can
+dynamically load drivers so that applications do not have to directly
+link to them.  (Since all drivers expose the same API, their symbols
+would collide otherwise.)  In Python, it loads drivers and provides
+Python bindings on top.</p>
+</dd>
+<dt id="term-wire-protocol">wire protocol<a class="headerlink" href="#term-wire-protocol" title="Permalink to this term">#</a></dt><dd><p>The protocol that a database driver uses to interact with a database.
+For example, <a class="reference external" href="https://arrow.apache.org/docs/format/FlightSql.html" title="(in Apache Arrow v14.0.2)"><span>Arrow Flight SQL</span></a>, the <a class="reference external" href="https://www.postgresql.org/docs/current/protocol.html">PostgreSQL wire
+protocol</a>, or <a class="reference external" href="https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-tds/b46a581a-39de-4745-b076-ec4dbb7d13ec">Tabular Data Stream</a> (Microsoft SQL Server).  Generally
+not directly used by an application.</p>
+</dd>
+</dl>
+</section>
 
         </article>
       </div>
       <footer>
         
         <div class="related-pages">
-          
-          
+          <a class="next-page" href="cpp/index.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">C and C++</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="faq.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Frequently Asked Questions (FAQ)</div>
+                
+              </div>
+            </a>
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
@@ -366,8 +422,5 @@
     <script src="_static/copybutton.js"></script>
     <script src="_static/design-tabs.js"></script>
     
-<script src="_static/searchtools.js"></script>
-<script src="_static/language_data.js"></script>
-<script async defer src="../version.js"></script>
-<script src="searchindex.js"></script></body>
+<script async defer src="../version.js"></script></body>
 </html>
