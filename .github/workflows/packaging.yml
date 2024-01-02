@@ -110,7 +110,7 @@ jobs:
             apache-arrow-adbc-${{ steps.version.outputs.VERSION }} \
             $(git log -n 1 --format=%h)
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: source
           retention-days: 7
@@ -123,7 +123,7 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -160,7 +160,7 @@ jobs:
           popd
 
       - name: Archive docs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docs
           retention-days: 2
@@ -173,7 +173,7 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -201,7 +201,7 @@ jobs:
           cp -a adbc/dist/ ./
 
       - name: Archive JARs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: java
           retention-days: 7
@@ -224,7 +224,7 @@ jobs:
           - debian-bullseye
           - ubuntu-jammy
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -299,7 +299,7 @@ jobs:
           tar czf ${{ matrix.target }}.tar.gz ${DISTRIBUTION}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}
           retention-days: 7
@@ -353,7 +353,7 @@ jobs:
         # TODO: "linux_aarch64_"
         arch: ["linux_64_"]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -386,7 +386,7 @@ jobs:
           popd
 
       - name: Archive Conda packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-${{ matrix.arch }}-conda
           retention-days: 7
@@ -420,7 +420,7 @@ jobs:
       run:
         shell: bash -l {0}
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -462,7 +462,7 @@ jobs:
           ./adbc/ci/scripts/python_conda_build.sh $(pwd)/adbc ${ARCH_CONDA_FORGE}.yaml $(pwd)/adbc/build
 
       - name: Archive Conda packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-${{ matrix.arch }}-conda
           retention-days: 7
@@ -493,7 +493,7 @@ jobs:
           - arch: arm64v8
             is_pr: true
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -530,7 +530,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-${{ matrix.arch }}-manylinux${{ matrix.manylinux_version }}
           retention-days: 7
@@ -566,7 +566,7 @@ jobs:
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -631,7 +631,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-${{ matrix.arch }}-macos
           retention-days: 7
@@ -681,7 +681,7 @@ jobs:
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}\\vcpkg"
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -752,7 +752,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python${{ matrix.python_version }}-windows
           retention-days: 7
@@ -779,7 +779,7 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -810,7 +810,7 @@ jobs:
           popd
 
       - name: Archive sdist
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-sdist
           retention-days: 7
@@ -842,7 +842,7 @@ jobs:
       - python-sdist
     steps:
       - name: Get All Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: release-artifacts
       - name: Release
@@ -895,7 +895,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
       - name: Get All Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: conda-packages
       - uses: conda-incubator/setup-miniconda@v3
@@ -938,7 +938,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
       - name: Get All Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: nightly-artifacts
       - name: Upload

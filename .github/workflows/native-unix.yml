@@ -120,7 +120,7 @@ jobs:
           export PATH=$RUNNER_TOOL_CACHE/go/1.19.13/x64/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -268,7 +268,7 @@ jobs:
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_glib.txt
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -368,7 +368,7 @@ jobs:
         if: ${{ !contains('macos-latest', matrix.os) }}
         run: go install honnef.co/go/tools/cmd/staticcheck@v0.3.3
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -444,7 +444,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -557,7 +557,7 @@ jobs:
             python=${{ matrix.python }} \
             --file ci/conda_env_docs.txt \
             --file ci/conda_env_python.txt
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -572,7 +572,7 @@ jobs:
         run: |
           ./ci/scripts/docs_build.sh "$(pwd)"
       - name: Archive docs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docs
           retention-days: 2
