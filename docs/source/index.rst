@@ -126,6 +126,13 @@ make it more convenient to build analytical applications.
 
             FAQ
 
+         .. button-ref:: glossary
+            :ref-type: doc
+            :color: secondary
+            :expand:
+
+            Glossary
+
       .. grid-item-card::
          :columns: 12 4 4 4
 
@@ -201,6 +208,7 @@ Why ADBC?
    :hidden:
 
    faq
+   glossary
 
 .. toctree::
    :maxdepth: 1
