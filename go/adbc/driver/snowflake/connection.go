@@ -526,7 +526,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 }
 
 func (c *cnxn) populateMetadata(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) ([]internal.Metadata, error) {
-	metadataRecords := make([]internal.Metadata, 0)
+	var metadataRecords []internal.Metadata
 	catalogMetadataRecords, err := c.getCatalogsMetadata(ctx)
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
