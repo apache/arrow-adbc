@@ -23,6 +23,7 @@ pytest
 setuptools
 
 # For integration testing
-polars
+# 0.20.3 is broken on conda-forge
+polars<=0.20.2
 protobuf
 python-duckdb

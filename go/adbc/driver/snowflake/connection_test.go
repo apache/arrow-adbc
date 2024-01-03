@@ -1,7 +1,26 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 package snowflake
 
 import (
+	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,8 +43,8 @@ func TestPrepareDbSchemasSQLWithNoFilterOneCatalog(t *testing.T) {
 					(
 						SELECT * FROM "DEMO_DB".INFORMATION_SCHEMA.SCHEMATA
 					)`
-	actual := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
 
+	actual, queryArgs := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for DbSchemas is not being generated")
 }
 
@@ -43,8 +62,7 @@ func TestPrepareDbSchemasSQLWithNoFilter(t *testing.T) {
 						UNION ALL
 						SELECT * FROM "HELLO_DB".INFORMATION_SCHEMA.SCHEMATA
 					)`
-	actual := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
-
+	actual, queryArgs := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for DbSchemas is not being generated")
 }
 
@@ -62,9 +80,16 @@ func TestPrepareDbSchemasSQLWithCatalogFilter(t *testing.T) {
 						UNION ALL
 						SELECT * FROM "HELLO_DB".INFORMATION_SCHEMA.SCHEMATA
 					)
-					WHERE  CATALOG_NAME ILIKE 'DEMO_DB'`
-	actual := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
+					WHERE  CATALOG_NAME ILIKE ? `
 
+	actual, queryArgs := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
+
+	stringqueryArgs := make([]string, len(queryArgs)) // Pre-allocate the right size
+	for index := range queryArgs {
+		stringqueryArgs[index] = fmt.Sprintf("%v", queryArgs[index])
+	}
+
+	assert.True(t, areStringsEquivalent(catalogPattern, strings.Join(stringqueryArgs, ",")), "The expected CATALOG_NAME is not being generated")
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for DbSchemas is not being generated")
 }
 
@@ -82,9 +107,15 @@ func TestPrepareDbSchemasSQLWithSchemaFilter(t *testing.T) {
 						UNION ALL
 						SELECT * FROM "HELLO_DB".INFORMATION_SCHEMA.SCHEMATA
 					)
-					WHERE  SCHEMA_NAME ILIKE 'PUBLIC'`
-	actual := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
+					WHERE  SCHEMA_NAME ILIKE ? `
+	actual, queryArgs := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
 
+	stringqueryArgs := make([]string, len(queryArgs)) // Pre-allocate the right size
+	for index := range queryArgs {
+		stringqueryArgs[index] = fmt.Sprintf("%v", queryArgs[index])
+	}
+
+	assert.True(t, areStringsEquivalent(schemaPattern, strings.Join(stringqueryArgs, ",")), "The expected SCHEMA_NAME is not being generated")
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for DbSchemas is not being generated")
 }
 
@@ -104,9 +135,15 @@ func TestPrepareDbSchemasSQL(t *testing.T) {
 						UNION ALL
 						SELECT * FROM "HELLO_DB".INFORMATION_SCHEMA.SCHEMATA
 					)
-					WHERE  CATALOG_NAME ILIKE 'DEMO_DB' AND  SCHEMA_NAME ILIKE 'PUBLIC'`
-	actual := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
+					WHERE  CATALOG_NAME ILIKE ? AND  SCHEMA_NAME ILIKE ? `
+	actual, queryArgs := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
 
+	stringqueryArgs := make([]string, len(queryArgs)) // Pre-allocate the right size
+	for index := range queryArgs {
+		stringqueryArgs[index] = fmt.Sprintf("%v", queryArgs[index])
+	}
+
+	assert.True(t, areStringsEquivalent(catalogPattern+","+schemaPattern, strings.Join(stringqueryArgs, ",")), "The expected SCHEMA_NAME is not being generated")
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for DbSchemas is not being generated")
 }
 
@@ -126,8 +163,7 @@ func TestPrepareTablesSQLWithNoFilter(t *testing.T) {
 						UNION ALL
 						SELECT * FROM "DEMO'DB".INFORMATION_SCHEMA.TABLES
 					)`
-	actual := prepareTablesSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, tableType[:])
-
+	actual, queryArgs := prepareTablesSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, tableType[:])
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for Tables is not being generated")
 }
 
@@ -147,9 +183,15 @@ func TestPrepareTablesSQLWithNoTableTypeFilter(t *testing.T) {
 						UNION ALL
 						SELECT * FROM "DEMO'DB".INFORMATION_SCHEMA.TABLES
 					)
-					WHERE  TABLE_CATALOG ILIKE 'DEMO_DB' AND  TABLE_SCHEMA ILIKE 'PUBLIC' AND  TABLE_NAME ILIKE 'ADBC-TABLE'`
-	actual := prepareTablesSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, tableType[:])
+					WHERE  TABLE_CATALOG ILIKE ? AND  TABLE_SCHEMA ILIKE ? AND  TABLE_NAME ILIKE ? `
+	actual, queryArgs := prepareTablesSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, tableType[:])
 
+	stringqueryArgs := make([]string, len(queryArgs)) // Pre-allocate the right size
+	for index := range queryArgs {
+		stringqueryArgs[index] = fmt.Sprintf("%v", queryArgs[index])
+	}
+
+	assert.True(t, areStringsEquivalent(catalogPattern+","+schemaPattern+","+tableNamePattern, strings.Join(stringqueryArgs, ",")), "The expected SCHEMA_NAME is not being generated")
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for Tables is not being generated")
 }
 
@@ -169,9 +211,15 @@ func TestPrepareTablesSQL(t *testing.T) {
 						UNION ALL
 						SELECT * FROM "DEMO'DB".INFORMATION_SCHEMA.TABLES
 					)
-					WHERE  TABLE_CATALOG ILIKE 'DEMO_DB' AND  TABLE_SCHEMA ILIKE 'PUBLIC' AND  TABLE_NAME ILIKE 'ADBC-TABLE' AND  TABLE_TYPE IN ('BASE TABLE','VIEW')`
-	actual := prepareTablesSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, tableType[:])
+					WHERE  TABLE_CATALOG ILIKE ? AND  TABLE_SCHEMA ILIKE ? AND  TABLE_NAME ILIKE ? AND  TABLE_TYPE IN ('BASE TABLE','VIEW')`
+	actual, queryArgs := prepareTablesSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, tableType[:])
 
+	stringqueryArgs := make([]string, len(queryArgs)) // Pre-allocate the right size
+	for index := range queryArgs {
+		stringqueryArgs[index] = fmt.Sprintf("%v", queryArgs[index])
+	}
+
+	assert.True(t, areStringsEquivalent(catalogPattern+","+schemaPattern+","+tableNamePattern, strings.Join(stringqueryArgs, ",")), "The expected SCHEMA_NAME is not being generated")
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for Tables is not being generated")
 }
 
@@ -207,8 +255,7 @@ func TestPrepareColumnsSQLNoFilter(t *testing.T) {
 								T.table_catalog = C.table_catalog AND T.table_schema = C.table_schema AND t.table_name = C.table_name
 						)
 						ORDER BY table_catalog, table_schema, table_name, ordinal_position`
-	actual := prepareColumnsSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, &columnNamePattern, tableType[:])
-
+	actual, queryArgs := prepareColumnsSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, &columnNamePattern, tableType[:])
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for Tables is not being generated")
 }
 
@@ -243,10 +290,16 @@ func TestPrepareColumnsSQL(t *testing.T) {
 							ON
 								T.table_catalog = C.table_catalog AND T.table_schema = C.table_schema AND t.table_name = C.table_name
 						)
-						WHERE  TABLE_CATALOG ILIKE 'DEMO_DB' AND  TABLE_SCHEMA ILIKE 'PUBLIC' AND  TABLE_NAME ILIKE 'ADBC-TABLE' AND  COLUMN_NAME ILIKE 'creationDate' AND  TABLE_TYPE IN ('BASE TABLE','VIEW')
+						WHERE  TABLE_CATALOG ILIKE ? AND  TABLE_SCHEMA ILIKE ? AND  TABLE_NAME ILIKE ? AND  COLUMN_NAME ILIKE ? AND  TABLE_TYPE IN ('BASE TABLE','VIEW')
 						ORDER BY table_catalog, table_schema, table_name, ordinal_position`
-	actual := prepareColumnsSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, &columnNamePattern, tableType[:])
+	actual, queryArgs := prepareColumnsSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, &columnNamePattern, tableType[:])
 
+	stringqueryArgs := make([]string, len(queryArgs)) // Pre-allocate the right size
+	for index := range queryArgs {
+		stringqueryArgs[index] = fmt.Sprintf("%v", queryArgs[index])
+	}
+
+	assert.True(t, areStringsEquivalent(catalogPattern+","+schemaPattern+","+tableNamePattern+","+columnNamePattern, strings.Join(stringqueryArgs, ",")), "The expected SCHEMA_NAME is not being generated")
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for Tables is not being generated")
 }
 

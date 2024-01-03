@@ -481,6 +481,7 @@ test_r() {
   mkdir "${ARROW_TMPDIR}/r/tmplib"
 
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R -e 'install.packages("nanoarrow", repos = "https://cloud.r-project.org/")' --vanilla
+  R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R -e 'install.packages("openssl", repos = "https://cloud.r-project.org/")' --vanilla
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R -e 'if (!requireNamespace("testthat", quietly = TRUE)) install.packages("testthat", repos = "https://cloud.r-project.org/")' --vanilla
   R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcdrivermanager" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
   R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcsqlite" --preclean --library="${ARROW_TMPDIR}/r/tmplib"

@@ -588,8 +588,9 @@ func (c *cnxn) getCatalogsMetadata(ctx context.Context) ([]internal.Metadata, er
 
 func (c *cnxn) getDbSchemasMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string) ([]internal.Metadata, error) {
 	var metadataRecords []internal.Metadata
-	query := prepareDbSchemasSQL(matchingCatalogNames, catalog, dbSchema)
-	rows, err := c.sqldb.QueryContext(ctx, query)
+	query, queryArgs := prepareDbSchemasSQL(matchingCatalogNames, catalog, dbSchema)
+	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
+
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
@@ -607,8 +608,9 @@ func (c *cnxn) getDbSchemasMetadata(ctx context.Context, matchingCatalogNames []
 
 func (c *cnxn) getTablesMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, tableType []string) ([]internal.Metadata, error) {
 	metadataRecords := make([]internal.Metadata, 0)
-	query := prepareTablesSQL(matchingCatalogNames, catalog, dbSchema, tableName, tableType)
-	rows, err := c.sqldb.QueryContext(ctx, query)
+	query, queryArgs := prepareTablesSQL(matchingCatalogNames, catalog, dbSchema, tableName, tableType)
+	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
+
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
@@ -626,8 +628,9 @@ func (c *cnxn) getTablesMetadata(ctx context.Context, matchingCatalogNames []str
 
 func (c *cnxn) getColumnsMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) ([]internal.Metadata, error) {
 	metadataRecords := make([]internal.Metadata, 0)
-	query := prepareColumnsSQL(matchingCatalogNames, catalog, dbSchema, tableName, columnName, tableType)
-	rows, err := c.sqldb.QueryContext(ctx, query)
+	query, queryArgs := prepareColumnsSQL(matchingCatalogNames, catalog, dbSchema, tableName, columnName, tableType)
+	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
+
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
@@ -677,42 +680,43 @@ func prepareCatalogsSQL() string {
 	return "SHOW TERSE DATABASES"
 }
 
-func prepareDbSchemasSQL(matchingCatalogNames []string, catalog *string, dbSchema *string) string {
+func prepareDbSchemasSQL(matchingCatalogNames []string, catalog *string, dbSchema *string) (string, []interface{}) {
 	query := ""
 	for _, catalog_name := range matchingCatalogNames {
 		if query != "" {
 			query += " UNION ALL "
 		}
-		query += `SELECT * FROM "` + catalog_name + `".INFORMATION_SCHEMA.SCHEMATA`
+		query += `SELECT * FROM "` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.SCHEMATA`
 	}
 
 	query = `SELECT CATALOG_NAME, SCHEMA_NAME FROM (` + query + `)`
-	conditions := prepareFilterConditions(adbc.ObjectDepthDBSchemas, catalog, dbSchema, nil, nil, make([]string, 0))
+	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthDBSchemas, catalog, dbSchema, nil, nil, make([]string, 0))
+
 	if conditions != "" {
 		query += " WHERE " + conditions
 	}
 
-	return query
+	return query, queryArgs
 }
 
-func prepareTablesSQL(matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, tableType []string) string {
+func prepareTablesSQL(matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, tableType []string) (string, []interface{}) {
 	query := ""
 	for _, catalog_name := range matchingCatalogNames {
 		if query != "" {
 			query += " UNION ALL "
 		}
-		query += `SELECT * FROM "` + catalog_name + `".INFORMATION_SCHEMA.TABLES`
+		query += `SELECT * FROM "` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES`
 	}
 
 	query = `SELECT table_catalog, table_schema, table_name, table_type FROM (` + query + `)`
-	conditions := prepareFilterConditions(adbc.ObjectDepthTables, catalog, dbSchema, tableName, nil, tableType)
+	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthTables, catalog, dbSchema, tableName, nil, tableType)
 	if conditions != "" {
 		query += " WHERE " + conditions
 	}
-	return query
+	return query, queryArgs
 }
 
-func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) string {
+func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (string, []interface{}) {
 	prefixQuery := ""
 	for _, catalog_name := range matchingCatalogNames {
 		if prefixQuery != "" {
@@ -721,9 +725,9 @@ func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema 
 		prefixQuery += `SELECT T.table_type,
 					C.*
 				FROM
-				"` + catalog_name + `".INFORMATION_SCHEMA.TABLES AS T
+				"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES AS T
 			JOIN
-				"` + catalog_name + `".INFORMATION_SCHEMA.COLUMNS AS C
+				"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.COLUMNS AS C
 			ON
 				T.table_catalog = C.table_catalog
 				AND T.table_schema = C.table_schema
@@ -736,7 +740,8 @@ func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema 
 						identity_generation, identity_increment,
 						character_maximum_length, character_octet_length, datetime_precision, comment FROM (` + prefixQuery + `)`
 	ordering := ` ORDER BY table_catalog, table_schema, table_name, ordinal_position`
-	conditions := prepareFilterConditions(adbc.ObjectDepthColumns, catalog, dbSchema, tableName, columnName, tableType)
+	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthColumns, catalog, dbSchema, tableName, columnName, tableType)
+
 	query := prefixQuery
 
 	if conditions != "" {
@@ -744,30 +749,35 @@ func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema 
 	}
 
 	query += ordering
-	return query
+	return query, queryArgs
 }
 
-func prepareFilterConditions(depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) string {
+func prepareFilterConditions(depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (string, []interface{}) {
 	conditions := make([]string, 0)
+	queryArgs := make([]interface{}, 0)
 	if catalog != nil && *catalog != "" {
 		if depth == adbc.ObjectDepthDBSchemas {
-			conditions = append(conditions, ` CATALOG_NAME ILIKE '`+*catalog+`'`)
+			conditions = append(conditions, ` CATALOG_NAME ILIKE ? `)
 		} else {
-			conditions = append(conditions, ` TABLE_CATALOG ILIKE '`+*catalog+`'`)
+			conditions = append(conditions, ` TABLE_CATALOG ILIKE ? `)
 		}
+		queryArgs = append(queryArgs, *catalog)
 	}
 	if dbSchema != nil && *dbSchema != "" {
 		if depth == adbc.ObjectDepthDBSchemas {
-			conditions = append(conditions, ` SCHEMA_NAME ILIKE '`+*dbSchema+`'`)
+			conditions = append(conditions, ` SCHEMA_NAME ILIKE ? `)
 		} else {
-			conditions = append(conditions, ` TABLE_SCHEMA ILIKE '`+*dbSchema+`'`)
+			conditions = append(conditions, ` TABLE_SCHEMA ILIKE ? `)
 		}
+		queryArgs = append(queryArgs, *dbSchema)
 	}
 	if tableName != nil && *tableName != "" {
-		conditions = append(conditions, ` TABLE_NAME ILIKE '`+*tableName+`'`)
+		conditions = append(conditions, ` TABLE_NAME ILIKE ? `)
+		queryArgs = append(queryArgs, *tableName)
 	}
 	if columnName != nil && *columnName != "" {
-		conditions = append(conditions, ` COLUMN_NAME ILIKE '`+*columnName+`'`)
+		conditions = append(conditions, ` COLUMN_NAME ILIKE ? `)
+		queryArgs = append(queryArgs, *columnName)
 	}
 
 	var tblConditions []string
@@ -778,7 +788,7 @@ func prepareFilterConditions(depth adbc.ObjectDepth, catalog *string, dbSchema *
 	}
 
 	cond := strings.Join(tblConditions, " AND ")
-	return cond
+	return cond, queryArgs
 }
 
 func descToField(name, typ, isnull, primary string, comment sql.NullString) (field arrow.Field, err error) {
@@ -948,12 +958,12 @@ func (c *cnxn) GetOptionDouble(key string) (float64, error) {
 func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
 	tblParts := make([]string, 0, 3)
 	if catalog != nil {
-		tblParts = append(tblParts, strconv.Quote(strings.ToUpper(*catalog)))
+		tblParts = append(tblParts, strconv.Quote(*catalog))
 	}
 	if dbSchema != nil {
-		tblParts = append(tblParts, strconv.Quote(strings.ToUpper(*dbSchema)))
+		tblParts = append(tblParts, strconv.Quote(*dbSchema))
 	}
-	tblParts = append(tblParts, strconv.Quote(strings.ToUpper(tableName)))
+	tblParts = append(tblParts, strconv.Quote(tableName))
 	fullyQualifiedTable := strings.Join(tblParts, ".")
 
 	rows, err := c.sqldb.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable)
