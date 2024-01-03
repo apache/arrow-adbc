@@ -400,7 +400,7 @@ func (suite *SnowflakeTests) TestStatementEmptyResultSet() {
 	suite.True(rdr.Next())
 	rec := rdr.Record()
 	suite.Equal(n, rec.NumRows())
-	suite.EqualValues(25, rec.NumCols())
+	suite.EqualValues(26, rec.NumCols())
 
 	suite.False(rdr.Next())
 	suite.NoError(rdr.Err())
