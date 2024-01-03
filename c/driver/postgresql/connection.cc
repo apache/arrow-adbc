@@ -1147,38 +1147,23 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
                                                   struct ArrowSchema* schema,
                                                   struct AdbcError* error) {
   AdbcStatusCode final_status = ADBC_STATUS_OK;
-  struct StringBuilder query;
-  std::memset(&query, 0, sizeof(query));
+
+  std::string query =
+      "SELECT attname, atttypid "
+      "FROM pg_catalog.pg_class AS cls "
+      "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
+      "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
+      "WHERE attr.attnum >= 0 AND cls.oid = $1::regclass::oid";
+
   std::vector<std::string> params;
-  if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
-
-  if (StringBuilderAppend(
-          &query, "%s",
-          "SELECT attname, atttypid "
-          "FROM pg_catalog.pg_class AS cls "
-          "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
-          "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
-          "WHERE attr.attnum >= 0 AND cls.oid = ") != 0)
-    return ADBC_STATUS_INTERNAL;
-
   if (db_schema != nullptr) {
-    if (StringBuilderAppend(&query, "%s", "$1.")) {
-      StringBuilderReset(&query);
-      return ADBC_STATUS_INTERNAL;
-    }
-    params.push_back(db_schema);
+    params.push_back(std::string(db_schema) + "." + table_name);
+  } else {
+    params.push_back(table_name);
   }
-
-  if (StringBuilderAppend(&query, "%s%" PRIu64 "%s", "$",
-                          static_cast<uint64_t>(params.size() + 1), "::regclass::oid")) {
-    StringBuilderReset(&query);
-    return ADBC_STATUS_INTERNAL;
-  }
-  params.push_back(table_name);
 
   PqResultHelper result_helper =
-      PqResultHelper{conn_, std::string(query.buffer), params, error};
-  StringBuilderReset(&query);
+      PqResultHelper{conn_, std::string(query.c_str()), params, error};
 
   RAISE_ADBC(result_helper.Prepare());
   auto result = result_helper.Execute();

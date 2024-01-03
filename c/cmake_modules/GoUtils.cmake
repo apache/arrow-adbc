@@ -153,7 +153,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     add_custom_target(${GO_LIBNAME}_target ALL
                       DEPENDS "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
                               "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" "${LIBOUT_SHARED}")
-    add_library(${GO_LIBNAME}_shared SHARED IMPORTED)
+    add_library(${GO_LIBNAME}_shared SHARED IMPORTED GLOBAL)
     set_target_properties(${GO_LIBNAME}_shared
                           PROPERTIES IMPORTED_LOCATION
                                      "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"

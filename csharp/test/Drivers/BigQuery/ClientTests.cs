@@ -17,8 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data;
-using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
@@ -54,7 +52,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
                 string[] queries = BigQueryTestingUtils.GetQueries(testConfiguration);
 
-                List<int> expectedResults = new List<int>() { -1, 1, 1, 1 };
+                List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
                 Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, testConfiguration, queries, expectedResults);
             }

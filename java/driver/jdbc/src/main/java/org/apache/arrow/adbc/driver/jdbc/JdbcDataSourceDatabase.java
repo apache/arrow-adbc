@@ -34,8 +34,8 @@ public final class JdbcDataSourceDatabase implements AdbcDatabase {
   private final String username;
   private final String password;
   private final JdbcQuirks quirks;
-  private final Connection connection;
   private final AtomicInteger counter;
+  private Connection connection;
 
   JdbcDataSourceDatabase(
       BufferAllocator allocator,
@@ -49,22 +49,19 @@ public final class JdbcDataSourceDatabase implements AdbcDatabase {
     this.username = username;
     this.password = password;
     this.quirks = Objects.requireNonNull(quirks);
-    try {
-      this.connection = dataSource.getConnection();
-    } catch (SQLException e) {
-      throw JdbcDriverUtil.fromSqlException(e);
-    }
+    this.connection = null;
     this.counter = new AtomicInteger();
   }
 
   @Override
   public AdbcConnection connect() throws AdbcException {
-    final Connection connection;
     try {
-      if (username != null && password != null) {
-        connection = dataSource.getConnection(username, password);
-      } else {
-        connection = dataSource.getConnection();
+      if (connection == null) {
+        if (username != null && password != null) {
+          connection = dataSource.getConnection(username, password);
+        } else {
+          connection = dataSource.getConnection();
+        }
       }
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
@@ -79,7 +76,10 @@ public final class JdbcDataSourceDatabase implements AdbcDatabase {
 
   @Override
   public void close() throws Exception {
-    connection.close();
+    if (connection != null) {
+      connection.close();
+    }
+    connection = null;
   }
 
   @Override

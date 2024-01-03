@@ -134,6 +134,22 @@ def test_get_table_types(sqlite):
     assert sqlite.adbc_get_table_types() == ["table", "view"]
 
 
+class ArrayWrapper:
+    def __init__(self, array):
+        self.array = array
+
+    def __arrow_c_array__(self, requested_schema=None):
+        return self.array.__arrow_c_array__(requested_schema=requested_schema)
+
+
+class StreamWrapper:
+    def __init__(self, stream):
+        self.stream = stream
+
+    def __arrow_c_stream__(self, requested_schema=None):
+        return self.stream.__arrow_c_stream__(requested_schema=requested_schema)
+
+
 @pytest.mark.parametrize(
     "data",
     [
@@ -142,6 +158,12 @@ def test_get_table_types(sqlite):
         lambda: pyarrow.table(
             [[1, 2], ["foo", ""]], names=["ints", "strs"]
         ).to_reader(),
+        lambda: ArrayWrapper(
+            pyarrow.record_batch([[1, 2], ["foo", ""]], names=["ints", "strs"])
+        ),
+        lambda: StreamWrapper(
+            pyarrow.table([[1, 2], ["foo", ""]], names=["ints", "strs"])
+        ),
     ],
 )
 @pytest.mark.sqlite
@@ -237,6 +259,8 @@ def test_query_fetch_df(sqlite):
         (1.0, 2),
         pyarrow.record_batch([[1.0], [2]], names=["float", "int"]),
         pyarrow.table([[1.0], [2]], names=["float", "int"]),
+        ArrayWrapper(pyarrow.record_batch([[1.0], [2]], names=["float", "int"])),
+        StreamWrapper(pyarrow.table([[1.0], [2]], names=["float", "int"])),
     ],
 )
 def test_execute_parameters(sqlite, parameters):
@@ -253,6 +277,10 @@ def test_execute_parameters(sqlite, parameters):
         pyarrow.record_batch([[1, 3], ["a", None]], names=["float", "str"]),
         pyarrow.table([[1, 3], ["a", None]], names=["float", "str"]),
         pyarrow.table([[1, 3], ["a", None]], names=["float", "str"]).to_batches()[0],
+        ArrayWrapper(
+            pyarrow.record_batch([[1, 3], ["a", None]], names=["float", "str"])
+        ),
+        StreamWrapper(pyarrow.table([[1, 3], ["a", None]], names=["float", "str"])),
         ((x, y) for x, y in ((1, "a"), (3, None))),
     ],
 )

@@ -50,6 +50,13 @@ class DriverQuirks {
     return ADBC_STATUS_OK;
   }
 
+  virtual AdbcStatusCode DropTable(struct AdbcConnection* connection,
+                                   const std::string& name,
+                                   const std::string& db_schema,
+                                   struct AdbcError* error) const {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
   /// \brief Drop the given temporary table. Used by tests to reset state.
   virtual AdbcStatusCode DropTempTable(struct AdbcConnection* connection,
                                        const std::string& name,
@@ -68,6 +75,13 @@ class DriverQuirks {
                                            const std::string& name,
                                            struct AdbcError* error) const;
 
+  /// \brief Create a schema for testing.
+  virtual AdbcStatusCode EnsureDbSchema(struct AdbcConnection* connection,
+                                      const std::string& name,
+                                      struct AdbcError* error) const {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
   /// \brief Create a table of sample data with a fixed schema for testing.
   ///
   /// The table should have two columns:
@@ -75,6 +89,19 @@ class DriverQuirks {
   /// - "strings" with Arrow type utf8.
   virtual AdbcStatusCode CreateSampleTable(struct AdbcConnection* connection,
                                            const std::string& name,
+                                           struct AdbcError* error) const;
+
+  /// \brief Create a table of sample data with a fixed schema for testing.
+  ///
+  /// Create it in the given schema.  Specify "" for the default schema.
+  /// Return NOT_IMPLEMENTED if not supported by this backend.
+  ///
+  /// The table should have two columns:
+  /// - "int64s" with Arrow type int64.
+  /// - "strings" with Arrow type utf8.
+  virtual AdbcStatusCode CreateSampleTable(struct AdbcConnection* connection,
+                                           const std::string& name,
+                                           const std::string& schema,
                                            struct AdbcError* error) const;
 
   /// \brief Get the statement to create a table with a primary key, or nullopt if not
@@ -197,7 +224,7 @@ class DriverQuirks {
   /// \brief Default catalog to use for tests
   virtual std::string catalog() const { return ""; }
 
-  /// \brief Default Schema to use for tests
+  /// \brief Default database schema to use for tests
   virtual std::string db_schema() const { return ""; }
 };
 
@@ -243,6 +270,7 @@ class ConnectionTest {
 
   void TestMetadataGetInfo();
   void TestMetadataGetTableSchema();
+  void TestMetadataGetTableSchemaDbSchema();
   void TestMetadataGetTableSchemaEscaping();
   void TestMetadataGetTableSchemaNotFound();
   void TestMetadataGetTableTypes();
@@ -277,6 +305,9 @@ class ConnectionTest {
   TEST_F(FIXTURE, MetadataCurrentDbSchema) { TestMetadataCurrentDbSchema(); }           \
   TEST_F(FIXTURE, MetadataGetInfo) { TestMetadataGetInfo(); }                           \
   TEST_F(FIXTURE, MetadataGetTableSchema) { TestMetadataGetTableSchema(); }             \
+  TEST_F(FIXTURE, MetadataGetTableSchemaDbSchema) {                                     \
+    TestMetadataGetTableSchemaDbSchema();                                               \
+  }                                                                                     \
   TEST_F(FIXTURE, MetadataGetTableSchemaEscaping) {                                     \
     TestMetadataGetTableSchemaEscaping();                                               \
   }                                                                                     \

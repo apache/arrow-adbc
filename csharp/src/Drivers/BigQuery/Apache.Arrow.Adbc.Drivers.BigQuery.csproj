@@ -1,14 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Net.Http.WinHttpHandler" Version="7.0.0" Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'" />
-    <PackageReference Include="Google.Cloud.BigQuery.Storage.V1" Version="3.6.0" />
-    <PackageReference Include="Google.Cloud.BigQuery.V2" Version="3.2.0" />
-    <PackageReference Include="System.Text.Json" Version="7.0.3" />
+    <PackageReference Include="Google.Cloud.BigQuery.Storage.V1" Version="3.10.0" />
+    <PackageReference Include="Google.Cloud.BigQuery.V2" Version="3.5.0" />
+    <PackageReference Include="System.Text.Json" Version="7.0.4" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="readme.md">
+      <Pack>true</Pack>
+      <PackagePath>\</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 </Project>
