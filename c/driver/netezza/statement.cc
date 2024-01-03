@@ -649,7 +649,7 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
 
 int TupleReader::InitQueryAndFetchFirst(struct ArrowError* error) {
   // Fetch + parse the header
-  int get_copy_res = PQgetlineAsync(conn_, pgbuf_, /*async=*/8147);
+  int get_copy_res = PQgetlineAsync(conn_, pgbuf_, 0);
   data_.size_bytes = get_copy_res;
   data_.data.as_char = pgbuf_;
 
@@ -688,7 +688,7 @@ int TupleReader::AppendRowAndFetchNext(struct ArrowError* error) {
   */
   free(pgbuf_);
   pgbuf_ = nullptr;
-  int get_copy_res = PQgetlineAsync(conn_, pgbuf_, /*async=*/8147);;
+  int get_copy_res = PQgetlineAsync(conn_, pgbuf_, 0);
   data_.size_bytes = get_copy_res;
   data_.data.as_char = pgbuf_;
 
