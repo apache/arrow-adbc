@@ -329,7 +329,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 .Where(s => string.Equals(s.Name, schemaName))
                 .Select(s => s.Tables)
                 .FirstOrDefault();
-               
+
             AdbcTable table = tables.FirstOrDefault();
 
             Assert.True(table != null, "table should not be null");
@@ -409,7 +409,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             string createDatabase = string.Format("CREATE DATABASE IF NOT EXISTS \"{0}\"", databaseName);
             ExecuteUpdateStatement(createDatabase);
-                       
+
             string createSchema = string.Format("CREATE SCHEMA IF NOT EXISTS \"{0}\".\"{1}\"", databaseName, schemaName);
             ExecuteUpdateStatement(createSchema);
 
