@@ -35,22 +35,6 @@ struct DetailField {
   std::string key;
 };
 
-static const std::vector<DetailField> kDetailFields = {
-    {PG_DIAG_COLUMN_NAME, "PG_DIAG_COLUMN_NAME"},
-    {PG_DIAG_CONTEXT, "PG_DIAG_CONTEXT"},
-    {PG_DIAG_CONSTRAINT_NAME, "PG_DIAG_CONSTRAINT_NAME"},
-    {PG_DIAG_DATATYPE_NAME, "PG_DIAG_DATATYPE_NAME"},
-    {PG_DIAG_INTERNAL_POSITION, "PG_DIAG_INTERNAL_POSITION"},
-    {PG_DIAG_INTERNAL_QUERY, "PG_DIAG_INTERNAL_QUERY"},
-    {PG_DIAG_MESSAGE_PRIMARY, "PG_DIAG_MESSAGE_PRIMARY"},
-    {PG_DIAG_MESSAGE_DETAIL, "PG_DIAG_MESSAGE_DETAIL"},
-    {PG_DIAG_MESSAGE_HINT, "PG_DIAG_MESSAGE_HINT"},
-    {PG_DIAG_SEVERITY_NONLOCALIZED, "PG_DIAG_SEVERITY_NONLOCALIZED"},
-    {PG_DIAG_SQLSTATE, "PG_DIAG_SQLSTATE"},
-    {PG_DIAG_STATEMENT_POSITION, "PG_DIAG_STATEMENT_POSITION"},
-    {PG_DIAG_SCHEMA_NAME, "PG_DIAG_SCHEMA_NAME"},
-    {PG_DIAG_TABLE_NAME, "PG_DIAG_TABLE_NAME"},
-};
 }  // namespace
 
 AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* format,
@@ -62,7 +46,7 @@ AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* f
 
   AdbcStatusCode code = ADBC_STATUS_IO;
 
-  const char* sqlstate = PQresultErrorField(result, PG_DIAG_SQLSTATE);
+  const char* sqlstate = PQresStatus(PQresultStatus(result));
   if (sqlstate) {
     // https://www.postgresql.org/docs/current/errcodes-appendix.html
     // This can be extended in the future
@@ -87,12 +71,10 @@ AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* f
     }
   }
 
-  for (const auto& field : kDetailFields) {
-    const char* value = PQresultErrorField(result, field.code);
-    if (value) {
-      AppendErrorDetail(error, field.key.c_str(), reinterpret_cast<const uint8_t*>(value),
-                        std::strlen(value));
-    }
+  const char* value = PQresultErrorMessage(result);
+  if (value) {
+    AppendErrorDetail(error, "", reinterpret_cast<const uint8_t*>(value),
+                      std::strlen(value));
   }
   return code;
 }

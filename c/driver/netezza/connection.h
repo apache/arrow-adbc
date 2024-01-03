@@ -30,7 +30,7 @@ class PostgresDatabase;
 class PostgresConnection {
  public:
   PostgresConnection()
-      : database_(nullptr), conn_(nullptr), cancel_(nullptr), autocommit_(true) {}
+      : database_(nullptr), conn_(nullptr), cancel_(0), autocommit_(true) {}
 
   AdbcStatusCode Cancel(struct AdbcError* error);
   AdbcStatusCode Commit(struct AdbcError* error);
@@ -83,7 +83,7 @@ class PostgresConnection {
   std::shared_ptr<PostgresDatabase> database_;
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   PGconn* conn_;
-  PGcancel* cancel_;
+  int cancel_;
   bool autocommit_;
 };
 }  // namespace adbcpq

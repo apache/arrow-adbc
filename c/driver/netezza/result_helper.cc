@@ -32,7 +32,7 @@ AdbcStatusCode PqResultHelper::Prepare() {
   // TODO: make stmtName a unique identifier?
   PGresult* result =
       PQprepare(conn_, /*stmtName=*/"", query_.c_str(), param_values_.size(), NULL);
-  if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+  if (PQresultStatus(result) != PGRES_TUPLES_OK) {
     AdbcStatusCode code =
         SetError(error_, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
                  PQerrorMessage(conn_), query_.c_str());
@@ -52,7 +52,7 @@ AdbcStatusCode PqResultHelper::Execute() {
   }
 
   result_ =
-      PQexecPrepared(conn_, "", param_values_.size(), param_c_strs.data(), NULL, NULL, 0);
+      PQexecParams(conn_, query_.c_str(), param_values_.size(), NULL, param_c_strs.data(), NULL, NULL, 0);
 
   ExecStatusType status = PQresultStatus(result_);
   if (status != PGRES_TUPLES_OK && status != PGRES_COMMAND_OK) {

@@ -382,6 +382,7 @@ typedef struct
 
         /* Quoting strings before inclusion in queries. */
         extern size_t PQescapeString(char *to, const char *from, size_t length);
+        extern char *PQescapeIdentifier(PGconn *conn, const char *str, size_t len, bool as_ident);
         extern unsigned char *PQescapeBytea(const unsigned char *bintext, size_t binlen,
                                 size_t *bytealen);
         extern unsigned char *PQunescapeBytea(const unsigned char *strtext,
