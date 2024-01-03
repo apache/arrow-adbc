@@ -45,6 +45,8 @@ func TestPrepareDbSchemasSQLWithNoFilterOneCatalog(t *testing.T) {
 					)`
 
 	actual, queryArgs := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
+
+	println("Query Args", queryArgs)
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for DbSchemas is not being generated")
 }
 
@@ -63,6 +65,8 @@ func TestPrepareDbSchemasSQLWithNoFilter(t *testing.T) {
 						SELECT * FROM "HELLO_DB".INFORMATION_SCHEMA.SCHEMATA
 					)`
 	actual, queryArgs := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
+
+	println("Query Args", queryArgs)
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for DbSchemas is not being generated")
 }
 
@@ -164,6 +168,8 @@ func TestPrepareTablesSQLWithNoFilter(t *testing.T) {
 						SELECT * FROM "DEMO'DB".INFORMATION_SCHEMA.TABLES
 					)`
 	actual, queryArgs := prepareTablesSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, tableType[:])
+
+	println("Query Args", queryArgs)
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for Tables is not being generated")
 }
 
@@ -256,6 +262,8 @@ func TestPrepareColumnsSQLNoFilter(t *testing.T) {
 						)
 						ORDER BY table_catalog, table_schema, table_name, ordinal_position`
 	actual, queryArgs := prepareColumnsSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, &columnNamePattern, tableType[:])
+
+	println("Query Args", queryArgs)
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for Tables is not being generated")
 }
 
