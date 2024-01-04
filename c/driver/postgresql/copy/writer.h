@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <cinttypes>
 #include <limits>
 #include <memory>
 #include <string>
@@ -26,7 +27,7 @@
 #include <nanoarrow/nanoarrow.hpp>
 
 #include "copy_common.h"
-#include "../postgres_util.h"
+#include "postgresql/postgres_util.h"
 
 namespace adbcpq {
 

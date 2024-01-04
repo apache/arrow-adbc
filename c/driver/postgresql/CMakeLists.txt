@@ -76,7 +76,6 @@ if(ADBC_BUILD_TESTS)
                 driver-postgresql
                 SOURCES
                 postgres_type_test.cc
-                postgres_copy_reader_test.cc
                 postgresql_test.cc
                 EXTRA_LINK_LIBS
                 adbc_driver_common
@@ -92,6 +91,7 @@ if(ADBC_BUILD_TESTS)
                                      ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-driver-postgresql-test)
 endif()
+add_subdirectory(copy)
 
 if(ADBC_BUILD_BENCHMARKS)
   find_package(benchmark REQUIRED)
