@@ -22,7 +22,8 @@
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.hpp>
 
-#include "postgres_copy_reader.h"
+#include "copy/reader.h"
+#include "copy/writer.h"
 #include "validation/adbc_validation_util.h"
 
 namespace adbcpq {

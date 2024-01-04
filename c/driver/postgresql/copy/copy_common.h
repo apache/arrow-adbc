@@ -20,6 +20,26 @@
 // Windows
 #define NOMINMAX
 
-#include <algorithm>
+#include <cstdint>
 
-#include "postgres_type.h"
+// R 3.6 / Windows builds on a very old toolchain that does not define ENODATA
+#if defined(_WIN32) && !defined(MSVC) && !defined(ENODATA)
+#define ENODATA 120
+#endif
+
+namespace adbcpq {
+
+// "PGCOPY\n\377\r\n\0"
+static int8_t kPgCopyBinarySignature[] = {0x50, 0x47, 0x43, 0x4F,
+                                          0x50, 0x59, 0x0A, static_cast<int8_t>(0xFF),
+                                          0x0D, 0x0A, 0x00};
+
+// The maximum value in microseconds that can be converted into nanoseconds
+// without overflow
+constexpr int64_t kMaxSafeMicrosToNanos = 9223372036854775L;
+
+// The minimum value in microseconds that can be converted into nanoseconds
+// without overflow
+constexpr int64_t kMinSafeMicrosToNanos = -9223372036854775L;
+
+}  // namespace adbcpq
