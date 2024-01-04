@@ -176,7 +176,7 @@ pub fn export_info_data(
     let children = union_fields
         .iter()
         .map(|f| (**f.1).clone())
-        .zip(arrays.into_iter())
+        .zip(arrays)
         .collect();
 
     let info_value = UnionArray::try_new(
