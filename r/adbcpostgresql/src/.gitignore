@@ -29,7 +29,8 @@ postgresql.cc
 statement.h
 statement.cc
 postgres_type.h
-postgres_copy_reader.h
+copy/reader.h
+copy/writer.h
 postgres_util.h
 result_helper.h
 result_helper.cc
