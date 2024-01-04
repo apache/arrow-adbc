@@ -65,7 +65,7 @@ if (all(file.exists(files_to_vendor))) {
         "src/nanoarrow.hpp",
         "src/options.h",
         "src/utils.c",
-        "src/utils.h"
+        "src/utils.h",
         "src/reader.h",
         "src/writer.h"
       ),
