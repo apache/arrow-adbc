@@ -66,6 +66,8 @@ if (all(file.exists(files_to_vendor))) {
         "src/options.h",
         "src/utils.c",
         "src/utils.h"
+        "src/reader.h",
+        "src/writer.h"
       ),
       c(
         "src/nanoarrow/nanoarrow.c",
@@ -73,7 +75,9 @@ if (all(file.exists(files_to_vendor))) {
         "src/nanoarrow/nanoarrow.hpp",
         "src/common/options.h",
         "src/common/utils.c",
-        "src/common/utils.h"
+        "src/common/utils.h",
+        "src/copy/reader.h",
+        "src/copy/writer.h"
       )
     )
     cat("All files successfully copied to src/\n")
