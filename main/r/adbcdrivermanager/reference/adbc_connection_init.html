@@ -45,7 +45,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="" class="logo" alt=""><h1>Connections</h1>
-      <small class="dont-index">Source: <a href="https://github.com/apache/arrow-adbc/blob/HEAD/R/adbc.R" class="external-link"><code>R/adbc.R</code></a>, <a href="https://github.com/apache/arrow-adbc/blob/HEAD/R/options.R" class="external-link"><code>R/options.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/apache/arrow-adbc/blob/main/r/adbcdrivermanager/R/adbc.R" class="external-link"><code>R/adbc.R</code></a>, <a href="https://github.com/apache/arrow-adbc/blob/main/r/adbcdrivermanager/R/options.R" class="external-link"><code>R/options.R</code></a></small>
       <div class="d-none name"><code>adbc_connection_init.Rd</code></div>
     </div>
 
@@ -112,9 +112,9 @@ finer-grained control over behaviour at the R level.</p></dd>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">db</span> <span class="op">&lt;-</span> <span class="fu"><a href="adbc_database_init.html">adbc_database_init</a></span><span class="op">(</span><span class="fu"><a href="adbc_driver_void.html">adbc_driver_void</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">adbc_connection_init</span><span class="op">(</span><span class="va">db</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;adbc_connection at 0x5645f9dd5150&gt; </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;adbc_connection at 0x55cb74b99b50&gt; </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> List of 1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ database:&lt;adbc_database at 0x5645fab5ef70&gt; </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  $ database:&lt;adbc_database at 0x55cb742e5860&gt; </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> List of 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   ..$ driver:&lt;adbc_driver_void&gt; List of 2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   .. ..$ driver_init_func:Class 'adbc_driver_init_func' &lt;externalptr&gt; </span>
