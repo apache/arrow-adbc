@@ -27,7 +27,7 @@
 #include <nanoarrow/nanoarrow.hpp>
 
 #include "copy_common.h"
-#include "postgresql/postgres_util.h"
+#include "../postgres_util.h"
 
 namespace adbcpq {
 
