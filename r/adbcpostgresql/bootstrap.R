@@ -57,6 +57,10 @@ if (all(file.exists(files_to_vendor))) {
     )
   )
 
+  if (!dir.exists("src/copy")) {
+    dir.create("src/copy")
+  }
+
   if (all(file.copy(files_to_vendor, "src"))) {
     file.rename(
       c(
