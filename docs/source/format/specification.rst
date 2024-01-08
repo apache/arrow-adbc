@@ -23,7 +23,9 @@ This document summarizes the general featureset.
 
 - For C/C++ details, see :doc:`adbc.h <../../cpp/api/adbc>`.
 - For Go details, see the `source <https://github.com/apache/arrow-adbc/blob/main/go/adbc/adbc.go>`__.
-- For Java details, see the `source <https://github.com/apache/arrow-adbc/tree/main/java/core>`__.
+- For Java details, see the `source
+  <https://github.com/apache/arrow-adbc/tree/main/java/core>`__, particularly
+  the package :jpackage:`org.apache.arrow.adbc.core`.
 
 Databases
 =========
@@ -34,7 +36,7 @@ provides a place to hold ownership of the in-memory database.
 
 - C/C++: :cpp:class:`AdbcDatabase`
 - Go: ``Driver``
-- Java: ``org.apache.arrow.adbc.core.AdbcDatabase``
+- Java: :jtype:`org.apache.arrow.adbc.core.AdbcDatabase`
 
 Connections
 ===========
@@ -43,7 +45,7 @@ A connection is a single, logical connection to a database.
 
 - C/C++: :cpp:class:`AdbcConnection`
 - Go: ``Connection``
-- Java: ``org.apache.arrow.adbc.core.AdbcConnection``
+- Java: :jtype:`org.apache.arrow.adbc.core.AdbcConnection`
 
 Autocommit
 ----------
@@ -55,7 +57,7 @@ implementations will support this.
 
 - C/C++: :c:macro:`ADBC_CONNECTION_OPTION_AUTOCOMMIT`
 - Go: ``OptionKeyAutoCommit``
-- Java: ``org.apache.arrow.adbc.core.AdbcConnection#setAutoCommit(boolean)``
+- Java: :jmember:`org.apache.arrow.adbc.core.AdbcConnection#setAutoCommit(boolean)`
 
 Metadata
 --------

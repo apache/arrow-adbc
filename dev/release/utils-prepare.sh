@@ -27,12 +27,14 @@ update_versions() {
       local version=${base_version}
       local conda_version=${base_version}
       local docs_version=${base_version}
+      local py_version=${base_version}
       local r_version=${base_version}
       ;;
     snapshot)
       local version=${next_version}-SNAPSHOT
       local conda_version=${next_version}
       local docs_version="${next_version} (dev)"
+      local py_version="${next_version}dev"
       local r_version="${base_version}.9000"
       ;;
   esac
@@ -69,6 +71,10 @@ update_versions() {
   sed -i.bak -E "s/version: '.+'/version: '${version}'/g" "${ADBC_DIR}/glib/meson.build"
   rm "${ADBC_DIR}/glib/meson.build.bak"
   git add "${ADBC_DIR}/glib/meson.build"
+
+  sed -i.bak -E "s/version = \".+\"/version = \"${py_version}\"/g" "${ADBC_DIR}"/python/adbc_*/adbc_*/_static_version.py
+  rm "${ADBC_DIR}"/python/adbc_*/adbc_*/_static_version.py.bak
+  git add "${ADBC_DIR}"/python/adbc_*/adbc_*/_static_version.py
 
   sed -i.bak -E "s/VERSION = \".+\"/VERSION = \"${version}\"/g" "${ADBC_DIR}/ruby/lib/adbc/version.rb"
   rm "${ADBC_DIR}/ruby/lib/adbc/version.rb.bak"

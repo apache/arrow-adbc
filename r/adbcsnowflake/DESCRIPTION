@@ -18,8 +18,9 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
 Suggests:
     nanoarrow,
+    openssl,
     testthat (>= 3.0.0)
-SystemRequirements: GNU make
+SystemRequirements: GNU make, Go (>= 1.19.13)
 Config/testthat/edition: 3
 Config/build/bootstrap: TRUE
 URL: https://github.com/apache/arrow-adbc

@@ -24,10 +24,15 @@ import threading
 import typing
 from typing import List, Tuple
 
+cimport cpython
 import cython
 from cpython.bytes cimport PyBytes_FromStringAndSize
+from cpython.pycapsule cimport (
+    PyCapsule_GetPointer, PyCapsule_New, PyCapsule_CheckExact
+)
 from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t, uintptr_t
-from libc.string cimport memset
+from libc.stdlib cimport malloc, free
+from libc.string cimport memcpy, memset
 from libcpp.vector cimport vector as c_vector
 
 if typing.TYPE_CHECKING:
@@ -304,9 +309,29 @@ cdef class _AdbcHandle:
                     f"with open {self._child_type}")
 
 
+cdef void pycapsule_schema_deleter(object capsule) noexcept:
+    cdef CArrowSchema* allocated = <CArrowSchema*>PyCapsule_GetPointer(
+        capsule, "arrow_schema"
+    )
+    if allocated.release != NULL:
+        allocated.release(allocated)
+    free(allocated)
+
+
+cdef void pycapsule_stream_deleter(object capsule) noexcept:
+    cdef CArrowArrayStream* allocated = <CArrowArrayStream*> PyCapsule_GetPointer(
+        capsule, "arrow_array_stream"
+    )
+    if allocated.release != NULL:
+        allocated.release(allocated)
+    free(allocated)
+
+
 cdef class ArrowSchemaHandle:
     """
     A wrapper for an allocated ArrowSchema.
+
+    This object implements the Arrow PyCapsule interface.
     """
     cdef:
         CArrowSchema schema
@@ -316,23 +341,42 @@ cdef class ArrowSchemaHandle:
         """The address of the ArrowSchema."""
         return <uintptr_t> &self.schema
 
+    def __arrow_c_schema__(self) -> object:
+        """Consume this object to get a PyCapsule."""
+        # Reference:
+        # https://arrow.apache.org/docs/dev/format/CDataInterface/PyCapsuleInterface.html#create-a-pycapsule
+        cdef CArrowSchema* allocated = <CArrowSchema*> malloc(sizeof(CArrowSchema))
+        allocated.release = NULL
+        capsule = PyCapsule_New(
+            <void*>allocated, "arrow_schema", &pycapsule_schema_deleter,
+        )
+        memcpy(allocated, &self.schema, sizeof(CArrowSchema))
+        self.schema.release = NULL
+        return capsule
+
 
 cdef class ArrowArrayHandle:
     """
     A wrapper for an allocated ArrowArray.
+
+    This object implements the Arrow PyCapsule interface.
     """
     cdef:
         CArrowArray array
 
     @property
     def address(self) -> int:
-        """The address of the ArrowArray."""
+        """
+        The address of the ArrowArray.
+        """
         return <uintptr_t> &self.array
 
 
 cdef class ArrowArrayStreamHandle:
     """
     A wrapper for an allocated ArrowArrayStream.
+
+    This object implements the Arrow PyCapsule interface.
     """
     cdef:
         CArrowArrayStream stream
@@ -341,6 +385,21 @@ cdef class ArrowArrayStreamHandle:
     def address(self) -> int:
         """The address of the ArrowArrayStream."""
         return <uintptr_t> &self.stream
+
+    def __arrow_c_stream__(self, requested_schema=None) -> object:
+        """Consume this object to get a PyCapsule."""
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
+
+        cdef CArrowArrayStream* allocated = \
+            <CArrowArrayStream*> malloc(sizeof(CArrowArrayStream))
+        allocated.release = NULL
+        capsule = PyCapsule_New(
+            <void*>allocated, "arrow_array_stream", &pycapsule_stream_deleter,
+        )
+        memcpy(allocated, &self.stream, sizeof(CArrowArrayStream))
+        self.stream.release = NULL
+        return capsule
 
 
 class GetObjectsDepth(enum.IntEnum):
@@ -1000,32 +1059,47 @@ cdef class AdbcStatement(_AdbcHandle):
 
         connection._open_child()
 
-    def bind(self, data, schema) -> None:
+    def bind(self, data, schema=None) -> None:
         """
         Bind an ArrowArray to this statement.
 
         Parameters
         ----------
-        data : int or ArrowArrayHandle
-        schema : int or ArrowSchemaHandle
+        data : PyCapsule or int or ArrowArrayHandle
+        schema : PyCapsule or int or ArrowSchemaHandle
         """
         cdef CAdbcError c_error = empty_error()
         cdef CArrowArray* c_array
         cdef CArrowSchema* c_schema
 
-        if isinstance(data, ArrowArrayHandle):
+        if hasattr(data, "__arrow_c_array__") and not isinstance(data, ArrowArrayHandle):
+            if schema is not None:
+                raise ValueError(
+                    "Can not provide a schema when passing Arrow-compatible "
+                    "data that implements the Arrow PyCapsule Protocol"
+                )
+            schema, data = data.__arrow_c_array__()
+
+        if PyCapsule_CheckExact(data):
+            c_array = <CArrowArray*> PyCapsule_GetPointer(data, "arrow_array")
+        elif isinstance(data, ArrowArrayHandle):
             c_array = &(<ArrowArrayHandle> data).array
         elif isinstance(data, int):
             c_array = <CArrowArray*> data
         else:
-            raise TypeError(f"data must be int or ArrowArrayHandle, not {type(data)}")
+            raise TypeError(
+                "data must be Arrow-compatible data (implementing the Arrow PyCapsule "
+                f"Protocol), a PyCapsule, int or ArrowArrayHandle, not {type(data)}"
+            )
 
-        if isinstance(schema, ArrowSchemaHandle):
+        if PyCapsule_CheckExact(schema):
+            c_schema = <CArrowSchema*> PyCapsule_GetPointer(schema, "arrow_schema")
+        elif isinstance(schema, ArrowSchemaHandle):
             c_schema = &(<ArrowSchemaHandle> schema).schema
         elif isinstance(schema, int):
             c_schema = <CArrowSchema*> schema
         else:
-            raise TypeError(f"schema must be int or ArrowSchemaHandle, "
+            raise TypeError("schema must be a PyCapsule, int or ArrowSchemaHandle, "
                             f"not {type(schema)}")
 
         with nogil:
@@ -1042,17 +1116,27 @@ cdef class AdbcStatement(_AdbcHandle):
 
         Parameters
         ----------
-        stream : int or ArrowArrayStreamHandle
+        stream : PyCapsule or int or ArrowArrayStreamHandle
         """
         cdef CAdbcError c_error = empty_error()
         cdef CArrowArrayStream* c_stream
 
-        if isinstance(stream, ArrowArrayStreamHandle):
+        if (
+            hasattr(stream, "__arrow_c_stream__")
+            and not isinstance(stream, ArrowArrayStreamHandle)
+        ):
+            stream = stream.__arrow_c_stream__()
+
+        if PyCapsule_CheckExact(stream):
+            c_stream = <CArrowArrayStream*> PyCapsule_GetPointer(
+                stream, "arrow_array_stream"
+            )
+        elif isinstance(stream, ArrowArrayStreamHandle):
             c_stream = &(<ArrowArrayStreamHandle> stream).stream
         elif isinstance(stream, int):
             c_stream = <CArrowArrayStream*> stream
         else:
-            raise TypeError(f"data must be int or ArrowArrayStreamHandle, "
+            raise TypeError(f"data must be a PyCapsule, int or ArrowArrayStreamHandle, "
                             f"not {type(stream)}")
 
         with nogil:

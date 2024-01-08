@@ -219,17 +219,20 @@
   <reporting>
     <plugins>
       <plugin>
+        <!-- Will only work with JDK 17 (JDK 21 is broken and JDK 8 emits the
+             wrong stylesheet) -->
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.4.1</version>
+        <version>3.6.3</version>
         <configuration>
-          <!-- Stop it from trying to document the tests -->
-          <additionalOptions>-package</additionalOptions>
           <!-- Ignore missing @return, @throws -->
           <doclint>all,-missing</doclint>
           <links>
             <link>https://arrow.apache.org/docs/java/reference/</link>
           </links>
+	  <!-- Stop it from trying to document the tests -->
+          <release>8</release>
+	  <show>public</show>
           <source>1.8</source>
         </configuration>
         <reportSets>
