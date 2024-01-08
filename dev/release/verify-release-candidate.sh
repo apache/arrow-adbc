@@ -217,9 +217,9 @@ test_yum() {
 
 setup_tempdir() {
   cleanup() {
+    # Go modules are installed with 0444.
+    chmod -R u+w "${ARROW_TMPDIR}"
     if [ "${TEST_SUCCESS}" = "yes" ]; then
-      # Go modules are installed with 0444.
-      chmod -R u+w "${ARROW_TMPDIR}"
       rm -fr "${ARROW_TMPDIR}"
     else
       echo "Failed to verify release candidate. See ${ARROW_TMPDIR} for details."
