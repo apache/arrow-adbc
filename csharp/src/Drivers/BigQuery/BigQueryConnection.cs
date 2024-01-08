@@ -588,7 +588,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             foreach (BigQueryRow row in result)
             {
-                constraintColumnNamesBuilder.Append(row["column_name"].ToString());
+                string column = row["column_name"].ToString();
+                constraintColumnNamesBuilder.Append(column);
             }
 
             return constraintColumnNamesBuilder.Build();
@@ -607,17 +608,24 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             ArrowBuffer.BitmapBuilder nullBitmapBuffer = new ArrowBuffer.BitmapBuilder();
             int length = 0;
 
-            string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE WHERE table_name = '{2}' AND constraint_name = '{3}'",
-               Sanitize(catalog), Sanitize(dbSchema), Sanitize(table), Sanitize(constraintName));
+            // table_name = '{2}' AND
+            string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE WHERE constraint_name = '{2}'",
+               Sanitize(catalog), Sanitize(dbSchema), /*Sanitize(table),*/ Sanitize(constraintName));
 
             BigQueryResults result = this.client.ExecuteQuery(query, parameters: null);
 
             foreach (BigQueryRow row in result)
             {
-                constraintFkCatalogBuilder.Append(row["constraint_catalog"].ToString());
-                constraintFkDbSchemaBuilder.Append(row["constraint_schema"].ToString());
-                constraintFkTableBuilder.Append(row["table_name"].ToString());
-                constraintFkColumnNameBuilder.Append(row["column_name"].ToString());
+                string constraint_catalog = row["constraint_catalog"].ToString();
+                string constraint_schema = row["constraint_schema"].ToString();
+                string table_name = row["table_name"].ToString();
+                string column_name = row["column_name"].ToString();
+
+                constraintFkCatalogBuilder.Append(constraint_catalog);
+                constraintFkDbSchemaBuilder.Append(constraint_schema);
+                constraintFkTableBuilder.Append(table_name);
+                constraintFkColumnNameBuilder.Append(column_name);
+
                 nullBitmapBuffer.Append(true);
                 length++;
             }

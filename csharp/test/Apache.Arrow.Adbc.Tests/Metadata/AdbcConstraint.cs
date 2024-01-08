@@ -21,6 +21,12 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
 {
     public class AdbcConstraint
     {
+        public AdbcConstraint()
+        {
+            ColumnNames = new List<string>();
+            ColumnUsage = new List<AdbcUsageSchema>();
+        }
+
         public string Name { get; set; }
         public string Type { get; set; }
         public List<string> ColumnNames { get; set; }
