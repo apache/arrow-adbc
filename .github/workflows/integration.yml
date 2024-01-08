@@ -129,7 +129,7 @@ jobs:
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
           pip install pytest-error-for-skips
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.19.13
           check-latest: true
@@ -229,7 +229,6 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_POSTGRESQL: "1"
-          SETUPTOOLS_SCM_PRETEND_VERSION: "0.9.0"
         run: |
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
 
@@ -348,7 +347,7 @@ jobs:
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.19.13
           check-latest: true

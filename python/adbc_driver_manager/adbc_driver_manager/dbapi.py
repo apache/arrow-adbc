@@ -43,6 +43,15 @@ try:
 except ImportError as e:
     raise ImportError("PyArrow is required for the DBAPI-compatible interface") from e
 
+try:
+    import pyarrow.dataset
+except ImportError:
+    _pya_dataset = ()
+    _pya_scanner = ()
+else:
+    _pya_dataset = (pyarrow.dataset.Dataset,)
+    _pya_scanner = (pyarrow.dataset.Scanner,)
+
 import adbc_driver_manager
 
 from . import _lib, _reader
@@ -890,6 +899,13 @@ class Cursor(_Closeable):
             self._stmt.bind(array, schema)
         else:
             if isinstance(data, pyarrow.Table):
+                data = data.to_reader()
+            elif isinstance(data, pyarrow.dataset.Dataset):
+                data = data.scanner().to_reader()
+            elif isinstance(data, pyarrow.dataset.Scanner):
+                data = data.to_reader()
+            elif not hasattr(data, "_export_to_c"):
+                data = pyarrow.Table.from_batches(data)
                 data = data.to_reader()
             handle = _lib.ArrowArrayStreamHandle()
             data._export_to_c(handle.address)
