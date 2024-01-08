@@ -387,3 +387,55 @@
 - **go/adbc/driver**: add driver framework (#1081)
 - **c/driver/postgresql**: remove unnecessary destructor (#1134)
 - **c/driver/postgresql**: refactor Handle class (#1132)
+
+## ADBC Libraries 0.9.0 (2024-01-03)
+
+### Fix
+
+- **go/adbc/driver/snowflake**: Removing SQL injection to get table name with special character for getObjectsTables (#1338)
+- **dev/release**: install openssl explicitly for R CMD check (#1427)
+- **java/driver/jdbc**: fix connection leak in `JdbcDataSourceDatabase` constructor  (#1418)
+- **c/driver/postgresql**: fix ingest with multiple batches (#1393)
+- **c/driver/postgresql**: check for underflow (#1389)
+- **c/driver/postgresql**: support catalog arg of GetTableSchema (#1387)
+- **go/adbc/sqldriver**: Fix nil pointer panics for query parameters (#1342)
+- **go/adbc/driver/snowflake**: Made GetObjects case insensitive (#1328)
+- **csharp/src/Drivers/BigQuery**: Fix failure when returning multiple table schemas from BigQuery (#1336)
+- **csharp/src/Drivers/BigQuery**: Fix failure when returning empty schema data from BigQuery (#1330)
+- **go/adbc/driver/snowflake**: Fix race condition in record reader (#1297)
+- **go/adbc/driver/snowflake**: fix XDBC support when using high precision (#1311)
+- **csharp/src/Drivers/BigQuery**: Add JSON support (#1308)
+- **glib**: Vala's vapi's name should be same as pkg-config package (#1298)
+- **csharp/adbc**: Remove xunit as a dependency from Apache.Arrow.Adbc.dll (#1295)
+- **csharp/client/adbcconnection**: reset AdbcStatement on dispose (#1289)
+- **csharp/drivers/bigquery**: add back support for Struct and List arrays (#1282)
+- **csharp**: fix timestamp case in AdbcStatement.GetValue (#1279)
+- **go/adbc/driver/snowflake**: handling of integer values sent for NUMBER columns (#1267)
+- **glib**: add missing "pkg-config --modversion arrow-glib" result check (#1266)
+- **dev/release**: install missing protobuf for Python test (#1264)
+- **r/adbcdrivermanager**: Ensure test driver includes null terminator when fetching string option (#1258)
+- **r/adbcsqlite**: Allow sqlite driver to link against sqlite3 that does not contain sqlite3_load_extension() (#1259)
+
+### Feat
+
+- **c/driver/postgresql**: Support for writing DECIMAL types (#1288)
+- **c/driver/postgresql**: set rows_affected appropriately (#1384)
+- **r**: Reference count child objects (#1334)
+- **python/adbc_driver_manager**: export handles through python Arrow Capsule interface (#1346)
+- **csharp/Client**: Implement support for primary schema collections (#1317)
+- **go/adbc/drivermgr**: Implement Remaining CGO Wrapper Methods that are Supported by SQLite Driver (#1304)
+- **go/adbc/drivermgr**: Implement GetObjects for CGO Wrapper (#1290)
+- **csharp**: Translate time to either TimeSpan or TimeOnly (#1293)
+- **glib**: add Vala VAPI for GADBC (#1152)
+- **csharp/test**: Add support for data without need for tables (#1287)
+- **c/driver/postgresql**: Accept bulk ingest of dictionary-encoded strings/binary (#1275)
+- **r/adbcdrivermanager**: Add support for setting option as logical (#1270)
+- **go/adbc/driver/snowflake**: add support for ExecuteSchema (#1262)
+
+### Perf
+
+- **go/adbc/driver/snowflake**: GetObjects call is slow even when filters are provided (#1285)
+
+### Refactor
+
+- **r/adbcdrivermanager**: Use C++ base driver to implement test drivers (#1269)
