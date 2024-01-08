@@ -8,8 +8,9 @@ const versions = `
 0.6.0;0.6.0
 0.7.0;0.7.0
 0.8.0;0.8.0
+0.9.0;0.9.0
 main;0.9.0 (dev)
-current;0.8.0 (current)
+current;0.9.0 (current)
 `;
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
