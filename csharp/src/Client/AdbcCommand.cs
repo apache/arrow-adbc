@@ -186,8 +186,7 @@ namespace Apache.Arrow.Adbc.Client
             {
                 case CommandBehavior.SchemaOnly:   // The schema is not known until a read happens
                 case CommandBehavior.Default:
-
-                    if(this.AdbcCommandType == AdbcCommandType.Read)
+                    if (this.AdbcCommandType == AdbcCommandType.Read)
                     {
                         QueryResult result = this.ExecuteQuery();
                         return new AdbcDataReader(this, result, this.DecimalBehavior);
