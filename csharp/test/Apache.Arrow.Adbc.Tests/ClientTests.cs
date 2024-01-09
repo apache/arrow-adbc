@@ -130,6 +130,32 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         /// <summary>
+        /// Validates if the client can connect to a live server and
+        /// parse the results.
+        /// </summary>
+        /// <param name="adbcConnection">The <see cref="Adbc.Client.AdbcConnection"/> to use.</param>
+        /// <param name="testConfiguration">The <see cref="TestConfiguration"/> to use</param>
+        public static void CanClientExecuteDeleteQuery(Adbc.Client.AdbcConnection adbcConnection, TestConfiguration testConfiguration)
+        {
+            if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
+            if (testConfiguration == null) throw new ArgumentNullException(nameof(testConfiguration));
+
+            adbcConnection.Open();
+
+            using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+            adbcCommand.AdbcCommandType = AdbcCommandType.Delete;
+
+            using AdbcDataReader reader = adbcCommand.ExecuteReader();
+
+            try
+            {
+                // the expectation is the number of RecordsAffected = the number inserted
+                Assert.Equal(reader.RecordsAffected, testConfiguration.ExpectedResultsCount);
+            }
+            finally { reader.Close(); }
+        }
+
+        /// <summary>
         /// Validates if the client is retrieving and converting values
         /// to the expected types.
         /// </summary>

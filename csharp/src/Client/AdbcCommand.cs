@@ -22,6 +22,14 @@ using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Client
 {
+    public enum AdbcCommandType
+    {
+        Create,
+        Read,
+        Update,
+        Delete
+    }
+
     /// <summary>
     /// Creates an ADO.NET command over an Adbc statement.
     /// </summary>
@@ -29,6 +37,7 @@ namespace Apache.Arrow.Adbc.Client
     {
         private AdbcStatement adbcStatement;
         private int _timeout = 30;
+        private AdbcCommandType _adbcCommandType = AdbcCommandType.Read;
 
         /// <summary>
         /// Overloaded. Initializes <see cref="AdbcCommand"/>.
@@ -87,6 +96,12 @@ namespace Apache.Arrow.Adbc.Client
             set => this.adbcStatement.SqlQuery = value;
         }
 
+        public AdbcCommandType AdbcCommandType
+        {
+            get => this._adbcCommandType;
+            set => this._adbcCommandType = value;
+        }
+
         public override CommandType CommandType
         {
             get
@@ -122,17 +137,15 @@ namespace Apache.Arrow.Adbc.Client
 
         public override int ExecuteNonQuery()
         {
-            return Convert.ToInt32(this.adbcStatement.ExecuteUpdate().AffectedRows);
+            return Convert.ToInt32(this.ExecuteUpdate().AffectedRows);
         }
 
         /// <summary>
-        /// Similar to <see cref="ExecuteNonQuery"/> but returns Int64
-        /// instead of Int32.
+        /// Returns <see cref="UpdateResult"/>.
         /// </summary>
-        /// <returns></returns>
-        public long ExecuteUpdate()
+        public UpdateResult ExecuteUpdate()
         {
-            return this.adbcStatement.ExecuteUpdate().AffectedRows;
+            return this.adbcStatement.ExecuteUpdate();
         }
 
         /// <summary>
@@ -173,8 +186,17 @@ namespace Apache.Arrow.Adbc.Client
             {
                 case CommandBehavior.SchemaOnly:   // The schema is not known until a read happens
                 case CommandBehavior.Default:
-                    QueryResult result = this.ExecuteQuery();
-                    return new AdbcDataReader(this, result, this.DecimalBehavior);
+
+                    if(this.AdbcCommandType == AdbcCommandType.Read)
+                    {
+                        QueryResult result = this.ExecuteQuery();
+                        return new AdbcDataReader(this, result, this.DecimalBehavior);
+                    }
+                    else
+                    {
+                        UpdateResult result = this.ExecuteUpdate();
+                        return new AdbcDataReader(result);
+                    }
 
                 default:
                     throw new InvalidOperationException($"{behavior} is not supported with this provider");

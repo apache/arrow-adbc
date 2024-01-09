@@ -86,7 +86,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
                     if (reader.Read())
                     {
-                        Assert.True(expectedResults[i].Equals(reader.GetValue(0)), $"The expected affected rows do not match the actual affected rows at position {i}.");
+                        object result = expectedResults[i];
+                        Assert.True(result.Equals(reader.GetValue(0)), $"The expected affected rows do not match the actual affected rows at position {i}.");
                     }
                     else
                     {
@@ -176,7 +177,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
-        [SkippableFact]
+        [SkippableFact, Order(7)]
         public void VerifySchemaTables()
         {
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
@@ -217,6 +218,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 var columns = adbcConnection.GetSchema("Columns", new[] { catalog, schema });
                 Assert.Equal(16, columns.Columns.Count);
                 Assert.Equal(441, columns.Rows.Count);
+            }
+        }
+
+        [SkippableFact, Order(8)]
+        public void CanClientDeleteRecords()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+            {
+                testConfiguration.Query = $"DELETE FROM {testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{testConfiguration.Metadata.Table}";
+
+                Tests.ClientTests.CanClientExecuteDeleteQuery(adbcConnection, testConfiguration);
             }
         }
 

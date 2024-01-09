@@ -41,6 +41,8 @@ namespace Apache.Arrow.Adbc.Client
         private int currentRowInRecordBatch;
         private Schema schema = null;
         private bool isClosed;
+
+        // this is only set if it's not a SELECT statement
         private int recordsEffected = -1;
 
         internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior)
@@ -60,6 +62,14 @@ namespace Apache.Arrow.Adbc.Client
 
             this.isClosed = false;
             this.DecimalBehavior = decimalBehavior;
+        }
+
+        internal AdbcDataReader(UpdateResult updateResult)
+        {
+            if (updateResult == null)
+                throw new ArgumentNullException(nameof(updateResult));
+
+            this.recordsEffected = Convert.ToInt32(updateResult.AffectedRows);
         }
 
         public override object this[int ordinal] => GetValue(ordinal);
@@ -346,6 +356,11 @@ namespace Apache.Arrow.Adbc.Client
         /// <returns></returns>
         public object GetValue(IArrowArray arrowArray, int ordinal)
         {
+            if(this.schema == null || this.adbcCommand == null)
+            {
+                throw new InvalidOperationException("Cannot call GetValue");
+            }
+
             Field field = this.schema.GetFieldByIndex(ordinal);
             return this.adbcCommand.AdbcStatement.GetValue(arrowArray, field, this.currentRowInRecordBatch);
         }
