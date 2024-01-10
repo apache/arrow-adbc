@@ -27,7 +27,7 @@
 #include <nanoarrow/nanoarrow.h>
 
 #include "common/utils.h"
-#include "postgres_copy_reader.h"
+#include "copy/reader.h"
 #include "postgres_type.h"
 
 #define ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES \

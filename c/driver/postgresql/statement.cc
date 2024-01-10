@@ -39,7 +39,7 @@
 #include "common/utils.h"
 #include "connection.h"
 #include "error.h"
-#include "postgres_copy_reader.h"
+#include "copy/writer.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
 #include "result_helper.h"
