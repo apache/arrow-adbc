@@ -21,6 +21,7 @@ files_to_vendor <- c(
   "../../adbc.h",
   "../../c/driver/postgresql/postgres_util.h",
   "../../c/driver/postgresql/postgres_type.h",
+  "../../c/driver/postgresql/copy/copy_common.h",
   "../../c/driver/postgresql/copy/reader.h",
   "../../c/driver/postgresql/copy/writer.h",
   "../../c/driver/postgresql/statement.h",
@@ -70,6 +71,7 @@ if (all(file.exists(files_to_vendor))) {
         "src/options.h",
         "src/utils.c",
         "src/utils.h",
+        "src/copy_common.h",
         "src/reader.h",
         "src/writer.h"
       ),
@@ -80,6 +82,7 @@ if (all(file.exists(files_to_vendor))) {
         "src/common/options.h",
         "src/common/utils.c",
         "src/common/utils.h",
+        "src/copy/copy_common.h",
         "src/copy/reader.h",
         "src/copy/writer.h"
       )
