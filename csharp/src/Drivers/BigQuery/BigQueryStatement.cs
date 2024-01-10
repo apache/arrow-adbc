@@ -149,7 +149,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private IArrowType GetType(TableFieldSchema field, IArrowType type)
         {
-            if(field.Mode == "REPEATED")
+            if (field.Mode == "REPEATED")
                 return new ListType(type);
 
             return type;

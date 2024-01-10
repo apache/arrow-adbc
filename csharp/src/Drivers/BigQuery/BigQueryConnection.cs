@@ -608,9 +608,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             ArrowBuffer.BitmapBuilder nullBitmapBuffer = new ArrowBuffer.BitmapBuilder();
             int length = 0;
 
-            // table_name = '{2}' AND
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE WHERE constraint_name = '{2}'",
-               Sanitize(catalog), Sanitize(dbSchema), /*Sanitize(table),*/ Sanitize(constraintName));
+               Sanitize(catalog), Sanitize(dbSchema), Sanitize(constraintName));
 
             BigQueryResults result = this.client.ExecuteQuery(query, parameters: null);
 
@@ -693,9 +692,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return XdbcDataType.XdbcDataType_XDBC_NUMERIC;
                 default:
 
+                    // in SqlDecimal, an OverflowException is thrown for decimals with scale > 28
+                    // so the XDBC type needs to map the SqlDecimal type
                     int decimalMaxScale = 28;
 
-                    if(type.StartsWith("NUMERIC("))
+                    if (type.StartsWith("NUMERIC("))
                     {
                         ParsedDecimalValues parsedDecimalValues = ParsePrecisionAndScale(type);
 
@@ -707,7 +708,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                     if (type.StartsWith("BIGNUMERIC("))
                     {
-                        if(bool.Parse(this.properties[BigQueryParameters.LargeDecimalsAsString]))
+                        if (bool.Parse(this.properties[BigQueryParameters.LargeDecimalsAsString]))
                         {
                             return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
                         }
@@ -913,7 +914,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 throw new InvalidOperationException();
             }
 
-            if(this.client == null)
+            if (this.client == null)
             {
                 Open();
             }
