@@ -408,7 +408,6 @@ func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadi
 }
 
 func toXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
-	xdbcType = internal.XdbcDataType_XDBC_UNKNOWN_TYPE
 	switch dt.ID() {
 	case arrow.EXTENSION:
 		return toXdbcDataType(dt.(arrow.ExtensionType).StorageType())
@@ -640,7 +639,8 @@ func (c *cnxn) getColumnsMetadata(ctx context.Context, matchingCatalogNames []st
 		err = rows.Scan(&data.TblType, &data.Dbname, &data.Schema, &data.TblName, &data.ColName,
 			&data.OrdinalPos, &data.IsNullable, &data.DataType, &data.NumericPrec,
 			&data.NumericPrecRadix, &data.NumericScale, &data.IsIdent, &data.IdentGen,
-			&data.IdentIncrement, &data.CharMaxLength, &data.CharOctetLength, &data.DatetimePrec, &data.Comment)
+			&data.IdentIncrement, &data.CharMaxLength, &data.CharOctetLength, &data.DatetimePrec, &data.Comment,
+			&data.ConstraintName, &data.ConstraintType)
 		if err != nil {
 			return nil, errToAdbcErr(adbc.StatusIO, err)
 		}
@@ -701,10 +701,16 @@ func prepareTablesSQL(matchingCatalogNames []string, catalog *string, dbSchema *
 		if query != "" {
 			query += " UNION ALL "
 		}
-		query += `SELECT * FROM "` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES`
+		query += `SELECT T.*, K.constraint_name, K.constraint_type FROM "` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES AS T
+		LEFT OUTER JOIN
+			"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS K
+		ON
+			T.table_catalog = K.table_catalog
+			AND T.table_schema = K.table_schema
+			AND t.table_name = K.table_name`
 	}
 
-	query = `SELECT table_catalog, table_schema, table_name, table_type FROM (` + query + `)`
+	query = `SELECT table_catalog, table_schema, table_name, table_type, constraint_name, constraint_type FROM (` + query + `)`
 	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthTables, catalog, dbSchema, tableName, nil, tableType)
 	if conditions != "" {
 		query += " WHERE " + conditions
@@ -719,7 +725,8 @@ func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema 
 			prefixQuery += " UNION ALL "
 		}
 		prefixQuery += `SELECT T.table_type,
-					C.*
+					C.*,
+					K.constraint_name, K.constraint_type
 				FROM
 				"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES AS T
 			JOIN
@@ -727,14 +734,21 @@ func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema 
 			ON
 				T.table_catalog = C.table_catalog
 				AND T.table_schema = C.table_schema
-				AND t.table_name = C.table_name`
+				AND T.table_name = C.table_name
+			LEFT OUTER JOIN
+				"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS K
+			ON
+				T.table_catalog = K.table_catalog
+				AND T.table_schema = K.table_schema
+				AND T.table_name = K.table_name`
 	}
 
 	prefixQuery = `SELECT table_type, table_catalog, table_schema, table_name, column_name,
 						ordinal_position, is_nullable::boolean, data_type, numeric_precision,
 						numeric_precision_radix, numeric_scale, is_identity::boolean,
 						identity_generation, identity_increment,
-						character_maximum_length, character_octet_length, datetime_precision, comment FROM (` + prefixQuery + `)`
+						character_maximum_length, character_octet_length, datetime_precision, comment,
+						constraint_name, constraint_type FROM (` + prefixQuery + `)`
 	ordering := ` ORDER BY table_catalog, table_schema, table_name, ordinal_position`
 	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthColumns, catalog, dbSchema, tableName, columnName, tableType)
 	query := prefixQuery
