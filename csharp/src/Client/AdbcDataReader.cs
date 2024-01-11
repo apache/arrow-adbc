@@ -45,7 +45,7 @@ namespace Apache.Arrow.Adbc.Client
         // this is only set if it's not a SELECT statement
         private int recordsEffected = -1;
 
-        internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior)
+        internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior, int recordsEffected=-1)
         {
             if (adbcCommand == null)
                 throw new ArgumentNullException(nameof(adbcCommand));
@@ -62,14 +62,12 @@ namespace Apache.Arrow.Adbc.Client
 
             this.isClosed = false;
             this.DecimalBehavior = decimalBehavior;
+            this.recordsEffected = recordsEffected;
         }
 
-        internal AdbcDataReader(UpdateResult updateResult)
+        internal AdbcDataReader(int recordsEffected)
         {
-            if (updateResult == null)
-                throw new ArgumentNullException(nameof(updateResult));
-
-            this.recordsEffected = Convert.ToInt32(updateResult.AffectedRows);
+            this.recordsEffected = recordsEffected;
         }
 
         public override object this[int ordinal] => GetValue(ordinal);

@@ -16,28 +16,22 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Client
 {
-    public enum AdbcCommandType
-    {
-        Create,
-        Read,
-        Update,
-        Delete
-    }
-
     /// <summary>
     /// Creates an ADO.NET command over an Adbc statement.
     /// </summary>
     public sealed class AdbcCommand : DbCommand
     {
-        private AdbcStatement adbcStatement;
+        private AdbcStatement _adbcStatement;
         private int _timeout = 30;
-        private AdbcCommandType _adbcCommandType = AdbcCommandType.Read;
+        public QueryConfiguration _queryConfiguration;
 
         /// <summary>
         /// Overloaded. Initializes <see cref="AdbcCommand"/>.
@@ -57,9 +51,10 @@ namespace Apache.Arrow.Adbc.Client
             if(adbcConnection == null)
                 throw new ArgumentNullException(nameof(adbcConnection));
 
-            this.adbcStatement = adbcStatement;
+            this._adbcStatement = adbcStatement;
             this.DbConnection = adbcConnection;
             this.DecimalBehavior = adbcConnection.DecimalBehavior;
+            this._queryConfiguration = new QueryConfiguration();
         }
 
         /// <summary>
@@ -70,12 +65,12 @@ namespace Apache.Arrow.Adbc.Client
         public AdbcCommand(string query, AdbcConnection adbcConnection) : base()
         {
             if (string.IsNullOrEmpty(query))
-                throw new ArgumentNullException(nameof(adbcStatement));
+                throw new ArgumentNullException(nameof(_adbcStatement));
 
             if (adbcConnection == null)
                 throw new ArgumentNullException(nameof(adbcConnection));
 
-            this.adbcStatement = adbcConnection.AdbcStatement;
+            this._adbcStatement = adbcConnection.AdbcStatement;
             this.CommandText = query;
 
             this.DbConnection = adbcConnection;
@@ -86,20 +81,20 @@ namespace Apache.Arrow.Adbc.Client
         /// Gets the <see cref="AdbcStatement"/> associated with
         /// this <see cref="AdbcCommand"/>.
         /// </summary>
-        public AdbcStatement AdbcStatement => this.adbcStatement;
+        public AdbcStatement AdbcStatement => this._adbcStatement;
 
         public DecimalBehavior DecimalBehavior { get; set; }
 
         public override string CommandText
         {
-            get => this.adbcStatement.SqlQuery;
-            set => this.adbcStatement.SqlQuery = value;
+            get => this._adbcStatement.SqlQuery;
+            set => this._adbcStatement.SqlQuery = value;
         }
 
-        public AdbcCommandType AdbcCommandType
+        public QueryConfiguration QueryConfiguration
         {
-            get => this._adbcCommandType;
-            set => this._adbcCommandType = value;
+            get => this._queryConfiguration;
+            set => this._queryConfiguration = value;
         }
 
         public override CommandType CommandType
@@ -108,7 +103,6 @@ namespace Apache.Arrow.Adbc.Client
             {
                 return CommandType.Text;
             }
-
             set
             {
                 if (value != CommandType.Text)
@@ -129,8 +123,8 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         public byte[] SubstraitPlan
         {
-            get => this.adbcStatement.SubstraitPlan;
-            set => this.adbcStatement.SubstraitPlan = value;
+            get => this._adbcStatement.SubstraitPlan;
+            set => this._adbcStatement.SubstraitPlan = value;
         }
 
         protected override DbConnection DbConnection { get; set; }
@@ -145,7 +139,7 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         public UpdateResult ExecuteUpdate()
         {
-            return this.adbcStatement.ExecuteUpdate();
+            return this._adbcStatement.ExecuteUpdate();
         }
 
         /// <summary>
@@ -154,7 +148,7 @@ namespace Apache.Arrow.Adbc.Client
         /// <returns><see cref="Result"></returns>
         public QueryResult ExecuteQuery()
         {
-            QueryResult executed = this.adbcStatement.ExecuteQuery();
+            QueryResult executed = this._adbcStatement.ExecuteQuery();
 
             return executed;
         }
@@ -186,15 +180,49 @@ namespace Apache.Arrow.Adbc.Client
             {
                 case CommandBehavior.SchemaOnly:   // The schema is not known until a read happens
                 case CommandBehavior.Default:
-                    if (this.AdbcCommandType == AdbcCommandType.Read)
+
+                    // ADBC doesn't have very good support for multi-statements
+                    // see https://github.com/apache/arrow-adbc/issues/1358
+                    // so this attempts to work around that by making multiple calls
+                    // it will return the first result set and the "RecordsAffected" for any other type of calls
+
+                    if (this.QueryConfiguration != null)
                     {
-                        QueryResult result = this.ExecuteQuery();
-                        return new AdbcDataReader(this, result, this.DecimalBehavior);
+                        QueryParser queryParser = new QueryParser(this.QueryConfiguration);
+                        List<Query> queries = queryParser.ParseQuery(this.CommandText);
+
+                        QueryResult queryResult = null;
+                        int recordsEffected = -1;
+
+                        foreach(Query q in queries)
+                        {
+                            if (q.Type == QueryType.Read)
+                            {
+                                if(queryResult == null)
+                                {
+                                    this._adbcStatement.SqlQuery = q.Text;
+                                    queryResult = this.ExecuteQuery();
+                                }
+                            }
+                            else
+                            {
+                                if(recordsEffected == -1)
+                                    recordsEffected++;
+
+                                this._adbcStatement.SqlQuery = q.Text;
+                                recordsEffected += this.ExecuteNonQuery();
+                            }
+                        }
+
+                        if (queryResult != null)
+                            return new AdbcDataReader(this, queryResult, this.DecimalBehavior, recordsEffected);
+                        else
+                            return new AdbcDataReader(recordsEffected);
                     }
                     else
                     {
-                        UpdateResult result = this.ExecuteUpdate();
-                        return new AdbcDataReader(result);
+                        QueryResult result = this.ExecuteQuery();
+                        return new AdbcDataReader(this, result, this.DecimalBehavior);
                     }
 
                 default:
@@ -207,7 +235,7 @@ namespace Apache.Arrow.Adbc.Client
             if(disposing)
             {
                 // TODO: ensure not in the middle of pulling
-                this.adbcStatement?.Dispose();
+                this._adbcStatement?.Dispose();
             }
 
             base.Dispose(disposing);

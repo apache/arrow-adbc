@@ -234,6 +234,33 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
+        [SkippableFact, Order(9)]
+        public void CanClientExecuteMultipleQueries()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+            {
+                string multi_query = string.Empty;
+
+                string[] queries = SnowflakeTestingUtils.GetQueries(testConfiguration);
+
+                foreach(string query in queries)
+                {
+                    multi_query += query;
+
+                    if(!multi_query.EndsWith(";"))
+                        multi_query += ";";
+                }
+
+                multi_query += $"SELECT * FROM {testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{testConfiguration.Metadata.Table};";
+                multi_query += $"DELETE FROM {testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{testConfiguration.Metadata.Table}";
+                testConfiguration.Query = multi_query;
+
+                Tests.ClientTests.CanClientExecuteMultipleQueries(adbcConnection, testConfiguration);
+            }
+        }
+
         private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(SnowflakeTestConfiguration testConfiguration, string authType = null)
         {
             // see https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html

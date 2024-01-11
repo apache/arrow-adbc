@@ -143,7 +143,15 @@ namespace Apache.Arrow.Adbc.Tests
             adbcConnection.Open();
 
             using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
-            adbcCommand.AdbcCommandType = AdbcCommandType.Delete;
+            adbcCommand.QueryConfiguration = new QueryConfiguration()
+            {
+                CreateKeyword = "CREATE",
+                SelectKeyword = "SELECT",
+                UpdateKeyword = "UPDATE",
+                DeleteKeyword = "DELETE",
+                DropKeyword = "DROP",
+                InsertKeyword = "INSERT"
+            };
 
             using AdbcDataReader reader = adbcCommand.ExecuteReader();
 
@@ -154,6 +162,51 @@ namespace Apache.Arrow.Adbc.Tests
             }
             finally { reader.Close(); }
         }
+
+        /// <summary>
+        /// Validates if the client can connect to a live server and
+        /// parse the results.
+        /// </summary>
+        /// <param name="adbcConnection">The <see cref="Adbc.Client.AdbcConnection"/> to use.</param>
+        /// <param name="testConfiguration">The <see cref="TestConfiguration"/> to use</param>
+        public static void CanClientExecuteMultipleQueries(Adbc.Client.AdbcConnection adbcConnection, TestConfiguration testConfiguration)
+        {
+            if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
+            if (testConfiguration == null) throw new ArgumentNullException(nameof(testConfiguration));
+
+            adbcConnection.Open();
+
+            using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+            adbcCommand.QueryConfiguration = new QueryConfiguration()
+            {
+                CreateKeyword = "CREATE",
+                SelectKeyword = "SELECT",
+                UpdateKeyword = "UPDATE",
+                DeleteKeyword = "DELETE",
+                DropKeyword = "DROP",
+                InsertKeyword = "INSERT"
+            };
+
+            using AdbcDataReader reader = adbcCommand.ExecuteReader();
+
+            try
+            {
+                int count = 0;
+
+                while(reader.Read())
+                {
+                    count += 1;
+                }
+
+                // the expectation is the number of RecordsAffected = the number inserted
+                Assert.Equal(count, testConfiguration.ExpectedResultsCount);
+
+                // the expectation is you insert X records + delete X records so it's doubled
+                Assert.Equal(reader.RecordsAffected, testConfiguration.ExpectedResultsCount * 2);
+            }
+            finally { reader.Close(); }
+        }
+
 
         /// <summary>
         /// Validates if the client is retrieving and converting values
