@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -455,14 +456,29 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             foreach (BigQueryRow row in result)
             {
+
+                row.Schema.Fields.Select(x => x.Name).ToList().ForEach(x => Debug.WriteLine($"{x} = {row[x]}"));
+                Debug.WriteLine("---------");
+
                 columnNameBuilder.Append(row["column_name"].ToString());
                 ordinalPositionBuilder.Append((int)(long)row["ordinal_position"]);
                 remarksBuilder.Append("");
                 xdbcDataTypeBuilder.AppendNull();
                 string dataType = ToTypeName(row["data_type"].ToString());
+
+                if (dataType.StartsWith("NUMERIC") || dataType.StartsWith("DECIMAL") || dataType.StartsWith("BIGNUMERIC") || dataType.StartsWith("BIGDECIMAL"))
+                {
+                    ParsedDecimalValues values = ParsePrecisionAndScale(dataType);
+                    xdbcColumnSizeBuilder.Append(values.Precision);
+                    xdbcDecimalDigitsBuilder.Append(Convert.ToInt16(values.Scale));
+                }
+                else
+                {
+                    xdbcColumnSizeBuilder.AppendNull();
+                    xdbcDecimalDigitsBuilder.AppendNull();
+                }
+
                 xdbcTypeNameBuilder.Append(dataType);
-                xdbcColumnSizeBuilder.AppendNull();
-                xdbcDecimalDigitsBuilder.AppendNull();
                 xdbcNumPrecRadixBuilder.AppendNull();
                 xdbcNullableBuilder.AppendNull();
                 xdbcColumnDefBuilder.AppendNull();
