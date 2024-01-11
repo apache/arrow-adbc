@@ -266,9 +266,7 @@ class ObjectBase {
 
   AdbcStatusCode CSetOptionBytes(const char* key, const uint8_t* value, size_t length,
                                  AdbcError* error) {
-    std::vector<uint8_t> cppvalue(length);
-    memcpy(cppvalue.data(), value, length);
-
+    std::vector<uint8_t> cppvalue(value, value + length);
     Option option(cppvalue);
     return SetOption(key, option);
   }
