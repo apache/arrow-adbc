@@ -590,7 +590,6 @@ func (c *cnxn) getDbSchemasMetadata(ctx context.Context, matchingCatalogNames []
 	var metadataRecords []internal.Metadata
 	query, queryArgs := prepareDbSchemasSQL(matchingCatalogNames, catalog, dbSchema)
 	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
-
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
@@ -610,7 +609,6 @@ func (c *cnxn) getTablesMetadata(ctx context.Context, matchingCatalogNames []str
 	metadataRecords := make([]internal.Metadata, 0)
 	query, queryArgs := prepareTablesSQL(matchingCatalogNames, catalog, dbSchema, tableName, tableType)
 	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
-
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
@@ -630,7 +628,6 @@ func (c *cnxn) getColumnsMetadata(ctx context.Context, matchingCatalogNames []st
 	metadataRecords := make([]internal.Metadata, 0)
 	query, queryArgs := prepareColumnsSQL(matchingCatalogNames, catalog, dbSchema, tableName, columnName, tableType)
 	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
-
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
@@ -691,7 +688,6 @@ func prepareDbSchemasSQL(matchingCatalogNames []string, catalog *string, dbSchem
 
 	query = `SELECT CATALOG_NAME, SCHEMA_NAME FROM (` + query + `)`
 	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthDBSchemas, catalog, dbSchema, nil, nil, make([]string, 0))
-
 	if conditions != "" {
 		query += " WHERE " + conditions
 	}
@@ -741,7 +737,6 @@ func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema 
 						character_maximum_length, character_octet_length, datetime_precision, comment FROM (` + prefixQuery + `)`
 	ordering := ` ORDER BY table_catalog, table_schema, table_name, ordinal_position`
 	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthColumns, catalog, dbSchema, tableName, columnName, tableType)
-
 	query := prefixQuery
 
 	if conditions != "" {

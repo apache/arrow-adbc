@@ -43,7 +43,6 @@ func TestPrepareDbSchemasSQLWithNoFilterOneCatalog(t *testing.T) {
 					(
 						SELECT * FROM "DEMO_DB".INFORMATION_SCHEMA.SCHEMATA
 					)`
-
 	actual, queryArgs := prepareDbSchemasSQL(catalogNames[:], &catalogPattern, &schemaPattern)
 
 	println("Query Args", queryArgs)
@@ -148,6 +147,7 @@ func TestPrepareDbSchemasSQL(t *testing.T) {
 	}
 
 	assert.True(t, areStringsEquivalent(catalogPattern+","+schemaPattern, strings.Join(stringqueryArgs, ",")), "The expected SCHEMA_NAME is not being generated")
+
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for DbSchemas is not being generated")
 }
 
