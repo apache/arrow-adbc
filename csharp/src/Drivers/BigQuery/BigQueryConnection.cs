@@ -463,7 +463,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 columnNameBuilder.Append(row["column_name"].ToString());
                 ordinalPositionBuilder.Append((int)(long)row["ordinal_position"]);
                 remarksBuilder.Append("");
-                xdbcDataTypeBuilder.AppendNull();
+
                 string dataType = ToTypeName(row["data_type"].ToString());
 
                 if (dataType.StartsWith("NUMERIC") || dataType.StartsWith("DECIMAL") || dataType.StartsWith("BIGNUMERIC") || dataType.StartsWith("BIGDECIMAL"))
@@ -471,11 +471,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     ParsedDecimalValues values = ParsePrecisionAndScale(dataType);
                     xdbcColumnSizeBuilder.Append(values.Precision);
                     xdbcDecimalDigitsBuilder.Append(Convert.ToInt16(values.Scale));
+
+                    if (dataType.StartsWith("NUMERIC") || dataType.StartsWith("DECIMAL"))
+                        xdbcDataTypeBuilder.Append((int)ArrowTypeId.Decimal128);
+                    else
+                        xdbcDataTypeBuilder.Append((int)ArrowTypeId.Decimal256);
                 }
                 else
                 {
                     xdbcColumnSizeBuilder.AppendNull();
                     xdbcDecimalDigitsBuilder.AppendNull();
+                    xdbcDataTypeBuilder.AppendNull();
                 }
 
                 xdbcTypeNameBuilder.Append(dataType);
