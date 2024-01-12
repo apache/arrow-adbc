@@ -19,6 +19,7 @@
 
 #include <cinttypes>
 #include <cstring>
+#include <sstream>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -102,7 +103,37 @@ AdbcStatusCode PostgresDatabase::Connect(PGconn** conn, struct AdbcError* error)
              "[libpq] Must set database option 'uri' before creating a connection");
     return ADBC_STATUS_INVALID_STATE;
   }
-  *conn = PQconnectdb(uri_.c_str());
+
+  /* 
+    To convert ADBC url into Netezza connection string
+    input uri = netezza://myuser:mypassword@myhost:port/database/schemaname/
+    expected output = "host=myhost port=port user=myuser password=mypassword dbname=database schema=schemaname"
+  */
+  std::istringstream input_stream(uri_);
+  std::string protocol, credentials, host_name, port, database_name, schema_name, junk;
+  std::getline(input_stream, protocol, ':');
+  std::getline(input_stream, junk, '/');
+  std::getline(input_stream, junk, '/');
+  std::getline(input_stream, credentials, '@');
+  std::getline(input_stream, host_name, ':');
+  std::getline(input_stream, port, '/');
+  std::getline(input_stream, database_name, '/');
+  std::getline(input_stream, schema_name, '/');
+  
+
+  std::string converted_uri = "host=" + host_name + " port=" + port 
+  + " dbname=" + database_name
+  + " user=" + credentials.substr(0, credentials.find(':')) 
+  + " password=" + credentials.substr(credentials.find(':') + 1)
+  + " bnr_connect=adbc";
+
+  std::string myuri = "host=localhost port=5480 dbname=system user=admin password=password";
+  *conn = PQconnectdb(converted_uri.c_str());
+
+  FILE* logfile;
+  logfile = fopen("/tmp/adbc_libpq.log", "a+");
+  PQtrace(*conn, logfile);
+  
   if (PQstatus(*conn) != CONNECTION_OK) {
     SetError(error, "%s%s", "[libpq] Failed to connect: ", PQerrorMessage(*conn));
     PQfinish(*conn);
@@ -143,13 +174,13 @@ AdbcStatusCode PostgresDatabase::RebuildTypeResolver(struct AdbcError* error) {
   // record types.
   const std::string kColumnsQuery = R"(
 SELECT
-    attrelid,
-    attname,
-    atttypid
+    ATTRELID,
+    ATTNAME,
+    ATTTYPID
 FROM
-    pg_catalog.pg_attribute
+    ADMIN._T_ATTRIBUTE
 ORDER BY
-    attrelid, attnum
+    ATTRELID, ATTNUM
 )";
 
   // Second, a query of the pg_type table. This query may need a few attempts to handle
@@ -158,16 +189,14 @@ ORDER BY
   // are inserted after a successful insert of the element type.
   const std::string kTypeQuery = R"(
 SELECT
-    oid,
-    typname,
-    typreceive,
-    typbasetype,
-    typarray,
-    typrelid
+    OID,
+    TYPNAME,
+    TYPRECEIVE,
+    TYPRELID
 FROM
-    pg_catalog.pg_type
+    ADMIN._T_TYPE
 WHERE
-    (typreceive != 0 OR typname = 'aclitem') AND typtype != 'r' AND typreceive::TEXT != 'array_recv'
+    (TYPRECEIVE != 0 OR TYPNAME = 'aclitem') AND TYPTYPE != 'r'
 ORDER BY
     oid
 )";
@@ -183,7 +212,7 @@ ORDER BY
     InsertPgAttributeResult(result, resolver);
   } else {
     SetError(error, "%s%s",
-             "[libpq] Failed to build type mapping table: ", PQerrorMessage(conn));
+             "[libpq] Failed to build type column mapping table: ", PQerrorMessage(conn));
     final_status = ADBC_STATUS_IO;
   }
 
@@ -198,7 +227,7 @@ ORDER BY
       InsertPgTypeResult(result, resolver);
     } else {
       SetError(error, "%s%s",
-               "[libpq] Failed to build type mapping table: ", PQerrorMessage(conn));
+               "[libpq] Failed to build type type mapping table: ", PQerrorMessage(conn));
       final_status = ADBC_STATUS_IO;
     }
 
@@ -209,10 +238,10 @@ ORDER BY
   }
 
   // Disconnect since PostgreSQL connections can be heavy.
-  {
-    AdbcStatusCode status = Disconnect(&conn, error);
-    if (status != ADBC_STATUS_OK) final_status = status;
-  }
+  // {
+  //   AdbcStatusCode status = Disconnect(&conn, error);
+  //   if (status != ADBC_STATUS_OK) final_status = status;
+  // }
 
   if (final_status == ADBC_STATUS_OK) {
     type_resolver_ = std::move(resolver);
@@ -264,12 +293,8 @@ static inline int32_t InsertPgTypeResult(
         std::strtol(PQgetvalue(result, row, 0), /*str_end=*/nullptr, /*base=*/10));
     const char* typname = PQgetvalue(result, row, 1);
     const char* typreceive = PQgetvalue(result, row, 2);
-    const uint32_t typbasetype = static_cast<uint32_t>(
-        std::strtol(PQgetvalue(result, row, 3), /*str_end=*/nullptr, /*base=*/10));
-    const uint32_t typarray = static_cast<uint32_t>(
-        std::strtol(PQgetvalue(result, row, 4), /*str_end=*/nullptr, /*base=*/10));
     const uint32_t typrelid = static_cast<uint32_t>(
-        std::strtol(PQgetvalue(result, row, 5), /*str_end=*/nullptr, /*base=*/10));
+        std::strtol(PQgetvalue(result, row, 3), /*str_end=*/nullptr, /*base=*/10));
 
     // Special case the aclitem because it shows up in a bunch of internal tables
     if (strcmp(typname, "aclitem") == 0) {
@@ -280,20 +305,22 @@ static inline int32_t InsertPgTypeResult(
     item.typname = typname;
     item.typreceive = typreceive;
     item.class_oid = typrelid;
-    item.base_oid = typbasetype;
 
     int result = resolver->Insert(item, nullptr);
+    if (result == NANOARROW_OK) {
+
+    }
 
     // If there's an array type and the insert succeeded, add that now too
-    if (result == NANOARROW_OK && typarray != 0) {
-      std::string array_typname = "_" + std::string(typname);
-      item.oid = typarray;
-      item.typname = array_typname.c_str();
-      item.typreceive = "array_recv";
-      item.child_oid = oid;
+    // if (result == NANOARROW_OK /*&& typarray != 0*/) {
+    //   std::string array_typname = "_" + std::string(typname);
+    //   // item.oid = typarray;
+    //   item.typname = array_typname.c_str();
+    //   item.typreceive = "array_recv";
+    //   item.child_oid = oid;
 
-      resolver->Insert(item, nullptr);
-    }
+    //   resolver->Insert(item, nullptr);
+    // }
   }
 
   return n_added;

@@ -935,8 +935,8 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
 
   {
     if (!ingest_.db_schema.empty()) {
-      char* escaped = 
-          PQescapeIdentifier(conn, ingest_.db_schema.c_str(), ingest_.db_schema.size(), true);
+      char* escaped = (char*) ingest_.db_schema.c_str();
+          // PQescapeIdentifier(conn, ingest_.db_schema.c_str(), ingest_.db_schema.size(), true);
       if (escaped == nullptr) {
         SetError(error, "[libpq] Failed to escape target schema %s for ingestion: %s",
                  ingest_.db_schema.c_str(), PQerrorMessage(conn));
@@ -951,16 +951,16 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
     } else {
       // Explicitly specify the current schema to avoid any temporary tables
       // shadowing this table
-      char* escaped = 
-          PQescapeIdentifier(conn, current_schema.c_str(), current_schema.size(), true);
+      char* escaped = (char*) current_schema.c_str();
+          // PQescapeIdentifier(conn, current_schema.c_str(), current_schema.size(), true);
       *escaped_table += escaped;
       *escaped_table += " . ";
       free(escaped);
     }
 
     if (!ingest_.target.empty()) {
-      char* escaped = 
-          PQescapeIdentifier(conn, ingest_.target.c_str(), ingest_.target.size(), true);
+      char* escaped = (char*) ingest_.target.c_str();
+          // PQescapeIdentifier(conn, ingest_.target.c_str(), ingest_.target.size(), true);
       if (escaped == nullptr) {
         SetError(error, "[libpq] Failed to escape target table %s for ingestion: %s",
                  ingest_.target.c_str(), PQerrorMessage(conn));
@@ -1014,7 +1014,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
     }
 
     const char* unescaped = source_schema.children[i]->name;
-    char* escaped = PQescapeIdentifier(conn, unescaped, std::strlen(unescaped), true);
+    char* escaped = (char*) unescaped; //(conn, unescaped, std::strlen(unescaped), true);
     if (escaped == nullptr) {
       SetError(error, "[libpq] Failed to escape column %s for ingestion: %s", unescaped,
                PQerrorMessage(conn));
@@ -1208,12 +1208,12 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
 
   // 2. Execute the query with COPY to get binary tuples
   {
-    std::string copy_query = "COPY (" + query_ + ") TO STDOUT (FORMAT binary)";
+    std::string copy_query = "create external table pqrs '/dev/stdout' using (format internal compress) as select * from t1 where a = null analyze";
     reader_.result_ =
         PQexecParams(connection_->conn(), copy_query.c_str(), /*nParams=*/0,
                      /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                      /*paramLengths=*/nullptr, /*paramFormats=*/nullptr, kPgBinaryFormat);
-    if (PQresultStatus(reader_.result_) != PGRES_COPY_OUT) {
+    if (PQresultStatus(reader_.result_) != PGRES_COMMAND_OK) {
       AdbcStatusCode code = SetError(
           error, reader_.result_,
           "[libpq] Failed to execute query: could not begin COPY: %s\nQuery was: %s",
@@ -1521,17 +1521,17 @@ AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
     PQclear(result);
     return code;
   }
-  PQclear(result);
-  result = PQdescribePrepared(connection_->conn(), /*stmtName=*/"");
-  if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    AdbcStatusCode code =
-        SetError(error, result,
-                 "[libpq] Failed to execute query: could not infer schema: failed to "
-                 "describe prepared statement: %s\nQuery was:%s",
-                 PQerrorMessage(connection_->conn()), query_.c_str());
-    PQclear(result);
-    return code;
-  }
+  // PQclear(result); // commented since we dont want to clear now, and resolve result type in next step.
+  // result = PQdescribePrepared(connection_->conn(), /*stmtName=*/"");
+  // if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+  //   AdbcStatusCode code =
+  //       SetError(error, result,
+  //                "[libpq] Failed to execute query: could not infer schema: failed to "
+  //                "describe prepared statement: %s\nQuery was:%s",
+  //                PQerrorMessage(connection_->conn()), query_.c_str());
+  //   PQclear(result);
+  //   return code;
+  // }
 
   // Resolve the information from the PGresult into a PostgresType
   PostgresType root_type;
