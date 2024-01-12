@@ -339,10 +339,6 @@ func uploadStream(ctx context.Context, cn snowflakeConn, r io.Reader, name strin
 	putQuery := fmt.Sprintf(putQueryTmpl, name)
 	putQuery = strings.ReplaceAll(putQuery, "\\", "\\\\") // Windows compatibility
 
-	// if name == "10.parquet" {
-	// 	log.Println("the error occurred")
-	// 	return fmt.Errorf("upload error")
-	// }
 	_, err := cn.ExecContext(gosnowflake.WithFileStream(ctx, r), putQuery, nil)
 	if err != nil {
 		return err
