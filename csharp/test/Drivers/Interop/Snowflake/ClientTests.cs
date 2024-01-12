@@ -126,6 +126,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
+        /// <summary>
+        /// Validates if the client can connect to a live server
+        /// and parse the results.
+        /// </summary>
+        [SkippableFact, Order(4)]
+        public void CanClientExecuteShowTables()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+            {
+                testConfiguration.Query = "SHOW TABLES";
+
+                List<KeywordDefinition> additionalKeywords = new List<KeywordDefinition>()
+                {
+                    new KeywordDefinition("SHOW", QueryReturnType.RecordSet)
+                };
+
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration, additionalKeywords, true);
+            }
+        }
+
         // <summary>
         /// Validates if the client can connect to a live server
         /// and parse the results.

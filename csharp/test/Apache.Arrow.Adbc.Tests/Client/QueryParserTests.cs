@@ -38,50 +38,55 @@ namespace Apache.Arrow.Adbc.Tests.Client
             "DROP TABLE IF EXISTS TESTTABLE;CREATE TABLE TESTTABLE(intcol INT);INSERT INTO TESTTABLE VALUES (123);INSERT INTO TESTTABLE VALUES (456);SELECT * FROM TESTTABLE WHERE INTCOL=123;SELECT * FROM TESTTABLE WHERE INTCOL=456;SELECT * FROM TESTTABLE WHERE INTCOL=456;DROP TABLE TESTTABLE;",
             "SELECT * FROM TESTTABLE WHERE INTCOL=123;",
             8,
-            QueryType.Drop,QueryType.Create, QueryType.Insert, QueryType.Insert,QueryType.Read, QueryType.Read,QueryType.Read, QueryType.Drop
+            QueryReturnType.RecordsAffected,QueryReturnType.RecordsAffected, QueryReturnType.RecordsAffected, QueryReturnType.RecordsAffected, QueryReturnType.RecordSet, QueryReturnType.RecordSet,QueryReturnType.RecordSet, QueryReturnType.RecordsAffected
         )]
         [InlineData(
             "DROP TABLE IF EXISTS TESTTABLE;CREATE TABLE TESTTABLE(intcol INT);INSERT INTO TESTTABLE VALUES (123);INSERT INTO TESTTABLE VALUES (456);SELECT * FROM TESTTABLE WHERE INTCOL=123;SELECT * FROM TESTTABLE WHERE INTCOL='item21;item2;item3';SELECT * FROM TESTTABLE WHERE INTCOL=456;DROP TABLE TESTTABLE;",
             "SELECT * FROM TESTTABLE WHERE INTCOL=123;",
             8,
-            QueryType.Drop, QueryType.Create, QueryType.Insert, QueryType.Insert, QueryType.Read, QueryType.Read, QueryType.Read, QueryType.Drop
+            QueryReturnType.RecordsAffected, QueryReturnType.RecordsAffected, QueryReturnType.RecordsAffected, QueryReturnType.RecordsAffected, QueryReturnType.RecordSet, QueryReturnType.RecordSet, QueryReturnType.RecordSet, QueryReturnType.RecordsAffected
         )]
         [InlineData(
             "drop table if exists testtable;create table testtable(intcol int);insert into testtable values (123);insert into testtable values (456);select * from testtable where intcol=123;select * from testtable where intcol='item21;item2;item3';select * from testtable where intcol=456;drop table testtable;",
             "select * from testtable where intcol=123;",
             8,
-            QueryType.Drop, QueryType.Create, QueryType.Insert, QueryType.Insert, QueryType.Read, QueryType.Read, QueryType.Read, QueryType.Drop
+            QueryReturnType.RecordsAffected, QueryReturnType.RecordsAffected, QueryReturnType.RecordsAffected, QueryReturnType.RecordsAffected, QueryReturnType.RecordSet, QueryReturnType.RecordSet, QueryReturnType.RecordSet, QueryReturnType.RecordsAffected
         )]
         [InlineData(
             "CREATE OR REPLACE TRANSIENT TABLE TESTTABLE(intcol INT);INSERT INTO TESTTABLE VALUES (123);INSERT INTO TESTTABLE VALUES (456);SELECT * FROM TESTTABLE WHERE INTCOL=123;",
             "SELECT * FROM TESTTABLE WHERE INTCOL=123;",
             4,
-            QueryType.Create, QueryType.Insert, QueryType.Insert, QueryType.Read
+            QueryReturnType.RecordsAffected, QueryReturnType.RecordsAffected, QueryReturnType.RecordsAffected, QueryReturnType.RecordSet
         )]
         [InlineData(
             "select * from testtable where intcol=123",
             "select * from testtable where intcol=123",
             1,
-            QueryType.Read
+            QueryReturnType.RecordSet
         )]
         [InlineData(
             "DELETE testtable where intcol=123",
             "",
             1,
-            QueryType.Delete
+            QueryReturnType.RecordsAffected
         )]
-        public void ParseQuery(string query, string firstSelectQuery, int expectedQueries, params QueryType[] queryTypes)
+        public void ParseQuery(string query, string firstSelectQuery, int expectedQueries, params QueryReturnType[] queryTypes)
         {
             // uses the defaults
             QueryConfiguration qc = new QueryConfiguration();
 
             AssertValues(qc, query, firstSelectQuery, expectedQueries, queryTypes);
 
-            // do the same with a custom parser
+
             QueryConfiguration customParsingQc = new QueryConfiguration();
+            List<string> keywords = new List<string>();
+            foreach (string key in customParsingQc.Keywords.Keys)
+                keywords.Add(key);
+
+            // do the same with a custom parser
             customParsingQc.CustomParser = new QueryFunctionDefinition()
             {
-                Parameter2 = qc.AllKeywords,
+                Parameter2 = keywords.ToArray(),
                 Parse = (input, values) =>
                 {
                     // Construct the regex pattern with capturing groups for keywords
@@ -111,7 +116,22 @@ namespace Apache.Arrow.Adbc.Tests.Client
             AssertValues(customParsingQc, query, firstSelectQuery, expectedQueries, queryTypes);
         }
 
-        private void AssertValues(QueryConfiguration qc, string query, string firstSelectQuery, int expectedQueries, params QueryType[] queryTypes)
+        [Theory]
+        [InlineData(
+           "SHOW TABLES",
+           "SHOW TABLES",
+           1,
+           QueryReturnType.RecordSet
+       )]
+        public void ParseQueryWithCustomKeywords(string query, string firstSelectQuery, int expectedQueries, params QueryReturnType[] queryTypes)
+        {
+            QueryConfiguration qc = new QueryConfiguration();
+            qc.Keywords.Add("SHOW", QueryReturnType.RecordSet);
+
+            AssertValues(qc, query, firstSelectQuery, expectedQueries, queryTypes);
+        }
+
+        private void AssertValues(QueryConfiguration qc, string query, string firstSelectQuery, int expectedQueries, params QueryReturnType[] queryTypes)
         {
             QueryParser parser = new QueryParser(qc);
 
@@ -127,7 +147,7 @@ namespace Apache.Arrow.Adbc.Tests.Client
 
                 Assert.True(q.Type == queryTypes[i], $"The value at {i} ({q.Type}) does not match the expected query type ({queryTypes[i]})");
 
-                if (q.Type == QueryType.Read && string.IsNullOrEmpty(firstFoundSelectQuery))
+                if (q.Type == QueryReturnType.RecordSet && string.IsNullOrEmpty(firstFoundSelectQuery))
                 {
                     firstFoundSelectQuery = q.Text.Trim();
                 }

@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Linq;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Types;
@@ -94,7 +95,8 @@ namespace Apache.Arrow.Adbc.Tests
         /// </summary>
         /// <param name="adbcConnection">The <see cref="Adbc.Client.AdbcConnection"/> to use.</param>
         /// <param name="testConfiguration">The <see cref="TestConfiguration"/> to use</param>
-        public static void CanClientExecuteQuery(Adbc.Client.AdbcConnection adbcConnection, TestConfiguration testConfiguration)
+        /// <param name="additionalKeywords">Additional keywords, if needed.</param>
+        public static void CanClientExecuteQuery(Adbc.Client.AdbcConnection adbcConnection, TestConfiguration testConfiguration, List<KeywordDefinition> additionalKeywords = null, bool ignoreCounts = false)
         {
             if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
             if (testConfiguration == null) throw new ArgumentNullException(nameof(testConfiguration));
@@ -104,6 +106,15 @@ namespace Apache.Arrow.Adbc.Tests
             adbcConnection.Open();
 
             using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+
+            if(additionalKeywords != null)
+            {
+                foreach(KeywordDefinition definition in additionalKeywords)
+                {
+                    adbcCommand.QueryConfiguration.Keywords.Add(definition.Keyword, definition.ReturnType);
+                }
+            }
+
             using AdbcDataReader reader = adbcCommand.ExecuteReader();
 
             try
@@ -121,12 +132,14 @@ namespace Apache.Arrow.Adbc.Tests
 
                         // write out the values to ensure things like null are correctly returned
                         Console.WriteLine($"{reader.GetName(i)}: {value}");
+                        Debug.WriteLine($"{reader.GetName(i)}: {value}");
                     }
                 }
             }
             finally { reader.Close(); }
 
-            Assert.Equal(testConfiguration.ExpectedResultsCount, count);
+            if(!ignoreCounts)
+                Assert.Equal(testConfiguration.ExpectedResultsCount, count);
         }
 
         /// <summary>
@@ -143,16 +156,6 @@ namespace Apache.Arrow.Adbc.Tests
             adbcConnection.Open();
 
             using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
-            adbcCommand.QueryConfiguration = new QueryConfiguration()
-            {
-                CreateKeyword = "CREATE",
-                SelectKeyword = "SELECT",
-                UpdateKeyword = "UPDATE",
-                DeleteKeyword = "DELETE",
-                DropKeyword = "DROP",
-                InsertKeyword = "INSERT"
-            };
-
             using AdbcDataReader reader = adbcCommand.ExecuteReader();
 
             try
@@ -177,16 +180,6 @@ namespace Apache.Arrow.Adbc.Tests
             adbcConnection.Open();
 
             using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
-            adbcCommand.QueryConfiguration = new QueryConfiguration()
-            {
-                CreateKeyword = "CREATE",
-                SelectKeyword = "SELECT",
-                UpdateKeyword = "UPDATE",
-                DeleteKeyword = "DELETE",
-                DropKeyword = "DROP",
-                InsertKeyword = "INSERT"
-            };
-
             using AdbcDataReader reader = adbcCommand.ExecuteReader();
 
             try

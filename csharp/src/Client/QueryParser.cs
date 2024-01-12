@@ -18,7 +18,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Apache.Arrow.Adbc.Client
@@ -28,93 +27,101 @@ namespace Apache.Arrow.Adbc.Client
     /// </summary>
     public class QueryConfiguration
     {
-        private string[] _keywords = new string[] { };
-
         public QueryConfiguration()
         {
-            CreateKeyword = "CREATE";
-            SelectKeyword = "SELECT";
-            UpdateKeyword = "UPDATE";
-            DeleteKeyword = "DELETE";
-            DropKeyword = "DROP";
-            InsertKeyword = "INSERT";
+            CreateKeyword = new KeywordDefinition("CREATE", QueryReturnType.RecordsAffected);
+            SelectKeyword = new KeywordDefinition("SELECT", QueryReturnType.RecordSet);
+            UpdateKeyword = new KeywordDefinition("UPDATE", QueryReturnType.RecordsAffected);
+            DeleteKeyword = new KeywordDefinition("DELETE", QueryReturnType.RecordsAffected);
+            DropKeyword   = new KeywordDefinition("DROP", QueryReturnType.RecordsAffected);
+            InsertKeyword = new KeywordDefinition("INSERT", QueryReturnType.RecordsAffected);
 
-            this.AdditionalKeywords = new string[] { };
+            Keywords = new Dictionary<string,QueryReturnType>(StringComparer.OrdinalIgnoreCase)
+            {
+                { CreateKeyword.Keyword, CreateKeyword.ReturnType },
+                { SelectKeyword.Keyword, SelectKeyword.ReturnType },
+                { UpdateKeyword.Keyword, UpdateKeyword.ReturnType },
+                { DeleteKeyword.Keyword, DeleteKeyword.ReturnType },
+                { DropKeyword.Keyword,   DropKeyword.ReturnType },
+                { InsertKeyword.Keyword, InsertKeyword.ReturnType },
+            };
         }
 
         /// <summary>
         /// The CREATE keyword. CREATE by default.
         /// </summary>
-        public string CreateKeyword { get; set; }
+        public KeywordDefinition CreateKeyword { get; set; }
 
         /// <summary>
         /// The SELECT keyword. SELECT by default.
         /// </summary>
-        public string SelectKeyword { get; set; }
+        public KeywordDefinition SelectKeyword { get; set; }
 
         /// <summary>
         /// The UPDATE keyword. UPDATE by default.
         /// </summary>
-        public string UpdateKeyword { get; set; }
+        public KeywordDefinition UpdateKeyword { get; set; }
 
         /// <summary>
         /// The INSERT keyword. INSERT by default.
         /// </summary>
-        public string InsertKeyword { get; set; }
+        public KeywordDefinition InsertKeyword { get; set; }
 
         /// <summary>
         /// The DELETE keyword. DELETE by default.
         /// </summary>
-        public string DeleteKeyword { get; set; }
+        public KeywordDefinition DeleteKeyword { get; set; }
 
         /// <summary>
         /// The DROP keyword. DROP by default.
         /// </summary>
-        public string DropKeyword { get; set; }
+        public KeywordDefinition DropKeyword { get; set; }
 
         /// <summary>
-        /// Optional additional keywords.
+        /// Keywords to parse from the query. Contains CREATE, SELECT, UPDATE, INSERT, DELETE, DROP by default.
         /// </summary>
-        public string[] AdditionalKeywords { get; set; }
-
-        /// <summary>
-        /// All of the keywords that have been passed.
-        /// </summary>
-        public string[] AllKeywords
-        {
-            get
-            {
-                if(_keywords.Length > 0)
-                {
-                    return _keywords;
-                }
-
-                List<string> keywords = new List<string>()
-                {
-                    CreateKeyword,
-                    SelectKeyword,
-                    UpdateKeyword,
-                    InsertKeyword,
-                    DeleteKeyword,
-                    DropKeyword
-                };
-
-                foreach(string kw in AdditionalKeywords)
-                {
-                    keywords.Add(kw);
-                }
-
-                _keywords = keywords.ToArray();
-
-                return _keywords;
-            }
-        }
+        public Dictionary<string, QueryReturnType> Keywords { get; set; }
 
         /// <summary>
         /// Optional. The caller can specify their own parsing function
         /// to parse the queries instead of using the default one.
         /// </summary>
         public QueryFunctionDefinition CustomParser { get; set; }
+    }
+
+    /// <summary>
+    /// A keyword definition.
+    /// </summary>
+    public class KeywordDefinition
+    {
+        /// <summary>
+        /// Overloaded. Initializes a <see cref="KeywordDefinition"/>.
+        /// </summary>
+        public KeywordDefinition()
+        {
+
+        }
+
+        /// <summary>
+        /// Overloaded. Initializes a <see cref="KeywordDefinition"/>.
+        /// </summary>
+        /// <param name="keyword">The keyword.</param>
+        /// <param name="queryReturnType">The expected return type.</param>
+        public KeywordDefinition(string keyword, QueryReturnType queryReturnType)
+        {
+            this.Keyword = keyword;
+            this.ReturnType = queryReturnType;
+        }
+
+        /// <summary>
+        /// The keyword.
+        /// </summary>
+        public string Keyword { get; set; }
+
+        /// <summary>
+        /// The expected return type.
+        /// </summary>
+        public QueryReturnType ReturnType { get; set; }
     }
 
     /// <summary>
@@ -162,7 +169,7 @@ namespace Apache.Arrow.Adbc.Client
             }
             else
             {
-                userQueries = SplitStringWithKeywords(commandText, _queryConfiguration.AllKeywords);
+                userQueries = SplitStringWithKeywords(commandText);
             }
 
             return ParseQueries(userQueries);
@@ -180,29 +187,26 @@ namespace Apache.Arrow.Adbc.Client
                 Query query = new Query();
                 query.Text = userQuery.Trim();
 
-                if (query.Text.ToUpper().StartsWith(_queryConfiguration.CreateKeyword))
-                    query.Type = QueryType.Create;
-                else if (query.Text.ToUpper().StartsWith(_queryConfiguration.SelectKeyword))
-                    query.Type = QueryType.Read;
-                else if (query.Text.ToUpper().StartsWith(_queryConfiguration.InsertKeyword))
-                    query.Type = QueryType.Insert;
-                else if (query.Text.ToUpper().StartsWith(_queryConfiguration.UpdateKeyword))
-                    query.Type = QueryType.Update;
-                else if (query.Text.ToUpper().StartsWith(_queryConfiguration.DeleteKeyword))
-                    query.Type = QueryType.Delete;
-                else if (query.Text.ToUpper().StartsWith(_queryConfiguration.DropKeyword))
-                    query.Type = QueryType.Drop;
-                else
-                    throw new InvalidOperationException("unable to parse query");
+                string firstWord = query.Text.Split(' ')[0];
 
-                queries.Add(query);
+                if(this._queryConfiguration.Keywords.TryGetValue(firstWord, out QueryReturnType returnType))
+                {
+                    query.Type = returnType;
+                    queries.Add(query);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"{firstWord} is not defined as a keyword");
+                }
             }
 
             return queries;
         }
 
-        private string[] SplitStringWithKeywords(string input, string[] keywords)
+        private string[] SplitStringWithKeywords(string input)
         {
+            string[] keywords = _queryConfiguration.Keywords.Keys.ToArray();
+
             // Construct the regex pattern with capturing groups for keywords
             string pattern = $"({string.Join("|", keywords.Select(Regex.Escape))})";
 
@@ -230,14 +234,10 @@ namespace Apache.Arrow.Adbc.Client
     /// <summary>
     /// Specifies the type of query this is
     /// </summary>
-    public enum QueryType
+    public enum QueryReturnType
     {
-        Create,
-        Read,
-        Insert,
-        Update,
-        Delete,
-        Drop
+        RecordSet,
+        RecordsAffected
     }
 
     /// <summary>
@@ -253,6 +253,6 @@ namespace Apache.Arrow.Adbc.Client
         /// <summary>
         /// The query type
         /// </summary>
-        public QueryType Type { get; set; }
+        public QueryReturnType Type { get; set; }
     }
 }

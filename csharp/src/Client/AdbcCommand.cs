@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Client
     {
         private AdbcStatement _adbcStatement;
         private int _timeout = 30;
-        public QueryConfiguration _queryConfiguration;
+        public QueryConfiguration _queryConfiguration = new QueryConfiguration();
 
         /// <summary>
         /// Overloaded. Initializes <see cref="AdbcCommand"/>.
@@ -54,7 +54,6 @@ namespace Apache.Arrow.Adbc.Client
             this._adbcStatement = adbcStatement;
             this.DbConnection = adbcConnection;
             this.DecimalBehavior = adbcConnection.DecimalBehavior;
-            this._queryConfiguration = new QueryConfiguration();
         }
 
         /// <summary>
@@ -196,7 +195,7 @@ namespace Apache.Arrow.Adbc.Client
 
                         foreach(Query q in queries)
                         {
-                            if (q.Type == QueryType.Read)
+                            if (q.Type == QueryReturnType.RecordSet)
                             {
                                 if(queryResult == null)
                                 {
