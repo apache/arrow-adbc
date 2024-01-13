@@ -1,0 +1,6 @@
+usr/include/adbc-arrow-glib/
+usr/lib/*/libadbc-arrow-glib.so
+usr/lib/*/pkgconfig/adbc-arrow-glib.pc
+usr/share/adbc-arrow-glib/example/
+usr/share/gir-1.0/ADBCArrow-*.gir
+usr/share/vala/vapi/adbc-arrow-glib.*

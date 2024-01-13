@@ -15,31 +15,21 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require_relative "statement-openable"
-require_relative "statement-operations"
-
-module ADBC
+module ADBCArrow
   class Statement
-    extend StatementOpenable
-    include StatementOperations
+    extend ADBC::StatementOpenable
+    include ADBC::StatementOperations
 
     alias_method :execute_raw, :execute
     def execute(need_result: true)
-      _, c_abi_array_stream, n_rows_affected = execute_raw(need_result)
+      _, reader, n_rows_affected = execute_raw(need_result)
       if need_result
         begin
-          reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
-          begin
-            if block_given?
-              yield(reader, n_rows_affected)
-            else
-              [reader.read_all, n_rows_affected]
-            end
-          ensure
-            reader.unref
+          if block_given?
+            yield(reader, n_rows_affected)
+          else
+            [reader.read_all, n_rows_affected]
           end
-        ensure
-          GLib.free(c_abi_array_stream)
         end
       else
         if block_given?
@@ -61,25 +51,11 @@ module ADBC
           values = Arrow::TableBatchReader.new(values)
         end
         if values.is_a?(Arrow::RecordBatchReader)
-          c_abi_array_stream = values.export
-          begin
-            bind_stream(c_abi_array_stream)
-            yield
-          ensure
-            GLib.free(c_abi_array_stream)
-          end
+          bind_stream(values)
+          yield
         else
-          _, c_abi_array, c_abi_schema = values.export
-          begin
-            bind_raw(c_abi_array, c_abi_schema)
-            yield
-          ensure
-            begin
-              GLib.free(c_abi_array)
-            ensure
-              GLib.free(c_abi_schema)
-            end
-          end
+          bind_raw(values)
+          yield
         end
       else
         bind_raw(*args)
