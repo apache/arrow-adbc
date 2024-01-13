@@ -332,6 +332,10 @@ func (d *databaseImpl) SetOptionDouble(key string, value float64) error {
 	return d.DatabaseImplBase.SetOptionDouble(key, value)
 }
 
+func (d *databaseImpl) Close() error {
+	return nil
+}
+
 func getFlightClient(ctx context.Context, loc string, d *databaseImpl) (*flightsql.Client, error) {
 	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy()}
 	middleware := []flight.ClientMiddleware{
@@ -396,8 +400,8 @@ type support struct {
 	transactions bool
 }
 
-func (impl *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
-	cl, err := getFlightClient(ctx, impl.uri.String(), impl)
+func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
+	cl, err := getFlightClient(ctx, d.uri.String(), d)
 	if err != nil {
 		return nil, err
 	}
@@ -410,12 +414,12 @@ func (impl *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 				return nil, adbc.Error{Msg: fmt.Sprintf("Location must be a string, got %#v", uri), Code: adbc.StatusInternal}
 			}
 
-			cl, err := getFlightClient(context.Background(), uri, impl)
+			cl, err := getFlightClient(context.Background(), uri, d)
 			if err != nil {
 				return nil, err
 			}
 
-			cl.Alloc = impl.Alloc
+			cl.Alloc = d.Alloc
 			return cl, nil
 		}).
 		EvictedFunc(func(_, client interface{}) {
@@ -425,13 +429,13 @@ func (impl *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 
 	var cnxnSupport support
 
-	info, err := cl.GetSqlInfo(ctx, []flightsql.SqlInfo{flightsql.SqlInfoFlightSqlServerTransaction}, impl.timeout)
+	info, err := cl.GetSqlInfo(ctx, []flightsql.SqlInfo{flightsql.SqlInfoFlightSqlServerTransaction}, d.timeout)
 	// ignore this if it fails
 	if err == nil {
 		const int32code = 3
 
 		for _, endpoint := range info.Endpoint {
-			rdr, err := doGet(ctx, cl, endpoint, cache, impl.timeout)
+			rdr, err := doGet(ctx, cl, endpoint, cache, d.timeout)
 			if err != nil {
 				continue
 			}
@@ -465,8 +469,8 @@ func (impl *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		}
 	}
 
-	return &cnxn{cl: cl, db: impl, clientCache: cache,
-		hdrs: make(metadata.MD), timeouts: impl.timeout,
+	return &cnxn{cl: cl, db: d, clientCache: cache,
+		hdrs: make(metadata.MD), timeouts: d.timeout,
 		supportInfo: cnxnSupport}, nil
 }
 

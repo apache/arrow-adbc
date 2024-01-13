@@ -66,6 +66,11 @@ func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
 	return &cnxn{}, nil
 }
 
+func (d *database) Close() error {
+	maybePanic("DatabaseClose")
+	return nil
+}
+
 type cnxn struct{}
 
 func (c *cnxn) SetOption(key, value string) error {

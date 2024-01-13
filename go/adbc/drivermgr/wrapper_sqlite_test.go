@@ -74,6 +74,10 @@ func (dm *DriverMgrSuite) SetupSuite() {
 	dm.Equal(int64(1), nrows)
 }
 
+func (dm *DriverMgrSuite) TearDownSuite() {
+	dm.NoError(dm.db.Close())
+}
+
 func (dm *DriverMgrSuite) SetupTest() {
 	cnxn, err := dm.db.Open(dm.ctx)
 	dm.Require().NoError(err)
@@ -597,6 +601,7 @@ func TestDriverMgrCustomInitFunc(t *testing.T) {
 	cnxn, err := db.Open(context.Background())
 	assert.NoError(t, err)
 	require.NoError(t, cnxn.Close())
+	require.NoError(t, db.Close())
 
 	// set invalid entrypoint
 	drv = drivermgr.Driver{}
