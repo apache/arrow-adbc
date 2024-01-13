@@ -18,8 +18,8 @@
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.hpp>
 
-#include "postgresql/copy/reader.h"
 #include "postgres_copy_test_common.h"
+#include "postgresql/copy/reader.h"
 
 namespace adbcpq {
 
@@ -52,7 +52,6 @@ class PostgresCopyStreamTester {
  private:
   PostgresCopyStreamReader reader_;
 };
-
 
 TEST(PostgresCopyUtilsTest, PostgresCopyReadBoolean) {
   ArrowBufferView data;
@@ -90,7 +89,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBoolean) {
   ASSERT_FALSE(ArrowBitGet(data_buffer, 1));
   ASSERT_FALSE(ArrowBitGet(data_buffer, 2));
 }
-
 
 TEST(PostgresCopyUtilsTest, PostgresCopyReadSmallInt) {
   ArrowBufferView data;
@@ -130,7 +128,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadSmallInt) {
   ASSERT_EQ(data_buffer[4], 0);
 }
 
-
 TEST(PostgresCopyUtilsTest, PostgresCopyReadInteger) {
   ArrowBufferView data;
   data.data.as_uint8 = kTestPgCopyInteger;
@@ -168,7 +165,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadInteger) {
   ASSERT_EQ(data_buffer[3], 123);
   ASSERT_EQ(data_buffer[4], 0);
 }
-
 
 TEST(PostgresCopyUtilsTest, PostgresCopyReadBigInt) {
   ArrowBufferView data;
@@ -208,7 +204,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBigInt) {
   ASSERT_EQ(data_buffer[4], 0);
 }
 
-
 TEST(PostgresCopyUtilsTest, PostgresCopyReadReal) {
   ArrowBufferView data;
   data.data.as_uint8 = kTestPgCopyReal;
@@ -246,7 +241,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadReal) {
   ASSERT_FLOAT_EQ(data_buffer[3], 123.456);
   ASSERT_EQ(data_buffer[4], 0);
 }
-
 
 TEST(PostgresCopyUtilsTest, PostgresCopyReadDoublePrecision) {
   ArrowBufferView data;
@@ -287,7 +281,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadDoublePrecision) {
   ASSERT_EQ(data_buffer[4], 0);
 }
 
-
 TEST(PostgresCopyUtilsTest, PostgresCopyReadDate) {
   ArrowBufferView data;
   data.data.as_uint8 = kTestPgCopyDate;
@@ -320,7 +313,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadDate) {
   ASSERT_EQ(data_buffer[0], -25567);
   ASSERT_EQ(data_buffer[1], 47482);
 }
-
 
 // For full coverage, ensure that this contains NUMERIC examples that:
 // - Have >= four zeroes to the left of the decimal point
@@ -404,7 +396,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
   EXPECT_EQ(std::string(item.data, item.size_bytes), "inf");
 }
 
-
 TEST(PostgresCopyUtilsTest, PostgresCopyReadTimestamp) {
   ArrowBufferView data;
   data.data.as_uint8 = kTestPgCopyTimestamp;
@@ -437,7 +428,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadTimestamp) {
   ASSERT_EQ(data_buffer[0], -2208943504000000);
   ASSERT_EQ(data_buffer[1], 4102490096000000);
 }
-
 
 TEST(PostgresCopyUtilsTest, PostgresCopyReadInterval) {
   ArrowBufferView data;
@@ -486,7 +476,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadInterval) {
   ASSERT_EQ(interval.ns, 4000000000);
 }
 
-
 TEST(PostgresCopyUtilsTest, PostgresCopyReadText) {
   ArrowBufferView data;
   data.data.as_uint8 = kTestPgCopyText;
@@ -525,7 +514,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadText) {
   ASSERT_EQ(std::string(data_buffer + 0, 3), "abc");
   ASSERT_EQ(std::string(data_buffer + 3, 4), "1234");
 }
-
 
 TEST(PostgresCopyUtilsTest, PostgresCopyReadBinary) {
   ArrowBufferView data;
@@ -575,7 +563,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBinary) {
   ASSERT_EQ(data_buffer[6], 0xfe);
   ASSERT_EQ(data_buffer[7], 0xff);
 }
-
 
 // COPY (SELECT CAST("col" AS INTEGER ARRAY) AS "col" FROM (  VALUES ('{-123, -1}'), ('{0,
 // 1, 123}'), (NULL)) AS drvd("col")) TO STDOUT WITH (FORMAT binary);
