@@ -482,7 +482,7 @@ func convToSlice[T, O constraints.Integer | constraints.Float](arr arrow.Array, 
 }
 
 // This is now unused after the previous INSERT-bind bulk ingestion was removed.
-// Would this still be useful for stmt.ExecuteUpdate() with stmt.Bind() set?
+// TODO(joellubi): We could use this again when stmt.Prepare() is implemented.
 //
 //nolint:golint,unused
 func getQueryArg(arr arrow.Array) interface{} {
