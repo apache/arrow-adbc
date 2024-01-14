@@ -184,22 +184,28 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 		st.streamBind.Release()
 		st.streamBind = nil
 	}()
-	defer func(ctx context.Context) {
+	defer func() {
 		// Always check the resulting row count, even in the case of an error. We may have ingested part of the data.
-		ctx = context.WithoutCancel(ctx)
-		n, e := countRowsInTable(ctx, st.cnxn.sqldb, st.targetTable)
+		ctx := context.Background() // TODO(joellubi): switch to context.WithoutCancel(ctx) once we're on Go 1.21
+		n, countErr := countRowsInTable(ctx, st.cnxn.sqldb, st.targetTable)
 		nrows = n
 
 		// Ingestion, row-count check, or both could have failed
-		err = errors.Join(err, e)
+		// Wrap any failures as ADBC errors
 
-		// Wrap as ADBC errors
+		// TODO(joellubi): simplify / improve with errors.Join(err, countErr) once we're on Go 1.20
+		if err == nil {
+			err = errToAdbcErr(adbc.StatusInternal, countErr)
+			return
+		}
+
+		// Failure in the pipeline itself
 		if errors.Is(err, context.Canceled) {
 			err = errToAdbcErr(adbc.StatusCancelled, err)
 		} else {
 			err = errToAdbcErr(adbc.StatusInternal, err)
 		}
-	}(ctx)
+	}()
 
 	parquetProps, arrowProps := newWriterProps(st.alloc, st.ingestOptions)
 	g, gCtx := errgroup.WithContext(ctx)
