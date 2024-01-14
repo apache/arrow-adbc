@@ -263,13 +263,9 @@ Bulk ingestion is implemented by writing Arrow data to Parquet file(s) and uploa
 One or more COPY queries are executed in order to load the data into the target table.
 
 In order for the driver to leverage this temporary stage, the user must have
-the `CREATE STAGE <https://docs.snowflake.com/en/sql-reference/sql/create-stage>` privilege on the schema.
-If the user does not have this privilege, the driver will fall back to sending the data with the query
-to the snowflake database.
-
-In addition, the current database and schema for the session must be set. If
-these are not set, the ``CREATE TEMPORARY STAGE`` command executed by the driver
-can fail with the following error:
+the `CREATE STAGE <https://docs.snowflake.com/en/sql-reference/sql/create-stage>` privilege on the schema. In addition,
+the current database and schema for the session must be set. If these are not set, the ``CREATE TEMPORARY STAGE`` command
+executed by the driver can fail with the following error:
 
 .. code-block:: sql
 
