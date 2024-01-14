@@ -476,6 +476,7 @@ func convToSlice[T, O constraints.Integer | constraints.Float](arr arrow.Array, 
 	return gosnowflake.Array(&out)
 }
 
+//nolint:golint,unused
 func getQueryArg(arr arrow.Array) interface{} {
 	switch arr := arr.(type) {
 	case *array.Int8:
