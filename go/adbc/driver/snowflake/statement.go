@@ -412,11 +412,13 @@ func (st *statement) initIngest(ctx context.Context) error {
 	return nil
 }
 
+//nolint:golint,unused
 type nativeArrowArr[T string | []byte] interface {
 	arrow.Array
 	Value(int) T
 }
 
+//nolint:golint,unused
 func convToArr[T string | []byte](arr nativeArrowArr[T]) interface{} {
 	if arr.Len() == 1 {
 		if arr.IsNull(0) {
@@ -436,6 +438,7 @@ func convToArr[T string | []byte](arr nativeArrowArr[T]) interface{} {
 	return gosnowflake.Array(&v)
 }
 
+//nolint:golint,unused
 func convMarshal(arr arrow.Array) interface{} {
 	if arr.Len() == 0 {
 		if arr.IsNull(0) {
@@ -457,6 +460,8 @@ func convMarshal(arr arrow.Array) interface{} {
 // snowflake driver bindings only support specific types
 // int/int32/int64/float64/float32/bool/string/byte/time
 // so we have to cast anything else appropriately
+//
+//nolint:golint,unused
 func convToSlice[T, O constraints.Integer | constraints.Float](arr arrow.Array, vals []T) interface{} {
 	if arr.Len() == 1 {
 		if arr.IsNull(0) {
@@ -476,6 +481,9 @@ func convToSlice[T, O constraints.Integer | constraints.Float](arr arrow.Array, 
 	return gosnowflake.Array(&out)
 }
 
+// This is now unused after the previous INSERT-bind bulk ingestion was removed.
+// Would this still be useful for stmt.ExecuteUpdate() with stmt.Bind() set?
+//
 //nolint:golint,unused
 func getQueryArg(arr arrow.Array) interface{} {
 	switch arr := arr.(type) {
