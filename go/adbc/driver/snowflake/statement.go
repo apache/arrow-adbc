@@ -38,8 +38,8 @@ const (
 	OptionStatementIngestUploadConcurrency = "adbc.snowflake.rpc.ingest_upload_concurrency"
 	OptionStatementIngestCopyConcurrency   = "adbc.snowflake.rpc.ingest_copy_concurrency"
 	OptionStatementIngestTargetFileSize    = "adbc.snowflake.rpc.ingest_target_file_size"
-	OptionStatementIngestCompressionCodec  = "adbc.snowflake.rpc.ingest_compression_codec" // TODO: Implement option
-	OptionStatementIngestCompressionLevel  = "adbc.snowflake.rpc.ingest_compression_level" // TODO: Implement option
+	OptionStatementIngestCompressionCodec  = "adbc.snowflake.rpc.ingest_compression_codec" // TODO(joellubi): Implement option
+	OptionStatementIngestCompressionLevel  = "adbc.snowflake.rpc.ingest_compression_level" // TODO(joellubi): Implement option
 )
 
 type statement struct {
