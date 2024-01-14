@@ -476,7 +476,7 @@ struct BindStream {
                 return ADBC_STATUS_INVALID_ARGUMENT;
               }
 
-              if (val < std::numeric_limits<int64_t>::min() + kPostgresTimestampEpoch) {
+              if (val < (std::numeric_limits<int64_t>::min)() + kPostgresTimestampEpoch) {
                 SetError(error,
                          "[libpq] Field #%" PRId64 " ('%s') Row #%" PRId64
                          " has value '%" PRIi64 "' which would underflow",
