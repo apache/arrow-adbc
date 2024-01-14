@@ -882,7 +882,9 @@ func (suite *SnowflakeTests) TestSqlIngestHighPrecision() {
 
 	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_high_precision ORDER BY \"col_int64\" ASC"))
 	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueEnabled))
-	defer suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled)
+	defer func() {
+		suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+	}()
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
