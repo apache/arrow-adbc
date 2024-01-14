@@ -26,7 +26,7 @@ import (
 
 const (
 	bindStageName            = "ADBC$BIND"
-	createTemporaryStageStmt = "CREATE TEMPORARY STAGE " + bindStageName + " FILE_FORMAT = (TYPE = PARQUET USE_LOGICAL_TYPE = TRUE BINARY_AS_TEXT = FALSE)"
+	createTemporaryStageStmt = "CREATE OR REPLACE TEMPORARY STAGE " + bindStageName + " FILE_FORMAT = (TYPE = PARQUET USE_LOGICAL_TYPE = TRUE BINARY_AS_TEXT = FALSE)"
 	putQueryTmpl             = "PUT 'file:///tmp/placeholder/%s' @" + bindStageName + " OVERWRITE = TRUE"
 	copyQuery                = "COPY INTO IDENTIFIER(?) FROM @" + bindStageName + " MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE"
 	countQuery               = "SELECT COUNT(*) FROM IDENTIFIER(?)"
@@ -49,18 +49,18 @@ type ingestOptions struct {
 	// Approximate size of Parquet files written during ingestion.
 	//
 	// Actual size will be slightly larger, depending on size of footer/metadata.
-	// Default is 10 MB.
+	// Default is 10 MB. Must be an integer > 0.
 	targetFileSize int
 	// Number of Parquet files to write in parallel.
 	//
 	// Default attempts to maximize workers based on logical cores detected, but
-	// may need to be adjusted if running in a constrained environment.
+	// may need to be adjusted if running in a constrained environment. Must be an integer > 0.
 	writerConcurrency int
 	// Number of Parquet files to upload in parallel.
 	//
 	// Greater concurrency can smooth out TCP congestion and help make use of
 	// available network bandwith, but will increase memory utilization.
-	// Default is 8.
+	// Default is 8. Must be an integer > 0.
 	uploadConcurrency int
 	// Maximum number of COPY operations to run concurrently.
 	//
@@ -68,7 +68,8 @@ type ingestOptions struct {
 	// still being uploaded. Snowflake COPY speed scales with warehouse size, so smaller
 	// warehouses may benefit from setting this value higher to ensure long-running
 	// COPY queries do not block newly uploaded files from being loaded.
-	// Default is 4.
+	// Default is 4. If set to 0, only a single COPY query will be executed as part of ingestion,
+	// once all files have finished uploading. Must be an integer >= 0.
 	copyConcurrency int
 	// Compression codec to use for Parquet files.
 	//
