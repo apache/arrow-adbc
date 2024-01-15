@@ -16,6 +16,7 @@
  */
 package org.apache.arrow.adbc.driver.jdbc;
 
+import java.net.ConnectException;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -54,8 +55,21 @@ final class JdbcDriverUtil {
   }
 
   static AdbcException fromSqlException(SQLException e) {
+    // Unwrap an unknown exception with a known cause inside of it
+    if (isUnknown(e) && e.getCause() instanceof SQLException
+        && !isUnknown((SQLException) e.getCause())) {
+      return fromSqlException((SQLException) e.getCause());
+    }
+
+    // Only JDBC-prefix the message if it is actually JDBC specific
+    String message = e.getMessage();
+    if (isJdbcSpecific(e)) {
+      message = prefixExceptionMessage(message);
+    }
+
+    // Otherwise handle as normal
     return new AdbcException(
-        prefixExceptionMessage(e.getMessage()),
+        message,
         e.getCause(),
         guessStatusCode(e.getSQLState()),
         e.getSQLState(),
@@ -70,5 +84,17 @@ final class JdbcDriverUtil {
       AdbcStatusCode status, String format, SQLException e, Object... values) {
     final String message = "[JDBC] " + String.format(format, values) + e.getMessage();
     return new AdbcException(message, e.getCause(), status, e.getSQLState(), e.getErrorCode());
+  }
+
+  private static boolean isUnknown(SQLException e) {
+    return e.getSQLState() == null && e.getErrorCode() == 0;
+  }
+
+  private static boolean isJdbcSpecific(SQLException e) {
+    Throwable cause = e.getCause();
+
+    // Assume any ConnectExceptions are not JDBC-related.
+    // Assume any other exception types (or absence of cause) are JDBC-related.
+    return !(cause instanceof ConnectException);
   }
 }
