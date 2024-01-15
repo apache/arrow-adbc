@@ -22,9 +22,9 @@
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.hpp>
 
+#include "postgres_copy_test_common.h"
 #include "postgresql/copy/writer.h"
 #include "validation/adbc_validation_util.h"
-#include "postgres_copy_test_common.h"
 
 namespace adbcpq {
 
@@ -67,7 +67,6 @@ class PostgresCopyStreamWriteTester {
   PostgresCopyStreamWriter writer_;
 };
 
-
 TEST(PostgresCopyUtilsTest, PostgresCopyWriteBoolean) {
   adbc_validation::Handle<struct ArrowSchema> schema;
   adbc_validation::Handle<struct ArrowArray> array;
@@ -100,7 +99,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt8) {
   ASSERT_EQ(adbc_validation::MakeSchema(&schema.value, {{"col", NANOARROW_TYPE_INT8}}),
             ADBC_STATUS_OK);
   ASSERT_EQ(adbc_validation::MakeBatch<int8_t>(&schema.value, &array.value, &na_error,
-                                                {-123, -1, 1, 123, std::nullopt}),
+                                               {-123, -1, 1, 123, std::nullopt}),
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
@@ -141,7 +140,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt16) {
   }
 }
 
-
 TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt32) {
   adbc_validation::Handle<struct ArrowSchema> schema;
   adbc_validation::Handle<struct ArrowArray> array;
@@ -165,7 +163,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt32) {
     ASSERT_EQ(buf.data[i], kTestPgCopyInteger[i]);
   }
 }
-
 
 TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt64) {
   adbc_validation::Handle<struct ArrowSchema> schema;
@@ -191,7 +188,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt64) {
   }
 }
 
-
 TEST(PostgresCopyUtilsTest, PostgresCopyWriteReal) {
   adbc_validation::Handle<struct ArrowSchema> schema;
   adbc_validation::Handle<struct ArrowArray> array;
@@ -215,7 +211,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteReal) {
     ASSERT_EQ(buf.data[i], kTestPgCopyReal[i]) << " mismatch at index: " << i;
   }
 }
-
 
 TEST(PostgresCopyUtilsTest, PostgresCopyWriteDoublePrecision) {
   adbc_validation::Handle<struct ArrowSchema> schema;
@@ -307,15 +302,17 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteNumeric) {
   ArrowDecimalSetInt(&decimal5, 100000000000000);
 
   const std::vector<std::optional<ArrowDecimal*>> values = {
-    std::nullopt, &decimal1, &decimal2, &decimal3, &decimal4, &decimal5};
+      std::nullopt, &decimal1, &decimal2, &decimal3, &decimal4, &decimal5};
 
   ArrowSchemaInit(&schema.value);
   ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
-  ASSERT_EQ(AdbcNsArrowSchemaSetTypeDecimal(schema.value.children[0],
-                                            type, precision, scale), 0);
+  ASSERT_EQ(
+      AdbcNsArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
+      0);
   ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
   ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
-                                       &na_error, values), ADBC_STATUS_OK);
+                                                      &na_error, values),
+            ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
@@ -331,13 +328,11 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteNumeric) {
   }
 }
 
-using TimestampTestParamType = std::tuple<enum ArrowTimeUnit,
-                                          const char *,
-                                          std::vector<std::optional<int64_t>>>;
+using TimestampTestParamType =
+    std::tuple<enum ArrowTimeUnit, const char*, std::vector<std::optional<int64_t>>>;
 
-class PostgresCopyWriteTimestampTest : public testing::TestWithParam<
-  TimestampTestParamType> {
-};
+class PostgresCopyWriteTimestampTest
+    : public testing::TestWithParam<TimestampTestParamType> {};
 
 TEST_P(PostgresCopyWriteTimestampTest, WritesProperBufferValues) {
   adbc_validation::Handle<struct ArrowSchema> schema;
@@ -352,16 +347,12 @@ TEST_P(PostgresCopyWriteTimestampTest, WritesProperBufferValues) {
 
   ArrowSchemaInit(&schema.value);
   ArrowSchemaSetTypeStruct(&schema.value, 1);
-  ArrowSchemaSetTypeDateTime(schema->children[0],
-                             NANOARROW_TYPE_TIMESTAMP,
-                             unit,
+  ArrowSchemaSetTypeDateTime(schema->children[0], NANOARROW_TYPE_TIMESTAMP, unit,
                              timezone);
   ArrowSchemaSetName(schema->children[0], "col");
-  ASSERT_EQ(adbc_validation::MakeBatch<int64_t>(&schema.value,
-                                                &array.value,
-                                                &na_error,
-                                                values),
-              ADBC_STATUS_OK);
+  ASSERT_EQ(
+      adbc_validation::MakeBatch<int64_t>(&schema.value, &array.value, &na_error, values),
+      ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
@@ -377,35 +368,38 @@ TEST_P(PostgresCopyWriteTimestampTest, WritesProperBufferValues) {
   }
 }
 
-static const std::vector<TimestampTestParamType> ts_values {
-  {NANOARROW_TIME_UNIT_SECOND, nullptr,
-   {-2208943504, 4102490096, std::nullopt}},
-  {NANOARROW_TIME_UNIT_MILLI, nullptr,
-   {-2208943504000, 4102490096000, std::nullopt}},
-  {NANOARROW_TIME_UNIT_MICRO, nullptr,
-   {-2208943504000000, 4102490096000000, std::nullopt}},
-  {NANOARROW_TIME_UNIT_NANO, nullptr,
-   {-2208943504000000000, 4102490096000000000, std::nullopt}},
-  {NANOARROW_TIME_UNIT_SECOND, "UTC",
-   {-2208943504, 4102490096, std::nullopt}},
-  {NANOARROW_TIME_UNIT_MILLI, "UTC",
-   {-2208943504000, 4102490096000, std::nullopt}},
-  {NANOARROW_TIME_UNIT_MICRO, "UTC",
-   {-2208943504000000, 4102490096000000, std::nullopt}},
-  {NANOARROW_TIME_UNIT_NANO, "UTC",
-   {-2208943504000000000, 4102490096000000000, std::nullopt}},
-  {NANOARROW_TIME_UNIT_SECOND, "America/New_York",
-   {-2208943504, 4102490096, std::nullopt}},
-  {NANOARROW_TIME_UNIT_MILLI, "America/New_York",
-   {-2208943504000, 4102490096000, std::nullopt}},
-  {NANOARROW_TIME_UNIT_MICRO, "America/New_York",
-   {-2208943504000000, 4102490096000000, std::nullopt}},
-  {NANOARROW_TIME_UNIT_NANO, "America/New_York",
-   {-2208943504000000000, 4102490096000000000, std::nullopt}},
+static const std::vector<TimestampTestParamType> ts_values{
+    {NANOARROW_TIME_UNIT_SECOND, nullptr, {-2208943504, 4102490096, std::nullopt}},
+    {NANOARROW_TIME_UNIT_MILLI, nullptr, {-2208943504000, 4102490096000, std::nullopt}},
+    {NANOARROW_TIME_UNIT_MICRO,
+     nullptr,
+     {-2208943504000000, 4102490096000000, std::nullopt}},
+    {NANOARROW_TIME_UNIT_NANO,
+     nullptr,
+     {-2208943504000000000, 4102490096000000000, std::nullopt}},
+    {NANOARROW_TIME_UNIT_SECOND, "UTC", {-2208943504, 4102490096, std::nullopt}},
+    {NANOARROW_TIME_UNIT_MILLI, "UTC", {-2208943504000, 4102490096000, std::nullopt}},
+    {NANOARROW_TIME_UNIT_MICRO,
+     "UTC",
+     {-2208943504000000, 4102490096000000, std::nullopt}},
+    {NANOARROW_TIME_UNIT_NANO,
+     "UTC",
+     {-2208943504000000000, 4102490096000000000, std::nullopt}},
+    {NANOARROW_TIME_UNIT_SECOND,
+     "America/New_York",
+     {-2208943504, 4102490096, std::nullopt}},
+    {NANOARROW_TIME_UNIT_MILLI,
+     "America/New_York",
+     {-2208943504000, 4102490096000, std::nullopt}},
+    {NANOARROW_TIME_UNIT_MICRO,
+     "America/New_York",
+     {-2208943504000000, 4102490096000000, std::nullopt}},
+    {NANOARROW_TIME_UNIT_NANO,
+     "America/New_York",
+     {-2208943504000000000, 4102490096000000000, std::nullopt}},
 };
 
-INSTANTIATE_TEST_SUITE_P(PostgresCopyWriteTimestamp,
-                         PostgresCopyWriteTimestampTest,
+INSTANTIATE_TEST_SUITE_P(PostgresCopyWriteTimestamp, PostgresCopyWriteTimestampTest,
                          testing::ValuesIn(ts_values));
 
 TEST(PostgresCopyUtilsTest, PostgresCopyWriteInterval) {
@@ -428,13 +422,14 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInterval) {
   pos_interval.days = 2;
   pos_interval.ns = 4000000000;
 
-  const std::vector<std::optional<ArrowInterval*>> values = {
-    &neg_interval, &pos_interval, std::nullopt};
+  const std::vector<std::optional<ArrowInterval*>> values = {&neg_interval, &pos_interval,
+                                                             std::nullopt};
 
   ASSERT_EQ(adbc_validation::MakeSchema(&schema.value, {{"col", type}}), ADBC_STATUS_OK);
 
-  ASSERT_EQ(adbc_validation::MakeBatch<ArrowInterval*>(
-              &schema.value, &array.value, &na_error, values), ADBC_STATUS_OK);
+  ASSERT_EQ(adbc_validation::MakeBatch<ArrowInterval*>(&schema.value, &array.value,
+                                                       &na_error, values),
+            ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
@@ -454,17 +449,17 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInterval) {
 // COPY (SELECT CAST(col AS INTERVAL) FROM (  VALUES ('-4 seconds'),
 // ('4 seconds'), (NULL)) AS drvd("col")) TO STDOUT WITH (FORMAT BINARY);
 static uint8_t kTestPgCopyDuration[] = {
-    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xc2, 0xf7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3d, 0x09,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff};
-using DurationTestParamType = std::tuple<enum ArrowTimeUnit,
-  std::vector<std::optional<int64_t>>>;
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x10, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc2, 0xf7, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x3d, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+using DurationTestParamType =
+    std::tuple<enum ArrowTimeUnit, std::vector<std::optional<int64_t>>>;
 
-class PostgresCopyWriteDurationTest : public testing::TestWithParam<
-  DurationTestParamType> {};
+class PostgresCopyWriteDurationTest
+    : public testing::TestWithParam<DurationTestParamType> {};
 
 TEST_P(PostgresCopyWriteDurationTest, WritesProperBufferValues) {
   adbc_validation::Handle<struct ArrowSchema> schema;
@@ -480,8 +475,9 @@ TEST_P(PostgresCopyWriteDurationTest, WritesProperBufferValues) {
   ArrowSchemaSetTypeStruct(&schema.value, 1);
   ArrowSchemaSetTypeDateTime(schema->children[0], type, unit, nullptr);
   ArrowSchemaSetName(schema->children[0], "col");
-  ASSERT_EQ(adbc_validation::MakeBatch<int64_t>(
-              &schema.value, &array.value, &na_error, values), ADBC_STATUS_OK);
+  ASSERT_EQ(
+      adbc_validation::MakeBatch<int64_t>(&schema.value, &array.value, &na_error, values),
+      ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
@@ -497,17 +493,15 @@ TEST_P(PostgresCopyWriteDurationTest, WritesProperBufferValues) {
   }
 }
 
-static const std::vector<DurationTestParamType> duration_params {
-  {NANOARROW_TIME_UNIT_SECOND, {-4, 4, std::nullopt}},
-  {NANOARROW_TIME_UNIT_MILLI, {-4000, 4000, std::nullopt}},
-  {NANOARROW_TIME_UNIT_MICRO, {-4000000, 4000000, std::nullopt}},
-  {NANOARROW_TIME_UNIT_NANO, {-4000000000, 4000000000, std::nullopt}},
+static const std::vector<DurationTestParamType> duration_params{
+    {NANOARROW_TIME_UNIT_SECOND, {-4, 4, std::nullopt}},
+    {NANOARROW_TIME_UNIT_MILLI, {-4000, 4000, std::nullopt}},
+    {NANOARROW_TIME_UNIT_MICRO, {-4000000, 4000000, std::nullopt}},
+    {NANOARROW_TIME_UNIT_NANO, {-4000000000, 4000000000, std::nullopt}},
 };
 
-INSTANTIATE_TEST_SUITE_P(PostgresCopyWriteDuration,
-                         PostgresCopyWriteDurationTest,
+INSTANTIATE_TEST_SUITE_P(PostgresCopyWriteDuration, PostgresCopyWriteDurationTest,
                          testing::ValuesIn(duration_params));
-
 
 TEST(PostgresCopyUtilsTest, PostgresCopyWriteString) {
   adbc_validation::Handle<struct ArrowSchema> schema;
@@ -565,15 +559,12 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteBinary) {
   ASSERT_EQ(adbc_validation::MakeSchema(&schema.value, {{"col", NANOARROW_TYPE_BINARY}}),
             ADBC_STATUS_OK);
   ASSERT_EQ(adbc_validation::MakeBatch<std::vector<std::byte>>(
-            &schema.value, &array.value, &na_error,
-            {
-              std::vector<std::byte>{},
-              std::vector<std::byte>{std::byte{0x00}, std::byte{0x01}},
-              std::vector<std::byte>{
-                std::byte{0x01}, std::byte{0x02}, std::byte{0x03}, std::byte{0x04}
-              },
-              std::vector<std::byte>{std::byte{0xfe}, std::byte{0xff}},
-              std::nullopt}),
+                &schema.value, &array.value, &na_error,
+                {std::vector<std::byte>{},
+                 std::vector<std::byte>{std::byte{0x00}, std::byte{0x01}},
+                 std::vector<std::byte>{std::byte{0x01}, std::byte{0x02}, std::byte{0x03},
+                                        std::byte{0x04}},
+                 std::vector<std::byte>{std::byte{0xfe}, std::byte{0xff}}, std::nullopt}),
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
@@ -589,7 +580,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteBinary) {
     ASSERT_EQ(buf.data[i], kTestPgCopyBinary[i]) << "failure at index " << i;
   }
 }
-
 
 TEST(PostgresCopyUtilsTest, PostgresCopyWriteMultiBatch) {
   // Regression test for https://github.com/apache/arrow-adbc/issues/1310

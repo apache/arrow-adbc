@@ -38,8 +38,8 @@
 #include "common/options.h"
 #include "common/utils.h"
 #include "connection.h"
-#include "error.h"
 #include "copy/writer.h"
+#include "error.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
 #include "result_helper.h"
@@ -476,7 +476,7 @@ struct BindStream {
                 return ADBC_STATUS_INVALID_ARGUMENT;
               }
 
-              if (val < std::numeric_limits<int64_t>::min() + kPostgresTimestampEpoch) {
+              if (val < (std::numeric_limits<int64_t>::min)() + kPostgresTimestampEpoch) {
                 SetError(error,
                          "[libpq] Field #%" PRId64 " ('%s') Row #%" PRId64
                          " has value '%" PRIi64 "' which would underflow",
