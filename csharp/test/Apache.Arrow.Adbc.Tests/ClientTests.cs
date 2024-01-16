@@ -158,6 +158,7 @@ namespace Apache.Arrow.Adbc.Tests
             adbcConnection.Open();
 
             using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+            adbcCommand.QueryConfiguration = new QueryConfiguration();
             using AdbcDataReader reader = adbcCommand.ExecuteReader();
 
             try
