@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
@@ -36,6 +37,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         readonly AdbcStatement _statement;
         readonly string _catalogSchema;
         readonly Dictionary<string, string> _columnSpecifications;
+        private readonly ITestOutputHelper _output;
         private bool _disposed = false;
 
         /// <summary>
@@ -43,7 +45,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Note: Does not test the generic CAST and TRY_CAST, but instead uses the
         /// direct conversion functions.
         /// </summary>
-        public CastTests()
+        public CastTests(ITestOutputHelper output)
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
             _snowflakeTestConfiguration = SnowflakeTestingUtils.TestConfiguration;
@@ -54,6 +56,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             _connection = adbcDatabase.Connect(options);
             _statement = _connection.CreateStatement();
             _catalogSchema = string.Format("{0}.{1}", _snowflakeTestConfiguration.Metadata.Catalog, _snowflakeTestConfiguration.Metadata.Schema);
+            _output = output;
             // Simplify TIMEZONE tests so we don't have to deal with time zone offsets.
             SetSessionTimezone(_statement, "UTC");
         }
@@ -198,18 +201,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
         private void InsertSingleValue(string table, string columnName, string value)
         {
-            string insertNumberStatement = string.Format("INSERT INTO {0} ({1}) VALUES ({2});", table, columnName, value);
-            Console.WriteLine(insertNumberStatement);
-            _statement.SqlQuery = insertNumberStatement;
+            string insertStatement = string.Format("INSERT INTO {0} ({1}) VALUES ({2});", table, columnName, value);
+            _output.WriteLine(insertStatement);
+            _statement.SqlQuery = insertStatement;
             UpdateResult updateResult = _statement.ExecuteUpdate();
             Assert.Equal(1, updateResult.AffectedRows);
         }
 
         private void InsertIntoFromSelect(string table, string columnName, string selectQuery, long expectedAffectedRows = 1)
         {
-            string insertNumberStatement = string.Format("INSERT INTO {0} ({1}) {2};", table, columnName, selectQuery);
-            Console.WriteLine(insertNumberStatement);
-            _statement.SqlQuery = insertNumberStatement;
+            string insertStatement = string.Format("INSERT INTO {0} ({1}) {2};", table, columnName, selectQuery);
+            _output.WriteLine(insertStatement);
+            _statement.SqlQuery = insertStatement;
             UpdateResult updateResult = _statement.ExecuteUpdate();
             Assert.Equal(expectedAffectedRows, updateResult.AffectedRows);
         }
@@ -252,7 +255,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 castFunction,
                 castExpression,
                 table);
-            Console.WriteLine(selectStatement);
+            _output.WriteLine(selectStatement);
             _statement.SqlQuery = selectStatement;
             return _statement.ExecuteQuery();
         }
