@@ -73,3 +73,22 @@ if using the default user name and password authentication, but look like
 when using JWT authentication with an unencrypted key file.
 
 Other ADBC drivers will have different connection parameters, so be sure to check the documentation for each driver.
+
+# Query parsing and multiple queries
+ADBC doesn't have very good support for [multiple result sets](https://github.com/apache/arrow-adbc/issues/1358). The `AdbcCommand` supports parsing queries into multiple queries and executing the queries individually.  In this case, the `ExecuteReader` call will return the first result set and the total number of `RecordsAffected` for any other type of calls.
+
+## QueryConfiguration
+The default `QueryConfiguration` uses a regular expression from a set of keywords to parse the individual queries. By default, it contains a limited set of keywords that map to several different data backends and the expected return types:
+
+```
+CreateKeyword = new KeywordDefinition("CREATE", QueryReturnType.RecordsAffected);
+SelectKeyword = new KeywordDefinition("SELECT", QueryReturnType.RecordSet);
+UpdateKeyword = new KeywordDefinition("UPDATE", QueryReturnType.RecordsAffected);
+DeleteKeyword = new KeywordDefinition("DELETE", QueryReturnType.RecordsAffected);
+DropKeyword   = new KeywordDefinition("DROP", QueryReturnType.RecordsAffected);
+InsertKeyword = new KeywordDefinition("INSERT", QueryReturnType.RecordsAffected);
+```
+
+These may not be an exhaustive list for individual data backends. Callers can specify additional `KeywordDefinition` values and add them to the `Keywords` collection to include additional keywords that can be parsed using the default behavior.
+
+Additionally, `QueryConfiguration` contains a `QueryFunctionDefinition` property called `CustomParser` that can be used to define how multi-statements should be parsed. If a `CustomParser` is defined, it overrides the default behavior and the results are returned from the `CustomParser` instead.
