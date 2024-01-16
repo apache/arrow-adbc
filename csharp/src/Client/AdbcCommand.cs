@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Client
     {
         private AdbcStatement _adbcStatement;
         private int _timeout = 30;
-        public QueryConfiguration _queryConfiguration = new QueryConfiguration();
+        public QueryConfiguration _queryConfiguration;
 
         /// <summary>
         /// Overloaded. Initializes <see cref="AdbcCommand"/>.

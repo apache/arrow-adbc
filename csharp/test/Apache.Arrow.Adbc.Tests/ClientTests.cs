@@ -109,6 +109,8 @@ namespace Apache.Arrow.Adbc.Tests
 
             if(additionalKeywords != null)
             {
+                adbcCommand.QueryConfiguration = new QueryConfiguration();
+
                 foreach(KeywordDefinition definition in additionalKeywords)
                 {
                     adbcCommand.QueryConfiguration.Keywords.Add(definition.Keyword, definition.ReturnType);
@@ -180,6 +182,7 @@ namespace Apache.Arrow.Adbc.Tests
             adbcConnection.Open();
 
             using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+            adbcCommand.QueryConfiguration = new QueryConfiguration();
             using AdbcDataReader reader = adbcCommand.ExecuteReader();
 
             try
