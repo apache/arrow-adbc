@@ -31,7 +31,8 @@ public class JdbcDriverUtilTest {
   public void fromKnownSQLException() {
     SQLException knownException = new SQLException("Known SQL exception", "S1000", 100, null);
     AdbcException adbcException = JdbcDriverUtil.fromSqlException(knownException);
-    assertEquals(JdbcDriverUtil.prefixExceptionMessage(
+    assertEquals(
+        JdbcDriverUtil.prefixExceptionMessage(
         knownException.getMessage()), adbcException.getMessage());
     assertEquals(adbcException.getVendorCode(), knownException.getErrorCode());
     assertEquals(adbcException.getSqlState(), knownException.getSQLState());
@@ -41,7 +42,8 @@ public class JdbcDriverUtilTest {
   public void fromUnknownSQLException() {
     SQLException unknownSqlException = new SQLException("Unknown SQL exception");
     AdbcException adbcException = JdbcDriverUtil.fromSqlException(unknownSqlException);
-    assertEquals(JdbcDriverUtil.prefixExceptionMessage(
+    assertEquals(
+        JdbcDriverUtil.prefixExceptionMessage(
         unknownSqlException.getMessage()), adbcException.getMessage());
     assertEquals(adbcException.getVendorCode(), 0);
     assertNull(adbcException.getSqlState());
@@ -54,7 +56,8 @@ public class JdbcDriverUtilTest {
     SQLException unknownSqlException = new SQLException("Unknown SQL exception", knownException);
 
     AdbcException adbcException = JdbcDriverUtil.fromSqlException(unknownSqlException);
-    assertEquals(JdbcDriverUtil.prefixExceptionMessage(
+    assertEquals(
+        JdbcDriverUtil.prefixExceptionMessage(
         knownException.getMessage()), adbcException.getMessage());
     assertEquals(adbcException.getVendorCode(), knownException.getErrorCode());
     assertEquals(adbcException.getSqlState(), knownException.getSQLState());
@@ -64,8 +67,8 @@ public class JdbcDriverUtilTest {
   public void fromSQLExceptionCausedByConnectException() {
     // Wrap a known exception in an unknown exception.
     ConnectException connectException = new ConnectException();
-    SQLException knownException = new SQLException("Known SQL exception",
-        "S1000", 100, connectException);
+    SQLException knownException =
+        new SQLException("Known SQL exception", "S1000", 100, connectException);
 
     AdbcException adbcException = JdbcDriverUtil.fromSqlException(knownException);
     assertEquals(knownException.getMessage(), adbcException.getMessage());

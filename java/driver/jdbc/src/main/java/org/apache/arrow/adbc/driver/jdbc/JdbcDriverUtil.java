@@ -56,7 +56,8 @@ final class JdbcDriverUtil {
 
   static AdbcException fromSqlException(SQLException e) {
     // Unwrap an unknown exception with a known cause inside of it
-    if (isUnknown(e) && e.getCause() instanceof SQLException
+    if (isUnknown(e)
+        && e.getCause() instanceof SQLException
         && !isUnknown((SQLException) e.getCause())) {
       return fromSqlException((SQLException) e.getCause());
     }
@@ -69,11 +70,7 @@ final class JdbcDriverUtil {
 
     // Otherwise handle as normal
     return new AdbcException(
-        message,
-        e.getCause(),
-        guessStatusCode(e.getSQLState()),
-        e.getSQLState(),
-        e.getErrorCode());
+        message, e.getCause(), guessStatusCode(e.getSQLState()), e.getSQLState(), e.getErrorCode());
   }
 
   static AdbcException fromSqlException(String format, SQLException e, Object... values) {
