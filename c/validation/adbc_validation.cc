@@ -3629,14 +3629,15 @@ void StatementTest::TestSqlQueryRowsAffectedDelete() {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
-                                       "CREATE TABLE delete_test (foo INT)", &error),
-              IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(&statement, "CREATE TABLE delete_test (foo INT)", &error),
+      IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
-              "INSERT INTO delete_test (foo) VALUES (1), (2), (3), (4), (5)", &error),
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "INSERT INTO delete_test (foo) VALUES (1), (2), (3), (4), (5)", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
@@ -3648,8 +3649,7 @@ void StatementTest::TestSqlQueryRowsAffectedDelete() {
   int64_t rows_affected = 0;
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
               IsOkStatus(&error));
-  ASSERT_THAT(rows_affected,
-              ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
+  ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
 }
 
 void StatementTest::TestSqlQueryRowsAffectedDeleteStream() {
@@ -3657,14 +3657,15 @@ void StatementTest::TestSqlQueryRowsAffectedDeleteStream() {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
-                                       "CREATE TABLE delete_test (foo INT)", &error),
-              IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(&statement, "CREATE TABLE delete_test (foo INT)", &error),
+      IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
-              "INSERT INTO delete_test (foo) VALUES (1), (2), (3), (4), (5)", &error),
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "INSERT INTO delete_test (foo) VALUES (1), (2), (3), (4), (5)", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
@@ -3680,9 +3681,6 @@ void StatementTest::TestSqlQueryRowsAffectedDeleteStream() {
   ASSERT_THAT(reader.rows_affected,
               ::testing::AnyOf(::testing::Eq(5), ::testing::Eq(-1)));
 }
-
-
-
 
 void StatementTest::TestTransactions() {
   if (!quirks()->supports_transactions() || quirks()->ddl_implicit_commit_txn()) {
