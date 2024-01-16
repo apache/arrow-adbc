@@ -47,8 +47,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
             _snowflakeTestConfiguration = SnowflakeTestingUtils.TestConfiguration;
-            Dictionary<string, string> parameters = [];
-            Dictionary<string, string> options = [];
+            Dictionary<string, string> parameters = new();
+            Dictionary<string, string> options = new();
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_snowflakeTestConfiguration, out parameters);
             AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
             _connection = adbcDatabase.Connect(options);
