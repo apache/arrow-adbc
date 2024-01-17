@@ -82,16 +82,16 @@ struct OneValueStream {
 };
 
 /// Build an PostgresType object from a PGresult*
-AdbcStatusCode ResolvePostgresType(const PostgresTypeResolver& type_resolver,
-                                   PGresult* result, PostgresType* out,
+AdbcStatusCode ResolveNetezzaType(const NetezzaTypeResolver& type_resolver,
+                                   PGresult* result, NetezzaType* out,
                                    struct AdbcError* error) {
   ArrowError na_error;
   const int num_fields = PQnfields(result);
-  PostgresType root_type(PostgresTypeId::kRecord);
+  NetezzaType root_type(NetezzaTypeId::kRecord);
 
   for (int i = 0; i < num_fields; i++) {
     const Oid pg_oid = PQftype(result, i);
-    PostgresType pg_type;
+    NetezzaType pg_type;
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
       SetError(error, "%s%d%s%s%s%d", "[libpq] Column #", i + 1, " (\"",
                PQfname(result, i), "\") has unknown type code ", pg_oid);
@@ -156,7 +156,7 @@ struct BindStream {
     return std::move(callback)();
   }
 
-  AdbcStatusCode SetParamTypes(const PostgresTypeResolver& type_resolver,
+  AdbcStatusCode SetParamTypes(const NetezzaTypeResolver& type_resolver,
                                struct AdbcError* error) {
     param_types.resize(bind_schema->n_children);
     param_values.resize(bind_schema->n_children);
@@ -165,53 +165,53 @@ struct BindStream {
     param_values_offsets.reserve(bind_schema->n_children);
 
     for (size_t i = 0; i < bind_schema_fields.size(); i++) {
-      PostgresTypeId type_id;
+      NetezzaTypeId type_id;
       switch (bind_schema_fields[i].type) {
         case ArrowType::NANOARROW_TYPE_BOOL:
-          type_id = PostgresTypeId::kBool;
+          type_id = NetezzaTypeId::kBool;
           param_lengths[i] = 1;
           break;
         case ArrowType::NANOARROW_TYPE_INT8:
         case ArrowType::NANOARROW_TYPE_INT16:
-          type_id = PostgresTypeId::kInt2;
+          type_id = NetezzaTypeId::kInt2;
           param_lengths[i] = 2;
           break;
         case ArrowType::NANOARROW_TYPE_INT32:
-          type_id = PostgresTypeId::kInt4;
+          type_id = NetezzaTypeId::kInt4;
           param_lengths[i] = 4;
           break;
         case ArrowType::NANOARROW_TYPE_INT64:
-          type_id = PostgresTypeId::kInt8;
+          type_id = NetezzaTypeId::kInt8;
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_FLOAT:
-          type_id = PostgresTypeId::kFloat4;
+          type_id = NetezzaTypeId::kFloat4;
           param_lengths[i] = 4;
           break;
         case ArrowType::NANOARROW_TYPE_DOUBLE:
-          type_id = PostgresTypeId::kFloat8;
+          type_id = NetezzaTypeId::kFloat8;
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_STRING:
         case ArrowType::NANOARROW_TYPE_LARGE_STRING:
-          type_id = PostgresTypeId::kText;
+          type_id = NetezzaTypeId::kText;
           param_lengths[i] = 0;
           break;
         case ArrowType::NANOARROW_TYPE_BINARY:
-          type_id = PostgresTypeId::kBytea;
+          type_id = NetezzaTypeId::kBytea;
           param_lengths[i] = 0;
           break;
         case ArrowType::NANOARROW_TYPE_DATE32:
-          type_id = PostgresTypeId::kDate;
+          type_id = NetezzaTypeId::kDate;
           param_lengths[i] = 4;
           break;
         case ArrowType::NANOARROW_TYPE_TIMESTAMP:
-          type_id = PostgresTypeId::kTimestamp;
+          type_id = NetezzaTypeId::kTimestamp;
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_DURATION:
         case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
-          type_id = PostgresTypeId::kInterval;
+          type_id = NetezzaTypeId::kInterval;
           param_lengths[i] = 16;
           break;
         case ArrowType::NANOARROW_TYPE_DICTIONARY: {
@@ -223,12 +223,12 @@ struct BindStream {
           switch (value_view.type) {
             case NANOARROW_TYPE_BINARY:
             case NANOARROW_TYPE_LARGE_BINARY:
-              type_id = PostgresTypeId::kBytea;
+              type_id = NetezzaTypeId::kBytea;
               param_lengths[i] = 0;
               break;
             case NANOARROW_TYPE_STRING:
             case NANOARROW_TYPE_LARGE_STRING:
-              type_id = PostgresTypeId::kText;
+              type_id = NetezzaTypeId::kText;
               param_lengths[i] = 0;
               break;
             default:
@@ -1537,8 +1537,8 @@ AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
   // }
 
   // Resolve the information from the PGresult into a PostgresType
-  PostgresType root_type;
-  AdbcStatusCode status = ResolvePostgresType(*type_resolver_, result, &root_type, error);
+  NetezzaType root_type;
+  AdbcStatusCode status = ResolveNetezzaType(*type_resolver_, result, &root_type, error);
   PQclear(result);
   if (status != ADBC_STATUS_OK) return status;
 

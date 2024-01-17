@@ -69,7 +69,7 @@ class PostgresConnection {
   AdbcStatusCode SetOptionInt(const char* key, int64_t value, struct AdbcError* error);
 
   PGconn* conn() const { return conn_; }
-  const std::shared_ptr<PostgresTypeResolver>& type_resolver() const {
+  const std::shared_ptr<NetezzaTypeResolver>& type_resolver() const {
     return type_resolver_;
   }
   bool autocommit() const { return autocommit_; }
@@ -81,7 +81,7 @@ class PostgresConnection {
                                                struct ArrowArray* array,
                                                struct AdbcError* error);
   std::shared_ptr<PostgresDatabase> database_;
-  std::shared_ptr<PostgresTypeResolver> type_resolver_;
+  std::shared_ptr<NetezzaTypeResolver> type_resolver_;
   PGconn* conn_;
   int cancel_;
   bool autocommit_;

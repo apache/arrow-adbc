@@ -33,7 +33,7 @@
 namespace adbcpq {
 
 PostgresDatabase::PostgresDatabase() : open_connections_(0) {
-  type_resolver_ = std::make_shared<PostgresTypeResolver>();
+  type_resolver_ = std::make_shared<NetezzaTypeResolver>();
 }
 PostgresDatabase::~PostgresDatabase() = default;
 
@@ -105,10 +105,11 @@ AdbcStatusCode PostgresDatabase::Connect(PGconn** conn, struct AdbcError* error)
   }
 
   /* 
-    To convert ADBC url into Netezza connection string
-    input uri = netezza://myuser:mypassword@myhost:port/database/schemaname/
-    expected output = "host=myhost port=port user=myuser password=mypassword dbname=database schema=schemaname"
+  * To convert ADBC url into Netezza connection string
+  * input uri = netezza://myuser:mypassword@myhost:port/database/schemaname/
+  * expected output = "host=myhost port=port user=myuser password=mypassword dbname=database schema=schemaname"
   */
+  // TODO: Refactor below code to parse the URL in a cleaner way.
   std::istringstream input_stream(uri_);
   std::string protocol, credentials, host_name, port, database_name, schema_name, junk;
   std::getline(input_stream, protocol, ':');
@@ -159,10 +160,10 @@ AdbcStatusCode PostgresDatabase::Disconnect(PGconn** conn, struct AdbcError* err
 
 // Helpers for building the type resolver from queries
 static inline int32_t InsertPgAttributeResult(
-    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
+    PGresult* result, const std::shared_ptr<NetezzaTypeResolver>& resolver);
 
 static inline int32_t InsertPgTypeResult(
-    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
+    PGresult* result, const std::shared_ptr<NetezzaTypeResolver>& resolver);
 
 AdbcStatusCode PostgresDatabase::RebuildTypeResolver(struct AdbcError* error) {
   PGconn* conn = nullptr;
@@ -206,7 +207,7 @@ ORDER BY
 
   // Create a new type resolver (this instance's type_resolver_ member
   // will be updated at the end if this succeeds).
-  auto resolver = std::make_shared<PostgresTypeResolver>();
+  auto resolver = std::make_shared<NetezzaTypeResolver>();
 
   // Insert record type definitions (this includes table schemas)
   PGresult* result = PQexec(conn, kColumnsQuery.c_str());
@@ -215,7 +216,7 @@ ORDER BY
     InsertPgAttributeResult(result, resolver);
   } else {
     SetError(error, "%s%s",
-             "[libpq] Failed to build type column mapping table: ", PQerrorMessage(conn));
+             "[libpq] Failed to build attribute mapping table: ", PQerrorMessage(conn));
     final_status = ADBC_STATUS_IO;
   }
 
@@ -230,7 +231,7 @@ ORDER BY
       InsertPgTypeResult(result, resolver);
     } else {
       SetError(error, "%s%s",
-               "[libpq] Failed to build type type mapping table: ", PQerrorMessage(conn));
+               "[libpq] Failed to build type mapping table: ", PQerrorMessage(conn));
       final_status = ADBC_STATUS_IO;
     }
 
@@ -240,11 +241,15 @@ ORDER BY
     }
   }
 
+  /*
+  * The below code is commented since Netezza needs connection for next set of queries.
+  * Otherwise, you'll encounter 'ERROR: Query was cancelled'.
+  */
   // Disconnect since PostgreSQL connections can be heavy.
-  // {
-  //   AdbcStatusCode status = Disconnect(&conn, error);
-  //   if (status != ADBC_STATUS_OK) final_status = status;
-  // }
+  /* {
+    AdbcStatusCode status = Disconnect(&conn, error);
+    if (status != ADBC_STATUS_OK) final_status = status;
+  } */
 
   if (final_status == ADBC_STATUS_OK) {
     type_resolver_ = std::move(resolver);
@@ -254,7 +259,7 @@ ORDER BY
 }
 
 static inline int32_t InsertPgAttributeResult(
-    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
+    PGresult* result, const std::shared_ptr<NetezzaTypeResolver>& resolver) {
   int num_rows = PQntuples(result);
   std::vector<std::pair<std::string, uint32_t>> columns;
   uint32_t current_type_oid = 0;
@@ -286,9 +291,9 @@ static inline int32_t InsertPgAttributeResult(
 }
 
 static inline int32_t InsertPgTypeResult(
-    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
+    PGresult* result, const std::shared_ptr<NetezzaTypeResolver>& resolver) {
   int num_rows = PQntuples(result);
-  PostgresTypeResolver::Item item;
+  NetezzaTypeResolver::Item item;
   int32_t n_added = 0;
 
   for (int row = 0; row < num_rows; row++) {
@@ -314,6 +319,7 @@ static inline int32_t InsertPgTypeResult(
 
     }
 
+    // Commented as not applicable to Netezza as of now.
     // If there's an array type and the insert succeeded, add that now too
     // if (result == NANOARROW_OK /*&& typarray != 0*/) {
     //   std::string array_typname = "_" + std::string(typname);

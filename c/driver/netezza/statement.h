@@ -138,7 +138,7 @@ class PostgresStatement {
   AdbcStatusCode SetupReader(struct AdbcError* error);
 
  private:
-  std::shared_ptr<PostgresTypeResolver> type_resolver_;
+  std::shared_ptr<NetezzaTypeResolver> type_resolver_;
   std::shared_ptr<PostgresConnection> connection_;
 
   // Query state

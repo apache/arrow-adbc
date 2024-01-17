@@ -54,7 +54,7 @@ class PostgresDatabase {
 
   AdbcStatusCode Connect(PGconn** conn, struct AdbcError* error);
   AdbcStatusCode Disconnect(PGconn** conn, struct AdbcError* error);
-  const std::shared_ptr<PostgresTypeResolver>& type_resolver() const {
+  const std::shared_ptr<NetezzaTypeResolver>& type_resolver() const {
     return type_resolver_;
   }
 
@@ -63,7 +63,7 @@ class PostgresDatabase {
  private:
   int32_t open_connections_;
   std::string uri_;
-  std::shared_ptr<PostgresTypeResolver> type_resolver_;
+  std::shared_ptr<NetezzaTypeResolver> type_resolver_;
 };
 }  // namespace adbcpq
 

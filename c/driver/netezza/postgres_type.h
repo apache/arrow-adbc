@@ -29,7 +29,7 @@
 namespace adbcpq {
 
 // An enum of the types available in most Postgres pg_type tables
-enum class PostgresTypeId {
+enum class NetezzaTypeId {
   kUninitialized,
   kAclitem,
   kAnyarray,
@@ -116,60 +116,60 @@ enum class PostgresTypeId {
 // Returns the receive function name as defined in the typrecieve column
 // of the pg_type table. This name is the one that gets used to look up
 // the PostgresTypeId.
-static inline const char* PostgresTyprecv(PostgresTypeId type_id);
+static inline const char* NetezzaTyprecv(NetezzaTypeId type_id);
 
 // Returns a likely typname value for a given PostgresTypeId. This is useful
 // for testing and error messages but may not be the actual value present
 // in the pg_type typname column.
-static inline const char* PostgresTypname(PostgresTypeId type_id);
+static inline const char* NetezzaTypname(NetezzaTypeId type_id);
 
 // A vector of all type IDs, optionally including the nested types PostgresTypeId::ARRAY,
 // PostgresTypeId::DOMAIN_, PostgresTypeId::RECORD, and PostgresTypeId::RANGE.
-static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested = true);
+static inline std::vector<NetezzaTypeId> NetezzaTypeIdAll(bool nested = true);
 
-class PostgresTypeResolver;
+class NetezzaTypeResolver;
 
 // An abstraction of a (potentially nested and/or parameterized) Postgres
 // data type. This class is where default type conversion to/from Arrow
 // is defined. It is intentionally copyable.
-class PostgresType {
+class NetezzaType {
  public:
-  explicit PostgresType(PostgresTypeId type_id) : oid_(0), type_id_(type_id) {}
+  explicit NetezzaType(NetezzaTypeId type_id) : oid_(0), type_id_(type_id) {}
 
-  PostgresType() : PostgresType(PostgresTypeId::kUninitialized) {}
+  NetezzaType() : NetezzaType(NetezzaTypeId::kUninitialized) {}
 
-  void AppendChild(const std::string& field_name, const PostgresType& type) {
-    PostgresType child(type);
+  void AppendChild(const std::string& field_name, const NetezzaType& type) {
+    NetezzaType child(type);
     children_.push_back(child.WithFieldName(field_name));
   }
 
-  PostgresType WithFieldName(const std::string& field_name) const {
-    PostgresType out(*this);
+  NetezzaType WithFieldName(const std::string& field_name) const {
+    NetezzaType out(*this);
     out.field_name_ = field_name;
     return out;
   }
 
-  PostgresType WithPgTypeInfo(uint32_t oid, const std::string& typname) const {
-    PostgresType out(*this);
+  NetezzaType WithPgTypeInfo(uint32_t oid, const std::string& typname) const {
+    NetezzaType out(*this);
     out.oid_ = oid;
     out.typname_ = typname;
     return out;
   }
 
-  PostgresType Array(uint32_t oid = 0, const std::string& typname = "") const {
-    PostgresType out(PostgresTypeId::kArray);
+  NetezzaType Array(uint32_t oid = 0, const std::string& typname = "") const {
+    NetezzaType out(NetezzaTypeId::kArray);
     out.AppendChild("item", *this);
     out.oid_ = oid;
     out.typname_ = typname;
     return out;
   }
 
-  PostgresType Domain(uint32_t oid, const std::string& typname) {
+  NetezzaType Domain(uint32_t oid, const std::string& typname) {
     return WithPgTypeInfo(oid, typname);
   }
 
-  PostgresType Range(uint32_t oid = 0, const std::string& typname = "") const {
-    PostgresType out(PostgresTypeId::kRange);
+  NetezzaType Range(uint32_t oid = 0, const std::string& typname = "") const {
+    NetezzaType out(NetezzaTypeId::kRange);
     out.AppendChild("item", *this);
     out.oid_ = oid;
     out.typname_ = typname;
@@ -177,11 +177,11 @@ class PostgresType {
   }
 
   uint32_t oid() const { return oid_; }
-  PostgresTypeId type_id() const { return type_id_; }
+  NetezzaTypeId type_id() const { return type_id_; }
   const std::string& typname() const { return typname_; }
   const std::string& field_name() const { return field_name_; }
   int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
-  const PostgresType& child(int64_t i) const { return children_[i]; }
+  const NetezzaType& child(int64_t i) const { return children_[i]; }
 
   // Sets appropriate fields of an ArrowSchema that has been initialized using
   // ArrowSchemaInit. This is a recursive operation (i.e., nested types will
@@ -193,50 +193,50 @@ class PostgresType {
   ArrowErrorCode SetSchema(ArrowSchema* schema) const {
     switch (type_id_) {
       // ---- Primitive types --------------------
-      case PostgresTypeId::kBool:
+      case NetezzaTypeId::kBool:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL));
         break;
-      case PostgresTypeId::kInt2:
+      case NetezzaTypeId::kInt2:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT16));
         break;
-      case PostgresTypeId::kInt4:
-      case PostgresTypeId::kOid:
-      case PostgresTypeId::kRegproc:
+      case NetezzaTypeId::kInt4:
+      case NetezzaTypeId::kOid:
+      case NetezzaTypeId::kRegproc:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT32));
         break;
-      case PostgresTypeId::kInt8:
+      case NetezzaTypeId::kInt8:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT64));
         break;
-      case PostgresTypeId::kFloat4:
+      case NetezzaTypeId::kFloat4:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_FLOAT));
         break;
-      case PostgresTypeId::kFloat8:
+      case NetezzaTypeId::kFloat8:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DOUBLE));
         break;
 
       // ---- Numeric/Decimal-------------------
-      case PostgresTypeId::kNumeric:
+      case NetezzaTypeId::kNumeric:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
 
       // ---- Binary/string --------------------
-      case PostgresTypeId::kChar:
-      case PostgresTypeId::kBpchar:
-      case PostgresTypeId::kVarchar:
-      case PostgresTypeId::kText:
-      case PostgresTypeId::kName:
+      case NetezzaTypeId::kChar:
+      case NetezzaTypeId::kBpchar:
+      case NetezzaTypeId::kVarchar:
+      case NetezzaTypeId::kText:
+      case NetezzaTypeId::kName:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
-      case PostgresTypeId::kBytea:
+      case NetezzaTypeId::kBytea:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
         break;
 
       // ---- Temporal --------------------
-      case PostgresTypeId::kDate:
+      case NetezzaTypeId::kDate:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DATE32));
         break;
 
-      case PostgresTypeId::kTime:
+      case NetezzaTypeId::kTime:
         // We always return microsecond precision even if the type
         // specifies differently
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIME64,
@@ -244,7 +244,7 @@ class PostgresType {
                                                            /*timezone=*/nullptr));
         break;
 
-      case PostgresTypeId::kTimestamp:
+      case NetezzaTypeId::kTimestamp:
         // We always return microsecond precision even if the type
         // specifies differently
         NANOARROW_RETURN_NOT_OK(
@@ -252,31 +252,31 @@ class PostgresType {
                                        NANOARROW_TIME_UNIT_MICRO, /*timezone=*/nullptr));
         break;
 
-      case PostgresTypeId::kTimestamptz:
+      case NetezzaTypeId::kTimestamptz:
         NANOARROW_RETURN_NOT_OK(
             ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIMESTAMP,
                                        NANOARROW_TIME_UNIT_MICRO, /*timezone=*/"UTC"));
         break;
 
-      case PostgresTypeId::kInterval:
+      case NetezzaTypeId::kInterval:
         NANOARROW_RETURN_NOT_OK(
             ArrowSchemaSetType(schema, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO));
         break;
 
       // ---- Nested --------------------
-      case PostgresTypeId::kRecord:
+      case NetezzaTypeId::kRecord:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
         for (int64_t i = 0; i < n_children(); i++) {
           NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
         }
         break;
 
-      case PostgresTypeId::kArray:
+      case NetezzaTypeId::kArray:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
         NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
         break;
 
-      case PostgresTypeId::kUserDefined:
+      case NetezzaTypeId::kUserDefined:
       default: {
         // For user-defined types or types we don't explicitly know how to deal with, we
         // can still return the bytes postgres gives us and attach the type name as
@@ -297,16 +297,16 @@ class PostgresType {
     return NANOARROW_OK;
   }
 
-  static ArrowErrorCode FromSchema(const PostgresTypeResolver& resolver,
-                                   ArrowSchema* schema, PostgresType* out,
+  static ArrowErrorCode FromSchema(const NetezzaTypeResolver& resolver,
+                                   ArrowSchema* schema, NetezzaType* out,
                                    ArrowError* error);
 
  private:
   uint32_t oid_;
-  PostgresTypeId type_id_;
+  NetezzaTypeId type_id_;
   std::string typname_;
   std::string field_name_;
-  std::vector<PostgresType> children_;
+  std::vector<NetezzaType> children_;
 };
 
 // Because type information is stored in a database's pg_type table, it can't
@@ -316,7 +316,7 @@ class PostgresType {
 // instance based on a oid (which is the information that libpq provides when
 // inspecting a result object). Types can be added/removed from the pg_type table
 // via SQL, so this cache may need to be periodically refreshed.
-class PostgresTypeResolver {
+class NetezzaTypeResolver {
  public:
   struct Item {
     uint32_t oid;
@@ -327,12 +327,12 @@ class PostgresTypeResolver {
     uint32_t class_oid;
   };
 
-  PostgresTypeResolver() : base_(AllBase()) {}
+  NetezzaTypeResolver() : base_(AllBase()) {}
 
   // Place a resolved copy of a PostgresType with the appropriate oid in type_out
   // if NANOARROW_OK is returned or place a null-terminated error message into error
   // otherwise.
-  ArrowErrorCode Find(uint32_t oid, PostgresType* type_out, ArrowError* error) const {
+  ArrowErrorCode Find(uint32_t oid, NetezzaType* type_out, ArrowError* error) const {
     auto result = mapping_.find(oid);
     if (result == mapping_.end()) {
       ArrowErrorSet(error, "Postgres type with oid %ld not found",
@@ -344,7 +344,7 @@ class PostgresTypeResolver {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode FindArray(uint32_t child_oid, PostgresType* type_out,
+  ArrowErrorCode FindArray(uint32_t child_oid, NetezzaType* type_out,
                            ArrowError* error) const {
     auto array_oid_lookup = array_mapping_.find(child_oid);
     if (array_oid_lookup == array_mapping_.end()) {
@@ -358,7 +358,7 @@ class PostgresTypeResolver {
 
   // Resolve the oid for a given type_id. Returns 0 if the oid cannot be
   // resolved.
-  uint32_t GetOID(PostgresTypeId type_id) const {
+  uint32_t GetOID(NetezzaTypeId type_id) const {
     auto result = reverse_mapping_.find(static_cast<int32_t>(type_id));
     if (result == reverse_mapping_.end()) {
       return 0;
@@ -374,22 +374,22 @@ class PostgresTypeResolver {
   // class type using InsertClass().
   ArrowErrorCode Insert(const Item& item, ArrowError* error) {
     auto result = base_.find(item.typreceive);
-    PostgresType base;
+    NetezzaType base;
 
     if (result == base_.end()) {
       // This occurs when a user-defined type has defined a custom receive function
       // (e.g., PostGIS/geometry). The only way these types can be supported is
       // by returning binary unless we hard-code support for some extensions.
-      base = PostgresType(PostgresTypeId::kUserDefined);
+      base = NetezzaType(NetezzaTypeId::kUserDefined);
     } else {
       base = result->second;
     }
 
-    PostgresType type = base.WithPgTypeInfo(item.oid, item.typname);
+    NetezzaType type = base.WithPgTypeInfo(item.oid, item.typname);
 
     switch (base.type_id()) {
-      case PostgresTypeId::kArray: {
-        PostgresType child;
+      case NetezzaTypeId::kArray: {
+        NetezzaType child;
         NANOARROW_RETURN_NOT_OK(Find(item.child_oid, &child, error));
         mapping_.insert({item.oid, child.Array(item.oid, item.typname)});
         reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
@@ -397,13 +397,13 @@ class PostgresTypeResolver {
         break;
       }
 
-      case PostgresTypeId::kRecord: {
+      case NetezzaTypeId::kRecord: {
         std::vector<std::pair<std::string, uint32_t>> child_desc;
         NANOARROW_RETURN_NOT_OK(ResolveClass(item.class_oid, &child_desc, error));
 
-        PostgresType out(PostgresTypeId::kRecord);
+        NetezzaType out(NetezzaTypeId::kRecord);
         for (const auto& child_item : child_desc) {
-          PostgresType child;
+          NetezzaType child;
           NANOARROW_RETURN_NOT_OK(Find(child_item.second, &child, error));
           out.AppendChild(child_item.first, child);
         }
@@ -413,16 +413,16 @@ class PostgresTypeResolver {
         break;
       }
 
-      case PostgresTypeId::kDomain: {
-        PostgresType base_type;
+      case NetezzaTypeId::kDomain: {
+        NetezzaType base_type;
         NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
         mapping_.insert({item.oid, base_type.Domain(item.oid, item.typname)});
         reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
         break;
       }
 
-      case PostgresTypeId::kRange: {
-        PostgresType base_type;
+      case NetezzaTypeId::kRange: {
+        NetezzaType base_type;
         NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
         mapping_.insert({item.oid, base_type.Range(item.oid, item.typname)});
         reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
@@ -449,13 +449,13 @@ class PostgresTypeResolver {
   }
 
  private:
-  std::unordered_map<uint32_t, PostgresType> mapping_;
+  std::unordered_map<uint32_t, NetezzaType> mapping_;
   // We can't use PostgresTypeId as an unordered map key because there is no
   // built-in hasher for an enum on gcc 4.8 (i.e., R 3.6 on Windows).
   std::unordered_map<int32_t, uint32_t> reverse_mapping_;
   std::unordered_map<uint32_t, uint32_t> array_mapping_;
   std::unordered_map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> classes_;
-  std::unordered_map<std::string, PostgresType> base_;
+  std::unordered_map<std::string, NetezzaType> base_;
 
   ArrowErrorCode ResolveClass(uint32_t oid,
                               std::vector<std::pair<std::string, uint32_t>>* out,
@@ -473,57 +473,57 @@ class PostgresTypeResolver {
 
   // Returns a sentinel PostgresType instance for each type and builds a lookup
   // table based on the receive function name.
-  static std::unordered_map<std::string, PostgresType> AllBase() {
-    std::unordered_map<std::string, PostgresType> out;
-    for (PostgresTypeId type_id : PostgresTypeIdAll()) {
-      PostgresType type(type_id);
+  static std::unordered_map<std::string, NetezzaType> AllBase() {
+    std::unordered_map<std::string, NetezzaType> out;
+    for (NetezzaTypeId type_id : NetezzaTypeIdAll()) {
+      NetezzaType type(type_id);
       out.insert(
-          {PostgresTyprecv(type_id), type.WithPgTypeInfo(0, PostgresTypname(type_id))});
+          {NetezzaTyprecv(type_id), type.WithPgTypeInfo(0, NetezzaTypname(type_id))});
     }
 
     return out;
   }
 };
 
-inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resolver,
-                                               ArrowSchema* schema, PostgresType* out,
+inline ArrowErrorCode NetezzaType::FromSchema(const NetezzaTypeResolver& resolver,
+                                               ArrowSchema* schema, NetezzaType* out,
                                                ArrowError* error) {
   ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
 
   switch (schema_view.type) {
     case NANOARROW_TYPE_BOOL:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::kBool), out, error);
+      return resolver.Find(resolver.GetOID(NetezzaTypeId::kBool), out, error);
     case NANOARROW_TYPE_INT8:
     case NANOARROW_TYPE_UINT8:
     case NANOARROW_TYPE_INT16:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::kInt2), out, error);
+      return resolver.Find(resolver.GetOID(NetezzaTypeId::kInt2), out, error);
     case NANOARROW_TYPE_UINT16:
     case NANOARROW_TYPE_INT32:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::kInt4), out, error);
+      return resolver.Find(resolver.GetOID(NetezzaTypeId::kInt4), out, error);
     case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_INT64:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::kInt8), out, error);
+      return resolver.Find(resolver.GetOID(NetezzaTypeId::kInt8), out, error);
     case NANOARROW_TYPE_FLOAT:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::kFloat4), out, error);
+      return resolver.Find(resolver.GetOID(NetezzaTypeId::kFloat4), out, error);
     case NANOARROW_TYPE_DOUBLE:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::kFloat8), out, error);
+      return resolver.Find(resolver.GetOID(NetezzaTypeId::kFloat8), out, error);
     case NANOARROW_TYPE_STRING:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::kText), out, error);
+      return resolver.Find(resolver.GetOID(NetezzaTypeId::kText), out, error);
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::kBytea), out, error);
+      return resolver.Find(resolver.GetOID(NetezzaTypeId::kBytea), out, error);
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST: {
-      PostgresType child;
+      NetezzaType child;
       NANOARROW_RETURN_NOT_OK(
-          PostgresType::FromSchema(resolver, schema->children[0], &child, error));
+          NetezzaType::FromSchema(resolver, schema->children[0], &child, error));
       return resolver.FindArray(child.oid(), out, error);
     }
     case NANOARROW_TYPE_DICTIONARY:
       // Dictionary arrays always resolve to the dictionary type when binding or ingesting
-      return PostgresType::FromSchema(resolver, schema->dictionary, out, error);
+      return NetezzaType::FromSchema(resolver, schema->dictionary, out, error);
 
     default:
       ArrowErrorSet(error, "Can't map Arrow type '%s' to Postgres type",
@@ -532,418 +532,420 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
   }
 }
 
-static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
+static inline const char* NetezzaTyprecv(NetezzaTypeId type_id) {
+  // TODO: Remove the (Postgres) datatypes which are not applicable.
   switch (type_id) {
-    case PostgresTypeId::kAclitem:
+    case NetezzaTypeId::kAclitem:
       return "aclitem_recv";
-    case PostgresTypeId::kAnyarray:
+    case NetezzaTypeId::kAnyarray:
       return "anyarray_recv";
-    case PostgresTypeId::kAnycompatiblearray:
+    case NetezzaTypeId::kAnycompatiblearray:
       return "anycompatiblearray_recv";
-    case PostgresTypeId::kArray:
+    case NetezzaTypeId::kArray:
       return "ARRAY_IN";
-    case PostgresTypeId::kBit:
+    case NetezzaTypeId::kBit:
       return "bit_recv";
-    case PostgresTypeId::kBool:
+    case NetezzaTypeId::kBool:
       return "BOOLIN";
-    case PostgresTypeId::kBox:
+    case NetezzaTypeId::kBox:
       return "box_recv";
-    case PostgresTypeId::kBpchar:
+    case NetezzaTypeId::kBpchar:
       return "BPCHARIN";
-    case PostgresTypeId::kBrinBloomSummary:
+    case NetezzaTypeId::kBrinBloomSummary:
       return "brin_bloom_summary_recv";
-    case PostgresTypeId::kBrinMinmaxMultiSummary:
+    case NetezzaTypeId::kBrinMinmaxMultiSummary:
       return "brin_minmax_multi_summary_recv";
-    case PostgresTypeId::kBytea:
+    case NetezzaTypeId::kBytea:
       return "BYTEAIN";
-    case PostgresTypeId::kCash:
+    case NetezzaTypeId::kCash:
       return "cash_recv";
-    case PostgresTypeId::kChar:
+    case NetezzaTypeId::kChar:
       return "CHARIN";
-    case PostgresTypeId::kCidr:
+    case NetezzaTypeId::kCidr:
       return "cidr_recv";
-    case PostgresTypeId::kCid:
+    case NetezzaTypeId::kCid:
       return "CIDIN";
-    case PostgresTypeId::kCircle:
+    case NetezzaTypeId::kCircle:
       return "circle_recv";
-    case PostgresTypeId::kCstring:
+    case NetezzaTypeId::kCstring:
       return "cstring_recv";
-    case PostgresTypeId::kDate:
+    case NetezzaTypeId::kDate:
       return "DATE_IN";
-    case PostgresTypeId::kDomain:
+    case NetezzaTypeId::kDomain:
       return "domain_recv";
-    case PostgresTypeId::kFloat4:
+    case NetezzaTypeId::kFloat4:
       return "FLOAT4IN";
-    case PostgresTypeId::kFloat8:
+    case NetezzaTypeId::kFloat8:
       return "FLOAT8IN";
-    case PostgresTypeId::kInet:
+    case NetezzaTypeId::kInet:
       return "inet_recv";
-    case PostgresTypeId::kInt2:
+    case NetezzaTypeId::kInt2:
       return "INT2IN";
-    case PostgresTypeId::kInt2vector:
+    case NetezzaTypeId::kInt2vector:
       return "INT2VECTORIN";
-    case PostgresTypeId::kInt4:
+    case NetezzaTypeId::kInt4:
       return "INT4IN";
-    case PostgresTypeId::kInt8:
+    case NetezzaTypeId::kInt8:
       return "INT8IN";
-    case PostgresTypeId::kInterval:
+    case NetezzaTypeId::kInterval:
       return "INTERVAL_IN";
-    case PostgresTypeId::kJson:
+    case NetezzaTypeId::kJson:
       return "JSON_IN";
-    case PostgresTypeId::kJsonb:
+    case NetezzaTypeId::kJsonb:
       return "JSONB_IN";
-    case PostgresTypeId::kJsonpath:
+    case NetezzaTypeId::kJsonpath:
       return "JSONPATH_IN";
-    case PostgresTypeId::kLine:
+    case NetezzaTypeId::kLine:
       return "line_recv";
-    case PostgresTypeId::kLseg:
+    case NetezzaTypeId::kLseg:
       return "lseg_recv";
-    case PostgresTypeId::kMacaddr:
+    case NetezzaTypeId::kMacaddr:
       return "macaddr_recv";
-    case PostgresTypeId::kMacaddr8:
+    case NetezzaTypeId::kMacaddr8:
       return "macaddr8_recv";
-    case PostgresTypeId::kMultirange:
+    case NetezzaTypeId::kMultirange:
       return "multirange_recv";
-    case PostgresTypeId::kName:
-      return "namerecv";
-    case PostgresTypeId::kNumeric:
-      return "numeric_recv";
-    case PostgresTypeId::kOid:
+    case NetezzaTypeId::kName:
+      return "NAMEIN";
+    case NetezzaTypeId::kNumeric:
+      return "NUMERIC_IN";
+    case NetezzaTypeId::kOid:
       return "OIDIN";
-    case PostgresTypeId::kOidvector:
-      return "oidvectorrecv";
-    case PostgresTypeId::kPath:
+    case NetezzaTypeId::kOidvector:
+      return "OIDVECTORIN";
+    case NetezzaTypeId::kPath:
       return "path_recv";
-    case PostgresTypeId::kPgNodeTree:
+    case NetezzaTypeId::kPgNodeTree:
       return "pg_node_tree_recv";
-    case PostgresTypeId::kPgNdistinct:
+    case NetezzaTypeId::kPgNdistinct:
       return "pg_ndistinct_recv";
-    case PostgresTypeId::kPgDependencies:
+    case NetezzaTypeId::kPgDependencies:
       return "pg_dependencies_recv";
-    case PostgresTypeId::kPgLsn:
+    case NetezzaTypeId::kPgLsn:
       return "pg_lsn_recv";
-    case PostgresTypeId::kPgMcvList:
+    case NetezzaTypeId::kPgMcvList:
       return "pg_mcv_list_recv";
-    case PostgresTypeId::kPgDdlCommand:
+    case NetezzaTypeId::kPgDdlCommand:
       return "pg_ddl_command_recv";
-    case PostgresTypeId::kPgSnapshot:
+    case NetezzaTypeId::kPgSnapshot:
       return "pg_snapshot_recv";
-    case PostgresTypeId::kPoint:
+    case NetezzaTypeId::kPoint:
       return "point_recv";
-    case PostgresTypeId::kPoly:
+    case NetezzaTypeId::kPoly:
       return "poly_recv";
-    case PostgresTypeId::kRange:
+    case NetezzaTypeId::kRange:
       return "range_recv";
-    case PostgresTypeId::kRecord:
+    case NetezzaTypeId::kRecord:
       return "record_recv";
-    case PostgresTypeId::kRegclass:
+    case NetezzaTypeId::kRegclass:
       return "regclassrecv";
-    case PostgresTypeId::kRegcollation:
+    case NetezzaTypeId::kRegcollation:
       return "regcollationrecv";
-    case PostgresTypeId::kRegconfig:
+    case NetezzaTypeId::kRegconfig:
       return "regconfigrecv";
-    case PostgresTypeId::kRegdictionary:
+    case NetezzaTypeId::kRegdictionary:
       return "regdictionaryrecv";
-    case PostgresTypeId::kRegnamespace:
+    case NetezzaTypeId::kRegnamespace:
       return "regnamespacerecv";
-    case PostgresTypeId::kRegoperator:
+    case NetezzaTypeId::kRegoperator:
       return "regoperatorrecv";
-    case PostgresTypeId::kRegoper:
+    case NetezzaTypeId::kRegoper:
       return "regoperrecv";
-    case PostgresTypeId::kRegprocedure:
+    case NetezzaTypeId::kRegprocedure:
       return "regprocedurerecv";
-    case PostgresTypeId::kRegproc:
-      return "regprocrecv";
-    case PostgresTypeId::kRegrole:
+    case NetezzaTypeId::kRegproc:
+      return "REGPROCIN";
+    case NetezzaTypeId::kRegrole:
       return "regrolerecv";
-    case PostgresTypeId::kRegtype:
+    case NetezzaTypeId::kRegtype:
       return "regtyperecv";
-    case PostgresTypeId::kText:
+    case NetezzaTypeId::kText:
       return "TEXTIN";
-    case PostgresTypeId::kTid:
+    case NetezzaTypeId::kTid:
       return "TIDIN";
-    case PostgresTypeId::kTime:
+    case NetezzaTypeId::kTime:
       return "TIME_IN";
-    case PostgresTypeId::kTimestamp:
+    case NetezzaTypeId::kTimestamp:
       return "TIMESTAMP_IN";
-    case PostgresTypeId::kTimestamptz:
+    case NetezzaTypeId::kTimestamptz:
       return "timestamptz_recv";
-    case PostgresTypeId::kTimetz:
+    case NetezzaTypeId::kTimetz:
       return "TIMETZ_IN";
-    case PostgresTypeId::kTsquery:
+    case NetezzaTypeId::kTsquery:
       return "tsqueryrecv";
-    case PostgresTypeId::kTsvector:
+    case NetezzaTypeId::kTsvector:
       return "tsvectorrecv";
-    case PostgresTypeId::kTxidSnapshot:
+    case NetezzaTypeId::kTxidSnapshot:
       return "txid_snapshot_recv";
-    case PostgresTypeId::kUnknown:
+    case NetezzaTypeId::kUnknown:
       return "TEXTIN";
-    case PostgresTypeId::kUuid:
+    case NetezzaTypeId::kUuid:
       return "uuid_recv";
-    case PostgresTypeId::kVarbit:
+    case NetezzaTypeId::kVarbit:
       return "varbit_recv";
-    case PostgresTypeId::kVarchar:
-      return "varcharrecv";
-    case PostgresTypeId::kVoid:
+    case NetezzaTypeId::kVarchar:
+      return "VARCHARIN";
+    case NetezzaTypeId::kVoid:
       return "void_recv";
-    case PostgresTypeId::kXid8:
+    case NetezzaTypeId::kXid8:
       return "xid8recv";
-    case PostgresTypeId::kXid:
+    case NetezzaTypeId::kXid:
       return "XIDIN";
-    case PostgresTypeId::kXml:
+    case NetezzaTypeId::kXml:
       return "xml_recv";
     default:
       return "";
   }
 }
 
-static inline const char* PostgresTypname(PostgresTypeId type_id) {
+static inline const char* NetezzaTypname(NetezzaTypeId type_id) {
+  // TODO: Remove the (Postgres) datatypes which are not applicable.
   switch (type_id) {
-    case PostgresTypeId::kAclitem:
+    case NetezzaTypeId::kAclitem:
       return "aclitem";
-    case PostgresTypeId::kAnyarray:
+    case NetezzaTypeId::kAnyarray:
       return "anyarray";
-    case PostgresTypeId::kAnycompatiblearray:
+    case NetezzaTypeId::kAnycompatiblearray:
       return "anycompatiblearray";
-    case PostgresTypeId::kArray:
+    case NetezzaTypeId::kArray:
       return "array";
-    case PostgresTypeId::kBit:
+    case NetezzaTypeId::kBit:
       return "bit";
-    case PostgresTypeId::kBool:
+    case NetezzaTypeId::kBool:
       return "BOOL";
-    case PostgresTypeId::kBox:
+    case NetezzaTypeId::kBox:
       return "box";
-    case PostgresTypeId::kBpchar:
+    case NetezzaTypeId::kBpchar:
       return "BPCHAR";
-    case PostgresTypeId::kBrinBloomSummary:
+    case NetezzaTypeId::kBrinBloomSummary:
       return "brin_bloom_summary";
-    case PostgresTypeId::kBrinMinmaxMultiSummary:
+    case NetezzaTypeId::kBrinMinmaxMultiSummary:
       return "brin_minmax_multi_summary";
-    case PostgresTypeId::kBytea:
+    case NetezzaTypeId::kBytea:
       return "BYTEA";
-    case PostgresTypeId::kCash:
+    case NetezzaTypeId::kCash:
       return "cash";
-    case PostgresTypeId::kChar:
+    case NetezzaTypeId::kChar:
       return "CHAR";
-    case PostgresTypeId::kCidr:
+    case NetezzaTypeId::kCidr:
       return "cidr";
-    case PostgresTypeId::kCid:
+    case NetezzaTypeId::kCid:
       return "CID";
-    case PostgresTypeId::kCircle:
+    case NetezzaTypeId::kCircle:
       return "circle";
-    case PostgresTypeId::kCstring:
+    case NetezzaTypeId::kCstring:
       return "cstring";
-    case PostgresTypeId::kDate:
+    case NetezzaTypeId::kDate:
       return "DATE";
-    case PostgresTypeId::kDomain:
+    case NetezzaTypeId::kDomain:
       return "domain";
-    case PostgresTypeId::kFloat4:
+    case NetezzaTypeId::kFloat4:
       return "FLOAT4";
-    case PostgresTypeId::kFloat8:
+    case NetezzaTypeId::kFloat8:
       return "FLOAT8";
-    case PostgresTypeId::kInet:
+    case NetezzaTypeId::kInet:
       return "inet";
-    case PostgresTypeId::kInt2:
+    case NetezzaTypeId::kInt2:
       return "INT2";
-    case PostgresTypeId::kInt2vector:
+    case NetezzaTypeId::kInt2vector:
       return "INT2VECTOR";
-    case PostgresTypeId::kInt4:
+    case NetezzaTypeId::kInt4:
       return "INT4";
-    case PostgresTypeId::kInt8:
+    case NetezzaTypeId::kInt8:
       return "INT8";
-    case PostgresTypeId::kInterval:
+    case NetezzaTypeId::kInterval:
       return "INTERVAL";
-    case PostgresTypeId::kJson:
+    case NetezzaTypeId::kJson:
       return "JSON";
-    case PostgresTypeId::kJsonb:
+    case NetezzaTypeId::kJsonb:
       return "JSONB";
-    case PostgresTypeId::kJsonpath:
+    case NetezzaTypeId::kJsonpath:
       return "JSONBPATH";
-    case PostgresTypeId::kLine:
+    case NetezzaTypeId::kLine:
       return "line";
-    case PostgresTypeId::kLseg:
+    case NetezzaTypeId::kLseg:
       return "lseg";
-    case PostgresTypeId::kMacaddr:
+    case NetezzaTypeId::kMacaddr:
       return "macaddr";
-    case PostgresTypeId::kMacaddr8:
+    case NetezzaTypeId::kMacaddr8:
       return "macaddr8";
-    case PostgresTypeId::kMultirange:
+    case NetezzaTypeId::kMultirange:
       return "multirange";
-    case PostgresTypeId::kName:
-      return "name";
-    case PostgresTypeId::kNumeric:
+    case NetezzaTypeId::kName:
+      return "NAME";
+    case NetezzaTypeId::kNumeric:
       return "NUMERIC";
-    case PostgresTypeId::kOid:
+    case NetezzaTypeId::kOid:
       return "OID";
-    case PostgresTypeId::kOidvector:
+    case NetezzaTypeId::kOidvector:
       return "OICVECTOR";
-    case PostgresTypeId::kPath:
+    case NetezzaTypeId::kPath:
       return "path";
-    case PostgresTypeId::kPgNodeTree:
+    case NetezzaTypeId::kPgNodeTree:
       return "pg_node_tree";
-    case PostgresTypeId::kPgNdistinct:
+    case NetezzaTypeId::kPgNdistinct:
       return "pg_ndistinct";
-    case PostgresTypeId::kPgDependencies:
+    case NetezzaTypeId::kPgDependencies:
       return "pg_dependencies";
-    case PostgresTypeId::kPgLsn:
+    case NetezzaTypeId::kPgLsn:
       return "pg_lsn";
-    case PostgresTypeId::kPgMcvList:
+    case NetezzaTypeId::kPgMcvList:
       return "pg_mcv_list";
-    case PostgresTypeId::kPgDdlCommand:
+    case NetezzaTypeId::kPgDdlCommand:
       return "pg_ddl_command";
-    case PostgresTypeId::kPgSnapshot:
+    case NetezzaTypeId::kPgSnapshot:
       return "pg_snapshot";
-    case PostgresTypeId::kPoint:
+    case NetezzaTypeId::kPoint:
       return "point";
-    case PostgresTypeId::kPoly:
+    case NetezzaTypeId::kPoly:
       return "poly";
-    case PostgresTypeId::kRange:
+    case NetezzaTypeId::kRange:
       return "range";
-    case PostgresTypeId::kRecord:
+    case NetezzaTypeId::kRecord:
       return "record";
-    case PostgresTypeId::kRegclass:
+    case NetezzaTypeId::kRegclass:
       return "regclass";
-    case PostgresTypeId::kRegcollation:
+    case NetezzaTypeId::kRegcollation:
       return "regcollation";
-    case PostgresTypeId::kRegconfig:
+    case NetezzaTypeId::kRegconfig:
       return "regconfig";
-    case PostgresTypeId::kRegdictionary:
+    case NetezzaTypeId::kRegdictionary:
       return "regdictionary";
-    case PostgresTypeId::kRegnamespace:
+    case NetezzaTypeId::kRegnamespace:
       return "regnamespace";
-    case PostgresTypeId::kRegoperator:
+    case NetezzaTypeId::kRegoperator:
       return "regoperator";
-    case PostgresTypeId::kRegoper:
+    case NetezzaTypeId::kRegoper:
       return "regoper";
-    case PostgresTypeId::kRegprocedure:
+    case NetezzaTypeId::kRegprocedure:
       return "regprocedure";
-    case PostgresTypeId::kRegproc:
+    case NetezzaTypeId::kRegproc:
       return "REGPROC";
-    case PostgresTypeId::kRegrole:
+    case NetezzaTypeId::kRegrole:
       return "regrole";
-    case PostgresTypeId::kRegtype:
+    case NetezzaTypeId::kRegtype:
       return "regtype";
-    case PostgresTypeId::kText:
+    case NetezzaTypeId::kText:
       return "TEXT";
-    case PostgresTypeId::kTid:
+    case NetezzaTypeId::kTid:
       return "TID";
-    case PostgresTypeId::kTime:
+    case NetezzaTypeId::kTime:
       return "TIME";
-    case PostgresTypeId::kTimestamp:
+    case NetezzaTypeId::kTimestamp:
       return "TIMESTAMP";
-    case PostgresTypeId::kTimestamptz:
+    case NetezzaTypeId::kTimestamptz:
       return "timestamptz";
-    case PostgresTypeId::kTimetz:
+    case NetezzaTypeId::kTimetz:
       return "TIMETZ";
-    case PostgresTypeId::kTsquery:
+    case NetezzaTypeId::kTsquery:
       return "tsquery";
-    case PostgresTypeId::kTsvector:
+    case NetezzaTypeId::kTsvector:
       return "tsvector";
-    case PostgresTypeId::kTxidSnapshot:
+    case NetezzaTypeId::kTxidSnapshot:
       return "txid_snapshot";
-    case PostgresTypeId::kUnknown:
+    case NetezzaTypeId::kUnknown:
       return "UNKNOWN";
-    case PostgresTypeId::kUuid:
+    case NetezzaTypeId::kUuid:
       return "uuid";
-    case PostgresTypeId::kVarbit:
+    case NetezzaTypeId::kVarbit:
       return "varbit";
-    case PostgresTypeId::kVarchar:
+    case NetezzaTypeId::kVarchar:
       return "VARCHAR";
-    case PostgresTypeId::kVoid:
+    case NetezzaTypeId::kVoid:
       return "void";
-    case PostgresTypeId::kXid8:
+    case NetezzaTypeId::kXid8:
       return "xid8";
-    case PostgresTypeId::kXid:
+    case NetezzaTypeId::kXid:
       return "XID";
-    case PostgresTypeId::kXml:
+    case NetezzaTypeId::kXml:
       return "xml";
     default:
       return "";
   }
 }
 
-static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested) {
-  std::vector<PostgresTypeId> base = {PostgresTypeId::kAclitem,
-                                      PostgresTypeId::kAnyarray,
-                                      PostgresTypeId::kAnycompatiblearray,
-                                      PostgresTypeId::kBit,
-                                      PostgresTypeId::kBool,
-                                      PostgresTypeId::kBox,
-                                      PostgresTypeId::kBpchar,
-                                      PostgresTypeId::kBrinBloomSummary,
-                                      PostgresTypeId::kBrinMinmaxMultiSummary,
-                                      PostgresTypeId::kBytea,
-                                      PostgresTypeId::kCash,
-                                      PostgresTypeId::kChar,
-                                      PostgresTypeId::kCidr,
-                                      PostgresTypeId::kCid,
-                                      PostgresTypeId::kCircle,
-                                      PostgresTypeId::kCstring,
-                                      PostgresTypeId::kDate,
-                                      PostgresTypeId::kFloat4,
-                                      PostgresTypeId::kFloat8,
-                                      PostgresTypeId::kInet,
-                                      PostgresTypeId::kInt2,
-                                      PostgresTypeId::kInt2vector,
-                                      PostgresTypeId::kInt4,
-                                      PostgresTypeId::kInt8,
-                                      PostgresTypeId::kInterval,
-                                      PostgresTypeId::kJson,
-                                      PostgresTypeId::kJsonb,
-                                      PostgresTypeId::kJsonpath,
-                                      PostgresTypeId::kLine,
-                                      PostgresTypeId::kLseg,
-                                      PostgresTypeId::kMacaddr,
-                                      PostgresTypeId::kMacaddr8,
-                                      PostgresTypeId::kMultirange,
-                                      PostgresTypeId::kName,
-                                      PostgresTypeId::kNumeric,
-                                      PostgresTypeId::kOid,
-                                      PostgresTypeId::kOidvector,
-                                      PostgresTypeId::kPath,
-                                      PostgresTypeId::kPgNodeTree,
-                                      PostgresTypeId::kPgNdistinct,
-                                      PostgresTypeId::kPgDependencies,
-                                      PostgresTypeId::kPgLsn,
-                                      PostgresTypeId::kPgMcvList,
-                                      PostgresTypeId::kPgDdlCommand,
-                                      PostgresTypeId::kPgSnapshot,
-                                      PostgresTypeId::kPoint,
-                                      PostgresTypeId::kPoly,
-                                      PostgresTypeId::kRegclass,
-                                      PostgresTypeId::kRegcollation,
-                                      PostgresTypeId::kRegconfig,
-                                      PostgresTypeId::kRegdictionary,
-                                      PostgresTypeId::kRegnamespace,
-                                      PostgresTypeId::kRegoperator,
-                                      PostgresTypeId::kRegoper,
-                                      PostgresTypeId::kRegprocedure,
-                                      PostgresTypeId::kRegproc,
-                                      PostgresTypeId::kRegrole,
-                                      PostgresTypeId::kRegtype,
-                                      PostgresTypeId::kText,
-                                      PostgresTypeId::kTid,
-                                      PostgresTypeId::kTime,
-                                      PostgresTypeId::kTimestamp,
-                                      PostgresTypeId::kTimestamptz,
-                                      PostgresTypeId::kTimetz,
-                                      PostgresTypeId::kTsquery,
-                                      PostgresTypeId::kTsvector,
-                                      PostgresTypeId::kTxidSnapshot,
-                                      PostgresTypeId::kUnknown,
-                                      PostgresTypeId::kUuid,
-                                      PostgresTypeId::kVarbit,
-                                      PostgresTypeId::kVarchar,
-                                      PostgresTypeId::kVoid,
-                                      PostgresTypeId::kXid8,
-                                      PostgresTypeId::kXid,
-                                      PostgresTypeId::kXml};
+static inline std::vector<NetezzaTypeId> NetezzaTypeIdAll(bool nested) {
+  std::vector<NetezzaTypeId> base = {NetezzaTypeId::kAclitem,
+                                      NetezzaTypeId::kAnyarray,
+                                      NetezzaTypeId::kAnycompatiblearray,
+                                      NetezzaTypeId::kBit,
+                                      NetezzaTypeId::kBool,
+                                      NetezzaTypeId::kBox,
+                                      NetezzaTypeId::kBpchar,
+                                      NetezzaTypeId::kBrinBloomSummary,
+                                      NetezzaTypeId::kBrinMinmaxMultiSummary,
+                                      NetezzaTypeId::kBytea,
+                                      NetezzaTypeId::kCash,
+                                      NetezzaTypeId::kChar,
+                                      NetezzaTypeId::kCidr,
+                                      NetezzaTypeId::kCid,
+                                      NetezzaTypeId::kCircle,
+                                      NetezzaTypeId::kCstring,
+                                      NetezzaTypeId::kDate,
+                                      NetezzaTypeId::kFloat4,
+                                      NetezzaTypeId::kFloat8,
+                                      NetezzaTypeId::kInet,
+                                      NetezzaTypeId::kInt2,
+                                      NetezzaTypeId::kInt2vector,
+                                      NetezzaTypeId::kInt4,
+                                      NetezzaTypeId::kInt8,
+                                      NetezzaTypeId::kInterval,
+                                      NetezzaTypeId::kJson,
+                                      NetezzaTypeId::kJsonb,
+                                      NetezzaTypeId::kJsonpath,
+                                      NetezzaTypeId::kLine,
+                                      NetezzaTypeId::kLseg,
+                                      NetezzaTypeId::kMacaddr,
+                                      NetezzaTypeId::kMacaddr8,
+                                      NetezzaTypeId::kMultirange,
+                                      NetezzaTypeId::kName,
+                                      NetezzaTypeId::kNumeric,
+                                      NetezzaTypeId::kOid,
+                                      NetezzaTypeId::kOidvector,
+                                      NetezzaTypeId::kPath,
+                                      NetezzaTypeId::kPgNodeTree,
+                                      NetezzaTypeId::kPgNdistinct,
+                                      NetezzaTypeId::kPgDependencies,
+                                      NetezzaTypeId::kPgLsn,
+                                      NetezzaTypeId::kPgMcvList,
+                                      NetezzaTypeId::kPgDdlCommand,
+                                      NetezzaTypeId::kPgSnapshot,
+                                      NetezzaTypeId::kPoint,
+                                      NetezzaTypeId::kPoly,
+                                      NetezzaTypeId::kRegclass,
+                                      NetezzaTypeId::kRegcollation,
+                                      NetezzaTypeId::kRegconfig,
+                                      NetezzaTypeId::kRegdictionary,
+                                      NetezzaTypeId::kRegnamespace,
+                                      NetezzaTypeId::kRegoperator,
+                                      NetezzaTypeId::kRegoper,
+                                      NetezzaTypeId::kRegprocedure,
+                                      NetezzaTypeId::kRegproc,
+                                      NetezzaTypeId::kRegrole,
+                                      NetezzaTypeId::kRegtype,
+                                      NetezzaTypeId::kText,
+                                      NetezzaTypeId::kTid,
+                                      NetezzaTypeId::kTime,
+                                      NetezzaTypeId::kTimestamp,
+                                      NetezzaTypeId::kTimestamptz,
+                                      NetezzaTypeId::kTimetz,
+                                      NetezzaTypeId::kTsquery,
+                                      NetezzaTypeId::kTsvector,
+                                      NetezzaTypeId::kTxidSnapshot,
+                                      NetezzaTypeId::kUnknown,
+                                      NetezzaTypeId::kUuid,
+                                      NetezzaTypeId::kVarbit,
+                                      NetezzaTypeId::kVarchar,
+                                      NetezzaTypeId::kVoid,
+                                      NetezzaTypeId::kXid8,
+                                      NetezzaTypeId::kXid,
+                                      NetezzaTypeId::kXml};
 
   if (nested) {
-    base.push_back(PostgresTypeId::kArray);
-    base.push_back(PostgresTypeId::kRecord);
-    base.push_back(PostgresTypeId::kRange);
-    base.push_back(PostgresTypeId::kDomain);
+    base.push_back(NetezzaTypeId::kArray);
+    base.push_back(NetezzaTypeId::kRecord);
+    base.push_back(NetezzaTypeId::kRange);
+    base.push_back(NetezzaTypeId::kDomain);
   }
 
   return base;
