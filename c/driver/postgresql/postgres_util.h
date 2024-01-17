@@ -170,7 +170,7 @@ struct Handle {
 
   Resource* operator->() { return &value; }
 
-  void reset() { Releaser<Resource>::Release(&value);  }
+  void reset() { Releaser<Resource>::Release(&value); }
 };
 
 }  // namespace adbcpq
