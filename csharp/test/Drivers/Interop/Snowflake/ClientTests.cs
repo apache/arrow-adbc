@@ -293,9 +293,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             builder[SnowflakeParameters.HOST] = testConfiguration.Host;
             builder[SnowflakeParameters.DATABASE] = testConfiguration.Database;
             builder[SnowflakeParameters.USERNAME] = testConfiguration.User;
-            if (authType == SnowflakeAuthentication.AuthJwt)
+
+            if (authType == SnowflakeAuthentication.AuthJwt || testConfiguration.Authentication.SnowflakeJwt != null)
             {
                 string privateKey = testConfiguration.Authentication.SnowflakeJwt.PrivateKey;
+
+                if(string.IsNullOrEmpty(privateKey))
+                {
+                    if (!string.IsNullOrEmpty(testConfiguration.Authentication.SnowflakeJwt.PrivateKeyFile))
+                        privateKey = File.ReadAllText(testConfiguration.Authentication.SnowflakeJwt.PrivateKeyFile);
+                }
+
                 builder[SnowflakeParameters.AUTH_TYPE] = SnowflakeAuthentication.AuthJwt;
                 builder[SnowflakeParameters.PKCS8_VALUE] = privateKey;
                 builder[SnowflakeParameters.USERNAME] = testConfiguration.Authentication.SnowflakeJwt.User;
