@@ -30,6 +30,29 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
     public class CastTests : IDisposable
     {
+        private const string ARRAY = "ARRAY";
+        private const string BOOLEAN = "BOOLEAN";
+        private const string NUMERIC = "NUMERIC";
+        private const string OBJECT = "OBJECT";
+        private const string VARCHAR = "VARCHAR";
+        private const string VARIANT = "VARIANT";
+        private const string TIMESTAMP_TZ = "TIMESTAMP_TZ";
+        private const string DOUBLE = "DOUBLE";
+        private const string BIGINT = "BIGINT";
+        private const string INTEGER = "INTEGER";
+        private const string TO_VARCHAR = "TO_VARCHAR";
+        private const string TO_DOUBLE = "TO_DOUBLE";
+        private const string TO_BOOLEAN = "TO_BOOLEAN";
+        private const string TO_NUMERIC = "TO_NUMERIC";
+        private const string TO_TIMESTAMP_TZ = "TO_TIMESTAMP_TZ";
+        private const string TO_DATE = "TO_DATE";
+        private const string TO_TIME = "TO_TIME";
+        private const string TO_ARRAY = "TO_ARRAY";
+        private const string TO_VARIANT = "TO_VARIANT";
+        private const string TO_OBJECT = "TO_OBJECT";
+        private const string TRY_TO_NUMERIC = "TRY_TO_NUMERIC";
+        private const string TRY_TO_BOOLEAN = "TRY_TO_BOOLEAN";
+        private const string TRY_TO_TIMESTAMP_TZ = "TRY_TO_TIMESTAMP_TZ";
         private const string COLUMN_NAME = "SOURCE_COLUMN";
         static readonly string s_testTablePrefix = "ADBCCASTTEST_"; // Make configurable? Also; must be all caps if not double quoted
         readonly SnowflakeTestConfiguration _snowflakeTestConfiguration;
@@ -63,47 +86,53 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
         [SkippableTheory]
         // From NUMERIC
-        [InlineData("BIGINT", "2345", "2345", ArrowTypeId.String, "TO_VARCHAR")]
-        [InlineData("INTEGER", "2345", "2345", ArrowTypeId.String, "TO_VARCHAR")]
-        [InlineData("NUMERIC(1,0)", "-9", "-09.00", ArrowTypeId.String, "TO_VARCHAR", COLUMN_NAME + ", '00.00'")]
-        [InlineData("NUMERIC(1,0)", "9", "09.00 ", ArrowTypeId.String, "TO_VARCHAR", COLUMN_NAME + ", '00.00MI'")]
-        [InlineData("NUMERIC(38,2)", "9.50", 9.5, ArrowTypeId.Double, "TO_DOUBLE")]
-        [InlineData("NUMERIC(1,0)", "1", true, ArrowTypeId.Boolean, "TO_BOOLEAN")]
-        [InlineData("NUMERIC(1,0)", "0", false, ArrowTypeId.Boolean, "TO_BOOLEAN")]
+        [InlineData(BIGINT, "2345", "2345", ArrowTypeId.String, TO_VARCHAR)]
+        [InlineData(INTEGER, "2345", "2345", ArrowTypeId.String, TO_VARCHAR)]
+        [InlineData(NUMERIC + "(1,0)", "-9", "-09.00", ArrowTypeId.String, TO_VARCHAR, COLUMN_NAME + ", '00.00'")]
+        [InlineData(NUMERIC + "(1,0)", "9", "09.00 ", ArrowTypeId.String, TO_VARCHAR, COLUMN_NAME + ", '00.00MI'")]
+        [InlineData(NUMERIC + "(38,2)", "9.50", 9.5, ArrowTypeId.Double, TO_DOUBLE)]
+        [InlineData(NUMERIC + "(1,0)", "1", true, ArrowTypeId.Boolean, TO_BOOLEAN)]
+        [InlineData(NUMERIC + "(1,0)", "0", false, ArrowTypeId.Boolean, TO_BOOLEAN)]
         // From DOUBLE
-        [InlineData("DOUBLE", "2345.67", "2345.67", ArrowTypeId.String, "TO_VARCHAR")]
-        [InlineData("DOUBLE", "2345.67", 2345.67, ArrowTypeId.Double, "TO_DOUBLE")]
-        [InlineData("DOUBLE", "2345.5", 2346, ArrowTypeId.Decimal128, "TO_NUMERIC")] // Rounded up
-        [InlineData("DOUBLE", "2345.4", 2345, ArrowTypeId.Decimal128, "TO_NUMERIC")] // Rounded down
-        [InlineData("DOUBLE", "2345.67", 2345.67, ArrowTypeId.Decimal128, "TO_NUMERIC", COLUMN_NAME + ", 6, 2")]
+        [InlineData(DOUBLE, "2345.67", "2345.67", ArrowTypeId.String, TO_VARCHAR)]
+        [InlineData(DOUBLE, "2345.67", 2345.67, ArrowTypeId.Double, TO_DOUBLE)]
+        [InlineData(DOUBLE, "2345.5", 2346, ArrowTypeId.Decimal128, TO_NUMERIC)] // Rounded up
+        [InlineData(DOUBLE, "2345.4", 2345, ArrowTypeId.Decimal128, TO_NUMERIC)] // Rounded down
+        [InlineData(DOUBLE, "2345.67", 2345.67, ArrowTypeId.Decimal128, TO_NUMERIC, COLUMN_NAME + ", 6, 2")]
         // From BOOLEAN
-        [InlineData("BOOLEAN", "'true'", "true", ArrowTypeId.String, "TO_VARCHAR")]
-        [InlineData("BOOLEAN", "'false'", "false", ArrowTypeId.String, "TO_VARCHAR")]
+        [InlineData(BOOLEAN, "'true'", "true", ArrowTypeId.String, TO_VARCHAR)]
+        [InlineData(BOOLEAN, "'false'", "false", ArrowTypeId.String, TO_VARCHAR)]
         // From VARCHAR
-        [InlineData("VARCHAR", "'欢迎'", "欢迎", ArrowTypeId.String, "TO_VARCHAR")]
-        [InlineData("VARCHAR", "'123'", 123, ArrowTypeId.Decimal128, "TO_NUMERIC")]
-        [InlineData("VARCHAR", "'123.45'", 123.45, ArrowTypeId.Decimal128, "TO_NUMERIC", COLUMN_NAME + ", 5, 2")]
-        [InlineData("VARCHAR", "'123.45'", 123, ArrowTypeId.Decimal128, "TO_NUMERIC", COLUMN_NAME + ", 5, 0")]
-        [InlineData("VARCHAR", "'123.45'", 123.45, ArrowTypeId.Double, "TO_DOUBLE")]
-        [InlineData("VARCHAR", "'123,456'", 123456, ArrowTypeId.Double, "TO_DOUBLE", COLUMN_NAME + ", '000,000'")]
-        [InlineData("VARCHAR", "'NaN'", double.NaN, ArrowTypeId.Double, "TO_DOUBLE")]
-        [InlineData("VARCHAR", "'inf'", double.PositiveInfinity, ArrowTypeId.Double, "TO_DOUBLE")]
-        [InlineData("VARCHAR", "'-inf'", double.NegativeInfinity, ArrowTypeId.Double, "TO_DOUBLE")]
-        [InlineData("VARCHAR", "'true'", true, ArrowTypeId.Boolean, "TO_BOOLEAN")]
-        [InlineData("VARCHAR", "'fALSE'", false, ArrowTypeId.Boolean, "TO_BOOLEAN")]
-        [InlineData("VARCHAR", "'1970-01-01 00:00:00+0000'", "1970-01-01 00:00:00+0000", ArrowTypeId.Timestamp, "TO_TIMESTAMP_TZ")]
-        [InlineData("VARCHAR", "'31/12/1970 00:00:00'", "1970-12-31 00:00:00+0000", ArrowTypeId.Timestamp, "TO_TIMESTAMP_TZ", COLUMN_NAME + ", 'dd/mm/yyyy hh24:mi:ss'")]
+        [InlineData(VARCHAR, "'欢迎'", "欢迎", ArrowTypeId.String, TO_VARCHAR)]
+        [InlineData(VARCHAR, "'123'", 123, ArrowTypeId.Decimal128, TO_NUMERIC)]
+        [InlineData(VARCHAR, "'123.45'", 123.45, ArrowTypeId.Decimal128, TO_NUMERIC, COLUMN_NAME + ", 5, 2")]
+        [InlineData(VARCHAR, "'123.45'", 123, ArrowTypeId.Decimal128, TO_NUMERIC, COLUMN_NAME + ", 5, 0")]
+        [InlineData(VARCHAR, "'123.45'", 123.45, ArrowTypeId.Double, TO_DOUBLE)]
+        [InlineData(VARCHAR, "'123,456'", 123456, ArrowTypeId.Double, TO_DOUBLE, COLUMN_NAME + ", '000,000'")]
+        [InlineData(VARCHAR, "'NaN'", double.NaN, ArrowTypeId.Double, TO_DOUBLE)]
+        [InlineData(VARCHAR, "'inf'", double.PositiveInfinity, ArrowTypeId.Double, TO_DOUBLE)]
+        [InlineData(VARCHAR, "'-inf'", double.NegativeInfinity, ArrowTypeId.Double, TO_DOUBLE)]
+        [InlineData(VARCHAR, "'true'", true, ArrowTypeId.Boolean, TO_BOOLEAN)]
+        [InlineData(VARCHAR, "'fALSE'", false, ArrowTypeId.Boolean, TO_BOOLEAN)]
+        [InlineData(VARCHAR, "'1970-01-01 00:00:00+0000'", "1970-01-01 00:00:00+0000", ArrowTypeId.Timestamp, TO_TIMESTAMP_TZ)]
+        [InlineData(VARCHAR, "'31/12/1970 00:00:00'", "1970-12-31 00:00:00+0000", ArrowTypeId.Timestamp, TO_TIMESTAMP_TZ, COLUMN_NAME + ", 'dd/mm/yyyy hh24:mi:ss'")]
         // From TIMESTAMP/DATE/TIME
-        [InlineData("TIMESTAMP_TZ", "'1970-01-01 00:00:00+0000'", "1970-01-01 00:00:00+0000", ArrowTypeId.Timestamp, "TO_TIMESTAMP_TZ")]
-        [InlineData("TIMESTAMP_TZ", "'1970-01-01 12:34:56+0000'", "1970-01-01 00:00:00+0000", ArrowTypeId.Date32, "TO_DATE")] // Date portion, only
-        [InlineData("TIMESTAMP_TZ", "'2970-01-01 12:00:00+0000'", "2970-01-01 12:00:00.000 Z", ArrowTypeId.String, "TO_VARCHAR")]
-        [InlineData("TIMESTAMP_TZ", "'2970-01-01 12:00:00+0000'", "Jan 01, 2970", ArrowTypeId.String, "TO_VARCHAR", COLUMN_NAME + ", 'mon dd, yyyy'")]
+        [InlineData(TIMESTAMP_TZ, "'1970-01-01 00:00:00+0000'", "1970-01-01 00:00:00+0000", ArrowTypeId.Timestamp, TO_TIMESTAMP_TZ)]
+        [InlineData(TIMESTAMP_TZ, "'1970-01-01 12:34:56+0000'", "1970-01-01 00:00:00+0000", ArrowTypeId.Date32, TO_DATE)] // Date portion, only
+        [InlineData(TIMESTAMP_TZ, "'2970-01-01 12:00:00+0000'", "2970-01-01 12:00:00.000 Z", ArrowTypeId.String, TO_VARCHAR)]
+        [InlineData(TIMESTAMP_TZ, "'2970-01-01 12:00:00+0000'", "Jan 01, 2970", ArrowTypeId.String, TO_VARCHAR, COLUMN_NAME + ", 'mon dd, yyyy'")]
 #if NET6_0_OR_GREATER
-        [InlineData("TIMESTAMP_TZ", "'2970-01-01 12:00:00+0000'", "1970-01-01 12:00:00+0000", ArrowTypeId.Time64, "TO_TIME")] // Time portion, only
+        [InlineData(TIMESTAMP_TZ, "'2970-01-01 12:00:00+0000'", "1970-01-01 12:00:00+0000", ArrowTypeId.Time64, TO_TIME)] // Time portion, only
 #else
-        [InlineData("TIMESTAMP_TZ", "'2970-01-01 12:00:00+0000'", 43200000000, ArrowTypeId.Time64, "TO_TIME")] // Microseconds
+        [InlineData(TIMESTAMP_TZ, "'2970-01-01 12:00:00+0000'", 43200000000, ArrowTypeId.Time64, TO_TIME)] // Microseconds
 #endif
-        public void TestCastPositive(string columnSpecification, string sourceValue, object expectedValue, ArrowTypeId expectedType, string castFunction, string castExpression = null)
+        public void TestCastPositive(
+            string columnSpecification,
+            string sourceValue,
+            object expectedValue,
+            ArrowTypeId expectedType,
+            string castFunction,
+            string castExpression = null)
         {
             InitializeTest(columnSpecification, sourceValue, out string columnName, out string table);
             SelectWithCastAndValidateValue(
@@ -115,11 +144,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         }
 
         [SkippableTheory]
-        [InlineData("NUMERIC", "2345", typeof(AdbcException), "TO_VARCHAR", COLUMN_NAME + ", 123", new[] { "42601", "SQL compilation error" })] // Invalid format type.
-        [InlineData("NUMERIC", "2345", typeof(AdbcException), "TO_VARCHAR", COLUMN_NAME + ", '123'", new[] { "22007", "Bad output format" })] // Invalid format type.
-        [InlineData("VARCHAR", "'ABC'", typeof(AdbcException), "TO_NUMERIC", null, new[] { "22018", "Numeric value" })] // Non numeric value
-        [InlineData("VARCHAR", "'3'", typeof(AdbcException), "TO_BOOLEAN", null, new[] { "22018", "Boolean value" })] // Non boolean value
-        [InlineData("VARCHAR", "'31/12/1970'", typeof(AdbcException), "TO_TIMESTAMP_TZ", null, new[] { "22007", "Timestamp" })] // Non date value
+        [InlineData(NUMERIC, "2345", typeof(AdbcException), TO_VARCHAR, COLUMN_NAME + ", 123", new[] { "42601", "SQL compilation error" })] // Invalid format type.
+        [InlineData(NUMERIC, "2345", typeof(AdbcException), TO_VARCHAR, COLUMN_NAME + ", '123'", new[] { "22007", "Bad output format" })] // Invalid format type.
+        [InlineData(VARCHAR, "'ABC'", typeof(AdbcException), TO_NUMERIC, null, new[] { "22018", "Numeric value" })] // Non numeric value
+        [InlineData(VARCHAR, "'3'", typeof(AdbcException), TO_BOOLEAN, null, new[] { "22018", "Boolean value" })] // Non boolean value
+        [InlineData(VARCHAR, "'31/12/1970'", typeof(AdbcException), TO_TIMESTAMP_TZ, null, new[] { "22007", "Timestamp" })] // Non date value
         public void TestCastNegative(
             string columnSpecification,
             string sourceValue,
@@ -138,17 +167,23 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         }
 
         [SkippableTheory]
-        [InlineData("ARRAY", "SELECT ARRAY_CONSTRUCT('TRUE', 'FALSE')", "[\n  \"TRUE\",\n  \"FALSE\"\n]", ArrowTypeId.String, "TO_ARRAY")]
-        [InlineData("ARRAY", "SELECT ARRAY_CONSTRUCT('TRUE', 'FALSE')", "[\n  \"TRUE\",\n  \"FALSE\"\n]", ArrowTypeId.String, "TO_VARIANT")]
-        [InlineData("BOOLEAN", "SELECT 'TRUE'", "true", ArrowTypeId.String, "TO_VARIANT")]
-        [InlineData("NUMERIC", "SELECT 42", "42", ArrowTypeId.String, "TO_VARIANT")]
-        [InlineData("OBJECT", "SELECT OBJECT_CONSTRUCT('fortyTwo', 42::VARIANT)", "{\n  \"fortyTwo\": 42\n}", ArrowTypeId.String, "TO_OBJECT")]
-        [InlineData("OBJECT", "SELECT OBJECT_CONSTRUCT('fortyTwo', 42::VARIANT)", "{\n  \"fortyTwo\": 42\n}", ArrowTypeId.String, "TO_VARIANT")]
-        [InlineData("OBJECT", "SELECT OBJECT_CONSTRUCT('fortyTwo', 42::NUMERIC)", "{\n  \"fortyTwo\": 42\n}", ArrowTypeId.String, "TO_VARIANT")]
-        [InlineData("VARCHAR", "SELECT 42", "\"42\"", ArrowTypeId.String, "TO_VARIANT")]
-        [InlineData("VARIANT", "SELECT 42::VARIANT", "42", ArrowTypeId.String, "TO_VARIANT")]
-        [InlineData("VARIANT", "SELECT 'JONES'::VARIANT", "\"JONES\"", ArrowTypeId.String, "TO_VARIANT")]
-        public void TestCastPositiveStructured(string columnSpecification, string sourceValue, object expectedValue, ArrowTypeId expectedType, string castFunction, string castExpression = null)
+        [InlineData(ARRAY, "SELECT ARRAY_CONSTRUCT('TRUE', 'FALSE')", "[\n  \"TRUE\",\n  \"FALSE\"\n]", ArrowTypeId.String, TO_ARRAY)]
+        [InlineData(ARRAY, "SELECT ARRAY_CONSTRUCT('TRUE', 'FALSE')", "[\n  \"TRUE\",\n  \"FALSE\"\n]", ArrowTypeId.String, TO_VARIANT)]
+        [InlineData(BOOLEAN, "SELECT 'TRUE'", "true", ArrowTypeId.String, TO_VARIANT)]
+        [InlineData(NUMERIC, "SELECT 42", "42", ArrowTypeId.String, TO_VARIANT)]
+        [InlineData(OBJECT, "SELECT OBJECT_CONSTRUCT('fortyTwo', 42::VARIANT)", "{\n  \"fortyTwo\": 42\n}", ArrowTypeId.String, TO_OBJECT)]
+        [InlineData(OBJECT, "SELECT OBJECT_CONSTRUCT('fortyTwo', 42::VARIANT)", "{\n  \"fortyTwo\": 42\n}", ArrowTypeId.String, TO_VARIANT)]
+        [InlineData(OBJECT, "SELECT OBJECT_CONSTRUCT('fortyTwo', 42::NUMERIC)", "{\n  \"fortyTwo\": 42\n}", ArrowTypeId.String, TO_VARIANT)]
+        [InlineData(VARCHAR, "SELECT 42", "\"42\"", ArrowTypeId.String, TO_VARIANT)]
+        [InlineData(VARIANT, "SELECT 42::VARIANT", "42", ArrowTypeId.String, TO_VARIANT)]
+        [InlineData(VARIANT, "SELECT 'JONES'::VARIANT", "\"JONES\"", ArrowTypeId.String, TO_VARIANT)]
+        public void TestCastPositiveStructured(
+            string columnSpecification,
+            string sourceValue,
+            object expectedValue,
+            ArrowTypeId expectedType,
+            string castFunction,
+            string castExpression = null)
         {
             InitializeTest(columnSpecification, sourceValue, out string columnName, out string table, useSelectSyntax: true);
             SelectWithCastAndValidateValue(
@@ -160,9 +195,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         }
 
         [SkippableTheory]
-        [InlineData("VARCHAR", "'ABC'", ArrowTypeId.Decimal128, "TRY_TO_NUMERIC", null)] // Non numeric value
-        [InlineData("VARCHAR", "'3'", ArrowTypeId.Boolean, "TRY_TO_BOOLEAN", null)] // Non boolean value
-        [InlineData("VARCHAR", "'31/12/1970'", ArrowTypeId.Timestamp, "TRY_TO_TIMESTAMP_TZ", null)] // Non date value
+        [InlineData(VARCHAR, "'ABC'", ArrowTypeId.Decimal128, TRY_TO_NUMERIC, null)] // Non numeric value
+        [InlineData(VARCHAR, "'3'", ArrowTypeId.Boolean, TRY_TO_BOOLEAN, null)] // Non boolean value
+        [InlineData(VARCHAR, "'31/12/1970'", ArrowTypeId.Timestamp, TRY_TO_TIMESTAMP_TZ, null)] // Non date value
         public void TestTryCastNegative(
             string columnSpecification,
             string sourceValue,
@@ -181,7 +216,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
-        private void InitializeTest(string columnSpecification, string sourceValue, out string columnName, out string table, bool useSelectSyntax = false)
+        private void InitializeTest(
+            string columnSpecification,
+            string sourceValue,
+            out string columnName,
+            out string table,
+            bool useSelectSyntax = false)
         {
             columnName = COLUMN_NAME;
             table = CreateTemporaryTable(
