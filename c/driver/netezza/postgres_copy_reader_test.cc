@@ -29,7 +29,7 @@ namespace adbcpq {
 
 class PostgresCopyStreamTester {
  public:
-  ArrowErrorCode Init(const PostgresType& root_type, ArrowError* error = nullptr) {
+  ArrowErrorCode Init(const NetezzaType& root_type, ArrowError* error = nullptr) {
     NANOARROW_RETURN_NOT_OK(reader_.Init(root_type));
     NANOARROW_RETURN_NOT_OK(reader_.InferOutputSchema(error));
     NANOARROW_RETURN_NOT_OK(reader_.InitFieldReaders(error));
@@ -108,8 +108,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBoolean) {
   data.data.as_uint8 = kTestPgCopyBoolean;
   data.size_bytes = sizeof(kTestPgCopyBoolean);
 
-  auto col_type = PostgresType(PostgresTypeId::kBool);
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kBool);
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -179,8 +179,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadSmallInt) {
   data.data.as_uint8 = kTestPgCopySmallInt;
   data.size_bytes = sizeof(kTestPgCopySmallInt);
 
-  auto col_type = PostgresType(PostgresTypeId::kInt2);
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kInt2);
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -274,8 +274,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadInteger) {
   data.data.as_uint8 = kTestPgCopyInteger;
   data.size_bytes = sizeof(kTestPgCopyInteger);
 
-  auto col_type = PostgresType(PostgresTypeId::kInt4);
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kInt4);
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -346,8 +346,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBigInt) {
   data.data.as_uint8 = kTestPgCopyBigInt;
   data.size_bytes = sizeof(kTestPgCopyBigInt);
 
-  auto col_type = PostgresType(PostgresTypeId::kInt8);
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kInt8);
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -417,8 +417,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadReal) {
   data.data.as_uint8 = kTestPgCopyReal;
   data.size_bytes = sizeof(kTestPgCopyReal);
 
-  auto col_type = PostgresType(PostgresTypeId::kFloat4);
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kFloat4);
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -489,8 +489,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadDoublePrecision) {
   data.data.as_uint8 = kTestPgCopyDoublePrecision;
   data.size_bytes = sizeof(kTestPgCopyDoublePrecision);
 
-  auto col_type = PostgresType(PostgresTypeId::kFloat8);
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kFloat8);
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -558,8 +558,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadDate) {
   data.data.as_uint8 = kTestPgCopyDate;
   data.size_bytes = sizeof(kTestPgCopyDate);
 
-  auto col_type = PostgresType(PostgresTypeId::kDate);
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kDate);
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -639,8 +639,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
   data.data.as_uint8 = kTestPgCopyNumeric;
   data.size_bytes = sizeof(kTestPgCopyNumeric);
 
-  auto col_type = PostgresType(PostgresTypeId::kNumeric);
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kNumeric);
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -707,8 +707,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadTimestamp) {
   data.data.as_uint8 = kTestPgCopyTimestamp;
   data.size_bytes = sizeof(kTestPgCopyTimestamp);
 
-  auto col_type = PostgresType(PostgresTypeId::kTimestamp);
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kTimestamp);
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -827,8 +827,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadInterval) {
   data.data.as_uint8 = kTestPgCopyInterval;
   data.size_bytes = sizeof(kTestPgCopyInterval);
 
-  auto col_type = PostgresType(PostgresTypeId::kInterval);
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kInterval);
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -982,8 +982,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadText) {
   data.data.as_uint8 = kTestPgCopyText;
   data.size_bytes = sizeof(kTestPgCopyText);
 
-  auto col_type = PostgresType(PostgresTypeId::kText);
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kText);
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -1080,8 +1080,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBinary) {
   data.data.as_uint8 = kTestPgCopyBinary;
   data.size_bytes = sizeof(kTestPgCopyBinary);
 
-  auto col_type = PostgresType(PostgresTypeId::kBytea);
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kBytea);
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -1175,8 +1175,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadArray) {
   data.data.as_uint8 = kTestPgCopyIntegerArray;
   data.size_bytes = sizeof(kTestPgCopyIntegerArray);
 
-  auto col_type = PostgresType(PostgresTypeId::kInt4).Array();
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kInt4).Array();
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;
@@ -1234,10 +1234,10 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadCustomRecord) {
   data.data.as_uint8 = kTestPgCopyCustomRecord;
   data.size_bytes = sizeof(kTestPgCopyCustomRecord);
 
-  auto col_type = PostgresType(PostgresTypeId::kRecord);
-  col_type.AppendChild("nested1", PostgresType(PostgresTypeId::kInt4));
-  col_type.AppendChild("nested2", PostgresType(PostgresTypeId::kFloat8));
-  PostgresType input_type(PostgresTypeId::kRecord);
+  auto col_type = NetezzaType(NetezzaTypeId::kRecord);
+  col_type.AppendChild("nested1", NetezzaType(NetezzaTypeId::kInt4));
+  col_type.AppendChild("nested2", NetezzaType(NetezzaTypeId::kFloat8));
+  NetezzaType input_type(NetezzaTypeId::kRecord);
   input_type.AppendChild("col", col_type);
 
   PostgresCopyStreamTester tester;

@@ -168,9 +168,9 @@ class PostgresCopyFieldReader {
 
   virtual ~PostgresCopyFieldReader() {}
 
-  void Init(const PostgresType& pg_type) { pg_type_ = pg_type; }
+  void Init(const NetezzaType& pg_type) { pg_type_ = pg_type; }
 
-  const PostgresType& InputType() const { return pg_type_; }
+  const NetezzaType& InputType() const { return pg_type_; }
 
   virtual ArrowErrorCode InitSchema(ArrowSchema* schema) {
     NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view_, schema, nullptr));
@@ -208,7 +208,7 @@ class PostgresCopyFieldReader {
   }
 
  protected:
-  PostgresType pg_type_;
+  NetezzaType pg_type_;
   ArrowSchemaView schema_view_;
   ArrowBitmap* validity_;
   ArrowBuffer* offsets_;
@@ -768,7 +768,7 @@ class PostgresCopyFieldTupleReader : public PostgresCopyFieldReader {
 // and gives a nice error for Postgres type -> Arrow type conversions that aren't
 // supported.
 static inline ArrowErrorCode ErrorCantConvert(ArrowError* error,
-                                              const PostgresType& pg_type,
+                                              const NetezzaType& pg_type,
                                               const ArrowSchemaView& schema_view) {
   ArrowErrorSet(error, "Can't convert Postgres type '%s' to Arrow type '%s'",
                 pg_type.typname().c_str(),
@@ -776,7 +776,7 @@ static inline ArrowErrorCode ErrorCantConvert(ArrowError* error,
   return EINVAL;
 }
 
-static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
+static inline ArrowErrorCode MakeCopyFieldReader(const NetezzaType& pg_type,
                                                  ArrowSchema* schema,
                                                  PostgresCopyFieldReader** out,
                                                  ArrowError* error) {
@@ -786,7 +786,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
   switch (schema_view.type) {
     case NANOARROW_TYPE_BOOL:
       switch (pg_type.type_id()) {
-        case PostgresTypeId::kBool:
+        case NetezzaTypeId::kBool:
           *out = new PostgresCopyBooleanFieldReader();
           return NANOARROW_OK;
         default:
@@ -795,7 +795,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
 
     case NANOARROW_TYPE_INT16:
       switch (pg_type.type_id()) {
-        case PostgresTypeId::kInt2:
+        case NetezzaTypeId::kInt2:
           *out = new PostgresCopyNetworkEndianFieldReader<int16_t>();
           return NANOARROW_OK;
         default:
@@ -804,9 +804,9 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
 
     case NANOARROW_TYPE_INT32:
       switch (pg_type.type_id()) {
-        case PostgresTypeId::kInt4:
-        case PostgresTypeId::kOid:
-        case PostgresTypeId::kRegproc:
+        case NetezzaTypeId::kInt4:
+        case NetezzaTypeId::kOid:
+        case NetezzaTypeId::kRegproc:
           *out = new PostgresCopyNetworkEndianFieldReader<int32_t>();
           return NANOARROW_OK;
         default:
@@ -815,7 +815,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
 
     case NANOARROW_TYPE_INT64:
       switch (pg_type.type_id()) {
-        case PostgresTypeId::kInt8:
+        case NetezzaTypeId::kInt8:
           *out = new PostgresCopyNetworkEndianFieldReader<int64_t>();
           return NANOARROW_OK;
         default:
@@ -824,7 +824,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
 
     case NANOARROW_TYPE_FLOAT:
       switch (pg_type.type_id()) {
-        case PostgresTypeId::kFloat4:
+        case NetezzaTypeId::kFloat4:
           *out = new PostgresCopyNetworkEndianFieldReader<uint32_t>();
           return NANOARROW_OK;
         default:
@@ -833,7 +833,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
 
     case NANOARROW_TYPE_DOUBLE:
       switch (pg_type.type_id()) {
-        case PostgresTypeId::kFloat8:
+        case NetezzaTypeId::kFloat8:
           *out = new PostgresCopyNetworkEndianFieldReader<uint64_t>();
           return NANOARROW_OK;
         default:
@@ -842,14 +842,14 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
 
     case NANOARROW_TYPE_STRING:
       switch (pg_type.type_id()) {
-        case PostgresTypeId::kChar:
-        case PostgresTypeId::kVarchar:
-        case PostgresTypeId::kText:
-        case PostgresTypeId::kBpchar:
-        case PostgresTypeId::kName:
+        case NetezzaTypeId::kChar:
+        case NetezzaTypeId::kVarchar:
+        case NetezzaTypeId::kText:
+        case NetezzaTypeId::kBpchar:
+        case NetezzaTypeId::kName:
           *out = new PostgresCopyBinaryFieldReader();
           return NANOARROW_OK;
-        case PostgresTypeId::kNumeric:
+        case NetezzaTypeId::kNumeric:
           *out = new PostgresCopyNumericFieldReader();
           return NANOARROW_OK;
         default:
@@ -864,7 +864,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
 
     case NANOARROW_TYPE_LIST:
       switch (pg_type.type_id()) {
-        case PostgresTypeId::kArray: {
+        case NetezzaTypeId::kArray: {
           if (pg_type.n_children() != 1) {
             ArrowErrorSet(
                 error, "Expected Postgres array type to have one child but found %ld",
@@ -890,7 +890,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
 
     case NANOARROW_TYPE_STRUCT:
       switch (pg_type.type_id()) {
-        case PostgresTypeId::kRecord: {
+        case NetezzaTypeId::kRecord: {
           if (pg_type.n_children() != schema->n_children) {
             ArrowErrorSet(error,
                           "Can't convert Postgres record type with %ld chlidren to Arrow "
@@ -933,8 +933,8 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
 
     case NANOARROW_TYPE_TIMESTAMP:
       switch (pg_type.type_id()) {
-        case PostgresTypeId::kTimestamp:
-        case PostgresTypeId::kTimestamptz: {
+        case NetezzaTypeId::kTimestamp:
+        case NetezzaTypeId::kTimestamptz: {
           // 2000-01-01 00:00:00.000000 in microseconds
           constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
           *out = new PostgresCopyNetworkEndianFieldReader<int64_t,
@@ -946,7 +946,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
       }
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
       switch (pg_type.type_id()) {
-        case PostgresTypeId::kInterval: {
+        case NetezzaTypeId::kInterval: {
           *out = new PostgresCopyIntervalFieldReader();
           return NANOARROW_OK;
         }
@@ -961,8 +961,8 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
 
 class PostgresCopyStreamReader {
  public:
-  ArrowErrorCode Init(PostgresType pg_type) {
-    if (pg_type.type_id() != PostgresTypeId::kRecord) {
+  ArrowErrorCode Init(NetezzaType pg_type) {
+    if (pg_type.type_id() != NetezzaTypeId::kRecord) {
       return EINVAL;
     }
 
@@ -1009,10 +1009,10 @@ class PostgresCopyStreamReader {
       return EINVAL;
     }
 
-    const PostgresType& root_type = root_reader_.InputType();
+    const NetezzaType& root_type = root_reader_.InputType();
 
     for (int64_t i = 0; i < root_type.n_children(); i++) {
-      const PostgresType& child_type = root_type.child(i);
+      const NetezzaType& child_type = root_type.child(i);
       PostgresCopyFieldReader* child_reader;
       NANOARROW_RETURN_NOT_OK(
           MakeCopyFieldReader(child_type, schema_->children[i], &child_reader, error));
@@ -1091,10 +1091,10 @@ class PostgresCopyStreamReader {
     return NANOARROW_OK;
   }
 
-  const PostgresType& pg_type() const { return pg_type_; }
+  const NetezzaType& pg_type() const { return pg_type_; }
 
  private:
-  PostgresType pg_type_;
+  NetezzaType pg_type_;
   PostgresCopyFieldTupleReader root_reader_;
   nanoarrow::UniqueSchema schema_;
   nanoarrow::UniqueArray array_;

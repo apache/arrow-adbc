@@ -1202,7 +1202,7 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
     const Oid pg_oid =
         static_cast<uint32_t>(std::strtol(row[1].data, /*str_end=*/nullptr, /*base=*/10));
 
-    PostgresType pg_type;
+    NetezzaType pg_type;
     if (type_resolver_->Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
       SetError(error, "%s%d%s%s%s%" PRIu32, "Column #", row_counter + 1, " (\"", colname,
                "\") has unknown type code ", pg_oid);
