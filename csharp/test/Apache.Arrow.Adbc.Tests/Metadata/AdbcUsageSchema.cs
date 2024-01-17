@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -15,33 +15,16 @@
 * limitations under the License.
 */
 
-using System.Collections.Generic;
-
 namespace Apache.Arrow.Adbc.Tests.Metadata
 {
-    /// <summary>
-    /// Represents the table in the metadata.
-    /// </summary>
-    public class AdbcTable
+    public class AdbcUsageSchema
     {
-        /// <summary>
-        /// Table name
-        /// </summary>
-        public string Name { get; set; }
+        public string FkCatalog { get; set; }
 
-        /// <summary>
-        /// Table type
-        /// </summary>
-        public string Type { get; set; }
+        public string FkDbSchema { get; set; }
 
-        /// <summary>
-        /// List of columns associated with the table.
-        /// </summary>
-        public List<AdbcColumn> Columns { get; set; }
+        public string FkTable { get; set; }
 
-        /// <summary>
-        /// The constrains associated with the table.
-        /// </summary>
-        public List<AdbcConstraint> Constraints { get;  set; }
+        public string FkColumnName { get; set; }
     }
 }

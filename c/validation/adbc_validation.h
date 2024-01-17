@@ -51,8 +51,7 @@ class DriverQuirks {
   }
 
   virtual AdbcStatusCode DropTable(struct AdbcConnection* connection,
-                                   const std::string& name,
-                                   const std::string& db_schema,
+                                   const std::string& name, const std::string& db_schema,
                                    struct AdbcError* error) const {
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
@@ -77,8 +76,8 @@ class DriverQuirks {
 
   /// \brief Create a schema for testing.
   virtual AdbcStatusCode EnsureDbSchema(struct AdbcConnection* connection,
-                                      const std::string& name,
-                                      struct AdbcError* error) const {
+                                        const std::string& name,
+                                        struct AdbcError* error) const {
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
@@ -489,7 +488,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestTemporaryAppend) { TestSqlIngestTemporaryAppend(); }         \
   TEST_F(FIXTURE, SqlIngestTemporaryReplace) { TestSqlIngestTemporaryReplace(); }       \
   TEST_F(FIXTURE, SqlIngestTemporaryExclusive) { TestSqlIngestTemporaryExclusive(); }   \
-  TEST_F(FIXTURE, SqlIngestPrimaryKey) { TestSqlIngestPrimaryKey(); }   \
+  TEST_F(FIXTURE, SqlIngestPrimaryKey) { TestSqlIngestPrimaryKey(); }                   \
   TEST_F(FIXTURE, SqlPartitionedInts) { TestSqlPartitionedInts(); }                     \
   TEST_F(FIXTURE, SqlPrepareGetParameterSchema) { TestSqlPrepareGetParameterSchema(); } \
   TEST_F(FIXTURE, SqlPrepareSelectNoParams) { TestSqlPrepareSelectNoParams(); }         \

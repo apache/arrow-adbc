@@ -119,7 +119,7 @@ class Option {
 
   Option() : type_(TYPE_MISSING) {}
   explicit Option(const std::string& value) : type_(TYPE_STRING), value_string_(value) {}
-  explicit Option(const std::basic_string<uint8_t>& value)
+  explicit Option(const std::vector<uint8_t>& value)
       : type_(TYPE_BYTES), value_bytes_(value) {}
   explicit Option(double value) : type_(TYPE_DOUBLE), value_double_(value) {}
   explicit Option(int64_t value) : type_(TYPE_INT), value_int_(value) {}
@@ -128,7 +128,7 @@ class Option {
 
   const std::string& GetStringUnsafe() const { return value_string_; }
 
-  const std::basic_string<uint8_t>& GetBytesUnsafe() const { return value_bytes_; }
+  const std::vector<uint8_t>& GetBytesUnsafe() const { return value_bytes_; }
 
   int64_t GetIntUnsafe() const { return value_int_; }
 
@@ -137,7 +137,7 @@ class Option {
  private:
   Type type_;
   std::string value_string_;
-  std::basic_string<uint8_t> value_bytes_;
+  std::vector<uint8_t> value_bytes_;
   double value_double_;
   int64_t value_int_;
 
@@ -165,7 +165,7 @@ class Option {
   AdbcStatusCode CGet(uint8_t* out, size_t* length) const {
     switch (type_) {
       case TYPE_BYTES: {
-        const std::basic_string<uint8_t>& value = GetBytesUnsafe();
+        const std::vector<uint8_t>& value = GetBytesUnsafe();
         if (*length < value.size()) {
           *length = value.size();
         } else {
@@ -266,7 +266,7 @@ class ObjectBase {
 
   AdbcStatusCode CSetOptionBytes(const char* key, const uint8_t* value, size_t length,
                                  AdbcError* error) {
-    std::basic_string<uint8_t> cppvalue(value, length);
+    std::vector<uint8_t> cppvalue(value, value + length);
     Option option(cppvalue);
     return SetOption(key, option);
   }

@@ -107,30 +107,30 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             switch (field.Type)
             {
                 case "INTEGER" or "INT64":
-                    return Int64Type.Default;
+                    return GetType(field, Int64Type.Default);
                 case "FLOAT" or "FLOAT64":
-                    return DoubleType.Default;
+                    return GetType(field, DoubleType.Default);
                 case "BOOL" or "BOOLEAN":
-                    return BooleanType.Default;
+                    return GetType(field, BooleanType.Default);
                 case "STRING":
-                    return StringType.Default;
+                    return GetType(field, StringType.Default);
                 case "BYTES":
-                    return BinaryType.Default;
+                    return GetType(field, BinaryType.Default);
                 case "DATETIME":
-                    return TimestampType.Default;
+                    return GetType(field, TimestampType.Default);
                 case "TIMESTAMP":
-                    return TimestampType.Default;
+                    return GetType(field, TimestampType.Default);
                 case "TIME":
-                    return Time64Type.Default;
+                    return GetType(field, Time64Type.Default);
                 case "DATE":
-                    return Date64Type.Default;
+                    return GetType(field, Date64Type.Default);
                 case "RECORD" or "STRUCT":
                     // its a json string
-                    return StringType.Default;
+                    return GetType(field, StringType.Default);
 
                 // treat these values as strings
                 case "GEOGRAPHY" or "JSON":
-                    return StringType.Default;
+                    return GetType(field, StringType.Default);
 
                 // get schema cannot get precision and scale for NUMERIC or BIGNUMERIC types
                 // instead, the max values are returned from BigQuery
@@ -138,13 +138,21 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 // and discussion in https://github.com/apache/arrow-adbc/pull/1192#discussion_r1365987279
 
                 case "NUMERIC" or "DECIMAL":
-                    return new Decimal128Type(38, 9);
+                    return GetType(field, new Decimal128Type(38, 9));
 
                 case "BIGNUMERIC" or "BIGDECIMAL":
-                    return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? StringType.Default : new Decimal256Type(76, 38);
+                    return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? GetType(field, StringType.Default) : GetType(field, new Decimal256Type(76, 38));
 
                 default: throw new InvalidOperationException($"{field.Type} cannot be translated");
             }
+        }
+
+        private IArrowType GetType(TableFieldSchema field, IArrowType type)
+        {
+            if (field.Mode == "REPEATED")
+                return new ListType(type);
+
+            return type;
         }
 
         static IArrowReader ReadChunk(BigQueryReadClient readClient, string streamName)
