@@ -1208,12 +1208,13 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
 
   // 2. Execute the query with COPY to get binary tuples
   {
-    std::string copy_query = "create external table pqrs '/dev/stdout' using (format internal compress) as select * from t1 where a = null analyze";
+    // std::string copy_query = "COPY (" + query_ + ") TO STDOUT (FORMAT BINARY)";
+    std::string copy_query = query_ ;
     reader_.result_ =
         PQexecParams(connection_->conn(), copy_query.c_str(), /*nParams=*/0,
                      /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                      /*paramLengths=*/nullptr, /*paramFormats=*/nullptr, kPgBinaryFormat);
-    if (PQresultStatus(reader_.result_) != PGRES_COMMAND_OK) {
+    if (PQresultStatus(reader_.result_) != PGRES_TUPLES_OK) {
       AdbcStatusCode code = SetError(
           error, reader_.result_,
           "[libpq] Failed to execute query: could not begin COPY: %s\nQuery was: %s",
@@ -1522,6 +1523,8 @@ AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
     return code;
   }
   // PQclear(result); // commented since we dont want to clear now, and resolve result type in next step.
+
+  /* PQdescribePrepared is not yet implemented in Netezza's libpq. */
   // result = PQdescribePrepared(connection_->conn(), /*stmtName=*/"");
   // if (PQresultStatus(result) != PGRES_COMMAND_OK) {
   //   AdbcStatusCode code =

@@ -541,59 +541,59 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
     case PostgresTypeId::kAnycompatiblearray:
       return "anycompatiblearray_recv";
     case PostgresTypeId::kArray:
-      return "array_recv";
+      return "ARRAY_IN";
     case PostgresTypeId::kBit:
       return "bit_recv";
     case PostgresTypeId::kBool:
-      return "boolrecv";
+      return "BOOLIN";
     case PostgresTypeId::kBox:
       return "box_recv";
     case PostgresTypeId::kBpchar:
-      return "bpcharrecv";
+      return "BPCHARIN";
     case PostgresTypeId::kBrinBloomSummary:
       return "brin_bloom_summary_recv";
     case PostgresTypeId::kBrinMinmaxMultiSummary:
       return "brin_minmax_multi_summary_recv";
     case PostgresTypeId::kBytea:
-      return "bytearecv";
+      return "BYTEAIN";
     case PostgresTypeId::kCash:
       return "cash_recv";
     case PostgresTypeId::kChar:
-      return "charrecv";
+      return "CHARIN";
     case PostgresTypeId::kCidr:
       return "cidr_recv";
     case PostgresTypeId::kCid:
-      return "cidrecv";
+      return "CIDIN";
     case PostgresTypeId::kCircle:
       return "circle_recv";
     case PostgresTypeId::kCstring:
       return "cstring_recv";
     case PostgresTypeId::kDate:
-      return "date_recv";
+      return "DATE_IN";
     case PostgresTypeId::kDomain:
       return "domain_recv";
     case PostgresTypeId::kFloat4:
-      return "float4recv";
+      return "FLOAT4IN";
     case PostgresTypeId::kFloat8:
-      return "float8recv";
+      return "FLOAT8IN";
     case PostgresTypeId::kInet:
       return "inet_recv";
     case PostgresTypeId::kInt2:
-      return "int2recv";
+      return "INT2IN";
     case PostgresTypeId::kInt2vector:
-      return "int2vectorrecv";
+      return "INT2VECTORIN";
     case PostgresTypeId::kInt4:
-      return "int4recv";
+      return "INT4IN";
     case PostgresTypeId::kInt8:
-      return "int8recv";
+      return "INT8IN";
     case PostgresTypeId::kInterval:
-      return "interval_recv";
+      return "INTERVAL_IN";
     case PostgresTypeId::kJson:
-      return "json_recv";
+      return "JSON_IN";
     case PostgresTypeId::kJsonb:
-      return "jsonb_recv";
+      return "JSONB_IN";
     case PostgresTypeId::kJsonpath:
-      return "jsonpath_recv";
+      return "JSONPATH_IN";
     case PostgresTypeId::kLine:
       return "line_recv";
     case PostgresTypeId::kLseg:
@@ -609,7 +609,7 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
     case PostgresTypeId::kNumeric:
       return "numeric_recv";
     case PostgresTypeId::kOid:
-      return "oidrecv";
+      return "OIDIN";
     case PostgresTypeId::kOidvector:
       return "oidvectorrecv";
     case PostgresTypeId::kPath:
@@ -659,17 +659,17 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
     case PostgresTypeId::kRegtype:
       return "regtyperecv";
     case PostgresTypeId::kText:
-      return "textrecv";
+      return "TEXTIN";
     case PostgresTypeId::kTid:
-      return "tidrecv";
+      return "TIDIN";
     case PostgresTypeId::kTime:
-      return "time_recv";
+      return "TIME_IN";
     case PostgresTypeId::kTimestamp:
-      return "timestamp_recv";
+      return "TIMESTAMP_IN";
     case PostgresTypeId::kTimestamptz:
       return "timestamptz_recv";
     case PostgresTypeId::kTimetz:
-      return "timetz_recv";
+      return "TIMETZ_IN";
     case PostgresTypeId::kTsquery:
       return "tsqueryrecv";
     case PostgresTypeId::kTsvector:
@@ -677,7 +677,7 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
     case PostgresTypeId::kTxidSnapshot:
       return "txid_snapshot_recv";
     case PostgresTypeId::kUnknown:
-      return "unknownrecv";
+      return "TEXTIN";
     case PostgresTypeId::kUuid:
       return "uuid_recv";
     case PostgresTypeId::kVarbit:
@@ -689,7 +689,7 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
     case PostgresTypeId::kXid8:
       return "xid8recv";
     case PostgresTypeId::kXid:
-      return "xidrecv";
+      return "XIDIN";
     case PostgresTypeId::kXml:
       return "xml_recv";
     default:
@@ -710,55 +710,55 @@ static inline const char* PostgresTypname(PostgresTypeId type_id) {
     case PostgresTypeId::kBit:
       return "bit";
     case PostgresTypeId::kBool:
-      return "bool";
+      return "BOOL";
     case PostgresTypeId::kBox:
       return "box";
     case PostgresTypeId::kBpchar:
-      return "bpchar";
+      return "BPCHAR";
     case PostgresTypeId::kBrinBloomSummary:
       return "brin_bloom_summary";
     case PostgresTypeId::kBrinMinmaxMultiSummary:
       return "brin_minmax_multi_summary";
     case PostgresTypeId::kBytea:
-      return "bytea";
+      return "BYTEA";
     case PostgresTypeId::kCash:
       return "cash";
     case PostgresTypeId::kChar:
-      return "char";
+      return "CHAR";
     case PostgresTypeId::kCidr:
       return "cidr";
     case PostgresTypeId::kCid:
-      return "cid";
+      return "CID";
     case PostgresTypeId::kCircle:
       return "circle";
     case PostgresTypeId::kCstring:
       return "cstring";
     case PostgresTypeId::kDate:
-      return "date";
+      return "DATE";
     case PostgresTypeId::kDomain:
       return "domain";
     case PostgresTypeId::kFloat4:
-      return "float4";
+      return "FLOAT4";
     case PostgresTypeId::kFloat8:
-      return "float8";
+      return "FLOAT8";
     case PostgresTypeId::kInet:
       return "inet";
     case PostgresTypeId::kInt2:
-      return "int2";
+      return "INT2";
     case PostgresTypeId::kInt2vector:
-      return "int2vector";
+      return "INT2VECTOR";
     case PostgresTypeId::kInt4:
-      return "int4";
+      return "INT4";
     case PostgresTypeId::kInt8:
-      return "int8";
+      return "INT8";
     case PostgresTypeId::kInterval:
-      return "interval";
+      return "INTERVAL";
     case PostgresTypeId::kJson:
-      return "json";
+      return "JSON";
     case PostgresTypeId::kJsonb:
-      return "jsonb";
+      return "JSONB";
     case PostgresTypeId::kJsonpath:
-      return "jsonpath";
+      return "JSONBPATH";
     case PostgresTypeId::kLine:
       return "line";
     case PostgresTypeId::kLseg:
@@ -772,11 +772,11 @@ static inline const char* PostgresTypname(PostgresTypeId type_id) {
     case PostgresTypeId::kName:
       return "name";
     case PostgresTypeId::kNumeric:
-      return "numeric";
+      return "NUMERIC";
     case PostgresTypeId::kOid:
-      return "oid";
+      return "OID";
     case PostgresTypeId::kOidvector:
-      return "oidvector";
+      return "OICVECTOR";
     case PostgresTypeId::kPath:
       return "path";
     case PostgresTypeId::kPgNodeTree:
@@ -818,23 +818,23 @@ static inline const char* PostgresTypname(PostgresTypeId type_id) {
     case PostgresTypeId::kRegprocedure:
       return "regprocedure";
     case PostgresTypeId::kRegproc:
-      return "regproc";
+      return "REGPROC";
     case PostgresTypeId::kRegrole:
       return "regrole";
     case PostgresTypeId::kRegtype:
       return "regtype";
     case PostgresTypeId::kText:
-      return "text";
+      return "TEXT";
     case PostgresTypeId::kTid:
-      return "tid";
+      return "TID";
     case PostgresTypeId::kTime:
-      return "time";
+      return "TIME";
     case PostgresTypeId::kTimestamp:
-      return "timestamp";
+      return "TIMESTAMP";
     case PostgresTypeId::kTimestamptz:
       return "timestamptz";
     case PostgresTypeId::kTimetz:
-      return "timetz";
+      return "TIMETZ";
     case PostgresTypeId::kTsquery:
       return "tsquery";
     case PostgresTypeId::kTsvector:
@@ -842,19 +842,19 @@ static inline const char* PostgresTypname(PostgresTypeId type_id) {
     case PostgresTypeId::kTxidSnapshot:
       return "txid_snapshot";
     case PostgresTypeId::kUnknown:
-      return "unknown";
+      return "UNKNOWN";
     case PostgresTypeId::kUuid:
       return "uuid";
     case PostgresTypeId::kVarbit:
       return "varbit";
     case PostgresTypeId::kVarchar:
-      return "varchar";
+      return "VARCHAR";
     case PostgresTypeId::kVoid:
       return "void";
     case PostgresTypeId::kXid8:
       return "xid8";
     case PostgresTypeId::kXid:
-      return "xid";
+      return "XID";
     case PostgresTypeId::kXml:
       return "xml";
     default:

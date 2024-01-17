@@ -127,9 +127,12 @@ AdbcStatusCode PostgresDatabase::Connect(PGconn** conn, struct AdbcError* error)
   + " password=" + credentials.substr(credentials.find(':') + 1)
   + " bnr_connect=adbc";
 
-  std::string myuri = "host=localhost port=5480 dbname=system user=admin password=password";
   *conn = PQconnectdb(converted_uri.c_str());
 
+  /*
+  * Enable debug trace to libpq. So that we know what's going to the backend and
+  * what's coming back.
+  */
   FILE* logfile;
   logfile = fopen("/tmp/adbc_libpq.log", "a+");
   PQtrace(*conn, logfile);
