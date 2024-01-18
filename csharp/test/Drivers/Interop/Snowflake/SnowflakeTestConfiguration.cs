@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
@@ -77,6 +78,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// </summary>
         [JsonPropertyName("useHighPrecision")]
         public bool UseHighPrecision { get; set; } = true;
+
+        /// <summary>
+        /// The Snowflake role. The default is PUBLIC.
+        /// </summary>
+        [JsonPropertyName("role")]
+        public string Role { get; set; } = "PUBLIC";
 
         /// <summary>
         /// The snowflake Authentication
