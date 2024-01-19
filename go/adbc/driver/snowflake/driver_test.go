@@ -336,6 +336,7 @@ func (suite *SnowflakeTests) TearDownTest() {
 }
 
 func (suite *SnowflakeTests) TearDownSuite() {
+	suite.NoError(suite.db.Close())
 	suite.db = nil
 }
 
@@ -464,21 +465,21 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 		xdbcDateTimeSub  []string
 	}{
 		{
-			"BASIC",                       //name
-			[]string{"int64s", "strings"}, //colNames
-			[]string{"1", "2"},            //positions
-			[]string{"NUMBER", "TEXT"},    //dataTypes
-			[]string{"", ""},              //comments
-			[]string{"9", "13"},           //xdbcDataType
-			[]string{"NUMBER", "TEXT"},    //xdbcTypeName
-			[]string{"-5", "12"},          //xdbcSqlDataType
-			[]string{"1", "1"},            //xdbcNullable
-			[]string{"YES", "YES"},        //xdbcIsNullable
-			[]string{"0", "0"},            //xdbcScale
-			[]string{"10", "0"},           //xdbcNumPrecRadix
-			[]string{"38", "16777216"},    //xdbcCharMaxLen (xdbcPrecision)
-			[]string{"0", "16777216"},     //xdbcCharOctetLen
-			[]string{"-5", "12", "0"},     //xdbcDateTimeSub
+			"BASIC",                       // name
+			[]string{"int64s", "strings"}, // colNames
+			[]string{"1", "2"},            // positions
+			[]string{"NUMBER", "TEXT"},    // dataTypes
+			[]string{"", ""},              // comments
+			[]string{"9", "13"},           // xdbcDataType
+			[]string{"NUMBER", "TEXT"},    // xdbcTypeName
+			[]string{"-5", "12"},          // xdbcSqlDataType
+			[]string{"1", "1"},            // xdbcNullable
+			[]string{"YES", "YES"},        // xdbcIsNullable
+			[]string{"0", "0"},            // xdbcScale
+			[]string{"10", "0"},           // xdbcNumPrecRadix
+			[]string{"38", "16777216"},    // xdbcCharMaxLen (xdbcPrecision)
+			[]string{"0", "16777216"},     // xdbcCharOctetLen
+			[]string{"-5", "12", "0"},     // xdbcDateTimeSub
 		},
 	}
 
@@ -576,20 +577,20 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 
 			suite.False(rdr.Next())
 			suite.True(foundExpected)
-			suite.Equal(tt.colnames, colnames)                  //colNames
-			suite.Equal(tt.positions, positions)                //positions
-			suite.Equal(tt.comments, comments)                  //comments
-			suite.Equal(tt.xdbcDataType, xdbcDataTypes)         //xdbcDataType
-			suite.Equal(tt.dataTypes, dataTypes)                //dataTypes
-			suite.Equal(tt.xdbcTypeName, xdbcTypeNames)         //xdbcTypeName
-			suite.Equal(tt.xdbcCharMaxLen, xdbcCharMaxLens)     //xdbcCharMaxLen
-			suite.Equal(tt.xdbcScale, xdbcScales)               //xdbcScale
-			suite.Equal(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs) //xdbcNumPrecRadix
-			suite.Equal(tt.xdbcNullable, xdbcNullables)         //xdbcNullable
-			suite.Equal(tt.xdbcSqlDataType, xdbcSqlDataTypes)   //xdbcSqlDataType
-			suite.Equal(tt.xdbcDateTimeSub, xdbcDateTimeSub)    //xdbcDateTimeSub
-			suite.Equal(tt.xdbcCharOctetLen, xdbcCharOctetLen)  //xdbcCharOctetLen
-			suite.Equal(tt.xdbcIsNullable, xdbcIsNullables)     //xdbcIsNullable
+			suite.Equal(tt.colnames, colnames)                  // colNames
+			suite.Equal(tt.positions, positions)                // positions
+			suite.Equal(tt.comments, comments)                  // comments
+			suite.Equal(tt.xdbcDataType, xdbcDataTypes)         // xdbcDataType
+			suite.Equal(tt.dataTypes, dataTypes)                // dataTypes
+			suite.Equal(tt.xdbcTypeName, xdbcTypeNames)         // xdbcTypeName
+			suite.Equal(tt.xdbcCharMaxLen, xdbcCharMaxLens)     // xdbcCharMaxLen
+			suite.Equal(tt.xdbcScale, xdbcScales)               // xdbcScale
+			suite.Equal(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs) // xdbcNumPrecRadix
+			suite.Equal(tt.xdbcNullable, xdbcNullables)         // xdbcNullable
+			suite.Equal(tt.xdbcSqlDataType, xdbcSqlDataTypes)   // xdbcSqlDataType
+			suite.Equal(tt.xdbcDateTimeSub, xdbcDateTimeSub)    // xdbcDateTimeSub
+			suite.Equal(tt.xdbcCharOctetLen, xdbcCharOctetLen)  // xdbcCharOctetLen
+			suite.Equal(tt.xdbcIsNullable, xdbcIsNullables)     // xdbcIsNullable
 
 		})
 	}
@@ -605,6 +606,7 @@ func (suite *SnowflakeTests) TestNewDatabaseGetSetOptions() {
 	})
 	suite.NoError(err)
 	suite.NotNil(db)
+	defer suite.NoError(db.Close())
 
 	getSetDB, ok := db.(adbc.GetSetOptions)
 	suite.True(ok)
@@ -862,6 +864,7 @@ func ConnectWithJwt(uri, keyValue, passcode string) {
 	if err != nil {
 		panic(err)
 	}
+	defer db.Close()
 
 	cnxn, err := db.Open(context.Background())
 	if err != nil {
@@ -912,6 +915,7 @@ func (suite *SnowflakeTests) TestJwtPrivateKey() {
 		opts[driver.OptionJwtPrivateKey] = keyFile
 		db, err := suite.driver.NewDatabase(opts)
 		suite.NoError(err)
+		defer db.Close()
 		cnxn, err := db.Open(suite.ctx)
 		suite.NoError(err)
 		defer cnxn.Close()

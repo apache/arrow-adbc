@@ -714,16 +714,16 @@ func prepareTablesSQL(matchingCatalogNames []string, catalog *string, dbSchema *
 
 func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (string, []interface{}) {
 	prefixQuery := ""
-	for _, catalog_name := range matchingCatalogNames {
+	for _, catalogName := range matchingCatalogNames {
 		if prefixQuery != "" {
 			prefixQuery += " UNION ALL "
 		}
 		prefixQuery += `SELECT T.table_type,
 					C.*
 				FROM
-				"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES AS T
+				"` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES AS T
 			JOIN
-				"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.COLUMNS AS C
+				"` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.COLUMNS AS C
 			ON
 				T.table_catalog = C.table_catalog
 				AND T.table_schema = C.table_schema

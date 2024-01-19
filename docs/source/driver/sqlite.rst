@@ -140,6 +140,7 @@ shared across all connections.
             if err != nil {
                // handle error
             }
+            defer db.Close()
 
             cnxn, err := db.Open(context.Background())
             if err != nil {

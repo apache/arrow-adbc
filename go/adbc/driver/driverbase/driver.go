@@ -32,7 +32,7 @@ type DriverImpl interface {
 	NewDatabase(opts map[string]string) (adbc.Database, error)
 }
 
-// DatabaseImplBase is a struct that provides default implementations of the
+// DriverImplBase is a struct that provides default implementations of the
 // DriverImpl interface. It is meant to be used as a composite struct for a
 // driver's DriverImpl implementation.
 type DriverImplBase struct {
@@ -56,7 +56,7 @@ type driver struct {
 	impl DriverImpl
 }
 
-// NewDatabase wraps a DriverImpl to create an adbc.Driver.
+// NewDriver wraps a DriverImpl to create an adbc.Driver.
 func NewDriver(impl DriverImpl) adbc.Driver {
 	return &driver{impl}
 }

@@ -127,6 +127,7 @@ constructing the :cpp::class:`AdbcDatabase`.
             if err != nil {
                 // handle error
             }
+            defer db.Close()
 
             cnxn, err := db.Open(context.Background())
             if err != nil {
@@ -241,6 +242,7 @@ a listing).
             if err != nil {
                 // handle error
             }
+            defer db.Close()
 
             cnxn, err := db.Open(context.Background())
             if err != nil {

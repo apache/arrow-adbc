@@ -466,3 +466,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		useHighPrecision: d.useHighPrecision,
 	}, nil
 }
+
+func (d *databaseImpl) Close() error {
+	return nil
+}
