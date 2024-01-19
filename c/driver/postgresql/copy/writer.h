@@ -17,10 +17,12 @@
 
 #pragma once
 
+#include <charconv>
 #include <cinttypes>
 #include <limits>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -237,10 +239,9 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
       const int start_pos =
           digits_remaining < kDecDigits ? 0 : digits_remaining - kDecDigits;
       const size_t len = digits_remaining < 4 ? digits_remaining : kDecDigits;
-      char substr[kDecDigits + 1];
-      std::memcpy(substr, decimal_string + start_pos, len);
-      substr[len] = '\0';
-      int16_t val = static_cast<int16_t>(std::atoi(substr));
+      const std::string_view substr{decimal_string + start_pos, len};
+      int16_t val{};
+      std::from_chars(substr.data(), substr.data() + substr.size(), val);
 
       if (val == 0) {
         if (!seen_decimal && truncating_trailing_zeros) {
