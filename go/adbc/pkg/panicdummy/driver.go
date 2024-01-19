@@ -594,6 +594,7 @@ func PanicDummyDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcErro
 	h := (*(*cgo.Handle)(db.private_data))
 
 	cdb := h.Value().(*cDatabase)
+	cdb.db.Close()
 	cdb.db = nil
 	cdb.opts = nil
 	C.free(unsafe.Pointer(db.private_data))
