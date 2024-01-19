@@ -72,6 +72,7 @@ ADBC support in DuckDB requires the driver manager.
             if err != nil {
                // handle error
             }
+            defer db.Close()
 
             cnxn, err := db.Open(context.Background())
             if err != nil {
