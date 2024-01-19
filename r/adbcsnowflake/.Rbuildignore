@@ -9,3 +9,5 @@
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^src/\.go-cache$
+^src/\.go-path$

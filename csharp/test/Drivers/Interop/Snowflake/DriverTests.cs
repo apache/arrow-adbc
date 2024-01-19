@@ -83,12 +83,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             Dictionary<string, string> options = new Dictionary<string, string>();
             _snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_testConfiguration, out parameters);
 
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
-
-            parameters[SnowflakeParameters.DATABASE] = databaseName;
-            parameters[SnowflakeParameters.SCHEMA] = schemaName;
-
             _database = _snowflakeDriver.Open(parameters);
             _connection = _database.Connect(options);
         }
@@ -212,7 +206,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string tableName = _testConfiguration.Metadata.Table;
 
             using IArrowArrayStream stream = _connection.GetObjects(
-                    depth: AdbcConnection.GetObjectsDepth.All,
+                    depth: AdbcConnection.GetObjectsDepth.Tables,
                     catalogPattern: databaseName,
                     dbSchemaPattern: schemaName,
                     tableNamePattern: tableNamePattern,
@@ -233,6 +227,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             AdbcTable table = tables.Where((table) => string.Equals(table.Name, tableName)).FirstOrDefault();
             Assert.True(table != null, "table should not be null");
+            Assert.Equal("BASE TABLE", table.Type);
         }
 
         /// <summary>
@@ -258,8 +253,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
-
-            List<AdbcColumn> columns = catalogs
+            AdbcTable table = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
                 .FirstOrDefault()
@@ -267,8 +261,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 .Select(s => s.Tables)
                 .FirstOrDefault()
                 .Where(t => string.Equals(t.Name, tableName))
-                .Select(t => t.Columns)
                 .FirstOrDefault();
+
+
+            Assert.True(table != null, "table should not be null");
+            Assert.Equal("BASE TABLE", table.Type);
+            List<AdbcColumn> columns = table.Columns;
 
             Assert.True(columns != null, "Columns cannot be null");
             Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
