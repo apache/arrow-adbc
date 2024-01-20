@@ -218,7 +218,7 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 	g, gCtx := errgroup.WithContext(ctx)
 
 	// Read records into channel
-	records := make(chan arrow.Record)
+	records := make(chan arrow.Record, st.ingestOptions.writerConcurrency)
 	g.Go(func() error {
 		return readRecords(gCtx, st.streamBind, records)
 	})
