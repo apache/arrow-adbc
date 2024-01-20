@@ -17,7 +17,7 @@
 
 PKG_CPPFLAGS = -I../src -DADBC_EXPORT="" -D__USE_MINGW_ANSI_STDIO
 
-PKG_LIBS = -lpq -lpgcommon -lpgport -lssl -lcrypto -lz -lsecur32 -lws2_32 -lwldap32
+PKG_LIBS = -lpq -lpgcommon -lpgport -lssl -lcrypto -lz -lsecur32 -lws2_32 -lwldap32 -lcrypt32
 
 OBJECTS = init.o \
     error.o \
