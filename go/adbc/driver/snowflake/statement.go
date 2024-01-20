@@ -28,7 +28,6 @@ import (
 	"github.com/apache/arrow/go/v15/arrow/array"
 	"github.com/apache/arrow/go/v15/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
-	"golang.org/x/exp/constraints"
 )
 
 const (
@@ -410,128 +409,6 @@ func (st *statement) initIngest(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-//nolint:golint,unused
-type nativeArrowArr[T string | []byte] interface {
-	arrow.Array
-	Value(int) T
-}
-
-//nolint:golint,unused
-func convToArr[T string | []byte](arr nativeArrowArr[T]) interface{} {
-	if arr.Len() == 1 {
-		if arr.IsNull(0) {
-			return nil
-		}
-
-		return arr.Value(0)
-	}
-
-	v := make([]interface{}, arr.Len())
-	for i := 0; i < arr.Len(); i++ {
-		if arr.IsNull(i) {
-			continue
-		}
-		v[i] = arr.Value(i)
-	}
-	return gosnowflake.Array(&v)
-}
-
-//nolint:golint,unused
-func convMarshal(arr arrow.Array) interface{} {
-	if arr.Len() == 0 {
-		if arr.IsNull(0) {
-			return nil
-		}
-		return arr.ValueStr(0)
-	}
-
-	v := make([]interface{}, arr.Len())
-	for i := 0; i < arr.Len(); i++ {
-		if arr.IsNull(i) {
-			continue
-		}
-		v[i] = arr.ValueStr(i)
-	}
-	return gosnowflake.Array(&v)
-}
-
-// snowflake driver bindings only support specific types
-// int/int32/int64/float64/float32/bool/string/byte/time
-// so we have to cast anything else appropriately
-//
-//nolint:golint,unused
-func convToSlice[T, O constraints.Integer | constraints.Float](arr arrow.Array, vals []T) interface{} {
-	if arr.Len() == 1 {
-		if arr.IsNull(0) {
-			return nil
-		}
-
-		return vals[0]
-	}
-
-	out := make([]interface{}, arr.Len())
-	for i, v := range vals {
-		if arr.IsNull(i) {
-			continue
-		}
-		out[i] = O(v)
-	}
-	return gosnowflake.Array(&out)
-}
-
-// This is now unused after the previous INSERT-bind bulk ingestion was removed.
-// TODO(joellubi): We could use this again when stmt.Prepare() is implemented.
-//
-//nolint:golint,unused
-func getQueryArg(arr arrow.Array) interface{} {
-	switch arr := arr.(type) {
-	case *array.Int8:
-		v := arr.Int8Values()
-		return convToSlice[int8, int32](arr, v)
-	case *array.Uint8:
-		v := arr.Uint8Values()
-		return convToSlice[uint8, int32](arr, v)
-	case *array.Int16:
-		v := arr.Int16Values()
-		return convToSlice[int16, int32](arr, v)
-	case *array.Uint16:
-		v := arr.Uint16Values()
-		return convToSlice[uint16, int32](arr, v)
-	case *array.Int32:
-		v := arr.Int32Values()
-		return convToSlice[int32, int32](arr, v)
-	case *array.Uint32:
-		v := arr.Uint32Values()
-		return convToSlice[uint32, int64](arr, v)
-	case *array.Int64:
-		v := arr.Int64Values()
-		return convToSlice[int64, int64](arr, v)
-	case *array.Uint64:
-		v := arr.Uint64Values()
-		return convToSlice[uint64, int64](arr, v)
-	case *array.Float32:
-		v := arr.Float32Values()
-		return convToSlice[float32, float64](arr, v)
-	case *array.Float64:
-		v := arr.Float64Values()
-		return convToSlice[float64, float64](arr, v)
-	case *array.LargeBinary:
-		return convToArr[[]byte](arr)
-	case *array.Binary:
-		return convToArr[[]byte](arr)
-	case *array.LargeString:
-		return convToArr[string](arr)
-	case *array.String:
-		return convToArr[string](arr)
-	default:
-		// default convert to array of strings and pass to snowflake driver
-		// not the most efficient, but snowflake doesn't really give a better
-		// route currently short of writing everything out to a Parquet file
-		// and then uploading that (which might be preferable)
-		return convMarshal(arr)
-	}
 }
 
 func (st *statement) executeIngest(ctx context.Context) (int64, error) {
