@@ -23,7 +23,6 @@ import javax.sql.DataSource;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
-import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 
@@ -39,11 +38,6 @@ public class JdbcDriver implements AdbcDriver {
    * <p>Matches the parameter used by C and Go.
    */
   public static final String PARAM_URI = "uri";
-
-  static {
-    AdbcDriverManager.getInstance()
-        .registerDriver("org.apache.arrow.adbc.driver.jdbc", JdbcDriver::new);
-  }
 
   private final BufferAllocator allocator;
 
