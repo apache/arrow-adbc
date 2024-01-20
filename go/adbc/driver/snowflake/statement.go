@@ -233,22 +233,32 @@ func (st *statement) SetOptionInt(key string, value int64) error {
 		st.prefetchConcurrency = int(value)
 		return nil
 	case OptionStatementIngestWriterConcurrency:
-		if value <= 0 {
+		if value < 0 {
 			return adbc.Error{
-				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be > 0", value, key),
+				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be >= 0", value, key),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-		st.ingestOptions.writerConcurrency = int(value)
+		if value == 0 {
+			st.ingestOptions.writerConcurrency = defaultWriterConcurrency
+			return nil
+		}
+
+		st.ingestOptions.writerConcurrency = uint(value)
 		return nil
 	case OptionStatementIngestUploadConcurrency:
-		if value <= 0 {
+		if value < 0 {
 			return adbc.Error{
-				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be > 0", value, key),
+				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be >= 0", value, key),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-		st.ingestOptions.uploadConcurrency = int(value)
+		if value == 0 {
+			st.ingestOptions.uploadConcurrency = defaultUploadConcurrency
+			return nil
+		}
+
+		st.ingestOptions.uploadConcurrency = uint(value)
 		return nil
 	case OptionStatementIngestCopyConcurrency:
 		if value < 0 {
@@ -257,16 +267,16 @@ func (st *statement) SetOptionInt(key string, value int64) error {
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-		st.ingestOptions.copyConcurrency = int(value)
+		st.ingestOptions.copyConcurrency = uint(value)
 		return nil
 	case OptionStatementIngestTargetFileSize:
-		if value <= 0 {
+		if value < 0 {
 			return adbc.Error{
 				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be >= 0", value, key),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-		st.ingestOptions.targetFileSize = int(value)
+		st.ingestOptions.targetFileSize = uint(value)
 		return nil
 	}
 	return adbc.Error{

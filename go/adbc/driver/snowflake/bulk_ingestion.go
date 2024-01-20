@@ -51,12 +51,13 @@ const (
 )
 
 var (
-	defaultTargetFileSize    = 10 * megabyte
-	defaultWriterConcurrency = runtime.NumCPU()
-	defaultUploadConcurrency = 8
-	defaultCopyConcurrency   = 4
-	defaultCompressionCodec  = compress.Codecs.Snappy
-	defaultCompressionLevel  = flate.DefaultCompression
+	defaultTargetFileSize    uint = 10 * megabyte
+	defaultWriterConcurrency uint = uint(runtime.NumCPU())
+	defaultUploadConcurrency uint = 8
+	defaultCopyConcurrency   uint = 4
+
+	defaultCompressionCodec compress.Compression = compress.Codecs.Snappy
+	defaultCompressionLevel int                  = flate.DefaultCompression
 )
 
 // Options for configuring bulk ingestion.
@@ -66,19 +67,20 @@ type ingestOptions struct {
 	// Approximate size of Parquet files written during ingestion.
 	//
 	// Actual size will be slightly larger, depending on size of footer/metadata.
-	// Default is 10 MB. Must be an integer > 0.
-	targetFileSize int
+	// Default is 10 MB. If set to 0, file size has no limit. Cannot be negative.
+	targetFileSize uint
 	// Number of Parquet files to write in parallel.
 	//
 	// Default attempts to maximize workers based on logical cores detected, but
-	// may need to be adjusted if running in a constrained environment. Must be an integer > 0.
-	writerConcurrency int
+	// may need to be adjusted if running in a constrained environment.
+	// If set to 0, default value is used. Cannot be negative.
+	writerConcurrency uint
 	// Number of Parquet files to upload in parallel.
 	//
 	// Greater concurrency can smooth out TCP congestion and help make use of
 	// available network bandwith, but will increase memory utilization.
-	// Default is 8. Must be an integer > 0.
-	uploadConcurrency int
+	// Default is 8. If set to 0, default value is used. Cannot be negative.
+	uploadConcurrency uint
 	// Maximum number of COPY operations to run concurrently.
 	//
 	// Bulk ingestion performance is optimized by executing COPY queries as files are
@@ -86,8 +88,8 @@ type ingestOptions struct {
 	// warehouses may benefit from setting this value higher to ensure long-running
 	// COPY queries do not block newly uploaded files from being loaded.
 	// Default is 4. If set to 0, only a single COPY query will be executed as part of ingestion,
-	// once all files have finished uploading. Must be an integer >= 0.
-	copyConcurrency int
+	// once all files have finished uploading. Cannot be negative.
+	copyConcurrency uint
 	// Compression codec to use for Parquet files.
 	//
 	// When network speeds are high, it is generally faster to use a faster codec with
@@ -218,10 +220,10 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 
 	// Read records from channel and write Parquet files in parallel to buffer pool
 	schema := st.streamBind.Schema()
-	getBuffer, putBuffer := newBufferPool(st.ingestOptions.targetFileSize)
+	getBuffer, putBuffer := newBufferPool(int(st.ingestOptions.targetFileSize))
 	buffers := make(chan *bytes.Buffer, st.ingestOptions.writerConcurrency)
 	g.Go(func() error {
-		return runParallelParquetWriters(gCtx, schema, st.ingestOptions.targetFileSize, st.ingestOptions.writerConcurrency, parquetProps, arrowProps, getBuffer, records, buffers)
+		return runParallelParquetWriters(gCtx, schema, int(st.ingestOptions.targetFileSize), int(st.ingestOptions.writerConcurrency), parquetProps, arrowProps, getBuffer, records, buffers)
 	})
 
 	// Create a temporary stage, we can't start uploading until it has been created
@@ -231,11 +233,11 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 	}
 
 	// Kickoff background tasks to COPY Parquet files into Snowflake table as they are uploaded
-	fileReady, finishCopy, cancelCopy := runCopyTasks(ctx, st.cnxn.cn, st.targetTable, st.ingestOptions.copyConcurrency)
+	fileReady, finishCopy, cancelCopy := runCopyTasks(ctx, st.cnxn.cn, st.targetTable, int(st.ingestOptions.copyConcurrency))
 
 	// Read Parquet files from buffer pool and upload to Snowflake stage in parallel
 	g.Go(func() error {
-		return uploadAllStreams(gCtx, st.cnxn.cn, buffers, st.ingestOptions.uploadConcurrency, putBuffer, fileReady)
+		return uploadAllStreams(gCtx, st.cnxn.cn, buffers, int(st.ingestOptions.uploadConcurrency), putBuffer, fileReady)
 	})
 
 	// Wait until either all files have been uploaded to Snowflake or the pipeline has failed / been canceled
