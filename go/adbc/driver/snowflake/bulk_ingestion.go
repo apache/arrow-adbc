@@ -18,6 +18,7 @@
 package snowflake
 
 import (
+	"bufio"
 	"bytes"
 	"compress/flate"
 	"context"
@@ -135,11 +136,15 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 	recordCh <- st.bound
 	close(recordCh)
 
-	// Read the Record from the channel and write it into the provided buffer
+	// Read the Record from the channel and write it into the provided writer
 	schema := st.bound.Schema()
-	buf := new(bytes.Buffer)
+	r, w := io.Pipe()
+	bw := bufio.NewWriter(w)
 	g.Go(func() error {
-		err = writeParquet(schema, buf, recordCh, 0, parquetProps, arrowProps)
+		defer r.Close()
+		defer bw.Flush()
+
+		err = writeParquet(schema, bw, recordCh, 0, parquetProps, arrowProps)
 		if err != io.EOF {
 			return err
 		}
@@ -152,15 +157,15 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 		return
 	}
 
-	// Wait for Parquet file to finish writing
-	err = g.Wait()
+	// Start uploading the file to Snowflake
+	fileName := "0.parquet" // Only writing 1 file, so use same name as first file written by ingestStream() for consistency
+	err = uploadStream(ctx, st.cnxn.cn, r, fileName)
 	if err != nil {
 		return
 	}
 
-	// If successful, upload the file to Snowflake
-	fileName := "0.parquet" // Only writing 1 file, so use same name as first file written by ingestStream() for consistency
-	err = uploadStream(ctx, st.cnxn.cn, buf, fileName)
+	// Parquet writing is already done if the upload finished, so we're just checking for any errors
+	err = g.Wait()
 	if err != nil {
 		return
 	}
