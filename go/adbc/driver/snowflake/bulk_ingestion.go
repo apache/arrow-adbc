@@ -225,10 +225,10 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 
 	// Read records from channel and write Parquet files in parallel to buffer pool
 	schema := st.streamBind.Schema()
-	getBuffer, putBuffer := newBufferPool(int(st.ingestOptions.targetFileSize))
+	pool := newBufferPool(int(st.ingestOptions.targetFileSize))
 	buffers := make(chan *bytes.Buffer, st.ingestOptions.writerConcurrency)
 	g.Go(func() error {
-		return runParallelParquetWriters(gCtx, schema, int(st.ingestOptions.targetFileSize), int(st.ingestOptions.writerConcurrency), parquetProps, arrowProps, getBuffer, records, buffers)
+		return runParallelParquetWriters(gCtx, schema, int(st.ingestOptions.targetFileSize), int(st.ingestOptions.writerConcurrency), parquetProps, arrowProps, pool.GetBuffer, records, buffers)
 	})
 
 	// Create a temporary stage, we can't start uploading until it has been created
@@ -242,7 +242,7 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 
 	// Read Parquet files from buffer pool and upload to Snowflake stage in parallel
 	g.Go(func() error {
-		return uploadAllStreams(gCtx, st.cnxn.cn, buffers, int(st.ingestOptions.uploadConcurrency), putBuffer, fileReady)
+		return uploadAllStreams(gCtx, st.cnxn.cn, buffers, int(st.ingestOptions.uploadConcurrency), pool.PutBuffer, fileReady)
 	})
 
 	// Wait until either all files have been uploaded to Snowflake or the pipeline has failed / been canceled
@@ -499,7 +499,7 @@ func countRowsInTable(ctx context.Context, db *sql.DB, tableName string) (int64,
 
 // Initializes a sync.Pool of *bytes.Buffer.
 // Extra space is preallocated so that the Parquet footer can be written after reaching target file size without growing the buffer
-func newBufferPool(size int) (getFn func() *bytes.Buffer, putFn func(*bytes.Buffer)) {
+func newBufferPool(size int) *bufferPool {
 	buffers := sync.Pool{
 		New: func() interface{} {
 			extraSpace := 1 * megabyte // TODO(joellubi): Generally works, but can this be smarter?
@@ -508,16 +508,20 @@ func newBufferPool(size int) (getFn func() *bytes.Buffer, putFn func(*bytes.Buff
 		},
 	}
 
-	getFn = func() *bytes.Buffer {
-		return buffers.Get().(*bytes.Buffer)
-	}
+	return &bufferPool{&buffers}
+}
 
-	putFn = func(buf *bytes.Buffer) {
-		buf.Reset()
-		buffers.Put(buf)
-	}
+type bufferPool struct {
+	*sync.Pool
+}
 
-	return getFn, putFn
+func (bp *bufferPool) GetBuffer() *bytes.Buffer {
+	return bp.Pool.Get().(*bytes.Buffer)
+}
+
+func (bp *bufferPool) PutBuffer(buf *bytes.Buffer) {
+	buf.Reset()
+	bp.Pool.Put(buf)
 }
 
 // Wraps an io.Writer and specifies a limit.
