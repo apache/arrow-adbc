@@ -444,10 +444,10 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 		close(stopCh)
 		close(readyCh)
 
-		g.Go(func() error {
-			_, err := cn.ExecContext(ctx, copyQuery, []driver.NamedValue{{Value: tableName}})
+		_, err := cn.ExecContext(ctx, copyQuery, []driver.NamedValue{{Value: tableName}})
+		if err != nil {
 			return err
-		})
+		}
 
 		return g.Wait()
 	}
@@ -463,29 +463,21 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 	go func() {
 		for {
 
-			// Check for shutdown signals before starting a new COPY
+			// Block until there is at least 1 new file available for copy, or it's time to shutdown
 			select {
 			case <-stopCh:
 				return
 			case <-ctx.Done():
 				return
-			default:
+			case _, ok := <-readyCh:
+				if !ok {
+					return
+				}
+				// Proceed to start a new COPY job
 			}
 
 			g.Go(func() error {
-				// Block until there is at least 1 new file available for copy, or it's time to shutdown
-				select {
-				case _, ok := <-readyCh:
-					if !ok {
-						return nil
-					}
-					// Proceed to start a new COPY job
-				case <-ctx.Done():
-					return ctx.Err()
-				}
-
 				_, err := cn.ExecContext(ctx, copyQuery, []driver.NamedValue{{Value: tableName}})
-
 				return err
 			})
 		}
