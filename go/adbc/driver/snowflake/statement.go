@@ -33,12 +33,12 @@ import (
 const (
 	OptionStatementQueueSize               = "adbc.rpc.result_queue_size"
 	OptionStatementPrefetchConcurrency     = "adbc.snowflake.rpc.prefetch_concurrency"
-	OptionStatementIngestWriterConcurrency = "adbc.snowflake.rpc.ingest_writer_concurrency"
-	OptionStatementIngestUploadConcurrency = "adbc.snowflake.rpc.ingest_upload_concurrency"
-	OptionStatementIngestCopyConcurrency   = "adbc.snowflake.rpc.ingest_copy_concurrency"
-	OptionStatementIngestTargetFileSize    = "adbc.snowflake.rpc.ingest_target_file_size"
-	OptionStatementIngestCompressionCodec  = "adbc.snowflake.rpc.ingest_compression_codec" // TODO(joellubi): Implement option
-	OptionStatementIngestCompressionLevel  = "adbc.snowflake.rpc.ingest_compression_level" // TODO(joellubi): Implement option
+	OptionStatementIngestWriterConcurrency = "adbc.snowflake.statement.ingest_writer_concurrency"
+	OptionStatementIngestUploadConcurrency = "adbc.snowflake.statement.ingest_upload_concurrency"
+	OptionStatementIngestCopyConcurrency   = "adbc.snowflake.statement.ingest_copy_concurrency"
+	OptionStatementIngestTargetFileSize    = "adbc.snowflake.statement.ingest_target_file_size"
+	OptionStatementIngestCompressionCodec  = "adbc.snowflake.statement.ingest_compression_codec" // TODO(GH-1473): Implement option
+	OptionStatementIngestCompressionLevel  = "adbc.snowflake.statement.ingest_compression_level" // TODO(GH-1473): Implement option
 )
 
 type statement struct {
