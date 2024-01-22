@@ -20,7 +20,7 @@ go_bin <- Sys.getenv("GO_BIN", unname(Sys.which("go")))
 withr::with_dir("src/go/adbc", {
   system(paste(shQuote(go_bin), "mod vendor -v"))
 
-  # go mod vendor for arrow/v13 doesn't include some files needed for go build
+  # go mod vendor for arrow/v14 doesn't include some files needed for go build
   tmp_zip <- tempfile()
   tmp_extract <- tempfile()
   local({
@@ -30,7 +30,7 @@ withr::with_dir("src/go/adbc", {
     })
 
     curl::curl_download(
-      "https://github.com/apache/arrow/archive/refs/tags/go/v13.0.0.zip",
+      "https://github.com/apache/arrow/archive/refs/tags/go/v14.0.2.zip",
       tmp_zip
     )
 
@@ -38,10 +38,10 @@ withr::with_dir("src/go/adbc", {
 
     src_go_arrow_cdata_arrow_dir <- file.path(
       tmp_extract,
-      "arrow-go-v13.0.0/go/arrow/cdata/arrow"
+      "arrow-go-v14.0.2/go/arrow/cdata/arrow"
     )
 
-    dst_go_arrow_cdata_dir <- "vendor/github.com/apache/arrow/go/v13/arrow/cdata/"
+    dst_go_arrow_cdata_dir <- "vendor/github.com/apache/arrow/go/v14/arrow/cdata/"
     stopifnot(file.copy(src_go_arrow_cdata_arrow_dir, dst_go_arrow_cdata_dir, recursive = TRUE))
   })
 

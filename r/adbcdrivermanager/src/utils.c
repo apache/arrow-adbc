@@ -26,3 +26,14 @@ SEXP RAdbcXptrEnv(SEXP xptr) {
 
   return R_ExternalPtrTag(xptr);
 }
+
+SEXP RAdbcXptrSetProtected(SEXP xptr, SEXP prot) {
+  if (TYPEOF(xptr) != EXTPTRSXP) {
+    Rf_error("object is not an external pointer");
+  }
+
+  SEXP old_prot = PROTECT(R_ExternalPtrProtected(xptr));
+  R_SetExternalPtrProtected(xptr, prot);
+  UNPROTECT(1);
+  return old_prot;
+}

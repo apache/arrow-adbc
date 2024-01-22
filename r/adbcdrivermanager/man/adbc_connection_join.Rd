@@ -3,14 +3,11 @@
 \name{adbc_connection_join}
 \alias{adbc_connection_join}
 \alias{adbc_statement_join}
-\alias{adbc_stream_join}
 \title{Join the lifecycle of a unique parent to its child}
 \usage{
 adbc_connection_join(connection, database)
 
 adbc_statement_join(statement, connection)
-
-adbc_stream_join(stream, x)
 }
 \arguments{
 \item{connection}{A connection created with \code{\link[=adbc_connection_init]{adbc_connection_init()}}}
@@ -18,11 +15,6 @@ adbc_stream_join(stream, x)
 \item{database}{A database created with \code{\link[=adbc_database_init]{adbc_database_init()}}}
 
 \item{statement}{A statement created with \code{\link[=adbc_statement_init]{adbc_statement_init()}}}
-
-\item{stream}{A \link[nanoarrow:as_nanoarrow_array_stream]{nanoarrow_array_stream}}
-
-\item{x}{An ADBC database, ADBC connection, ADBC statement, or
-nanoarrow_array_stream returned from calls to an ADBC function.}
 }
 \value{
 The input, invisibly.

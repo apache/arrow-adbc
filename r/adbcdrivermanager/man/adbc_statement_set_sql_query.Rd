@@ -24,7 +24,11 @@ adbc_statement_bind(statement, values, schema = NULL)
 
 adbc_statement_bind_stream(statement, stream, schema = NULL)
 
-adbc_statement_execute_query(statement, stream = NULL)
+adbc_statement_execute_query(
+  statement,
+  stream = NULL,
+  stream_join_parent = FALSE
+)
 
 adbc_statement_execute_schema(statement)
 
@@ -45,6 +49,9 @@ that can be coerced to one.}
 
 \item{stream}{A \link[nanoarrow:as_nanoarrow_array_stream]{nanoarrow_array_stream}
 or object that can be coerced to one.}
+
+\item{stream_join_parent}{Use \code{TRUE} to invalidate \code{statement} and tie its
+lifecycle to \code{stream}.}
 }
 \value{
 \itemize{

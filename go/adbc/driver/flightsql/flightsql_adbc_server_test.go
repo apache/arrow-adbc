@@ -90,6 +90,7 @@ func (suite *ServerBasedTests) TearDownTest() {
 }
 
 func (suite *ServerBasedTests) TearDownSuite() {
+	suite.NoError(suite.db.Close())
 	suite.db = nil
 	suite.s.Shutdown()
 }

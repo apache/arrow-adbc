@@ -33,6 +33,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// </summary>
         public static SampleDataBuilder GetSampleData()
         {
+            ListArray.Builder labuilder = new ListArray.Builder(Int64Type.Default);
+            Int64Array.Builder numbersBuilder = labuilder.ValueBuilder as Int64Array.Builder;
+            labuilder.Append();
+            numbersBuilder.AppendRange(new List<long>() { 1, 2, 3 });
+
+            Int64Array numbersArray = numbersBuilder.Build();
+
             SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
 
             // standard values
@@ -72,10 +79,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                         new ColumnNetTypeArrowTypeValue("datetime", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023, 9, 8, 12, 34, 56), TimeSpan.Zero)),
                         new ColumnNetTypeArrowTypeValue("timestamp", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023, 9, 8, 12, 34, 56), TimeSpan.Zero)),
                         new ColumnNetTypeArrowTypeValue("point", typeof(string), typeof(StringType), "POINT(1 2)"),
-                        new ColumnNetTypeArrowTypeValue("numbers", typeof(long), typeof(Int64Type), new List<long>() { 1, 2, 3 }),
+                        new ColumnNetTypeArrowTypeValue("numbers", typeof(Int64Array), typeof(ListType), numbersArray),
                         new ColumnNetTypeArrowTypeValue("person", typeof(string), typeof(StringType), "{\"name\":\"John Doe\",\"age\":30}"),
                         new ColumnNetTypeArrowTypeValue("json", typeof(string), typeof(StringType), "{\"age\":29,\"name\":\"Jane Doe\"}")
-
                     }
                 });
 
@@ -96,6 +102,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 });
 
             // nulls
+            Int64Array.Builder emptyNumbersBuilder = new Int64Array.Builder();
+            Int64Array emptyNumbersArray = emptyNumbersBuilder.Build();
+
             sampleDataBuilder.Samples.Add(
                 new SampleData()
                 {
@@ -132,7 +141,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                         new ColumnNetTypeArrowTypeValue("datetime", typeof(DateTimeOffset), typeof(TimestampType), null),
                         new ColumnNetTypeArrowTypeValue("timestamp", typeof(DateTimeOffset), typeof(TimestampType), null),
                         new ColumnNetTypeArrowTypeValue("point", typeof(string), typeof(StringType), null),
-                        new ColumnNetTypeArrowTypeValue("numbers", typeof(long), typeof(Int64Type), new List<long>{ }),
+                        new ColumnNetTypeArrowTypeValue("numbers", typeof(Int64Array), typeof(ListType), emptyNumbersArray),
                         new ColumnNetTypeArrowTypeValue("person", typeof(string), typeof(StringType), "{\"name\":null,\"age\":null}")
                     }
                 });

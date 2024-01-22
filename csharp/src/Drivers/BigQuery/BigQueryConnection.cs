@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -482,33 +483,42 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            if (result != null)
+            foreach (BigQueryRow row in result)
             {
-                foreach (BigQueryRow row in result)
+                columnNameBuilder.Append(row["column_name"].ToString());
+                ordinalPositionBuilder.Append((int)(long)row["ordinal_position"]);
+                remarksBuilder.Append("");
+
+                string dataType = ToTypeName(row["data_type"].ToString());
+
+                if (dataType.StartsWith("NUMERIC") || dataType.StartsWith("DECIMAL") || dataType.StartsWith("BIGNUMERIC") || dataType.StartsWith("BIGDECIMAL"))
                 {
-                    columnNameBuilder.Append(GetValue(row["column_name"]));
-                    ordinalPositionBuilder.Append((int)(long)row["ordinal_position"]);
-                    remarksBuilder.Append("");
-                    xdbcDataTypeBuilder.AppendNull();
-                    string dataType = ToTypeName(GetValue(row["data_type"]));
-                    xdbcTypeNameBuilder.Append(dataType);
+                    ParsedDecimalValues values = ParsePrecisionAndScale(dataType);
+                    xdbcColumnSizeBuilder.Append(values.Precision);
+                    xdbcDecimalDigitsBuilder.Append(Convert.ToInt16(values.Scale));
+                }
+                else
+                {
                     xdbcColumnSizeBuilder.AppendNull();
                     xdbcDecimalDigitsBuilder.AppendNull();
-                    xdbcNumPrecRadixBuilder.AppendNull();
-                    xdbcNullableBuilder.AppendNull();
-                    xdbcColumnDefBuilder.AppendNull();
-                    xdbcSqlDataTypeBuilder.Append((short)ToXdbcDataType(dataType));
-                    xdbcDatetimeSubBuilder.AppendNull();
-                    xdbcCharOctetLengthBuilder.AppendNull();
-                    xdbcIsNullableBuilder.Append(GetValue(row["is_nullable"]));
-                    xdbcScopeCatalogBuilder.AppendNull();
-                    xdbcScopeSchemaBuilder.AppendNull();
-                    xdbcScopeTableBuilder.AppendNull();
-                    xdbcIsAutoincrementBuilder.AppendNull();
-                    xdbcIsGeneratedcolumnBuilder.Append(GetValue(row["is_generated"]).ToUpper() == "YES");
-                    nullBitmapBuffer.Append(true);
-                    length++;
                 }
+
+                xdbcDataTypeBuilder.AppendNull();
+                xdbcTypeNameBuilder.Append(dataType);
+                xdbcNumPrecRadixBuilder.AppendNull();
+                xdbcNullableBuilder.AppendNull();
+                xdbcColumnDefBuilder.AppendNull();
+                xdbcSqlDataTypeBuilder.Append((short)ToXdbcDataType(dataType));
+                xdbcDatetimeSubBuilder.AppendNull();
+                xdbcCharOctetLengthBuilder.AppendNull();
+                xdbcIsNullableBuilder.Append(row["is_nullable"].ToString());
+                xdbcScopeCatalogBuilder.AppendNull();
+                xdbcScopeSchemaBuilder.AppendNull();
+                xdbcScopeTableBuilder.AppendNull();
+                xdbcIsAutoincrementBuilder.AppendNull();
+                xdbcIsGeneratedcolumnBuilder.Append(row["is_generated"].ToString().ToUpper() == "YES");
+                nullBitmapBuffer.Append(true);
+                length++;
             }
 
             List<IArrowArray> dataArrays = new List<IArrowArray>
@@ -571,7 +581,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     nullBitmapBuffer.Append(true);
                     length++;
 
-                    if (depth == GetObjectsDepth.All)
+                    if (depth == GetObjectsDepth.All || depth == GetObjectsDepth.Tables)
                     {
                         constraintColumnNamesValues.Add(GetConstraintColumnNames(
                             catalog, dbSchema, table, constraintName));
@@ -621,12 +631,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            if (result != null)
+            foreach (BigQueryRow row in result)
             {
-                foreach (BigQueryRow row in result)
-                {
-                    constraintColumnNamesBuilder.Append(GetValue(row["column_name"]));
-                }
+                string column = row["column_name"].ToString();
+                constraintColumnNamesBuilder.Append(column);
             }
 
             return constraintColumnNamesBuilder.Build();
@@ -645,22 +653,25 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             ArrowBuffer.BitmapBuilder nullBitmapBuffer = new ArrowBuffer.BitmapBuilder();
             int length = 0;
 
-            string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE WHERE table_name = '{2}' AND constraint_name = '{3}'",
-               Sanitize(catalog), Sanitize(dbSchema), Sanitize(table), Sanitize(constraintName));
+            string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE WHERE constraint_name = '{2}'",
+               Sanitize(catalog), Sanitize(dbSchema), Sanitize(constraintName));
 
             BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            if (result != null)
+            foreach (BigQueryRow row in result)
             {
-                foreach (BigQueryRow row in result)
-                {
-                    constraintFkCatalogBuilder.Append(GetValue(row["constraint_catalog"]));
-                    constraintFkDbSchemaBuilder.Append(GetValue(row["constraint_schema"]));
-                    constraintFkTableBuilder.Append(GetValue(row["table_name"]));
-                    constraintFkColumnNameBuilder.Append(GetValue(row["column_name"]));
-                    nullBitmapBuffer.Append(true);
-                    length++;
-                }
+                string constraint_catalog = row["constraint_catalog"].ToString();
+                string constraint_schema = row["constraint_schema"].ToString();
+                string table_name = row["table_name"].ToString();
+                string column_name = row["column_name"].ToString();
+
+                constraintFkCatalogBuilder.Append(constraint_catalog);
+                constraintFkDbSchemaBuilder.Append(constraint_schema);
+                constraintFkTableBuilder.Append(table_name);
+                constraintFkColumnNameBuilder.Append(column_name);
+
+                nullBitmapBuffer.Append(true);
+                length++;
             }
 
             List<IArrowArray> dataArrays = new List<IArrowArray>
@@ -724,8 +735,42 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return XdbcDataType.XdbcDataType_XDBC_VARBINARY;
                 case "NUMERIC" or "DECIMAL" or "BIGNUMERIC" or "BIGDECIMAL":
                     return XdbcDataType.XdbcDataType_XDBC_NUMERIC;
-
                 default:
+
+                    // in SqlDecimal, an OverflowException is thrown for decimals with scale > 28
+                    // so the XDBC type needs to map the SqlDecimal type
+                    int decimalMaxScale = 28;
+
+                    if (type.StartsWith("NUMERIC("))
+                    {
+                        ParsedDecimalValues parsedDecimalValues = ParsePrecisionAndScale(type);
+
+                        if (parsedDecimalValues.Scale <= decimalMaxScale)
+                            return XdbcDataType.XdbcDataType_XDBC_DECIMAL;
+                        else
+                            return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
+                    }
+
+                    if (type.StartsWith("BIGNUMERIC("))
+                    {
+                        if (bool.Parse(this.properties[BigQueryParameters.LargeDecimalsAsString]))
+                        {
+                            return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
+                        }
+                        else
+                        {
+                            ParsedDecimalValues parsedDecimalValues = ParsePrecisionAndScale(type);
+
+                            if (parsedDecimalValues.Scale <= decimalMaxScale)
+                                return XdbcDataType.XdbcDataType_XDBC_DECIMAL;
+                            else
+                                return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
+                        }
+                    }
+
+                    if (type.StartsWith("STRUCT"))
+                        return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
+
                     return XdbcDataType.XdbcDataType_XDBC_UNKNOWN_TYPE;
             }
         }
@@ -939,7 +984,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 throw new InvalidOperationException();
             }
 
-            if(this.client == null)
+            if (this.client == null)
             {
                 Open();
             }

@@ -329,6 +329,9 @@ type Driver interface {
 type Database interface {
 	SetOptions(map[string]string) error
 	Open(ctx context.Context) (Connection, error)
+
+	// Close closes this database and releases any associated resources.
+	Close() error
 }
 
 type InfoCode uint32

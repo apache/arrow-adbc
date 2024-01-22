@@ -33,12 +33,13 @@ it is good practice to explicitly clean up these objects. These helpers
 are designed to make explicit and predictable cleanup easy to accomplish.
 }
 \details{
-Note that you can use \code{\link[=adbc_connection_join]{adbc_connection_join()}},
-\code{\link[=adbc_statement_join]{adbc_statement_join()}}, and \code{\link[=adbc_stream_join]{adbc_stream_join()}}
+Note that you can use \code{\link[=adbc_connection_join]{adbc_connection_join()}} and \code{\link[=adbc_statement_join]{adbc_statement_join()}}
 to tie the lifecycle of the parent object to that of the child object.
 These functions mark any previous references to the parent object as
 released so you can still use local and with helpers to manage the parent
-object before it is joined.
+object before it is joined. Use \code{stream_join_parent = TRUE} in
+\code{\link[=adbc_statement_execute_query]{adbc_statement_execute_query()}} to tie the lifecycle of a statement to
+the output stream.
 }
 \examples{
 # Using with_adbc():

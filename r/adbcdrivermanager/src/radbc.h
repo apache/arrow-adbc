@@ -22,6 +22,8 @@
 
 #include <utility>
 
+#include <adbc.h>
+
 template <typename T>
 static inline const char* adbc_xptr_class();
 

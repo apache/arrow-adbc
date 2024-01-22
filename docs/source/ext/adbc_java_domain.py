@@ -15,6 +15,33 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[submodule "csharp/src/arrow"]
-	path = csharp/src/arrow
-	url = https://github.com/apache/arrow.git
+"""A basic Java domain for Sphinx."""
+
+import typing
+
+from sphinx.application import Sphinx
+
+
+def setup(app: Sphinx) -> dict[str, typing.Any]:
+    # XXX: despite documentation, this is added to 'std' domain not 'rst'
+    # domain (look at the source)
+    app.add_object_type(
+        "javatype",
+        "jtype",
+        objname="Java Type",
+    )
+    app.add_object_type(
+        "javamember",
+        "jmember",
+        objname="Java Member",
+    )
+    app.add_object_type(
+        "javapackage",
+        "jpackage",
+        objname="Java Package",
+    )
+    return {
+        "version": "0.1",
+        "parallel_read_safe": True,
+        "parallel_write_safe": True,
+    }

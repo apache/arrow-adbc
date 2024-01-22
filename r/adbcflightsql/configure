@@ -18,6 +18,22 @@
 R_BIN="$R_HOME/bin/R"
 RSCRIPT_BIN="$R_HOME/bin/Rscript"
 
+# Set to non-false for CRAN releases, which require this approach to comply with
+# guidance regarding large dependency sources. When non-false, this script
+# will fail if the download fails or if checksum verification fails on
+# the downloaded file.
+DOWNLOAD_DEPENDENCY_ARCHIVE="false"
+
+# CRAN checks CPU time to enforce ~2 cores for building. Set GOMAXPROCS to 1
+# when building on CRAN to be safe.
+if [ ! "$DOWNLOAD_DEPENDENCY_ARCHIVE" = "false" ] && [ -z "$GOMAXPROCS" ]; then
+  echo "Using GOMAXPROCS=1 for go build"
+  echo "Set GOMAXPROCS to a higher value in ~/.Renviron for a faster build"
+  GOMAXPROCS=1
+elif [ ! -z "$GOMAXPROCS" ]; then
+  echo "Using GOMAXPROCS=$GOMAXPROCS for go build"
+fi
+
 # Run bootstrap.R. This will have already run if we are installing a source
 # package built with pkgbuild::build() with pkgbuild >1.4.0; however, we
 # run it again in case this is R CMD INSTALL on a directory or
@@ -29,26 +45,45 @@ if [ -f bootstrap.R ]; then
 fi
 
 # Find the go binary so that we can go build!
+# If we've downloaded a specific version of go to src/go/tmp, use that
+# one (helpful for testing different version of go locally)
+PREVIOUSLY_DOWNLOADED_GO="`pwd`/src/go/tmp/go/bin/go"
+if [ -z "$GO_BIN" ] && [ -f "$PREVIOUSLY_DOWNLOADED_GO" ]; then
+  GO_BIN="$PREVIOUSLY_DOWNLOADED_GO"
+fi
+
+# Check go on PATH
 if [ -z "$GO_BIN" ]; then
   GO_BIN=`which go`
 fi
 
+# Try some default install locations that might not be on PATH
+DEFAULT_GO_WIN="C:/Program Files/Go/bin/go.exe"
+if [ -z "$GO_BIN" ] && [ -f "$DEFAULT_GO_WIN" ]; then
+  GO_BIN="$DEFAULT_GO_WIN"
+fi
+
+DEFAULT_GO_MACOS="/usr/local/go/bin/go"
+if [ -z "$GO_BIN" ] && [ -f "$DEFAULT_GO_MACOS" ]; then
+  GO_BIN="$DEFAULT_GO_MACOS"
+fi
+
+DEFAULT_GO_HOMEBREW_M1="/opt/homebrew/bin/go"
+if [ -z "$GO_BIN" ] && [ -f "$DEFAULT_GO_HOMEBREW_M1" ]; then
+  GO_BIN="$DEFAULT_GO_HOMEBREW_M1"
+fi
+
 if [ -z "$GO_BIN" ]; then
-  if [ ! -f src/go/tmp/go/bin/go ]; then
-    echo ""
-    echo "Downloading and extracting Go into the package source directory:"
-    echo "This may take a few minutes. To eliminate this step, install Go"
-    echo "from your faviourite package manager or set the GO_BIN environment variable:"
-    echo "- apt-get install golang"
-    echo "- brew install golang"
-    echo "- dnf install golang"
-    echo "- apk add go"
-    echo "- pacman -S go"
-
-    "$RSCRIPT_BIN" tools/download-go.R
-  fi
-
-  GO_BIN="`pwd`/src/go/tmp/go/bin/go"
+  echo ""
+  echo "The Go compiler is required to install this package. You can install go"
+  echo "from your faviourite package manager or set the GO_BIN environment variable:"
+  echo "- apt-get install golang"
+  echo "- brew install golang"
+  echo "- dnf install golang"
+  echo "- apk add go"
+  echo "- pacman -S go"
+  echo "...or from the official installers available at https://go.dev/dl/"
+  exit 1
 fi
 
 echo "Trying 'go version' with GO_BIN at '$GO_BIN'"
@@ -62,12 +97,8 @@ fi
 CC=`"$R_BIN" CMD config CC`
 CXX=`"$R_BIN" CMD config CXX`
 
-# clang and gcc use different symbol-hiding syntax and we need to
-# make sure to hide any Adbc* symbols that might conflict with another
-# driver.
-if "$R_BIN" CMD config CC | grep -e "clang" ; then
-  SYMBOL_ARGS="-Wl,-exported_symbol,_adbcflightsql_c_flightsql -Wl,-exported_symbol,_R_init_adbcflightsql"
-elif "$R_BIN" CMD config CC | grep -e "gcc" ; then
+# Attempt to hide symbols where possible
+if "$R_BIN" CMD config CC | grep -e "gcc" >/dev/null ; then
   SYMBOL_ARGS="-Wl,--version-script=go/symbols.map"
 fi
 
@@ -83,6 +114,7 @@ sed \
   -e "s|@libs@|$PKG_LIBS|" \
   -e "s|@cc@|$CC|" \
   -e "s|@cxx@|$CXX|" \
+  -e "s|@nproc@|$GOMAXPROCS|" \
   src/Makevars.in > src/Makevars
 
 if [ -f "src/go/adbc/pkg/flightsql/driver.go" ]; then

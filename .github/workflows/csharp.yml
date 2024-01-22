@@ -49,7 +49,7 @@ jobs:
         os: [ubuntu-latest, windows-2019, macos-latest]
     steps:
       - name: Install C#
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ matrix.dotnet }}
       - name: Checkout ADBC
