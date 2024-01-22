@@ -347,7 +347,7 @@ namespace Apache.Arrow.Adbc.Client
         public object GetValue(IArrowArray arrowArray, int ordinal)
         {
             Field field = this.schema.GetFieldByIndex(ordinal);
-            return this.adbcCommand.AdbcStatement.GetValue(arrowArray, this.currentRowInRecordBatch);
+            return this.adbcCommand.AdbcStatement.GetValue(arrowArray, field, this.currentRowInRecordBatch);
         }
 
         /// <summary>
