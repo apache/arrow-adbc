@@ -594,10 +594,15 @@ func SnowflakeDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError
 	h := (*(*cgo.Handle)(db.private_data))
 
 	cdb := h.Value().(*cDatabase)
-	cdb.db = nil
+	if cdb.db != nil {
+		cdb.db.Close()
+		cdb.db = nil
+	}
 	cdb.opts = nil
-	C.free(unsafe.Pointer(db.private_data))
-	db.private_data = nil
+	if db.private_data != nil {
+		C.free(unsafe.Pointer(db.private_data))
+		db.private_data = nil
+	}
 	h.Delete()
 	// manually trigger GC for two reasons:
 	//  1. ASAN expects the release callback to be called before

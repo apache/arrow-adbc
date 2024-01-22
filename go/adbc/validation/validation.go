@@ -100,6 +100,7 @@ func (d *DatabaseTests) TestNewDatabase() {
 	d.NoError(err)
 	d.NotNil(db)
 	d.Implements((*adbc.Database)(nil), db)
+	d.NoError(db.Close())
 }
 
 type ConnectionTests struct {
@@ -121,6 +122,7 @@ func (c *ConnectionTests) SetupTest() {
 func (c *ConnectionTests) TearDownTest() {
 	c.Quirks.TearDownDriver(c.T(), c.Driver)
 	c.Driver = nil
+	c.NoError(c.DB.Close())
 	c.DB = nil
 }
 
@@ -514,6 +516,7 @@ func (s *StatementTests) TearDownTest() {
 	s.Require().NoError(s.Cnxn.Close())
 	s.Quirks.TearDownDriver(s.T(), s.Driver)
 	s.Cnxn = nil
+	s.NoError(s.DB.Close())
 	s.DB = nil
 	s.Driver = nil
 }

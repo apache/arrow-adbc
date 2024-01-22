@@ -202,5 +202,6 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err
 	}
+
 	return driverbase.NewDatabase(db), nil
 }
