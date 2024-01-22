@@ -38,7 +38,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v15/arrow/memory"
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/metadata"
 )

@@ -41,7 +41,7 @@ withr::with_dir("src/go/adbc", {
       "arrow-go-v14.0.2/go/arrow/cdata/arrow"
     )
 
-    dst_go_arrow_cdata_dir <- "vendor/github.com/apache/arrow/go/v14/arrow/cdata/"
+    dst_go_arrow_cdata_dir <- "vendor/github.com/apache/arrow/go/v15/arrow/cdata/"
     stopifnot(file.copy(src_go_arrow_cdata_arrow_dir, dst_go_arrow_cdata_dir, recursive = TRUE))
   })
 
