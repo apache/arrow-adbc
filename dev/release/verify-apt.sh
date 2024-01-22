@@ -197,3 +197,11 @@ ${APT_INSTALL} ruby-dev rubygems-integration
 gem install gobject-introspection
 ruby -r gi -e "p GI.load('ADBC')"
 echo "::endgroup::"
+
+echo "::group::Test ADBC Arrow GLib"
+
+${APT_INSTALL} libadbc-arrow-glib-dev=${package_version}
+${APT_INSTALL} libadbc-arrow-glib-doc=${package_version}
+
+ruby -r gi -e "p GI.load('ADBCArrow')"
+echo "::endgroup::"

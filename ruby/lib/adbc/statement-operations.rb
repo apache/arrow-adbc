@@ -1,5 +1,3 @@
-#!/usr/bin/env ruby
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,25 +15,19 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require "pathname"
-require "test-unit"
+module ADBC
+  module StatementOperations
+    def ingest(table_name, values, mode: :create)
+      self.ingest_target_table = table_name
+      self.ingest_mode = mode
+      bind(values) do
+        execute(need_result: false)
+      end
+    end
 
-(ENV["ADBC_DLL_PATH"] || "").split(File::PATH_SEPARATOR).each do |path|
-  RubyInstaller::Runtime.add_dll_directory(path)
+    def query(sql, &block)
+      self.sql_query = sql
+      execute(&block)
+    end
+  end
 end
-
-base_dir = Pathname(__dir__).parent
-test_dir = base_dir + "test"
-
-require "gi"
-
-ADBC = GI.load("ADBC")
-begin
-  ADBCArrow = GI.load("ADBCArrow")
-rescue GObjectIntrospection::RepositoryError => error
-  puts("ADBCArrow isn't found: #{error}")
-end
-
-require_relative "helper"
-
-exit(Test::Unit::AutoRunner.run(true, test_dir.to_s))
