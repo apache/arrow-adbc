@@ -8,3 +8,7 @@
 ^\.github$
 ^\.covrignore$
 ^bootstrap\.R$
+^cran-comments\.md$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$

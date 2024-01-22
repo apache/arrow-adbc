@@ -15,49 +15,24 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.18)
-get_filename_component(REPOSITORY_ROOT "../../" ABSOLUTE)
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcVersion)
-include(GNUInstallDirs)
-include(CMakePackageConfigHelpers)
-project(adbc_validation
-        VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES CXX)
+add_library(adbc_validation_util STATIC adbc_validation_util.cc)
+adbc_configure_target(adbc_validation_util)
+target_compile_features(adbc_validation_util PRIVATE cxx_std_17)
+target_include_directories(adbc_validation_util SYSTEM
+                           PRIVATE "${REPOSITORY_ROOT}" "${REPOSITORY_ROOT}/c/driver/"
+                                   "${REPOSITORY_ROOT}/c/vendor/")
+target_link_libraries(adbc_validation_util PUBLIC adbc_driver_common nanoarrow
+                                                  GTest::gtest GTest::gmock)
 
-find_package(GTest REQUIRED)
-get_filename_component(REPOSITORY_ROOT "../../" ABSOLUTE)
-
-add_library(adbc_validation STATIC adbc_validation.cc adbc_validation_util.cc)
+add_library(adbc_validation OBJECT adbc_validation.cc)
+adbc_configure_target(adbc_validation)
 target_compile_features(adbc_validation PRIVATE cxx_std_17)
-target_include_directories(adbc_validation SYSTEM PRIVATE "${REPOSITORY_ROOT}"
-                                                          "${REPOSITORY_ROOT}/c/vendor/")
-target_link_libraries(adbc_validation PUBLIC nanoarrow GTest::gtest GTest::gmock)
-
-set_target_properties(adbc_validation
-                      PROPERTIES PUBLIC_HEADER "adbc_validation.h;adbc_validation_util.h")
-
-install(TARGETS adbc_validation
-        EXPORT AdbcValidationTargets
-        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-        PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/adbc_validation/")
-
-write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/AdbcValidation/AdbcValidationConfigVersion.cmake"
-  COMPATIBILITY AnyNewerVersion)
-export(EXPORT AdbcValidationTargets
-       FILE "${CMAKE_CURRENT_BINARY_DIR}/AdbcValidation/AdbcValidationTargets.cmake"
-       NAMESPACE AdbcValidation::)
-configure_package_config_file("AdbcValidationConfig.cmake.in"
-                              "${CMAKE_CURRENT_BINARY_DIR}/AdbcValidation/AdbcValidationConfig.cmake"
-                              INSTALL_DESTINATION "AdbcValidation/AdbcValidationConfig.cmake"
-)
-
-install(EXPORT AdbcValidationTargets
-        FILE AdbcValidationTargets.cmake
-        NAMESPACE AdbcValidation::
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/AdbcValidation")
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/AdbcValidation/AdbcValidationConfig.cmake"
-              "${CMAKE_CURRENT_BINARY_DIR}/AdbcValidation/AdbcValidationConfigVersion.cmake"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/AdbcValidation"
-        COMPONENT Devel)
+target_include_directories(adbc_validation SYSTEM
+                           PRIVATE "${REPOSITORY_ROOT}" "${REPOSITORY_ROOT}/c/driver/"
+                                   "${REPOSITORY_ROOT}/c/vendor/")
+target_link_libraries(adbc_validation
+                      PUBLIC adbc_driver_common
+                             adbc_validation_util
+                             nanoarrow
+                             GTest::gtest
+                             GTest::gmock)

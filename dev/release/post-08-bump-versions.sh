@@ -53,5 +53,6 @@ git checkout apache-arrow-adbc-${version} -- CHANGELOG.md
 git commit -m "chore: update changelog for ${version}"
 echo "Updated changelog on branch."
 
-echo "Pushing changes to apache/arrow-adbc:main"
-git push apache main
+echo "Review the commits just made."
+echo "Then, push changes to apache/arrow-adbc:main with:"
+echo git push apache main

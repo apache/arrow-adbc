@@ -19,13 +19,16 @@
 
 # ADBC Driver Manager for Python
 
-This package contains bindings for the ADBC Driver Manager, as well as
-a [DBAPI 2.0/PEP 249-compatible][dbapi] interface on top.  The DBAPI 2.0
-interface additionally requires PyArrow, and exposes a number of
-extensions mimicking those of [Turbodbc][turbodbc] or
-[DuckDB][duckdb]'s Python packages to allow you to retrieve Arrow
-Table objects instead of being limited to the row-oriented API of the
-base DBAPI interface.
+This package contains bindings for the ADBC Driver Manager, as well as a
+[DBAPI 2.0/PEP 249-compatible][dbapi] interface on top.  This can be used to
+load ADBC drivers at runtime and use them from Python.  Backend-specific
+packages like `adbc_driver_postgresql` wrap this package in a more convenient
+interface, and should be preferred where they exist.
+
+The DBAPI 2.0 interface requires PyArrow, and exposes a number of extensions
+mimicking those of [Turbodbc][turbodbc] or [DuckDB][duckdb]'s Python packages
+to allow you to retrieve Arrow Table objects instead of being limited to the
+row-oriented API of the base DBAPI interface.
 
 [dbapi]: https://peps.python.org/pep-0249/
 [duckdb]: https://duckdb.org/docs/api/python/overview
@@ -34,6 +37,17 @@ base DBAPI interface.
 ## Building
 
 Dependencies: a C++ compiler.
+
+For users building from the arrow-adbc source repository, you can alternately use CMake to manage library dependencies and set environment variables for you. You can add ``-DADBC_BUILD_PYTHON=ON`` to define a ``python`` target.
+
+For example, assuming you run cmake from the project root:
+
+```shell
+cmake -S c -B build --preset debug -DADBC_BUILD_PYTHON=ON
+cmake --build build --target python
+```
+
+will properly build and install the Python library for you.
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
 

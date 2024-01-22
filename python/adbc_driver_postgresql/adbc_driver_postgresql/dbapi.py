@@ -19,6 +19,8 @@
 DBAPI 2.0-compatible facade for the ADBC libpq driver.
 """
 
+import typing
+
 import adbc_driver_manager
 import adbc_driver_manager.dbapi
 import adbc_driver_postgresql
@@ -92,15 +94,33 @@ ROWID = adbc_driver_manager.dbapi.ROWID
 # Functions
 
 
-def connect(uri: str) -> "Connection":
-    """Connect to PostgreSQL via ADBC."""
+def connect(
+    uri: str,
+    db_kwargs: typing.Optional[typing.Dict[str, str]] = None,
+    conn_kwargs: typing.Optional[typing.Dict[str, str]] = None,
+    **kwargs
+) -> "Connection":
+    """
+    Connect to PostgreSQL via ADBC.
+
+    Parameters
+    ----------
+    uri : str
+        The URI to connect to.
+    db_kwargs : dict, optional
+        Initial database connection parameters.
+    conn_kwargs : dict, optional
+        Connection-specific parameters.  (ADBC differentiates between
+        a 'database' object shared between multiple 'connection'
+        objects.)
+    """
     db = None
     conn = None
 
     try:
         db = adbc_driver_postgresql.connect(uri)
         conn = adbc_driver_manager.AdbcConnection(db)
-        return adbc_driver_manager.dbapi.Connection(db, conn)
+        return adbc_driver_manager.dbapi.Connection(db, conn, **kwargs)
     except Exception:
         if conn:
             conn.close()

@@ -15,21 +15,32 @@
 # limitations under the License.
 
 GO_BUILD=go build
+RM=rm
 ifeq ($(shell go env GOOS),linux)
 	SUFFIX=so
+else ifeq ($(shell go env GOOS),windows)
+	SUFFIX=dll
+	RM=del
 else
 	SUFFIX=dylib
 endif
 
 DRIVERS := \
-	libadbc_driver_flightsql.$(SUFFIX)
+	libadbc_driver_flightsql.$(SUFFIX) \
+	libadbc_driver_panicdummy.$(SUFFIX) \
+	libadbc_driver_snowflake.$(SUFFIX)
 
-.PHONY: all
+.PHONY: all regenerate
 all: $(DRIVERS)
 
 libadbc_driver_%.$(SUFFIX): %
 	$(GO_BUILD) -tags driverlib -o $@ -buildmode=c-shared -ldflags "-s -w" ./$<
-	rm $(basename $@).h
+	$(RM) $(basename $@).h
+
+regenerate:
+	go run gen/main.go -prefix FlightSQL -o ./flightsql/ -driver ../driver/flightsql
+	go run gen/main.go -prefix PanicDummy -o ./panicdummy/ -driver ../driver/panicdummy
+	go run gen/main.go -prefix Snowflake -o ./snowflake/ -driver ../driver/snowflake
 
 clean:
-	rm $(DRIVERS)
+	$(RM) $(DRIVERS)

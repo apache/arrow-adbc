@@ -22,7 +22,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -76,8 +75,9 @@ func (p *pathSpec) IsGoFile() bool { return filepath.Ext(p.out) == ".go" }
 func (p *pathSpec) IsCFile() bool  { return filepath.Ext(p.out) == ".c" || filepath.Ext(p.out) == ".h" }
 
 type tmplData struct {
-	Driver string
-	Prefix string
+	Driver      string
+	Prefix      string
+	PrefixUpper string
 }
 
 var fileList = []string{
@@ -88,7 +88,7 @@ func main() {
 	var (
 		prefix     = flag.String("prefix", "", "function prefix")
 		driverPkg  = flag.String("driver", "", "path to driver package")
-		driverType = flag.String("type", "Driver", "name of the driver type")
+		driverCtor = flag.String("type", "NewDriver", "name of the driver constructor")
 		outDir     = flag.String("o", "", "output directory")
 		tmplDir    = flag.String("in", "./_tmpl", "template directory [default=./_tmpl]")
 	)
@@ -126,11 +126,15 @@ func main() {
 			out: filepath.Join(*outDir, strings.TrimSuffix(f, Ext))}
 	}
 
-	process(tmplData{Driver: pkg[0].Name + "." + *driverType, Prefix: *prefix}, specs)
+	process(tmplData{
+		Driver:      pkg[0].Name + "." + *driverCtor,
+		Prefix:      *prefix,
+		PrefixUpper: strings.ToUpper(*prefix),
+	}, specs)
 }
 
 func mustReadAll(path string) []byte {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -177,7 +181,7 @@ func process(data interface{}, specs []pathSpec) {
 				log.Fatalf("error formatting '%s': %s", spec.in, err)
 			}
 		}
-		if err := ioutil.WriteFile(spec.out, generated, fileMode(spec.in)); err != nil {
+		if err := os.WriteFile(spec.out, generated, fileMode(spec.in)); err != nil {
 			log.Fatal(err)
 		}
 	}

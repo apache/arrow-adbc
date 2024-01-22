@@ -16,9 +16,23 @@
 # under the License.
 
 import pyarrow
+import pytest
 
 import adbc_driver_flightsql
 import adbc_driver_manager
+
+
+def test_load_driver():
+    # Fails, but in environments where we don't spin up testing
+    # servers, this checks that we can at least *load* the driver
+    with pytest.raises(
+        adbc_driver_manager.OperationalError, match="Error while dialing"
+    ):
+        with adbc_driver_flightsql.connect("grpc://127.0.0.100:12345") as db:
+            with adbc_driver_manager.AdbcConnection(db) as conn:
+                with adbc_driver_manager.AdbcStatement(conn) as stmt:
+                    stmt.set_sql_query("SELECT 1")
+                    stmt.execute_query()
 
 
 def test_query_trivial(dremio):
@@ -44,4 +58,4 @@ def test_options(dremio):
 
 
 def test_version():
-    assert adbc_driver_flightsql.__version__
+    assert adbc_driver_flightsql.__version__  # type:ignore

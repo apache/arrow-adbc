@@ -70,6 +70,9 @@ Some steps of the release require being a committer or a PMC member.
 Before creating a Release Candidate
 ===================================
 
+Regenerate the LICENSE.txt (see CONTRIBUTING.md) and create a pull request if
+any changes were needed.
+
 .. code-block::
 
    # Setup gpg agent for signing artifacts
@@ -160,7 +163,7 @@ Build source and binaries and submit them
     # On macOS the only way I could get this to work was running "echo
     # "UPDATESTARTUPTTY" | gpg-connect-agent" before running this
     # comment otherwise I got errors referencing "ioctl" errors.
-    dev/release/02-sign.sh <version> <rc-number>
+    dev/release/02-sign.sh <prev-version> <version> <rc-number>
 
     # Upload the source release tarball and signs to
     # https://dist.apache.org/repos/dist/dev/arrow .
@@ -275,7 +278,7 @@ Be sure to go through on the following checklist:
 
       # dev/release/post-01-upload.sh 0.1.0 0
       dev/release/post-01-upload.sh <version> <rc-number>
-      git push --tag apache apache-arrow-adbc-<version>
+      git push apache apache-arrow-adbc-<version>
 
 .. dropdown:: Create the final GitHub release
    :class-title: sd-fs-5
@@ -303,8 +306,8 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-03-python.sh 10.0.0
-      dev/release/post-03-python.sh <version>
+      # dev/release/post-03-python.sh 0.1.0 0
+      dev/release/post-03-python.sh <version> <rc-number>
 
 .. dropdown:: Publish Maven packages
    :class-title: sd-fs-5

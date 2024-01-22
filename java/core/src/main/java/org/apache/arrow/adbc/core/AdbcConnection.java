@@ -27,7 +27,21 @@ import org.apache.arrow.vector.types.pojo.Schema;
  * <p>Connections are not required to be thread-safe, but they can be used from multiple threads so
  * long as clients take care to serialize accesses to a connection.
  */
-public interface AdbcConnection extends AutoCloseable {
+public interface AdbcConnection extends AutoCloseable, AdbcOptions {
+  /**
+   * Cancel execution of a query.
+   *
+   * <p>This can be used to interrupt execution of a method like {@link #getObjects(GetObjectsDepth,
+   * String, String, String, String[], String)}}.
+   *
+   * <p>This method must be thread-safe (other method are not necessarily thread-safe).
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default void cancel() throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support cancel");
+  }
+
   /** Commit the pending transaction. */
   default void commit() throws AdbcException {
     throw AdbcException.notImplemented("Connection does not support transactions");
@@ -102,7 +116,7 @@ public interface AdbcConnection extends AutoCloseable {
    *   <caption>The definition of the GetObjects result schema.</caption>
    * </table>
    *
-   * DB_SCHEMA_SCHEMA is a Struct with fields:
+   * <p>DB_SCHEMA_SCHEMA is a Struct with fields:
    *
    * <table border="1">
    *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
@@ -111,7 +125,7 @@ public interface AdbcConnection extends AutoCloseable {
    *   <caption>The definition of DB_SCHEMA_SCHEMA.</caption>
    * </table>
    *
-   * TABLE_SCHEMA is a Struct with fields:
+   * <p>TABLE_SCHEMA is a Struct with fields:
    *
    * <table border="1">
    *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
@@ -122,7 +136,7 @@ public interface AdbcConnection extends AutoCloseable {
    *   <caption>The definition of TABLE_SCHEMA.</caption>
    * </table>
    *
-   * COLUMN_SCHEMA is a Struct with fields:
+   * <p>COLUMN_SCHEMA is a Struct with fields:
    *
    * <table border="1">
    *   <tr><th>Field Name</th>              <th>Field Type</th>             <th>Comments</th></tr>
@@ -148,7 +162,7 @@ public interface AdbcConnection extends AutoCloseable {
    *   <caption>The definition of COLUMN_SCHEMA.</caption>
    * </table>
    *
-   * Notes:
+   * <p>Notes:
    *
    * <ol>
    *   <li>The column's ordinal position in the table (starting from 1).
@@ -157,7 +171,7 @@ public interface AdbcConnection extends AutoCloseable {
    *       provide JDBC/ODBC-compatible metadata in an agnostic manner.
    * </ol>
    *
-   * CONSTRAINT_SCHEMA is a Struct with fields:
+   * <p>CONSTRAINT_SCHEMA is a Struct with fields:
    *
    * <table border="1">
    *   <tr><th>Field Name</th>              <th>Field Type</th>             <th>Comments</th></tr>
@@ -174,7 +188,7 @@ public interface AdbcConnection extends AutoCloseable {
    *   <li>For FOREIGN KEY only, the referenced table and columns.
    * </ol>
    *
-   * USAGE_SCHEMA is a Struct with fields:
+   * <p>USAGE_SCHEMA is a Struct with fields:
    *
    * <table border="1">
    *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
@@ -225,6 +239,94 @@ public interface AdbcConnection extends AutoCloseable {
     DB_SCHEMAS,
     /** Display catalogs, database schemas, and tables. */
     TABLES,
+  }
+
+  /**
+   * Get statistics about the data distribution of table(s).
+   *
+   * <p>The result is an Arrow dataset with the following schema:
+   *
+   * <table border="1">
+   *   <tr><th>Field Name</th>              <th>Field Type</th>                      </tr>
+   *   <tr><td>catalog_name</td>            <td>utf8</td>                            </tr>
+   *   <tr><td>catalog_db_schemas</td>      <td>list[DB_SCHEMA_SCHEMA] not null</td> </tr>
+   *   <caption>The definition of the GetStatistics result schema.</caption>
+   * </table>
+   *
+   * <p>DB_SCHEMA_SCHEMA is a Struct with fields:
+   *
+   * <table border="1">
+   *   <tr><th>Field Name</th>              <th>Field Type</th>                      </tr>
+   *   <tr><td>db_schema_name</td>          <td>utf8</td>                            </tr>
+   *   <tr><td>db_schema_statistics</td>    <td>list[STATISTICS_SCHEMA] not null</td></tr>
+   *   <caption>The definition of DB_SCHEMA_SCHEMA.</caption>
+   * </table>
+   *
+   * <p>STATISTICS_SCHEMA is a Struct with fields:
+   *
+   * <table border="1">
+   *   <tr><th>Field Name</th>              <th>Field Type</th>             <th>Comments</th></tr>
+   *   <tr><td>table_name</td>              <td>utf8 not null</td>          <td></td></tr>
+   *   <tr><td>column_name</td>             <td>utf8</td>                   <td>(1)</td></tr>
+   *   <tr><td>statistic_key</td>           <td>int16 not null</td>         <td>(2)</td></tr>
+   *   <tr><td>statistic_value</td>         <td>VALUE_SCHEMA not null</td>  <td></td></tr>
+   *   <tr><td>statistic_is_approximate</td><td>bool not null</td>          <td>(3)</td></tr>
+   *   <caption>The definition of STATISTICS_SCHEMA.</caption>
+   * </table>
+   *
+   * <ol>
+   *   <li>If null, then the statistic applies to the entire table.
+   *   <li>A dictionary-encoded statistic name (although we do not use the Arrow dictionary type).
+   *       Values in [0, 1024) are reserved for ADBC. Other values are for implementation-specific
+   *       statistics. For the definitions of predefined statistic types, see {@link
+   *       StandardStatistics}. To get driver-specific statistic names, use {@link
+   *       #getStatisticNames()}.
+   *   <li>If true, then the value is approximate or best-effort.
+   * </ol>
+   *
+   * <p>VALUE_SCHEMA is a dense union with members:
+   *
+   * <table border="1">
+   *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
+   *   <tr><td>int64</td>                   <td>int64</td>                  </tr>
+   *   <tr><td>uint64</td>                  <td>uint64</td>                 </tr>
+   *   <tr><td>float64</td>                 <td>float64</td>                </tr>
+   *   <tr><td>binary</td>                  <td>binary</td>                 </tr>
+   *   <caption>The definition of VALUE_SCHEMA.</caption>
+   * </table>
+   *
+   * @param catalogPattern Only show tables in the given catalog. If null, do not filter by catalog.
+   *     If an empty string, only show tables without a catalog. May be a search pattern (see class
+   *     documentation).
+   * @param dbSchemaPattern Only show tables in the given database schema. If null, do not filter by
+   *     database schema. If an empty string, only show tables without a database schema. May be a
+   *     search pattern (see class documentation).
+   * @param tableNamePattern Only show tables with the given name. If an empty string, only show
+   *     tables without a catalog. May be a search pattern (see class documentation).
+   * @param approximate If false, request exact values of statistics, else allow for best-effort,
+   *     approximate, or cached values. The database may return approximate values regardless, as
+   *     indicated in the result. Requesting exact values may be expensive or unsupported.
+   */
+  default ArrowReader getStatistics(
+      String catalogPattern, String dbSchemaPattern, String tableNamePattern, boolean approximate)
+      throws AdbcException {
+    throw AdbcException.notImplemented("Connection does not support getStatistics()");
+  }
+
+  /**
+   * Get the names of additional statistics defined by this driver.
+   *
+   * <p>The result is an Arrow dataset with the following schema:
+   *
+   * <table border="1">
+   *   <tr><th>Field Name</th>              <th>Field Type</th>    </tr>
+   *   <tr><td>statistic_name</td>          <td>utf8 not null</td> </tr>
+   *   <tr><td>statistic_key</td>           <td>int16 not null</td></tr>
+   *   <caption>The definition of the GetStatistics result schema.</caption>
+   * </table>
+   */
+  default ArrowReader getStatisticNames() throws AdbcException {
+    throw AdbcException.notImplemented("Connection does not support getStatisticNames()");
   }
 
   /**
@@ -283,6 +385,42 @@ public interface AdbcConnection extends AutoCloseable {
   /** Toggle whether autocommit is enabled. */
   default void setAutoCommit(boolean enableAutoCommit) throws AdbcException {
     throw AdbcException.notImplemented("Connection does not support transactions");
+  }
+
+  /**
+   * Get the current catalog.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default String getCurrentCatalog() throws AdbcException {
+    throw AdbcException.notImplemented("Connection does not support current catalog");
+  }
+
+  /**
+   * Set the current catalog.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default void setCurrentCatalog(String catalog) throws AdbcException {
+    throw AdbcException.notImplemented("Connection does not support current catalog");
+  }
+
+  /**
+   * Get the current schema.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default String getCurrentDbSchema() throws AdbcException {
+    throw AdbcException.notImplemented("Connection does not support current catalog");
+  }
+
+  /**
+   * Set the current schema.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default void setCurrentDbSchema(String dbSchema) throws AdbcException {
+    throw AdbcException.notImplemented("Connection does not support current catalog");
   }
 
   /**

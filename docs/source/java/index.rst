@@ -22,4 +22,6 @@ Java
 .. toctree::
    :maxdepth: 2
 
-.. note:: Under construction
+   quickstart
+   driver_manager
+   api/index

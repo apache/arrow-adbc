@@ -15,18 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.18)
-get_filename_component(REPOSITORY_ROOT "../.." ABSOLUTE)
-message(STATUS "${REPOSITORY_ROOT}")
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcDefines)
-include(BuildUtils)
-
-project(adbc_driver_manager
-        VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES CXX)
-include(CTest)
-
 add_arrow_lib(adbc_driver_manager
               SOURCES
               adbc_driver_manager.cc
@@ -44,6 +32,9 @@ add_arrow_lib(adbc_driver_manager
               ${ADBC_LINK_FLAGS})
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver)
+
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
@@ -60,17 +51,32 @@ if(ADBC_BUILD_TESTS)
   add_test_case(driver_manager_test
                 PREFIX
                 adbc
+                EXTRA_LABELS
+                driver-manager
                 SOURCES
                 adbc_driver_manager_test.cc
-                ../validation/adbc_validation.cc
-                ../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
+                adbc_driver_common
+                adbc_validation
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-manager-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-manager-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/vendor/nanoarrow/)
-endif()
 
-validate_config()
-config_summary_message()
+  add_test_case(version_100_compatibility_test
+                PREFIX
+                adbc
+                EXTRA_LABELS
+                driver-manager
+                SOURCES
+                adbc_version_100.c
+                adbc_version_100_compatibility_test.cc
+                EXTRA_LINK_LIBS
+                adbc_validation_util
+                nanoarrow
+                ${TEST_LINK_LIBS})
+  target_compile_features(adbc-version-100-compatibility-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-version-100-compatibility-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}/c/vendor/nanoarrow/)
+endif()

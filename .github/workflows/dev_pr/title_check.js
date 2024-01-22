@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+const fs = require("fs");
+
 const COMMIT_TYPES = [
     'build',
     'chore',
@@ -32,12 +34,34 @@ const COMMIT_TYPES = [
 const COMMENT_BODY = ":warning: Please follow the [Conventional Commits format in CONTRIBUTING.md](https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md) for PR titles.";
 
 function matchesCommitFormat(title) {
-    const commitType = `(${COMMIT_TYPES.join('|')})`;
-    const scope = "(\\([a-zA-Z0-9_/\\-,]+\\))?";
+    const commitType = `(?:${COMMIT_TYPES.join('|')})`;
+    const scope = "(?:\\(([a-zA-Z0-9_/\\-,]+)\\))?";
     const delimiter = "!?:";
     const subject = " .+";
     const regexp = new RegExp(`^${commitType}${scope}${delimiter}${subject}$`);
-    return title.match(regexp) != null;
+
+    const matches = title.match(regexp);
+    if (matches === null) {
+        return false;
+    } else if (typeof matches[1] === "undefined") {
+        // No component
+        return true;
+    }
+
+    const components = matches[1].split(",");
+    console.info(`Components are ${components}`);
+    for (const component of components) {
+        if (component === "format") {
+            console.info(`Component is "format"`);
+            continue;
+        } else if (!fs.existsSync(component)) {
+            console.info(`Component "${component}" does not exist!`);
+            return false;
+        }
+        console.info(`Component "${component}" is valid`);
+    }
+
+    return true;
 }
 
 async function commentCommitFormat(github, context, pullRequestNumber) {
@@ -69,7 +93,9 @@ async function commentCommitFormat(github, context, pullRequestNumber) {
 module.exports = async ({github, context}) => {
     const pullRequestNumber = context.payload.number;
     const title = context.payload.pull_request.title;
+    console.info(`Checking title "${title}"`);
     if (!matchesCommitFormat(title)) {
+        console.info(`Title was not valid`);
         await commentCommitFormat(github, context, pullRequestNumber);
     }
 };

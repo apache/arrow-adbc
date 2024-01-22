@@ -19,6 +19,7 @@ package org.apache.arrow.adbc.driver.testsuite;
 
 import static org.apache.arrow.adbc.driver.testsuite.ArrowAssertions.assertField;
 import static org.apache.arrow.adbc.driver.testsuite.ArrowAssertions.assertRoot;
+import static org.apache.arrow.adbc.driver.testsuite.ArrowAssertions.assertSchema;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -235,6 +236,62 @@ public abstract class AbstractStatementTest {
         stmt.bind(root);
         final AdbcException e = assertThrows(AdbcException.class, stmt::executeUpdate);
         assertThat(e.getStatus()).describedAs("%s", e).isEqualTo(AdbcStatusCode.ALREADY_EXISTS);
+      }
+    }
+  }
+
+  @Test
+  public void executeSchema() throws Exception {
+    util.ingestTableIntsStrs(allocator, connection, tableName);
+    final String name = quirks.caseFoldColumnName("STRS");
+    try (final AdbcStatement stmt = connection.createStatement()) {
+      stmt.setSqlQuery("SELECT " + name + "  FROM " + tableName);
+      final Schema actualSchema = stmt.executeSchema();
+      assertSchema(actualSchema)
+          .isEqualTo(
+              new Schema(
+                  Collections.singletonList(
+                      Field.nullable(name, Types.MinorType.VARCHAR.getType()))));
+    }
+  }
+
+  @Test
+  public void executeSchemaPrepared() throws Exception {
+    util.ingestTableIntsStrs(allocator, connection, tableName);
+    final String name = quirks.caseFoldColumnName("STRS");
+    try (final AdbcStatement stmt = connection.createStatement()) {
+      stmt.setSqlQuery("SELECT " + name + "  FROM " + tableName);
+      stmt.prepare();
+      final Schema actualSchema = stmt.executeSchema();
+      assertSchema(actualSchema)
+          .isEqualTo(
+              new Schema(
+                  Collections.singletonList(
+                      Field.nullable(name, Types.MinorType.VARCHAR.getType()))));
+    }
+  }
+
+  @Test
+  public void executeSchemaParams() throws Exception {
+    try (final AdbcStatement stmt = connection.createStatement()) {
+      stmt.setSqlQuery("SELECT ? AS FOO");
+      stmt.prepare();
+      Schema actualSchema = stmt.executeSchema();
+      // Actual type unknown
+      assertThat(actualSchema.getFields().size()).isEqualTo(1);
+
+      final Schema schema =
+          new Schema(
+              Collections.singletonList(
+                  Field.nullable(
+                      quirks.caseFoldColumnName("foo"), Types.MinorType.VARCHAR.getType())));
+      try (VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+        ((VarCharVector) root.getVector(0)).setSafe(0, "foo".getBytes(StandardCharsets.UTF_8));
+        root.setRowCount(1);
+        stmt.bind(root);
+
+        actualSchema = stmt.executeSchema();
+        assertSchema(actualSchema).isEqualTo(schema);
       }
     }
   }

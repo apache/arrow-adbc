@@ -55,8 +55,21 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     set(BUILD_STATIC ${ADBC_BUILD_STATIC})
   endif()
 
+  set(BUILD_TAGS)
+
   if(DEFINED ARG_BUILD_TAGS)
-    set(GO_BUILD_TAGS "-tags=${ARG_BUILD_TAGS}")
+    set(BUILD_TAGS "${ARG_BUILD_TAGS}")
+  endif()
+
+  if(NOT "${ADBC_GO_BUILD_TAGS}" STREQUAL "")
+    if(NOT "${BUILD_TAGS}" STREQUAL "")
+      set(BUILD_TAGS "${BUILD_TAGS},")
+    endif()
+    set(BUILD_TAGS "${BUILD_TAGS}${ADBC_GO_BUILD_TAGS}")
+  endif()
+
+  if(NOT "${BUILD_TAGS}" STREQUAL "")
+    set(GO_BUILD_TAGS "-tags=${BUILD_TAGS}")
   endif()
 
   list(TRANSFORM ARG_SOURCES PREPEND "${GO_MOD_DIR}/")
@@ -84,16 +97,28 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     set(LIB_NAME_SHARED
         "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
+    set(ADBC_VERSION_SCRIPT_LINK_FLAG
+        "-Wl,--version-script=${REPOSITORY_ROOT}/c/symbols.map")
+
+    check_linker_flag(CXX ${ADBC_VERSION_SCRIPT_LINK_FLAG}
+                      CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
+    if(CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
+      set(EXTLDFLAGS ",--version-script=${REPOSITORY_ROOT}/c/symbols.map")
+    endif()
+
     if(NOT APPLE)
-      set(ARG_SHARED_LINK_FLAGS
-          "${ARG_SHARED_LINK_FLAGS} -extldflags -Wl,-soname,${LIB_NAME_SHARED}.${ADBC_SO_VERSION}"
-      )
+      set(EXTLDFLAGS "${EXTLDFLAGS},-soname,${LIB_NAME_SHARED}.${ADBC_SO_VERSION}")
+    endif()
+
+    if(DEFINED EXTLDFLAGS)
+      set(EXTLDFLAGS "'-extldflags=-Wl${EXTLDFLAGS}'")
     endif()
 
     if(DEFINED ARG_SHARED_LINK_FLAGS)
       separate_arguments(ARG_SHARED_LINK_FLAGS NATIVE_COMMAND "${ARG_SHARED_LINK_FLAGS}")
-      set(GO_LDFLAGS "-ldflags=\"${ARG_SHARED_LINK_FLAGS}\"")
     endif()
+
+    set(GO_LDFLAGS "-ldflags;\"${ARG_SHARED_LINK_FLAGS};-a;${EXTLDFLAGS}\"")
 
     set(LIBOUT_SHARED "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME_SHARED}")
 
@@ -128,7 +153,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     add_custom_target(${GO_LIBNAME}_target ALL
                       DEPENDS "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
                               "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" "${LIBOUT_SHARED}")
-    add_library(${GO_LIBNAME}_shared SHARED IMPORTED)
+    add_library(${GO_LIBNAME}_shared SHARED IMPORTED GLOBAL)
     set_target_properties(${GO_LIBNAME}_shared
                           PROPERTIES IMPORTED_LOCATION
                                      "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
@@ -177,7 +202,10 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
               DESTINATION
               ${CMAKE_INSTALL_LIBDIR})
     endif()
-    if(NOT WIN32)
+    if(WIN32)
+      # This symlink doesn't get installed
+      install(FILES "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" TYPE BIN)
+    else()
       install(FILES "${LIBOUT_SHARED}" "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" TYPE LIB)
     endif()
   endif()

@@ -21,9 +21,9 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import org.apache.arrow.adapter.jdbc.JdbcFieldInfo;
-import org.apache.arrow.adapter.jdbc.JdbcToArrowUtils;
+import java.util.Map;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
@@ -31,20 +31,29 @@ import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.IsolationLevel;
 import org.apache.arrow.adbc.core.StandardSchemas;
-import org.apache.arrow.adbc.sql.SqlQuirks;
+import org.apache.arrow.adbc.core.StandardStatistics;
+import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcFieldInfoExtra;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
+import org.apache.arrow.vector.BitVector;
+import org.apache.arrow.vector.SmallIntVector;
+import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.complex.DenseUnionVector;
+import org.apache.arrow.vector.complex.ListVector;
+import org.apache.arrow.vector.complex.StructVector;
+import org.apache.arrow.vector.holders.NullableBigIntHolder;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.apache.arrow.vector.util.Text;
 
 public class JdbcConnection implements AdbcConnection {
   private final BufferAllocator allocator;
   private final Connection connection;
-  private final SqlQuirks quirks;
+  private final JdbcQuirks quirks;
 
   /**
    * Create a new connection.
@@ -53,7 +62,7 @@ public class JdbcConnection implements AdbcConnection {
    * @param connection The JDBC connection.
    * @param quirks Backend-specific quirks to account for.
    */
-  JdbcConnection(BufferAllocator allocator, Connection connection, SqlQuirks quirks) {
+  JdbcConnection(BufferAllocator allocator, Connection connection, JdbcQuirks quirks) {
     this.allocator = allocator;
     this.connection = connection;
     this.quirks = quirks;
@@ -119,10 +128,171 @@ public class JdbcConnection implements AdbcConnection {
     }
   }
 
+  static final class Statistic {
+    String table;
+    String column;
+    short key;
+    long value;
+    boolean multiColumn = false;
+  }
+
+  @Override
+  public ArrowReader getStatistics(
+      String catalogPattern, String dbSchemaPattern, String tableNamePattern, boolean approximate)
+      throws AdbcException {
+    if (tableNamePattern == null) {
+      throw AdbcException.notImplemented(
+          JdbcDriverUtil.prefixExceptionMessage("getStatistics: must supply table name"));
+    }
+
+    try (final VectorSchemaRoot root =
+            VectorSchemaRoot.create(StandardSchemas.GET_STATISTICS_SCHEMA, allocator);
+        ResultSet rs =
+            connection
+                .getMetaData()
+                .getIndexInfo(
+                    catalogPattern,
+                    dbSchemaPattern,
+                    tableNamePattern, /*unique*/
+                    false,
+                    approximate)) {
+      // Build up the statistics in-memory and then return a constant reader.
+      // We have to read and sort the data first because the ordering is not by the catalog/etc.
+
+      // {catalog: {schema: {index_name: statistic}}}
+      Map<String, Map<String, Map<String, Statistic>>> allStatistics = new HashMap<>();
+
+      while (rs.next()) {
+        String catalog = rs.getString(1);
+        String schema = rs.getString(2);
+        String table = rs.getString(3);
+        String index = rs.getString(6);
+        short statisticType = rs.getShort(7);
+        String column = rs.getString(9);
+        long cardinality = rs.getLong(11);
+
+        if (!allStatistics.containsKey(catalog)) {
+          allStatistics.put(catalog, new HashMap<>());
+        }
+
+        Map<String, Map<String, Statistic>> catalogStats = allStatistics.get(catalog);
+        if (!catalogStats.containsKey(schema)) {
+          catalogStats.put(schema, new HashMap<>());
+        }
+
+        Map<String, Statistic> schemaStats = catalogStats.get(schema);
+        Statistic statistic = schemaStats.getOrDefault(index, new Statistic());
+        if (schemaStats.containsKey(index)) {
+          // Multi-column index, ignore it
+          statistic.multiColumn = true;
+          continue;
+        }
+
+        statistic.column = column;
+        statistic.table = table;
+        statistic.key =
+            statisticType == DatabaseMetaData.tableIndexStatistic
+                ? StandardStatistics.ROW_COUNT.getKey()
+                : StandardStatistics.DISTINCT_COUNT.getKey();
+        statistic.value = cardinality;
+        schemaStats.put(index, statistic);
+      }
+
+      VarCharVector catalogNames = (VarCharVector) root.getVector(0);
+      ListVector catalogDbSchemas = (ListVector) root.getVector(1);
+      StructVector dbSchemas = (StructVector) catalogDbSchemas.getDataVector();
+      VarCharVector dbSchemaNames = (VarCharVector) dbSchemas.getVectorById(0);
+      ListVector dbSchemaStatistics = (ListVector) dbSchemas.getVectorById(1);
+      StructVector statistics = (StructVector) dbSchemaStatistics.getDataVector();
+      VarCharVector tableNames = (VarCharVector) statistics.getVectorById(0);
+      VarCharVector columnNames = (VarCharVector) statistics.getVectorById(1);
+      SmallIntVector statisticKeys = (SmallIntVector) statistics.getVectorById(2);
+      DenseUnionVector statisticValues = (DenseUnionVector) statistics.getVectorById(3);
+      BitVector statisticIsApproximate = (BitVector) statistics.getVectorById(4);
+
+      // Build up the Arrow result
+      Text text = new Text();
+      NullableBigIntHolder holder = new NullableBigIntHolder();
+      int catalogIndex = 0;
+      int schemaIndex = 0;
+      int statisticIndex = 0;
+      for (String catalog : allStatistics.keySet()) {
+        Map<String, Map<String, Statistic>> schemas = allStatistics.get(catalog);
+
+        if (catalog == null) {
+          catalogNames.setNull(catalogIndex);
+        } else {
+          text.set(catalog);
+          catalogNames.setSafe(catalogIndex, text);
+        }
+        catalogDbSchemas.startNewValue(catalogIndex);
+
+        int schemaCount = 0;
+        for (String schema : schemas.keySet()) {
+          if (schema == null) {
+            dbSchemaNames.setNull(schemaIndex);
+          } else {
+            text.set(schema);
+            dbSchemaNames.setSafe(schemaIndex, text);
+          }
+
+          dbSchemaStatistics.startNewValue(schemaIndex);
+
+          Map<String, Statistic> indices = schemas.get(schema);
+          int statisticCount = 0;
+          for (Statistic statistic : indices.values()) {
+            if (statistic.multiColumn) {
+              continue;
+            }
+
+            text.set(statistic.table);
+            tableNames.setSafe(statisticIndex, text);
+            if (statistic.column == null) {
+              columnNames.setNull(statisticIndex);
+            } else {
+              text.set(statistic.column);
+              columnNames.setSafe(statisticIndex, text);
+            }
+            statisticKeys.setSafe(statisticIndex, statistic.key);
+            statisticValues.setTypeId(statisticIndex, (byte) 0);
+            holder.isSet = 1;
+            holder.value = statistic.value;
+            statisticValues.setSafe(statisticIndex, holder);
+            statisticIsApproximate.setSafe(statisticIndex, approximate ? 1 : 0);
+
+            statistics.setIndexDefined(statisticIndex++);
+            statisticCount++;
+          }
+
+          dbSchemaStatistics.endValue(schemaIndex, statisticCount);
+
+          dbSchemas.setIndexDefined(schemaIndex++);
+          schemaCount++;
+        }
+
+        catalogDbSchemas.endValue(catalogIndex, schemaCount);
+        catalogIndex++;
+      }
+      root.setRowCount(catalogIndex);
+
+      return RootArrowReader.fromRoot(allocator, root);
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
+  public ArrowReader getStatisticNames() throws AdbcException {
+    // TODO:
+    return AdbcConnection.super.getStatisticNames();
+  }
+
   @Override
   public Schema getTableSchema(String catalog, String dbSchema, String tableName)
       throws AdbcException {
     // Check for existence
+    // XXX: this is TOC/TOU error, but without an explicit check we just get no fields (possibly we
+    // should just assume it's impossible to have a 0-column table and error there?)
     try (final ResultSet rs =
         connection.getMetaData().getTables(catalog, dbSchema, tableName, /*tableTypes*/ null)) {
       if (!rs.next()) {
@@ -146,19 +316,25 @@ public class JdbcConnection implements AdbcConnection {
             .getColumns(catalog, dbSchema, tableName, /*columnNamePattern*/ null)) {
       while (rs.next()) {
         final String fieldName = rs.getString("COLUMN_NAME");
-        final boolean nullable = rs.getInt("NULLABLE") != DatabaseMetaData.columnNoNulls;
-        final int jdbcType = rs.getInt("DATA_TYPE");
-        final int precision = rs.getInt("COLUMN_SIZE");
-        final int scale = rs.getInt("DECIMAL_DIGITS");
-        final ArrowType arrowType =
-            JdbcToArrowUtils.getArrowTypeFromJdbcType(
-                new JdbcFieldInfo(jdbcType, precision, scale), /*calendar*/ null);
+        final JdbcFieldInfoExtra fieldInfoExtra = new JdbcFieldInfoExtra(rs);
+
+        final ArrowType arrowType = quirks.getTypeConverter().apply(fieldInfoExtra);
+        if (arrowType == null) {
+          throw AdbcException.notImplemented(
+              JdbcDriverUtil.prefixExceptionMessage(
+                  String.format(
+                      "Column '%s' has unsupported type: %s", fieldName, fieldInfoExtra)));
+        }
+
         final Field field =
             new Field(
                 fieldName,
                 new FieldType(
-                    nullable, arrowType, /*dictionary*/ null, /*metadata*/ null), /*children*/
-                null);
+                    fieldInfoExtra.isNullable() != DatabaseMetaData.columnNoNulls,
+                    arrowType, /*dictionary*/
+                    null, /*metadata*/
+                    null),
+                /*children*/ null);
         fields.add(field);
       }
     } catch (SQLException e) {
@@ -200,6 +376,42 @@ public class JdbcConnection implements AdbcConnection {
   public void setAutoCommit(boolean enableAutoCommit) throws AdbcException {
     try {
       connection.setAutoCommit(enableAutoCommit);
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
+  public String getCurrentCatalog() throws AdbcException {
+    try {
+      return connection.getCatalog();
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
+  public void setCurrentCatalog(String catalog) throws AdbcException {
+    try {
+      connection.setCatalog(catalog);
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
+  public String getCurrentDbSchema() throws AdbcException {
+    try {
+      return connection.getSchema();
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
+  public void setCurrentDbSchema(String dbSchema) throws AdbcException {
+    try {
+      connection.setSchema(dbSchema);
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }

@@ -15,17 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.18)
-get_filename_component(REPOSITORY_ROOT "../../../" ABSOLUTE)
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcDefines)
-include(BuildUtils)
 include(GoUtils)
-
-project(adbc_driver_flightsql
-        VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES C CXX)
-include(CTest)
 
 set(LDFLAGS "$<$<CONFIG:Release>:-s> $<$<CONFIG:Release>:-w>")
 add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
@@ -39,10 +29,16 @@ add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
            PKG_CONFIG_NAME
            adbc-driver-flightsql
            SHARED_LINK_FLAGS
-           ${LDFLAGS})
+           ${LDFLAGS}
+           OUTPUTS
+           ADBC_LIBRARIES)
 
-include_directories(SYSTEM ${REPOSITORY_ROOT})
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
+foreach(LIB_TARGET ${ADBC_LIBRARIES})
+  target_include_directories(${LIB_TARGET} SYSTEM
+                             INTERFACE ${REPOSITORY_ROOT} ${REPOSITORY_ROOT}/c/
+                                       ${REPOSITORY_ROOT}/c/vendor
+                                       ${REPOSITORY_ROOT}/c/driver)
+endforeach()
 
 if(ADBC_TEST_LINKAGE STREQUAL "shared")
   set(TEST_LINK_LIBS adbc_driver_flightsql_shared)
@@ -54,17 +50,20 @@ if(ADBC_BUILD_TESTS)
   add_test_case(driver_flightsql_test
                 PREFIX
                 adbc
+                EXTRA_LABELS
+                driver-flightsql
                 SOURCES
                 dremio_flightsql_test.cc
                 sqlite_flightsql_test.cc
-                ../../validation/adbc_validation.cc
-                ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
+                adbc_driver_common
+                adbc_validation
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-flightsql-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-driver-flightsql-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT} ${REPOSITORY_ROOT}/c/
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-driver-flightsql-test)
 endif()
-
-validate_config()
-config_summary_message()

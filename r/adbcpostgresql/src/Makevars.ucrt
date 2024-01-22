@@ -15,12 +15,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
-CRT=-ucrt
-include Makevars.win
+PKG_CPPFLAGS = -I../src -DADBC_EXPORT="" -D__USE_MINGW_ANSI_STDIO
+
+PKG_LIBS = -lpq -lpgcommon -lpgport -lssl -lcrypto -lz -lsecur32 -lws2_32 -lwldap32 -lcrypt32
 
 OBJECTS = init.o \
+    error.o \
     connection.o \
     database.o \
+    result_helper.o \
     statement.o \
     postgresql.o \
+    common/utils.o \
     nanoarrow/nanoarrow.o

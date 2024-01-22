@@ -41,11 +41,24 @@ and support for user-facing packages that rely on ADBC drivers.
 
 ## Installation
 
+You can install the released version of adbcdrivermanager from [CRAN](https://cran.r-project.org/) with:
+
+```r
+install.packages("adbcdrivermanager")
+```
+
 You can install the development version of adbcdrivermanager from [GitHub](https://github.com/) with:
 
 ``` r
-# install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager")
+# install.packages("pak")
+pak::pak("apache/arrow-adbc/r/adbcdrivermanager")
+```
+
+ADBC drivers for R use a relatively new feature of pkgbuild to enable installation from GitHub via pak. Depending on when you installed pak, you may need to update its internal version of pkgbuild.
+
+``` r
+install.packages("pkgbuild", pak:::private_lib_dir())
+pak::cache_clean()
 ```
 
 ## Example

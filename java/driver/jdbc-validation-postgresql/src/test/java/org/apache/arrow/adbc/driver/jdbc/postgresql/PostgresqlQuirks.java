@@ -27,16 +27,19 @@ import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.driver.jdbc.JdbcDriver;
+import org.apache.arrow.adbc.driver.jdbc.StandardJdbcQuirks;
 import org.apache.arrow.adbc.driver.testsuite.SqlValidationQuirks;
-import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.vector.types.pojo.ArrowType;
+import org.apache.arrow.vector.types.TimeUnit;
 import org.junit.jupiter.api.Assumptions;
 
 public class PostgresqlQuirks extends SqlValidationQuirks {
   static final String POSTGRESQL_URL_ENV_VAR = "ADBC_JDBC_POSTGRESQL_URL";
   static final String POSTGRESQL_USER_ENV_VAR = "ADBC_JDBC_POSTGRESQL_USER";
   static final String POSTGRESQL_PASSWORD_ENV_VAR = "ADBC_JDBC_POSTGRESQL_PASSWORD";
+  static final String POSTGRESQL_DATABASE_ENV_VAR = "ADBC_JDBC_POSTGRESQL_DATABASE";
+
+  String catalog = "postgres";
 
   static String makeJdbcUrl() {
     final String postgresUrl = System.getenv(POSTGRESQL_URL_ENV_VAR);
@@ -49,23 +52,22 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
     return String.format("jdbc:postgresql://%s?user=%s&password=%s", postgresUrl, user, password);
   }
 
+  public Connection getJdbcConnection() throws SQLException {
+    return DriverManager.getConnection(makeJdbcUrl());
+  }
+
   @Override
   public AdbcDatabase initDatabase(BufferAllocator allocator) throws AdbcException {
     String url = makeJdbcUrl();
 
+    final String catalog = System.getenv(POSTGRESQL_DATABASE_ENV_VAR);
+    Assumptions.assumeFalse(
+        catalog == null, "PostgreSQL catalog not found, set " + POSTGRESQL_DATABASE_ENV_VAR);
+    this.catalog = catalog;
+
     final Map<String, Object> parameters = new HashMap<>();
-    parameters.put(AdbcDriver.PARAM_URL, url);
-    parameters.put(
-        AdbcDriver.PARAM_SQL_QUIRKS,
-        SqlQuirks.builder()
-            .arrowToSqlTypeNameMapping(
-                (arrowType -> {
-                  if (arrowType.getTypeID() == ArrowType.ArrowTypeID.Utf8) {
-                    return "TEXT";
-                  }
-                  return SqlQuirks.DEFAULT_ARROW_TYPE_TO_SQL_TYPE_NAME_MAPPING.apply(arrowType);
-                }))
-            .build());
+    AdbcDriver.PARAM_URI.set(parameters, url);
+    parameters.put(JdbcDriver.PARAM_JDBC_QUIRKS, StandardJdbcQuirks.POSTGRESQL);
     return new JdbcDriver(allocator).open(parameters);
   }
 
@@ -80,6 +82,16 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
   }
 
   @Override
+  public String defaultCatalog() {
+    return catalog;
+  }
+
+  @Override
+  public String defaultDbSchema() {
+    return "public";
+  }
+
+  @Override
   public String caseFoldTableName(String name) {
     return name.toLowerCase();
   }
@@ -87,5 +99,20 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
   @Override
   public String caseFoldColumnName(String name) {
     return name.toLowerCase();
+  }
+
+  @Override
+  public TimeUnit defaultTimeUnit() {
+    return TimeUnit.MICROSECOND;
+  }
+
+  @Override
+  public TimeUnit defaultTimestampUnit() {
+    return TimeUnit.MICROSECOND;
+  }
+
+  @Override
+  public boolean supportsCurrentCatalog() {
+    return true;
   }
 }

@@ -38,6 +38,8 @@ class DatabaseOptions(enum.Enum):
 
     #: The authorization header to use for requests.
     AUTHORIZATION_HEADER = "adbc.flight.sql.authorization_header"
+    #: Server name in authentication handshake
+    AUTHORITY = "adbc.flight.sql.client_option.authority"
     #: Enable mTLS and use these PEM-encoded certificates.
     MTLS_CERT_CHAIN = "adbc.flight.sql.client_option.mtls_cert_chain"
     #: Enable mTLS and use this PEM-encoded private key.
@@ -68,6 +70,8 @@ class DatabaseOptions(enum.Enum):
     TLS_SKIP_VERIFY = "adbc.flight.sql.client_option.tls_skip_verify"
     #: Block and wait for the connection to be established.
     WITH_BLOCK = "adbc.flight.sql.client_option.with_block"
+    #: Enable cookie middleware. Default is disabled ("false")
+    WITH_COOKIE_MIDDLEWARE = "adbc.flight.sql.rpc.with_cookie_middleware"
     #: Set the maximum gRPC message size (in bytes). The default is 16 MiB.
     WITH_MAX_MSG_SIZE = "adbc.flight.sql.client_option.with_max_msg_size"
 
@@ -79,7 +83,7 @@ class ConnectionOptions(enum.Enum):
     #:
     #: This option should prefix the name of the header to add
     #: (i.e. it should be used like
-    #: ``f"{ConnectionOptions.RpcCallHeaderPrefix}.x-my-header"``).
+    #: ``f"{ConnectionOptions.RPC_CALL_HEADER_PREFIX}x-my-header"``).
     #:
     #: Overrides any headers set via the equivalent database option.
     RPC_CALL_HEADER_PREFIX = DatabaseOptions.RPC_CALL_HEADER_PREFIX.value
@@ -103,12 +107,12 @@ class StatementOptions(enum.Enum):
     #: The number of batches to queue per partition. Defaults to 5.
     #:
     #: This controls how much we read ahead on result sets.
-    QUEUE_SIZE = "adbc.flight.sql.rpc.queue_size"
+    QUEUE_SIZE = "adbc.rpc.result_queue_size"
     #: Add an arbitrary header to all outgoing requests.
     #:
     #: This option should prefix the name of the header to add
     #: (i.e. it should be used like
-    #: ``f"{ConnectionOptions.RpcCallHeaderPrefix}.x-my-header"``).
+    #: ``f"{ConnectionOptions.RPC_CALL_HEADER_PREFIX}x-my-header"``).
     #:
     #: Overrides any headers set via the equivalent database or
     #: connection options.

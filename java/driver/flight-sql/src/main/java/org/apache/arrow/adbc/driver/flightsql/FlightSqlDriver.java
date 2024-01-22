@@ -26,23 +26,16 @@ import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.Preconditions;
 
 /** An ADBC driver wrapping Arrow Flight SQL. */
 public class FlightSqlDriver implements AdbcDriver {
-  public static final FlightSqlDriver INSTANCE = new FlightSqlDriver();
-
   static {
     AdbcDriverManager.getInstance()
-        .registerDriver("org.apache.arrow.adbc.driver.flightsql", INSTANCE);
+        .registerDriver("org.apache.arrow.adbc.driver.flightsql", FlightSqlDriver::new);
   }
 
   private final BufferAllocator allocator;
-
-  FlightSqlDriver() {
-    this(new RootAllocator());
-  }
 
   FlightSqlDriver(BufferAllocator allocator) {
     this.allocator = Objects.requireNonNull(allocator);
@@ -50,17 +43,22 @@ public class FlightSqlDriver implements AdbcDriver {
 
   @Override
   public AdbcDatabase open(Map<String, Object> parameters) throws AdbcException {
-    Object target = parameters.get("adbc.url");
-    if (!(target instanceof String)) {
-      throw AdbcException.invalidArgument(
-          "[Flight SQL] Must provide String " + PARAM_URL + " parameter");
+    String uri = PARAM_URI.get(parameters);
+    if (uri == null) {
+      Object target = parameters.get("adbc.url");
+      if (!(target instanceof String)) {
+        throw AdbcException.invalidArgument(
+            "[Flight SQL] Must provide String " + PARAM_URI + " parameter");
+      }
+      uri = (String) target;
     }
+
     Location location;
     try {
-      location = new Location((String) target);
+      location = new Location(uri);
     } catch (URISyntaxException e) {
       throw AdbcException.invalidArgument(
-              String.format("[Flight SQL] Location %s is invalid: %s", target, e))
+              String.format("[Flight SQL] Location %s is invalid: %s", uri, e))
           .withCause(e);
     }
     Object quirks = parameters.get(PARAM_SQL_QUIRKS);

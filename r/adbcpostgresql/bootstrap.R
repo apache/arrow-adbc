@@ -19,15 +19,25 @@
 # into src/
 files_to_vendor <- c(
   "../../adbc.h",
-  "../../c/driver/postgresql/util.h",
+  "../../c/driver/postgresql/postgres_util.h",
   "../../c/driver/postgresql/postgres_type.h",
+  "../../c/driver/postgresql/copy/copy_common.h",
+  "../../c/driver/postgresql/copy/reader.h",
+  "../../c/driver/postgresql/copy/writer.h",
   "../../c/driver/postgresql/statement.h",
   "../../c/driver/postgresql/statement.cc",
   "../../c/driver/postgresql/connection.h",
   "../../c/driver/postgresql/connection.cc",
+  "../../c/driver/postgresql/error.h",
+  "../../c/driver/postgresql/error.cc",
   "../../c/driver/postgresql/database.h",
   "../../c/driver/postgresql/database.cc",
   "../../c/driver/postgresql/postgresql.cc",
+  "../../c/driver/postgresql/result_helper.h",
+  "../../c/driver/postgresql/result_helper.cc",
+  "../../c/driver/common/options.h",
+  "../../c/driver/common/utils.h",
+  "../../c/driver/common/utils.c",
   "../../c/vendor/nanoarrow/nanoarrow.h",
   "../../c/vendor/nanoarrow/nanoarrow.hpp",
   "../../c/vendor/nanoarrow/nanoarrow.c"
@@ -48,13 +58,33 @@ if (all(file.exists(files_to_vendor))) {
     )
   )
 
+  if (!dir.exists("src/copy")) {
+    dir.create("src/copy")
+  }
+
   if (all(file.copy(files_to_vendor, "src"))) {
     file.rename(
-      c("src/nanoarrow.c", "src/nanoarrow.h", "src/nanoarrow.hpp"),
+      c(
+        "src/nanoarrow.c",
+        "src/nanoarrow.h",
+        "src/nanoarrow.hpp",
+        "src/options.h",
+        "src/utils.c",
+        "src/utils.h",
+        "src/copy_common.h",
+        "src/reader.h",
+        "src/writer.h"
+      ),
       c(
         "src/nanoarrow/nanoarrow.c",
         "src/nanoarrow/nanoarrow.h",
-        "src/nanoarrow/nanoarrow.hpp"
+        "src/nanoarrow/nanoarrow.hpp",
+        "src/common/options.h",
+        "src/common/utils.c",
+        "src/common/utils.h",
+        "src/copy/copy_common.h",
+        "src/copy/reader.h",
+        "src/copy/writer.h"
       )
     )
     cat("All files successfully copied to src/\n")

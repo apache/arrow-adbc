@@ -16,7 +16,7 @@
 # under the License.
 
 #' @keywords internal
-#' @aliases NULL
+#' @aliases adbcsqlite-package
 "_PACKAGE"
 
 ## usethis namespace: start
@@ -52,10 +52,10 @@ adbcsqlite <- function() {
 #' @rdname adbcsqlite
 #' @importFrom adbcdrivermanager adbc_database_init
 #' @export
-adbc_database_init.adbcsqlite_driver_sqlite <- function(driver, uri = ":memory:") {
+adbc_database_init.adbcsqlite_driver_sqlite <- function(driver, ..., uri = ":memory:") {
   adbcdrivermanager::adbc_database_init_default(
     driver,
-    list(uri = uri),
+    list(..., uri = uri),
     subclass = "adbcsqlite_database"
   )
 }
@@ -63,12 +63,12 @@ adbc_database_init.adbcsqlite_driver_sqlite <- function(driver, uri = ":memory:"
 #' @rdname adbcsqlite
 #' @importFrom adbcdrivermanager adbc_connection_init
 #' @export
-adbc_connection_init.adbcsqlite_database <- function(database,
+adbc_connection_init.adbcsqlite_database <- function(database, ...,
                                                      adbc.connection.autocommit = NULL) {
-  options <- list(adbc.connection.autocommit = adbc.connection.autocommit)
+  options <- list(..., adbc.connection.autocommit = adbc.connection.autocommit)
   adbcdrivermanager::adbc_connection_init_default(
     database,
-    options[!vapply(options, is.null, logical(1))],
+    options,
     subclass = "adbcsqlite_connection"
   )
 }
@@ -76,11 +76,12 @@ adbc_connection_init.adbcsqlite_database <- function(database,
 #' @rdname adbcsqlite
 #' @importFrom adbcdrivermanager adbc_statement_init
 #' @export
-adbc_statement_init.adbcsqlite_connection <- function(connection,
+adbc_statement_init.adbcsqlite_connection <- function(connection, ...,
                                                       adbc.ingest.target_table = NULL,
                                                       adbc.ingest.mode = NULL,
                                                       adbc.sqlite.query.batch_rows = NULL) {
   options <- list(
+    ...,
     adbc.ingest.target_table = adbc.ingest.target_table,
     adbc.ingest.mode = adbc.ingest.mode,
     adbc.sqlite.query.batch_rows = adbc.sqlite.query.batch_rows
@@ -88,7 +89,7 @@ adbc_statement_init.adbcsqlite_connection <- function(connection,
 
   adbcdrivermanager::adbc_statement_init_default(
     connection,
-    options[!vapply(options, is.null, logical(1))],
+    options,
     subclass = "adbcsqlite_statement"
   )
 }

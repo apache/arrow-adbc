@@ -23,13 +23,14 @@ main() {
     local -r source_top_dir="$( cd "${source_dir}/../../" && pwd )"
     pushd "${source_top_dir}"
 
-    if [ "$#" -ne 2 ]; then
-        echo "Usage: $0 <version> <rc-num>"
+    if [ "$#" -ne 3 ]; then
+        echo "Usage: $0 <prev-version> <version> <rc-num>"
         exit 1
     fi
 
-    local -r version="$1"
-    local -r rc_number="$2"
+    local -r prev_version="$1"
+    local -r version="$2"
+    local -r rc_number="$3"
     local -r tag="apache-arrow-adbc-${version}-rc${rc_number}"
     local -r tarball="apache-arrow-adbc-${version}"
 
@@ -69,7 +70,9 @@ main() {
        --skip-existing
 
     header "Adding release notes"
-    local -r release_notes=$(cz ch --dry-run "${tag}" --unreleased-version "ADBC Libraries ${version}")
+    # XXX: commitizen likes to include the entire history even if we
+    # give it a tag, so we have to give it both tags explicitly
+    local -r release_notes=$(cz ch --dry-run --unreleased-version "ADBC Libraries ${version}" --start-rev apache-arrow-adbc-${prev_version})
     echo "${release_notes}"
     gh release edit \
        "${tag}" \

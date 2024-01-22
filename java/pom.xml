@@ -20,7 +20,7 @@
 
   <groupId>org.apache.arrow.adbc</groupId>
   <artifactId>arrow-adbc-java-root</artifactId>
-  <version>0.4.0-SNAPSHOT</version>
+  <version>0.10.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Arrow ADBC Java Root POM</name>
@@ -28,8 +28,8 @@
   <url>https://arrow.apache.org/</url>
 
   <properties>
-    <dep.arrow.version>11.0.0</dep.arrow.version>
-    <adbc.version>0.4.0-SNAPSHOT</adbc.version>
+    <dep.arrow.version>14.0.0</dep.arrow.version>
+    <adbc.version>0.10.0-SNAPSHOT</adbc.version>
   </properties>
 
   <scm>
@@ -85,6 +85,7 @@
     <module>driver/flight-sql-validation</module>
     <module>driver/jdbc</module>
     <module>driver/jdbc-validation-derby</module>
+    <module>driver/jdbc-validation-mssqlserver</module>
     <module>driver/jdbc-validation-postgresql</module>
     <module>driver/validation</module>
     <module>driver-manager</module>
@@ -208,6 +209,7 @@
             <exclude>**/*.iml</exclude>
             <exclude>**/*.log</exclude>
             <exclude>**/target/**</exclude>
+            <exclude>.mvn/jvm.config</exclude>
           </excludes>
         </configuration>
       </plugin>
@@ -217,17 +219,20 @@
   <reporting>
     <plugins>
       <plugin>
+        <!-- Will only work with JDK 17 (JDK 21 is broken and JDK 8 emits the
+             wrong stylesheet) -->
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.4.1</version>
+        <version>3.6.3</version>
         <configuration>
-          <!-- Stop it from trying to document the tests -->
-          <additionalOptions>-package</additionalOptions>
           <!-- Ignore missing @return, @throws -->
           <doclint>all,-missing</doclint>
           <links>
             <link>https://arrow.apache.org/docs/java/reference/</link>
           </links>
+	  <!-- Stop it from trying to document the tests -->
+          <release>8</release>
+	  <show>public</show>
           <source>1.8</source>
         </configuration>
         <reportSets>
@@ -279,6 +284,39 @@
               <argLine>
                 --add-opens=java.base/java.nio=ALL-UNNAMED
               </argLine>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <profile>
+      <id>errorprone</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.10.1</version>
+            <configuration>
+              <source>1.8</source>
+              <target>1.8</target>
+              <compilerArgs>
+                <arg>-XDcompilePolicy=simple</arg>
+                <arg>-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.uber</arg>
+              </compilerArgs>
+              <annotationProcessorPaths>
+                <path>
+                  <groupId>com.google.errorprone</groupId>
+                  <artifactId>error_prone_core</artifactId>
+                  <version>2.18.0</version>
+                </path>
+                <path>
+                  <groupId>com.uber.nullaway</groupId>
+                  <artifactId>nullaway</artifactId>
+                  <version>0.10.10</version>
+                </path>
+              </annotationProcessorPaths>
             </configuration>
           </plugin>
         </plugins>

@@ -1,0 +1,70 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+include(GoUtils)
+
+set(LDFLAGS "$<$<CONFIG:Release>:-s> $<$<CONFIG:Release>:-w>")
+add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/snowflake/"
+           adbc_driver_snowflake
+           SOURCES
+           driver.go
+           utils.h
+           utils.c
+           BUILD_TAGS
+           driverlib
+           PKG_CONFIG_NAME
+           adbc-driver-snowflake
+           SHARED_LINK_FLAGS
+           ${LDFLAGS}
+           OUTPUTS
+           ADBC_LIBRARIES)
+
+foreach(LIB_TARGET ${ADBC_LIBRARIES})
+  target_include_directories(${LIB_TARGET} SYSTEM
+                             INTERFACE ${REPOSITORY_ROOT} ${REPOSITORY_ROOT}/c/
+                                       ${REPOSITORY_ROOT}/c/vendor
+                                       ${REPOSITORY_ROOT}/c/driver)
+endforeach()
+
+if(ADBC_TEST_LINKAGE STREQUAL "shared")
+  set(TEST_LINK_LIBS adbc_driver_snowflake_shared)
+else()
+  set(TEST_LINK_LIBS adbc_driver_snowflake_static)
+endif()
+
+if(ADBC_BUILD_TESTS)
+  add_test_case(driver_snowflake_test
+                PREFIX
+                adbc
+                EXTRA_LABELS
+                driver-snowflake
+                SOURCES
+                snowflake_test.cc
+                EXTRA_LINK_LIBS
+                adbc_driver_common
+                adbc_validation
+                nanoarrow
+                ${TEST_LINK_LIBS})
+  target_compile_features(adbc-driver-snowflake-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-driver-snowflake-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}
+                                     ${REPOSITORY_ROOT}/c/
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver
+                                     ${REPOSITORY_ROOT}/c/driver/common)
+  adbc_configure_target(adbc-driver-snowflake-test)
+endif()

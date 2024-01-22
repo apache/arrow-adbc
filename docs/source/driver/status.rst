@@ -15,9 +15,9 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-============================================
-Driver Feature Support/Implementation Status
-============================================
+============================
+Driver Implementation Status
+============================
 
 Implementation Status
 =====================
@@ -33,6 +33,11 @@ Implementation Status
      - Supported Languages [#supported-languages]_
      - Implementation Language
      - Status
+
+   * - BigQuery
+     - C#
+     - C#
+     - Experimental
 
    * - Flight SQL (Go)
      - C, Go
@@ -52,12 +57,17 @@ Implementation Status
    * - PostgreSQL
      - C
      - C++
-     - Experimental
+     - Beta
 
    * - SQLite
      - C
      - C
      - Beta
+
+   * - Snowflake
+     - C, Go
+     - Go
+     - Experimental
 
 .. [#supported-languages] C drivers are usable from Go, Python, and Ruby as well.
 
@@ -167,10 +177,10 @@ Update Queries
      - Y
 
    * - PostgreSQL
-     - Y
-     - Y
-     - Y
      - N/A
+     - Y
+     - Y
+     - Y
      - Y
 
    * - SQLite

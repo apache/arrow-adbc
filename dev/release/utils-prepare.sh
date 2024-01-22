@@ -27,11 +27,15 @@ update_versions() {
       local version=${base_version}
       local conda_version=${base_version}
       local docs_version=${base_version}
+      local py_version=${base_version}
+      local r_version=${base_version}
       ;;
     snapshot)
       local version=${next_version}-SNAPSHOT
       local conda_version=${next_version}
       local docs_version="${next_version} (dev)"
+      local py_version="${next_version}dev"
+      local r_version="${base_version}.9000"
       ;;
   esac
   local major_version=${version%%.*}
@@ -47,6 +51,10 @@ update_versions() {
   rm meta.yaml.bak
   git add meta.yaml
   popd
+
+  sed -i.bak -E "s/version = \".+\"/version = \"${version}\"/" "${ADBC_DIR}/csharp/Directory.Build.props"
+  rm "${ADBC_DIR}/csharp/Directory.Build.props.bak"
+  git add "${ADBC_DIR}/csharp/Directory.Build.props"
 
   sed -i.bak -E "s/release = \".+\"/release = \"${docs_version}\"/g" "${ADBC_DIR}/docs/source/conf.py"
   rm "${ADBC_DIR}/docs/source/conf.py.bak"
@@ -64,9 +72,23 @@ update_versions() {
   rm "${ADBC_DIR}/glib/meson.build.bak"
   git add "${ADBC_DIR}/glib/meson.build"
 
+  sed -i.bak -E "s/version = \".+\"/version = \"${py_version}\"/g" "${ADBC_DIR}"/python/adbc_*/adbc_*/_static_version.py
+  rm "${ADBC_DIR}"/python/adbc_*/adbc_*/_static_version.py.bak
+  git add "${ADBC_DIR}"/python/adbc_*/adbc_*/_static_version.py
+
   sed -i.bak -E "s/VERSION = \".+\"/VERSION = \"${version}\"/g" "${ADBC_DIR}/ruby/lib/adbc/version.rb"
   rm "${ADBC_DIR}/ruby/lib/adbc/version.rb.bak"
   git add "${ADBC_DIR}/ruby/lib/adbc/version.rb"
+
+  for desc_file in $(find "${ADBC_DIR}/r" -name DESCRIPTION); do
+    sed -i.bak -E "s/Version:.*$/Version: ${r_version}/" "${desc_file}"
+    rm "${desc_file}.bak"
+    git add "${desc_file}"
+  done
+
+  sed -i.bak -E "s/^version = \".+\"/version = \"${version}\"/" "${ADBC_DIR}/rust/Cargo.toml"
+  rm "${ADBC_DIR}/rust/Cargo.toml.bak"
+  git add "${ADBC_DIR}/rust/Cargo.toml"
 
   if [ ${type} = "release" ]; then
     pushd "${ADBC_DIR}/ci/linux-packages"

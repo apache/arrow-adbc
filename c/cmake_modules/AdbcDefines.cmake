@@ -59,36 +59,36 @@ if(CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
   list(APPEND ADBC_LINK_FLAGS ${ADBC_VERSION_SCRIPT_LINK_FLAG})
 endif()
 
-# Nanoarrow definition
-add_library(nanoarrow STATIC EXCLUDE_FROM_ALL
-            ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c)
-set_target_properties(nanoarrow
-                      PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
-                                 "${REPOSITORY_ROOT}/c/vendor/"
-                                 INTERFACE_SYSTEM_INCLUDE_DIRECTORIES
-                                 "${REPOSITORY_ROOT}/c/vendor/"
-                                 POSITION_INDEPENDENT_CODE ON)
-
-# ADBC libraries shared across multiple drivers
-add_library(adbc_driver_common STATIC EXCLUDE_FROM_ALL
-            ${REPOSITORY_ROOT}/c/driver/common/utils.c)
-set_target_properties(adbc_driver_common
-                      PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
-                                 "${REPOSITORY_ROOT}/c/driver/common"
-                                 POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(adbc_driver_common nanoarrow)
-
 # Set common build options
-macro(adbc_configure_target TARGET)
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(${TARGET}
-                           PRIVATE -Wall
-                                   -Werror
-                                   -Wextra
-                                   -Wpedantic
-                                   -Wno-unused-parameter
-                                   -Wunused-result)
+if("${ADBC_BUILD_WARNING_LEVEL}" STREQUAL "")
+  string(TOLOWER "${CMAKE_BUILD_TYPE}" _lower_build_type)
+  if("${_lower_build_type}" STREQUAL "release")
+    set(ADBC_BUILD_WARNING_LEVEL "PRODUCTION")
+  else()
+    set(ADBC_BUILD_WARNING_LEVEL "CHECKIN")
   endif()
+endif()
+
+if(MSVC)
+  set(ADBC_C_CXX_FLAGS_CHECKIN /Wall /WX)
+  set(ADBC_C_CXX_FLAGS_PRODUCTION /Wall)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
+       OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+       OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  set(ADBC_C_CXX_FLAGS_CHECKIN
+      -Wall
+      -Wextra
+      -Wpedantic
+      -Werror
+      -Wno-unused-parameter)
+  set(ADBC_C_CXX_FLAGS_PRODUCTION -Wall)
+else()
+  message(WARNING "Unknown compiler: ${CMAKE_CXX_COMPILER_ID}")
+endif()
+
+macro(adbc_configure_target TARGET)
+  target_compile_options(${TARGET}
+                         PRIVATE ${ADBC_C_CXX_FLAGS_${ADBC_BUILD_WARNING_LEVEL}})
 endmacro()
 
 # Common testing setup
@@ -97,6 +97,8 @@ if(ADBC_BUILD_TESTS)
   find_package(GTest)
   if(NOT GTest_FOUND)
     message(STATUS "Building googletest from source")
+    # Required for GoogleTest
+    set(CMAKE_CXX_STANDARD 17)
     include(FetchContent)
     fetchcontent_declare(googletest
                          URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip

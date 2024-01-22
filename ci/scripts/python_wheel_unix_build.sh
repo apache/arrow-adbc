@@ -35,7 +35,7 @@ function check_visibility {
     # Filter out Arrow symbols and see if anything remains.
     # '_init' and '_fini' symbols may or not be present, we don't care.
     # (note we must ignore the grep exit status when no match is found)
-    grep ' T ' nm_arrow.log | grep -v -E '(Adbc|\b_init\b|\b_fini\b)' | cat - > visible_symbols.log
+    grep ' T ' nm_arrow.log | grep -v -E '(Adbc|DriverInit|\b_init\b|\b_fini\b)' | cat - > visible_symbols.log
 
     if [[ -f visible_symbols.log && `cat visible_symbols.log | wc -l` -eq 0 ]]; then
         return 0
@@ -79,8 +79,10 @@ echo "=== Building C/C++ driver components ==="
 build_drivers "${source_dir}" "${build_dir}"
 
 # Check that we don't expose any unwanted symbols
+check_visibility $ADBC_FLIGHTSQL_LIBRARY
 check_visibility $ADBC_POSTGRESQL_LIBRARY
 check_visibility $ADBC_SQLITE_LIBRARY
+check_visibility $ADBC_SNOWFLAKE_LIBRARY
 
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default

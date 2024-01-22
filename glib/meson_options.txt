@@ -21,3 +21,13 @@ option('adbc_build_dir',
        type: 'string',
        value: '',
        description: 'Use this option to build with not installed ADBC')
+
+option('example',
+       type: 'boolean',
+       value: false,
+       description: 'Build example')
+
+option('vapi',
+       type: 'boolean',
+       value: false,
+       description: 'Build Vala API')

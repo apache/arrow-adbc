@@ -30,7 +30,7 @@ ADBC is:
   For example, result sets of queries in ADBC are all returned as
   streams of Arrow data, not row-by-row.
 - A set of implementations of that API in different languages (C/C++,
-  Go, Java, Python, and Ruby) that target different databases
+  C#/.NET, Go, Java, Python, and Ruby) that target different databases
   (e.g. PostgreSQL, SQLite, any database supporting Flight SQL).
 
 Why not just use JDBC/ODBC?
@@ -145,3 +145,36 @@ JDBC driver in a bespoke Arrow-based API.
 
 .. _arrow-jdbc: https://central.sonatype.com/artifact/org.apache.arrow/arrow-jdbc/11.0.0
 .. _Turbodbc: https://turbodbc.readthedocs.io/en/latest/
+
+What is the ADBC SQL dialect?
+=============================
+
+Trick question!  ADBC is not a SQL dialect.  All an ADBC driver is
+required to do, is pass your query string to the database and get the
+result set as Arrow data.  In that respect, it's like JDBC.  (ODBC has
+a "standard" SQL dialect it defines; ADBC does not do this.)
+
+For a project that does try to tackle the problem of defining a
+vendor-independent query language, see Substrait_.
+
+.. _Substrait: https://substrait.io/
+
+When is the next release?
+=========================
+
+There is no fixed release cadence.  We currently target releases every 6-8
+weeks.
+
+Once a release is tagged, the project then gives at least 72 hours for the
+`Arrow PMC`_ to vote on the release.  Once the vote concludes, then packages
+are uploaded to places like PyPI, conda-forge, and so on.  So even after a
+release, it may take some time for binary packages to be available.
+
+.. _Arrow PMC: https://arrow.apache.org/committers/
+
+When/where is 1.0? Is this project ready?
+=========================================
+
+At this time, there is no formal date planned for a "1.0" release of the
+implementation.  :doc:`driver/status` has a rough overview of the status of
+individual driver implementations.

@@ -19,12 +19,26 @@
 
 # ADBC PostgreSQL Driver for Python
 
-This package contains bindings for the [PostgreSQL
-driver](../../c/driver/postgresql/README.md), using the [driver
-manager](../adbc_driver_manager/README.md) to provide a [DBAPI 2.0/PEP
+This package contains bindings for the [PostgreSQL driver][postgresql], using
+the [driver manager][driver-manager] to provide a [DBAPI 2.0/PEP
 249-compatible][dbapi] interface on top.
 
 [dbapi]: https://peps.python.org/pep-0249/
+[driver-manager]: https://arrow.apache.org/adbc/current/python/driver_manager.html
+[postgresql]: https://arrow.apache.org/adbc/current/driver/postgresql.html
+
+## Example
+
+```python
+import adbc_driver_postgresql.dbapi
+
+uri = "postgresql://postgres:password@localhost:5432/postgres"
+with adbc_driver_postgresql.dbapi.connect(uri) as conn:
+    with conn.cursor() as cur:
+        cur.execute("SELECT 1")
+        print(cur.fetch_arrow_table())
+```
+
 
 ## Building
 
@@ -40,8 +54,19 @@ Set the environment variable `ADBC_POSTGRESQL_LIBRARY` to the path to
 pip install -e ../adbc_driver_manager
 
 export ADBC_POSTGRESQL_LIBRARY=/path/to/libadbc_driver_postgresql.so
-pip install -e --no-deps .
+pip install --no-deps -e .
 ```
+
+For users building from the arrow-adbc source repository, you can alternately use CMake to manage library dependencies and set environment variables for you. Assuming you specify ``-DADBC_DRIVER_POSTGRESQL=ON`` you can also add ``-DADBC_BUILD_PYTHON=ON`` to define a ``python`` target.
+
+For example, assuming you run cmake from the project root:
+
+```shell
+cmake -S c -B build --preset debug -DADBC_BUILD_PYTHON=ON
+cmake --build build --target python
+```
+
+will properly build and install the Python library for you.
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on the
 general build process.

@@ -32,6 +32,8 @@
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
 
+#include "common/utils.h"
+
 namespace adbc_validation {
 
 // ------------------------------------------------------------
@@ -43,12 +45,6 @@ std::string ToString(struct ArrowError* error);
 std::string ToString(struct ArrowArrayStream* stream);
 
 // ------------------------------------------------------------
-// Nanoarrow helpers
-
-/// \brief Get the array offset for a particular index
-int64_t ArrowArrayViewGetOffsetUnsafe(struct ArrowArrayView* array_view, int64_t i);
-
-// ------------------------------------------------------------
 // Helper to manage C Data Interface/Nanoarrow resources with RAII
 
 template <typename T>
@@ -58,6 +54,11 @@ struct Releaser {
       value->release(value);
     }
   }
+};
+
+template <>
+struct Releaser<struct ArrowBuffer> {
+  static void Release(struct ArrowBuffer* buffer) { ArrowBufferReset(buffer); }
 };
 
 template <>
@@ -203,6 +204,25 @@ struct StreamReader {
   }
 };
 
+/// \brief Read an AdbcGetInfoData struct with RAII safety
+struct GetObjectsReader {
+  explicit GetObjectsReader(struct ArrowArrayView* array_view) {
+    // TODO: this swallows any construction errors
+    get_objects_data_ = AdbcGetObjectsDataInit(array_view);
+  }
+  ~GetObjectsReader() { AdbcGetObjectsDataDelete(get_objects_data_); }
+
+  struct AdbcGetObjectsData* operator*() {
+    return get_objects_data_;
+  }
+  struct AdbcGetObjectsData* operator->() {
+    return get_objects_data_;
+  }
+
+ private:
+  struct AdbcGetObjectsData* get_objects_data_;
+};
+
 struct SchemaField {
   std::string name;
   ArrowType type = NANOARROW_TYPE_UNINITIALIZED;
@@ -224,8 +244,9 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
               const std::vector<std::optional<T>>& values) {
   for (const auto& v : values) {
     if (v.has_value()) {
-      if constexpr (std::is_same<T, int8_t>::value || std::is_same<T, int16_t>::value ||
-                    std::is_same<T, int32_t>::value || std::is_same<T, int64_t>::value) {
+      if constexpr (std::is_same<T, bool>::value || std::is_same<T, int8_t>::value ||
+                    std::is_same<T, int16_t>::value || std::is_same<T, int32_t>::value ||
+                    std::is_same<T, int64_t>::value) {
         if (int errno_res = ArrowArrayAppendInt(array, *v); errno_res != 0) {
           return errno_res;
         }
@@ -244,10 +265,26 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
           return errno_res;
         }
       } else if constexpr (std::is_same<T, std::string>::value) {
-        struct ArrowStringView view;
-        view.data = v->c_str();
+        struct ArrowBufferView view;
+        view.data.as_char = v->c_str();
         view.size_bytes = v->size();
-        if (int errno_res = ArrowArrayAppendString(array, view); errno_res != 0) {
+        if (int errno_res = ArrowArrayAppendBytes(array, view); errno_res != 0) {
+          return errno_res;
+        }
+      } else if constexpr (std::is_same<T, std::vector<std::byte>>::value) {
+        static_assert(std::is_same_v<uint8_t, unsigned char>);
+        struct ArrowBufferView view;
+        view.data.as_uint8 = reinterpret_cast<const uint8_t*>(v->data());
+        view.size_bytes = v->size();
+        if (int errno_res = ArrowArrayAppendBytes(array, view); errno_res != 0) {
+          return errno_res;
+        }
+      } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
+        if (int errno_res = ArrowArrayAppendInterval(array, *v); errno_res != 0) {
+          return errno_res;
+        }
+      } else if constexpr (std::is_same<T, ArrowDecimal*>::value) {
+        if (int errno_res = ArrowArrayAppendDecimal(array, *v); errno_res != 0) {
           return errno_res;
         }
       } else {
@@ -333,6 +370,9 @@ void CompareArray(struct ArrowArrayView* array,
       } else if constexpr (std::is_same<T, float>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
         ASSERT_EQ(*v, array->buffer_views[1].data.as_float[i]);
+      } else if constexpr (std::is_same<T, bool>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        ASSERT_EQ(*v, ArrowBitGet(array->buffer_views[1].data.as_uint8, i));
       } else if constexpr (std::is_same<T, int8_t>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
         ASSERT_EQ(*v, array->buffer_views[1].data.as_int8[i]);
@@ -361,6 +401,21 @@ void CompareArray(struct ArrowArrayView* array,
         struct ArrowStringView view = ArrowArrayViewGetStringUnsafe(array, i);
         std::string str(view.data, view.size_bytes);
         ASSERT_EQ(*v, str);
+      } else if constexpr (std::is_same<T, std::vector<std::byte>>::value) {
+        struct ArrowBufferView view = ArrowArrayViewGetBytesUnsafe(array, i);
+        ASSERT_EQ(v->size(), view.size_bytes);
+        for (int64_t i = 0; i < view.size_bytes; i++) {
+          ASSERT_EQ((*v)[i], std::byte{view.data.as_uint8[i]});
+        }
+      } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        struct ArrowInterval interval;
+        ArrowIntervalInit(&interval, ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+        ArrowArrayViewGetIntervalUnsafe(array, i, &interval);
+
+        ASSERT_EQ(interval.months, (*v)->months);
+        ASSERT_EQ(interval.days, (*v)->days);
+        ASSERT_EQ(interval.ns, (*v)->ns);
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
       }
@@ -376,5 +431,8 @@ void CompareArray(struct ArrowArrayView* array,
 void CompareSchema(
     struct ArrowSchema* schema,
     const std::vector<std::tuple<std::optional<std::string>, ArrowType, bool>>& fields);
+
+/// \brief Helper method to get the vendor version of a driver
+std::string GetDriverVendorVersion(struct AdbcConnection* connection);
 
 }  // namespace adbc_validation

@@ -70,3 +70,58 @@ test_that("default options can open a database and execute a query", {
   adbcdrivermanager::adbc_connection_release(con)
   adbcdrivermanager::adbc_database_release(db)
 })
+
+test_that("read/write/execute SQL work with sqlite connections", {
+  db <- adbc_database_init(adbcsqlite())
+  con <- adbc_connection_init(db)
+
+  df <- data.frame(x = as.double(1:10))
+  expect_identical(adbcdrivermanager::write_adbc(df, con, "df"), df)
+
+  stream <- adbcdrivermanager::read_adbc(con, "SELECT * from df")
+  expect_identical(as.data.frame(stream), df)
+  stream$release()
+
+  expect_identical(
+    adbcdrivermanager::execute_adbc(
+      con,
+      "UPDATE df SET x = x + ?",
+      bind = data.frame(2)
+    ),
+    con
+  )
+
+  stream <- adbcdrivermanager::read_adbc(con, "SELECT * from df")
+  expect_identical(as.data.frame(stream), data.frame(x = as.double(3:12)))
+
+  stream$release()
+  adbcdrivermanager::adbc_connection_release(con)
+  adbcdrivermanager::adbc_database_release(db)
+})
+
+test_that("write_adbc() with temporary = TRUE works with sqlite databases", {
+  skip_if_not(packageVersion("adbcdrivermanager") >= "0.6.0.9000")
+
+  temp_db <- tempfile()
+  on.exit(unlink(temp_db))
+
+  db <- adbc_database_init(adbcsqlite(), uri = temp_db)
+  con <- adbc_connection_init(db)
+
+  df <- data.frame(x = as.double(1:10))
+  adbcdrivermanager::write_adbc(df, con, "df", temporary = TRUE)
+
+  stream <- adbcdrivermanager::read_adbc(con, "SELECT * from df")
+  expect_identical(as.data.frame(stream), df)
+
+  # Check that it was actually a temporary table
+  adbcdrivermanager::adbc_connection_release(con)
+  con <- adbc_connection_init(db)
+  expect_error(
+    adbcdrivermanager::read_adbc(con, "SELECT * from df"),
+    class = "adbc_status_invalid_argument"
+  )
+
+  adbcdrivermanager::adbc_connection_release(con)
+  adbcdrivermanager::adbc_database_release(db)
+})

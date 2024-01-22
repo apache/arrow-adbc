@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// Tests that use the SQLite server example.
+
 package flightsql_test
 
 import (
@@ -40,19 +42,17 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v12/arrow"
-	"github.com/apache/arrow/go/v12/arrow/array"
-	"github.com/apache/arrow/go/v12/arrow/flight"
-	"github.com/apache/arrow/go/v12/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v12/arrow/flight/flightsql/example"
-	"github.com/apache/arrow/go/v12/arrow/memory"
+	"github.com/apache/arrow/go/v15/arrow"
+	"github.com/apache/arrow/go/v15/arrow/array"
+	"github.com/apache/arrow/go/v15/arrow/flight"
+	"github.com/apache/arrow/go/v15/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v15/arrow/flight/flightsql/example"
+	"github.com/apache/arrow/go/v15/arrow/memory"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -100,7 +100,7 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 		_ = s.s.Serve()
 	}()
 
-	return driver.Driver{Alloc: s.mem}
+	return driver.NewDriver(s.mem)
 }
 
 func (s *FlightSQLQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
@@ -214,10 +214,32 @@ func (s *FlightSQLQuirks) CreateSampleTable(tableName string, r arrow.Record) er
 	return nil
 }
 
-func (s *FlightSQLQuirks) Alloc() memory.Allocator               { return s.mem }
-func (s *FlightSQLQuirks) BindParameter(_ int) string            { return "?" }
-func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool    { return true }
+func (s *FlightSQLQuirks) DropTable(cnxn adbc.Connection, tblname string) error {
+	stmt, err := cnxn.NewStatement()
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + tblname); err != nil {
+		return err
+	}
+
+	_, err = stmt.ExecuteUpdate(context.Background())
+	return err
+}
+
+func (s *FlightSQLQuirks) Alloc() memory.Allocator            { return s.mem }
+func (s *FlightSQLQuirks) BindParameter(_ int) string         { return "?" }
+func (s *FlightSQLQuirks) SupportsBulkIngest(string) bool     { return false }
+func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool { return true }
+func (s *FlightSQLQuirks) SupportsCurrentCatalogSchema() bool { return false }
+
+// The driver supports it, but the server we use for testing does not.
+func (s *FlightSQLQuirks) SupportsExecuteSchema() bool           { return false }
+func (s *FlightSQLQuirks) SupportsGetSetOptions() bool           { return true }
 func (s *FlightSQLQuirks) SupportsPartitionedData() bool         { return true }
+func (s *FlightSQLQuirks) SupportsStatistics() bool              { return false }
 func (s *FlightSQLQuirks) SupportsTransactions() bool            { return true }
 func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool      { return false }
 func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool { return true }
@@ -231,16 +253,36 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 		return "(unknown or development build)"
 	case adbc.InfoDriverArrowVersion:
 		return "(unknown or development build)"
+	case adbc.InfoDriverADBCVersion:
+		return adbc.AdbcVersion1_1_0
 	case adbc.InfoVendorName:
 		return "db_name"
 	case adbc.InfoVendorVersion:
 		return "sqlite 3"
 	case adbc.InfoVendorArrowVersion:
-		return "12.0.0-SNAPSHOT"
+		return "15.0.0-SNAPSHOT"
 	}
 
 	return nil
 }
+
+func (s *FlightSQLQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.DataType) arrow.Metadata {
+	switch dt.ID() {
+	case arrow.STRING:
+		return arrow.MetadataFrom(map[string]string{
+			flightsql.ScaleKey: "15", flightsql.IsReadOnlyKey: "0", flightsql.IsAutoIncrementKey: "0",
+			flightsql.TableNameKey: tblName,
+		})
+	default:
+		return arrow.MetadataFrom(map[string]string{
+			flightsql.ScaleKey: "15", flightsql.IsReadOnlyKey: "0", flightsql.IsAutoIncrementKey: "0",
+			flightsql.TableNameKey: tblName, flightsql.PrecisionKey: "10",
+		})
+	}
+}
+
+func (s *FlightSQLQuirks) Catalog() string  { return "" }
+func (s *FlightSQLQuirks) DBSchema() string { return "" }
 
 func TestADBCFlightSQL(t *testing.T) {
 	db, err := example.CreateDB()
@@ -254,11 +296,9 @@ func TestADBCFlightSQL(t *testing.T) {
 
 	suite.Run(t, &DefaultDialOptionsTests{Quirks: q})
 	suite.Run(t, &HeaderTests{Quirks: q})
-	suite.Run(t, &AuthnTests{})
 	suite.Run(t, &OptionTests{Quirks: q})
 	suite.Run(t, &PartitionTests{Quirks: q})
 	suite.Run(t, &StatementTests{Quirks: q})
-	suite.Run(t, &TimeoutTestSuite{})
 	suite.Run(t, &TLSTests{Quirks: &FlightSQLQuirks{db: db}})
 	suite.Run(t, &ConnectionTests{})
 	suite.Run(t, &DomainSocketTests{db: db})
@@ -312,6 +352,7 @@ func (suite *DefaultDialOptionsTests) SetupSuite() {
 
 func (suite *DefaultDialOptionsTests) TearDownSuite() {
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -321,6 +362,7 @@ func (suite *DefaultDialOptionsTests) TestMaxIncomingMessageSizeDefault() {
 	opts["adbc.flight.sql.client_option.with_max_msg_size"] = "1000000"
 	db, err := suite.Driver.NewDatabase(opts)
 	suite.NoError(err)
+	defer suite.NoError(db.Close())
 
 	cnxn, err := db.Open(suite.ctx)
 	suite.NoError(err)
@@ -400,6 +442,14 @@ func (suite *OptionTests) TestOverrideHostname() {
 	suite.Require().NoError(err)
 }
 
+func (suite *OptionTests) TestAuthority() {
+	// Just checks that the option is accepted
+	options := suite.Quirks.DatabaseOptions()
+	options["adbc.flight.sql.client_option.authority"] = "hostname"
+	_, err := suite.Driver.NewDatabase(options)
+	suite.Require().NoError(err)
+}
+
 func (suite *OptionTests) TestRootCerts() {
 	// Just checks that the option is accepted - doesn't actually configure TLS
 	options := suite.Quirks.DatabaseOptions()
@@ -457,6 +507,7 @@ func (suite *PartitionTests) TearDownTest() {
 	suite.Require().NoError(suite.Cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Cnxn = nil
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -510,22 +561,38 @@ func (suite *StatementTests) TearDownTest() {
 	suite.Require().NoError(suite.Cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Cnxn = nil
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
 
+func (suite *StatementTests) TestDuplicateColumnNames() {
+	suite.NoError(suite.Stmt.SetSqlQuery("SELECT 1 as a, 2 as a"))
+	reader, _, err := suite.Stmt.ExecuteQuery(suite.ctx)
+	suite.NoError(err)
+	defer reader.Release()
+
+	suite.Len(reader.Schema().Fields(), 2)
+	suite.Equal(reader.Schema().Field(0).Name, "a")
+	suite.Equal(reader.Schema().Field(1).Name, "a")
+
+	for reader.Next() {
+	}
+	suite.NoError(reader.Err())
+}
+
 func (suite *StatementTests) TestQueueSizeOption() {
 	var err error
-	option := "adbc.flight.sql.rpc.queue_size"
+	option := "adbc.rpc.result_queue_size"
 
 	err = suite.Stmt.SetOption(option, "")
-	suite.Require().ErrorContains(err, "Invalid value for statement option 'adbc.flight.sql.rpc.queue_size': '' is not a positive integer")
+	suite.Require().ErrorContains(err, "Invalid value for statement option '"+option+"': '' is not a positive integer")
 
 	err = suite.Stmt.SetOption(option, "foo")
-	suite.Require().ErrorContains(err, "Invalid value for statement option 'adbc.flight.sql.rpc.queue_size': 'foo' is not a positive integer")
+	suite.Require().ErrorContains(err, "Invalid value for statement option '"+option+"': 'foo' is not a positive integer")
 
 	err = suite.Stmt.SetOption(option, "-1")
-	suite.Require().ErrorContains(err, "Invalid value for statement option 'adbc.flight.sql.rpc.queue_size': '-1' is not a positive integer")
+	suite.Require().ErrorContains(err, "Invalid value for statement option '"+option+"': '-1' is not a positive integer")
 
 	err = suite.Stmt.SetOption(option, "1")
 	suite.Require().NoError(err)
@@ -576,6 +643,7 @@ func (suite *HeaderTests) TearDownTest() {
 	suite.Require().NoError(suite.Cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Cnxn = nil
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -711,370 +779,6 @@ func (suite *HeaderTests) TestPrepared() {
 	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-header-two"), "value 2")
 }
 
-type AuthnTests struct {
-	suite.Suite
-
-	s    flight.Server
-	db   adbc.Database
-	cnxn adbc.Connection
-}
-
-type AuthnTestServer struct {
-	flightsql.BaseServer
-}
-
-func (server *AuthnTestServer) GetFlightInfoStatement(ctx context.Context, cmd flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
-	md := metadata.MD{}
-	md.Set("authorization", "Bearer final")
-	if err := grpc.SendHeader(ctx, md); err != nil {
-		return nil, err
-	}
-	tkt, _ := flightsql.CreateStatementQueryTicket([]byte{})
-	info := &flight.FlightInfo{
-		FlightDescriptor: desc,
-		Endpoint: []*flight.FlightEndpoint{
-			{Ticket: &flight.Ticket{Ticket: tkt}},
-		},
-		TotalRecords: -1,
-		TotalBytes:   -1,
-	}
-	return info, nil
-}
-
-func (server *AuthnTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
-	sc := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
-	rec, _, err := array.RecordFromJSON(memory.DefaultAllocator, sc, strings.NewReader(`[{"a": 5}]`))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	ch := make(chan flight.StreamChunk)
-	go func() {
-		defer close(ch)
-		ch <- flight.StreamChunk{
-			Data: rec,
-			Desc: nil,
-			Err:  nil,
-		}
-	}()
-	return sc, ch, nil
-}
-
-func authnTestUnary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.InvalidArgument, "Could not get metadata")
-	}
-	auth := md.Get("authorization")
-	if len(auth) == 0 {
-		return nil, status.Error(codes.Unauthenticated, "No token")
-	} else if auth[0] != "Bearer initial" {
-		return nil, status.Error(codes.Unauthenticated, "Invalid token for unary call: "+auth[0])
-	}
-
-	md.Set("authorization", "Bearer final")
-	ctx = metadata.NewOutgoingContext(ctx, md)
-	return handler(ctx, req)
-}
-
-func authnTestStream(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	md, ok := metadata.FromIncomingContext(ss.Context())
-	if !ok {
-		return status.Error(codes.InvalidArgument, "Could not get metadata")
-	}
-	auth := md.Get("authorization")
-	if len(auth) == 0 {
-		return status.Error(codes.Unauthenticated, "No token")
-	} else if auth[0] != "Bearer final" {
-		return status.Error(codes.Unauthenticated, "Invalid token for stream call: "+auth[0])
-	}
-
-	return handler(srv, ss)
-}
-
-func (suite *AuthnTests) SetupSuite() {
-	suite.s = flight.NewServerWithMiddleware([]flight.ServerMiddleware{
-		{Stream: authnTestStream, Unary: authnTestUnary},
-	})
-	suite.s.RegisterFlightService(flightsql.NewFlightServer(&AuthnTestServer{}))
-	suite.Require().NoError(suite.s.Init("localhost:0"))
-	suite.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
-	go func() {
-		_ = suite.s.Serve()
-	}()
-
-	uri := "grpc+tcp://" + suite.s.Addr().String()
-	var err error
-	suite.db, err = (driver.Driver{}).NewDatabase(map[string]string{
-		"uri":                            uri,
-		driver.OptionAuthorizationHeader: "Bearer initial",
-	})
-	suite.Require().NoError(err)
-}
-
-func (suite *AuthnTests) SetupTest() {
-	var err error
-	suite.cnxn, err = suite.db.Open(context.Background())
-	suite.Require().NoError(err)
-}
-
-func (suite *AuthnTests) TearDownTest() {
-	suite.Require().NoError(suite.cnxn.Close())
-}
-
-func (suite *AuthnTests) TearDownSuite() {
-	suite.db = nil
-	suite.s.Shutdown()
-}
-
-func (suite *AuthnTests) TestBearerTokenUpdated() {
-	// apache/arrow-adbc#584: when setting the auth header directly, the client should use any updated token value from the server if given
-	stmt, err := suite.cnxn.NewStatement()
-	suite.Require().NoError(err)
-	defer stmt.Close()
-
-	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
-	reader, _, err := stmt.ExecuteQuery(context.Background())
-	suite.NoError(err)
-	defer reader.Release()
-}
-
-type TimeoutTestServer struct {
-	flightsql.BaseServer
-}
-
-func (ts *TimeoutTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
-	if string(tkt.GetStatementHandle()) == "sleep and succeed" {
-		time.Sleep(1 * time.Second)
-		sc := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
-		rec, _, err := array.RecordFromJSON(memory.DefaultAllocator, sc, strings.NewReader(`[{"a": 5}]`))
-		if err != nil {
-			return nil, nil, err
-		}
-
-		ch := make(chan flight.StreamChunk)
-		go func() {
-			defer close(ch)
-			ch <- flight.StreamChunk{
-				Data: rec,
-				Desc: nil,
-				Err:  nil,
-			}
-		}()
-		return sc, ch, nil
-	}
-
-	// wait till the context is cancelled
-	<-ctx.Done()
-	return nil, nil, ctx.Err()
-}
-
-func (ts *TimeoutTestServer) DoPutCommandStatementUpdate(ctx context.Context, cmd flightsql.StatementUpdate) (int64, error) {
-	if cmd.GetQuery() == "timeout" {
-		<-ctx.Done()
-		return -1, ctx.Err()
-	}
-	return -1, arrow.ErrNotImplemented
-}
-
-func (ts *TimeoutTestServer) GetFlightInfoStatement(ctx context.Context, cmd flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
-	switch cmd.GetQuery() {
-	case "timeout":
-		<-ctx.Done()
-	case "fetch":
-		tkt, _ := flightsql.CreateStatementQueryTicket([]byte("fetch"))
-		info := &flight.FlightInfo{
-			FlightDescriptor: desc,
-			Endpoint: []*flight.FlightEndpoint{
-				{Ticket: &flight.Ticket{Ticket: tkt}},
-			},
-			TotalRecords: -1,
-			TotalBytes:   -1,
-		}
-		return info, nil
-	case "notimeout":
-		time.Sleep(1 * time.Second)
-		tkt, _ := flightsql.CreateStatementQueryTicket([]byte("sleep and succeed"))
-		info := &flight.FlightInfo{
-			FlightDescriptor: desc,
-			Endpoint: []*flight.FlightEndpoint{
-				{Ticket: &flight.Ticket{Ticket: tkt}},
-			},
-			TotalRecords: -1,
-			TotalBytes:   -1,
-		}
-		return info, nil
-	}
-	return nil, ctx.Err()
-}
-
-func (ts *TimeoutTestServer) CreatePreparedStatement(ctx context.Context, req flightsql.ActionCreatePreparedStatementRequest) (result flightsql.ActionCreatePreparedStatementResult, err error) {
-	<-ctx.Done()
-	return result, ctx.Err()
-}
-
-type TimeoutTestSuite struct {
-	suite.Suite
-
-	s    flight.Server
-	db   adbc.Database
-	cnxn adbc.Connection
-}
-
-func (ts *TimeoutTestSuite) SetupSuite() {
-	ts.s = flight.NewServerWithMiddleware(nil)
-	ts.s.RegisterFlightService(flightsql.NewFlightServer(&TimeoutTestServer{}))
-	ts.Require().NoError(ts.s.Init("localhost:0"))
-	ts.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
-	go func() {
-		_ = ts.s.Serve()
-	}()
-
-	uri := "grpc+tcp://" + ts.s.Addr().String()
-	var err error
-	ts.db, err = (driver.Driver{}).NewDatabase(map[string]string{
-		"uri": uri,
-	})
-	ts.Require().NoError(err)
-}
-
-func (ts *TimeoutTestSuite) SetupTest() {
-	var err error
-	ts.cnxn, err = ts.db.Open(context.Background())
-	ts.Require().NoError(err)
-}
-
-func (ts *TimeoutTestSuite) TearDownTest() {
-	ts.Require().NoError(ts.cnxn.Close())
-}
-
-func (ts *TimeoutTestSuite) TearDownSuite() {
-	ts.db = nil
-	ts.s.Shutdown()
-}
-
-func (ts *TimeoutTestSuite) TestInvalidValues() {
-	keys := []string{
-		"adbc.flight.sql.rpc.timeout_seconds.fetch",
-		"adbc.flight.sql.rpc.timeout_seconds.query",
-		"adbc.flight.sql.rpc.timeout_seconds.update",
-	}
-	values := []string{"1.1f", "asdf", "inf", "NaN", "-1"}
-
-	for _, k := range keys {
-		for _, v := range values {
-			ts.Run("key="+k+",val="+v, func() {
-				err := ts.cnxn.(adbc.PostInitOptions).SetOption(k, v)
-				var adbcErr adbc.Error
-				ts.ErrorAs(err, &adbcErr)
-				ts.Equal(adbc.StatusInvalidArgument, adbcErr.Code)
-				ts.ErrorContains(err, "invalid timeout option value")
-			})
-		}
-	}
-}
-
-func (ts *TimeoutTestSuite) TestRemoveTimeout() {
-	keys := []string{
-		"adbc.flight.sql.rpc.timeout_seconds.fetch",
-		"adbc.flight.sql.rpc.timeout_seconds.query",
-		"adbc.flight.sql.rpc.timeout_seconds.update",
-	}
-	for _, k := range keys {
-		ts.Run(k, func() {
-			ts.NoError(ts.cnxn.(adbc.PostInitOptions).SetOption(k, "1.0"))
-			ts.NoError(ts.cnxn.(adbc.PostInitOptions).SetOption(k, "0"))
-		})
-	}
-}
-
-func (ts *TimeoutTestSuite) TestDoActionTimeout() {
-	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
-		SetOption("adbc.flight.sql.rpc.timeout_seconds.update", "0.1"))
-
-	stmt, err := ts.cnxn.NewStatement()
-	ts.Require().NoError(err)
-	defer stmt.Close()
-
-	ts.Require().NoError(stmt.SetSqlQuery("fetch"))
-	var adbcErr adbc.Error
-	ts.ErrorAs(stmt.Prepare(context.Background()), &adbcErr)
-	ts.Equal(adbc.StatusTimeout, adbcErr.Code, adbcErr.Error())
-}
-
-func (ts *TimeoutTestSuite) TestDoGetTimeout() {
-	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
-		SetOption("adbc.flight.sql.rpc.timeout_seconds.fetch", "0.1"))
-
-	stmt, err := ts.cnxn.NewStatement()
-	ts.Require().NoError(err)
-	defer stmt.Close()
-
-	ts.Require().NoError(stmt.SetSqlQuery("fetch"))
-	var adbcErr adbc.Error
-	_, _, err = stmt.ExecuteQuery(context.Background())
-	ts.ErrorAs(err, &adbcErr)
-	ts.Equal(adbc.StatusTimeout, adbcErr.Code, adbcErr.Error())
-}
-
-func (ts *TimeoutTestSuite) TestDoPutTimeout() {
-	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
-		SetOption("adbc.flight.sql.rpc.timeout_seconds.update", "1.1"))
-
-	stmt, err := ts.cnxn.NewStatement()
-	ts.Require().NoError(err)
-	defer stmt.Close()
-
-	ts.Require().NoError(stmt.SetSqlQuery("timeout"))
-	var adbcErr adbc.Error
-	_, err = stmt.ExecuteUpdate(context.Background())
-	ts.ErrorAs(err, &adbcErr)
-	ts.Equal(adbc.StatusTimeout, adbcErr.Code, adbcErr.Error())
-}
-
-func (ts *TimeoutTestSuite) TestGetFlightInfoTimeout() {
-	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
-		SetOption("adbc.flight.sql.rpc.timeout_seconds.query", "0.1"))
-
-	stmt, err := ts.cnxn.NewStatement()
-	ts.Require().NoError(err)
-	defer stmt.Close()
-
-	ts.Require().NoError(stmt.SetSqlQuery("timeout"))
-	var adbcErr adbc.Error
-	_, _, err = stmt.ExecuteQuery(context.Background())
-	ts.ErrorAs(err, &adbcErr)
-	ts.NotEqual(adbc.StatusNotImplemented, adbcErr.Code, adbcErr.Error())
-}
-
-func (ts *TimeoutTestSuite) TestDontTimeout() {
-	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
-		SetOption("adbc.flight.sql.rpc.timeout_seconds.fetch", "2.0"))
-	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
-		SetOption("adbc.flight.sql.rpc.timeout_seconds.query", "2.0"))
-
-	stmt, err := ts.cnxn.NewStatement()
-	ts.Require().NoError(err)
-	defer stmt.Close()
-
-	ts.Require().NoError(stmt.SetSqlQuery("notimeout"))
-	// GetFlightInfo will sleep for one second and DoGet will also
-	// sleep for one second. But our timeout is 2 seconds, which is
-	// per-operation. So we shouldn't time out and all should succeed.
-	rr, _, err := stmt.ExecuteQuery(context.Background())
-	ts.Require().NoError(err)
-	defer rr.Release()
-
-	ts.True(rr.Next())
-	rec := rr.Record()
-
-	sc := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
-	expected, _, err := array.RecordFromJSON(memory.DefaultAllocator, sc, strings.NewReader(`[{"a": 5}]`))
-	ts.Require().NoError(err)
-	defer expected.Release()
-	ts.Truef(array.RecordEqual(rec, expected), "expected: %s\nactual: %s", expected, rec)
-}
-
 type TLSTests struct {
 	suite.Suite
 
@@ -1143,6 +847,7 @@ func (suite *TLSTests) TearDownTest() {
 	suite.Require().NoError(suite.Cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Cnxn = nil
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -1164,6 +869,7 @@ func (suite *TLSTests) TestInvalidOptions() {
 		"adbc.flight.sql.client_option.tls_skip_verify": "false",
 	})
 	suite.Require().NoError(err)
+	defer suite.NoError(db.Close())
 
 	cnxn, err := db.Open(suite.ctx)
 	suite.Require().NoError(err)
@@ -1172,7 +878,7 @@ func (suite *TLSTests) TestInvalidOptions() {
 
 	suite.NoError(stmt.SetSqlQuery("SELECT 1"))
 	_, _, err = stmt.ExecuteQuery(suite.ctx)
-	suite.Contains(err.Error(), "Unavailable")
+	suite.Contains(err.Error(), "connection error")
 }
 
 type ConnectionTests struct {
@@ -1203,7 +909,7 @@ func (suite *ConnectionTests) SetupSuite() {
 
 	var err error
 	suite.ctx = context.Background()
-	suite.Driver = driver.Driver{Alloc: suite.alloc}
+	suite.Driver = driver.NewDriver(suite.alloc)
 	suite.DB, err = suite.Driver.NewDatabase(map[string]string{
 		adbc.OptionKeyURI: "grpc+tcp://" + suite.server.Addr().String(),
 	})
@@ -1213,6 +919,7 @@ func (suite *ConnectionTests) SetupSuite() {
 }
 
 func (suite *ConnectionTests) TearDownSuite() {
+	suite.NoError(suite.DB.Close())
 	suite.server.Shutdown()
 	suite.alloc.AssertSize(suite.T(), 0)
 }
@@ -1296,7 +1003,7 @@ func (suite *DomainSocketTests) SetupSuite() {
 	}()
 
 	suite.ctx = context.Background()
-	suite.Driver = driver.Driver{Alloc: suite.alloc}
+	suite.Driver = driver.NewDriver(suite.alloc)
 	suite.DB, err = suite.Driver.NewDatabase(map[string]string{
 		adbc.OptionKeyURI: "grpc+unix://" + listenSocket,
 	})
@@ -1310,6 +1017,7 @@ func (suite *DomainSocketTests) SetupSuite() {
 func (suite *DomainSocketTests) TearDownSuite() {
 	suite.Require().NoError(suite.Stmt.Close())
 	suite.Require().NoError(suite.Cnxn.Close())
+	suite.NoError(suite.DB.Close())
 	suite.server.Shutdown()
 	suite.alloc.AssertSize(suite.T(), 0)
 }

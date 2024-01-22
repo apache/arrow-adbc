@@ -49,26 +49,11 @@ env:
   CACHE_NUMBER: "0"
 
 jobs:
-  dremio:
-    name: "Dremio Integration Tests"
+  duckdb:
+    name: "DuckDB Integration Tests"
     runs-on: ubuntu-latest
-    services:
-      dremio:
-        image: dremio/dremio-oss:latest
-        env:
-          DREMIO_JAVA_EXTRA_OPTS: "-Ddebug.addDefaultUser=true -Ddremio.eula.disabled=true"
-        options: >-
-          --health-cmd "curl --fail http://localhost:9047/ || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 9047:9047
-          - 32010:32010
-          - 31010:31010
-          - 45678:45678
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -82,7 +67,56 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-only-tar-bz2: false
+          use-mamba: true
+      - name: Install Dependencies
+        shell: bash -l {0}
+        run: |
+          mamba install -c conda-forge \
+            --file ci/conda_env_cpp.txt
+      - name: Build DuckDB Integration Tests
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          BUILD_INTEGRATION_DUCKDB: "1"
+          ADBC_USE_ASAN: "OFF"
+          ADBC_USE_UBSAN: "OFF"
+          # Make seems to have issues with the nested DuckDB build
+          ADBC_CMAKE_ARGS: "-GNinja"
+        run: |
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Run DuckDB Integration Tests
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_INTEGRATION_DUCKDB: "1"
+        run: |
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+
+  flightsql:
+    name: "FlightSQL Integration Tests (Dremio and SQLite)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Date
+        id: get-date
+        shell: bash
+        run: |
+          echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+      - name: Cache Conda
+        uses: actions/cache/restore@v3
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -94,20 +128,17 @@ jobs:
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
-      - uses: actions/setup-go@v3
+          pip install pytest-error-for-skips
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.18.6
+          go-version: 1.19.13
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
-      - name: Bootstrap Dremio
+      - name: Start SQLite server and Dremio
         shell: bash -l {0}
         run: |
-          ./ci/scripts/integration/dremio/bootstrap.sh
-      - name: Start SQLite server
-        shell: bash -l {0}
-        run: |
-          docker-compose up -d golang-sqlite-flightsql
+          docker-compose up -d flightsql-test flightsql-sqlite-test dremio dremio-init
 
       - name: Build FlightSQL Driver
         shell: bash -l {0}
@@ -125,9 +156,10 @@ jobs:
           ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
           ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
           ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
+          ADBC_TEST_FLIGHTSQL_URI: "grpc+tcp://localhost:41414"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-          ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
       - name: Build Python Flight SQL driver
         shell: bash -l {0}
         env:
@@ -144,9 +176,11 @@ jobs:
           ADBC_DREMIO_FLIGHTSQL_URI: "grpc+tcp://localhost:32010"
           ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
           ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
+          ADBC_TEST_FLIGHTSQL_URI: "grpc+tcp://localhost:41414"
+          PYTEST_ADDOPTS: "--error-for-skips"
         run: |
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
-      - name: Stop SQLite server
+      - name: Stop SQLite server and Dremio
         shell: bash -l {0}
         run: |
           docker-compose down
@@ -154,21 +188,8 @@ jobs:
   postgresql:
     name: "PostgreSQL Integration Tests"
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_DB: tempdb
-          POSTGRES_PASSWORD: password
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -182,7 +203,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -194,36 +215,160 @@ jobs:
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
+          pip install pytest-error-for-skips
       - name: Build PostgreSQL Driver
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_USE_ASAN: "OFF"
-          ADBC_USE_UBSAN: "OFF"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test PostgreSQL Driver
-        shell: bash -l {0}
-        env:
-          BUILD_ALL: "0"
-          BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
-        run: |
-          ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
-
       - name: Build Python PostgreSQL Driver
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_POSTGRESQL: "1"
         run: |
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test Python PostgreSQL Driver
+
+      - name: Test PostgreSQL Driver - postgres 11
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+          PYTEST_ADDOPTS: "--error-for-skips"
         run: |
+          env POSTGRES_VERSION=11 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 12
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+          PYTEST_ADDOPTS: "--error-for-skips"
+        run: |
+          env POSTGRES_VERSION=12 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 13
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+          PYTEST_ADDOPTS: "--error-for-skips"
+        run: |
+          env POSTGRES_VERSION=13 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 14
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+          PYTEST_ADDOPTS: "--error-for-skips"
+        run: |
+          env POSTGRES_VERSION=14 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 15
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+          PYTEST_ADDOPTS: "--error-for-skips"
+        run: |
+          env POSTGRES_VERSION=15 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 16
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+          PYTEST_ADDOPTS: "--error-for-skips"
+        run: |
+          env POSTGRES_VERSION=16 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
+
+  snowflake:
+    name: "Snowflake Integration Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Date
+        id: get-date
+        shell: bash
+        run: |
+          echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+      - name: Cache Conda
+        uses: actions/cache/restore@v3
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-only-tar-bz2: false
+          use-mamba: true
+      - name: Install Dependencies
+        shell: bash -l {0}
+        run: |
+          mamba install -c conda-forge \
+            --file ci/conda_env_cpp.txt \
+            --file ci/conda_env_python.txt
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.19.13
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum
+      - name: Build and Test Snowflake Driver
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SNOWFLAKE: "1"
+          ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
+        run: |
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+      - name: Build and Test Snowflake Driver (Python)
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          BUILD_DRIVER_SNOWFLAKE: "1"
+          ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
+        run: |
+          ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
+          env BUILD_DRIVER_MANAGER=0 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"

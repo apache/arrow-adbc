@@ -45,9 +45,13 @@ main() {
 
         mkdir -p "${install_dir}/lib"
         if [[ $(go env GOOS) == "linux" ]]; then
-            cp ./pkg/libadbc_driver_flightsql.so "${install_dir}/lib"
+            for lib in ./pkg/*.so; do
+                cp "${lib}" "${install_dir}/lib"
+            done
         else
-            cp ./pkg/libadbc_driver_flightsql.dylib "${install_dir}/lib"
+            for lib in ./pkg/*.dylib; do
+                cp "${lib}" "${install_dir}/lib"
+            done
         fi
     fi
 

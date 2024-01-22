@@ -30,12 +30,12 @@ import java.util.Objects;
 import java.util.stream.LongStream;
 import org.apache.arrow.adapter.jdbc.JdbcFieldInfo;
 import org.apache.arrow.adapter.jdbc.JdbcParameterBinder;
+import org.apache.arrow.adapter.jdbc.JdbcToArrowConfig;
 import org.apache.arrow.adapter.jdbc.JdbcToArrowUtils;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
-import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -47,7 +47,7 @@ import org.apache.arrow.vector.types.pojo.Schema;
 public class JdbcStatement implements AdbcStatement {
   private final BufferAllocator allocator;
   private final Connection connection;
-  private final SqlQuirks quirks;
+  private final JdbcQuirks quirks;
 
   // State for SQL queries
   private Statement statement;
@@ -58,7 +58,7 @@ public class JdbcStatement implements AdbcStatement {
   private BulkState bulkOperation;
   private VectorSchemaRoot bindRoot;
 
-  JdbcStatement(BufferAllocator allocator, Connection connection, SqlQuirks quirks) {
+  JdbcStatement(BufferAllocator allocator, Connection connection, JdbcQuirks quirks) {
     this.allocator = allocator;
     this.connection = connection;
     this.quirks = quirks;
@@ -68,7 +68,7 @@ public class JdbcStatement implements AdbcStatement {
   static JdbcStatement ingestRoot(
       BufferAllocator allocator,
       Connection connection,
-      SqlQuirks quirks,
+      JdbcQuirks quirks,
       String targetTableName,
       BulkIngestMode mode) {
     Objects.requireNonNull(targetTableName);
@@ -104,7 +104,7 @@ public class JdbcStatement implements AdbcStatement {
       final Field field = bindRoot.getVector(col).getField();
       create.append(field.getName());
       create.append(' ');
-      String typeName = quirks.getArrowToSqlTypeNameMapping().apply(field.getType());
+      String typeName = quirks.getSqlQuirks().getArrowToSqlTypeNameMapping().apply(field.getType());
       if (typeName == null) {
         throw AdbcException.notImplemented(
             "[JDBC] Cannot generate CREATE TABLE statement for field " + field);
@@ -262,6 +262,41 @@ public class JdbcStatement implements AdbcStatement {
       throw JdbcDriverUtil.fromSqlException(e);
     }
     return new QueryResult(/*affectedRows=*/ -1, reader);
+  }
+
+  @Override
+  public Schema executeSchema() throws AdbcException {
+    if (bulkOperation != null) {
+      throw AdbcException.invalidState("[JDBC] Call executeUpdate() for bulk operations");
+    } else if (sqlQuery == null) {
+      throw AdbcException.invalidState("[JDBC] Must setSqlQuery() first");
+    }
+    try {
+      invalidatePriorQuery();
+      final PreparedStatement preparedStatement;
+      final PreparedStatement ownedStatement;
+      if (statement instanceof PreparedStatement) {
+        preparedStatement = (PreparedStatement) statement;
+        if (bindRoot != null) {
+          JdbcParameterBinder.builder(preparedStatement, bindRoot).bindAll().build().next();
+        }
+        ownedStatement = null;
+      } else {
+        // new statement
+        preparedStatement = connection.prepareStatement(sqlQuery);
+        ownedStatement = preparedStatement;
+      }
+
+      final JdbcToArrowConfig config = JdbcArrowReader.makeJdbcConfig(allocator);
+      final Schema schema =
+          JdbcToArrowUtils.jdbcToArrowSchema(preparedStatement.getMetaData(), config);
+      if (ownedStatement != null) {
+        ownedStatement.close();
+      }
+      return schema;
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
   }
 
   @Override

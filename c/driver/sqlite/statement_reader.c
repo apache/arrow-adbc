@@ -17,15 +17,18 @@
 
 #include "statement_reader.h"
 
+#include <assert.h>
 #include <inttypes.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <time.h>
 
 #include <adbc.h>
 #include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 
-#include "utils.h"
+#include "common/utils.h"
 
 AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
                                    struct AdbcError* error) {
@@ -57,7 +60,7 @@ AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
   struct ArrowSchemaView view = {0};
   for (int i = 0; i < binder->schema.n_children; i++) {
     status = ArrowSchemaViewInit(&view, binder->schema.children[i], &arrow_error);
-    if (status != 0) {
+    if (status != NANOARROW_OK) {
       SetError(error, "Failed to parse schema for column %d: %s (%d): %s", i,
                strerror(status), status, arrow_error.message);
       return ADBC_STATUS_INVALID_ARGUMENT;
@@ -67,6 +70,31 @@ AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
       SetError(error, "Column %d has UNINITIALIZED type", i);
       return ADBC_STATUS_INTERNAL;
     }
+
+    if (view.type == NANOARROW_TYPE_DICTIONARY) {
+      struct ArrowSchemaView value_view = {0};
+      status = ArrowSchemaViewInit(&value_view, binder->schema.children[i]->dictionary,
+                                   &arrow_error);
+      if (status != NANOARROW_OK) {
+        SetError(error, "Failed to parse schema for column %d->dictionary: %s (%d): %s",
+                 i, strerror(status), status, arrow_error.message);
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      // We only support string/binary dictionary-encoded values
+      switch (value_view.type) {
+        case NANOARROW_TYPE_STRING:
+        case NANOARROW_TYPE_LARGE_STRING:
+        case NANOARROW_TYPE_BINARY:
+        case NANOARROW_TYPE_LARGE_BINARY:
+          break;
+        default:
+          SetError(error, "Column %d dictionary has unsupported type %s", i,
+                   ArrowTypeString(value_view.type));
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+      }
+    }
+
     binder->types[i] = view.type;
   }
 
@@ -89,6 +117,160 @@ AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
   memset(values, 0, sizeof(*values));
   return AdbcSqliteBinderSet(binder, error);
 }
+
+#define SECONDS_PER_DAY 86400
+
+/*
+  Allocates to buf on success. Caller is responsible for freeing.
+  On failure sets error and contents of buf are undefined.
+*/
+static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
+                                             struct AdbcError* error) {
+  int strlen = 10;
+
+#if SIZEOF_TIME_T < 8
+  if ((value > INT32_MAX / SECONDS_PER_DAY) || (value < INT32_MIN / SECONDS_PER_DAY)) {
+    SetError(error, "Date %" PRId32 " exceeds platform time_t bounds", value);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  time_t time = (time_t)(value * SECONDS_PER_DAY);
+#else
+  time_t time = value * SECONDS_PER_DAY;
+#endif
+
+  struct tm broken_down_time;
+
+#if defined(_WIN32)
+  if (gmtime_s(&broken_down_time, &time) != 0) {
+    SetError(error, "Could not convert date %" PRId32 " to broken down time", value);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+#else
+  if (gmtime_r(&time, &broken_down_time) != &broken_down_time) {
+    SetError(error, "Could not convert date %" PRId32 " to broken down time", value);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+#endif
+
+  char* tsstr = malloc(strlen + 1);
+  if (tsstr == NULL) {
+    return ADBC_STATUS_IO;
+  }
+
+  if (strftime(tsstr, strlen + 1, "%Y-%m-%d", &broken_down_time) == 0) {
+    SetError(error, "Call to strftime for date %" PRId32 " with failed", value);
+    free(tsstr);
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  *buf = tsstr;
+  return ADBC_STATUS_OK;
+}
+
+/*
+  Allocates to buf on success. Caller is responsible for freeing.
+  On failure sets error and contents of buf are undefined.
+*/
+static AdbcStatusCode ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit unit,
+                                                char** buf, struct AdbcError* error) {
+  int scale = 1;
+  int strlen = 20;
+  int rem = 0;
+
+  switch (unit) {
+    case NANOARROW_TIME_UNIT_SECOND:
+      break;
+    case NANOARROW_TIME_UNIT_MILLI:
+      scale = 1000;
+      strlen = 24;
+      break;
+    case NANOARROW_TIME_UNIT_MICRO:
+      scale = 1000000;
+      strlen = 27;
+      break;
+    case NANOARROW_TIME_UNIT_NANO:
+      scale = 1000000000;
+      strlen = 30;
+      break;
+  }
+
+  rem = value % scale;
+  if (rem < 0) {
+    value -= scale;
+    rem = scale + rem;
+  }
+
+  const int64_t seconds = value / scale;
+
+#if SIZEOF_TIME_T < 8
+  if ((seconds > INT32_MAX) || (seconds < INT32_MIN)) {
+    SetError(error, "Timestamp %" PRId64 " with unit %d exceeds platform time_t bounds",
+             value, unit);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  const time_t time = (time_t)seconds;
+#else
+  const time_t time = seconds;
+#endif
+
+  struct tm broken_down_time;
+
+#if defined(_WIN32)
+  if (gmtime_s(&broken_down_time, &time) != 0) {
+    SetError(error,
+             "Could not convert timestamp %" PRId64 " with unit %d to broken down time",
+             value, unit);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+#else
+  if (gmtime_r(&time, &broken_down_time) != &broken_down_time) {
+    SetError(error,
+             "Could not convert timestamp %" PRId64 " with unit %d to broken down time",
+             value, unit);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+#endif
+
+  char* tsstr = malloc(strlen + 1);
+  if (tsstr == NULL) {
+    return ADBC_STATUS_IO;
+  }
+
+  if (strftime(tsstr, strlen, "%Y-%m-%dT%H:%M:%S", &broken_down_time) == 0) {
+    SetError(error, "Call to strftime for timestamp %" PRId64 " with unit %d failed",
+             value, unit);
+    free(tsstr);
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  assert(rem >= 0);
+  switch (unit) {
+    case NANOARROW_TIME_UNIT_SECOND:
+      break;
+    case NANOARROW_TIME_UNIT_MILLI:
+      tsstr[19] = '.';
+      snprintf(tsstr + 20, strlen - 20, "%03d", rem % 1000u);
+      break;
+    case NANOARROW_TIME_UNIT_MICRO:
+      tsstr[19] = '.';
+      snprintf(tsstr + 20, strlen - 20, "%06d", rem % 1000000u);
+      break;
+    case NANOARROW_TIME_UNIT_NANO:
+      tsstr[19] = '.';
+      snprintf(tsstr + 20, strlen - 20, "%09d", rem % 1000000000u);
+      break;
+  }
+
+  *buf = tsstr;
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3* conn,
                                         sqlite3_stmt* stmt, char* finished,
                                         struct AdbcError* error) {
@@ -151,10 +333,11 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
         case NANOARROW_TYPE_LARGE_BINARY: {
           struct ArrowBufferView value =
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
-          status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.size_bytes,
+          status = sqlite3_bind_blob(stmt, col + 1, value.data.as_char, value.size_bytes,
                                      SQLITE_STATIC);
           break;
         }
+        case NANOARROW_TYPE_BOOL:
         case NANOARROW_TYPE_UINT8:
         case NANOARROW_TYPE_UINT16:
         case NANOARROW_TYPE_UINT32:
@@ -193,6 +376,59 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
           status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.size_bytes,
                                      SQLITE_STATIC);
+          break;
+        }
+        case NANOARROW_TYPE_DICTIONARY: {
+          int64_t value_index =
+              ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
+          if (ArrowArrayViewIsNull(binder->batch.children[col]->dictionary,
+                                   value_index)) {
+            status = sqlite3_bind_null(stmt, col + 1);
+          } else {
+            struct ArrowBufferView value = ArrowArrayViewGetBytesUnsafe(
+                binder->batch.children[col]->dictionary, value_index);
+            status = sqlite3_bind_text(stmt, col + 1, value.data.as_char,
+                                       value.size_bytes, SQLITE_STATIC);
+          }
+          break;
+        }
+        case NANOARROW_TYPE_DATE32: {
+          int64_t value =
+              ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
+          char* tsstr;
+
+          if ((value > INT32_MAX) || (value < INT32_MIN)) {
+            SetError(error,
+                     "Column %d has value %" PRId64
+                     " which exceeds the expected range "
+                     "for an Arrow DATE32 type",
+                     col, value);
+            return ADBC_STATUS_INVALID_DATA;
+          }
+
+          RAISE_ADBC(ArrowDate32ToIsoString((int32_t)value, &tsstr, error));
+          // SQLITE_TRANSIENT ensures the value is copied during bind
+          status =
+              sqlite3_bind_text(stmt, col + 1, tsstr, strlen(tsstr), SQLITE_TRANSIENT);
+
+          free(tsstr);
+          break;
+        }
+        case NANOARROW_TYPE_TIMESTAMP: {
+          struct ArrowSchemaView bind_schema_view;
+          RAISE_ADBC(ArrowSchemaViewInit(&bind_schema_view, binder->schema.children[col],
+                                         &arrow_error));
+          enum ArrowTimeUnit unit = bind_schema_view.time_unit;
+          int64_t value =
+              ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
+
+          char* tsstr;
+          RAISE_ADBC(ArrowTimestampToIsoString(value, unit, &tsstr, error));
+
+          // SQLITE_TRANSIENT ensures the value is copied during bind
+          status =
+              sqlite3_bind_text(stmt, col + 1, tsstr, strlen(tsstr), SQLITE_TRANSIENT);
+          free((char*)tsstr);
           break;
         }
         default:
@@ -253,7 +489,9 @@ const char* StatementReaderGetLastError(struct ArrowArrayStream* self) {
 
 void StatementReaderSetError(struct StatementReader* reader) {
   const char* msg = sqlite3_errmsg(reader->db);
-  strncpy(reader->error.message, msg, sizeof(reader->error.message));
+  // Reset here so that we don't get an error again in StatementRelease
+  (void)sqlite3_reset(reader->stmt);
+  strncpy(reader->error.message, msg, sizeof(reader->error.message) - 1);
   reader->error.message[sizeof(reader->error.message) - 1] = '\0';
 }
 
@@ -330,14 +568,8 @@ int StatementReaderGetOneValue(struct StatementReader* reader, int col,
         case SQLITE_INTEGER:
         case SQLITE_FLOAT:
         case SQLITE_TEXT:
-        case SQLITE_BLOB: {
-          // Let SQLite convert
-          struct ArrowStringView value = {
-              .data = (const char*)sqlite3_column_text(reader->stmt, col),
-              .size_bytes = sqlite3_column_bytes(reader->stmt, col),
-          };
-          return ArrowArrayAppendString(out, value);
-        }
+        case SQLITE_BLOB:
+          break;
         default: {
           snprintf(reader->error.message, sizeof(reader->error.message),
                    "[SQLite] Type mismatch in column %d: expected STRING but got unknown "
@@ -346,7 +578,34 @@ int StatementReaderGetOneValue(struct StatementReader* reader, int col,
           return ENOTSUP;
         }
       }
-      break;
+
+      // Let SQLite convert
+      struct ArrowStringView value = {
+          .data = (const char*)sqlite3_column_text(reader->stmt, col),
+          .size_bytes = sqlite3_column_bytes(reader->stmt, col),
+      };
+      return ArrowArrayAppendString(out, value);
+    }
+
+    case NANOARROW_TYPE_BINARY: {
+      switch (sqlite_type) {
+        case SQLITE_TEXT:
+        case SQLITE_BLOB:
+          break;
+        default: {
+          snprintf(reader->error.message, sizeof(reader->error.message),
+                   "[SQLite] Type mismatch in column %d: expected BLOB but got unknown "
+                   "type %d",
+                   col, sqlite_type);
+          return ENOTSUP;
+        }
+      }
+
+      // Let SQLite convert
+      struct ArrowBufferView value;
+      value.data.data = sqlite3_column_blob(reader->stmt, col);
+      value.size_bytes = sqlite3_column_bytes(reader->stmt, col);
+      return ArrowArrayAppendBytes(out, value);
     }
 
     default: {
@@ -382,33 +641,40 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
 
   sqlite3_mutex_enter(sqlite3_db_mutex(reader->db));
   while (batch_size < reader->batch_size) {
-    if (reader->binder) {
-      char finished = 0;
-      struct AdbcError error = {0};
-      AdbcStatusCode status = AdbcSqliteBinderBindNext(reader->binder, reader->db,
-                                                       reader->stmt, &finished, &error);
-      if (status != ADBC_STATUS_OK) {
-        reader->done = 1;
-        status = EIO;
-        if (error.release) {
-          strncpy(reader->error.message, error.message, sizeof(reader->error.message));
-          reader->error.message[sizeof(reader->error.message) - 1] = '\0';
-          error.release(&error);
-        }
-        break;
-      } else if (finished) {
-        reader->done = 1;
-        break;
-      }
-    }
-
     int rc = sqlite3_step(reader->stmt);
     if (rc == SQLITE_DONE) {
-      reader->done = 1;
-      break;
+      if (!reader->binder) {
+        reader->done = 1;
+        break;
+      } else {
+        char finished = 0;
+        struct AdbcError error = {0};
+        status = AdbcSqliteBinderBindNext(reader->binder, reader->db, reader->stmt,
+                                          &finished, &error);
+        if (status != ADBC_STATUS_OK) {
+          reader->done = 1;
+          status = EIO;
+          if (error.release) {
+            strncpy(reader->error.message, error.message,
+                    sizeof(reader->error.message) - 1);
+            reader->error.message[sizeof(reader->error.message) - 1] = '\0';
+            error.release(&error);
+          }
+          break;
+        } else if (finished) {
+          reader->done = 1;
+          break;
+        }
+        continue;
+      }
     } else if (rc == SQLITE_ERROR) {
       reader->done = 1;
       status = EIO;
+      StatementReaderSetError(reader);
+      break;
+    } else if (rc != SQLITE_ROW) {
+      reader->done = 1;
+      status = ADBC_STATUS_INTERNAL;
       StatementReaderSetError(reader);
       break;
     }
@@ -589,7 +855,10 @@ AdbcStatusCode StatementReaderAppendInt64ToBinary(struct ArrowBuffer* offsets,
   int written = 0;
   while (1) {
     written = snprintf(output, buffer_size, "%" PRId64, value);
-    if (written >= buffer_size) {
+    if (written < 0) {
+      SetError(error, "Encoding error when upcasting double to string");
+      return ADBC_STATUS_INTERNAL;
+    } else if (((size_t)written) >= buffer_size) {
       // Truncated, resize and try again
       // Check for overflow - presumably this can never happen...?
       if (UINT_MAX - buffer_size < buffer_size) {
@@ -619,7 +888,10 @@ AdbcStatusCode StatementReaderAppendDoubleToBinary(struct ArrowBuffer* offsets,
   int written = 0;
   while (1) {
     written = snprintf(output, buffer_size, "%e", value);
-    if (written >= buffer_size) {
+    if (written < 0) {
+      SetError(error, "Encoding error when upcasting double to string");
+      return ADBC_STATUS_INTERNAL;
+    } else if (((size_t)written) >= buffer_size) {
       // Truncated, resize and try again
       // Check for overflow - presumably this can never happen...?
       if (UINT_MAX - buffer_size < buffer_size) {
@@ -802,9 +1074,41 @@ AdbcStatusCode StatementReaderInferOneValue(
       CHECK_NA(INTERNAL, ArrowBufferAppend(data, &offset, sizeof(offset)), error);
       break;
     }
-    case SQLITE_BLOB:
+    case SQLITE_BLOB: {
+      ArrowBitmapAppendUnsafe(validity, /*set=*/1, /*length=*/1);
+
+      switch (*current_type) {
+        case NANOARROW_TYPE_INT64: {
+          AdbcStatusCode status = StatementReaderUpcastInt64ToBinary(data, binary, error);
+          if (status != ADBC_STATUS_OK) return status;
+          *current_type = NANOARROW_TYPE_BINARY;
+          break;
+        }
+        case NANOARROW_TYPE_DOUBLE: {
+          AdbcStatusCode status =
+              StatementReaderUpcastDoubleToBinary(data, binary, error);
+          if (status != ADBC_STATUS_OK) return status;
+          *current_type = NANOARROW_TYPE_BINARY;
+          break;
+        }
+        case NANOARROW_TYPE_STRING:
+          *current_type = NANOARROW_TYPE_BINARY;
+          break;
+        case NANOARROW_TYPE_BINARY:
+          break;
+        default:
+          return ADBC_STATUS_INTERNAL;
+      }
+
+      const void* value = sqlite3_column_blob(stmt, col);
+      const int size = sqlite3_column_bytes(stmt, col);
+      const int32_t offset = ((int32_t*)data->data)[data->size_bytes / 4 - 1] + size;
+      CHECK_NA(INTERNAL, ArrowBufferAppend(binary, value, size), error);
+      CHECK_NA(INTERNAL, ArrowBufferAppend(data, &offset, sizeof(offset)), error);
+      break;
+    }
     default: {
-      return ADBC_STATUS_IO;
+      return ADBC_STATUS_NOT_IMPLEMENTED;
     }
   }
   return ADBC_STATUS_OK;
@@ -836,25 +1140,41 @@ AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
 
   AdbcStatusCode status = StatementReaderInitializeInfer(
       num_columns, batch_size, validity, data, binary, current_type, error);
-  if (status == ADBC_STATUS_OK) {
-    int64_t num_rows = 0;
-    while (num_rows < batch_size) {
-      if (binder) {
-        char finished = 0;
-        status = AdbcSqliteBinderBindNext(binder, db, stmt, &finished, error);
-        if (status != ADBC_STATUS_OK) break;
-        if (finished) {
-          reader->done = 1;
-          break;
-        }
-      }
 
+  if (binder) {
+    char finished = 0;
+    status = AdbcSqliteBinderBindNext(binder, db, stmt, &finished, error);
+    if (finished) {
+      reader->done = 1;
+    }
+  }
+
+  if (status == ADBC_STATUS_OK && !reader->done) {
+    int64_t num_rows = 0;
+    while (((size_t)num_rows) < batch_size) {
       int rc = sqlite3_step(stmt);
       if (rc == SQLITE_DONE) {
-        reader->done = 1;
-        break;
+        if (!binder) {
+          reader->done = 1;
+          break;
+        } else {
+          char finished = 0;
+          status = AdbcSqliteBinderBindNext(binder, db, stmt, &finished, error);
+          if (status != ADBC_STATUS_OK) break;
+          if (finished) {
+            reader->done = 1;
+            break;
+          }
+        }
+        continue;
       } else if (rc == SQLITE_ERROR) {
+        SetError(error, "Failed to step query: %s", sqlite3_errmsg(db));
         status = ADBC_STATUS_IO;
+        // Reset here so that we don't get an error again in StatementRelease
+        (void)sqlite3_reset(stmt);
+        break;
+      } else if (rc != SQLITE_ROW) {
+        status = ADBC_STATUS_INTERNAL;
         break;
       }
 

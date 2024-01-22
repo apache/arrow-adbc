@@ -17,7 +17,7 @@
 
 package adbc
 
-import "github.com/apache/arrow/go/v12/arrow"
+import "github.com/apache/arrow/go/v15/arrow"
 
 var (
 	GetInfoSchema = arrow.NewSchema([]arrow.Field{
@@ -90,5 +90,41 @@ var (
 	GetObjectsSchema = arrow.NewSchema([]arrow.Field{
 		{Name: "catalog_name", Type: arrow.BinaryTypes.String, Nullable: true},
 		{Name: "catalog_db_schemas", Type: arrow.ListOf(DBSchemaSchema), Nullable: true},
+	}, nil)
+
+	StatisticsSchema = arrow.StructOf(
+		arrow.Field{Name: "table_name", Type: arrow.BinaryTypes.String, Nullable: false},
+		arrow.Field{Name: "column_name", Type: arrow.BinaryTypes.String, Nullable: true},
+		arrow.Field{Name: "statistic_key", Type: arrow.PrimitiveTypes.Int16, Nullable: false},
+		arrow.Field{Name: "statistic_value", Type: arrow.DenseUnionOf([]arrow.Field{
+			{Name: "int64", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+			{Name: "uint64", Type: arrow.PrimitiveTypes.Uint64, Nullable: true},
+			{Name: "float64", Type: arrow.PrimitiveTypes.Float64, Nullable: true},
+			{Name: "binary", Type: arrow.BinaryTypes.Binary, Nullable: true},
+		}, []arrow.UnionTypeCode{0, 1, 2, 3}), Nullable: false},
+		arrow.Field{Name: "statistic_is_approximate", Type: arrow.FixedWidthTypes.Boolean, Nullable: false},
+	)
+
+	StatisticsDBSchemaSchema = arrow.StructOf(
+		arrow.Field{Name: "db_schema_name", Type: arrow.BinaryTypes.String, Nullable: true},
+		arrow.Field{Name: "db_schema_statistics", Type: arrow.ListOf(StatisticsSchema), Nullable: false},
+	)
+
+	GetStatisticsSchema = arrow.NewSchema([]arrow.Field{
+		{Name: "catalog_name", Type: arrow.BinaryTypes.String, Nullable: true},
+		{Name: "catalog_db_schemas", Type: arrow.ListOf(StatisticsDBSchemaSchema), Nullable: false},
+	}, nil)
+
+	GetStatisticNamesSchema = arrow.NewSchema([]arrow.Field{
+		{Name: "statistic_name", Type: arrow.BinaryTypes.String, Nullable: false},
+		{Name: "statistic_key", Type: arrow.PrimitiveTypes.Int16, Nullable: false},
+	}, nil)
+
+	GetTableSchemaSchema = arrow.NewSchema([]arrow.Field{
+		{Name: "catalog_name", Type: arrow.BinaryTypes.String, Nullable: true},
+		{Name: "db_schema_name", Type: arrow.BinaryTypes.String, Nullable: true},
+		{Name: "table_name", Type: arrow.BinaryTypes.String},
+		{Name: "table_type", Type: arrow.BinaryTypes.String},
+		{Name: "table_schema", Type: arrow.BinaryTypes.Binary},
 	}, nil)
 )

@@ -42,24 +42,64 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['8', '11']
+        java: ['8', '11', '17', '21']
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-java@v3
+      - uses: actions/setup-java@v4
         with:
           cache: "maven"
           distribution: "temurin"
           java-version: ${{ matrix.java }}
-      - name: Start SQLite server
+      - name: Start test services
         shell: bash -l {0}
         run: |
-          docker-compose up -d golang-sqlite-flightsql
+          docker compose up -d --wait flightsql-sqlite-test mssql-test postgres-test
       - name: Build/Test
         env:
           ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
+          ADBC_JDBC_MSSQL_URL: "localhost:1433"
+          ADBC_JDBC_MSSQL_USER: "SA"
+          ADBC_JDBC_MSSQL_PASSWORD: "Password1!"
+          ADBC_JDBC_POSTGRESQL_URL: "localhost:5432/postgres"
+          ADBC_JDBC_POSTGRESQL_USER: "postgres"
+          ADBC_JDBC_POSTGRESQL_PASSWORD: "password"
         run: |
           cd java
           mvn install
+
+  java-errorprone:
+    name: "Java ${{ matrix.java }}/Linux with ErrorProne"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: ['11', '17', '21']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          cache: "maven"
+          distribution: "temurin"
+          java-version: ${{ matrix.java }}
+      - name: Build/Test
+        run: |
+          cd java
+          mkdir .mvn
+          cat <<HERE > .mvn/jvm.config
+          --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+          --add-opens jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED
+          --add-opens jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED
+          HERE
+          mvn -P errorprone install

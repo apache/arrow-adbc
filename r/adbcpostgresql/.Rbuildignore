@@ -9,3 +9,8 @@
 ^docker-compose\.yml$
 ^configure\.win$
 ^windows$
+^\.vscode$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^cran-comments\.md$

@@ -23,25 +23,45 @@ set -e
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 : ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
+: ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
+: ${BUILD_INTEGRATION_DUCKDB:=${BUILD_ALL}}
 
-test_subproject() {
+test_project() {
     local -r build_dir="${1}"
-    local -r subproject="${2}"
 
-    echo "=== Testing ${subproject} ==="
+    pushd "${build_dir}/"
 
-    pushd "${build_dir}/${subproject}"
+    local labels="driver-common"
+    if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
+       labels="${labels}|driver-flightsql"
+    fi
+    if [[ "${BUILD_DRIVER_MANAGER}" -gt 0 ]]; then
+       labels="${labels}|driver-manager"
+    fi
+    if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
+       labels="${labels}|driver-postgresql"
+    fi
+    if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
+       labels="${labels}|driver-sqlite"
+    fi
+    if [[ "${BUILD_DRIVER_SNOWFLAKE}" -gt 0 ]]; then
+       labels="${labels}|driver-snowflake"
+    fi
+    if [[ "${BUILD_INTEGRATION_DUCKDB}" -gt 0 ]]; then
+       labels="${labels}|integration-duckdb"
+    fi
 
-    # macOS will not propagate DYLD_LIBRARY_PATH through a subprocess
-    "./adbc-$(echo ${subproject} | sed "s|[/_]|-|g")-test"
+    ctest \
+        --output-on-failure \
+        --no-tests=error \
+        -L "${labels}"
 
     popd
 }
 
 main() {
-    local -r source_dir="${1}"
-    local -r build_dir="${2}"
-    local install_dir="${3}"
+    local -r build_dir="${1}"
+    local install_dir="${2}"
 
     if [[ -z "${install_dir}" ]]; then
         install_dir="${build_dir}/local"
@@ -49,23 +69,9 @@ main() {
 
     export DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
     export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
+    export GODEBUG=cgocheck=2
 
-    if [[ "${BUILD_DRIVER_MANAGER}" -gt 0 ]]; then
-        test_subproject "${build_dir}" driver_manager
-    fi
-
-    if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
-        test_subproject "${build_dir}" driver/postgresql
-    fi
-
-    if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
-        test_subproject "${build_dir}" driver/sqlite
-    fi
-
-    if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
-        export GODEBUG=cgocheck=2
-        test_subproject "${build_dir}" driver/flightsql
-    fi
+    test_project "${build_dir}"
 }
 
 main "$@"

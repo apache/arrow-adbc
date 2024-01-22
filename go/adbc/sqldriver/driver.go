@@ -22,6 +22,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 	"strconv"
@@ -30,11 +31,11 @@ import (
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v12/arrow"
-	"github.com/apache/arrow/go/v12/arrow/array"
-	"github.com/apache/arrow/go/v12/arrow/decimal128"
-	"github.com/apache/arrow/go/v12/arrow/decimal256"
-	"github.com/apache/arrow/go/v12/arrow/memory"
+	"github.com/apache/arrow/go/v15/arrow"
+	"github.com/apache/arrow/go/v15/arrow/array"
+	"github.com/apache/arrow/go/v15/arrow/decimal128"
+	"github.com/apache/arrow/go/v15/arrow/decimal256"
+	"github.com/apache/arrow/go/v15/arrow/memory"
 )
 
 func getIsolationlevel(lvl sql.IsolationLevel) adbc.OptionIsolationLevel {
@@ -361,6 +362,10 @@ func isCorrectParamType(typ arrow.Type, val driver.Value) bool {
 		return checkType[arrow.Time64](val)
 	case arrow.TIMESTAMP:
 		return checkType[arrow.Timestamp](val)
+	case arrow.DECIMAL128:
+		return checkType[decimal128.Num](val)
+	case arrow.DECIMAL256:
+		return checkType[decimal256.Num](val)
 	}
 	// TODO: add more types here
 	return true
@@ -459,16 +464,20 @@ func arrFromVal(val any) arrow.Array {
 	case []byte:
 		dt = arrow.BinaryTypes.Binary
 		buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
-		buffers[2] = memory.NewBufferBytes(v)
+		buffers = append(buffers, memory.NewBufferBytes(v))
 	case string:
 		dt = arrow.BinaryTypes.String
 		buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
 		var buf = *(*[]byte)(unsafe.Pointer(&v))
 		(*reflect.SliceHeader)(unsafe.Pointer(&buf)).Cap = len(v)
-		buffers[2] = memory.NewBufferBytes(buf)
+		buffers = append(buffers, memory.NewBufferBytes(buf))
+	default:
+		panic(fmt.Sprintf("unsupported type %T", val))
 	}
 	for _, b := range buffers {
-		defer b.Release()
+		if b != nil {
+			defer b.Release()
+		}
 	}
 	data := array.NewData(dt, 1, buffers, nil, 0, 0)
 	defer data.Release()
@@ -580,6 +589,9 @@ func (r *rows) Next(dest []driver.Value) error {
 
 	for r.curRecord == nil {
 		if !r.rdr.Next() {
+			if err := r.rdr.Err(); err != nil {
+				return err
+			}
 			return io.EOF
 		}
 		r.curRecord = r.rdr.Record()
@@ -636,6 +648,10 @@ func (r *rows) Next(dest []driver.Value) error {
 			dest[i] = col.Value(int(r.curRow)).ToTime(col.DataType().(*arrow.Time64Type).Unit)
 		case *array.Timestamp:
 			dest[i] = col.Value(int(r.curRow)).ToTime(col.DataType().(*arrow.TimestampType).Unit)
+		case *array.Decimal128:
+			dest[i] = col.Value(int(r.curRow))
+		case *array.Decimal256:
+			dest[i] = col.Value(int(r.curRow))
 		default:
 			return &adbc.Error{
 				Code: adbc.StatusNotImplemented,

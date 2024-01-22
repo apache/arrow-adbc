@@ -28,6 +28,7 @@ test_subproject() {
 
     export DYLD_LIBRARY_PATH="${install_dir}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}"
     export GI_TYPELIB_PATH="${build_dir}/glib/adbc-glib${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
+    export GI_TYPELIB_PATH="${build_dir}/glib/adbc-arrow-glib:${GI_TYPELIB_PATH}"
     export LD_LIBRARY_PATH="${install_dir}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
     export PKG_CONFIG_PATH="${install_dir}/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
     if [[ -n "${CONDA_PREFIX}" ]]; then
@@ -61,6 +62,12 @@ test_subproject() {
                --with-cppflags=-D_LIBCPP_DISABLE_AVAILABILITY
     fi
 
+    # Install consistent version of red-arrow for given arrow-glib
+    local -r arrow_glib_version=$(pkg-config --modversion arrow-glib | sed -e 's/-SNAPSHOT$//g' || :)
+    if [ -n "${arrow_glib_version}" ]; then
+        export RED_ARROW_VERSION="<= ${arrow_glib_version}"
+    fi
+
     bundle config set --local path 'vendor/bundle'
     bundle install
     bundle exec \
@@ -74,16 +81,11 @@ test_subproject() {
         gem_flags='-- --with-cflags="-D_LIBCPP_DISABLE_AVAILABILITY" --with-cppflags="-D_LIBCPP_DISABLE_AVAILABILITY"'
     fi
 
-    # Install consistent version of red-arrow for given arrow-glib
-    local -r arrow_glib_version=$(pkg-config --modversion arrow-glib | sed -e 's/-SNAPSHOT$//g' || :)
-    if [ -n "${arrow_glib_version}" ]; then
-        gem install \
-            --install-dir "${build_dir}/gems" \
-            --version ${arrow_glib_version} \
-            red-arrow \
-            -- ${gem_flags}
-    fi
-    gem install --install-dir "${build_dir}/gems" pkg/*.gem -- ${gem_flags}
+    gem install \
+        --install-dir "${build_dir}/gems" \
+        pkg/*.gem \
+        -- \
+        ${gem_flags}
     popd
 }
 

@@ -31,16 +31,10 @@ set VCPKG_TARGET_TRIPLET=x64-windows-static
 IF NOT DEFINED VCPKG_ROOT (echo "Must set VCPKG_ROOT" && exit /B 1)
 
 %VCPKG_ROOT%\vcpkg install --triplet=%VCPKG_TARGET_TRIPLET% libpq sqlite3
+IF %errorlevel% NEQ 0 EXIT /B %errorlevel%
 
-set ADBC_FLIGHTSQL_LIBRARY=%build_dir%\flightsql\adbc_driver_flightsql.dll
-
-mkdir %build_dir%\flightsql
-pushd %source_dir%\go\adbc\pkg
-go build -tags driverlib -o %ADBC_FLIGHTSQL_LIBRARY% -buildmode=c-shared ./flightsql
-popd
-
-mkdir %build_dir%\postgresql
-pushd %build_dir%\postgresql
+mkdir %build_dir%
+pushd %build_dir%
 
 cmake ^
       -G "%CMAKE_GENERATOR%" ^
@@ -51,43 +45,31 @@ cmake ^
       -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake ^
       -DCMAKE_UNITY_BUILD=%CMAKE_UNITY_BUILD% ^
       -DVCPKG_TARGET_TRIPLET=%VCPKG_TARGET_TRIPLET% ^
-      %source_dir%\c\driver\postgresql || exit /B 1
+      -DADBC_DRIVER_POSTGRESQL=ON ^
+      -DADBC_DRIVER_SQLITE=ON ^
+      -DADBC_DRIVER_FLIGHTSQL=ON ^
+      -DADBC_DRIVER_MANAGER=ON ^
+      -DADBC_DRIVER_SNOWFLAKE=ON ^
+      %source_dir%\c || exit /B 1
+
 cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exit /B 1
 
-@REM XXX: CMake installs it to bin instead of lib for some reason
+set ADBC_FLIGHTSQL_LIBRARY=%build_dir%\bin\adbc_driver_flightsql.dll
 set ADBC_POSTGRESQL_LIBRARY=%build_dir%\bin\adbc_driver_postgresql.dll
-
-popd
-
-mkdir %build_dir%\sqlite
-pushd %build_dir%\sqlite
-
-cmake ^
-      -G "%CMAKE_GENERATOR%" ^
-      -DADBC_BUILD_SHARED=ON ^
-      -DADBC_BUILD_STATIC=OFF ^
-      -DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE% ^
-      -DCMAKE_INSTALL_PREFIX=%build_dir% ^
-      -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake ^
-      -DCMAKE_UNITY_BUILD=%CMAKE_UNITY_BUILD% ^
-      -DVCPKG_TARGET_TRIPLET=%VCPKG_TARGET_TRIPLET% ^
-      %source_dir%\c\driver\sqlite || exit /B 1
-cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exit /B 1
-
-@REM XXX: CMake installs it to bin instead of lib for some reason
 set ADBC_SQLITE_LIBRARY=%build_dir%\bin\adbc_driver_sqlite.dll
+set ADBC_SNOWFLAKE_LIBRARY=%build_dir%\bin\adbc_driver_snowflake.dll
 
 popd
 
-python -m pip install --upgrade pip delvewheel wheel
+python -m pip install --upgrade pip delvewheel wheel || exit /B 1
 
 FOR /F %%i IN ('python -c "import sysconfig; print(sysconfig.get_platform())"') DO set PLAT_NAME=%%i
 
-FOR %%c IN (adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite) DO (
+FOR %%c IN (adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake) DO (
     pushd %source_dir%\python\%%c
 
     echo "=== (%PYTHON_VERSION%) Checking %%c version ==="
-    python %%c\_version.py
+    python %%c\_version.py || exit /B 1
 
     echo "=== (%PYTHON_VERSION%) Building %%c wheel ==="
     python -m pip wheel --no-deps -w dist -vvv . || exit /B 1
@@ -98,8 +80,11 @@ FOR %%c IN (adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adb
     )
 
     echo "=== (%PYTHON_VERSION%) Repair %%c wheel ==="
+    REM Always copy the wheel once since delvewheel doesn't copy if no changes needed
+    mkdir repaired_wheels
     FOR %%w IN (dist\*.whl) DO (
-        delvewheel repair -w repaired_wheels\ %%w
+        copy %%w repaired_wheels\
+        delvewheel repair -w repaired_wheels\ %%w || exit /B 1
     )
 
     popd

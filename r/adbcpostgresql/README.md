@@ -27,12 +27,28 @@ interface to the Arrow Database Connectivity (ADBC) PostgreSQL driver.
 
 ## Installation
 
+You can install the released version of adbcpostgresql from
+[CRAN](https://cran.r-project.org/) with:
+
+``` r
+install.packages("adbcpostgresql")
+```
+
 You can install the development version of adbcpostgresql from
 [GitHub](https://github.com/) with:
 
 ``` r
-# install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcpostgresql")
+# install.packages("pak")
+pak::pak("apache/arrow-adbc/r/adbcpostgresql")
+```
+
+ADBC drivers for R use a relatively new feature of pkgbuild to enable
+installation from GitHub via pak. Depending on when you installed pak,
+you may need to update its internal version of pkgbuild.
+
+``` r
+install.packages("pkgbuild", pak:::private_lib_dir())
+pak::cache_clean()
 ```
 
 ## Example
@@ -51,39 +67,36 @@ con <- adbc_connection_init(db)
 flights <- head(nycflights13::flights, 100)
 # (timestamp not supported yet)
 flights$time_hour <- NULL
-
-stmt <- adbc_statement_init(con, adbc.ingest.target_table = "flights")
-adbc_statement_bind(stmt, flights)
-adbc_statement_execute_query(stmt)
-#> [1] 100
-adbc_statement_release(stmt)
+flights |>
+  write_adbc(con, "flights")
 
 # Query it
-stmt <- adbc_statement_init(con)
-stream <- nanoarrow::nanoarrow_allocate_array_stream()
-
-adbc_statement_set_sql_query(stmt, "SELECT * from flights")
-adbc_statement_execute_query(stmt, stream)
-#> [1] -1
-result <- tibble::as_tibble(stream)
-adbc_statement_release(stmt)
-
-result
+con |>
+  read_adbc("SELECT * from flights") |>
+  tibble::as_tibble()
 #> # A tibble: 100 × 18
-#>     year month   day dep_time sched_de…¹ dep_d…² arr_t…³ sched…⁴ arr_d…⁵ carrier
-#>    <int> <int> <int>    <int>      <int>   <dbl>   <int>   <int>   <dbl> <chr>
-#>  1  2013     1     1      517        515       2     830     819      11 UA
-#>  2  2013     1     1      533        529       4     850     830      20 UA
-#>  3  2013     1     1      542        540       2     923     850      33 AA
-#>  4  2013     1     1      544        545      -1    1004    1022     -18 B6
-#>  5  2013     1     1      554        600      -6     812     837     -25 DL
-#>  6  2013     1     1      554        558      -4     740     728      12 UA
-#>  7  2013     1     1      555        600      -5     913     854      19 B6
-#>  8  2013     1     1      557        600      -3     709     723     -14 EV
-#>  9  2013     1     1      557        600      -3     838     846      -8 B6
-#> 10  2013     1     1      558        600      -2     753     745       8 AA
-#> # … with 90 more rows, 8 more variables: flight <int>, tailnum <chr>,
-#> #   origin <chr>, dest <chr>, air_time <dbl>, distance <dbl>, hour <dbl>,
-#> #   minute <dbl>, and abbreviated variable names ¹​sched_dep_time, ²​dep_delay,
-#> #   ³​arr_time, ⁴​sched_arr_time, ⁵​arr_delay
+#>     year month   day dep_time sched_dep_time dep_delay arr_time sched_arr_time
+#>    <int> <int> <int>    <int>          <int>     <dbl>    <int>          <int>
+#>  1  2013     1     1      517            515         2      830            819
+#>  2  2013     1     1      533            529         4      850            830
+#>  3  2013     1     1      542            540         2      923            850
+#>  4  2013     1     1      544            545        -1     1004           1022
+#>  5  2013     1     1      554            600        -6      812            837
+#>  6  2013     1     1      554            558        -4      740            728
+#>  7  2013     1     1      555            600        -5      913            854
+#>  8  2013     1     1      557            600        -3      709            723
+#>  9  2013     1     1      557            600        -3      838            846
+#> 10  2013     1     1      558            600        -2      753            745
+#> # ℹ 90 more rows
+#> # ℹ 10 more variables: arr_delay <dbl>, carrier <chr>, flight <int>,
+#> #   tailnum <chr>, origin <chr>, dest <chr>, air_time <dbl>, distance <dbl>,
+#> #   hour <dbl>, minute <dbl>
+```
+
+``` r
+# Clean up
+con |>
+  execute_adbc("DROP TABLE flights")
+adbc_connection_release(con)
+adbc_database_release(db)
 ```

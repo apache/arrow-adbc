@@ -15,17 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.18)
-get_filename_component(REPOSITORY_ROOT "../../../" ABSOLUTE)
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcDefines)
-include(BuildUtils)
-
-project(adbc_driver_postgresql
-        VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES CXX)
-include(CTest)
-
 if(WIN32)
   # XXX: for now, assume vcpkg
   find_package(PostgreSQL REQUIRED)
@@ -40,8 +29,10 @@ endif()
 add_arrow_lib(adbc_driver_postgresql
               SOURCES
               connection.cc
+              error.cc
               database.cc
               postgresql.cc
+              result_helper.cc
               statement.cc
               OUTPUTS
               ADBC_LIBRARIES
@@ -52,17 +43,23 @@ add_arrow_lib(adbc_driver_postgresql
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
-              ${LIBPQ_LINK_LIBRARIES}
+              adbc_driver_common
               nanoarrow
+              ${LIBPQ_LINK_LIBRARIES}
               STATIC_LINK_LIBS
               ${LIBPQ_LINK_LIBRARIES}
+              adbc_driver_common
               nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
-include_directories(SYSTEM ${REPOSITORY_ROOT})
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
-include_directories(SYSTEM ${LIBPQ_INCLUDE_DIRS})
+
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
+  target_include_directories(${LIB_TARGET} SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}
+                                     ${REPOSITORY_ROOT}/c/
+                                     ${LIBPQ_INCLUDE_DIRS}
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
 endforeach()
 
 if(ADBC_TEST_LINKAGE STREQUAL "shared")
@@ -75,17 +72,61 @@ if(ADBC_BUILD_TESTS)
   add_test_case(driver_postgresql_test
                 PREFIX
                 adbc
+                EXTRA_LABELS
+                driver-postgresql
                 SOURCES
                 postgres_type_test.cc
                 postgresql_test.cc
-                ../../validation/adbc_validation.cc
-                ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
+                adbc_driver_common
+                adbc_validation
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-postgresql-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-driver-postgresql-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}
+                                     ${REPOSITORY_ROOT}/c/
+                                     ${LIBPQ_INCLUDE_DIRS}
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-driver-postgresql-test)
+
+  add_test_case(driver_postgresql_copy_test
+                PREFIX
+                adbc
+                EXTRA_LABELS
+                driver-postgresql
+                SOURCES
+                copy/postgres_copy_reader_test.cc
+                copy/postgres_copy_writer_test.cc
+                EXTRA_LINK_LIBS
+                adbc_driver_common
+                adbc_validation
+                nanoarrow
+                ${TEST_LINK_LIBS})
+  target_compile_features(adbc-driver-postgresql-copy-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-driver-postgresql-copy-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}
+                                     ${REPOSITORY_ROOT}/c/
+                                     ${LIBPQ_INCLUDE_DIRS}
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
+  adbc_configure_target(adbc-driver-postgresql-copy-test)
 endif()
 
-validate_config()
-config_summary_message()
+if(ADBC_BUILD_BENCHMARKS)
+  find_package(benchmark REQUIRED)
+  # TODO: should add_benchmark be linking benchmark::benchmark for us?
+  add_benchmark(postgresql_benchmark
+                EXTRA_LINK_LIBS
+                adbc_driver_common
+                adbc_validation
+                nanoarrow
+                ${TEST_LINK_LIBS}
+                benchmark::benchmark)
+  # add_benchmark replaces _ with - when creating target
+  target_include_directories(postgresql-benchmark
+                             PRIVATE ${REPOSITORY_ROOT} ${REPOSITORY_ROOT}/c/
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
+endif()

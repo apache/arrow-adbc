@@ -17,6 +17,7 @@
 
 #include "database.h"
 
+#include <cinttypes>
 #include <cstring>
 #include <memory>
 #include <utility>
@@ -26,7 +27,7 @@
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.h>
 
-#include "util.h"
+#include "common/utils.h"
 
 namespace adbcpq {
 
@@ -35,6 +36,23 @@ PostgresDatabase::PostgresDatabase() : open_connections_(0) {
 }
 PostgresDatabase::~PostgresDatabase() = default;
 
+AdbcStatusCode PostgresDatabase::GetOption(const char* option, char* value,
+                                           size_t* length, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+AdbcStatusCode PostgresDatabase::GetOptionBytes(const char* option, uint8_t* value,
+                                                size_t* length, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+AdbcStatusCode PostgresDatabase::GetOptionInt(const char* option, int64_t* value,
+                                              struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+AdbcStatusCode PostgresDatabase::GetOptionDouble(const char* option, double* value,
+                                                 struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+
 AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
   // Connect to validate the parameters.
   return RebuildTypeResolver(error);
@@ -42,7 +60,8 @@ AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
 
 AdbcStatusCode PostgresDatabase::Release(struct AdbcError* error) {
   if (open_connections_ != 0) {
-    SetError(error, "Database released with ", open_connections_, " open connections");
+    SetError(error, "%s%" PRId32 "%s", "[libpq] Database released with ",
+             open_connections_, " open connections");
     return ADBC_STATUS_INVALID_STATE;
   }
   return ADBC_STATUS_OK;
@@ -53,20 +72,39 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
   if (strcmp(key, "uri") == 0) {
     uri_ = value;
   } else {
-    SetError(error, "Unknown database option ", key);
+    SetError(error, "%s%s", "[libpq] Unknown database option ", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode PostgresDatabase::SetOptionBytes(const char* key, const uint8_t* value,
+                                                size_t length, struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode PostgresDatabase::SetOptionDouble(const char* key, double value,
+                                                 struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode PostgresDatabase::SetOptionInt(const char* key, int64_t value,
+                                              struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode PostgresDatabase::Connect(PGconn** conn, struct AdbcError* error) {
   if (uri_.empty()) {
-    SetError(error, "Must set database option 'uri' before creating a connection");
+    SetError(error, "%s",
+             "[libpq] Must set database option 'uri' before creating a connection");
     return ADBC_STATUS_INVALID_STATE;
   }
   *conn = PQconnectdb(uri_.c_str());
   if (PQstatus(*conn) != CONNECTION_OK) {
-    SetError(error, "Failed to connect: ", PQerrorMessage(*conn));
+    SetError(error, "%s%s", "[libpq] Failed to connect: ", PQerrorMessage(*conn));
     PQfinish(*conn);
     *conn = nullptr;
     return ADBC_STATUS_IO;
@@ -79,7 +117,7 @@ AdbcStatusCode PostgresDatabase::Disconnect(PGconn** conn, struct AdbcError* err
   PQfinish(*conn);
   *conn = nullptr;
   if (--open_connections_ < 0) {
-    SetError(error, "Open connection count underflowed");
+    SetError(error, "%s", "[libpq] Open connection count underflowed");
     return ADBC_STATUS_INTERNAL;
   }
   return ADBC_STATUS_OK;
@@ -87,10 +125,10 @@ AdbcStatusCode PostgresDatabase::Disconnect(PGconn** conn, struct AdbcError* err
 
 // Helpers for building the type resolver from queries
 static inline int32_t InsertPgAttributeResult(
-    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
+    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
 
 static inline int32_t InsertPgTypeResult(
-    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
+    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
 
 AdbcStatusCode PostgresDatabase::RebuildTypeResolver(struct AdbcError* error) {
   PGconn* conn = nullptr;
@@ -139,12 +177,13 @@ ORDER BY
   auto resolver = std::make_shared<PostgresTypeResolver>();
 
   // Insert record type definitions (this includes table schemas)
-  pg_result* result = PQexec(conn, kColumnsQuery.c_str());
+  PGresult* result = PQexec(conn, kColumnsQuery.c_str());
   ExecStatusType pq_status = PQresultStatus(result);
   if (pq_status == PGRES_TUPLES_OK) {
     InsertPgAttributeResult(result, resolver);
   } else {
-    SetError(error, "Failed to build type mapping table: ", PQerrorMessage(conn));
+    SetError(error, "%s%s",
+             "[libpq] Failed to build type mapping table: ", PQerrorMessage(conn));
     final_status = ADBC_STATUS_IO;
   }
 
@@ -158,7 +197,8 @@ ORDER BY
     if (pq_status == PGRES_TUPLES_OK) {
       InsertPgTypeResult(result, resolver);
     } else {
-      SetError(error, "Failed to build type mapping table: ", PQerrorMessage(conn));
+      SetError(error, "%s%s",
+               "[libpq] Failed to build type mapping table: ", PQerrorMessage(conn));
       final_status = ADBC_STATUS_IO;
     }
 
@@ -182,7 +222,7 @@ ORDER BY
 }
 
 static inline int32_t InsertPgAttributeResult(
-    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
+    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
   int num_rows = PQntuples(result);
   std::vector<std::pair<std::string, uint32_t>> columns;
   uint32_t current_type_oid = 0;
@@ -214,7 +254,7 @@ static inline int32_t InsertPgAttributeResult(
 }
 
 static inline int32_t InsertPgTypeResult(
-    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
+    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
   int num_rows = PQntuples(result);
   PostgresTypeResolver::Item item;
   int32_t n_added = 0;
@@ -246,7 +286,7 @@ static inline int32_t InsertPgTypeResult(
 
     // If there's an array type and the insert succeeded, add that now too
     if (result == NANOARROW_OK && typarray != 0) {
-      std::string array_typname = StringBuilder("_", typname);
+      std::string array_typname = "_" + std::string(typname);
       item.oid = typarray;
       item.typname = array_typname.c_str();
       item.typreceive = "array_recv";

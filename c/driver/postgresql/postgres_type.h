@@ -110,6 +110,7 @@ enum class PostgresTypeId {
   kXid8,
   kXid,
   kXml,
+  kUserDefined
 };
 
 // Returns the receive function name as defined in the typrecieve column
@@ -191,6 +192,7 @@ class PostgresType {
   // binary COPY representation in the output.
   ArrowErrorCode SetSchema(ArrowSchema* schema) const {
     switch (type_id_) {
+      // ---- Primitive types --------------------
       case PostgresTypeId::kBool:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL));
         break;
@@ -198,6 +200,8 @@ class PostgresType {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT16));
         break;
       case PostgresTypeId::kInt4:
+      case PostgresTypeId::kOid:
+      case PostgresTypeId::kRegproc:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT32));
         break;
       case PostgresTypeId::kInt8:
@@ -209,16 +213,57 @@ class PostgresType {
       case PostgresTypeId::kFloat8:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DOUBLE));
         break;
+
+      // ---- Numeric/Decimal-------------------
+      case PostgresTypeId::kNumeric:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
+        break;
+
+      // ---- Binary/string --------------------
       case PostgresTypeId::kChar:
       case PostgresTypeId::kBpchar:
       case PostgresTypeId::kVarchar:
       case PostgresTypeId::kText:
+      case PostgresTypeId::kName:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
       case PostgresTypeId::kBytea:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
         break;
 
+      // ---- Temporal --------------------
+      case PostgresTypeId::kDate:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DATE32));
+        break;
+
+      case PostgresTypeId::kTime:
+        // We always return microsecond precision even if the type
+        // specifies differently
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIME64,
+                                                           NANOARROW_TIME_UNIT_MICRO,
+                                                           /*timezone=*/nullptr));
+        break;
+
+      case PostgresTypeId::kTimestamp:
+        // We always return microsecond precision even if the type
+        // specifies differently
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIMESTAMP,
+                                       NANOARROW_TIME_UNIT_MICRO, /*timezone=*/nullptr));
+        break;
+
+      case PostgresTypeId::kTimestamptz:
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIMESTAMP,
+                                       NANOARROW_TIME_UNIT_MICRO, /*timezone=*/"UTC"));
+        break;
+
+      case PostgresTypeId::kInterval:
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO));
+        break;
+
+      // ---- Nested --------------------
       case PostgresTypeId::kRecord:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
         for (int64_t i = 0; i < n_children(); i++) {
@@ -230,9 +275,12 @@ class PostgresType {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
         NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
         break;
+
+      case PostgresTypeId::kUserDefined:
       default: {
-        // For any types we don't explicitly know how to deal with, we can still
-        // return the bytes postgres gives us and attach the type name as metadata
+        // For user-defined types or types we don't explicitly know how to deal with, we
+        // can still return the bytes postgres gives us and attach the type name as
+        // metadata
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
         nanoarrow::UniqueBuffer buffer;
         ArrowMetadataBuilderInit(buffer.get(), nullptr);
@@ -326,13 +374,17 @@ class PostgresTypeResolver {
   // class type using InsertClass().
   ArrowErrorCode Insert(const Item& item, ArrowError* error) {
     auto result = base_.find(item.typreceive);
+    PostgresType base;
+
     if (result == base_.end()) {
-      ArrowErrorSet(error, "Base type not found for type '%s' with receive function '%s'",
-                    item.typname, item.typreceive);
-      return ENOTSUP;
+      // This occurs when a user-defined type has defined a custom receive function
+      // (e.g., PostGIS/geometry). The only way these types can be supported is
+      // by returning binary unless we hard-code support for some extensions.
+      base = PostgresType(PostgresTypeId::kUserDefined);
+    } else {
+      base = result->second;
     }
 
-    const PostgresType& base = result->second;
     PostgresType type = base.WithPgTypeInfo(item.oid, item.typname);
 
     switch (base.type_id()) {
@@ -469,6 +521,9 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
           PostgresType::FromSchema(resolver, schema->children[0], &child, error));
       return resolver.FindArray(child.oid(), out, error);
     }
+    case NANOARROW_TYPE_DICTIONARY:
+      // Dictionary arrays always resolve to the dictionary type when binding or ingesting
+      return PostgresType::FromSchema(resolver, schema->dictionary, out, error);
 
     default:
       ArrowErrorSet(error, "Can't map Arrow type '%s' to Postgres type",

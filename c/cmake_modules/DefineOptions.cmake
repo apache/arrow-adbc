@@ -86,7 +86,13 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   #----------------------------------------------------------------------
   set_option_category("Compile and link")
 
-  define_option_string(ADBC_CXXFLAGS "Compiler flags to append when compiling Arrow" "")
+  define_option_string(ADBC_BUILD_WARNING_LEVEL
+                       "CHECKIN to enable Werror, PRODUCTION otherwise" "")
+
+  define_option_string(ADBC_CXXFLAGS
+                       "Compiler flags to append when compiling ADBC C++ libraries" "")
+  define_option_string(ADBC_GO_BUILD_TAGS
+                       "Build tags to append when compiling ADBC Go libraries" "")
 
   define_option(ADBC_BUILD_STATIC "Build static libraries" ON)
 
@@ -221,6 +227,17 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   set_option_category("Advanced developer")
 
   option(ADBC_BUILD_CONFIG_SUMMARY_JSON "Summarize build configuration in a JSON file" ON)
+
+  #----------------------------------------------------------------------
+  set_option_category("Project components")
+
+  define_option(ADBC_DRIVER_FLIGHTSQL "Build the Flight SQL driver" OFF)
+  define_option(ADBC_DRIVER_MANAGER "Build the driver manager" OFF)
+  define_option(ADBC_DRIVER_POSTGRESQL "Build the PostgreSQL driver" OFF)
+  define_option(ADBC_DRIVER_SQLITE "Build the SQLite driver" OFF)
+  define_option(ADBC_DRIVER_SNOWFLAKE "Build the Snowflake driver" OFF)
+
+  define_option(ADBC_INTEGRATION_DUCKDB "Build the test suite for DuckDB" OFF)
 endif()
 
 macro(validate_config)
@@ -243,10 +260,11 @@ endmacro()
 
 macro(config_summary_message)
   message(STATUS "---------------------------------------------------------------------")
-  message(STATUS "Arrow version:                                 ${ADBC_VERSION}")
+  message(STATUS "ADBC version: ${ADBC_VERSION}")
   message(STATUS)
   message(STATUS "Build configuration summary:")
 
+  message(STATUS "  CMake version: ${CMAKE_VERSION}")
   message(STATUS "  Generator: ${CMAKE_GENERATOR}")
   message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
   message(STATUS "  Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")

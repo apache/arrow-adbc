@@ -34,3 +34,6 @@ DBAPI 2.0 API
 .. automodule:: adbc_driver_sqlite.dbapi
 
 .. autofunction:: adbc_driver_sqlite.dbapi.connect
+
+.. autoclass:: adbc_driver_sqlite.dbapi.AdbcSqliteConnection
+   :members: enable_load_extension, load_extension

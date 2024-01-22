@@ -34,6 +34,10 @@ struct SqliteDatabase {
 struct SqliteConnection {
   sqlite3* conn;
   char active_transaction;
+  char load_extension;
+
+  // Temporarily store an extension to load (need both entrypoint and path)
+  char* extension_path;
 };
 
 struct SqliteStatement {
@@ -50,8 +54,10 @@ struct SqliteStatement {
   struct AdbcSqliteBinder binder;
 
   // -- Ingest state ----------------------------------------
+  char* target_catalog;
   char* target_table;
   char append;
+  char temporary;
 
   // -- Query options ---------------------------------------
   int batch_size;

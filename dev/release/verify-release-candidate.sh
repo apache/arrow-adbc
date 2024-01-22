@@ -23,7 +23,7 @@
 # - Maven >= 3.3.9
 # - JDK >=7
 # - gcc >= 4.8
-# - Go >= 1.17
+# - Go >= 1.20
 # - Docker
 #
 # To reuse build artifacts between runs set ARROW_TMPDIR environment variable to
@@ -217,9 +217,9 @@ test_yum() {
 
 setup_tempdir() {
   cleanup() {
+    # Go modules are installed with 0444.
+    chmod -R u+w "${ARROW_TMPDIR}"
     if [ "${TEST_SUCCESS}" = "yes" ]; then
-      # Go modules are installed with 0444.
-      chmod -R u+w "${ARROW_TMPDIR}"
       rm -fr "${ARROW_TMPDIR}"
     else
       echo "Failed to verify release candidate. See ${ARROW_TMPDIR} for details."
@@ -254,7 +254,7 @@ install_go() {
     return 0
   fi
 
-  local version=1.18.8
+  local version=1.19.13
   show_info "Installing go version ${version}..."
 
   local arch="$(uname -m)"
@@ -319,7 +319,9 @@ install_conda() {
 maybe_setup_conda() {
   # Optionally setup conda environment with the passed dependencies
   local env="conda-${CONDA_ENV:-source}"
-  local pyver=${PYTHON_VERSION:-3}
+  # XXX(https://github.com/apache/arrow-adbc/issues/1247): no duckdb for
+  # python 3.12 on conda-forge right now
+  local pyver=${PYTHON_VERSION:-3.11}
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     show_info "Configuring Conda environment..."
@@ -411,7 +413,7 @@ test_cpp() {
   maybe_setup_conda \
     --file ci/conda_env_cpp.txt \
     compilers \
-    go=1.18 || exit 1
+    go=1.20 || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     export CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
@@ -432,9 +434,12 @@ test_cpp() {
   export BUILD_DRIVER_FLIGHTSQL=0
   # PostgreSQL driver requires running database for testing
   export BUILD_DRIVER_POSTGRESQL=0
-  "${ADBC_DIR}/ci/scripts/cpp_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
+  # Snowflake driver requires snowflake creds for testing
+  export BUILD_DRIVER_SNOWFLAKE=0
+  "${ADBC_DIR}/ci/scripts/cpp_test.sh" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
   export BUILD_DRIVER_FLIGHTSQL=1
   export BUILD_DRIVER_POSTGRESQL=1
+  export BUILD_DRIVER_SNOWFLAKE=1
 }
 
 test_java() {
@@ -451,7 +456,7 @@ test_python() {
   show_header "Build and test Python libraries"
 
   # Build and test Python
-  maybe_setup_virtualenv cython pandas pyarrow pytest setuptools_scm setuptools || exit 1
+  maybe_setup_virtualenv cython duckdb pandas protobuf pyarrow pytest setuptools_scm setuptools || exit 1
   maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_python.txt" || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
@@ -476,18 +481,27 @@ test_r() {
   mkdir "${ARROW_TMPDIR}/r/tmplib"
 
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R -e 'install.packages("nanoarrow", repos = "https://cloud.r-project.org/")' --vanilla
+  R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R -e 'install.packages("openssl", repos = "https://cloud.r-project.org/")' --vanilla
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R -e 'if (!requireNamespace("testthat", quietly = TRUE)) install.packages("testthat", repos = "https://cloud.r-project.org/")' --vanilla
   R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcdrivermanager" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
   R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcsqlite" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
+  R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcpostgresql" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
+  R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcsnowflake" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
 
   pushd "${ARROW_TMPDIR}/r"
   R CMD build "${ADBC_SOURCE_DIR}/r/adbcdrivermanager"
   R CMD build "${ADBC_SOURCE_DIR}/r/adbcsqlite"
+  R CMD build "${ADBC_SOURCE_DIR}/r/adbcpostgresql"
+  R CMD build "${ADBC_SOURCE_DIR}/r/adbcsnowflake"
   local -r adbcdrivermanager_tar_gz="$(ls adbcdrivermanager_*.tar.gz)"
   local -r adbcsqlite_tar_gz="$(ls adbcsqlite_*.tar.gz)"
+  local -r adbcpostgresql_tar_gz="$(ls adbcpostgresql_*.tar.gz)"
+  local -r adbcsnowflake_tar_gz="$(ls adbcsnowflake_*.tar.gz)"
 
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcdrivermanager_tar_gz}" --no-manual
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcsqlite_tar_gz}" --no-manual
+  R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcpostgresql_tar_gz}" --no-manual
+  R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcsnowflake_tar_gz}" --no-manual
   popd
 }
 
@@ -550,7 +564,7 @@ test_go() {
   # apache/arrow-adbc#517: `go build` calls git. Don't assume system
   # has git; even if it's there, go_build.sh sets DYLD_LIBRARY_PATH
   # which can interfere with system git.
-  maybe_setup_conda compilers git go=1.18 || exit 1
+  maybe_setup_conda compilers git go=1.20 || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     # The CMake setup forces RPATH to be the Conda prefix
@@ -642,7 +656,7 @@ test_source_distribution() {
 }
 
 test_binary_distribution() {
-  if [ ${TEST_BINARIES} -gt 0 ]; then
+  if [ $((${TEST_BINARY} + ${TEST_JARS} + ${TEST_WHEELS})) -gt 0 ]; then
     show_header "Downloading binary artifacts"
     export BINARY_DIR="${ARROW_TMPDIR}/binaries"
     mkdir -p "${BINARY_DIR}"

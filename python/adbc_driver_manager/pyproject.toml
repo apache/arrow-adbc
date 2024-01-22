@@ -20,15 +20,16 @@ name = "adbc-driver-manager"
 description = "A generic entrypoint for ADBC drivers."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
+readme = "README.md"
 requires-python = ">=3.9"
 dynamic = ["version"]
 
 [project.optional-dependencies]
 dbapi = ["pandas", "pyarrow>=8.0.0"]
-test = ["pandas", "pyarrow>=8.0.0", "pytest"]
+test = ["duckdb", "pandas", "pyarrow>=8.0.0", "pytest"]
 
 [project.urls]
-homepage = "https://arrow.apache.org"
+homepage = "https://arrow.apache.org/adbc/"
 repository = "https://github.com/apache/arrow-adbc"
 
 [build-system]
@@ -37,6 +38,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 markers = [
+    "duckdb: tests that require DuckDB",
+    "panicdummy: tests that require the testing-only panicdummy driver",
     "sqlite: tests that require the SQLite driver",
 ]
 

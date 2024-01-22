@@ -47,31 +47,38 @@ main() {
     fi
 
     local -r regex='^([0-9]+\.[0-9]+\.[0-9]+)$'
+    local directory="main"
     if [[ "${new_version}" =~ $regex ]]; then
         cp -r "${docs}" "${site}/${new_version}"
         git -C "${site}" add --force "${new_version}"
+        directory="${new_version}"
     else
         # Assume this is dev docs
         rm -rf "${site}/main"
         cp -r "${docs}" "${site}/main"
         git -C "${site}" add --force "main"
+        directory="main"
     fi
+
+    # Fix up lazy Intersphinx links (see docs_build.sh)
+    # Assumes GNU sed
+    sed -i "s|http://javadocs.home.arpa/|https://arrow.apache.org/adbc/${directory}/|g" $(grep -Rl javadocs.home.arpa "${site}/${directory}/")
+    git -C "${site}" add --force "${directory}"
 
     # Copy the version script and regenerate the version list
     # The versions get embedded into the JavaScript file to save a roundtrip
     rm -f "${site}/version.js"
-    cp "${repo}/docs/source/_static/version.js" "${site}/version.js"
-    echo >> "${site}/version.js"
     echo 'const versions = `' >> "${site}/version.js"
 
     pushd "${site}"
+    rm -f "${site}/versions.txt"
     for inv in */objects.inv; do
+        if [[ "$(dirname $inv)" = "current" ]]; then
+            continue
+        fi
         echo "$(dirname $inv);$(sphobjinv convert json $inv - | jq -r .version)"
     done | sort -t ";" --version-sort | tee --append "${site}/version.js" "${site}/versions.txt"
     popd
-
-    echo '`;' >> "${site}/version.js"
-    git -C "${site}" add -f "version.js"
 
     # Determine the latest stable version
     local -r latest_docs=$(grep -E ';[0-9]+\.[0-9]+\.[0-9]+$' "${site}/versions.txt" | sort -t ';' --version-sort | tail -n1)
@@ -85,10 +92,21 @@ main() {
     fi
     echo "Latest version: ${latest_version} in directory ${latest_dir}"
 
+    # Make a copy of the latest release under a stable URL
+    rm -rf "${site}/current/"
+    cp -r "${site}/${latest_dir}" "${site}/current/"
+    git -C "${site}" add -f "current"
+
+    echo "current;${latest_version} (current)" >> "${site}/version.js"
+
+    echo '`;' >> "${site}/version.js"
+    cat "${repo}/docs/source/_static/version.js" >> "${site}/version.js"
+    git -C "${site}" add -f "version.js"
+
     # Generate index.html
     cat > "${site}/index.html" << EOF
 <!DOCTYPE html>
-<meta http-equiv="Refresh" content="0; url=$latest_dir/index.html">
+<meta http-equiv="Refresh" content="0; url=current/index.html">
 EOF
     git -C "${site}" add -f "index.html"
 
@@ -96,7 +114,7 @@ EOF
     mkdir -p "${site}/latest"
     cat > "${site}/latest/index.html" << EOF
 <!DOCTYPE html>
-<meta http-equiv="Refresh" content="0; url=../$latest_dir/index.html">
+<meta http-equiv="Refresh" content="0; url=../current/index.html">
 EOF
     git -C "${site}" add -f "latest/index.html"
 }

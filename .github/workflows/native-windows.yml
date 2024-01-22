@@ -59,7 +59,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -76,7 +76,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -86,11 +86,16 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
+          # Force bundled gtest
+          mamba uninstall gtest
 
       - name: Build and Install (No ASan)
         shell: pwsh
         env:
           BUILD_ALL: "1"
+          # TODO(apache/arrow-adbc#634)
+          BUILD_DRIVER_FLIGHTSQL: "0"
+          BUILD_DRIVER_SNOWFLAKE: "0"
         run: |
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build
 
@@ -111,7 +116,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -128,7 +133,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -138,6 +143,8 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
+          # Force bundled gtest
+          mamba uninstall gtest
 
       - name: Build Driver Manager
         shell: pwsh
@@ -166,14 +173,14 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
         run:
-          .\ci\scripts\cpp_test.ps1 $pwd $pwd\build
+          .\ci\scripts\cpp_test.ps1 $pwd\build
       - name: Test Driver SQLite
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
         run:
-          .\ci\scripts\cpp_test.ps1 $pwd $pwd\build
+          .\ci\scripts\cpp_test.ps1 $pwd\build
 
   # ------------------------------------------------------------
   # Go build
@@ -187,7 +194,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -204,7 +211,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -214,9 +221,9 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.18.6
+          go-version: 1.20.8
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -231,7 +238,7 @@ jobs:
         env:
           CGO_ENABLED: "1"
         run: |
-          $env:PATH="$($env:RUNNER_TOOL_CACHE)\go\1.18.6\x64\bin;" + $env:PATH
+          $env:PATH="$($env:RUNNER_TOOL_CACHE)\go\1.20.8\x64\bin;" + $env:PATH
           .\ci\scripts\go_build.ps1 $pwd $pwd\build
       # TODO(apache/arrow#358): enable these tests on Windows
       # - name: Go Test
@@ -239,7 +246,7 @@ jobs:
       #   env:
       #     CGO_ENABLED: "1"
       #   run: |
-      #     $env:PATH="$($env:RUNNER_TOOL_CACHE)\go\1.18.6\x64\bin;" + $env:PATH
+      #     $env:PATH="$($env:RUNNER_TOOL_CACHE)\go\1.20.8\x64\bin;" + $env:PATH
       #     .\ci\scripts\go_test.ps1 $pwd $pwd\build
 
   # ------------------------------------------------------------
@@ -255,7 +262,7 @@ jobs:
         os: ["windows-latest"]
         python: ["3.9", "3.11"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -272,7 +279,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -316,6 +323,13 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
+        run:
+          .\ci\scripts\python_test.ps1 $pwd $pwd\build
+      - name: Test Python Driver PostgreSQL
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
         run:
           .\ci\scripts\python_test.ps1 $pwd $pwd\build
       - name: Test Python Driver SQLite

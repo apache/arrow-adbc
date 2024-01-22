@@ -29,6 +29,11 @@ def sqlite():
             yield conn
 
 
+def test_connection_get_table_schema(sqlite):
+    with pytest.raises(adbc_driver_manager.ProgrammingError, match="NOT_FOUND"):
+        sqlite.get_table_schema(None, None, "thistabledoesnotexist")
+
+
 def test_query_trivial(sqlite):
     with adbc_driver_manager.AdbcStatement(sqlite) as stmt:
         stmt.set_sql_query("SELECT 1")
@@ -51,4 +56,4 @@ def test_options(sqlite):
 
 
 def test_version():
-    assert adbc_driver_sqlite.__version__
+    assert adbc_driver_sqlite.__version__  # type:ignore

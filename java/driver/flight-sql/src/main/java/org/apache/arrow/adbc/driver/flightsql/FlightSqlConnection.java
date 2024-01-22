@@ -133,9 +133,12 @@ public class FlightSqlConnection implements AdbcConnection {
 
   @Override
   public ArrowReader getInfo(int[] infoCodes) throws AdbcException {
-    try (final VectorSchemaRoot root =
-        new InfoMetadataBuilder(allocator, client, infoCodes).build()) {
-      return RootArrowReader.fromRoot(allocator, root);
+    try (InfoMetadataBuilder builder = new InfoMetadataBuilder(allocator, client, infoCodes)) {
+      try (final VectorSchemaRoot root = builder.build()) {
+        return RootArrowReader.fromRoot(allocator, root);
+      }
+    } catch (Exception e) {
+      throw AdbcException.invalidState("[Flight SQL] Failed to get info");
     }
   }
 

@@ -24,26 +24,27 @@ $InstallDir = if ($Args[2] -ne $null) { $Args[2] } else { Join-Path $BuildDir "l
 
 $BuildAll = $env:BUILD_ALL -ne "0"
 $BuildDriverManager = ($BuildAll -and (-not ($env:BUILD_DRIVER_MANAGER -eq "0"))) -or ($env:BUILD_DRIVER_MANAGER -eq "1")
+$BuildDriverFlightSql = ($BuildAll -and (-not ($env:BUILD_DRIVER_FLIGHTSQL -eq "0"))) -or ($env:BUILD_DRIVER_FLIGHTSQL -eq "1")
 $BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq "0"))) -or ($env:BUILD_DRIVER_POSTGRESQL -eq "1")
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
+$BuildDriverSnowflake = ($BuildAll -and (-not ($env:BUILD_DRIVER_SNOWFLAKE -eq "0"))) -or ($env:BUILD_DRIVER_SNOWFLAKE -eq "1")
 
 function Build-Subproject {
-    $Subproject = $Args[0]
-    $SubprojectBuild = Join-Path $BuildDir $Subproject
+    New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
+    Push-Location $BuildDir
 
-    echo "============================================================"
-    echo "Building $($Subproject)"
-    echo "============================================================"
-
-    New-Item -ItemType Directory -Force -Path $SubprojectBuild | Out-Null
-    Push-Location $SubprojectBuild
-
+    # XXX(apache/arrow-adbc#616): must use Release build to line up with gtest
     cmake `
-      $(Join-Path $SourceDir "c\$($Subproject)") `
+      $(Join-Path $SourceDir "c\") `
       -DADBC_BUILD_SHARED=ON `
       -DADBC_BUILD_STATIC=OFF `
       -DADBC_BUILD_TESTS=ON `
-      -DCMAKE_BUILD_TYPE=Debug `
+      -DADBC_DRIVER_MANAGER="$($BuildDriverManager)" `
+      -DADBC_DRIVER_FLIGHTSQL="$($BuildDriverFlightSql)" `
+      -DADBC_DRIVER_POSTGRESQL="$($BuildDriverPostgreSQL)" `
+      -DADBC_DRIVER_SQLITE="$($BuildDriverSqlite)" `
+      -DADBC_DRIVER_SNOWFLAKE="$($BuildDriverSnowflake)" `
+      -DCMAKE_BUILD_TYPE=Release `
       -DCMAKE_INSTALL_PREFIX="$($InstallDir)" `
       -DCMAKE_VERBOSE_MAKEFILE=ON
     if (-not $?) { exit 1 }
@@ -54,12 +55,4 @@ function Build-Subproject {
     Pop-Location
 }
 
-if ($BuildDriverManager) {
-    Build-Subproject driver_manager
-}
-if ($BuildDriverPostgreSQL) {
-    Build-Subproject driver\postgresql
-}
-if ($BuildDriverSqlite) {
-    Build-Subproject driver\sqlite
-}
+Build-Subproject

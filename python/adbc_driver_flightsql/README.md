@@ -20,11 +20,12 @@
 # ADBC Apache Arrow Flight SQL Driver for Python
 
 This package contains bindings for the [Golang Apache Arrow Flight SQL
-driver](../../go/adbc/driver/flightsql), using the [driver
-manager](../adbc_driver_manager/README.md) to provide a [DBAPI 2.0/PEP
-249-compatible][dbapi] interface on top.
+driver][flightsql], using the [driver manager][driver-manager] to provide a
+[DBAPI 2.0/PEP 249-compatible][dbapi] interface on top.
 
 [dbapi]: https://peps.python.org/pep-0249/
+[driver-manager]: https://arrow.apache.org/adbc/current/python/driver_manager.html
+[flightsql]: https://arrow.apache.org/adbc/current/driver/flight_sql.html
 
 ## Building
 
@@ -40,8 +41,20 @@ Set the environment variable `ADBC_FLIGHTSQL_LIBRARY` to the path to
 pip install -e ../adbc_driver_manager
 
 export ADBC_FLIGHTSQL_LIBRARY=/path/to/libadbc_driver_flightsql.so
-pip install -e --no-deps .
+pip install --no-deps -e .
 ```
+
+For users building from the arrow-adbc source repository, you can alternately use CMake to manage library dependencies and set environment variables for you. Assuming you specify ``-DADBC_DRIVER_FLIGHTSQL=ON`` you can also add ``-DADBC_BUILD_PYTHON=ON`` to define a ``python`` target.
+
+For example, assuming you run cmake from the project root:
+
+```shell
+cmake -S c -B build --preset debug -DADBC_BUILD_PYTHON=ON
+cmake --build build --target python
+```
+
+will properly build and install the Python library for you.
+
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on the
 general build process.

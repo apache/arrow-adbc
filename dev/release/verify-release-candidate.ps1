@@ -115,24 +115,37 @@ Show-Header "Create Conda Environment"
 mamba create -c conda-forge -f -y -p $(Join-Path $ArrowTempDir conda-env) `
   --file $(Join-Path $ArrowSourceDir ci\conda_env_cpp.txt) `
   --file $(Join-Path $ArrowSourceDir ci\conda_env_python.txt) `
-  go=1.18
+  go
 
 Invoke-Expression $(conda shell.powershell hook | Out-String)
 conda activate $(Join-Path $ArrowTempDir conda-env)
+# XXX: force bundled gtest as the conda-forge version appears to require you
+# to exactly match the MSVC version it was compiled with.  Uninstalling also
+# removes a bunch of other things, so force-remove instead
+# (https://github.com/conda-forge/libprotobuf-feedstock/issues/186)
+# Use conda, mamba appears to ignore --force
+conda remove -y --force gtest
+
+# Activating doesn't appear to set GOROOT
+$env:GOROOT = $(Join-Path $ArrowTempDir conda-env go)
 
 Show-Header "Verify C/C++ Sources"
 
 $CppBuildDir = Join-Path $ArrowTempDir cpp-build
 New-Item -ItemType Directory -Force -Path $CppBuildDir | Out-Null
 
+# XXX(apache/arrow-adbc#634): not working on Windows due to it picking
+# up MSVC as the C compiler, which then blows up when /Werror gets
+# passed in by some package
+$env:BUILD_DRIVER_FLIGHTSQL = "0"
+$env:BUILD_DRIVER_SNOWFLAKE = "0"
+
 & $(Join-Path $ArrowSourceDir ci\scripts\cpp_build.ps1) $ArrowSourceDir $CppBuildDir
 if (-not $?) { exit 1 }
 
-$env:BUILD_DRIVER_FLIGHTSQL = "0"
 $env:BUILD_DRIVER_POSTGRESQL = "0"
-& $(Join-Path $ArrowSourceDir ci\scripts\cpp_test.ps1) $ArrowSourceDir $CppBuildDir
+& $(Join-Path $ArrowSourceDir ci\scripts\cpp_test.ps1) $CppBuildDir
 if (-not $?) { exit 1 }
-$env:BUILD_DRIVER_FLIGHTSQL = "1"
 $env:BUILD_DRIVER_POSTGRESQL = "1"
 
 Show-Header "Verify Python Sources"

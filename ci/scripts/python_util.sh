@@ -19,7 +19,7 @@
 
 set -ex
 
-COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite"
+COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake"
 
 function build_drivers {
     local -r source_dir="$1"
@@ -31,6 +31,7 @@ function build_drivers {
     : ${VCPKG_ROOT:=/opt/vcpkg}
     # Enable manifest mode
     : ${VCPKG_FEATURE_FLAGS:=manifests}
+    : ${ADBC_DRIVER_SNOWFLAKE:=ON}
     # Add our custom triplets
     export VCPKG_OVERLAY_TRIPLETS="${source_dir}/ci/vcpkg/triplets/"
 
@@ -38,12 +39,14 @@ function build_drivers {
         export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.so
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
+        export ADBC_SNOWFLAKE_LIBRARY=${build_dir}/lib/libadbc_driver_snowflake.so
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
         export CMAKE_ARGUMENTS=""
     else # macOS
         export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.dylib
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
+        export ADBC_SNOWFLAKE_LIBRARY=${build_dir}/lib/libadbc_driver_snowflake.dylib
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-osx-static-release"
         if [[ "${VCPKG_ARCH}" = "x64" ]]; then
             export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=x86_64"
@@ -54,21 +57,6 @@ function build_drivers {
             exit 1
         fi
     fi
-
-    echo "=== Building driver/flightsql ==="
-    mkdir -p ${build_dir}/driver/flightsql
-    pushd ${build_dir}/driver/flightsql
-    cmake \
-        -DADBC_BUILD_SHARED=ON \
-        -DADBC_BUILD_STATIC=OFF \
-        -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
-        -DCMAKE_INSTALL_LIBDIR=lib \
-        -DCMAKE_INSTALL_PREFIX=${build_dir} \
-        -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
-        ${CMAKE_ARGUMENTS} \
-        ${source_dir}/c/driver/flightsql
-    cmake --build . --target install --verbose -j
-    popd
 
     echo "=== Setup VCPKG ==="
 
@@ -85,30 +73,14 @@ function build_drivers {
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
           --triplet "${VCPKG_DEFAULT_TRIPLET}"
 
-    echo "=== Building driver/postgresql ==="
-    mkdir -p ${build_dir}/driver/postgresql
-    pushd ${build_dir}/driver/postgresql
-    cmake \
-        -G ${CMAKE_GENERATOR} \
-        -DADBC_BUILD_SHARED=ON \
-        -DADBC_BUILD_STATIC=OFF \
-        -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
-        -DCMAKE_INSTALL_LIBDIR=lib \
-        -DCMAKE_INSTALL_PREFIX=${build_dir} \
-        -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
-        -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
-        ${CMAKE_ARGUMENTS} \
-        -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
-        -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
-        ${source_dir}/c/driver/postgresql
-    cmake --build . --target install --verbose -j
-    popd
+    "${VCPKG_ROOT}/vcpkg" install libpq \
+          --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
+          --triplet "${VCPKG_DEFAULT_TRIPLET}"
 
-    echo "=== Building driver/sqlite ==="
-    mkdir -p ${build_dir}/driver/sqlite
-    pushd ${build_dir}/driver/sqlite
+    echo "=== Building drivers ==="
+    mkdir -p ${build_dir}
+    pushd ${build_dir}
     cmake \
-        -G ${CMAKE_GENERATOR} \
         -DADBC_BUILD_SHARED=ON \
         -DADBC_BUILD_STATIC=OFF \
         -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
@@ -119,7 +91,11 @@ function build_drivers {
         ${CMAKE_ARGUMENTS} \
         -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
-        ${source_dir}/c/driver/sqlite
+        -DADBC_DRIVER_FLIGHTSQL=ON \
+        -DADBC_DRIVER_POSTGRESQL=ON \
+        -DADBC_DRIVER_SQLITE=ON \
+        -DADBC_DRIVER_SNOWFLAKE=ON \
+        ${source_dir}/c
     cmake --build . --target install --verbose -j
     popd
 }
@@ -171,7 +147,7 @@ import $component.dbapi
 
         # --import-mode required, else tries to import from the source dir instead of installed package
         if [[ "${component}" = "adbc_driver_manager" ]]; then
-            export PYTEST_ADDOPTS="-k 'not sqlite'"
+            export PYTEST_ADDOPTS="-k 'not duckdb and not sqlite'"
         elif [[ "${component}" = "adbc_driver_postgresql" ]]; then
             export PYTEST_ADDOPTS="-k 'not polars'"
         fi

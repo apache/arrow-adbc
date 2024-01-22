@@ -47,7 +47,7 @@ public class FlightSqlQuirks extends SqlValidationQuirks {
     String url = getFlightLocation();
 
     final Map<String, Object> parameters = new HashMap<>();
-    parameters.put(AdbcDriver.PARAM_URL, url);
+    AdbcDriver.PARAM_URI.set(parameters, url);
     return new FlightSqlDriver(allocator).open(parameters);
   }
 
@@ -61,6 +61,11 @@ public class FlightSqlQuirks extends SqlValidationQuirks {
     } catch (FlightRuntimeException e) {
       // Ignored
     }
+  }
+
+  @Override
+  public String defaultCatalog() {
+    return "main";
   }
 
   @Override

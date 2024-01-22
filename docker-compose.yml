@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-version: '3.5'
+version: '3.9'
 
 services:
   # These reuse Arrow's images for simplicity. You won't be able to
@@ -28,20 +28,7 @@ services:
     volumes:
       - .:/adbc:delegated
     command: |
-      /bin/bash -c 'git config --global --add safe.directory /adbc && source /opt/conda/etc/profile.d/conda.sh && mamba create -y -n adbc -c conda-forge go --file /adbc/ci/conda_env_cpp.txt --file /adbc/ci/conda_env_docs.txt --file /adbc/ci/conda_env_python.txt && conda activate adbc && env ADBC_USE_ASAN=0 ADBC_USE_UBSAN=0 /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build && env CGO_ENABLED=1 /adbc/ci/scripts/go_build.sh /adbc /adbc/build && /adbc/ci/scripts/python_build.sh /adbc /adbc/build && /adbc/ci/scripts/docs_build.sh /adbc'
-
-  golang-sqlite-flightsql:
-    image: ${REPO}:golang-${GO}-sqlite-flightsql
-    build:
-      context: .
-      cache_from:
-        - ${REPO}:golang-${GO}-sqlite-flightsql
-      dockerfile: ci/docker/golang-flightsql-sqlite.dockerfile
-      args:
-        GO: ${GO}
-        ARROW_MAJOR_VERSION: ${ARROW_MAJOR_VERSION}
-    ports:
-      - 8080:8080
+      /bin/bash -c 'git config --global --add safe.directory /adbc && source /opt/conda/etc/profile.d/conda.sh && mamba create -y -n adbc -c conda-forge go --file /adbc/ci/conda_env_cpp.txt --file /adbc/ci/conda_env_docs.txt --file /adbc/ci/conda_env_java.txt --file /adbc/ci/conda_env_python.txt && conda activate adbc && env ADBC_USE_ASAN=0 ADBC_USE_UBSAN=0 /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build && env CGO_ENABLED=1 /adbc/ci/scripts/go_build.sh /adbc /adbc/build && /adbc/ci/scripts/python_build.sh /adbc /adbc/build && /adbc/ci/scripts/r_build.sh /adbc && /adbc/ci/scripts/docs_build.sh /adbc'
 
   ############################ Java JARs ######################################
 
@@ -120,11 +107,88 @@ services:
 
   ###################### Test database environments ############################
 
-  postgres_test:
-      container_name: adbc_postgres_test
-      image: postgres:latest
-      environment:
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: password
-      ports:
-        - "5432:5432"
+  dremio:
+    container_name: adbc-dremio
+    image: dremio/dremio-oss:latest
+    environment:
+      DREMIO_JAVA_EXTRA_OPTS: "-Ddebug.addDefaultUser=true -Ddremio.eula.disabled=true"
+    healthcheck:
+      test: [ "CMD", "curl", "--fail", "http://localhost:9047" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    ports:
+      - "9047:9047"
+      - "32010:32010"
+      - "31010:31010"
+      - "45678:45678"
+
+  dremio-init:
+    container_name: adbc-dremio-init
+    image: ${REPO}:adbc-dremio-init
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:adbc-dremio-init
+      dockerfile: ci/docker/dremio-init.dockerfile
+    environment:
+      dremio_url: http://dremio:9047
+    depends_on:
+      dremio:
+        condition: service_healthy
+    entrypoint: "/init/bootstrap.sh"
+    volumes:
+      - "./ci/scripts/integration/dremio:/init"
+
+  flightsql-test:
+    image: ${REPO}:adbc-flightsql-test
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:adbc-flightsql-test
+      dockerfile: ci/docker/flightsql-test.dockerfile
+      args:
+        GO: ${GO}
+    ports:
+      - "41414:41414"
+    volumes:
+      - .:/adbc:delegated
+    command: >-
+      /bin/bash -c "cd /adbc/go/adbc && go run ./driver/flightsql/cmd/testserver -host 0.0.0.0 -port 41414"
+
+  flightsql-sqlite-test:
+    image: ${REPO}:golang-${GO}-sqlite-flightsql
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:golang-${GO}-sqlite-flightsql
+      dockerfile: ci/docker/golang-flightsql-sqlite.dockerfile
+      args:
+        GO: ${GO}
+        ARROW_MAJOR_VERSION: ${ARROW_MAJOR_VERSION}
+    ports:
+      - 8080:8080
+
+  mssql-test:
+    container_name: adbc_mssql_test
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Password1!"
+    ports:
+      - "1433:1433"
+
+  postgres-test:
+    container_name: adbc_postgres_test
+    image: postgres:${POSTGRES_VERSION:-latest}
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"

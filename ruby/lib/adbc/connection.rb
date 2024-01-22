@@ -42,14 +42,18 @@ module ADBC
       c_abi_array_stream = get_info(codes)
       begin
         reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
-        table = reader.read_all
-        values = {}
-        table.raw_records.each do |code, value|
-          value = value.values[0] if value.is_a?(Hash)
-          code = ADBC::Info.try_convert(code)
-          values[code.nick.gsub("-", "_").to_sym] = value
+        begin
+          table = reader.read_all
+          values = {}
+          table.raw_records.each do |code, value|
+            value = value.values[0] if value.is_a?(Hash)
+            code = ADBC::Info.try_convert(code)
+            values[code.nick.gsub("-", "_").to_sym] = value
+          end
+          values
+        ensure
+          reader.unref
         end
-        values
       ensure
         GLib.free(c_abi_array_stream)
       end

@@ -31,9 +31,11 @@ Constants & Enums
 
 .. autoclass:: adbc_driver_manager.AdbcStatusCode
    :members:
+   :undoc-members:
 
 .. autoclass:: adbc_driver_manager.GetObjectsDepth
    :members:
+   :undoc-members:
 
 .. autoclass:: adbc_driver_manager.ConnectionOptions
    :members:

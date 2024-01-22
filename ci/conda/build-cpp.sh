@@ -20,17 +20,21 @@ set -ex
 
 case "${PKG_NAME}" in
     adbc-driver-manager-cpp)
-        export PKG_ROOT=c/driver_manager
+        export BUILD_MANAGER=ON
         ;;
     adbc-driver-flightsql-go)
         export CGO_ENABLED=1
-        export PKG_ROOT=c/driver/flightsql
+        export BUILD_FLIGHTSQL=ON
         ;;
     adbc-driver-postgresql-cpp)
-        export PKG_ROOT=c/driver/postgresql
+        export BUILD_POSTGRESQL=ON
         ;;
     adbc-driver-sqlite-cpp)
-        export PKG_ROOT=c/driver/sqlite
+        export BUILD_SQLITE=ON
+        ;;
+    adbc-driver-snowflake-go)
+        export CGO_ENABLED=1
+        export BUILD_SNOWFLAKE=ON
         ;;
     *)
         echo "Unknown package ${PKG_NAME}"
@@ -47,14 +51,19 @@ else
     export GOARCH="amd64"
 fi
 
-mkdir -p "build-cpp/${PKG_NAME}"
-pushd "build-cpp/${PKG_NAME}"
+mkdir -p "build-${PKG_NAME}/"
+pushd "build-${PKG_NAME}/"
 
-cmake "../../${PKG_ROOT}" \
+cmake "../c" \
       -G Ninja \
       -DADBC_BUILD_SHARED=ON \
       -DADBC_BUILD_STATIC=OFF \
       -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+      ${BUILD_MANAGER:+-DADBC_DRIVER_MANAGER="$BUILD_MANAGER"} \
+      ${BUILD_FLIGHTSQL:+-DADBC_DRIVER_FLIGHTSQL="$BUILD_FLIGHTSQL" } \
+      ${BUILD_POSTGRESQL:+-DADBC_DRIVER_POSTGRESQL="$BUILD_POSTGRESQL"} \
+      ${BUILD_SQLITE:+-DADBC_DRIVER_SQLITE="$BUILD_SQLITE"} \
+      ${BUILD_SNOWFLAKE:+-DADBC_DRIVER_SNOWFLAKE="$BUILD_SNOWFLAKE"} \
       -DCMAKE_PREFIX_PATH="${PREFIX}"
 
 cmake --build . --target install -j

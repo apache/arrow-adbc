@@ -38,6 +38,11 @@ build_subproject() {
         cmake_prefix_path="${CONDA_PREFIX}:${cmake_prefix_path}"
         pkg_config_path="${pkg_config_path}:${CONDA_PREFIX}/lib/pkgconfig"
     fi
+    if type valac > /dev/null 2>&1; then
+        enable_vapi=true
+    else
+        enable_vapi=false
+    fi
 
     meson setup \
           --buildtype=debug \
@@ -45,9 +50,18 @@ build_subproject() {
           --libdir=lib \
           --pkg-config-path="${pkg_config_path}" \
           --prefix="${install_dir}" \
+          -Dexample=true \
+          -Dvapi="${enable_vapi}" \
           "${build_dir}/glib" \
           "${source_dir}/glib"
     meson install -C "${build_dir}/glib"
+
+    export DYLD_LIBRARY_PATH="${install_dir}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}"
+    export LD_LIBRARY_PATH="${install_dir}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+    "${build_dir}/glib/example/sqlite"
+    if [[ "${enable_vapi}" = "true" ]]; then
+        "${build_dir}/glib/example/vala/sqlite"
+    fi
 }
 
 main() {

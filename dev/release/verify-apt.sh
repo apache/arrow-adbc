@@ -45,9 +45,21 @@ echo "::group::Prepare repository"
 
 export DEBIAN_FRONTEND=noninteractive
 
-APT_INSTALL="apt install -y -V --no-install-recommends"
+retry() {
+  local n_tries=2
+  while [ ${n_tries} -gt 0 ]; do
+    if "$@"; then
+      return
+    fi
+    n_tries=$((${n_tries} - 1))
+  done
+  "$@"
+}
 
-apt update
+APT_UPDATE="retry apt update --error-on=any"
+APT_INSTALL="retry apt install -y -V --no-install-recommends"
+
+${APT_UPDATE}
 ${APT_INSTALL} \
   ca-certificates \
   curl \
@@ -127,7 +139,7 @@ else
   esac
 fi
 
-apt update
+${APT_UPDATE}
 
 echo "::endgroup::"
 
@@ -137,6 +149,7 @@ ${APT_INSTALL} libadbc-driver-manager-dev=${package_version}
 required_packages=()
 required_packages+=(cmake)
 required_packages+=(gcc)
+required_packages+=(libc6-dev)
 required_packages+=(make)
 required_packages+=(pkg-config)
 ${APT_INSTALL} ${required_packages[@]}
@@ -170,6 +183,9 @@ echo "::group::Test ADBC Flight SQL Driver"
 ${APT_INSTALL} libadbc-driver-flightsql-dev=${package_version}
 echo "::endgroup::"
 
+echo "::group::Test ADBC Snowflake Driver"
+${APT_INSTALL} libadbc-driver-snowflake-dev=${package_version}
+echo "::endgroup::"
 
 echo "::group::Test ADBC GLib"
 export G_DEBUG=fatal-warnings
@@ -180,4 +196,12 @@ ${APT_INSTALL} libadbc-glib-doc=${package_version}
 ${APT_INSTALL} ruby-dev rubygems-integration
 gem install gobject-introspection
 ruby -r gi -e "p GI.load('ADBC')"
+echo "::endgroup::"
+
+echo "::group::Test ADBC Arrow GLib"
+
+${APT_INSTALL} libadbc-arrow-glib-dev=${package_version}
+${APT_INSTALL} libadbc-arrow-glib-doc=${package_version}
+
+ruby -r gi -e "p GI.load('ADBCArrow')"
 echo "::endgroup::"

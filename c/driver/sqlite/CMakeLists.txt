@@ -15,17 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.18)
-get_filename_component(REPOSITORY_ROOT "../../../" ABSOLUTE)
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcDefines)
-include(BuildUtils)
-
-project(adbc_driver_sqlite
-        VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES CXX)
-include(CTest)
-
 find_package(SQLite3)
 if(SQLite3_FOUND)
   set(SQLite3_LINK_LIBRARIES SQLite::SQLite3)
@@ -57,12 +46,20 @@ add_arrow_lib(adbc_driver_sqlite
               adbc_driver_common
               nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
-include_directories(SYSTEM ${REPOSITORY_ROOT})
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
-include_directories(SYSTEM ${SQLite3_INCLUDE_DIRS})
+
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
+  target_include_directories(${LIB_TARGET} SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}
+                                     ${REPOSITORY_ROOT}/c/
+                                     ${SQLite3_INCLUDE_DIRS}
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
 endforeach()
+
+include(CheckTypeSize)
+check_type_size("time_t" SIZEOF_TIME_T)
+add_definitions(-DSIZEOF_TIME_T=${SIZEOF_TIME_T})
 
 if(ADBC_TEST_LINKAGE STREQUAL "shared")
   set(TEST_LINK_LIBS adbc_driver_sqlite_shared)
@@ -74,17 +71,21 @@ if(ADBC_BUILD_TESTS)
   add_test_case(driver_sqlite_test
                 PREFIX
                 adbc
+                EXTRA_LABELS
+                driver-sqlite
                 SOURCES
                 sqlite_test.cc
-                ../../validation/adbc_validation.cc
-                ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
                 adbc_driver_common
+                adbc_validation
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-sqlite-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-driver-sqlite-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}
+                                     ${REPOSITORY_ROOT}/c/
+                                     ${LIBPQ_INCLUDE_DIRS}
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-driver-sqlite-test)
 endif()
-
-validate_config()
-config_summary_message()

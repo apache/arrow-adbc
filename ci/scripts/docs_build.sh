@@ -25,9 +25,39 @@ main() {
     doxygen
     popd
 
+    pushd "$source_dir/java"
+    mvn site
+    popd
+
     pushd "$source_dir/docs"
+    # The project name/version don't really matter here.
+    python "$source_dir/docs/source/ext/javadoc_inventory.py" \
+           "ADBC" \
+           "version" \
+           "$source_dir/java/target/site/apidocs" \
+           "java/api"
+
+    # We need to determine the base URL without knowing it...
+    # Inject a dummy URL here, and fix it up in website_build.sh
+    export ADBC_INTERSPHINX_MAPPING_java_adbc="http://javadocs.home.arpa/;$source_dir/java/target/site/apidocs/objects.inv"
+
     make html
+    rm -rf "$source_dir/docs/build/html/java/api"
+    cp -r "$source_dir/java/target/site/apidocs" "$source_dir/docs/build/html/java/api"
     make doctest
+    popd
+
+    for desc_file in $(find "${source_dir}/r" -name DESCRIPTION); do
+      local pkg=$(dirname "$desc_file")
+      local pkg_name=$(basename $pkg)
+      # Only build R documentation for installed packages (e.g., so that
+      # Python's documentation build can run without installing the R
+      # packages). Packages are installed in ci/scripts/r_build.sh
+      if Rscript -e "loadNamespace('$pkg_name')" ; then
+        R -e "pkgdown::build_site_github_pages(pkg = '$pkg', dest_dir = '$source_dir/docs/build/html/r/$pkg_name')"
+      fi
+    done
+
 }
 
 main "$@"

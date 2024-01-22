@@ -34,18 +34,88 @@ public enum AdbcStatusCode {
    * <p>May indicate client-side or database-side error.
    */
   NOT_IMPLEMENTED,
-  /** */
+  /**
+   * \brief A requested resource already exists.
+   *
+   * <p>May indicate a driver-side or database-side error.
+   */
   NOT_FOUND,
+  /**
+   * A requested resource already exists.
+   *
+   * <p>May indicate a driver-side or database-side error.
+   */
   ALREADY_EXISTS,
+  /**
+   * The arguments are invalid, likely a programming error.
+   *
+   * <p>For instance, they may be of the wrong format, or out of range.
+   *
+   * <p>May indicate a driver-side or database-side error.
+   */
   INVALID_ARGUMENT,
+  /**
+   * The preconditions for the operation are not met, likely a programming error.
+   *
+   * <p>For instance, the object may be uninitialized, or may have not been fully configured.
+   *
+   * <p>May indicate a driver-side or database-side error.
+   */
   INVALID_STATE,
+  /**
+   * Invalid data was processed (not a programming error).
+   *
+   * <p>For instance, a division by zero may have occurred during query execution.
+   *
+   * <p>May indicate a database-side error only.
+   */
   INVALID_DATA,
+  /**
+   * The database's integrity was affected.
+   *
+   * <p>For instance, a foreign key check may have failed, or a uniqueness constraint may have been
+   * violated.
+   *
+   * <p>May indicate a database-side error only.
+   */
   INTEGRITY,
+  /**
+   * An error internal to the driver or database occurred.
+   *
+   * <p>May indicate a driver-side or database-side error.
+   */
   INTERNAL,
+  /**
+   * An I/O error occurred.
+   *
+   * <p>For instance, a remote service may be unavailable.
+   *
+   * <p>May indicate a driver-side or database-side error.
+   */
   IO,
+  /**
+   * The operation was cancelled, not due to a timeout.
+   *
+   * <p>May indicate a driver-side or database-side error.
+   */
   CANCELLED,
+  /**
+   * The operation was cancelled due to a timeout.
+   *
+   * <p>May indicate a driver-side or database-side error.
+   */
   TIMEOUT,
+  /**
+   * Authentication failed.
+   *
+   * <p>May indicate a database-side error only.
+   */
   UNAUTHENTICATED,
+  /**
+   * The client is not authorized to perform the given operation.
+   *
+   * <p>May indicate a database-side error only.
+   */
   UNAUTHORIZED,
   ;
 }

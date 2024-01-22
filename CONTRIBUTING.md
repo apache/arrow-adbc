@@ -26,40 +26,81 @@ https://github.com/apache/arrow-adbc/issues
 
 ## Building
 
+### Environment Setup
+
+Some dependencies are required to build and test the various ADBC packages.
+
+For C/C++, you will most likely want a [Conda][conda] installation,
+with [Mambaforge][mambaforge] being the most convenient distribution.
+If you have Mambaforge installed, you can set up a development
+environment as follows:
+
+```shell
+$ mamba create -n adbc --file ci/conda_env_cpp.txt
+$ mamba activate adbc
+```
+
+(For other Conda distributions, you will likely need `create ... -c
+conda-forge --file ...`).
+
+There are additional environment definitions for development on Python
+and GLib/Ruby packages.
+
+Conda is not required; you may also use a package manager like Nix or
+Homebrew, the system package manager, etc. so long as you configure
+CMake or other build tool appropriately.  However, we primarily
+develop and support Conda users.
+
+[conda]: https://docs.conda.io/en/latest/
+[mambaforge]: https://mamba.readthedocs.io/en/latest/installation.html
+
 ### C/C++
 
-The libraries here are all **individual** CMake projects.
+All libraries here contained within one CMake project. To build any
+library, pass the `-DADBC_COMPONENT=ON` flag to your cmake invocation,
+replacing `_COMPONENT` with the name of the library/libraries.
 
 _Note:_ unlike the Arrow C++ build system, the CMake projects will
 **not** automatically download and build dependencies—you should
 configure CMake appropriately to find dependencies in system or
-package manager locations.
+package manager locations, if you are not using something like Conda.
 
-For example, the driver manager is built as follows:
+You can use CMake presets to build and test:
 
 ```shell
-$ mkdir -p build/driver_manager
-$ cd build/driver_manager
-$ cmake ../../c/driver_manager
+$ mkdir build
+$ cd build
+$ cmake ../c --preset debug
+# ctest reads presets from PWD
+$ cd ../c
+$ ctest --preset debug --test-dir ../build
+```
+
+You can also manually configure CMake.  For example, the driver manager and
+postgres driver may be built together as follows:
+
+```shell
+$ mkdir build
+$ cd build
+$ export CMAKE_EXPORT_COMPILE_COMMANDS=ON
+$ cmake ../c -DADBC_DRIVER_POSTGRESQL=ON -DADBC_DRIVER_MANAGER=ON
 $ make -j
 ```
 
-All libraries here can be built similarly.  For information on what
-they do and their dependencies, see their individual READMEs.
+[`export CMAKE_EXPORT_COMPILE_COMMANDS=ON`][cmake-compile-commands] is
+not required, but is useful if you are using Visual Studio Code,
+Emacs, or another editor that integrates with a C/C++ language server.
+
+For information on what each library can do and their dependencies,
+see their individual READMEs.
 
 To specify where dependencies are to the build, use standard CMake
-options such as [`CMAKE_PREFIX_PATH`][cmake-prefix-path].  A list of
-dependencies for Conda (conda-forge) is included, and can be used as
-follows:
+options such as [`CMAKE_PREFIX_PATH`][cmake-prefix-path].
 
-```shell
-$ conda create -n adbc -c conda-forge --file ci/conda_env_cpp.txt
-$ conda activate adbc
-```
+Some build options are supported:
 
-Some of Arrow's build options are supported (under a different prefix):
-
-- `ADBC_BUILD_SHARED`, `ADBC_BUILD_STATIC`: build the shared/static libraries.
+- `ADBC_BUILD_SHARED`, `ADBC_BUILD_STATIC`: toggle building the
+  shared/static libraries.
 - `ADBC_BUILD_TESTS`: build the unit tests (requires googletest/gmock).
 - `ADBC_INSTALL_NAME_RPATH`: set `install_name` to `@rpath` on MacOS.
   Usually it is more convenient to explicitly set this to `OFF` for
@@ -69,10 +110,10 @@ All libraries use the same build options to enable tests.
 For example, to build and run tests for the SQLite3 driver:
 
 ```shell
-$ mkdir -p build/sqlite
-$ cd build/sqlite
+$ mkdir build
+$ cd build
 # You may need to set -DCMAKE_PREFIX_PATH such that googletest can be found
-$ cmake ../../c/driver/sqlite -DADBC_BUILD_TESTS=ON
+$ cmake ../c -DADBC_BUILD_TESTS=ON -DADBC_DRIVER_SQLITE=ON
 $ make -j
 $ ctest
 ```
@@ -82,6 +123,7 @@ test-time dependencies.  For instance, the PostgreSQL and Flight SQL
 drivers require servers to test against.  See their individual READMEs
 for details.
 
+[cmake-compile-commands]: https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html
 [cmake-prefix-path]: https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
 [gtest]: https://github.com/google/googletest/
 
@@ -95,6 +137,9 @@ used as follows:
 ```shell
 $ conda create -n adbc -c conda-forge --file ci/conda_env_docs.txt
 $ conda activate adbc
+# Mermaid must be installed separately
+# While "global", it will end up in your Conda environment
+$ npm install -g @mermaid-js/mermaid-cli
 ```
 
 To build the HTML documentation:
@@ -115,6 +160,16 @@ $ make html
 
 The output can be found in `build/`.
 
+Some documentations are maintained as [Mermaid][mermaid] diagrams, which must
+be rendered and checked in.  This can be done as follows:
+
+```shell
+cd docs
+make -f mermaid.makefile -j all
+# Check in the updated files
+```
+
+[mermaid]: https://mermaid.js.org/
 [sphinx]: https://www.sphinx-doc.org/en/master/
 
 ### GLib
@@ -187,12 +242,35 @@ $ pip install -e .[test]
 $ pytest -vvx
 ```
 
+Type checking is done with [pyright][pyright].  There is a script to
+run the type checker:
+
+```shell
+# Build native libraries first
+$ env ADBC_USE_ASAN=0 ADBC_USE_UBSAN=0 ./ci/scripts/cpp_build.sh $(pwd) $(pwd)/build
+# Install Python packages
+$ ./ci/scripts/python_build.sh $(pwd) $(pwd)/build
+# Run type checker
+$ ./ci/scripts/python_typecheck.sh $(pwd)
+```
+
+[pyright]: https://microsoft.github.io/pyright/
 [pytest]: https://docs.pytest.org/
 [setuptools]: https://setuptools.pypa.io/en/latest/index.html
 
 ### Ruby
 
 The Ruby libraries are bindings around the GLib libraries.
+
+### Rust
+
+The Rust components are a standard Rust project.
+
+```shell
+$ cd rust
+# Build and run tests
+$ cargo test
+```
 
 ## Opening a Pull Request
 
@@ -250,5 +328,31 @@ ci(go/adbc/drivermgr): pass through DYLD_LIBRARY_PATH in tests
 
 fix(java/driver/jdbc): adjust SQL type mapping for JDBC driver
 ```
+
+## Re-generating 3rd Party Licenses
+
+In order to collect the licenses for our Go-dependencies we leverage the
+tool `github.com/google/go-licenses`. We have a template containing the
+non-go licenses, and then you can install `go-licenses` with:
+
+```shell
+$ go install github.com/google/go-licenses@latest
+```
+
+You can generate the LICENSE.txt with the following command:
+
+```shell
+$ cd go/adbc && go-licenses report ./... \
+  --ignore github.com/apache/arrow-adbc/go/adbc \
+  --ignore github.com/apache/arrow/go/v11 \
+  --ignore github.com/apache/arrow/go/v12 \
+  --ignore github.com/apache/arrow/go/v13 \
+  --ignore github.com/apache/arrow/go/v15 \
+  --template ../../license.tpl > ../../LICENSE.txt 2> /dev/null
+```
+
+You will have to manually fix up the license, since some packages do not
+fill out their metadata correctly and things like READMEs may end up in
+the license.
 
 [conventional-commits]: https://www.conventionalcommits.org/en/v1.0.0/

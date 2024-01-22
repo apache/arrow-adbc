@@ -19,15 +19,18 @@ package sqldriver
 
 import (
 	"database/sql/driver"
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v12/arrow"
-	"github.com/apache/arrow/go/v12/arrow/array"
-	"github.com/apache/arrow/go/v12/arrow/memory"
+	"github.com/apache/arrow/go/v15/arrow"
+	"github.com/apache/arrow/go/v15/arrow/array"
+	"github.com/apache/arrow/go/v15/arrow/decimal128"
+	"github.com/apache/arrow/go/v15/arrow/decimal256"
+	"github.com/apache/arrow/go/v15/arrow/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -110,6 +113,14 @@ func TestColumnTypeDatabaseTypeName(t *testing.T) {
 		{
 			typ:      &arrow.DurationType{Unit: arrow.Nanosecond},
 			typeName: "duration[ns]",
+		},
+		{
+			typ:      &arrow.Decimal128Type{Precision: 9, Scale: 2},
+			typeName: "decimal(9, 2)",
+		},
+		{
+			typ:      &arrow.Decimal256Type{Precision: 28, Scale: 4},
+			typeName: "decimal256(28, 4)",
 		},
 	}
 
@@ -227,6 +238,22 @@ func TestNextRowTypes(t *testing.T) {
 			},
 			golangValue: time.Date(1970, time.January, 1, testTime.Hour(), testTime.Minute(), testTime.Second(), testTime.Nanosecond(), time.UTC),
 		},
+		{
+			arrowType: &arrow.Decimal128Type{Precision: 9, Scale: 2},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				b.(*array.Decimal128Builder).Append(decimal128.FromU64(10))
+			},
+			golangValue: decimal128.FromU64(10),
+		},
+		{
+			arrowType: &arrow.Decimal256Type{Precision: 10, Scale: 5},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				b.(*array.Decimal256Builder).Append(decimal256.FromU64(10))
+			},
+			golangValue: decimal256.FromU64(10),
+		},
 	}
 
 	for i, test := range tests {
@@ -244,6 +271,100 @@ func TestNextRowTypes(t *testing.T) {
 			assert.NoError(t, err)
 			assert.IsType(t, test.golangValue, dest[0])
 			assert.Equal(t, test.golangValue, dest[0])
+		})
+	}
+}
+
+func TestArrFromVal(t *testing.T) {
+	tests := []struct {
+		value               any
+		expectedDataType    arrow.DataType
+		expectedStringValue string
+	}{
+		{
+			value:               true,
+			expectedDataType:    arrow.FixedWidthTypes.Boolean,
+			expectedStringValue: "true",
+		},
+		{
+			value:               int8(1),
+			expectedDataType:    arrow.PrimitiveTypes.Int8,
+			expectedStringValue: "1",
+		},
+		{
+			value:               uint8(1),
+			expectedDataType:    arrow.PrimitiveTypes.Uint8,
+			expectedStringValue: "1",
+		},
+		{
+			value:               int16(1),
+			expectedDataType:    arrow.PrimitiveTypes.Int16,
+			expectedStringValue: "1",
+		},
+		{
+			value:               uint16(1),
+			expectedDataType:    arrow.PrimitiveTypes.Uint16,
+			expectedStringValue: "1",
+		},
+		{
+			value:               int32(1),
+			expectedDataType:    arrow.PrimitiveTypes.Int32,
+			expectedStringValue: "1",
+		},
+		{
+			value:               uint32(1),
+			expectedDataType:    arrow.PrimitiveTypes.Uint32,
+			expectedStringValue: "1",
+		},
+		{
+			value:               int64(1),
+			expectedDataType:    arrow.PrimitiveTypes.Int64,
+			expectedStringValue: "1",
+		},
+		{
+			value:               uint64(1),
+			expectedDataType:    arrow.PrimitiveTypes.Uint64,
+			expectedStringValue: "1",
+		},
+		{
+			value:               float32(1),
+			expectedDataType:    arrow.PrimitiveTypes.Float32,
+			expectedStringValue: "1",
+		},
+		{
+			value:               float64(1),
+			expectedDataType:    arrow.PrimitiveTypes.Float64,
+			expectedStringValue: "1",
+		},
+		{
+			value:               arrow.Date32FromTime(testTime),
+			expectedDataType:    arrow.PrimitiveTypes.Date32,
+			expectedStringValue: testTime.UTC().Truncate(24 * time.Hour).Format("2006-01-02"),
+		},
+		{
+			value:               arrow.Date64FromTime(testTime),
+			expectedDataType:    arrow.PrimitiveTypes.Date64,
+			expectedStringValue: testTime.UTC().Truncate(24 * time.Hour).Format("2006-01-02"),
+		},
+		{
+			value:               []byte("my-string"),
+			expectedDataType:    arrow.BinaryTypes.Binary,
+			expectedStringValue: base64.StdEncoding.EncodeToString([]byte("my-string")),
+		},
+		{
+			value:               "my-string",
+			expectedDataType:    arrow.BinaryTypes.String,
+			expectedStringValue: "my-string",
+		},
+	}
+	for i, test := range tests {
+		t.Run(fmt.Sprintf("%d-%T", i, test.value), func(t *testing.T) {
+			arr := arrFromVal(test.value)
+
+			assert.Equal(t, test.expectedDataType, arr.DataType())
+			require.Equal(t, 1, arr.Len())
+			assert.True(t, arr.IsValid(0))
+			assert.Equal(t, test.expectedStringValue, arr.ValueStr(0))
 		})
 	}
 }

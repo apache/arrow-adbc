@@ -19,6 +19,22 @@
 
 source "https://rubygems.org/"
 
-gem "gobject-introspection", ">= 4.0.1"
-gem "red-arrow"
+gem "gobject-introspection", ">= 4.0.3"
+# Use the version of red-arrow based on the available arrow-glib version
+red_arrow_version = ">= 0"
+IO.pipe do |input, output|
+  begin
+    pid = spawn("pkg-config", "--modversion", "arrow-glib",
+                out: output,
+                err: File::NULL)
+    output.close
+    _, status = Process.waitpid2(pid)
+    if status.success?
+      arrow_glib_version = input.read.strip.sub(/-SNAPSHOT\z/, "").strip
+      red_arrow_version = "<= #{arrow_glib_version}"
+    end
+  rescue SystemCallError
+  end
+end
+gem "red-arrow", red_arrow_version
 gem "test-unit"
