@@ -1,5 +1,3 @@
-#!/usr/bin/env ruby
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,25 +15,19 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require "pathname"
-require "test-unit"
-
-(ENV["ADBC_DLL_PATH"] || "").split(File::PATH_SEPARATOR).each do |path|
-  RubyInstaller::Runtime.add_dll_directory(path)
+module ADBC
+  module StatementOpenable
+    def open(connection)
+      statement = new(connection)
+      if block_given?
+        begin
+          yield(statement)
+        ensure
+          statement.release
+        end
+      else
+        statement
+      end
+    end
+  end
 end
-
-base_dir = Pathname(__dir__).parent
-test_dir = base_dir + "test"
-
-require "gi"
-
-ADBC = GI.load("ADBC")
-begin
-  ADBCArrow = GI.load("ADBCArrow")
-rescue GObjectIntrospection::RepositoryError => error
-  puts("ADBCArrow isn't found: #{error}")
-end
-
-require_relative "helper"
-
-exit(Test::Unit::AutoRunner.run(true, test_dir.to_s))
