@@ -141,7 +141,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return GetType(field, new Decimal128Type(38, 9));
 
                 case "BIGNUMERIC" or "BIGDECIMAL":
-                    return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? GetType(field, StringType.Default) : GetType(field, new Decimal256Type(76, 38));
+                    if (this.Options != null)
+                        return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? GetType(field, StringType.Default) : GetType(field, new Decimal256Type(76, 38));
+                    else
+                        return GetType(field, StringType.Default);
 
                 default: throw new InvalidOperationException($"{field.Type} cannot be translated");
             }

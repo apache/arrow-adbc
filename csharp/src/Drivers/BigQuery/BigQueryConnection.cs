@@ -483,44 +483,46 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            foreach (BigQueryRow row in result)
+            if (result != null)
             {
-                columnNameBuilder.Append(row["column_name"].ToString());
-                ordinalPositionBuilder.Append((int)(long)row["ordinal_position"]);
-                remarksBuilder.Append("");
-
-                string dataType = ToTypeName(row["data_type"].ToString());
-
-                if (dataType.StartsWith("NUMERIC") || dataType.StartsWith("DECIMAL") || dataType.StartsWith("BIGNUMERIC") || dataType.StartsWith("BIGDECIMAL"))
+                foreach (BigQueryRow row in result)
                 {
-                    ParsedDecimalValues values = ParsePrecisionAndScale(dataType);
-                    xdbcColumnSizeBuilder.Append(values.Precision);
-                    xdbcDecimalDigitsBuilder.Append(Convert.ToInt16(values.Scale));
-                }
-                else
-                {
-                    xdbcColumnSizeBuilder.AppendNull();
-                    xdbcDecimalDigitsBuilder.AppendNull();
-                }
+                    columnNameBuilder.Append(GetValue(row["column_name"]));
+                    ordinalPositionBuilder.Append((int)(long)row["ordinal_position"]);
+                    remarksBuilder.Append("");
 
-                xdbcDataTypeBuilder.AppendNull();
-                xdbcTypeNameBuilder.Append(dataType);
-                xdbcNumPrecRadixBuilder.AppendNull();
-                xdbcNullableBuilder.AppendNull();
-                xdbcColumnDefBuilder.AppendNull();
-                xdbcSqlDataTypeBuilder.Append((short)ToXdbcDataType(dataType));
-                xdbcDatetimeSubBuilder.AppendNull();
-                xdbcCharOctetLengthBuilder.AppendNull();
-                xdbcIsNullableBuilder.Append(row["is_nullable"].ToString());
-                xdbcScopeCatalogBuilder.AppendNull();
-                xdbcScopeSchemaBuilder.AppendNull();
-                xdbcScopeTableBuilder.AppendNull();
-                xdbcIsAutoincrementBuilder.AppendNull();
-                xdbcIsGeneratedcolumnBuilder.Append(row["is_generated"].ToString().ToUpper() == "YES");
-                nullBitmapBuffer.Append(true);
-                length++;
+                    string dataType = ToTypeName(GetValue(row["data_type"]));
+
+                    if (dataType.StartsWith("NUMERIC") || dataType.StartsWith("DECIMAL") || dataType.StartsWith("BIGNUMERIC") || dataType.StartsWith("BIGDECIMAL"))
+                    {
+                        ParsedDecimalValues values = ParsePrecisionAndScale(dataType);
+                        xdbcColumnSizeBuilder.Append(values.Precision);
+                        xdbcDecimalDigitsBuilder.Append(Convert.ToInt16(values.Scale));
+                    }
+                    else
+                    {
+                        xdbcColumnSizeBuilder.AppendNull();
+                        xdbcDecimalDigitsBuilder.AppendNull();
+                    }
+
+                    xdbcDataTypeBuilder.AppendNull();
+                    xdbcTypeNameBuilder.Append(dataType);
+                    xdbcNumPrecRadixBuilder.AppendNull();
+                    xdbcNullableBuilder.AppendNull();
+                    xdbcColumnDefBuilder.AppendNull();
+                    xdbcSqlDataTypeBuilder.Append((short)ToXdbcDataType(dataType));
+                    xdbcDatetimeSubBuilder.AppendNull();
+                    xdbcCharOctetLengthBuilder.AppendNull();
+                    xdbcIsNullableBuilder.Append(row["is_nullable"].ToString());
+                    xdbcScopeCatalogBuilder.AppendNull();
+                    xdbcScopeSchemaBuilder.AppendNull();
+                    xdbcScopeTableBuilder.AppendNull();
+                    xdbcIsAutoincrementBuilder.AppendNull();
+                    xdbcIsGeneratedcolumnBuilder.Append(GetValue(row["is_generated"]).ToUpper() == "YES");
+                    nullBitmapBuffer.Append(true);
+                    length++;
+                }
             }
-
             List<IArrowArray> dataArrays = new List<IArrowArray>
             {
                 columnNameBuilder.Build(),
@@ -631,10 +633,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            foreach (BigQueryRow row in result)
+            if (result != null)
             {
-                string column = row["column_name"].ToString();
-                constraintColumnNamesBuilder.Append(column);
+                foreach (BigQueryRow row in result)
+                {
+                    string column = GetValue(row["column_name"]);
+                    constraintColumnNamesBuilder.Append(column);
+                }
             }
 
             return constraintColumnNamesBuilder.Build();
@@ -658,20 +663,23 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            foreach (BigQueryRow row in result)
+            if (result != null)
             {
-                string constraint_catalog = row["constraint_catalog"].ToString();
-                string constraint_schema = row["constraint_schema"].ToString();
-                string table_name = row["table_name"].ToString();
-                string column_name = row["column_name"].ToString();
+                foreach (BigQueryRow row in result)
+                {
+                    string constraint_catalog = GetValue(row["constraint_catalog"]);
+                    string constraint_schema = GetValue(row["constraint_schema"]);
+                    string table_name = GetValue(row["table_name"]);
+                    string column_name = GetValue(row["column_name"]);
 
-                constraintFkCatalogBuilder.Append(constraint_catalog);
-                constraintFkDbSchemaBuilder.Append(constraint_schema);
-                constraintFkTableBuilder.Append(table_name);
-                constraintFkColumnNameBuilder.Append(column_name);
+                    constraintFkCatalogBuilder.Append(constraint_catalog);
+                    constraintFkDbSchemaBuilder.Append(constraint_schema);
+                    constraintFkTableBuilder.Append(table_name);
+                    constraintFkColumnNameBuilder.Append(column_name);
 
-                nullBitmapBuffer.Append(true);
-                length++;
+                    nullBitmapBuffer.Append(true);
+                    length++;
+                }
             }
 
             List<IArrowArray> dataArrays = new List<IArrowArray>
