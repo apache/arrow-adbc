@@ -23,20 +23,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"net/textproto"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/flight"
-	"github.com/apache/arrow/go/v14/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v14/arrow/flight/flightsql/schema_ref"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v15/arrow"
+	"github.com/apache/arrow/go/v15/arrow/array"
+	"github.com/apache/arrow/go/v15/arrow/flight"
+	"github.com/apache/arrow/go/v15/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v15/arrow/flight/flightsql/schema_ref"
+	"github.com/apache/arrow/go/v15/arrow/memory"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/maps"
@@ -107,6 +110,10 @@ func TestErrorDetails(t *testing.T) {
 
 func TestExecuteSchema(t *testing.T) {
 	suite.Run(t, &ExecuteSchemaTests{})
+}
+
+func TestIncrementalPoll(t *testing.T) {
+	suite.Run(t, &IncrementalPollTests{})
 }
 
 func TestTimeout(t *testing.T) {
@@ -426,6 +433,376 @@ func (ts *ExecuteSchemaTests) TestQuery() {
 	}, nil)
 
 	ts.True(expectedSchema.Equal(schema), schema.String())
+}
+
+// ---- IncrementalPoll Tests --------------------
+
+type IncrementalQuery struct {
+	query     string
+	nextIndex int
+}
+
+type IncrementalPollTestServer struct {
+	flightsql.BaseServer
+	mu        sync.Mutex
+	queries   map[string]*IncrementalQuery
+	testCases map[string]IncrementalPollTestCase
+}
+
+func (srv *IncrementalPollTestServer) PollFlightInfo(ctx context.Context, desc *flight.FlightDescriptor) (*flight.PollInfo, error) {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+
+	var val wrapperspb.StringValue
+	var err error
+	if err = proto.Unmarshal(desc.Cmd, &val); err != nil {
+		return nil, err
+	}
+	queryId := val.Value
+	progress := int64(0)
+	if strings.Contains(queryId, ";") {
+		parts := strings.SplitN(queryId, ";", 2)
+		queryId = parts[0]
+		progress, err = strconv.ParseInt(parts[1], 10, 32)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	query, ok := srv.queries[queryId]
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "Query ID not found")
+	}
+
+	testCase, ok := srv.testCases[query.query]
+	if !ok {
+		return nil, status.Errorf(codes.Unimplemented, fmt.Sprintf("Invalid case %s", query.query))
+	}
+
+	if testCase.differentRetryDescriptor && progress != int64(query.nextIndex) {
+		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Used wrong retry descriptor, expected %d but got %d", query.nextIndex, progress))
+	}
+
+	return srv.MakePollInfo(&testCase, query, queryId)
+}
+
+func (srv *IncrementalPollTestServer) PollFlightInfoStatement(ctx context.Context, query flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.PollInfo, error) {
+	queryId := uuid.New().String()
+
+	testCase, ok := srv.testCases[query.GetQuery()]
+	if !ok {
+		return nil, status.Errorf(codes.Unimplemented, fmt.Sprintf("Invalid case %s", query.GetQuery()))
+	}
+
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+
+	srv.queries[queryId] = &IncrementalQuery{
+		query:     query.GetQuery(),
+		nextIndex: 0,
+	}
+
+	return srv.MakePollInfo(&testCase, srv.queries[queryId], queryId)
+}
+
+func (srv *IncrementalPollTestServer) PollFlightInfoPreparedStatement(ctx context.Context, query flightsql.PreparedStatementQuery, desc *flight.FlightDescriptor) (*flight.PollInfo, error) {
+	queryId := uuid.New().String()
+	req := string(query.GetPreparedStatementHandle())
+
+	testCase, ok := srv.testCases[req]
+	if !ok {
+		return nil, status.Errorf(codes.Unimplemented, fmt.Sprintf("Invalid case %s", req))
+	}
+
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+
+	srv.queries[queryId] = &IncrementalQuery{
+		query:     req,
+		nextIndex: 0,
+	}
+
+	return srv.MakePollInfo(&testCase, srv.queries[queryId], queryId)
+}
+
+func (srv *IncrementalPollTestServer) BeginTransaction(context.Context, flightsql.ActionBeginTransactionRequest) (id []byte, err error) {
+	return []byte("txn"), nil
+}
+
+func (srv *IncrementalPollTestServer) EndTransaction(context.Context, flightsql.ActionEndTransactionRequest) error {
+	return nil
+}
+
+func (srv *IncrementalPollTestServer) CreatePreparedStatement(ctx context.Context, req flightsql.ActionCreatePreparedStatementRequest) (res flightsql.ActionCreatePreparedStatementResult, err error) {
+	return flightsql.ActionCreatePreparedStatementResult{
+		Handle: []byte(req.GetQuery()),
+		DatasetSchema: arrow.NewSchema([]arrow.Field{
+			{Name: "ints", Type: arrow.PrimitiveTypes.Int32},
+		}, nil),
+	}, nil
+}
+
+func (srv *IncrementalPollTestServer) ClosePreparedStatement(ctx context.Context, req flightsql.ActionClosePreparedStatementRequest) error {
+	return nil
+}
+
+func (srv *IncrementalPollTestServer) MakePollInfo(testCase *IncrementalPollTestCase, query *IncrementalQuery, queryId string) (*flight.PollInfo, error) {
+	schema := flight.SerializeSchema(arrow.NewSchema([]arrow.Field{
+		{Name: "ints", Type: arrow.PrimitiveTypes.Int32},
+	}, nil), srv.Alloc)
+
+	pb := wrapperspb.StringValue{Value: queryId}
+	if testCase.differentRetryDescriptor {
+		pb.Value = queryId + ";" + strconv.Itoa(query.nextIndex+1)
+	}
+	descriptor, err := proto.Marshal(&pb)
+	if err != nil {
+		return nil, err
+	}
+
+	numEndpoints := 0
+	for i := 0; i <= query.nextIndex; i++ {
+		if i >= len(testCase.progress) {
+			break
+		}
+		numEndpoints += testCase.progress[i]
+	}
+	endpoints := make([]*flight.FlightEndpoint, numEndpoints)
+	for i := range endpoints {
+		endpoints[i] = &flight.FlightEndpoint{
+			Ticket: &flight.Ticket{
+				Ticket: []byte{},
+			},
+		}
+	}
+
+	query.nextIndex++
+	pollInfo := flight.PollInfo{
+		Info: &flight.FlightInfo{
+			Schema:   schema,
+			Endpoint: endpoints,
+		},
+		FlightDescriptor: &flight.FlightDescriptor{
+			Type: flight.DescriptorCMD,
+			Cmd:  descriptor,
+		},
+		Progress: proto.Float64(float64(query.nextIndex) / float64(len(testCase.progress))),
+	}
+
+	if query.nextIndex >= len(testCase.progress) {
+		if testCase.completeLazily {
+			if query.nextIndex == len(testCase.progress) {
+				// Make the client poll one more time
+			} else {
+				pollInfo.FlightDescriptor = nil
+				delete(srv.queries, queryId)
+			}
+
+		} else {
+			pollInfo.FlightDescriptor = nil
+			delete(srv.queries, queryId)
+		}
+	}
+
+	return &pollInfo, nil
+}
+
+type IncrementalPollTestCase struct {
+	// on each poll (including the first), this many new endpoints complete
+	// making 0 progress is allowed, but not recommended (allow clients to 'long poll')
+	progress []int
+
+	// use a different retry descriptor for each poll
+	differentRetryDescriptor bool
+
+	// require one extra poll to get completion (i.e. the last poll will have a nil FlightInfo)
+	completeLazily bool
+}
+
+type IncrementalPollTests struct {
+	ServerBasedTests
+	testCases map[string]IncrementalPollTestCase
+}
+
+func (suite *IncrementalPollTests) SetupSuite() {
+	suite.testCases = map[string]IncrementalPollTestCase{
+		"basic": {
+			progress: []int{1, 1, 1, 1},
+		},
+		"basic 2": {
+			progress: []int{2, 3, 4, 5},
+		},
+		"basic 3": {
+			progress: []int{2},
+		},
+		"descriptor changes": {
+			progress:                 []int{1, 1, 1, 1},
+			differentRetryDescriptor: true,
+		},
+		"lazy": {
+			progress:       []int{1, 1, 1, 1},
+			completeLazily: true,
+		},
+		"lazy 2": {
+			progress:       []int{1, 1, 1, 0},
+			completeLazily: true,
+		},
+		"no progress": {
+			progress: []int{0, 1, 1, 1},
+		},
+		"no progress 2": {
+			progress: []int{0, 0, 1, 1},
+		},
+		"no progress 3": {
+			progress: []int{0, 0, 1, 0},
+		},
+	}
+
+	srv := IncrementalPollTestServer{
+		queries:   make(map[string]*IncrementalQuery),
+		testCases: suite.testCases,
+	}
+	suite.NoError(srv.RegisterSqlInfo(flightsql.SqlInfoFlightSqlServerTransaction, int32(flightsql.SqlTransactionTransaction)))
+	srv.Alloc = memory.DefaultAllocator
+	suite.DoSetupSuite(&srv, nil, nil)
+}
+
+func (ts *IncrementalPollTests) TestMaxProgress() {
+	stmt, err := ts.cnxn.NewStatement()
+	ts.NoError(err)
+	defer stmt.Close()
+	opts := stmt.(adbc.GetSetOptions)
+
+	val, err := opts.GetOptionDouble(adbc.OptionKeyMaxProgress)
+	ts.NoError(err)
+	ts.Equal(1.0, val)
+}
+
+func (ts *IncrementalPollTests) TestOptionValue() {
+	stmt, err := ts.cnxn.NewStatement()
+	ts.NoError(err)
+	defer stmt.Close()
+	opts := stmt.(adbc.GetSetOptions)
+
+	val, err := opts.GetOption(adbc.OptionKeyIncremental)
+	ts.NoError(err)
+	ts.Equal(adbc.OptionValueDisabled, val)
+
+	ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
+
+	val, err = opts.GetOption(adbc.OptionKeyIncremental)
+	ts.NoError(err)
+	ts.Equal(adbc.OptionValueEnabled, val)
+
+	var adbcErr adbc.Error
+	ts.ErrorAs(stmt.SetOption(adbc.OptionKeyIncremental, "foobar"), &adbcErr)
+	ts.Equal(adbc.StatusInvalidArgument, adbcErr.Code)
+}
+
+func (ts *IncrementalPollTests) RunOneTestCase(ctx context.Context, stmt adbc.Statement, name string, testCase *IncrementalPollTestCase) {
+	opts := stmt.(adbc.GetSetOptions)
+
+	for idx, progress := range testCase.progress {
+		if progress == 0 {
+			// the driver hides this from us
+			continue
+		}
+
+		_, partitions, _, err := stmt.ExecutePartitions(ctx)
+		ts.NoError(err)
+
+		ts.Equal(uint64(progress), partitions.NumPartitions)
+
+		val, err := opts.GetOptionDouble(adbc.OptionKeyProgress)
+		ts.NoError(err)
+		ts.Equal(float64(idx+1)/float64(len(testCase.progress)), val)
+	}
+
+	// Query completed, but we find out by getting no partitions in this call
+	_, partitions, _, err := stmt.ExecutePartitions(ctx)
+	ts.NoError(err)
+
+	ts.Equal(uint64(0), partitions.NumPartitions)
+}
+
+func (ts *IncrementalPollTests) TestQuery() {
+	ctx := context.Background()
+	for name, testCase := range ts.testCases {
+		ts.Run(name, func() {
+			stmt, err := ts.cnxn.NewStatement()
+			ts.NoError(err)
+			defer stmt.Close()
+
+			ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
+
+			// Run the query multiple times (we should be able to reuse the statement)
+			for i := 0; i < 2; i++ {
+				ts.NoError(stmt.SetSqlQuery(name))
+				ts.RunOneTestCase(ctx, stmt, name, &testCase)
+			}
+		})
+	}
+}
+
+func (ts *IncrementalPollTests) TestQueryPrepared() {
+	ctx := context.Background()
+	for name, testCase := range ts.testCases {
+		ts.Run(name, func() {
+			stmt, err := ts.cnxn.NewStatement()
+			ts.NoError(err)
+			defer stmt.Close()
+
+			ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
+
+			// Run the query multiple times (we should be able to reuse the statement)
+			for i := 0; i < 2; i++ {
+				ts.NoError(stmt.SetSqlQuery(name))
+				ts.NoError(stmt.Prepare(ctx))
+				ts.RunOneTestCase(ctx, stmt, name, &testCase)
+			}
+		})
+	}
+}
+
+func (ts *IncrementalPollTests) TestQueryPreparedTransaction() {
+	ctx := context.Background()
+	for name, testCase := range ts.testCases {
+		ts.Run(name, func() {
+			ts.NoError(ts.cnxn.(adbc.PostInitOptions).SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
+			stmt, err := ts.cnxn.NewStatement()
+			ts.NoError(err)
+			defer stmt.Close()
+
+			ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
+
+			// Run the query multiple times (we should be able to reuse the statement)
+			for i := 0; i < 2; i++ {
+				ts.NoError(stmt.SetSqlQuery(name))
+				ts.NoError(stmt.Prepare(ctx))
+				ts.RunOneTestCase(ctx, stmt, name, &testCase)
+			}
+		})
+	}
+}
+
+func (ts *IncrementalPollTests) TestQueryTransaction() {
+	ctx := context.Background()
+	for name, testCase := range ts.testCases {
+		ts.Run(name, func() {
+			ts.NoError(ts.cnxn.(adbc.PostInitOptions).SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
+			stmt, err := ts.cnxn.NewStatement()
+			ts.NoError(err)
+			defer stmt.Close()
+
+			ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
+
+			// Run the query multiple times (we should be able to reuse the statement)
+			for i := 0; i < 2; i++ {
+				ts.NoError(stmt.SetSqlQuery(name))
+				ts.RunOneTestCase(ctx, stmt, name, &testCase)
+			}
+		})
+	}
 }
 
 // ---- Timeout Tests --------------------
