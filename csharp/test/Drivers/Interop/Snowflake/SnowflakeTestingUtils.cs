@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -166,6 +167,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string[] queries = content.ToString().Split(";".ToCharArray()).Where(x => x.Trim().Length > 0).ToArray();
 
             return queries;
+        }
+
+        internal static void Output(string text)
+        {
+            Debug.WriteLine(text);
+            Console.WriteLine(text);
         }
     }
 }

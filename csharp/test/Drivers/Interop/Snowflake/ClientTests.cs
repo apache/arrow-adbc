@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlTypes;
+using System.Diagnostics;
 using System.IO;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Tests.Xunit;
@@ -127,8 +128,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         }
 
         /// <summary>
-        /// Validates if the client can connect to a live server
-        /// and parse the results.
+        /// SHOW TABLES has an issue with the maximum number of results.
+        /// In Snowflake, this is 10,000. However, with Arrow, this appears to be somewhere around 500
+        /// in a result set. See https://github.com/apache/arrow-adbc/issues/1454.
+        /// To be able to run this command and get all of the results, the caller can use pagination
+        /// by including the LIMIT and FROM keywords in the query. See https://docs.snowflake.com/en/sql-reference/sql/show-tables
+        /// This test demonstrates how to return a large number of tables (in this tested example, there
+        /// were 1061 tables).
         /// </summary>
         [SkippableFact, Order(4)]
         public void CanClientExecuteShowTables()
@@ -137,14 +143,49 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
             {
-                testConfiguration.Query = "SHOW TABLES";
+                string lastTable = string.Empty;
+                int maxLimit = 100;
+                int totalCount = 0;
 
-                List<KeywordDefinition> additionalKeywords = new List<KeywordDefinition>()
+                while (true)
                 {
-                    new KeywordDefinition("SHOW", QueryReturnType.RecordSet)
-                };
+                    testConfiguration.Query = $"SHOW TABLES LIMIT {maxLimit}";
 
-                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration, additionalKeywords, true);
+                    if(!string.IsNullOrEmpty(lastTable))
+                    {
+                        testConfiguration.Query += $" FROM '{lastTable}'";
+                    }
+
+                    adbcConnection.Open();
+
+                    using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+
+                    using AdbcDataReader reader = adbcCommand.ExecuteReader();
+                    int count = 0;
+
+                    try
+                    {
+                        while (reader.Read())
+                        {
+                            object value = reader["name"];
+
+                            if (value != null)
+                            {
+                                totalCount++;
+                                count++;
+                                lastTable = value.ToString();
+
+                                SnowflakeTestingUtils.Output($"{totalCount}.) {lastTable}");
+                            }
+                        }
+                    }
+                    finally { reader.Close(); }
+
+                    if (count == 0)
+                        break;
+                }
+
+                SnowflakeTestingUtils.Output($"Found {totalCount} tables");
             }
         }
 
