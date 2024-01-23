@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Text;
+using System.Xml.Linq;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
@@ -145,6 +146,62 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                         new ColumnNetTypeArrowTypeValue("person", typeof(string), typeof(StringType), "{\"name\":null,\"age\":null}")
                     }
                 });
+
+            // complex struct
+            sampleDataBuilder.Samples.Add(
+               new SampleData()
+               {
+                   Query =  "SELECT " +
+                            "STRUCT(" +
+                            "\"Iron Man\" as name," +
+                            "\"Avengers\" as team," +
+                            "[\"Genius\", \"Billionaire\", \"Playboy\", \"Philanthropist\"] as powers," +
+                            "[" +
+                            "  STRUCT(" +
+                            "    \"Captain America\" as name, " +
+                            "    \"Avengers\" as team, " +
+                            "    [\"Super Soldier Serum\", \"Vibranium Shield\"] as powers, " +
+                            "    [" +
+                            "     STRUCT(" +
+                            "       \"Thanos\" as name, " +
+                            "       \"Black Order\" as name, " +
+                            "       [\"Infinity Gauntlet\", \"Super Strength\", \"Teleportation\"] as powers, " +
+                            "       [" +
+                            "         STRUCT(" +
+                            "           \"Loki\" as name, " +
+                            "           \"Asgard\" as team, " +
+                            "           [\"Magic\", \"Shapeshifting\", \"Trickery\"] as powers " +
+                            "          )" +
+                            "        ] as allies" +
+                            "      )" +
+                            "    ] as enemies" +
+                            " )," +
+                            " STRUCT(" +
+                            "    \"Spider-Man\" as name, " +
+                            "    \"Avengers\" as team, " +
+                            "    [\"Spider-Sense\", \"Web-Shooting\", \"Wall-Crawling\"] as powers, " +
+                            "    [" +
+                            "      STRUCT(" +
+                            "        \"Green Goblin\" as name, " +
+                            "        \"Sinister Six\" as team, " +
+                            "        [\"Glider\", \"Pumpkin Bombs\", \"Super Strength\"] as powers, " +
+                            "         [" +
+                            "          STRUCT(" +
+                            "            \"Doctor Octopus\" as name, " +
+                            "            \"Sinister Six\" as team, " +
+                            "            [\"Mechanical Arms\", \"Genius\", \"Madness\"] as powers " +
+                            "          )" +
+                            "        ] as allies" +
+                            "      )" +
+                            "    ] as enemies" +
+                            "  )" +
+                            " ] as friends" +
+                            ") as iron_man",
+                   ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                   {
+                        new ColumnNetTypeArrowTypeValue("iron_man", typeof(string), typeof(StringType), "{\"name\":\"Iron Man\",\"team\":\"Avengers\",\"powers\":[\"Genius\",\"Billionaire\",\"Playboy\",\"Philanthropist\"],\"friends\":{\"name\":\"Captain America\",\"team\":\"Avengers\",\"powers\":[\"Super Soldier Serum\",\"Vibranium Shield\"],\"enemies\":{\"name\":\"Thanos\",\"_field_2\":\"Black Order\",\"powers\":[\"Infinity Gauntlet\",\"Super Strength\",\"Teleportation\"],\"allies\":{\"name\":\"Loki\",\"team\":\"Asgard\",\"powers\":[\"Magic\",\"Shapeshifting\",\"Trickery\"]}}}}"),
+                   }
+               });
 
             return sampleDataBuilder;
         }

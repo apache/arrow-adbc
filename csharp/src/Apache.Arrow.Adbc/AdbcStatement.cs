@@ -147,10 +147,9 @@ namespace Apache.Arrow.Adbc
         /// <param name="index">
         /// The index in the array to get the value from.
         /// </param>
-        public virtual object GetValue(IArrowArray arrowArray, Field field, int index)
+        public virtual object GetValue(IArrowArray arrowArray, int index)
         {
             if (arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
-            if (field == null) throw new ArgumentNullException(nameof(field));
             if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
 
             switch (arrowArray)
