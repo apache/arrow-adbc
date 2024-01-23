@@ -34,12 +34,12 @@ end
 namespace :dependency do
   desc "Check dependency"
   task :check do
-    unless PKGConfig.check_version?("adbc-glib",
+    unless PKGConfig.check_version?("adbc-arrow-glib",
                                     ADBC::Version::MAJOR,
                                     ADBC::Version::MINOR,
                                     ADBC::Version::MICRO)
-      unless NativePackageInstaller.install(debian: "libadbc-glib-dev",
-                                            redhat: "adbc-glib-devel")
+      unless NativePackageInstaller.install(debian: "libadbc-arrow-glib-dev",
+                                            redhat: "adbc-arrow-glib-devel")
         exit(false)
       end
     end

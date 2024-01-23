@@ -25,6 +25,7 @@ if build_example and generate_vapi
     ],
     'dependencies': [
       adbc_glib_vapi,
+      adbc_arrow_glib_vapi,
       arrow_glib,
       dependency('gobject-2.0'),
     ],
@@ -43,6 +44,6 @@ files = [
 ]
 install_data(files,
              install_dir: join_paths(data_dir,
-                                     meson.project_name(),
+                                     'adbc-arrow-glib',
                                      'example',
                                      'vala'))
