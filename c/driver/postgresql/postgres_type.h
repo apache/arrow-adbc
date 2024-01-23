@@ -50,6 +50,7 @@ enum class PostgresTypeId {
   kCstring,
   kDate,
   kDomain,
+  kEnum,
   kFloat4,
   kFloat8,
   kInet,
@@ -110,7 +111,6 @@ enum class PostgresTypeId {
   kXid8,
   kXid,
   kXml,
-  kEnum,
   kUserDefined
 };
 
