@@ -20,8 +20,12 @@
 """Low-level ADBC API."""
 
 import enum
+import functools
 import threading
+import os
 import typing
+import sys
+import warnings
 from typing import List, Tuple
 
 cimport cpython
@@ -33,6 +37,7 @@ from cpython.pycapsule cimport (
 from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t, uintptr_t
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy, memset
+from libcpp.string cimport string as c_string
 from libcpp.vector cimport vector as c_vector
 
 if typing.TYPE_CHECKING:
@@ -1481,3 +1486,97 @@ cdef class AdbcStatement(_AdbcHandle):
 cdef const CAdbcError* PyAdbcErrorFromArrayStream(
     CArrowArrayStream* stream, CAdbcStatusCode* status):
     return AdbcErrorFromArrayStream(stream, status)
+
+
+cdef extern from "_blocking_impl.h" nogil:
+    ctypedef void (*BlockingCallback)(void*) noexcept nogil
+    c_string CInitBlockingCallback"pyadbc_driver_manager::InitBlockingCallback"()
+    c_string CSetBlockingCallback"pyadbc_driver_manager::SetBlockingCallback"(BlockingCallback, void* data)
+    c_string CClearBlockingCallback"pyadbc_driver_manager::ClearBlockingCallback"()
+
+
+@functools.cache
+def _init_blocking_call():
+    error = bytes(CInitBlockingCallback()).decode("utf-8")
+    if error:
+        warnings.warn(
+            f"Failed to initialize KeyboardInterrupt support: {error}",
+            RuntimeWarning,
+        )
+
+
+_blocking_lock = threading.Lock()
+_blocking_exc = None
+
+
+def _blocking_call_impl(func, args, kwargs, cancel):
+    """
+    Run functions that are expected to block with a native SIGINT handler.
+
+    Parameters
+    ----------
+    """
+    global _blocking_exc
+
+    if threading.current_thread() is not threading.main_thread():
+        return func(*args, **kwargs)
+
+    _init_blocking_call()
+
+    with _blocking_lock:
+        if _blocking_exc:
+            _blocking_exc = None
+
+    # Set the callback for the background thread and save the signal handler
+    # TODO: ideally this would be no-op if already set
+    error = bytes(
+        CSetBlockingCallback(&_handle_blocking_call, <void*>cancel)
+    ).decode("utf-8")
+    if error:
+        warnings.warn(
+            f"Failed to set SIGINT handler: {error}",
+            RuntimeWarning,
+        )
+
+    try:
+        return func(*args, **kwargs)
+    except BaseException as e:
+        with _blocking_lock:
+            if _blocking_exc:
+                exc = _blocking_exc
+                _blocking_exc = None
+                raise e from exc[1].with_traceback(exc[2])
+        raise e
+    finally:
+        # Restore the signal handler
+        error = bytes(CClearBlockingCallback()).decode("utf-8")
+        if error:
+            warnings.warn(
+                f"Failed to restore SIGINT handler: {error}",
+                RuntimeWarning,
+            )
+        with _blocking_lock:
+            if _blocking_exc:
+                exc = _blocking_exc
+                _blocking_exc = None
+                raise exc[1].with_traceback(exc[2]) from KeyboardInterrupt
+
+
+if os.name != "nt":
+    # https://github.com/apache/arrow-adbc/issues/1522
+    _blocking_call = _blocking_call_impl
+else:
+    def _blocking_call(func, args, kwargs, cancel):
+        return func(*args, **kwargs)
+
+
+
+cdef void _handle_blocking_call(void* c_cancel) noexcept nogil:
+    with gil:
+        try:
+            cancel = <object> c_cancel
+            cancel()
+        except:
+            with _blocking_lock:
+                global _blocking_exc
+                _blocking_exc = sys.exc_info()
