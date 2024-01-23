@@ -142,6 +142,42 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
+        // <summary>
+        /// Validates if the client can connect to a live server
+        /// and parse the results.
+        /// </summary>
+        [SkippableFact, Order(4)]
+        public void CanClientExecuteQueryWithShowTerseTable()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            testConfiguration.Query = "SHOW TERSE TABLES";
+            testConfiguration.ExpectedResultsCount = 0;
+
+            // Throw exception Apache.Arrow.Adbc.AdbcException
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+            {
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
+            }
+        }
+
+        // <summary>
+        /// Validates if the client can connect to a live server
+        /// and parse the results.
+        /// </summary>
+        [SkippableFact, Order(4)]
+        public void CanClientExecuteQueryWithShowTable()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            testConfiguration.Query = "SHOW TABLES";
+            testConfiguration.ExpectedResultsCount = 0;
+
+            // Throw exception Apache.Arrow.Adbc.AdbcException
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+            {
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
+            }
+        }
+
         /// <summary>
         /// Validates if the client can connect to a live server
         /// using a connection string / private key and parse the results.
