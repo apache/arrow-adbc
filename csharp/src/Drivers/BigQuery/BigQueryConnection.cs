@@ -70,10 +70,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// <exception cref="ArgumentException"></exception>
         internal void Open()
         {
-            string? projectId = string.Empty;
-            string? clientId = string.Empty;
-            string? clientSecret = string.Empty;
-            string? refreshToken = string.Empty;
+            string? projectId = null;
+            string? clientId = null;
+            string? clientSecret = null;
+            string? refreshToken = null;
 
             string tokenEndpoint = BigQueryConstants.TokenEndpoint;
 
@@ -84,7 +84,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
                 throw new ArgumentException($"The {BigQueryParameters.ProjectId} parameter is not present");
 
-            if(this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType))
+            if (this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType))
             {
                 if (!authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase) &&
                     !authenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase))
@@ -134,7 +134,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     IEnumerable<string> parsedScopes = scopes.Split(',').Where(x => x.Length > 0);
 
-                    return credential.CreateScoped();
+                    return credential.CreateScoped(parsedScopes);
                 }
             }
 
@@ -828,18 +828,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             switch (value)
             {
                 case string sValue:
-                    if (string.IsNullOrEmpty(sValue))
-                        return string.Empty;
                     return sValue;
                 default:
                     if (value != null)
                     {
                         string? sValue = value.ToString();
-
-                        if (string.IsNullOrEmpty(sValue))
-                            return string.Empty;
-
-                        return sValue;
+                        return sValue ?? string.Empty;
                     }
                     throw new InvalidOperationException($"Cannot parse {value}");
             }

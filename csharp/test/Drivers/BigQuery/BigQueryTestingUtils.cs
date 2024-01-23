@@ -56,7 +56,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                { BigQueryParameters.ProjectId, testConfiguration.ProjectId },
             };
 
-            if(!string.IsNullOrEmpty(testConfiguration.JsonCredential))
+            if (!string.IsNullOrEmpty(testConfiguration.JsonCredential))
             {
                 parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.ServiceAccountAuthenticationType);
                 parameters.Add(BigQueryParameters.JsonCredential, testConfiguration.JsonCredential);

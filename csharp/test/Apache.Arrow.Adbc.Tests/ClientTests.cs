@@ -137,8 +137,8 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="sampleDataBuilder">The <see cref="SampleDataBuilder"/> to use</param>
         public static void VerifyTypesAndValues(Adbc.Client.AdbcConnection adbcConnection, SampleDataBuilder sampleDataBuilder)
         {
-            if(adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
-            if(sampleDataBuilder == null) throw new ArgumentNullException(nameof(sampleDataBuilder));
+            if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
+            if (sampleDataBuilder == null) throw new ArgumentNullException(nameof(sampleDataBuilder));
 
             adbcConnection.Open();
 
@@ -212,29 +212,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             if (value != null)
             {
-                if (value is IList && !(value is byte[]))
-                {
-                    IList list = value as IList;
-                    IList expectedList = ctv.ExpectedValue as IList;
-                    int i = -1;
-
-                    foreach (var actual in list)
-                    {
-                        i++;
-                        int j = -1;
-
-                        foreach (var expected in expectedList)
-                        {
-                            j++;
-
-                            if (i == j)
-                            {
-                                Assert.True(expected.Equals(actual), $"Expected value does not match actual value for {ctv.Name} at {i} for query [{query}]");
-                            }
-                        }
-                    }
-                }
-                else if (!value.GetType().BaseType.Name.Contains("PrimitiveArray"))
+                if (!value.GetType().BaseType.Name.Contains("PrimitiveArray"))
                 {
                     Assert.True(ctv.ExpectedNetType == value.GetType(), $"Expected type does not match actual type for {ctv.Name} for query [{query}]");
 
