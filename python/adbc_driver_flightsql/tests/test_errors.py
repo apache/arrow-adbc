@@ -15,7 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import os
 import re
+import signal
+import threading
+import time
 
 import google.protobuf.any_pb2 as any_pb2
 import google.protobuf.wrappers_pb2 as wrappers_pb2
@@ -42,6 +46,41 @@ def test_query_cancel(test_dbapi):
             test_dbapi.OperationalError,
             match=re.escape("CANCELLED: [FlightSQL] context canceled"),
         ):
+            cur.fetchone()
+
+
+def test_query_cancel_async(test_dbapi):
+    with test_dbapi.cursor() as cur:
+        cur.execute("forever")
+
+        def _cancel():
+            time.sleep(2)
+            cur.adbc_cancel()
+
+        t = threading.Thread(target=_cancel, daemon=True)
+        t.start()
+
+        with pytest.raises(
+            test_dbapi.OperationalError,
+            match=re.escape("CANCELLED: [FlightSQL] context canceled"),
+        ):
+            cur.fetchone()
+
+
+def test_query_cancel_sigint(test_dbapi):
+    with test_dbapi.cursor() as cur:
+        cur.execute("forever")
+
+        # XXX: this handles the case of DoGet taking forever, but we also will
+        # want to test GetFlightInfo taking forever
+
+        def _cancel():
+            time.sleep(2)
+            os.kill(os.getpid(), signal.SIGINT)
+
+        t = threading.Thread(target=_cancel, daemon=True)
+        t.start()
+        with pytest.raises(KeyboardInterrupt):
             cur.fetchone()
 
 

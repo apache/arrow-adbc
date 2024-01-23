@@ -477,6 +477,8 @@ jobs:
       - name: Test Python Driver Flight SQL
         shell: bash -l {0}
         run: |
+          docker compose up -d flightsql-test
+          export ADBC_TEST_FLIGHTSQL_URI=grpc://localhost:41414
           env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQL=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Build Python Driver PostgreSQL
         shell: bash -l {0}
