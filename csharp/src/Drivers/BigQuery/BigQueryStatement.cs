@@ -95,7 +95,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             switch (arrowArray)
             {
                 case StructArray structArray:
-                    return SerializeToJson(structArray, index);
+                     return SerializeToJson(structArray, index);
                 case ListArray listArray:
                     return listArray.GetSlicedValues(index);
                 default:
@@ -212,7 +212,22 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                 if (value is StructArray structArray1)
                 {
-                    jsonDictionary.Add(name, ParseStructArray(structArray1, index));
+                    List<Dictionary<string, object>> children = new List<Dictionary<string, object>>();
+
+                    if (structArray1.Length > 1)
+                    {
+                        for (int j = 0; j < structArray1.Length; j++)
+                            children.Add(ParseStructArray(structArray1, j));
+                    }
+
+                    if (children.Count > 0)
+                    {
+                        jsonDictionary.Add(name, children);
+                    }
+                    else
+                    {
+                        jsonDictionary.Add(name, ParseStructArray(structArray1, index));
+                    }
                 }
                 else if (value is IArrowArray arrowArray)
                 {
