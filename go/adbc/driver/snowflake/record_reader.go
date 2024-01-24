@@ -381,11 +381,6 @@ func jsonDataToArrow(ctx context.Context, bldr *array.RecordBuilder, ld gosnowfl
 
 				fb.Append(arrow.Time64(sec*1e9 + nsec))
 			case *array.TimestampBuilder:
-				tz, err := fb.Type().(*arrow.TimestampType).GetZone()
-				if err != nil {
-					return nil, err
-				}
-
 				snowflakeType, ok := bldr.Schema().Field(i).Metadata.GetValue(MetadataKeySnowflakeType)
 				if !ok {
 					return nil, errToAdbcErr(
@@ -394,14 +389,35 @@ func jsonDataToArrow(ctx context.Context, bldr *array.RecordBuilder, ld gosnowfl
 					)
 				}
 
-				if snowflakeType == "timestamp_ltz" {
-					sec, nsec, err := extractTimestamp(col)
+				if snowflakeType == "timestamp_tz" {
+					// "timestamp_tz" should be value + offset separated by space
+					tm := strings.Split(*col, " ")
+					if len(tm) != 2 {
+						return nil, adbc.Error{
+							Msg:        "invalid TIMESTAMP_TZ data. value doesn't consist of two numeric values separated by a space: " + *col,
+							SqlState:   [5]byte{'2', '2', '0', '0', '7'},
+							VendorCode: 268000,
+							Code:       adbc.StatusInvalidData,
+						}
+					}
+
+					sec, nsec, err := extractTimestamp(&tm[0])
 					if err != nil {
 						return nil, err
 					}
+					offset, err := strconv.ParseInt(tm[1], 10, 64)
+					if err != nil {
+						return nil, adbc.Error{
+							Msg:        "invalid TIMESTAMP_TZ data. offset value is not an integer: " + tm[1],
+							SqlState:   [5]byte{'2', '2', '0', '0', '7'},
+							VendorCode: 268000,
+							Code:       adbc.StatusInvalidData,
+						}
+					}
 
-					val := time.Unix(sec, nsec).In(tz)
-					ts, err := arrow.TimestampFromTime(val, arrow.Nanosecond)
+					loc := gosnowflake.Location(int(offset) - 1440)
+					tt := time.Unix(sec, nsec).In(loc)
+					ts, err := arrow.TimestampFromTime(tt, arrow.Nanosecond)
 					if err != nil {
 						return nil, err
 					}
@@ -409,48 +425,14 @@ func jsonDataToArrow(ctx context.Context, bldr *array.RecordBuilder, ld gosnowfl
 					break
 				}
 
-				if snowflakeType == "timestamp_ntz" {
-					sec, nsec, err := extractTimestamp(col)
-					if err != nil {
-						return nil, err
-					}
-
-					fb.Append(arrow.Timestamp(sec*1e9 + nsec))
-					break
-				}
-
-				// "timestamp_tz" should be value + offset separated by space
-				tm := strings.Split(*col, " ")
-				if len(tm) != 2 {
-					return nil, adbc.Error{
-						Msg:        "invalid TIMESTAMP_TZ data. value doesn't consist of two numeric values separated by a space: " + *col,
-						SqlState:   [5]byte{'2', '2', '0', '0', '7'},
-						VendorCode: 268000,
-						Code:       adbc.StatusInvalidData,
-					}
-				}
-
-				sec, nsec, err := extractTimestamp(&tm[0])
+				// otherwise timestamp_ntz or timestamp_ltz, which have the same physical representation
+				sec, nsec, err := extractTimestamp(col)
 				if err != nil {
 					return nil, err
 				}
-				offset, err := strconv.ParseInt(tm[1], 10, 64)
-				if err != nil {
-					return nil, adbc.Error{
-						Msg:        "invalid TIMESTAMP_TZ data. offset value is not an integer: " + tm[1],
-						SqlState:   [5]byte{'2', '2', '0', '0', '7'},
-						VendorCode: 268000,
-						Code:       adbc.StatusInvalidData,
-					}
-				}
 
-				loc := gosnowflake.Location(int(offset) - 1440)
-				tt := time.Unix(sec, nsec).In(loc)
-				ts, err := arrow.TimestampFromTime(tt, arrow.Nanosecond)
-				if err != nil {
-					return nil, err
-				}
-				fb.Append(ts)
+				fb.Append(arrow.Timestamp(sec*1e9 + nsec))
+
 			case *array.BinaryBuilder:
 				b, err := hex.DecodeString(*col)
 				if err != nil {
