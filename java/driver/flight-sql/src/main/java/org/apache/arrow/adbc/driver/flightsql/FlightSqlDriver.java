@@ -65,10 +65,6 @@ public class FlightSqlDriver implements AdbcDriver {
     } else {
       quirks = new SqlQuirks();
     }
-    return new FlightSqlDatabase(
-        allocator,
-        location,
-        (SqlQuirks) quirks,
-        parameters);
+    return new FlightSqlDatabase(allocator, location, (SqlQuirks) quirks, parameters);
   }
 }
