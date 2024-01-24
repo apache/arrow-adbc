@@ -611,8 +611,6 @@ func (suite *SnowflakeTests) TestSqlIngestRoundtripTypes() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
-	suite.T().Skip(`Timestamps without tz should use local semantics, those with
-	non-UTC tz should still use instant semantics; should succeed after GH-39466 is closed`)
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_timestamps"))
 
 	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
@@ -755,7 +753,6 @@ func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestDate64Type() {
-	suite.T().Skip("DATE64 type should coerce to Snowflake's internal 32-bit representation; should succeed after GH-39456 is closed")
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_date64"))
 
 	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
