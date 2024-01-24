@@ -69,7 +69,6 @@ public class FlightSqlDriver implements AdbcDriver {
         allocator,
         location,
         (SqlQuirks) quirks,
-        PARAM_USERNAME.get(parameters),
-        PARAM_PASSWORD.get(parameters));
+        parameters);
   }
 }

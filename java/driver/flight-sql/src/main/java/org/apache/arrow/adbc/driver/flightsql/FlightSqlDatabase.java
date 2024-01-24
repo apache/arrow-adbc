@@ -17,6 +17,7 @@
 
 package org.apache.arrow.adbc.driver.flightsql;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
@@ -31,33 +32,29 @@ public final class FlightSqlDatabase implements AdbcDatabase {
   private final Location location;
   private final SqlQuirks quirks;
   private final AtomicInteger counter;
-  private final String username;
-  private final String password;
+  private final Map<String, Object> parameters;
 
   FlightSqlDatabase(
       BufferAllocator allocator,
       Location location,
       SqlQuirks quirks,
-      String username,
-      String password)
+      Map<String, Object> parameters)
       throws AdbcException {
     this.allocator = allocator;
     this.location = location;
     this.quirks = quirks;
     this.counter = new AtomicInteger();
-    this.username = username;
-    this.password = password;
+    this.parameters = parameters;
   }
 
   @Override
   public AdbcConnection connect() throws AdbcException {
     final int count = counter.getAndIncrement();
     return new FlightSqlConnection(
-        allocator.newChildAllocator("adbc-jdbc-connection-" + count, 0, allocator.getLimit()),
+        allocator.newChildAllocator("adbc-flight-connection-" + count, 0, allocator.getLimit()),
         quirks,
         location,
-        username,
-        password);
+        parameters);
   }
 
   @Override
