@@ -26,6 +26,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 	"strconv"
@@ -36,9 +37,10 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v15/arrow"
+	"github.com/apache/arrow/go/v15/arrow/array"
+	"github.com/apache/arrow/go/v15/arrow/decimal128"
+	"github.com/apache/arrow/go/v15/arrow/memory"
 	"github.com/google/uuid"
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/stretchr/testify/require"
@@ -334,6 +336,7 @@ func (suite *SnowflakeTests) TearDownTest() {
 }
 
 func (suite *SnowflakeTests) TearDownSuite() {
+	suite.NoError(suite.db.Close())
 	suite.db = nil
 }
 
@@ -398,7 +401,7 @@ func (suite *SnowflakeTests) TestStatementEmptyResultSet() {
 	suite.True(rdr.Next())
 	rec := rdr.Record()
 	suite.Equal(n, rec.NumRows())
-	suite.EqualValues(25, rec.NumCols())
+	suite.EqualValues(26, rec.NumCols())
 
 	suite.False(rdr.Next())
 	suite.NoError(rdr.Err())
@@ -462,21 +465,21 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 		xdbcDateTimeSub  []string
 	}{
 		{
-			"BASIC",                       //name
-			[]string{"int64s", "strings"}, //colNames
-			[]string{"1", "2"},            //positions
-			[]string{"NUMBER", "TEXT"},    //dataTypes
-			[]string{"", ""},              //comments
-			[]string{"9", "13"},           //xdbcDataType
-			[]string{"NUMBER", "TEXT"},    //xdbcTypeName
-			[]string{"-5", "12"},          //xdbcSqlDataType
-			[]string{"1", "1"},            //xdbcNullable
-			[]string{"YES", "YES"},        //xdbcIsNullable
-			[]string{"0", "0"},            //xdbcScale
-			[]string{"10", "0"},           //xdbcNumPrecRadix
-			[]string{"38", "16777216"},    //xdbcCharMaxLen (xdbcPrecision)
-			[]string{"0", "16777216"},     //xdbcCharOctetLen
-			[]string{"-5", "12", "0"},     //xdbcDateTimeSub
+			"BASIC",                       // name
+			[]string{"int64s", "strings"}, // colNames
+			[]string{"1", "2"},            // positions
+			[]string{"NUMBER", "TEXT"},    // dataTypes
+			[]string{"", ""},              // comments
+			[]string{"9", "13"},           // xdbcDataType
+			[]string{"NUMBER", "TEXT"},    // xdbcTypeName
+			[]string{"-5", "12"},          // xdbcSqlDataType
+			[]string{"1", "1"},            // xdbcNullable
+			[]string{"YES", "YES"},        // xdbcIsNullable
+			[]string{"0", "0"},            // xdbcScale
+			[]string{"10", "0"},           // xdbcNumPrecRadix
+			[]string{"38", "16777216"},    // xdbcCharMaxLen (xdbcPrecision)
+			[]string{"0", "16777216"},     // xdbcCharOctetLen
+			[]string{"-5", "12", "0"},     // xdbcDateTimeSub
 		},
 	}
 
@@ -574,20 +577,20 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 
 			suite.False(rdr.Next())
 			suite.True(foundExpected)
-			suite.Equal(tt.colnames, colnames)                  //colNames
-			suite.Equal(tt.positions, positions)                //positions
-			suite.Equal(tt.comments, comments)                  //comments
-			suite.Equal(tt.xdbcDataType, xdbcDataTypes)         //xdbcDataType
-			suite.Equal(tt.dataTypes, dataTypes)                //dataTypes
-			suite.Equal(tt.xdbcTypeName, xdbcTypeNames)         //xdbcTypeName
-			suite.Equal(tt.xdbcCharMaxLen, xdbcCharMaxLens)     //xdbcCharMaxLen
-			suite.Equal(tt.xdbcScale, xdbcScales)               //xdbcScale
-			suite.Equal(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs) //xdbcNumPrecRadix
-			suite.Equal(tt.xdbcNullable, xdbcNullables)         //xdbcNullable
-			suite.Equal(tt.xdbcSqlDataType, xdbcSqlDataTypes)   //xdbcSqlDataType
-			suite.Equal(tt.xdbcDateTimeSub, xdbcDateTimeSub)    //xdbcDateTimeSub
-			suite.Equal(tt.xdbcCharOctetLen, xdbcCharOctetLen)  //xdbcCharOctetLen
-			suite.Equal(tt.xdbcIsNullable, xdbcIsNullables)     //xdbcIsNullable
+			suite.Equal(tt.colnames, colnames)                  // colNames
+			suite.Equal(tt.positions, positions)                // positions
+			suite.Equal(tt.comments, comments)                  // comments
+			suite.Equal(tt.xdbcDataType, xdbcDataTypes)         // xdbcDataType
+			suite.Equal(tt.dataTypes, dataTypes)                // dataTypes
+			suite.Equal(tt.xdbcTypeName, xdbcTypeNames)         // xdbcTypeName
+			suite.Equal(tt.xdbcCharMaxLen, xdbcCharMaxLens)     // xdbcCharMaxLen
+			suite.Equal(tt.xdbcScale, xdbcScales)               // xdbcScale
+			suite.Equal(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs) // xdbcNumPrecRadix
+			suite.Equal(tt.xdbcNullable, xdbcNullables)         // xdbcNullable
+			suite.Equal(tt.xdbcSqlDataType, xdbcSqlDataTypes)   // xdbcSqlDataType
+			suite.Equal(tt.xdbcDateTimeSub, xdbcDateTimeSub)    // xdbcDateTimeSub
+			suite.Equal(tt.xdbcCharOctetLen, xdbcCharOctetLen)  // xdbcCharOctetLen
+			suite.Equal(tt.xdbcIsNullable, xdbcIsNullables)     // xdbcIsNullable
 
 		})
 	}
@@ -603,6 +606,7 @@ func (suite *SnowflakeTests) TestNewDatabaseGetSetOptions() {
 	})
 	suite.NoError(err)
 	suite.NotNil(db)
+	defer suite.NoError(db.Close())
 
 	getSetDB, ok := db.(adbc.GetSetOptions)
 	suite.True(ok)
@@ -677,6 +681,98 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 
 	suite.Equal(1234567.89, rec.Column(1).(*array.Float64).Value(0))
 	suite.Equal(9876543210.99, rec.Column(1).(*array.Float64).Value(1))
+}
+
+func (suite *SnowflakeTests) TestDecimalHighPrecision() {
+	for sign := 0; sign <= 1; sign++ {
+		for scale := 0; scale <= 2; scale++ {
+			for precision := 3; precision <= 38; precision++ {
+				numberString := strings.Repeat("9", precision-scale) + "." + strings.Repeat("9", scale)
+				if sign == 1 {
+					numberString = "-" + numberString
+				}
+				query := "SELECT CAST('" + numberString + fmt.Sprintf("' AS NUMBER(%d, %d)) AS RESULT", precision, scale)
+				number, err := decimal128.FromString(numberString, int32(precision), int32(scale))
+				suite.NoError(err)
+
+				suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueEnabled))
+				suite.Require().NoError(suite.stmt.SetSqlQuery(query))
+				rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+				suite.Require().NoError(err)
+				defer rdr.Release()
+
+				suite.EqualValues(1, n)
+				suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: int32(precision), Scale: int32(scale)}, rdr.Schema().Field(0).Type), "expected decimal(%d, %d), got %s", precision, scale, rdr.Schema().Field(0).Type)
+				suite.True(rdr.Next())
+				rec := rdr.Record()
+
+				suite.Equal(number, rec.Column(0).(*array.Decimal128).Value(0))
+			}
+		}
+	}
+}
+
+func (suite *SnowflakeTests) TestNonIntDecimalLowPrecision() {
+	for sign := 0; sign <= 1; sign++ {
+		for precision := 3; precision <= 38; precision++ {
+			scale := 2
+			numberString := strings.Repeat("9", precision-scale) + ".99"
+			if sign == 1 {
+				numberString = "-" + numberString
+			}
+			query := "SELECT CAST('" + numberString + fmt.Sprintf("' AS NUMBER(%d, %d)) AS RESULT", precision, scale)
+			decimalNumber, err := decimal128.FromString(numberString, int32(precision), int32(scale))
+			suite.NoError(err)
+			number := decimalNumber.ToFloat64(int32(scale))
+
+			suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+			suite.Require().NoError(suite.stmt.SetSqlQuery(query))
+			rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+			suite.Require().NoError(err)
+			defer rdr.Release()
+
+			suite.EqualValues(1, n)
+			suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, rdr.Schema().Field(0).Type), "expected float64, got %s", rdr.Schema().Field(0).Type)
+			suite.True(rdr.Next())
+			rec := rdr.Record()
+
+			value := rec.Column(0).(*array.Float64).Value(0)
+			difference := math.Abs(number - value)
+			suite.Truef(difference < 1e-13, "expected %f, got %f", number, value)
+		}
+	}
+}
+
+func (suite *SnowflakeTests) TestIntDecimalLowPrecision() {
+	for sign := 0; sign <= 1; sign++ {
+		for precision := 3; precision <= 38; precision++ {
+			scale := 0
+			numberString := strings.Repeat("9", precision-scale)
+			if sign == 1 {
+				numberString = "-" + numberString
+			}
+			query := "SELECT CAST('" + numberString + fmt.Sprintf("' AS NUMBER(%d, %d)) AS RESULT", precision, scale)
+			decimalNumber, err := decimal128.FromString(numberString, int32(precision), int32(scale))
+			suite.NoError(err)
+			// The current behavior of the driver for decimal128 values too large to fit into 64 bits is to simply
+			// return the low 64 bits of the value.
+			number := int64(decimalNumber.LowBits())
+
+			suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+			suite.Require().NoError(suite.stmt.SetSqlQuery(query))
+			rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+			suite.Require().NoError(err)
+			defer rdr.Release()
+
+			suite.EqualValues(1, n)
+			suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, rdr.Schema().Field(0).Type), "expected int64, got %s", rdr.Schema().Field(0).Type)
+			suite.True(rdr.Next())
+			rec := rdr.Record()
+
+			value := rec.Column(0).(*array.Int64).Value(0)
+			suite.Equal(number, value)
+		}
+	}
 }
 
 func (suite *SnowflakeTests) TestDescribeOnly() {
@@ -768,6 +864,7 @@ func ConnectWithJwt(uri, keyValue, passcode string) {
 	if err != nil {
 		panic(err)
 	}
+	defer db.Close()
 
 	cnxn, err := db.Open(context.Background())
 	if err != nil {
@@ -777,6 +874,8 @@ func ConnectWithJwt(uri, keyValue, passcode string) {
 }
 
 func (suite *SnowflakeTests) TestJwtPrivateKey() {
+	suite.T().Skipf("apache/arrow-adbc#1364")
+
 	// grab the username from the DSN
 	cfg, err := gosnowflake.ParseDSN(suite.Quirks.dsn)
 	suite.NoError(err)
@@ -816,6 +915,7 @@ func (suite *SnowflakeTests) TestJwtPrivateKey() {
 		opts[driver.OptionJwtPrivateKey] = keyFile
 		db, err := suite.driver.NewDatabase(opts)
 		suite.NoError(err)
+		defer db.Close()
 		cnxn, err := db.Open(suite.ctx)
 		suite.NoError(err)
 		defer cnxn.Close()

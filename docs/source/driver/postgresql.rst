@@ -31,7 +31,7 @@ overall approach.
 .. _libpq: https://www.postgresql.org/docs/current/libpq.html
 .. _pgeon: https://github.com/0x0L/pgeon
 
-.. note:: The PostgreSQL driver is experimental.
+.. note:: The PostgreSQL driver is in beta.
           Performance/optimization and support for complex types and
           different ADBC features is still ongoing.
 
@@ -75,8 +75,7 @@ Installation
 
       .. code-block:: r
 
-         # install.packages("pak")
-         pak::pak("apache/arrow-adbc/r/adbcpostgresql")
+         install.packages("adbcpostgresql")
 
 Usage
 =====
@@ -125,6 +124,7 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
             if err != nil {
                // handle error
             }
+            defer db.Close()
 
             cnxn, err := db.Open(context.Background())
             if err != nil {
@@ -188,6 +188,134 @@ PostgreSQL allows defining new types at runtime, so the driver must
 build a mapping of available types.  This is currently done once at
 startup.
 
-Type support is currently limited.  Parameter binding and bulk
-ingestion support int16, int32, int64, and string.  Reading result
-sets is limited to int32, int64, float, double, and string.
+Type support is currently limited depending on the type and whether it is
+being read or written.
+
+.. list-table:: Arrow type to PostgreSQL type mapping
+   :header-rows: 1
+
+   * - Arrow Type
+     - As Bind Parameter
+     - In Bulk Ingestion [#bulk-ingestion]_
+
+   * - binary
+     - BYTEA
+     - BYTEA
+
+   * - bool
+     - BOOLEAN
+     - BOOLEAN
+
+   * - date32
+     - DATE
+     - DATE
+
+   * - date64
+     - ❌
+     - ❌
+
+   * - dictionary
+     - (as unpacked type)
+     - (as unpacked type, only for binary/string)
+
+   * - duration
+     - INTERVAL
+     - INTERVAL
+
+   * - float32
+     - REAL
+     - REAL
+
+   * - float64
+     - DOUBLE PRECISION
+     - DOUBLE PRECISION
+
+   * - int8
+     - SMALLINT
+     - SMALLINT
+
+   * - int16
+     - SMALLINT
+     - SMALLINT
+
+   * - int32
+     - INTEGER
+     - INTEGER
+
+   * - int64
+     - BIGINT
+     - BIGINT
+
+   * - large_binary
+     - ❌
+     - ❌
+
+   * - large_string
+     - TEXT
+     - TEXT
+
+   * - month_day_nano_interval
+     - INTERVAL
+     - INTERVAL
+
+   * - string
+     - TEXT
+     - TEXT
+
+   * - timestamp
+     - TIMESTAMP [#timestamp]_
+     - TIMESTAMP/TIMESTAMP WITH TIMEZONE
+
+.. list-table:: PostgreSQL type to Arrow type mapping
+   :header-rows: 1
+
+   * - PostgreSQL Type
+     - In Result Set
+
+   * - ARRAY
+     - list
+   * - BIGINT
+     - int64
+   * - BINARY
+     - binary
+   * - BOOLEAN
+     - bool
+   * - CHAR
+     - utf8
+   * - DATE
+     - date32
+   * - DOUBLE PRECISION
+     - float64
+   * - INTEGER
+     - int32
+   * - INTERVAL
+     - month_day_nano_interval
+   * - NUMERIC
+     - utf8 [#numeric-utf8]_
+   * - REAL
+     - float32
+   * - SMALLINT
+     - int16
+   * - TEXT
+     - utf8
+   * - TIME
+     - time64
+   * - TIMESTAMP WITH TIME ZONE
+     - timestamp[unit, UTC]
+   * - TIMESTAMP WITHOUT TIME ZONE
+     - timestamp[unit]
+   * - VARCHAR
+     - utf8
+
+.. [#bulk-ingestion] This is the data type used when creating/appending to a
+                     table from Arrow data via the bulk ingestion feature.
+
+.. [#numeric-utf8] NUMERIC types are read as the string representation of the
+                   value, because the PostgreSQL NUMERIC type cannot be
+                   losslessly converted to the Arrow decimal types.
+
+.. [#timestamp] When binding a timestamp value, the time zone (if present) is
+                ignored.  The value will be converted to microseconds and
+                adjusted to the PostgreSQL epoch (2000-01-01) and so may
+                overflow/underflow; an error will be returned if this would be
+                the case.

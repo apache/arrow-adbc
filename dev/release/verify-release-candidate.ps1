@@ -124,7 +124,7 @@ conda activate $(Join-Path $ArrowTempDir conda-env)
 # removes a bunch of other things, so force-remove instead
 # (https://github.com/conda-forge/libprotobuf-feedstock/issues/186)
 # Use conda, mamba appears to ignore --force
-conda remove --force gtest
+conda remove -y --force gtest
 
 # Activating doesn't appear to set GOROOT
 $env:GOROOT = $(Join-Path $ArrowTempDir conda-env go)

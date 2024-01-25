@@ -38,5 +38,10 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         /// List of columns associated with the table.
         /// </summary>
         public List<AdbcColumn> Columns { get; set; }
+
+        /// <summary>
+        /// The constrains associated with the table.
+        /// </summary>
+        public List<AdbcConstraint> Constraints { get;  set; }
     }
 }
