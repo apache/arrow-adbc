@@ -30,7 +30,7 @@ ADBC is:
   For example, result sets of queries in ADBC are all returned as
   streams of Arrow data, not row-by-row.
 - A set of implementations of that API in different languages (C/C++,
-  Go, Java, Python, and Ruby) that target different databases
+  C#/.NET, Go, Java, Python, and Ruby) that target different databases
   (e.g. PostgreSQL, SQLite, any database supporting Flight SQL).
 
 Why not just use JDBC/ODBC?

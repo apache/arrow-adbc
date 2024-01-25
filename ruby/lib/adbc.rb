@@ -24,6 +24,16 @@ require "adbc/loader"
 module ADBC
   class Error < StandardError
   end
+end
 
-  Loader.load
+ADBC::Loader.load
+begin
+  ADBCArrow::Loader.load
+rescue GObjectIntrospection::RepositoryError
+else
+  module ADBC
+    RawStatement = Statement
+    remove_const(:Statement)
+    Statement = ADBCArrow::Statement
+  end
 end

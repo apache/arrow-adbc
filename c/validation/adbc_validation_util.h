@@ -283,6 +283,10 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
         if (int errno_res = ArrowArrayAppendInterval(array, *v); errno_res != 0) {
           return errno_res;
         }
+      } else if constexpr (std::is_same<T, ArrowDecimal*>::value) {
+        if (int errno_res = ArrowArrayAppendDecimal(array, *v); errno_res != 0) {
+          return errno_res;
+        }
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
         return ENOTSUP;

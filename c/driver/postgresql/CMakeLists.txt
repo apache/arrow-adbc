@@ -76,7 +76,6 @@ if(ADBC_BUILD_TESTS)
                 driver-postgresql
                 SOURCES
                 postgres_type_test.cc
-                postgres_copy_reader_test.cc
                 postgresql_test.cc
                 EXTRA_LINK_LIBS
                 adbc_driver_common
@@ -91,6 +90,28 @@ if(ADBC_BUILD_TESTS)
                                      ${REPOSITORY_ROOT}/c/vendor
                                      ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-driver-postgresql-test)
+
+  add_test_case(driver_postgresql_copy_test
+                PREFIX
+                adbc
+                EXTRA_LABELS
+                driver-postgresql
+                SOURCES
+                copy/postgres_copy_reader_test.cc
+                copy/postgres_copy_writer_test.cc
+                EXTRA_LINK_LIBS
+                adbc_driver_common
+                adbc_validation
+                nanoarrow
+                ${TEST_LINK_LIBS})
+  target_compile_features(adbc-driver-postgresql-copy-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-driver-postgresql-copy-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}
+                                     ${REPOSITORY_ROOT}/c/
+                                     ${LIBPQ_INCLUDE_DIRS}
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
+  adbc_configure_target(adbc-driver-postgresql-copy-test)
 endif()
 
 if(ADBC_BUILD_BENCHMARKS)

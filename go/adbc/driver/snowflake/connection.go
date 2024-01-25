@@ -23,14 +23,15 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"io"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v15/arrow"
+	"github.com/apache/arrow/go/v15/arrow/array"
 	"github.com/snowflakedb/gosnowflake"
 )
 
@@ -238,124 +239,59 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 // All non-empty, non-nil strings should be a search pattern (as described
 // earlier).
 func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
+	metadataRecords, err := c.populateMetadata(ctx, depth, catalog, dbSchema, tableName, columnName, tableType)
+	if err != nil {
+		return nil, err
+	}
+
 	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
+	g.MetadataRecords = metadataRecords
 	if err := g.Init(c.db.Alloc, c.getObjectsDbSchemas, c.getObjectsTables); err != nil {
 		return nil, err
 	}
 	defer g.Release()
 
-	rows, err := c.sqldb.QueryContext(ctx, "SHOW TERSE DATABASES", nil)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var (
-		created              time.Time
-		name                 string
-		kind, dbname, schema sql.NullString
-	)
-	for rows.Next() {
-		if err := rows.Scan(&created, &name, &kind, &dbname, &schema); err != nil {
-			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
-		}
-
-		// SNOWFLAKE catalog contains functions and no tables
-		if name == "SNOWFLAKE" {
+	uniqueCatalogs := make(map[string]bool)
+	for _, data := range metadataRecords {
+		if !data.Dbname.Valid {
 			continue
 		}
 
-		// schema for SHOW TERSE DATABASES is:
-		// created_on:timestamp, name:text, kind:null, database_name:null, schema_name:null
-		// the last three columns are always null because they are not applicable for databases
-		// so we want values[1].(string) for the name
-		g.AppendCatalog(name)
+		if _, exists := uniqueCatalogs[data.Dbname.String]; !exists {
+			uniqueCatalogs[data.Dbname.String] = true
+			g.AppendCatalog(data.Dbname.String)
+		}
 	}
 
 	return g.Finish()
 }
 
-func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string) (result map[string][]string, err error) {
+func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, metadataRecords []internal.Metadata) (result map[string][]string, err error) {
 	if depth == adbc.ObjectDepthCatalogs {
 		return
 	}
 
-	conditions := make([]string, 0)
-	if catalog != nil && *catalog != "" {
-		conditions = append(conditions, ` CATALOG_NAME LIKE \'`+*catalog+`\'`)
-	}
-	if dbSchema != nil && *dbSchema != "" {
-		conditions = append(conditions, ` SCHEMA_NAME LIKE \'`+*dbSchema+`\'`)
-	}
-
-	cond := strings.Join(conditions, " AND ")
-	if cond != "" {
-		cond = `statement := 'SELECT * FROM (' || statement || ') WHERE ` + cond + `';`
-	}
-
 	result = make(map[string][]string)
-	const queryPrefix = `DECLARE
-	    c1 CURSOR FOR SELECT DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES;
-			res RESULTSET;
-			counter INTEGER DEFAULT 0;
-			statement VARCHAR DEFAULT '';
-		BEGIN
-		  FOR rec IN c1 DO
-				LET sharelist RESULTSET := (EXECUTE IMMEDIATE 'SHOW SHARES LIKE \'%' || rec.database_name || '%\'');
-				LET cnt RESULTSET := (SELECT COUNT(*) FROM TABLE(RESULT_SCAN(LAST_QUERY_ID())));
-				LET cnt_cur CURSOR for cnt;
-				LET share_cnt INTEGER DEFAULT 0;
-				OPEN cnt_cur;
-				FETCH cnt_cur INTO share_cnt;
-				CLOSE cnt_cur;
+	uniqueCatalogSchema := make(map[string]map[string]bool)
 
-				IF (share_cnt > 0) THEN
-					LET c2 CURSOR for sharelist;
-					LET created_on TIMESTAMP;
-					LET kind VARCHAR DEFAULT '';
-					LET share_name VARCHAR DEFAULT '';
-					LET dbname VARCHAR DEFAULT '';
-					OPEN c2;
-					FETCH c2 INTO created_on, kind, share_name, dbname;
-					CLOSE c2;
-					IF (dbname = '') THEN
-						CONTINUE;
-					END IF;
-				END IF;
-
-				IF (counter > 0) THEN
-				  statement := statement || ' UNION ALL ';
-				END IF;
-				statement := statement || ' SELECT CATALOG_NAME, SCHEMA_NAME FROM ' || rec.database_name || '.INFORMATION_SCHEMA.SCHEMATA';
-				counter := counter + 1;
-			END FOR;
-		  `
-	const querySuffix = `
-	    res := (EXECUTE IMMEDIATE :statement);
-			RETURN TABLE (res);
-		END;`
-
-	query := queryPrefix + cond + querySuffix
-	var rows *sql.Rows
-	rows, err = c.sqldb.QueryContext(ctx, query)
-	if err != nil {
-		err = errToAdbcErr(adbc.StatusIO, err)
-		return
-	}
-	defer rows.Close()
-
-	var catalogName, schemaName string
-	for rows.Next() {
-		if err = rows.Scan(&catalogName, &schemaName); err != nil {
-			err = errToAdbcErr(adbc.StatusIO, err)
-			return
+	for _, data := range metadataRecords {
+		if !data.Dbname.Valid || !data.Schema.Valid {
+			continue
 		}
 
-		cat, ok := result[catalogName]
-		if !ok {
+		if _, exists := uniqueCatalogSchema[data.Dbname.String]; !exists {
+			uniqueCatalogSchema[data.Dbname.String] = make(map[string]bool)
+		}
+
+		cat, exists := result[data.Dbname.String]
+		if !exists {
 			cat = make([]string, 0, 1)
 		}
-		result[catalogName] = append(cat, schemaName)
+
+		if _, exists := uniqueCatalogSchema[data.Dbname.String][data.Schema.String]; !exists {
+			result[data.Dbname.String] = append(cat, data.Schema.String)
+			uniqueCatalogSchema[data.Dbname.String][data.Schema.String] = true
+		}
 	}
 
 	return
@@ -363,15 +299,22 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 
 var loc = time.Now().Location()
 
-func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent bool, identGen, identInc sql.NullString, charMaxLength, charOctetLength sql.NullInt32, datetimePrec sql.NullInt16, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
+func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent, useHighPrecision bool, identGen, identInc sql.NullString, charMaxLength, charOctetLength sql.NullInt32, datetimePrec sql.NullInt16, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
 	ret.Name, ret.Nullable = name, isnullable
 
 	switch dataType {
 	case "NUMBER":
-		if !numScale.Valid || numScale.Int16 == 0 {
-			ret.Type = arrow.PrimitiveTypes.Int64
+		if useHighPrecision {
+			ret.Type = &arrow.Decimal128Type{
+				Precision: int32(numPrec.Int16),
+				Scale:     int32(numScale.Int16),
+			}
 		} else {
-			ret.Type = arrow.PrimitiveTypes.Float64
+			if !numScale.Valid || numScale.Int16 == 0 {
+				ret.Type = arrow.PrimitiveTypes.Int64
+			} else {
+				ret.Type = arrow.PrimitiveTypes.Float64
+			}
 		}
 	case "FLOAT":
 		fallthrough
@@ -510,7 +453,7 @@ func toXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
 	}
 }
 
-func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (result internal.SchemaToTableInfo, err error) {
+func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (result internal.SchemaToTableInfo, err error) {
 	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
 		return
 	}
@@ -518,154 +461,45 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	result = make(internal.SchemaToTableInfo)
 	includeSchema := depth == adbc.ObjectDepthAll || depth == adbc.ObjectDepthColumns
 
-	conditions := make([]string, 0)
-	if catalog != nil && *catalog != "" {
-		conditions = append(conditions, ` TABLE_CATALOG ILIKE \'`+*catalog+`\'`)
-	}
-	if dbSchema != nil && *dbSchema != "" {
-		conditions = append(conditions, ` TABLE_SCHEMA ILIKE \'`+*dbSchema+`\'`)
-	}
-	if tableName != nil && *tableName != "" {
-		conditions = append(conditions, ` TABLE_NAME ILIKE \'`+*tableName+`\'`)
-	}
-
-	const queryPrefix = `DECLARE
-		c1 CURSOR FOR SELECT DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES;
-		res RESULTSET;
-		counter INTEGER DEFAULT 0;
-		statement VARCHAR DEFAULT '';
-	BEGIN
-		FOR rec IN c1 DO
-			LET sharelist RESULTSET := (EXECUTE IMMEDIATE 'SHOW SHARES LIKE \'%' || rec.database_name || '%\'');
-			LET cnt RESULTSET := (SELECT COUNT(*) FROM TABLE(RESULT_SCAN(LAST_QUERY_ID())));
-			LET cnt_cur CURSOR for cnt;
-			LET share_cnt INTEGER DEFAULT 0;
-			OPEN cnt_cur;
-			FETCH cnt_cur INTO share_cnt;
-			CLOSE cnt_cur;
-
-			IF (share_cnt > 0) THEN
-				LET c2 CURSOR for sharelist;
-				LET created_on TIMESTAMP;
-				LET kind VARCHAR DEFAULT '';
-				LET share_name VARCHAR DEFAULT '';
-				LET dbname VARCHAR DEFAULT '';
-				OPEN c2;
-				FETCH c2 INTO created_on, kind, share_name, dbname;
-				CLOSE c2;
-				IF (dbname = '') THEN
-					CONTINUE;
-				END IF;
-			END IF;
-			IF (counter > 0) THEN
-				statement := statement || ' UNION ALL ';
-			END IF;
-			`
-
-	const noSchema = `statement := statement || ' SELECT table_catalog, table_schema, table_name, table_type FROM ' || rec.database_name || '.INFORMATION_SCHEMA.TABLES';
-			counter := counter + 1;
-		END FOR;
-		`
-
-	const getSchema = `statement := statement ||
-		' SELECT
-				table_catalog, table_schema, table_name, column_name,
-				ordinal_position, is_nullable::boolean, data_type, numeric_precision,
-				numeric_precision_radix, numeric_scale, is_identity::boolean,
-				identity_generation, identity_increment,
-				character_maximum_length, character_octet_length, datetime_precision, comment
-		FROM ' || rec.database_name || '.INFORMATION_SCHEMA.COLUMNS';
-
-		  counter := counter + 1;
-		END FOR;
-	  `
-
-	const querySuffix = `
-		res := (EXECUTE IMMEDIATE :statement);
-		RETURN TABLE (res);
-	END;`
-
-	// first populate the tables and table types
-	var rows *sql.Rows
-	var tblConditions []string
-	if len(tableType) > 0 {
-		tblConditions = append(conditions, ` TABLE_TYPE IN (\'`+strings.Join(tableType, `\',\'`)+`\')`)
-	} else {
-		tblConditions = conditions
-	}
-
-	cond := strings.Join(tblConditions, " AND ")
-	if cond != "" {
-		cond = `statement := 'SELECT * FROM (' || statement || ') WHERE ` + cond + `';`
-	}
-	query := queryPrefix + noSchema + cond + querySuffix
-	rows, err = c.sqldb.QueryContext(ctx, query)
-	if err != nil {
-		err = errToAdbcErr(adbc.StatusIO, err)
-		return
-	}
-	defer rows.Close()
-
-	var tblCat, tblSchema, tblName string
-	var tblType sql.NullString
-	for rows.Next() {
-		if err = rows.Scan(&tblCat, &tblSchema, &tblName, &tblType); err != nil {
-			err = errToAdbcErr(adbc.StatusIO, err)
-			return
+	uniqueCatalogSchemaTable := make(map[string]map[string]map[string]bool)
+	for _, data := range metadataRecords {
+		if !data.Dbname.Valid || !data.Schema.Valid || !data.TblName.Valid || !data.TblType.Valid {
+			continue
 		}
 
-		key := internal.CatalogAndSchema{
-			Catalog: tblCat, Schema: tblSchema}
+		if _, exists := uniqueCatalogSchemaTable[data.Dbname.String]; !exists {
+			uniqueCatalogSchemaTable[data.Dbname.String] = make(map[string]map[string]bool)
+		}
 
-		result[key] = append(result[key], internal.TableInfo{
-			Name: tblName, TableType: tblType.String})
+		if _, exists := uniqueCatalogSchemaTable[data.Dbname.String][data.Schema.String]; !exists {
+			uniqueCatalogSchemaTable[data.Dbname.String][data.Schema.String] = make(map[string]bool)
+		}
+
+		if _, exists := uniqueCatalogSchemaTable[data.Dbname.String][data.Schema.String][data.TblName.String]; !exists {
+			uniqueCatalogSchemaTable[data.Dbname.String][data.Schema.String][data.TblName.String] = true
+
+			key := internal.CatalogAndSchema{
+				Catalog: data.Dbname.String, Schema: data.Schema.String}
+
+			result[key] = append(result[key], internal.TableInfo{
+				Name: data.TblName.String, TableType: data.TblType.String})
+		}
 	}
 
 	if includeSchema {
-		// if we need to include the schemas of the tables, make another fetch
-		// to fetch the columns and column info
-		if columnName != nil && *columnName != "" {
-			conditions = append(conditions, ` column_name ILIKE \'`+*columnName+`\'`)
-		}
-		cond = strings.Join(conditions, " AND ")
-		if cond != "" {
-			cond = " WHERE " + cond
-		}
-		cond = `statement := 'SELECT * FROM (' || statement || ')` + cond +
-			` ORDER BY table_catalog, table_schema, table_name, ordinal_position';`
-		query = queryPrefix + getSchema + cond + querySuffix
-		rows, err = c.sqldb.QueryContext(ctx, query)
-		if err != nil {
-			return
-		}
-		defer rows.Close()
-
 		var (
-			colName, dataType                                         string
-			identGen, identIncrement, comment                         sql.NullString
-			ordinalPos                                                int
-			numericPrec, numericPrecRadix, numericScale, datetimePrec sql.NullInt16
-			isNullable, isIdent                                       bool
-			charMaxLength, charOctetLength                            sql.NullInt32
-
 			prevKey      internal.CatalogAndSchema
 			curTableInfo *internal.TableInfo
 			fieldList    = make([]arrow.Field, 0)
 		)
 
-		for rows.Next() {
-			// order here matches the order of the columns requested in the query
-			err = rows.Scan(&tblCat, &tblSchema, &tblName, &colName,
-				&ordinalPos, &isNullable, &dataType, &numericPrec,
-				&numericPrecRadix, &numericScale, &isIdent, &identGen,
-				&identIncrement, &charMaxLength, &charOctetLength, &datetimePrec, &comment)
-			if err != nil {
-				err = errToAdbcErr(adbc.StatusIO, err)
-				return
+		for _, data := range metadataRecords {
+			if !data.Dbname.Valid || !data.Schema.Valid || !data.TblName.Valid {
+				continue
 			}
 
-			key := internal.CatalogAndSchema{Catalog: tblCat, Schema: tblSchema}
-			if prevKey != key || (curTableInfo != nil && curTableInfo.Name != tblName) {
+			key := internal.CatalogAndSchema{Catalog: data.Dbname.String, Schema: data.Schema.String}
+			if prevKey != key || (curTableInfo != nil && curTableInfo.Name != data.TblName.String) {
 				if len(fieldList) > 0 && curTableInfo != nil {
 					curTableInfo.Schema = arrow.NewSchema(fieldList, nil)
 					fieldList = fieldList[:0]
@@ -673,7 +507,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 
 				info := result[key]
 				for i := range info {
-					if info[i].Name == tblName {
+					if info[i].Name == data.TblName.String {
 						curTableInfo = &info[i]
 						break
 					}
@@ -681,7 +515,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			}
 
 			prevKey = key
-			fieldList = append(fieldList, toField(colName, isNullable, dataType, numericPrec, numericPrecRadix, numericScale, isIdent, identGen, identIncrement, charMaxLength, charOctetLength, datetimePrec, comment, ordinalPos))
+			fieldList = append(fieldList, toField(data.ColName, data.IsNullable, data.DataType, data.NumericPrec, data.NumericPrecRadix, data.NumericScale, data.IsIdent, c.useHighPrecision, data.IdentGen, data.IdentIncrement, data.CharMaxLength, data.CharOctetLength, data.DatetimePrec, data.Comment, data.OrdinalPos))
 		}
 
 		if len(fieldList) > 0 && curTableInfo != nil {
@@ -689,6 +523,267 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 		}
 	}
 	return
+}
+
+func (c *cnxn) populateMetadata(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) ([]internal.Metadata, error) {
+	var metadataRecords []internal.Metadata
+	catalogMetadataRecords, err := c.getCatalogsMetadata(ctx)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+
+	matchingCatalogNames, err := getMatchingCatalogNames(catalogMetadataRecords, catalog)
+	if err != nil {
+		return nil, adbc.Error{
+			Msg:  err.Error(),
+			Code: adbc.StatusInvalidArgument,
+		}
+	}
+
+	if depth == adbc.ObjectDepthCatalogs {
+		metadataRecords = catalogMetadataRecords
+	} else if depth == adbc.ObjectDepthDBSchemas {
+		metadataRecords, err = c.getDbSchemasMetadata(ctx, matchingCatalogNames, catalog, dbSchema)
+	} else if depth == adbc.ObjectDepthTables {
+		metadataRecords, err = c.getTablesMetadata(ctx, matchingCatalogNames, catalog, dbSchema, tableName, tableType)
+	} else {
+		metadataRecords, err = c.getColumnsMetadata(ctx, matchingCatalogNames, catalog, dbSchema, tableName, columnName, tableType)
+	}
+
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+
+	return metadataRecords, nil
+}
+
+func (c *cnxn) getCatalogsMetadata(ctx context.Context) ([]internal.Metadata, error) {
+	metadataRecords := make([]internal.Metadata, 0)
+
+	rows, err := c.sqldb.QueryContext(ctx, prepareCatalogsSQL(), nil)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+
+	for rows.Next() {
+		var data internal.Metadata
+		var skipDbNullField, skipSchemaNullField sql.NullString
+		// schema for SHOW TERSE DATABASES is:
+		// created_on:timestamp, name:text, kind:null, database_name:null, schema_name:null
+		// the last three columns are always null because they are not applicable for databases
+		// so we want values[1].(string) for the name
+		if err := rows.Scan(&data.Created, &data.Dbname, &data.Kind, &skipDbNullField, &skipSchemaNullField); err != nil {
+			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
+		}
+
+		// SNOWFLAKE catalog contains functions and no tables
+		if data.Dbname.Valid && data.Dbname.String == "SNOWFLAKE" {
+			continue
+		}
+
+		metadataRecords = append(metadataRecords, data)
+	}
+	return metadataRecords, nil
+}
+
+func (c *cnxn) getDbSchemasMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string) ([]internal.Metadata, error) {
+	var metadataRecords []internal.Metadata
+	query, queryArgs := prepareDbSchemasSQL(matchingCatalogNames, catalog, dbSchema)
+	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var data internal.Metadata
+		if err = rows.Scan(&data.Dbname, &data.Schema); err != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, err)
+		}
+		metadataRecords = append(metadataRecords, data)
+	}
+	return metadataRecords, nil
+}
+
+func (c *cnxn) getTablesMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, tableType []string) ([]internal.Metadata, error) {
+	metadataRecords := make([]internal.Metadata, 0)
+	query, queryArgs := prepareTablesSQL(matchingCatalogNames, catalog, dbSchema, tableName, tableType)
+	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var data internal.Metadata
+		if err = rows.Scan(&data.Dbname, &data.Schema, &data.TblName, &data.TblType); err != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, err)
+		}
+		metadataRecords = append(metadataRecords, data)
+	}
+	return metadataRecords, nil
+}
+
+func (c *cnxn) getColumnsMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) ([]internal.Metadata, error) {
+	metadataRecords := make([]internal.Metadata, 0)
+	query, queryArgs := prepareColumnsSQL(matchingCatalogNames, catalog, dbSchema, tableName, columnName, tableType)
+	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+	defer rows.Close()
+
+	var data internal.Metadata
+
+	for rows.Next() {
+		// order here matches the order of the columns requested in the query
+		err = rows.Scan(&data.TblType, &data.Dbname, &data.Schema, &data.TblName, &data.ColName,
+			&data.OrdinalPos, &data.IsNullable, &data.DataType, &data.NumericPrec,
+			&data.NumericPrecRadix, &data.NumericScale, &data.IsIdent, &data.IdentGen,
+			&data.IdentIncrement, &data.CharMaxLength, &data.CharOctetLength, &data.DatetimePrec, &data.Comment)
+		if err != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, err)
+		}
+		metadataRecords = append(metadataRecords, data)
+	}
+	return metadataRecords, nil
+}
+
+func getMatchingCatalogNames(metadataRecords []internal.Metadata, catalog *string) ([]string, error) {
+	matchingCatalogNames := make([]string, 0)
+	var catalogPattern *regexp.Regexp
+	var err error
+	if catalogPattern, err = internal.PatternToRegexp(catalog); err != nil {
+		return nil, adbc.Error{
+			Msg:  err.Error(),
+			Code: adbc.StatusInvalidArgument,
+		}
+	}
+
+	for _, data := range metadataRecords {
+		if data.Dbname.Valid && data.Dbname.String == "SNOWFLAKE" {
+			continue
+		}
+		if catalogPattern != nil && !catalogPattern.MatchString(data.Dbname.String) {
+			continue
+		}
+
+		matchingCatalogNames = append(matchingCatalogNames, data.Dbname.String)
+	}
+	return matchingCatalogNames, nil
+}
+
+func prepareCatalogsSQL() string {
+	return "SHOW TERSE DATABASES"
+}
+
+func prepareDbSchemasSQL(matchingCatalogNames []string, catalog *string, dbSchema *string) (string, []interface{}) {
+	query := ""
+	for _, catalog_name := range matchingCatalogNames {
+		if query != "" {
+			query += " UNION ALL "
+		}
+		query += `SELECT * FROM "` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.SCHEMATA`
+	}
+
+	query = `SELECT CATALOG_NAME, SCHEMA_NAME FROM (` + query + `)`
+	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthDBSchemas, catalog, dbSchema, nil, nil, make([]string, 0))
+	if conditions != "" {
+		query += " WHERE " + conditions
+	}
+
+	return query, queryArgs
+}
+
+func prepareTablesSQL(matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, tableType []string) (string, []interface{}) {
+	query := ""
+	for _, catalog_name := range matchingCatalogNames {
+		if query != "" {
+			query += " UNION ALL "
+		}
+		query += `SELECT * FROM "` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES`
+	}
+
+	query = `SELECT table_catalog, table_schema, table_name, table_type FROM (` + query + `)`
+	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthTables, catalog, dbSchema, tableName, nil, tableType)
+	if conditions != "" {
+		query += " WHERE " + conditions
+	}
+	return query, queryArgs
+}
+
+func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (string, []interface{}) {
+	prefixQuery := ""
+	for _, catalogName := range matchingCatalogNames {
+		if prefixQuery != "" {
+			prefixQuery += " UNION ALL "
+		}
+		prefixQuery += `SELECT T.table_type,
+					C.*
+				FROM
+				"` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES AS T
+			JOIN
+				"` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.COLUMNS AS C
+			ON
+				T.table_catalog = C.table_catalog
+				AND T.table_schema = C.table_schema
+				AND t.table_name = C.table_name`
+	}
+
+	prefixQuery = `SELECT table_type, table_catalog, table_schema, table_name, column_name,
+						ordinal_position, is_nullable::boolean, data_type, numeric_precision,
+						numeric_precision_radix, numeric_scale, is_identity::boolean,
+						identity_generation, identity_increment,
+						character_maximum_length, character_octet_length, datetime_precision, comment FROM (` + prefixQuery + `)`
+	ordering := ` ORDER BY table_catalog, table_schema, table_name, ordinal_position`
+	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthColumns, catalog, dbSchema, tableName, columnName, tableType)
+	query := prefixQuery
+
+	if conditions != "" {
+		query += " WHERE " + conditions
+	}
+
+	query += ordering
+	return query, queryArgs
+}
+
+func prepareFilterConditions(depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (string, []interface{}) {
+	conditions := make([]string, 0)
+	queryArgs := make([]interface{}, 0)
+	if catalog != nil && *catalog != "" {
+		if depth == adbc.ObjectDepthDBSchemas {
+			conditions = append(conditions, ` CATALOG_NAME ILIKE ? `)
+		} else {
+			conditions = append(conditions, ` TABLE_CATALOG ILIKE ? `)
+		}
+		queryArgs = append(queryArgs, *catalog)
+	}
+	if dbSchema != nil && *dbSchema != "" {
+		if depth == adbc.ObjectDepthDBSchemas {
+			conditions = append(conditions, ` SCHEMA_NAME ILIKE ? `)
+		} else {
+			conditions = append(conditions, ` TABLE_SCHEMA ILIKE ? `)
+		}
+		queryArgs = append(queryArgs, *dbSchema)
+	}
+	if tableName != nil && *tableName != "" {
+		conditions = append(conditions, ` TABLE_NAME ILIKE ? `)
+		queryArgs = append(queryArgs, *tableName)
+	}
+	if columnName != nil && *columnName != "" {
+		conditions = append(conditions, ` COLUMN_NAME ILIKE ? `)
+		queryArgs = append(queryArgs, *columnName)
+	}
+
+	var tblConditions []string
+	if len(tableType) > 0 {
+		tblConditions = append(conditions, ` TABLE_TYPE IN ('`+strings.Join(tableType, `','`)+`')`)
+	} else {
+		tblConditions = conditions
+	}
+
+	cond := strings.Join(tblConditions, " AND ")
+	return cond, queryArgs
 }
 
 func descToField(name, typ, isnull, primary string, comment sql.NullString) (field arrow.Field, err error) {
@@ -858,12 +953,12 @@ func (c *cnxn) GetOptionDouble(key string) (float64, error) {
 func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
 	tblParts := make([]string, 0, 3)
 	if catalog != nil {
-		tblParts = append(tblParts, strconv.Quote(strings.ToUpper(*catalog)))
+		tblParts = append(tblParts, strconv.Quote(*catalog))
 	}
 	if dbSchema != nil {
-		tblParts = append(tblParts, strconv.Quote(strings.ToUpper(*dbSchema)))
+		tblParts = append(tblParts, strconv.Quote(*dbSchema))
 	}
-	tblParts = append(tblParts, strconv.Quote(strings.ToUpper(tableName)))
+	tblParts = append(tblParts, strconv.Quote(tableName))
 	fullyQualifiedTable := strings.Join(tblParts, ".")
 
 	rows, err := c.sqldb.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable)

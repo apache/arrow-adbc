@@ -119,7 +119,7 @@ class Option {
 
   Option() : type_(TYPE_MISSING) {}
   explicit Option(const std::string& value) : type_(TYPE_STRING), value_string_(value) {}
-  explicit Option(const std::basic_string<uint8_t>& value)
+  explicit Option(const std::vector<uint8_t>& value)
       : type_(TYPE_BYTES), value_bytes_(value) {}
   explicit Option(double value) : type_(TYPE_DOUBLE), value_double_(value) {}
   explicit Option(int64_t value) : type_(TYPE_INT), value_int_(value) {}
@@ -128,7 +128,7 @@ class Option {
 
   const std::string& GetStringUnsafe() const { return value_string_; }
 
-  const std::basic_string<uint8_t>& GetBytesUnsafe() const { return value_bytes_; }
+  const std::vector<uint8_t>& GetBytesUnsafe() const { return value_bytes_; }
 
   int64_t GetIntUnsafe() const { return value_int_; }
 
@@ -137,7 +137,7 @@ class Option {
  private:
   Type type_;
   std::string value_string_;
-  std::basic_string<uint8_t> value_bytes_;
+  std::vector<uint8_t> value_bytes_;
   double value_double_;
   int64_t value_int_;
 
@@ -165,7 +165,7 @@ class Option {
   AdbcStatusCode CGet(uint8_t* out, size_t* length) const {
     switch (type_) {
       case TYPE_BYTES: {
-        const std::basic_string<uint8_t>& value = GetBytesUnsafe();
+        const std::vector<uint8_t>& value = GetBytesUnsafe();
         if (*length < value.size()) {
           *length = value.size();
         } else {
@@ -231,8 +231,8 @@ class ObjectBase {
   virtual AdbcStatusCode Release(AdbcError* error) { return ADBC_STATUS_OK; }
 
   // Get an option that was previously set, providing an optional default value.
-  const Option& GetOption(const std::string& key,
-                          const Option& default_value = Option()) const {
+  virtual const Option& GetOption(const std::string& key,
+                                  const Option& default_value = Option()) const {
     auto result = options_.find(key);
     if (result == options_.end()) {
       return default_value;
@@ -266,7 +266,7 @@ class ObjectBase {
 
   AdbcStatusCode CSetOptionBytes(const char* key, const uint8_t* value, size_t length,
                                  AdbcError* error) {
-    std::basic_string<uint8_t> cppvalue(value, length);
+    std::vector<uint8_t> cppvalue(value, value + length);
     Option option(cppvalue);
     return SetOption(key, option);
   }
@@ -337,7 +337,51 @@ class DatabaseObjectBase : public ObjectBase {
 // implement the corresponding ConnectionXXX driver methods.
 class ConnectionObjectBase : public ObjectBase {
  public:
-  // TODO: Add connection functions here as methods
+  virtual AdbcStatusCode Commit(AdbcError* error) { return ADBC_STATUS_NOT_IMPLEMENTED; }
+
+  virtual AdbcStatusCode GetInfo(const uint32_t* info_codes, size_t info_codes_length,
+                                 ArrowArrayStream* out, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  virtual AdbcStatusCode GetObjects(int depth, const char* catalog, const char* db_schema,
+                                    const char* table_name, const char** table_type,
+                                    const char* column_name, ArrowArrayStream* out,
+                                    AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  virtual AdbcStatusCode GetTableSchema(const char* catalog, const char* db_schema,
+                                        const char* table_name, ArrowSchema* schema,
+                                        AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  virtual AdbcStatusCode GetTableTypes(ArrowArrayStream* out, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  virtual AdbcStatusCode ReadPartition(const uint8_t* serialized_partition,
+                                       size_t serialized_length, ArrowArrayStream* out,
+                                       AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  virtual AdbcStatusCode Rollback(AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  virtual AdbcStatusCode Cancel(AdbcError* error) { return ADBC_STATUS_NOT_IMPLEMENTED; }
+
+  virtual AdbcStatusCode GetStatistics(const char* catalog, const char* db_schema,
+                                       const char* table_name, char approximate,
+                                       ArrowArrayStream* out, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  virtual AdbcStatusCode GetStatisticNames(ArrowArrayStream* out, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
 };
 
 // Driver authors can subclass StatementObjectBase to track driver-specific
@@ -347,12 +391,35 @@ class ConnectionObjectBase : public ObjectBase {
 // implement the corresponding StatementXXX driver methods.
 class StatementObjectBase : public ObjectBase {
  public:
-  virtual AdbcStatusCode ExecuteQuery(struct ArrowArrayStream* stream,
-                                      int64_t* rows_affected, struct AdbcError* error) {
+  virtual AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
+                                      AdbcError* error) {
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
-  // TODO: Add remaining statement functions here as methods
+  virtual AdbcStatusCode ExecuteSchema(ArrowSchema* schema, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  virtual AdbcStatusCode Prepare(AdbcError* error) { return ADBC_STATUS_NOT_IMPLEMENTED; }
+
+  virtual AdbcStatusCode SetSqlQuery(const char* query, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  virtual AdbcStatusCode SetSubstraitPlan(const uint8_t* plan, size_t length,
+                                          AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  virtual AdbcStatusCode Bind(ArrowArray* values, ArrowSchema* schema, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  virtual AdbcStatusCode BindStream(ArrowArrayStream* stream, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  virtual AdbcStatusCode Cancel(AdbcError* error) { return ADBC_STATUS_NOT_IMPLEMENTED; }
 };
 
 // Driver authors can declare a template specialization of the Driver class
@@ -363,7 +430,7 @@ class Driver {
  public:
   static AdbcStatusCode Init(int version, void* raw_driver, AdbcError* error) {
     if (version != ADBC_VERSION_1_1_0) return ADBC_STATUS_NOT_IMPLEMENTED;
-    struct AdbcDriver* driver = (AdbcDriver*)raw_driver;
+    AdbcDriver* driver = (AdbcDriver*)raw_driver;
     std::memset(driver, 0, sizeof(AdbcDriver));
 
     // Driver lifecycle
@@ -403,6 +470,16 @@ class Driver {
     driver->ConnectionGetOptionBytes = &CGetOptionBytes<AdbcConnection, ConnectionT>;
     driver->ConnectionGetOptionInt = &CGetOptionInt<AdbcConnection, ConnectionT>;
     driver->ConnectionGetOptionDouble = &CGetOptionDouble<AdbcConnection, ConnectionT>;
+    driver->ConnectionCommit = &CConnectionCommit;
+    driver->ConnectionGetInfo = &CConnectionGetInfo;
+    driver->ConnectionGetObjects = &CConnectionGetObjects;
+    driver->ConnectionGetTableSchema = &CConnectionGetTableSchema;
+    driver->ConnectionGetTableTypes = &CConnectionGetTableTypes;
+    driver->ConnectionReadPartition = &CConnectionReadPartition;
+    driver->ConnectionRollback = &CConnectionRollback;
+    driver->ConnectionCancel = &CConnectionCancel;
+    driver->ConnectionGetStatistics = &CConnectionGetStatistics;
+    driver->ConnectionGetStatisticNames = &CConnectionGetStatisticNames;
 
     // Statement lifecycle
     driver->StatementNew = &CStatementNew;
@@ -419,6 +496,13 @@ class Driver {
     driver->StatementGetOptionDouble = &CGetOptionDouble<AdbcStatement, StatementT>;
 
     driver->StatementExecuteQuery = &CStatementExecuteQuery;
+    driver->StatementExecuteSchema = &CStatementExecuteSchema;
+    driver->StatementPrepare = &CStatementPrepare;
+    driver->StatementSetSqlQuery = &CStatementSetSqlQuery;
+    driver->StatementSetSubstraitPlan = &CStatementSetSubstraitPlan;
+    driver->StatementBind = &CStatementBind;
+    driver->StatementBindStream = &CStatementBindStream;
+    driver->StatementCancel = &CStatementCancel;
 
     return ADBC_STATUS_OK;
   }
@@ -538,6 +622,82 @@ class Driver {
     return private_data->Init(database->private_data, error);
   }
 
+  static AdbcStatusCode CConnectionCancel(AdbcConnection* connection, AdbcError* error) {
+    auto private_data = reinterpret_cast<ConnectionT*>(connection->private_data);
+    return private_data->Cancel(error);
+  }
+
+  static AdbcStatusCode CConnectionGetInfo(AdbcConnection* connection,
+                                           const uint32_t* info_codes,
+                                           size_t info_codes_length,
+                                           ArrowArrayStream* out, AdbcError* error) {
+    auto private_data = reinterpret_cast<ConnectionT*>(connection->private_data);
+    return private_data->GetInfo(info_codes, info_codes_length, out, error);
+  }
+
+  static AdbcStatusCode CConnectionGetObjects(AdbcConnection* connection, int depth,
+                                              const char* catalog, const char* db_schema,
+                                              const char* table_name,
+                                              const char** table_type,
+                                              const char* column_name,
+                                              ArrowArrayStream* out, AdbcError* error) {
+    auto private_data = reinterpret_cast<ConnectionT*>(connection->private_data);
+    return private_data->GetObjects(depth, catalog, db_schema, table_name, table_type,
+                                    column_name, out, error);
+  }
+
+  static AdbcStatusCode CConnectionGetStatistics(
+      AdbcConnection* connection, const char* catalog, const char* db_schema,
+      const char* table_name, char approximate, ArrowArrayStream* out, AdbcError* error) {
+    auto private_data = reinterpret_cast<ConnectionT*>(connection->private_data);
+    return private_data->GetStatistics(catalog, db_schema, table_name, approximate, out,
+                                       error);
+  }
+
+  static AdbcStatusCode CConnectionGetStatisticNames(AdbcConnection* connection,
+                                                     ArrowArrayStream* out,
+                                                     AdbcError* error) {
+    auto private_data = reinterpret_cast<ConnectionT*>(connection->private_data);
+    return private_data->GetStatisticNames(out, error);
+  }
+
+  static AdbcStatusCode CConnectionGetTableSchema(AdbcConnection* connection,
+                                                  const char* catalog,
+                                                  const char* db_schema,
+                                                  const char* table_name,
+                                                  ArrowSchema* schema, AdbcError* error) {
+    auto private_data = reinterpret_cast<ConnectionT*>(connection->private_data);
+    return private_data->GetTableSchema(catalog, db_schema, table_name, schema, error);
+  }
+
+  static AdbcStatusCode CConnectionGetTableTypes(AdbcConnection* connection,
+                                                 ArrowArrayStream* out,
+                                                 AdbcError* error) {
+    auto private_data = reinterpret_cast<ConnectionT*>(connection->private_data);
+    return private_data->GetTableTypes(out, error);
+  }
+
+  static AdbcStatusCode CConnectionReadPartition(AdbcConnection* connection,
+                                                 const uint8_t* serialized_partition,
+                                                 size_t serialized_length,
+                                                 ArrowArrayStream* out,
+                                                 AdbcError* error) {
+    auto private_data = reinterpret_cast<ConnectionT*>(connection->private_data);
+    return private_data->ReadPartition(serialized_partition, serialized_length, out,
+                                       error);
+  }
+
+  static AdbcStatusCode CConnectionCommit(AdbcConnection* connection, AdbcError* error) {
+    auto private_data = reinterpret_cast<ConnectionT*>(connection->private_data);
+    return private_data->Commit(error);
+  }
+
+  static AdbcStatusCode CConnectionRollback(AdbcConnection* connection,
+                                            AdbcError* error) {
+    auto private_data = reinterpret_cast<ConnectionT*>(connection->private_data);
+    return private_data->Rollback(error);
+  }
+
   // Statement trampolines
   static AdbcStatusCode CStatementNew(AdbcConnection* connection,
                                       AdbcStatement* statement, AdbcError* error) {
@@ -553,11 +713,51 @@ class Driver {
   }
 
   static AdbcStatusCode CStatementExecuteQuery(AdbcStatement* statement,
-                                               struct ArrowArrayStream* stream,
-                                               int64_t* rows_affected,
-                                               struct AdbcError* error) {
+                                               ArrowArrayStream* stream,
+                                               int64_t* rows_affected, AdbcError* error) {
     auto private_data = reinterpret_cast<StatementT*>(statement->private_data);
     return private_data->ExecuteQuery(stream, rows_affected, error);
+  }
+
+  static AdbcStatusCode CStatementExecuteSchema(AdbcStatement* statement,
+                                                ArrowSchema* schema, AdbcError* error) {
+    auto private_data = reinterpret_cast<StatementT*>(statement->private_data);
+    return private_data->ExecuteSchema(schema, error);
+  }
+
+  static AdbcStatusCode CStatementPrepare(AdbcStatement* statement, AdbcError* error) {
+    auto private_data = reinterpret_cast<StatementT*>(statement->private_data);
+    return private_data->Prepare(error);
+  }
+
+  static AdbcStatusCode CStatementSetSqlQuery(AdbcStatement* statement, const char* query,
+                                              AdbcError* error) {
+    auto private_data = reinterpret_cast<StatementT*>(statement->private_data);
+    return private_data->SetSqlQuery(query, error);
+  }
+
+  static AdbcStatusCode CStatementSetSubstraitPlan(AdbcStatement* statement,
+                                                   const uint8_t* plan, size_t length,
+                                                   AdbcError* error) {
+    auto private_data = reinterpret_cast<StatementT*>(statement->private_data);
+    return private_data->SetSubstraitPlan(plan, length, error);
+  }
+
+  static AdbcStatusCode CStatementBind(AdbcStatement* statement, ArrowArray* values,
+                                       ArrowSchema* schema, AdbcError* error) {
+    auto private_data = reinterpret_cast<StatementT*>(statement->private_data);
+    return private_data->Bind(values, schema, error);
+  }
+
+  static AdbcStatusCode CStatementBindStream(AdbcStatement* statement,
+                                             ArrowArrayStream* stream, AdbcError* error) {
+    auto private_data = reinterpret_cast<StatementT*>(statement->private_data);
+    return private_data->BindStream(stream, error);
+  }
+
+  static AdbcStatusCode CStatementCancel(AdbcStatement* statement, AdbcError* error) {
+    auto private_data = reinterpret_cast<StatementT*>(statement->private_data);
+    return private_data->Cancel(error);
   }
 };
 

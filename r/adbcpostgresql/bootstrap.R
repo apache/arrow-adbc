@@ -21,7 +21,9 @@ files_to_vendor <- c(
   "../../adbc.h",
   "../../c/driver/postgresql/postgres_util.h",
   "../../c/driver/postgresql/postgres_type.h",
-  "../../c/driver/postgresql/postgres_copy_reader.h",
+  "../../c/driver/postgresql/copy/copy_common.h",
+  "../../c/driver/postgresql/copy/reader.h",
+  "../../c/driver/postgresql/copy/writer.h",
   "../../c/driver/postgresql/statement.h",
   "../../c/driver/postgresql/statement.cc",
   "../../c/driver/postgresql/connection.h",
@@ -56,6 +58,10 @@ if (all(file.exists(files_to_vendor))) {
     )
   )
 
+  if (!dir.exists("src/copy")) {
+    dir.create("src/copy")
+  }
+
   if (all(file.copy(files_to_vendor, "src"))) {
     file.rename(
       c(
@@ -64,7 +70,10 @@ if (all(file.exists(files_to_vendor))) {
         "src/nanoarrow.hpp",
         "src/options.h",
         "src/utils.c",
-        "src/utils.h"
+        "src/utils.h",
+        "src/copy_common.h",
+        "src/reader.h",
+        "src/writer.h"
       ),
       c(
         "src/nanoarrow/nanoarrow.c",
@@ -72,7 +81,10 @@ if (all(file.exists(files_to_vendor))) {
         "src/nanoarrow/nanoarrow.hpp",
         "src/common/options.h",
         "src/common/utils.c",
-        "src/common/utils.h"
+        "src/common/utils.h",
+        "src/copy/copy_common.h",
+        "src/copy/reader.h",
+        "src/copy/writer.h"
       )
     )
     cat("All files successfully copied to src/\n")

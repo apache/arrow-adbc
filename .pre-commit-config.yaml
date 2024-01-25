@@ -32,18 +32,17 @@ repos:
     - id: mixed-line-ending
       name: "Mixed line endings (LF)"
       args: [--fix=lf]
-      exclude: '\.(bat|sln|csproj)$'
+      exclude: '\.(bat|sln)$'
     - id: mixed-line-ending
       name: "Mixed line endings (CRLF)"
       args: [--fix=crlf]
-      files: '\.(bat|sln|csproj)$'
+      files: '\.(bat|sln)$'
     - id: trailing-whitespace
       exclude: "^r/.*?/_snaps/.*?.md$"
-  - repo: https://github.com/pocc/pre-commit-hooks
-    rev: v1.3.5
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: "v14.0.6"
     hooks:
       - id: clang-format
-        args: [-i, --version=14]
         types_or: [c, c++]
   - repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
@@ -87,6 +86,12 @@ repos:
     hooks:
     - id: isort
       types_or: [python]
+  # TODO: Change this to vala-lang/vala-lint after
+  # https://github.com/vala-lang/vala-lint/pull/179 is merged.
+  - repo: https://github.com/kou/vala-lint
+    rev: pre-commit-hook
+    hooks:
+    - id: vala-lint
   - repo: local
     hooks:
     - id: apache-rat

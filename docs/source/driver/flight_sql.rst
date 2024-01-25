@@ -19,7 +19,7 @@
 Flight SQL Driver
 =================
 
-**Available for:** C/C++, GLib/Ruby, Go, Java, Python
+**Available for:** C/C++, GLib/Ruby, Go, Java, Python, R
 
 The Flight SQL Driver provides access to any database implementing a
 :doc:`arrow:format/FlightSql` compatible endpoint.
@@ -152,6 +152,7 @@ the :cpp:class:`AdbcDatabase`.
             if err != nil {
                 // do something with the error
             }
+            defer db.Close()
 
             cnxn, err := db.Open(context.Background())
             if err != nil {
