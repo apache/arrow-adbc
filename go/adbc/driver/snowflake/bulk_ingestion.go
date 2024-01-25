@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"runtime"
 	"strings"
 	"sync"
@@ -276,6 +277,7 @@ func newWriterProps(mem memory.Allocator, opts *ingestOptions) (*parquet.WriterP
 		parquet.WithDictionaryDefault(false),
 		// Stats won't be used since the file is dropped after ingestion completes
 		parquet.WithStats(false),
+		parquet.WithMaxRowGroupLength(math.MaxInt64),
 	)
 	arrowProps := pqarrow.NewArrowWriterProperties(pqarrow.WithAllocator(mem))
 
@@ -560,6 +562,7 @@ func (bp *bufferPool) PutBuffer(buf *bytes.Buffer) {
 
 // Wraps an io.Writer and specifies a limit.
 // Keeps track of how many bytes have been written and can report whether the limit has been exceeded.
+// TODO(ARROW-39789): We prefer to use RowGroupTotalBytesWritten on the ParquetWriter, but there seems to be a discrepency with the count.
 type limitWriter struct {
 	w     io.Writer
 	limit int
