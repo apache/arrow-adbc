@@ -58,7 +58,7 @@ use arrow_array::builder::{
     ArrayBuilder, BooleanBufferBuilder, BooleanBuilder, Int16Builder, Int32BufferBuilder,
     Int32Builder, ListBuilder, StringBuilder,
 };
-use arrow_array::{ArrayRef, ListArray, RecordBatch, StructArray};
+use arrow_array::{Array, ArrayRef, ListArray, RecordBatch, StructArray};
 use arrow_data::ArrayDataBuilder;
 use arrow_schema::{DataType, Field};
 
@@ -103,12 +103,12 @@ impl UsageArrayBuilder {
         }
     }
 
-    pub fn schema() -> Vec<Field> {
+    pub fn schema() -> Vec<Arc<Field>> {
         vec![
-            Field::new("fk_catalog", DataType::Utf8, true),
-            Field::new("fk_db_schema", DataType::Utf8, true),
-            Field::new("fk_table", DataType::Utf8, false),
-            Field::new("fk_column_name", DataType::Utf8, false),
+            Arc::new(Field::new("fk_catalog", DataType::Utf8, true)),
+            Arc::new(Field::new("fk_db_schema", DataType::Utf8, true)),
+            Arc::new(Field::new("fk_table", DataType::Utf8, false)),
+            Arc::new(Field::new("fk_column_name", DataType::Utf8, false)),
         ]
     }
 
@@ -194,21 +194,21 @@ impl ConstraintArrayBuilder {
         }
     }
 
-    pub fn schema() -> Vec<Field> {
-        let usage_schema = DataType::Struct(UsageArrayBuilder::schema());
+    pub fn schema() -> Vec<Arc<Field>> {
+        let usage_schema = DataType::Struct(UsageArrayBuilder::schema().into());
         vec![
-            Field::new("constraint_name", DataType::Utf8, true),
-            Field::new("constraint_type", DataType::Utf8, false),
-            Field::new(
+            Arc::new(Field::new("constraint_name", DataType::Utf8, true)),
+            Arc::new(Field::new("constraint_type", DataType::Utf8, false)),
+            Arc::new(Field::new(
                 "constraint_column_names",
-                DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
+                DataType::List(Arc::new(Field::new("item", DataType::Utf8, true))),
                 false,
-            ),
-            Field::new(
+            )),
+            Arc::new(Field::new(
                 "constraint_column_usage",
-                DataType::List(Box::new(Field::new("item", usage_schema, true))),
+                DataType::List(Arc::new(Field::new("item", usage_schema, true))),
                 true,
-            ),
+            )),
         ]
     }
 
@@ -247,8 +247,8 @@ impl ConstraintArrayBuilder {
 
     pub fn finish(mut self) -> StructArray {
         let usage_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
-            .null_bit_buffer(Some(self.usage_validity.finish()))
-            .add_child_data(self.usage.finish().data().clone())
+            .null_bit_buffer(Some(self.usage_validity.into()))
+            .add_child_data(self.usage.finish().to_data().clone())
             .add_buffer(self.usage_offsets.finish())
             .build()
             .expect("usage data is invalid");
@@ -350,27 +350,31 @@ impl ColumnArrayBuilder {
         }
     }
 
-    pub fn schema() -> Vec<Field> {
+    pub fn schema() -> Vec<Arc<Field>> {
         vec![
-            Field::new("column_name", DataType::Utf8, false),
-            Field::new("ordinal_position", DataType::Int32, true),
-            Field::new("remarks", DataType::Utf8, true),
-            Field::new("xdbc_data_type", DataType::Int16, true),
-            Field::new("xdbc_type_name", DataType::Utf8, true),
-            Field::new("xdbc_column_size", DataType::Int32, true),
-            Field::new("xdbc_decimal_digits", DataType::Int16, true),
-            Field::new("xdbc_num_prec_radix", DataType::Int16, true),
-            Field::new("xdbc_nullable", DataType::Int16, true),
-            Field::new("xdbc_column_def", DataType::Utf8, true),
-            Field::new("xdbc_sql_data_type", DataType::Int16, true),
-            Field::new("xdbc_datetime_sub", DataType::Int16, true),
-            Field::new("xdbc_char_octet_length", DataType::Int32, true),
-            Field::new("xdbc_is_nullable", DataType::Utf8, true),
-            Field::new("xdbc_scope_catalog", DataType::Utf8, true),
-            Field::new("xdbc_scope_schema", DataType::Utf8, true),
-            Field::new("xdbc_scope_table", DataType::Utf8, true),
-            Field::new("xdbc_is_autoincrement", DataType::Boolean, true),
-            Field::new("xdbc_is_generatedcolumn", DataType::Boolean, true),
+            Arc::new(Field::new("column_name", DataType::Utf8, false)),
+            Arc::new(Field::new("ordinal_position", DataType::Int32, true)),
+            Arc::new(Field::new("remarks", DataType::Utf8, true)),
+            Arc::new(Field::new("xdbc_data_type", DataType::Int16, true)),
+            Arc::new(Field::new("xdbc_type_name", DataType::Utf8, true)),
+            Arc::new(Field::new("xdbc_column_size", DataType::Int32, true)),
+            Arc::new(Field::new("xdbc_decimal_digits", DataType::Int16, true)),
+            Arc::new(Field::new("xdbc_num_prec_radix", DataType::Int16, true)),
+            Arc::new(Field::new("xdbc_nullable", DataType::Int16, true)),
+            Arc::new(Field::new("xdbc_column_def", DataType::Utf8, true)),
+            Arc::new(Field::new("xdbc_sql_data_type", DataType::Int16, true)),
+            Arc::new(Field::new("xdbc_datetime_sub", DataType::Int16, true)),
+            Arc::new(Field::new("xdbc_char_octet_length", DataType::Int32, true)),
+            Arc::new(Field::new("xdbc_is_nullable", DataType::Utf8, true)),
+            Arc::new(Field::new("xdbc_scope_catalog", DataType::Utf8, true)),
+            Arc::new(Field::new("xdbc_scope_schema", DataType::Utf8, true)),
+            Arc::new(Field::new("xdbc_scope_table", DataType::Utf8, true)),
+            Arc::new(Field::new("xdbc_is_autoincrement", DataType::Boolean, true)),
+            Arc::new(Field::new(
+                "xdbc_is_generatedcolumn",
+                DataType::Boolean,
+                true,
+            )),
         ]
     }
 
@@ -492,23 +496,23 @@ impl TableArrayBuilder {
         }
     }
 
-    pub fn schema() -> Vec<Field> {
-        let constraint_schema = DataType::Struct(ConstraintArrayBuilder::schema());
-        let column_schema = DataType::Struct(ColumnArrayBuilder::schema());
+    pub fn schema() -> Vec<Arc<Field>> {
+        let constraint_schema = DataType::Struct(ConstraintArrayBuilder::schema().into());
+        let column_schema = DataType::Struct(ColumnArrayBuilder::schema().into());
 
         vec![
-            Field::new("table_name", DataType::Utf8, false),
-            Field::new("table_type", DataType::Utf8, false),
-            Field::new(
+            Arc::new(Field::new("table_name", DataType::Utf8, false)),
+            Arc::new(Field::new("table_type", DataType::Utf8, false)),
+            Arc::new(Field::new(
                 "table_columns",
-                DataType::List(Box::new(Field::new("item", column_schema, true))),
+                DataType::List(Arc::new(Field::new("item", column_schema, true))),
                 true,
-            ),
-            Field::new(
+            )),
+            Arc::new(Field::new(
                 "table_constraints",
-                DataType::List(Box::new(Field::new("item", constraint_schema, true))),
+                DataType::List(Arc::new(Field::new("item", constraint_schema, true))),
                 true,
-            ),
+            )),
         ]
     }
 
@@ -539,15 +543,15 @@ impl TableArrayBuilder {
 
     pub fn finish(mut self) -> StructArray {
         let columns_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
-            .null_bit_buffer(Some(self.columns_validity.finish()))
-            .add_child_data(self.table_columns.finish().data().clone())
+            .null_bit_buffer(Some(self.columns_validity.into()))
+            .add_child_data(self.table_columns.finish().to_data().clone())
             .add_buffer(self.columns_offsets.finish())
             .build()
             .expect("columns data is invalid");
 
         let constraints_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
-            .null_bit_buffer(Some(self.constraints_validity.finish()))
-            .add_child_data(self.table_constraints.finish().data().clone())
+            .null_bit_buffer(Some(self.constraints_validity.into()))
+            .add_child_data(self.table_constraints.finish().to_data().clone())
             .add_buffer(self.constraints_offsets.finish())
             .build()
             .expect("constraints data is invalid");
@@ -598,16 +602,16 @@ impl DbSchemaArrayBuilder {
         }
     }
 
-    pub fn schema() -> Vec<Field> {
-        let table_schema = DataType::Struct(TableArrayBuilder::schema());
+    pub fn schema() -> Vec<Arc<Field>> {
+        let table_schema = DataType::Struct(TableArrayBuilder::schema().into());
 
         vec![
-            Field::new("db_schema_name", DataType::Utf8, true),
-            Field::new(
+            Arc::new(Field::new("db_schema_name", DataType::Utf8, true)),
+            Arc::new(Field::new(
                 "db_schema_tables",
-                DataType::List(Box::new(Field::new("item", table_schema, true))),
+                DataType::List(Arc::new(Field::new("item", table_schema, true))),
                 true,
-            ),
+            )),
         ]
     }
 
@@ -632,8 +636,8 @@ impl DbSchemaArrayBuilder {
 
     pub fn finish(mut self) -> StructArray {
         let tables_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
-            .null_bit_buffer(Some(self.tables_validity.finish()))
-            .add_child_data(self.tables.finish().data().clone())
+            .null_bit_buffer(Some(self.tables_validity.into()))
+            .add_child_data(self.tables.finish().to_data().clone())
             .add_buffer(self.tables_offsets.finish())
             .build()
             .expect("columns data is invalid");
@@ -682,16 +686,16 @@ impl CatalogArrayBuilder {
         }
     }
 
-    pub fn schema() -> Vec<Field> {
-        let db_schema_schema = DataType::Struct(DbSchemaArrayBuilder::schema());
+    pub fn schema() -> Vec<Arc<Field>> {
+        let db_schema_schema = DataType::Struct(DbSchemaArrayBuilder::schema().into());
 
         vec![
-            Field::new("catalog_name", DataType::Utf8, true),
-            Field::new(
+            Arc::new(Field::new("catalog_name", DataType::Utf8, true)),
+            Arc::new(Field::new(
                 "catalog_db_schemas",
-                DataType::List(Box::new(Field::new("item", db_schema_schema, true))),
+                DataType::List(Arc::new(Field::new("item", db_schema_schema, true))),
                 true,
-            ),
+            )),
         ]
     }
 
@@ -709,8 +713,8 @@ impl CatalogArrayBuilder {
 
     pub fn finish(mut self) -> StructArray {
         let schemas_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
-            .null_bit_buffer(Some(self.schemas_validity.finish()))
-            .add_child_data(self.schemas.finish().data().clone())
+            .null_bit_buffer(Some(self.schemas_validity.into()))
+            .add_child_data(self.schemas.finish().to_data().clone())
             .add_buffer(self.schemas_offsets.finish())
             .build()
             .expect("columns data is invalid");
