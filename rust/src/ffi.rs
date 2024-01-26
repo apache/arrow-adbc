@@ -79,6 +79,7 @@
 //! assert_eq!(error.sqlstate, [2, 2, 0, 2, 1]);
 //! ```
 //!
+#![allow(non_camel_case_types)]
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::ptr::{null, null_mut};
 
