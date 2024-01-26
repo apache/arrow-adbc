@@ -70,24 +70,22 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// <exception cref="ArgumentException"></exception>
         internal void Open()
         {
-            string projectId = string.Empty;
-            string clientId = string.Empty;
-            string clientSecret = string.Empty;
-            string refreshToken = string.Empty;
+            string? projectId = null;
+            string? clientId = null;
+            string? clientSecret = null;
+            string? refreshToken = null;
 
             string tokenEndpoint = BigQueryConstants.TokenEndpoint;
 
-            string authenticationType = BigQueryConstants.UserAuthenticationType;
+            string? authenticationType = BigQueryConstants.UserAuthenticationType;
 
             // TODO: handle token expiration
 
             if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
                 throw new ArgumentException($"The {BigQueryParameters.ProjectId} parameter is not present");
 
-            if (this.properties.ContainsKey(BigQueryParameters.AuthenticationType))
+            if (this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType))
             {
-                this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType);
-
                 if (!authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase) &&
                     !authenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase))
                 {
@@ -95,7 +93,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
             }
 
-            if (authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(authenticationType) && authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase))
             {
                 if (!this.properties.TryGetValue(BigQueryParameters.ClientId, out clientId))
                     throw new ArgumentException($"The {BigQueryParameters.ClientId} parameter is not present");
@@ -106,19 +104,41 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (!this.properties.TryGetValue(BigQueryParameters.RefreshToken, out refreshToken))
                     throw new ArgumentException($"The {BigQueryParameters.RefreshToken} parameter is not present");
 
-                this.credential = GoogleCredential.FromAccessToken(GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint));
+                this.credential = ApplyScopes(GoogleCredential.FromAccessToken(GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint)));
             }
             else
             {
-                string json = string.Empty;
+                string? json = string.Empty;
 
                 if (!this.properties.TryGetValue(BigQueryParameters.JsonCredential, out json))
                     throw new ArgumentException($"The {BigQueryParameters.JsonCredential} parameter is not present");
 
-                this.credential = GoogleCredential.FromJson(json);
+                this.credential = ApplyScopes(GoogleCredential.FromJson(json));
             }
 
             this.client = BigQueryClient.Create(projectId, this.credential);
+        }
+
+        /// <summary>
+        /// Apply any additional scopes to the credential.
+        /// </summary>
+        /// <param name="credential"><see cref="GoogleCredential"/></param>
+        /// <returns></returns>
+        private GoogleCredential ApplyScopes(GoogleCredential credential)
+        {
+            if (credential == null) throw new ArgumentNullException(nameof(credential));
+
+            if (this.properties.TryGetValue(BigQueryParameters.Scopes, out string? scopes))
+            {
+                if (!string.IsNullOrEmpty(scopes))
+                {
+                    IEnumerable<string> parsedScopes = scopes.Split(',').Where(x => x.Length > 0);
+
+                    return credential.CreateScoped(parsedScopes);
+                }
+            }
+
+            return credential;
         }
 
         public override IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
@@ -261,23 +281,26 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             StringArray.Builder catalogNameBuilder = new StringArray.Builder();
             List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>();
             string catalogRegexp = PatternToRegEx(catalogPattern);
-            PagedEnumerable<ProjectList, CloudProject> catalogs = this.client.ListProjects();
+            PagedEnumerable<ProjectList, CloudProject>? catalogs = this.client?.ListProjects();
 
-            foreach (CloudProject catalog in catalogs)
+            if (catalogs != null)
             {
-                if (Regex.IsMatch(catalog.ProjectId, catalogRegexp, RegexOptions.IgnoreCase))
+                foreach (CloudProject catalog in catalogs)
                 {
-                    catalogNameBuilder.Append(catalog.ProjectId);
+                    if (Regex.IsMatch(catalog.ProjectId, catalogRegexp, RegexOptions.IgnoreCase))
+                    {
+                        catalogNameBuilder.Append(catalog.ProjectId);
 
-                    if (depth == GetObjectsDepth.Catalogs)
-                    {
-                        catalogDbSchemasValues.Add(null);
-                    }
-                    else
-                    {
-                        catalogDbSchemasValues.Add(GetDbSchemas(
-                            depth, catalog.ProjectId, dbSchemaPattern,
-                            tableNamePattern, tableTypes, columnNamePattern));
+                        if (depth == GetObjectsDepth.Catalogs)
+                        {
+                            catalogDbSchemasValues.Add(null);
+                        }
+                        else
+                        {
+                            catalogDbSchemasValues.Add(GetDbSchemas(
+                                depth, catalog.ProjectId, dbSchemaPattern,
+                                tableNamePattern, tableTypes, columnNamePattern));
+                        }
                     }
                 }
             }
@@ -306,25 +329,28 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             string dbSchemaRegexp = PatternToRegEx(dbSchemaPattern);
 
-            PagedEnumerable<DatasetList, BigQueryDataset> schemas = this.client.ListDatasets(catalog);
+            PagedEnumerable<DatasetList, BigQueryDataset>? schemas = this.client?.ListDatasets(catalog);
 
-            foreach (BigQueryDataset schema in schemas)
+            if (schemas != null)
             {
-                if (Regex.IsMatch(schema.Reference.DatasetId, dbSchemaRegexp, RegexOptions.IgnoreCase))
+                foreach (BigQueryDataset schema in schemas)
                 {
-                    dbSchemaNameBuilder.Append(schema.Reference.DatasetId);
-                    length++;
-                    nullBitmapBuffer.Append(true);
+                    if (Regex.IsMatch(schema.Reference.DatasetId, dbSchemaRegexp, RegexOptions.IgnoreCase))
+                    {
+                        dbSchemaNameBuilder.Append(schema.Reference.DatasetId);
+                        length++;
+                        nullBitmapBuffer.Append(true);
 
-                    if (depth == GetObjectsDepth.DbSchemas)
-                    {
-                        dbSchemaTablesValues.Add(null);
-                    }
-                    else
-                    {
-                        dbSchemaTablesValues.Add(GetTableSchemas(
-                            depth, catalog, schema.Reference.DatasetId,
-                            tableNamePattern, tableTypes, columnNamePattern));
+                        if (depth == GetObjectsDepth.DbSchemas)
+                        {
+                            dbSchemaTablesValues.Add(null);
+                        }
+                        else
+                        {
+                            dbSchemaTablesValues.Add(GetTableSchemas(
+                                depth, catalog, schema.Reference.DatasetId,
+                                tableNamePattern, tableTypes, columnNamePattern));
+                        }
                     }
                 }
             }
@@ -379,25 +405,28 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
             }
 
-            BigQueryResults result = this.client.ExecuteQuery(query, parameters: null);
+            BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            foreach (BigQueryRow row in result)
+            if (result != null)
             {
-                tableNameBuilder.Append(row["table_name"].ToString());
-                tableTypeBuilder.Append(row["table_type"].ToString());
-                nullBitmapBuffer.Append(true);
-                length++;
-
-                tableConstraintsValues.Add(GetConstraintSchema(
-                    depth, catalog, dbSchema, row["table_name"].ToString(), columnNamePattern));
-
-                if (depth == GetObjectsDepth.Tables)
+                foreach (BigQueryRow row in result)
                 {
-                    tableColumnsValues.Add(null);
-                }
-                else
-                {
-                    tableColumnsValues.Add(GetColumnSchema(catalog, dbSchema, row["table_name"].ToString(), columnNamePattern));
+                    tableNameBuilder.Append(GetValue(row["table_name"]));
+                    tableTypeBuilder.Append(GetValue(row["table_type"]));
+                    nullBitmapBuffer.Append(true);
+                    length++;
+
+                    tableConstraintsValues.Add(GetConstraintSchema(
+                        depth, catalog, dbSchema, GetValue(row["table_name"]), columnNamePattern));
+
+                    if (depth == GetObjectsDepth.Tables)
+                    {
+                        tableColumnsValues.Add(null);
+                    }
+                    else
+                    {
+                        tableColumnsValues.Add(GetColumnSchema(catalog, dbSchema, GetValue(row["table_name"]), columnNamePattern));
+                    }
                 }
             }
 
@@ -452,46 +481,48 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 query = string.Concat(query, string.Format("AND column_name LIKE '{0}'", Sanitize(columnNamePattern)));
             }
 
-            BigQueryResults result = this.client.ExecuteQuery(query, parameters: null);
+            BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            foreach (BigQueryRow row in result)
+            if (result != null)
             {
-                columnNameBuilder.Append(row["column_name"].ToString());
-                ordinalPositionBuilder.Append((int)(long)row["ordinal_position"]);
-                remarksBuilder.Append("");
-
-                string dataType = ToTypeName(row["data_type"].ToString());
-
-                if (dataType.StartsWith("NUMERIC") || dataType.StartsWith("DECIMAL") || dataType.StartsWith("BIGNUMERIC") || dataType.StartsWith("BIGDECIMAL"))
+                foreach (BigQueryRow row in result)
                 {
-                    ParsedDecimalValues values = ParsePrecisionAndScale(dataType);
-                    xdbcColumnSizeBuilder.Append(values.Precision);
-                    xdbcDecimalDigitsBuilder.Append(Convert.ToInt16(values.Scale));
-                }
-                else
-                {
-                    xdbcColumnSizeBuilder.AppendNull();
-                    xdbcDecimalDigitsBuilder.AppendNull();
-                }
+                    columnNameBuilder.Append(GetValue(row["column_name"]));
+                    ordinalPositionBuilder.Append((int)(long)row["ordinal_position"]);
+                    remarksBuilder.Append("");
 
-                xdbcDataTypeBuilder.AppendNull();
-                xdbcTypeNameBuilder.Append(dataType);
-                xdbcNumPrecRadixBuilder.AppendNull();
-                xdbcNullableBuilder.AppendNull();
-                xdbcColumnDefBuilder.AppendNull();
-                xdbcSqlDataTypeBuilder.Append((short)ToXdbcDataType(dataType));
-                xdbcDatetimeSubBuilder.AppendNull();
-                xdbcCharOctetLengthBuilder.AppendNull();
-                xdbcIsNullableBuilder.Append(row["is_nullable"].ToString());
-                xdbcScopeCatalogBuilder.AppendNull();
-                xdbcScopeSchemaBuilder.AppendNull();
-                xdbcScopeTableBuilder.AppendNull();
-                xdbcIsAutoincrementBuilder.AppendNull();
-                xdbcIsGeneratedcolumnBuilder.Append(row["is_generated"].ToString().ToUpper() == "YES");
-                nullBitmapBuffer.Append(true);
-                length++;
+                    string dataType = ToTypeName(GetValue(row["data_type"]));
+
+                    if (dataType.StartsWith("NUMERIC") || dataType.StartsWith("DECIMAL") || dataType.StartsWith("BIGNUMERIC") || dataType.StartsWith("BIGDECIMAL"))
+                    {
+                        ParsedDecimalValues values = ParsePrecisionAndScale(dataType);
+                        xdbcColumnSizeBuilder.Append(values.Precision);
+                        xdbcDecimalDigitsBuilder.Append(Convert.ToInt16(values.Scale));
+                    }
+                    else
+                    {
+                        xdbcColumnSizeBuilder.AppendNull();
+                        xdbcDecimalDigitsBuilder.AppendNull();
+                    }
+
+                    xdbcDataTypeBuilder.AppendNull();
+                    xdbcTypeNameBuilder.Append(dataType);
+                    xdbcNumPrecRadixBuilder.AppendNull();
+                    xdbcNullableBuilder.AppendNull();
+                    xdbcColumnDefBuilder.AppendNull();
+                    xdbcSqlDataTypeBuilder.Append((short)ToXdbcDataType(dataType));
+                    xdbcDatetimeSubBuilder.AppendNull();
+                    xdbcCharOctetLengthBuilder.AppendNull();
+                    xdbcIsNullableBuilder.Append(row["is_nullable"].ToString());
+                    xdbcScopeCatalogBuilder.AppendNull();
+                    xdbcScopeSchemaBuilder.AppendNull();
+                    xdbcScopeTableBuilder.AppendNull();
+                    xdbcIsAutoincrementBuilder.AppendNull();
+                    xdbcIsGeneratedcolumnBuilder.Append(GetValue(row["is_generated"]).ToUpper() == "YES");
+                    nullBitmapBuffer.Append(true);
+                    length++;
+                }
             }
-
             List<IArrowArray> dataArrays = new List<IArrowArray>
             {
                 columnNameBuilder.Build(),
@@ -539,35 +570,38 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE table_name = '{2}'",
                Sanitize(catalog), Sanitize(dbSchema), Sanitize(table));
 
-            BigQueryResults result = this.client.ExecuteQuery(query, parameters: null);
+            BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            foreach (BigQueryRow row in result)
+            if (result != null)
             {
-                string constraintName = row["constraint_name"].ToString();
-                constraintNameBuilder.Append(constraintName);
-                string constraintType = row["constraint_type"].ToString();
-                constraintTypeBuilder.Append(constraintType);
-                nullBitmapBuffer.Append(true);
-                length++;
-
-                if (depth == GetObjectsDepth.All || depth == GetObjectsDepth.Tables)
+                foreach (BigQueryRow row in result)
                 {
-                    constraintColumnNamesValues.Add(GetConstraintColumnNames(
-                        catalog, dbSchema, table, constraintName));
-                    if (constraintType.ToUpper() == "FOREIGN KEY")
+                    string constraintName = GetValue(row["constraint_name"]);
+                    constraintNameBuilder.Append(constraintName);
+                    string constraintType = GetValue(row["constraint_type"]);
+                    constraintTypeBuilder.Append(constraintType);
+                    nullBitmapBuffer.Append(true);
+                    length++;
+
+                    if (depth == GetObjectsDepth.All || depth == GetObjectsDepth.Tables)
                     {
-                        constraintColumnUsageValues.Add(GetConstraintsUsage(
+                        constraintColumnNamesValues.Add(GetConstraintColumnNames(
                             catalog, dbSchema, table, constraintName));
+                        if (constraintType.ToUpper() == "FOREIGN KEY")
+                        {
+                            constraintColumnUsageValues.Add(GetConstraintsUsage(
+                                catalog, dbSchema, table, constraintName));
+                        }
+                        else
+                        {
+                            constraintColumnUsageValues.Add(null);
+                        }
                     }
                     else
                     {
+                        constraintColumnNamesValues.Add(null);
                         constraintColumnUsageValues.Add(null);
                     }
-                }
-                else
-                {
-                    constraintColumnNamesValues.Add(null);
-                    constraintColumnUsageValues.Add(null);
                 }
             }
 
@@ -597,12 +631,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             StringArray.Builder constraintColumnNamesBuilder = new StringArray.Builder();
 
-            BigQueryResults result = this.client.ExecuteQuery(query, parameters: null);
+            BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            foreach (BigQueryRow row in result)
+            if (result != null)
             {
-                string column = row["column_name"].ToString();
-                constraintColumnNamesBuilder.Append(column);
+                foreach (BigQueryRow row in result)
+                {
+                    string column = GetValue(row["column_name"]);
+                    constraintColumnNamesBuilder.Append(column);
+                }
             }
 
             return constraintColumnNamesBuilder.Build();
@@ -624,22 +661,25 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE WHERE constraint_name = '{2}'",
                Sanitize(catalog), Sanitize(dbSchema), Sanitize(constraintName));
 
-            BigQueryResults result = this.client.ExecuteQuery(query, parameters: null);
+            BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
-            foreach (BigQueryRow row in result)
+            if (result != null)
             {
-                string constraint_catalog = row["constraint_catalog"].ToString();
-                string constraint_schema = row["constraint_schema"].ToString();
-                string table_name = row["table_name"].ToString();
-                string column_name = row["column_name"].ToString();
+                foreach (BigQueryRow row in result)
+                {
+                    string constraint_catalog = GetValue(row["constraint_catalog"]);
+                    string constraint_schema = GetValue(row["constraint_schema"]);
+                    string table_name = GetValue(row["table_name"]);
+                    string column_name = GetValue(row["column_name"]);
 
-                constraintFkCatalogBuilder.Append(constraint_catalog);
-                constraintFkDbSchemaBuilder.Append(constraint_schema);
-                constraintFkTableBuilder.Append(table_name);
-                constraintFkColumnNameBuilder.Append(column_name);
+                    constraintFkCatalogBuilder.Append(constraint_catalog);
+                    constraintFkDbSchemaBuilder.Append(constraint_schema);
+                    constraintFkTableBuilder.Append(table_name);
+                    constraintFkColumnNameBuilder.Append(column_name);
 
-                nullBitmapBuffer.Append(true);
-                length++;
+                    nullBitmapBuffer.Append(true);
+                    length++;
+                }
             }
 
             List<IArrowArray> dataArrays = new List<IArrowArray>
@@ -748,13 +788,16 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{2}'",
                 Sanitize(catalog), Sanitize(dbSchema), Sanitize(tableName));
 
-            BigQueryResults result = this.client.ExecuteQuery(query, parameters: null);
+            BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
 
             List<Field> fields = new List<Field>();
 
-            foreach (BigQueryRow row in result)
+            if (result != null)
             {
-                fields.Add(DescToField(row));
+                foreach (BigQueryRow row in result)
+                {
+                    fields.Add(DescToField(row));
+                }
             }
 
             return new Schema(fields, null);
@@ -764,20 +807,36 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             Dictionary<string, string> metaData = new Dictionary<string, string>();
             metaData.Add("PRIMARY_KEY", "");
-            metaData.Add("ORDINAL_POSITION", row["ordinal_position"].ToString());
-            metaData.Add("DATA_TYPE", row["data_type"].ToString());
+            metaData.Add("ORDINAL_POSITION", GetValue(row["ordinal_position"]));
+            metaData.Add("DATA_TYPE", GetValue(row["data_type"]));
 
-            Field.Builder fieldBuilder = SchemaFieldGenerator(row["column_name"].ToString().ToLower(), row["data_type"].ToString());
+            Field.Builder fieldBuilder = SchemaFieldGenerator(GetValue(row["column_name"]).ToLower(), GetValue(row["data_type"]));
             fieldBuilder.Metadata(metaData);
 
-            if (!row["is_nullable"].ToString().Equals("YES", StringComparison.OrdinalIgnoreCase))
+            if (!GetValue(row["is_nullable"]).Equals("YES", StringComparison.OrdinalIgnoreCase))
             {
                 fieldBuilder.Nullable(false);
             }
 
-            fieldBuilder.Name(row["column_name"].ToString().ToLower());
+            fieldBuilder.Name(GetValue(row["column_name"]).ToLower());
 
             return fieldBuilder.Build();
+        }
+
+        private string GetValue(object value)
+        {
+            switch (value)
+            {
+                case string sValue:
+                    return sValue;
+                default:
+                    if (value != null)
+                    {
+                        string? sValue = value.ToString();
+                        return sValue ?? string.Empty;
+                    }
+                    throw new InvalidOperationException($"Cannot parse {value}");
+            }
         }
 
         private Field.Builder SchemaFieldGenerator(string name, string type)
@@ -874,7 +933,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new BigQueryInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
         }
 
-        private ListArray CreateNestedListArray(List<IArrowArray> arrayList, IArrowType dataType)
+        private ListArray CreateNestedListArray(List<IArrowArray?> arrayList, IArrowType dataType)
         {
             ArrowBuffer.Builder<int> valueOffsetsBufferBuilder = new ArrowBuffer.Builder<int>();
             ArrowBuffer.BitmapBuilder validityBufferBuilder = new ArrowBuffer.BitmapBuilder();
@@ -882,7 +941,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             int length = 0;
             int nullCount = 0;
 
-            foreach (IArrowArray array in arrayList)
+            foreach (IArrowArray? array in arrayList)
             {
                 if (array == null)
                 {
@@ -902,7 +961,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             ArrowBuffer validityBuffer = nullCount > 0
                 ? validityBufferBuilder.Build() : ArrowBuffer.Empty;
 
-            ArrayData data = ArrayDataConcatenator.Concatenate(arrayDataList);
+            ArrayData? data = ArrayDataConcatenator.Concatenate(arrayDataList);
 
             if (data == null)
             {
@@ -970,6 +1029,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private string Sanitize(string input)
         {
+            if (string.IsNullOrEmpty(input))
+                return string.Empty;
+
             bool isValidInput = sanitizedInputRegex.IsMatch(input);
 
             if (isValidInput)
@@ -990,7 +1052,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// <param name="refreshToken"></param>
         /// <param name="tokenEndpoint"></param>
         /// <returns></returns>
-        private string GetAccessToken(string clientId, string clientSecret, string refreshToken, string tokenEndpoint)
+        private string? GetAccessToken(string clientId, string clientSecret, string refreshToken, string tokenEndpoint)
         {
             string body = string.Format(
                 "grant_type=refresh_token&client_id={0}&client_secret={1}&refresh_token={2}",
@@ -1006,9 +1068,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             HttpResponseMessage response = httpClient.SendAsync(request).Result;
             string responseBody = response.Content.ReadAsStringAsync().Result;
 
-            BigQueryTokenResponse bigQueryTokenResponse = JsonSerializer.Deserialize<BigQueryTokenResponse>(responseBody);
+            BigQueryTokenResponse? bigQueryTokenResponse = JsonSerializer.Deserialize<BigQueryTokenResponse>(responseBody);
 
-            return bigQueryTokenResponse.AccessToken;
+            return bigQueryTokenResponse?.AccessToken;
         }
 
         enum XdbcDataType
@@ -1049,7 +1111,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             IArrowTypeVisitor<StructType>,
             IArrowTypeVisitor<MapType>
         {
-            public ArrayData Result { get; private set; }
+            public ArrayData? Result { get; private set; }
 
             public void Visit(BooleanType type)
             {
@@ -1074,7 +1136,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             public void Visit(ListType type)
             {
                 type.ValueDataType.Accept(this);
-                ArrayData child = Result;
+                ArrayData? child = Result;
 
                 Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty, MakeInt0Buffer() }, new[] { child });
             }
@@ -1082,14 +1144,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             public void Visit(FixedSizeListType type)
             {
                 type.ValueDataType.Accept(this);
-                ArrayData child = Result;
+                ArrayData? child = Result;
 
                 Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty }, new[] { child });
             }
 
             public void Visit(StructType type)
             {
-                ArrayData[] children = new ArrayData[type.Fields.Count];
+                ArrayData?[] children = new ArrayData[type.Fields.Count];
                 for (int i = 0; i < type.Fields.Count; i++)
                 {
                     type.Fields[i].DataType.Accept(this);

@@ -137,8 +137,8 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="sampleDataBuilder">The <see cref="SampleDataBuilder"/> to use</param>
         public static void VerifyTypesAndValues(Adbc.Client.AdbcConnection adbcConnection, SampleDataBuilder sampleDataBuilder)
         {
-            if(adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
-            if(sampleDataBuilder == null) throw new ArgumentNullException(nameof(sampleDataBuilder));
+            if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
+            if (sampleDataBuilder == null) throw new ArgumentNullException(nameof(sampleDataBuilder));
 
             adbcConnection.Open();
 

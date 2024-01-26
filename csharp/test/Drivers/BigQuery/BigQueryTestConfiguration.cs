@@ -35,5 +35,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         [JsonPropertyName("refreshToken")]
         public string RefreshToken { get; set; }
+
+        [JsonPropertyName("scopes")]
+        public string Scopes { get; set; }
+
+        [JsonPropertyName("jsonCredential")]
+        public string JsonCredential { get; set; }
+
     }
 }
