@@ -73,6 +73,16 @@ namespace Apache.Arrow.Adbc.Client
                     row[SchemaTableColumn.NumericPrecision] = Convert.ToInt32(f.Metadata["precision"]);
                     row[SchemaTableColumn.NumericScale] = Convert.ToInt32(f.Metadata["scale"]);
                 }
+                else if (f.DataType is Decimal128Type decimal128Type)
+                {
+                    row[SchemaTableColumn.NumericPrecision] = decimal128Type.Precision;
+                    row[SchemaTableColumn.NumericScale] = decimal128Type.Scale;
+                }
+                else if (f.DataType is Decimal256Type decimal256Type)
+                {
+                    row[SchemaTableColumn.NumericPrecision] = decimal256Type.Precision;
+                    row[SchemaTableColumn.NumericScale] = decimal256Type.Scale;
+                }
                 else
                 {
                     row[SchemaTableColumn.NumericPrecision] = DBNull.Value;

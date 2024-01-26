@@ -81,14 +81,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 { SnowflakeParameters.USE_HIGH_PRECISION, testConfiguration.UseHighPrecision.ToString().ToLowerInvariant() }
             };
 
-            if(testConfiguration.Authentication.Default is not null)
+            if (testConfiguration.Authentication.Default is not null)
             {
                 parameters[SnowflakeParameters.AUTH_TYPE] = SnowflakeAuthentication.AuthSnowflake;
                 parameters[SnowflakeParameters.USERNAME] = testConfiguration.Authentication.Default.User;
                 parameters[SnowflakeParameters.PASSWORD] = testConfiguration.Authentication.Default.Password;
             }
 
-            if(!string.IsNullOrWhiteSpace(testConfiguration.Host))
+            if (!string.IsNullOrWhiteSpace(testConfiguration.Host))
             {
                 parameters[SnowflakeParameters.HOST] = testConfiguration.Host;
             }
