@@ -199,7 +199,7 @@ pub fn export_info_data(
 
 pub fn import_info_data(
     reader: impl RecordBatchReader,
-) -> Result<Vec<(InfoCode, InfoData)>, ArrowError> {
+) -> Result<HashMap<InfoCode, InfoData>, ArrowError> {
     let batches = reader.collect::<Result<Vec<RecordBatch>, ArrowError>>()?;
 
     Ok(batches
