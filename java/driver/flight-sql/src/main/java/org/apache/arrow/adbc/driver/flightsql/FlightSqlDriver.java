@@ -22,7 +22,6 @@ import java.util.Objects;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
-import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.memory.BufferAllocator;
@@ -30,14 +29,9 @@ import org.apache.arrow.util.Preconditions;
 
 /** An ADBC driver wrapping Arrow Flight SQL. */
 public class FlightSqlDriver implements AdbcDriver {
-  static {
-    AdbcDriverManager.getInstance()
-        .registerDriver("org.apache.arrow.adbc.driver.flightsql", FlightSqlDriver::new);
-  }
-
   private final BufferAllocator allocator;
 
-  FlightSqlDriver(BufferAllocator allocator) {
+  public FlightSqlDriver(BufferAllocator allocator) {
     this.allocator = Objects.requireNonNull(allocator);
   }
 
