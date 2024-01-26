@@ -26,7 +26,7 @@ use arrow::datatypes::{DataType, Field, Schema};
 use arrow::error::ArrowError;
 use arrow::record_batch::RecordBatch;
 use arrow_adbc::driver_manager::{AdbcDriver, DriverDatabase, DriverStatement, Result};
-use arrow_adbc::info::{codes, InfoData};
+use arrow_adbc::info::{InfoCode, InfoData};
 use arrow_adbc::objects::{
     ColumnSchemaRef, DatabaseCatalogCollection, DatabaseCatalogEntry, DatabaseSchemaEntry,
     DatabaseTableEntry,
@@ -69,10 +69,10 @@ fn test_connection_info() {
     assert_eq!(table_types, vec!["table", "view"]);
 
     let info = connection
-        .get_info(Some(&[codes::DRIVER_NAME, codes::VENDOR_NAME]))
+        .get_info(Some(&[InfoCode::DriverName, InfoCode::VendorName]))
         .unwrap();
 
-    let info: HashMap<u32, String> = info
+    let info: HashMap<InfoCode, String> = info
         .into_iter()
         .map(|(code, info)| match info {
             InfoData::StringValue(val) => (code, val.into_owned()),
@@ -81,10 +81,10 @@ fn test_connection_info() {
         .collect();
     assert_eq!(info.len(), 2);
     assert_eq!(
-        info.get(&codes::DRIVER_NAME),
+        info.get(&InfoCode::DriverName),
         Some(&"ADBC SQLite Driver".to_string())
     );
-    assert_eq!(info.get(&codes::VENDOR_NAME), Some(&"SQLite".to_string()));
+    assert_eq!(info.get(&InfoCode::VendorName), Some(&"SQLite".to_string()));
 }
 
 fn get_example_data() -> RecordBatch {
@@ -99,9 +99,9 @@ fn get_example_data() -> RecordBatch {
 
 fn upload_data(statement: &mut DriverStatement, data: RecordBatch, name: &str) {
     statement
-        .set_option(arrow_adbc::options::INGEST_OPTION_TARGET_TABLE, name)
+        .set_option(arrow_adbc::options::AdbcOptionKey::IngestTargetTable, name)
         .unwrap();
-    statement.bind_data(data).unwrap();
+    statement.bind_data(&data.into()).unwrap();
     statement.execute_update().unwrap();
 }
 
@@ -173,7 +173,7 @@ fn test_prepared() {
         vec![array.clone()],
     )
     .unwrap();
-    statement.bind_data(param_batch).unwrap();
+    statement.bind_data(&param_batch.into()).unwrap();
 
     let result = statement.execute().unwrap();
 

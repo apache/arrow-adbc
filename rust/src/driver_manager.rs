@@ -44,6 +44,7 @@
 
 use std::{
     cell::RefCell,
+    collections::HashMap,
     ffi::{c_char, c_void, CString, NulError},
     ops::{Deref, DerefMut},
     ptr::{null, null_mut},
@@ -51,8 +52,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use arrow::array::export_array_into_raw;
-use arrow::ffi_stream::{export_reader_into_raw, ArrowArrayStreamReader, FFI_ArrowArrayStream};
+use arrow::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::{
     cast::{as_list_array, as_string_array, as_struct_array},
     types::Int16Type,
@@ -68,7 +68,7 @@ use crate::{
         driver_function_stubs, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcError,
         FFI_AdbcPartitions, FFI_AdbcStatement,
     },
-    info::{import_info_data, InfoData},
+    info::{import_info_data, InfoCode, InfoData},
     objects::{
         CatalogArrayBuilder, ColumnSchemaRef, DatabaseCatalogCollection, DatabaseCatalogEntry,
         DatabaseSchemaEntry, DatabaseTableEntry, ForeignKeyUsageRef, TableConstraintRef,
@@ -535,12 +535,17 @@ pub struct DriverConnection {
 }
 
 impl AdbcConnection for DriverConnection {
+    type StatementType = DriverStatement;
     type ObjectCollectionType = ImportedCatalogCollection;
 
-    fn set_option(&self, key: &str, value: &str) -> std::result::Result<(), AdbcError> {
+    fn set_option(
+        &self,
+        key: impl AsRef<str>,
+        value: impl AsRef<str>,
+    ) -> std::result::Result<(), AdbcError> {
         let mut error = FFI_AdbcError::empty();
-        let key = CString::new(key)?;
-        let value = CString::new(value)?;
+        let key = CString::new(key.as_ref())?;
+        let value = CString::new(value.as_ref())?;
 
         let set_option = driver_method!(self.driver, connection_set_option);
         let status = unsafe {
@@ -555,6 +560,10 @@ impl AdbcConnection for DriverConnection {
         check_status(status, error)?;
 
         Ok(())
+    }
+
+    fn new_statement(&self) -> std::result::Result<Self::StatementType, AdbcError> {
+        todo!()
     }
 
     /// Get the valid table types for the database.
@@ -607,7 +616,7 @@ impl AdbcConnection for DriverConnection {
         Ok(out)
     }
 
-    fn get_info(&self, info_codes: Option<&[u32]>) -> Result<Vec<(u32, InfoData)>> {
+    fn get_info(&self, info_codes: Option<&[InfoCode]>) -> Result<HashMap<InfoCode, InfoData>> {
         let mut error = FFI_AdbcError::empty();
 
         let mut reader = FFI_ArrowArrayStream::empty();
@@ -621,7 +630,7 @@ impl AdbcConnection for DriverConnection {
         let status = unsafe {
             get_info(
                 self.inner.borrow_mut().deref_mut(),
-                info_codes_ptr,
+                info_codes_ptr as *const u32,
                 info_codes_len,
                 &mut reader,
                 &mut error,
@@ -723,7 +732,7 @@ impl AdbcConnection for DriverConnection {
     fn read_partition(
         &self,
         partition: &[u8],
-    ) -> std::result::Result<Box<dyn arrow::record_batch::RecordBatchReader>, AdbcError> {
+    ) -> std::result::Result<Box<dyn RecordBatchReader + Send>, AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let mut reader = FFI_ArrowArrayStream::empty();
@@ -805,11 +814,15 @@ impl AdbcStatement for DriverStatement {
         Ok(())
     }
 
-    fn set_option(&mut self, key: &str, value: &str) -> std::result::Result<(), AdbcError> {
+    fn set_option(
+        &mut self,
+        key: impl AsRef<str>,
+        value: impl AsRef<str>,
+    ) -> std::result::Result<(), AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
-        let key = CString::new(key)?;
-        let value = CString::new(value)?;
+        let key = CString::new(key.as_ref())?;
+        let value = CString::new(value.as_ref())?;
 
         let set_option = driver_method!(self.driver, statement_set_option);
         let status =
@@ -851,33 +864,24 @@ impl AdbcStatement for DriverStatement {
         Ok(Schema::try_from(&schema)?)
     }
 
-    fn bind_data(&mut self, batch: RecordBatch) -> std::result::Result<(), AdbcError> {
+    fn bind_data(&mut self, array: &StructArray) -> std::result::Result<(), AdbcError> {
+        let mut schema = FFI_ArrowSchema::try_from(array.data_type())?;
+        let mut array = FFI_ArrowArray::new(&array.to_data());
         let mut error = FFI_AdbcError::empty();
-
-        let struct_arr = Arc::new(StructArray::from(batch));
-
-        let mut schema = FFI_ArrowSchema::empty();
-        let mut array = FFI_ArrowArray::empty();
-
-        unsafe { export_array_into_raw(struct_arr, &mut array, &mut schema)? };
-
         let statement_bind = driver_method!(self.driver, statement_bind);
         let status =
             unsafe { statement_bind(&mut self.inner, &mut array, &mut schema, &mut error) };
         check_status(status, error)?;
-
         Ok(())
     }
 
     fn bind_stream(
         &mut self,
-        reader: Box<dyn arrow::record_batch::RecordBatchReader>,
+        reader: Box<dyn RecordBatchReader + Send>,
     ) -> std::result::Result<(), AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
-        let mut stream = FFI_ArrowArrayStream::empty();
-
-        unsafe { export_reader_into_raw(reader, &mut stream) };
+        let mut stream = FFI_ArrowArrayStream::new(reader);
 
         let statement_bind_stream = driver_method!(self.driver, statement_bind_stream);
         let status = unsafe { statement_bind_stream(&mut self.inner, &mut stream, &mut error) };
@@ -897,7 +901,7 @@ impl AdbcStatement for DriverStatement {
             unsafe { execute_query(&mut self.inner, &mut stream, &mut rows_affected, &mut error) };
         check_status(status, error)?;
 
-        let result: Option<Box<dyn RecordBatchReader>> = if stream.release.is_none() {
+        let result: Option<Box<dyn RecordBatchReader + Send>> = if stream.release.is_none() {
             // There was no result
             None
         } else {
@@ -991,14 +995,15 @@ impl ImportedCatalogCollection {
 
 impl DatabaseCatalogCollection for ImportedCatalogCollection {
     type CatalogEntryType<'a> = ImportedCatalogEntry<'a>;
+    type CatalogIterator<'a> = Box<dyn Iterator<Item = Self::CatalogEntryType<'a>> + 'a>;
 
-    fn catalogs<'a>(&'a self) -> Box<dyn Iterator<Item = Self::CatalogEntryType<'a>> + 'a> {
+    fn catalogs<'a>(&'a self) -> Self::CatalogIterator<'a> {
         Box::new(self.batches.iter().flat_map(move |batch| {
             (0..batch.len()).map(move |pos| ImportedCatalogEntry::new(batch, pos))
         }))
     }
 
-    fn get_catalog<'a>(&'a self, name: Option<&str>) -> Option<Self::CatalogEntryType<'a>> {
+    fn catalog<'a>(&'a self, name: Option<&str>) -> Option<Self::CatalogEntryType<'a>> {
         self.batches
             .iter()
             .flat_map(|batch| {
@@ -1029,12 +1034,13 @@ impl<'a> ImportedCatalogEntry<'a> {
 
 impl<'a> DatabaseCatalogEntry<'a> for ImportedCatalogEntry<'a> {
     type SchemaEntryType = ImportedSchemaEntry<'a>;
+    type SchemaIterator = Box<dyn Iterator<Item = Self::SchemaEntryType> + 'a>;
 
     fn name(&self) -> Option<&'a str> {
         self.row.get_str(0)
     }
 
-    fn schemas(&self) -> Box<dyn Iterator<Item = Self::SchemaEntryType> + 'a> {
+    fn schemas(&self) -> Self::SchemaIterator {
         Box::new(
             self.schemas_array
                 .iter_rows()
@@ -1042,7 +1048,7 @@ impl<'a> DatabaseCatalogEntry<'a> for ImportedCatalogEntry<'a> {
         )
     }
 
-    fn get_schema(&self, name: Option<&str>) -> Option<Self::SchemaEntryType> {
+    fn schema(&self, name: Option<&str>) -> Option<Self::SchemaEntryType> {
         self.schemas_array
             .iter_rows()
             .find(|row| row.get_str(0) == name)
@@ -1068,12 +1074,13 @@ impl<'a> ImportedSchemaEntry<'a> {
 
 impl<'a> DatabaseSchemaEntry<'a> for ImportedSchemaEntry<'a> {
     type TableEntryType = ImportedTableEntry<'a>;
+    type TableIterator = Box<dyn Iterator<Item = Self::TableEntryType> + 'a>;
 
     fn name(&self) -> Option<&'a str> {
         self.row.get_str(0)
     }
 
-    fn tables(&self) -> Box<dyn Iterator<Item = Self::TableEntryType> + 'a> {
+    fn tables(&self) -> Self::TableIterator {
         Box::new(
             self.tables_array
                 .iter_rows()
@@ -1081,7 +1088,7 @@ impl<'a> DatabaseSchemaEntry<'a> for ImportedSchemaEntry<'a> {
         )
     }
 
-    fn get_table(&self, name: &str) -> Option<Self::TableEntryType> {
+    fn table(&self, name: &str) -> Option<Self::TableEntryType> {
         self.tables_array
             .iter_rows()
             .find(|row| row.get_str(0).expect("table_name was null") == name)
@@ -1136,6 +1143,9 @@ fn extract_column_schema(row: RowReference) -> ColumnSchemaRef {
 }
 
 impl<'a> DatabaseTableEntry<'a> for ImportedTableEntry<'a> {
+    type ColumnIterator = Box<dyn Iterator<Item = ColumnSchemaRef<'a>> + 'a>;
+    type ConstraintIterator = Box<dyn Iterator<Item = TableConstraintRef<'a>> + 'a>;
+
     fn name(&self) -> &'a str {
         self.row.get_str(0).expect("table_name was null")
     }
@@ -1144,11 +1154,11 @@ impl<'a> DatabaseTableEntry<'a> for ImportedTableEntry<'a> {
         self.row.get_str(1).expect("table_type was null")
     }
 
-    fn columns(&self) -> Box<dyn Iterator<Item = ColumnSchemaRef<'a>> + 'a> {
+    fn columns(&self) -> Self::ColumnIterator {
         Box::new(self.column_array.iter_rows().map(extract_column_schema))
     }
 
-    fn get_column(&self, i: i32) -> Option<ColumnSchemaRef<'a>> {
+    fn column(&self, i: i32) -> Option<ColumnSchemaRef<'a>> {
         self.column_array
             .iter_rows()
             .find(|row| {
@@ -1158,7 +1168,7 @@ impl<'a> DatabaseTableEntry<'a> for ImportedTableEntry<'a> {
             .map(extract_column_schema)
     }
 
-    fn get_column_by_name(&self, name: &str) -> Option<ColumnSchemaRef<'a>> {
+    fn column_by_name(&self, name: &str) -> Option<ColumnSchemaRef<'a>> {
         self.column_array
             .iter_rows()
             .find(|row| {
@@ -1168,7 +1178,7 @@ impl<'a> DatabaseTableEntry<'a> for ImportedTableEntry<'a> {
             .map(extract_column_schema)
     }
 
-    fn constraints(&self) -> Box<dyn Iterator<Item = TableConstraintRef<'a>> + 'a> {
+    fn constraints(&self) -> Self::ConstraintIterator {
         Box::new(self.constraint_array.iter_rows().map(|row| {
             let name = row.get_str(0);
             let constraint_type = row.get_str(1).expect("constraint_type is null");

@@ -24,13 +24,16 @@ use std::{
     sync::Arc,
 };
 
+use arrow::ffi::from_ffi;
 use arrow::{
-    array::{as_struct_array, make_array_from_raw, StringArray},
+    array::{StringArray, StructArray},
     datatypes::{DataType, Field, Schema},
     ffi::{FFI_ArrowArray, FFI_ArrowSchema},
-    ffi_stream::{export_reader_into_raw, ArrowArrayStreamReader, FFI_ArrowArrayStream},
+    ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream},
     record_batch::RecordBatch,
 };
+
+use num_enum::FromPrimitive;
 
 use crate::{
     check_err,
@@ -39,7 +42,7 @@ use crate::{
         FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcError, FFI_AdbcPartitions,
         FFI_AdbcStatement,
     },
-    info::export_info_data,
+    info::{export_info_data, InfoCode},
     objects::DatabaseCatalogCollection,
     utils::SingleBatchReader,
     AdbcObjectDepth,
@@ -357,11 +360,17 @@ unsafe extern "C" fn connection_get_info<ConnectionType: Default + AdbcConnectio
     let info_codes = if info_codes.is_null() {
         None
     } else {
-        Some(std::slice::from_raw_parts(info_codes, info_codes_length))
+        Some(
+            std::slice::from_raw_parts(info_codes, info_codes_length)
+                .iter()
+                .map(|code| InfoCode::from_primitive(*code))
+                .collect::<Vec<_>>(),
+        )
     };
-    let info_iter = check_err!(inner.get_info(info_codes), error);
-    let reader = export_info_data(info_iter);
-    export_reader_into_raw(reader, out);
+    let info_iter = check_err!(inner.get_info(info_codes.as_deref()), error);
+    let reader = Box::new(export_info_data(info_iter));
+    let stream = FFI_ArrowArrayStream::new(reader);
+    std::ptr::write_unaligned(out, stream);
 
     AdbcStatusCode::Ok
 }
@@ -421,7 +430,8 @@ unsafe extern "C" fn connection_get_objects<ConnectionType: Default + AdbcConnec
     );
 
     let reader = Box::new(SingleBatchReader::new(objects.to_record_batch()));
-    export_reader_into_raw(reader, out);
+    let stream = FFI_ArrowArrayStream::new(reader);
+    std::ptr::write_unaligned(out, stream);
 
     AdbcStatusCode::Ok
 }
@@ -485,8 +495,8 @@ unsafe extern "C" fn connection_get_table_types<ConnectionType: Default + AdbcCo
     );
 
     let reader = Box::new(SingleBatchReader::new(batch));
-
-    export_reader_into_raw(reader, out);
+    let stream = FFI_ArrowArrayStream::new(reader);
+    std::ptr::write_unaligned(out, stream);
 
     AdbcStatusCode::Ok
 }
@@ -502,7 +512,8 @@ unsafe extern "C" fn connection_read_partition<ConnectionType: Default + AdbcCon
 
     let partition = std::slice::from_raw_parts(serialized_partition, serialized_length);
     let table_types = check_err!(inner.read_partition(partition), error);
-    export_reader_into_raw(table_types, out);
+    let stream = FFI_ArrowArrayStream::new(table_types);
+    std::ptr::write_unaligned(out, stream);
 
     AdbcStatusCode::Ok
 }
@@ -577,7 +588,8 @@ unsafe extern "C" fn statement_execute_query<StatementType: AdbcStatementImpl>(
 
     if !out.is_null() {
         if let Some(reader) = res.result {
-            export_reader_into_raw(reader, out);
+            let stream = FFI_ArrowArrayStream::new(reader);
+            std::ptr::write_unaligned(out, stream);
         } // TODO: Should there be an else here?
     }
 
@@ -630,16 +642,16 @@ unsafe extern "C" fn statement_bind<StatementType: AdbcStatementImpl>(
 ) -> AdbcStatusCode {
     let statement: &mut StatementType = check_err!(try_unwrap_mut(statement), error);
 
-    let array = check_err!(make_array_from_raw(values, schema), error);
+    let array = FFI_ArrowArray::from_raw(values);
+    let array = check_err!(from_ffi(array, &*schema), error);
 
     if !matches!(array.data_type(), DataType::Struct(_)) {
         FFI_AdbcError::set_message(error, "You must pass a struct array to StatementBind.");
         return AdbcStatusCode::InvalidArguments;
     }
 
-    let array = as_struct_array(array.as_ref());
-
-    check_err!(statement.bind_data(array.into()), error);
+    let array: StructArray = array.into();
+    check_err!(statement.bind_data(&array), error);
 
     AdbcStatusCode::Ok
 }
