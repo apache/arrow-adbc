@@ -562,6 +562,46 @@ Go</label><div class="sd-tab-content docutils">
 <h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
 <p>Bulk ingestion is supported. The mapping from Arrow types to Snowflake types
 is provided below.</p>
+<p>Bulk ingestion is implemented by writing Arrow data to Parquet file(s) and uploading (via PUT) to a temporary internal stage.
+One or more COPY queries are executed in order to load the data into the target table.</p>
+<p>In order for the driver to leverage this temporary stage, the user must have
+the <cite>CREATE STAGE &lt;https://docs.snowflake.com/en/sql-reference/sql/create-stage&gt;</cite> privilege on the schema. In addition,
+the current database and schema for the session must be set. If these are not set, the <code class="docutils literal notranslate"><span class="pre">CREATE</span> <span class="pre">TEMPORARY</span> <span class="pre">STAGE</span></code> command
+executed by the driver can fail with the following error:</p>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">CREATE</span><span class="w"> </span><span class="k">TEMPORARY</span><span class="w"> </span><span class="n">STAGE</span><span class="w"> </span><span class="n">ADBC$BIND</span><span class="w"> </span><span class="n">FILE_FORMAT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="k">TYPE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PARQUET</span><span class="w"> </span><span class="n">USE_LOGICAL_TYPE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">TRUE</span><span class="w"> </span><span class="n">BINARY_AS_TEXT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">FALSE</span><span class="p">)</span>
+<span class="n">CANNOT</span><span class="w"> </span><span class="n">perform</span><span class="w"> </span><span class="k">CREATE</span><span class="w"> </span><span class="n">STAGE</span><span class="p">.</span><span class="w"> </span><span class="n">This</span><span class="w"> </span><span class="k">session</span><span class="w"> </span><span class="n">does</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="n">have</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="k">current</span><span class="w"> </span><span class="k">schema</span><span class="p">.</span><span class="w"> </span><span class="k">Call</span><span class="w"> </span><span class="s1">&#39;USE SCHEMA&#39;</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">use</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">qualified</span><span class="w"> </span><span class="n">name</span><span class="p">.</span>
+</pre></div>
+</div>
+<p>The following informal benchmark demonstrates expected performance using default ingestion settings:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Running</span> <span class="n">on</span> <span class="n">GCP</span> <span class="n">e2</span><span class="o">-</span><span class="n">standard</span><span class="o">-</span><span class="mi">4</span> <span class="p">(</span><span class="mi">4</span> <span class="n">vCPU</span><span class="p">,</span> <span class="mi">16</span><span class="n">GB</span> <span class="n">RAM</span><span class="p">)</span>
+<span class="n">Snowflake</span> <span class="n">warehouse</span> <span class="n">size</span> <span class="n">M</span><span class="p">,</span> <span class="n">same</span> <span class="n">GCP</span> <span class="n">region</span> <span class="k">as</span> <span class="n">Snowflake</span> <span class="n">account</span>
+<span class="n">Default</span> <span class="n">ingestion</span> <span class="n">settings</span>
+
+<span class="n">TPC</span><span class="o">-</span><span class="n">H</span> <span class="n">Lineitem</span> <span class="p">(</span><span class="mi">16</span> <span class="n">Columns</span><span class="p">):</span>
+   <span class="n">Scale</span> <span class="n">Factor</span> <span class="mi">1</span> <span class="p">(</span><span class="mi">6</span><span class="n">M</span> <span class="n">Rows</span><span class="p">):</span> <span class="mf">9.5</span><span class="n">s</span>
+   <span class="n">Scale</span> <span class="n">Factor</span> <span class="mi">10</span> <span class="p">(</span><span class="mi">60</span><span class="n">M</span> <span class="n">Rows</span><span class="p">):</span> <span class="mi">45</span><span class="n">s</span>
+</pre></div>
+</div>
+<p>The default settings for ingestion should be well balanced for many real-world configurations. If required, performance
+and resource usage may be tuned with the following options on the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a> object:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.rpc.ingest_writer_concurrency</span></code></dt><dd><p>Number of Parquet files to write in parallel. Default attempts to maximize workers based on logical cores detected,
+but may need to be adjusted if running in a constrained environment. If set to 0, default value is used. Cannot be negative.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.rpc.ingest_upload_concurrency</span></code></dt><dd><p>Number of Parquet files to upload in parallel. Greater concurrency can smooth out TCP congestion and help make
+use of available network bandwith, but will increase memory utilization. Default is 8. If set to 0, default value is used.
+Cannot be negative.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.rpc.ingest_copy_concurrency</span></code></dt><dd><p>Maximum number of COPY operations to run concurrently. Bulk ingestion performance is optimized by executing COPY
+queries as files are still being uploaded. Snowflake COPY speed scales with warehouse size, so smaller warehouses
+may benefit from setting this value higher to ensure long-running COPY queries do not block newly uploaded files
+from being loaded. Default is 4. If set to 0, only a single COPY query will be executed as part of ingestion,
+once all files have finished uploading. Cannot be negative.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.rpc.ingest_target_file_size</span></code></dt><dd><p>Approximate size of Parquet files written during ingestion. Actual size will be slightly larger, depending on
+size of footer/metadata. Default is 10 MB. If set to 0, file size has no limit. Cannot be negative.</p>
+</dd>
+</dl>
 </section>
 <section id="partitioned-result-sets">
 <h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">#</a></h3>
@@ -569,25 +609,7 @@ is provided below.</p>
 </section>
 <section id="performance">
 <h3>Performance<a class="headerlink" href="#performance" title="Permalink to this heading">#</a></h3>
-<p>Formal benchmarking is forthcoming. Snowflake does provide an Arrow native
-format for requesting results, but bulk ingestion is still currently executed
-using the REST API. As described in the <cite>Snowflake Documentation
-&lt;https://pkg.go.dev/github.com/snowflakedb/gosnowflake#hdr-Batch_Inserts_and_Binding_Parameters&gt;</cite>
-the driver will potentially attempt to improve performance by streaming the data
-(without creating files on the local machine) to a temporary stage for ingestion
-if the number of values exceeds some threshold.</p>
-<p>In order for the driver to leverage this temporary stage, the user must have
-the <code class="docutils literal notranslate"><span class="pre">CREATE</span> <span class="pre">STAGE</span></code> privilege on the schema. If the user does not have this
-privilege, the driver will fall back to sending the data with the query
-to the snowflake database.</p>
-<p>In addition, the current database and schema for the session must be set. If
-these are not set, the <code class="docutils literal notranslate"><span class="pre">CREATE</span> <span class="pre">TEMPORARY</span> <span class="pre">STAGE</span></code> command executed by the driver
-can fail with the following error:</p>
-<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span>CREATE TEMPORARY STAGE SYSTEM$BIND file_format=(type=csv field_optionally_enclosed_by=&#39;&quot;&#39;)
-CANNOT perform CREATE STAGE. This session does not have a current schema. Call &#39;USE SCHEMA&#39; or use a qualified name.
-</pre></div>
-</div>
-<p>In addition, results are potentially fetched in parallel from multiple endpoints.
+<p>When querying Snowflake data, results are potentially fetched in parallel from multiple endpoints.
 A limited number of batches are queued per endpoint, though data is always
 returned to the client in the order of the endpoints.</p>
 <p>To manage the performance of result fetching there are two options to control
@@ -754,16 +776,19 @@ indicated are done to ensure consistency of the stream of record batches.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p>integral types</p></td>
-<td><p>int64</p></td>
-<td><p>All integral types in Snowflake are stored as 64-bit integers.</p></td>
+<td><p>number(38, 0)</p></td>
+<td><p>All integral types in Snowflake are stored as numbers for which neither
+precision nor scale can be specified.</p></td>
 </tr>
 <tr class="row-odd"><td><p>float/double</p></td>
 <td><p>float64</p></td>
 <td><p>Snowflake does not distinguish between float or double. Both are 64-bit values.</p></td>
 </tr>
 <tr class="row-even"><td><p>decimal/numeric</p></td>
-<td><p>int64/float64</p></td>
-<td><p>If scale == 0, then int64 is used, else float64.</p></td>
+<td><p>numeric</p></td>
+<td><p>Snowflake will respect the precision/scale of the Arrow type. See the
+<code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.client_option.use_high_precision</span></code> for exceptions to this
+behavior.</p></td>
 </tr>
 <tr class="row-odd"><td><p>time</p></td>
 <td><p>time64[ns]</p></td>
@@ -780,8 +805,9 @@ indicated are done to ensure consistency of the stream of record batches.</p>
 </div>
 </td>
 <td><p>timestamp[ns]</p></td>
-<td><p>Local time zone will be used. No timezone will be specified in
-the Arrow type. Values will be converted to UTC.</p></td>
+<td><p>Local time zone will be used, except for timestamp_ntz which is not an instant.
+In this case no timezone will be present in the type. Physical values will be
+UTC-normalized.</p></td>
 </tr>
 <tr class="row-even"><td><div class="line-block">
 <div class="line">variant</div>
@@ -793,7 +819,9 @@ the Arrow type. Values will be converted to UTC.</p></td>
 <td><p>Snowflake does not provide information about nested
 types. Values will be strings in a format similar to JSON that
 can be parsed. The Arrow type will contain a metadata key
-<code class="docutils literal notranslate"><span class="pre">logicalType</span></code> with the Snowflake field type.</p></td>
+<code class="docutils literal notranslate"><span class="pre">logicalType</span></code> with the Snowflake field type. Arrow Struct and
+Map types will be stored as objects when ingested. List types will
+be stored as arrays.</p></td>
 </tr>
 <tr class="row-odd"><td><div class="line-block">
 <div class="line">geography</div>
