@@ -473,7 +473,10 @@ fn test_connection_get_info() {
                     .copied()
                     .into_iter()
                     .map(|val| InfoData::StringValue(Cow::Borrowed(val)));
-                Ok(std::iter::repeat(1u32).map(InfoCode::from_primitive).zip(data).collect())
+                Ok(std::iter::repeat(1u32)
+                    .map(InfoCode::from_primitive)
+                    .zip(data)
+                    .collect())
             }
         );
 
@@ -496,7 +499,9 @@ fn test_connection_get_info() {
                 .collect()
         );
 
-        set_driver_method!(mock_driver, connection_get_info, |_: Option<&[InfoCode]>| {
+        set_driver_method!(mock_driver, connection_get_info, |_: Option<
+            &[InfoCode],
+        >| {
             Err(TestError::new("hello world").into())
         });
 
