@@ -51,17 +51,16 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use arrow::{
-    array::{
-        as_list_array, as_string_array, as_struct_array, export_array_into_raw, Array, StringArray,
-        StructArray,
-    },
-    datatypes::{DataType, Field, Int16Type, Int32Type, Schema},
-    error::ArrowError,
-    ffi::{FFI_ArrowArray, FFI_ArrowSchema},
-    ffi_stream::{export_reader_into_raw, ArrowArrayStreamReader, FFI_ArrowArrayStream},
-    record_batch::{RecordBatch, RecordBatchReader},
+use arrow::array::export_array_into_raw;
+use arrow::ffi_stream::{export_reader_into_raw, ArrowArrayStreamReader, FFI_ArrowArrayStream};
+use arrow_array::{
+    cast::{as_list_array, as_string_array, as_struct_array},
+    types::Int16Type,
+    types::Int32Type,
+    Array, RecordBatch, RecordBatchReader, StringArray, StructArray,
 };
+use arrow_data::ffi::FFI_ArrowArray;
+use arrow_schema::{ffi::FFI_ArrowSchema, ArrowError, DataType, Field, Schema};
 
 use crate::{
     error::{AdbcError, AdbcStatusCode},

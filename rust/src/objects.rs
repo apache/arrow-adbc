@@ -54,15 +54,13 @@
 //! | [ForeignKeyUsage] | [ForeignKeyUsageRef] |
 use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array, ArrayBuilder, ArrayDataBuilder, ArrayRef, BooleanBufferBuilder, BooleanBuilder,
-        Int16Builder, Int32BufferBuilder, Int32Builder, ListArray, ListBuilder, StringBuilder,
-        StructArray,
-    },
-    datatypes::{DataType, Field},
-    record_batch::RecordBatch,
+use arrow_array::builder::{
+    ArrayBuilder, BooleanBufferBuilder, BooleanBuilder, Int16Builder, Int32BufferBuilder,
+    Int32Builder, ListBuilder, StringBuilder,
 };
+use arrow_array::{ArrayRef, ListArray, RecordBatch, StructArray};
+use arrow_data::ArrayDataBuilder;
+use arrow_schema::{DataType, Field};
 
 pub(crate) struct UsageArrayBuilder {
     fk_catalog: StringBuilder,

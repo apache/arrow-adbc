@@ -17,11 +17,8 @@
 
 use std::sync::Arc;
 
-use arrow::{
-    datatypes::Schema,
-    error::ArrowError,
-    record_batch::{RecordBatch, RecordBatchReader},
-};
+use arrow_array::{RecordBatch, RecordBatchReader};
+use arrow_schema::{ArrowError, Schema, SchemaRef};
 
 /// [RecordBatchReader] for a single record batch.
 pub(crate) struct SingleBatchReader {
@@ -53,7 +50,7 @@ impl Iterator for SingleBatchReader {
 }
 
 impl RecordBatchReader for SingleBatchReader {
-    fn schema(&self) -> arrow::datatypes::SchemaRef {
+    fn schema(&self) -> SchemaRef {
         self.schema.clone()
     }
 }
