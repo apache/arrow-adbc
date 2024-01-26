@@ -15,8 +15,9 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.adbc.core;
+package org.apache.arrow.adbc.drivermanager;
 
+import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.memory.BufferAllocator;
 
 /** A factory for instantiating new AdbcDrivers. */

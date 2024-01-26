@@ -24,7 +24,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
-import org.apache.arrow.adbc.core.AdbcDriverFactory;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.memory.BufferAllocator;

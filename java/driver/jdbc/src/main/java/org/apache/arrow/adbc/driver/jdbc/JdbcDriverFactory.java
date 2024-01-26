@@ -18,7 +18,7 @@
 package org.apache.arrow.adbc.driver.jdbc;
 
 import org.apache.arrow.adbc.core.AdbcDriver;
-import org.apache.arrow.adbc.core.AdbcDriverFactory;
+import org.apache.arrow.adbc.drivermanager.AdbcDriverFactory;
 import org.apache.arrow.memory.BufferAllocator;
 
 /** Constructs new JdbcDriver instances. */
