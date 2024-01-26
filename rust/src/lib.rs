@@ -100,7 +100,7 @@ pub const ADBC_VERSION_1_0_0: i32 = 1000000;
 
 use std::collections::HashMap;
 
-use arrow_array::{RecordBatch, RecordBatchReader};
+use arrow_array::{RecordBatchReader, StructArray};
 use arrow_schema::Schema;
 
 use crate::error::AdbcError;
@@ -310,7 +310,7 @@ pub trait AdbcStatement {
     fn get_param_schema(&mut self) -> Result<Schema, AdbcError>;
 
     /// Bind Arrow data, either for bulk inserts or prepared statements.
-    fn bind_data(&mut self, batch: RecordBatch) -> Result<(), AdbcError>;
+    fn bind_data(&mut self, array: &StructArray) -> Result<(), AdbcError>;
 
     /// Bind Arrow data, either for bulk inserts or prepared statements.
     fn bind_stream(&mut self, stream: Box<dyn RecordBatchReader + Send>) -> Result<(), AdbcError>;
