@@ -26,7 +26,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     /// <summary>
     /// Class for testing the ADBC Client using the BigQuery ADBC driver.
     /// </summary>
-    /// /// <remarks>
+    /// <remarks>
     /// Tests are ordered to ensure data is created for the other
     /// queries to run.
     /// </remarks>

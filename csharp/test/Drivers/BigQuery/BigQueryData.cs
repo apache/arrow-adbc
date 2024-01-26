@@ -19,7 +19,6 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Text;
-using System.Xml.Linq;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery

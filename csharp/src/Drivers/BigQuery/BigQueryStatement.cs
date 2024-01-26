@@ -19,7 +19,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -95,7 +94,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             switch (arrowArray)
             {
                 case StructArray structArray:
-                     return SerializeToJson(structArray, index);
+                    return SerializeToJson(structArray, index);
                 case ListArray listArray:
                     return listArray.GetSlicedValues(index);
                 default:

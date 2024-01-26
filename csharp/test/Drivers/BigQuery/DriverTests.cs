@@ -18,14 +18,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
-using Apache.Arrow.Types;
-using Google.Apis.Auth.OAuth2;
-using Google.Cloud.BigQuery.V2;
-using Moq;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
