@@ -15,15 +15,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use std::sync::Arc;
-
 use arrow_array::{RecordBatch, RecordBatchReader};
-use arrow_schema::{ArrowError, Schema, SchemaRef};
+use arrow_schema::{ArrowError, SchemaRef};
 
 /// [RecordBatchReader] for a single record batch.
 pub(crate) struct SingleBatchReader {
     batch: Option<RecordBatch>,
-    schema: Arc<Schema>,
+    schema: SchemaRef,
 }
 
 impl SingleBatchReader {
