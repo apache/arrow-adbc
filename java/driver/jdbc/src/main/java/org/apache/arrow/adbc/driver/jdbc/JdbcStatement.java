@@ -22,6 +22,7 @@ import java.sql.Connection;
 import java.sql.ParameterMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
+import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -43,6 +45,7 @@ import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class JdbcStatement implements AdbcStatement {
   private final BufferAllocator allocator;
@@ -50,13 +53,13 @@ public class JdbcStatement implements AdbcStatement {
   private final JdbcQuirks quirks;
 
   // State for SQL queries
-  private Statement statement;
-  private String sqlQuery;
-  private ArrowReader reader;
-  private ResultSet resultSet;
+  private @Nullable Statement statement;
+  private @Nullable String sqlQuery;
+  private @Nullable ArrowReader reader;
+  private @Nullable ResultSet resultSet;
   // State for bulk ingest
-  private BulkState bulkOperation;
-  private VectorSchemaRoot bindRoot;
+  private @Nullable BulkState bulkOperation;
+  private @Nullable VectorSchemaRoot bindRoot;
 
   JdbcStatement(BufferAllocator allocator, Connection connection, JdbcQuirks quirks) {
     this.allocator = allocator;
@@ -73,7 +76,7 @@ public class JdbcStatement implements AdbcStatement {
       BulkIngestMode mode) {
     Objects.requireNonNull(targetTableName);
     final JdbcStatement statement = new JdbcStatement(allocator, connection, quirks);
-    statement.bulkOperation = new BulkState();
+    statement.bulkOperation = new BulkState(mode, targetTableName);
     statement.bulkOperation.mode = mode;
     statement.bulkOperation.targetTable = targetTableName;
     return statement;
@@ -93,7 +96,8 @@ public class JdbcStatement implements AdbcStatement {
     bindRoot = root;
   }
 
-  private void createBulkTable() throws AdbcException {
+  private void createBulkTable(BulkState bulkOperation, VectorSchemaRoot bindRoot)
+      throws AdbcException {
     final StringBuilder create = new StringBuilder("CREATE TABLE ");
     create.append(bulkOperation.targetTable);
     create.append(" (");
@@ -104,7 +108,13 @@ public class JdbcStatement implements AdbcStatement {
       final Field field = bindRoot.getVector(col).getField();
       create.append(field.getName());
       create.append(' ');
-      String typeName = quirks.getSqlQuirks().getArrowToSqlTypeNameMapping().apply(field.getType());
+      @Nullable SqlQuirks sqlQuirks = quirks.getSqlQuirks();
+      if (sqlQuirks == null) {
+        throw AdbcException.invalidState(
+            JdbcDriverUtil.prefixExceptionMessage(
+                "Must create driver with SqlQuirks to use bulk ingestion"));
+      }
+      String typeName = sqlQuirks.getArrowToSqlTypeNameMapping().apply(field.getType());
       if (typeName == null) {
         throw AdbcException.notImplemented(
             "[JDBC] Cannot generate CREATE TABLE statement for field " + field);
@@ -124,13 +134,14 @@ public class JdbcStatement implements AdbcStatement {
     }
   }
 
-  private UpdateResult executeBulk() throws AdbcException {
+  private UpdateResult executeBulk(BulkState bulkOperation) throws AdbcException {
     if (bindRoot == null) {
       throw AdbcException.invalidState("[JDBC] Must call bind() before bulk insert");
     }
+    VectorSchemaRoot bind = bindRoot;
 
     if (bulkOperation.mode == BulkIngestMode.CREATE) {
-      createBulkTable();
+      createBulkTable(bulkOperation, bind);
     }
 
     // XXX: potential injection
@@ -138,7 +149,7 @@ public class JdbcStatement implements AdbcStatement {
     final StringBuilder insert = new StringBuilder("INSERT INTO ");
     insert.append(bulkOperation.targetTable);
     insert.append(" VALUES (");
-    for (int col = 0; col < bindRoot.getFieldVectors().size(); col++) {
+    for (int col = 0; col < bind.getFieldVectors().size(); col++) {
       if (col > 0) {
         insert.append(", ");
       }
@@ -156,7 +167,7 @@ public class JdbcStatement implements AdbcStatement {
     try {
       try {
         final JdbcParameterBinder binder =
-            JdbcParameterBinder.builder(statement, bindRoot).bindAll().build();
+            JdbcParameterBinder.builder(statement, bind).bindAll().build();
         statement.clearBatch();
         while (binder.next()) {
           statement.addBatch();
@@ -168,7 +179,7 @@ public class JdbcStatement implements AdbcStatement {
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }
-    return new UpdateResult(bindRoot.getRowCount());
+    return new UpdateResult(bind.getRowCount());
   }
 
   private void invalidatePriorQuery() throws AdbcException {
@@ -202,10 +213,12 @@ public class JdbcStatement implements AdbcStatement {
   @Override
   public UpdateResult executeUpdate() throws AdbcException {
     if (bulkOperation != null) {
-      return executeBulk();
+      return executeBulk(bulkOperation);
     } else if (sqlQuery == null) {
       throw AdbcException.invalidState("[JDBC] Must setSqlQuery() first");
     }
+    String query = sqlQuery;
+
     long affectedRows = 0;
     try {
       invalidatePriorQuery();
@@ -226,7 +239,7 @@ public class JdbcStatement implements AdbcStatement {
         statement =
             connection.createStatement(
                 ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        affectedRows = statement.executeUpdate(sqlQuery);
+        affectedRows = statement.executeUpdate(query);
       }
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
@@ -241,6 +254,8 @@ public class JdbcStatement implements AdbcStatement {
     } else if (sqlQuery == null) {
       throw AdbcException.invalidState("[JDBC] Must setSqlQuery() first");
     }
+    String query = sqlQuery;
+
     try {
       invalidatePriorQuery();
       if (statement instanceof PreparedStatement) {
@@ -255,13 +270,13 @@ public class JdbcStatement implements AdbcStatement {
         statement =
             connection.createStatement(
                 ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        resultSet = statement.executeQuery(sqlQuery);
+        resultSet = statement.executeQuery(query);
         reader = new JdbcArrowReader(allocator, resultSet, /*overrideSchema*/ null);
       }
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }
-    return new QueryResult(/*affectedRows=*/ -1, reader);
+    return new QueryResult(/* affectedRows */ -1, reader);
   }
 
   @Override
@@ -271,6 +286,8 @@ public class JdbcStatement implements AdbcStatement {
     } else if (sqlQuery == null) {
       throw AdbcException.invalidState("[JDBC] Must setSqlQuery() first");
     }
+    String query = sqlQuery;
+
     try {
       invalidatePriorQuery();
       final PreparedStatement preparedStatement;
@@ -283,13 +300,21 @@ public class JdbcStatement implements AdbcStatement {
         ownedStatement = null;
       } else {
         // new statement
-        preparedStatement = connection.prepareStatement(sqlQuery);
+        preparedStatement = connection.prepareStatement(query);
         ownedStatement = preparedStatement;
       }
 
       final JdbcToArrowConfig config = JdbcArrowReader.makeJdbcConfig(allocator);
-      final Schema schema =
-          JdbcToArrowUtils.jdbcToArrowSchema(preparedStatement.getMetaData(), config);
+      @Nullable ResultSetMetaData rsmd = preparedStatement.getMetaData();
+      if (rsmd == null) {
+        throw new AdbcException(
+            JdbcDriverUtil.prefixExceptionMessage("JDBC driver returned null ResultSetMetaData"),
+            /*cause*/ null,
+            AdbcStatusCode.INTERNAL,
+            null,
+            0);
+      }
+      final Schema schema = JdbcToArrowUtils.jdbcToArrowSchema(rsmd, config);
       if (ownedStatement != null) {
         ownedStatement.close();
       }
@@ -332,12 +357,14 @@ public class JdbcStatement implements AdbcStatement {
       if (sqlQuery == null) {
         throw AdbcException.invalidArgument("[JDBC] Must setSqlQuery(String) before prepare()");
       }
+      String query = sqlQuery;
       if (resultSet != null) {
         resultSet.close();
       }
+
       statement =
           connection.prepareStatement(
-              sqlQuery, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+              query, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }
@@ -349,7 +376,12 @@ public class JdbcStatement implements AdbcStatement {
   }
 
   private static final class BulkState {
-    public BulkIngestMode mode;
+    BulkIngestMode mode;
     String targetTable;
+
+    BulkState(BulkIngestMode mode, String targetTable) {
+      this.mode = mode;
+      this.targetTable = targetTable;
+    }
   }
 }

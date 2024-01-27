@@ -24,13 +24,18 @@ import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.ErrorDetail;
 import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.FlightStatusCode;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 final class FlightSqlDriverUtil {
   private FlightSqlDriverUtil() {
     throw new AssertionError("Do not instantiate this class");
   }
 
-  static String prefixExceptionMessage(final String s) {
+  static String prefixExceptionMessage(final @Nullable String s) {
+    // Allow null since Throwable#getMessage may be null
+    if (s == null) {
+      return "[Flight SQL] (No or unknown error)";
+    }
     return "[Flight SQL] " + s;
   }
 

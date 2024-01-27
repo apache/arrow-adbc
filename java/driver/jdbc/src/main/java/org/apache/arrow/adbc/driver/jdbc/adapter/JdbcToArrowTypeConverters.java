@@ -20,22 +20,26 @@ package org.apache.arrow.adbc.driver.jdbc.adapter;
 import java.sql.Types;
 import org.apache.arrow.adapter.jdbc.JdbcToArrowUtils;
 import org.apache.arrow.vector.types.TimeUnit;
+import org.apache.arrow.vector.types.Types.MinorType;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 
 public final class JdbcToArrowTypeConverters {
   public static final JdbcToArrowTypeConverter MICROSOFT_SQL_SERVER =
       JdbcToArrowTypeConverters::mssql;
   public static final JdbcToArrowTypeConverter POSTGRESQL = JdbcToArrowTypeConverters::postgresql;
+  private static final int MS_SQL_TYPE_DATETIMEOFFSET = -155;
 
   private static ArrowType mssql(JdbcFieldInfoExtra field) {
     switch (field.getJdbcType()) {
+      case Types.TIME:
+        return MinorType.TIMENANO.getType();
+      case Types.TIMESTAMP:
         // DATETIME2
         // Precision is "100 nanoseconds" -> TimeUnit is NANOSECOND
-      case Types.TIMESTAMP:
-        return new ArrowType.Timestamp(TimeUnit.NANOSECOND, /*timezone*/ null);
+        return MinorType.TIMESTAMPNANO.getType();
+      case MS_SQL_TYPE_DATETIMEOFFSET:
         // DATETIMEOFFSET
         // Precision is "100 nanoseconds" -> TimeUnit is NANOSECOND
-      case -155:
         return new ArrowType.Timestamp(TimeUnit.NANOSECOND, "UTC");
       default:
         return JdbcToArrowUtils.getArrowTypeFromJdbcType(field.getFieldInfo(), /*calendar*/ null);
@@ -44,6 +48,8 @@ public final class JdbcToArrowTypeConverters {
 
   private static ArrowType postgresql(JdbcFieldInfoExtra field) {
     switch (field.getJdbcType()) {
+      case Types.TIME:
+        return MinorType.TIMEMICRO.getType();
       case Types.TIMESTAMP:
         {
           int decimalDigits = field.getScale();
@@ -58,7 +64,8 @@ public final class JdbcToArrowTypeConverters {
             unit = TimeUnit.NANOSECOND;
           } else {
             // Negative precision?
-            return null;
+            throw new UnsupportedOperationException(
+                "Cannot convert type to Arrow Timestamp (precision is negative)");
           }
           if ("timestamptz".equals(field.getTypeName())) {
             return new ArrowType.Timestamp(unit, "UTC");
@@ -66,7 +73,7 @@ public final class JdbcToArrowTypeConverters {
             return new ArrowType.Timestamp(unit, /*timezone*/ null);
           }
           // Unknown type
-          return null;
+          throw new UnsupportedOperationException("Cannot convert type to Arrow Timestamp");
         }
       default:
         return JdbcToArrowUtils.getArrowTypeFromJdbcType(field.getFieldInfo(), /*calendar*/ null);

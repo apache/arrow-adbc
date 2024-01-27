@@ -51,6 +51,12 @@
       <artifactId>adbc-sql</artifactId>
     </dependency>
 
+    <!-- Static analysis and linting -->
+    <dependency>
+      <groupId>org.checkerframework</groupId>
+      <artifactId>checker-qual</artifactId>
+    </dependency>
+
     <!-- Testing -->
     <dependency>
       <groupId>org.assertj</groupId>

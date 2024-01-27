@@ -20,6 +20,7 @@ import java.nio.ByteBuffer;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A connection to a {@link AdbcDatabase}.
@@ -79,7 +80,7 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
    *
    * @param infoCodes The metadata items to fetch.
    */
-  ArrowReader getInfo(int[] infoCodes) throws AdbcException;
+  ArrowReader getInfo(int @Nullable [] infoCodes) throws AdbcException;
 
   /**
    * Get metadata about the driver/database.

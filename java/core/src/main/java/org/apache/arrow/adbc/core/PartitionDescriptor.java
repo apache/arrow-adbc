@@ -18,6 +18,7 @@ package org.apache.arrow.adbc.core;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** An opaque descriptor for a part of a potentially distributed or partitioned result set. */
 public final class PartitionDescriptor {
@@ -32,7 +33,7 @@ public final class PartitionDescriptor {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(@Nullable Object o) {
     if (this == o) {
       return true;
     }
