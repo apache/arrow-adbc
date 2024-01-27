@@ -57,7 +57,7 @@ use arrow_array::{
     cast::{as_list_array, as_string_array, as_struct_array},
     types::Int16Type,
     types::Int32Type,
-    Array, RecordBatch, RecordBatchReader, StringArray, StructArray,
+    Array, RecordBatch, RecordBatchReader, StructArray,
 };
 use arrow_data::ffi::FFI_ArrowArray;
 use arrow_schema::{ffi::FFI_ArrowSchema, ArrowError, DataType, Field, Schema};
@@ -366,10 +366,10 @@ pub struct DriverDatabaseBuilder {
 }
 
 impl DriverDatabaseBuilder {
-    pub fn set_option(mut self, key: &str, value: &str) -> Result<Self> {
+    pub fn set_option(mut self, key: impl AsRef<str>, value: impl AsRef<str>) -> Result<Self> {
         let mut error = FFI_AdbcError::empty();
-        let key = CString::new(key)?;
-        let value = CString::new(value)?;
+        let key = CString::new(key.as_ref())?;
+        let value = CString::new(value.as_ref())?;
         let set_option = driver_method!(self.driver, database_set_option);
         let status =
             unsafe { set_option(&mut self.inner, key.as_ptr(), value.as_ptr(), &mut error) };
@@ -388,9 +388,9 @@ impl DriverDatabaseBuilder {
 }
 
 // Safety: the only thing in the builder that isn't Send + Sync is the
-// FFI_AdbcDatabase within the AdbcDriverInner. But the builder has exclusive
-// access to that value, since it was created when the builder was constructed
-// and there is no public access to it.
+// FFI_AdbcDatabase. But the builder has exclusive access to that value,
+// since it was created when the builder was constructed and there is
+// no public access to it.
 unsafe impl Send for DriverDatabaseBuilder {}
 unsafe impl Sync for DriverDatabaseBuilder {}
 
@@ -413,17 +413,17 @@ impl DriverDatabase {
     /// Some drivers may not support setting options after initialization and
     /// instead return an error. So when possible prefer setting options on the
     /// builder.
-    pub fn set_option(&self, key: &str, value: &str) -> Result<()> {
+    pub fn set_option(&self, key: impl AsRef<str>, value: impl AsRef<str>) -> Result<()> {
         let mut error = FFI_AdbcError::empty();
-        let key = CString::new(key)?;
-        let value = CString::new(value)?;
+        let key = CString::new(key.as_ref())?;
+        let value = CString::new(value.as_ref())?;
 
         let mut inner_mut = self
             .inner
             .write()
             .expect("Read-write lock of AdbcDatabase was poisoned.");
+        let set_option = driver_method!(self.driver, database_set_option);
         let status = unsafe {
-            let set_option = driver_method!(self.driver, database_set_option);
             set_option(
                 inner_mut.deref_mut(),
                 key.as_ptr(),
@@ -442,10 +442,8 @@ impl DriverDatabase {
         let mut inner = FFI_AdbcConnection::empty();
 
         let mut error = FFI_AdbcError::empty();
-        let status = unsafe {
-            let connection_new = driver_method!(self.driver, connection_new);
-            connection_new(&mut inner, &mut error)
-        };
+        let connection_new = driver_method!(self.driver, connection_new);
+        let status = unsafe { connection_new(&mut inner, &mut error) };
 
         check_status(status, error)?;
 
@@ -474,14 +472,13 @@ pub struct DriverConnectionBuilder {
 
 impl DriverConnectionBuilder {
     /// Set an option on a connection.
-    pub fn set_option(mut self, key: &str, value: &str) -> Result<Self> {
+    pub fn set_option(mut self, key: impl AsRef<str>, value: impl AsRef<str>) -> Result<Self> {
         let mut error = FFI_AdbcError::empty();
-        let key = CString::new(key)?;
-        let value = CString::new(value)?;
-        let status = unsafe {
-            let set_option = driver_method!(self.driver, connection_set_option);
-            set_option(&mut self.inner, key.as_ptr(), value.as_ptr(), &mut error)
-        };
+        let key = CString::new(key.as_ref())?;
+        let value = CString::new(value.as_ref())?;
+        let set_option = driver_method!(self.driver, connection_set_option);
+        let status =
+            unsafe { set_option(&mut self.inner, key.as_ptr(), value.as_ptr(), &mut error) };
 
         check_status(status, error)?;
 
@@ -538,11 +535,7 @@ impl AdbcConnection for DriverConnection {
     type StatementType = DriverStatement;
     type ObjectCollectionType = ImportedCatalogCollection;
 
-    fn set_option(
-        &self,
-        key: impl AsRef<str>,
-        value: impl AsRef<str>,
-    ) -> std::result::Result<(), AdbcError> {
+    fn set_option(&self, key: impl AsRef<str>, value: impl AsRef<str>) -> Result<()> {
         let mut error = FFI_AdbcError::empty();
         let key = CString::new(key.as_ref())?;
         let value = CString::new(value.as_ref())?;
@@ -562,7 +555,7 @@ impl AdbcConnection for DriverConnection {
         Ok(())
     }
 
-    fn new_statement(&self) -> std::result::Result<Self::StatementType, AdbcError> {
+    fn new_statement(&self) -> Result<Self::StatementType> {
         todo!()
     }
 
@@ -571,7 +564,7 @@ impl AdbcConnection for DriverConnection {
     /// For example, in sqlite the table types are "view" and "table".
     ///
     /// This can error if not implemented by the driver.
-    fn get_table_types(&self) -> std::result::Result<Vec<String>, AdbcError> {
+    fn get_table_types(&self) -> Result<Vec<String>> {
         let mut error = FFI_AdbcError::empty();
 
         let mut reader = FFI_ArrowArrayStream::empty();
@@ -603,11 +596,7 @@ impl AdbcConnection for DriverConnection {
             if batch.schema().deref() != &expected_schema {
                 return Err(schema_mismatch_error(batch.schema()));
             }
-            let column = batch
-                .column(0)
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .unwrap(); // We just asserted above this is a StringArray.
+            let column = as_string_array(batch.column(0));
             for value in column.into_iter().flatten() {
                 out.push(value.to_string());
             }
@@ -640,7 +629,7 @@ impl AdbcConnection for DriverConnection {
 
         let reader = unsafe { ArrowArrayStreamReader::from_raw(&mut reader)? };
 
-        Ok(import_info_data(Box::new(reader))?)
+        Ok(import_info_data(reader)?)
     }
 
     fn get_objects(
@@ -651,7 +640,7 @@ impl AdbcConnection for DriverConnection {
         table_name: Option<&str>,
         table_type: Option<&[&str]>,
         column_name: Option<&str>,
-    ) -> std::result::Result<Self::ObjectCollectionType, AdbcError> {
+    ) -> Result<Self::ObjectCollectionType> {
         let mut error = FFI_AdbcError::empty();
 
         let mut reader = FFI_ArrowArrayStream::empty();
@@ -704,7 +693,7 @@ impl AdbcConnection for DriverConnection {
         catalog: Option<&str>,
         db_schema: Option<&str>,
         table_name: &str,
-    ) -> std::result::Result<arrow::datatypes::Schema, AdbcError> {
+    ) -> Result<arrow::datatypes::Schema> {
         let mut error = FFI_AdbcError::empty();
 
         let catalog = NullableCString::try_from(catalog)?;
@@ -729,10 +718,7 @@ impl AdbcConnection for DriverConnection {
         Ok(Schema::try_from(&schema)?)
     }
 
-    fn read_partition(
-        &self,
-        partition: &[u8],
-    ) -> std::result::Result<Box<dyn RecordBatchReader + Send>, AdbcError> {
+    fn read_partition(&self, partition: &[u8]) -> Result<Box<dyn RecordBatchReader + Send>> {
         let mut error = FFI_AdbcError::empty();
 
         let mut reader = FFI_ArrowArrayStream::empty();
@@ -754,7 +740,7 @@ impl AdbcConnection for DriverConnection {
         Ok(Box::new(reader))
     }
 
-    fn commit(&self) -> std::result::Result<(), AdbcError> {
+    fn commit(&self) -> Result<()> {
         let mut error = FFI_AdbcError::empty();
 
         let commit = driver_method!(self.driver, connection_commit);
@@ -763,7 +749,7 @@ impl AdbcConnection for DriverConnection {
         Ok(())
     }
 
-    fn rollback(&self) -> std::result::Result<(), AdbcError> {
+    fn rollback(&self) -> Result<()> {
         let mut error = FFI_AdbcError::empty();
 
         let rollback = driver_method!(self.driver, connection_rollback);
@@ -805,7 +791,7 @@ pub struct DriverStatement {
 }
 
 impl AdbcStatement for DriverStatement {
-    fn prepare(&mut self) -> std::result::Result<(), AdbcError> {
+    fn prepare(&mut self) -> Result<()> {
         let mut error = FFI_AdbcError::empty();
 
         let statement_prepare = driver_method!(self.driver, statement_prepare);
@@ -814,11 +800,7 @@ impl AdbcStatement for DriverStatement {
         Ok(())
     }
 
-    fn set_option(
-        &mut self,
-        key: impl AsRef<str>,
-        value: impl AsRef<str>,
-    ) -> std::result::Result<(), AdbcError> {
+    fn set_option(&mut self, key: impl AsRef<str>, value: impl AsRef<str>) -> Result<()> {
         let mut error = FFI_AdbcError::empty();
 
         let key = CString::new(key.as_ref())?;
@@ -831,7 +813,7 @@ impl AdbcStatement for DriverStatement {
         Ok(())
     }
 
-    fn set_sql_query(&mut self, query: &str) -> std::result::Result<(), AdbcError> {
+    fn set_sql_query(&mut self, query: &str) -> Result<()> {
         let mut error = FFI_AdbcError::empty();
 
         let query = CString::new(query)?;
@@ -842,7 +824,7 @@ impl AdbcStatement for DriverStatement {
         Ok(())
     }
 
-    fn set_substrait_plan(&mut self, plan: &[u8]) -> std::result::Result<(), AdbcError> {
+    fn set_substrait_plan(&mut self, plan: &[u8]) -> Result<()> {
         let mut error = FFI_AdbcError::empty();
 
         let set_substrait_plan = driver_method!(self.driver, statement_set_substrait_plan);
@@ -852,7 +834,7 @@ impl AdbcStatement for DriverStatement {
         Ok(())
     }
 
-    fn get_param_schema(&mut self) -> std::result::Result<arrow::datatypes::Schema, AdbcError> {
+    fn get_param_schema(&mut self) -> Result<arrow::datatypes::Schema> {
         let mut error = FFI_AdbcError::empty();
 
         let mut schema = FFI_ArrowSchema::empty();
@@ -864,7 +846,7 @@ impl AdbcStatement for DriverStatement {
         Ok(Schema::try_from(&schema)?)
     }
 
-    fn bind_data(&mut self, array: &StructArray) -> std::result::Result<(), AdbcError> {
+    fn bind_data(&mut self, array: &StructArray) -> Result<()> {
         let mut schema = FFI_ArrowSchema::try_from(array.data_type())?;
         let mut array = FFI_ArrowArray::new(&array.to_data());
         let mut error = FFI_AdbcError::empty();
@@ -875,10 +857,7 @@ impl AdbcStatement for DriverStatement {
         Ok(())
     }
 
-    fn bind_stream(
-        &mut self,
-        reader: Box<dyn RecordBatchReader + Send>,
-    ) -> std::result::Result<(), AdbcError> {
+    fn bind_stream(&mut self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()> {
         let mut error = FFI_AdbcError::empty();
 
         let mut stream = FFI_ArrowArrayStream::new(reader);
@@ -890,7 +869,7 @@ impl AdbcStatement for DriverStatement {
         Ok(())
     }
 
-    fn execute(&mut self) -> std::result::Result<StatementResult, AdbcError> {
+    fn execute(&mut self) -> Result<StatementResult> {
         let mut error = FFI_AdbcError::empty();
 
         let mut stream = FFI_ArrowArrayStream::empty();
@@ -914,7 +893,7 @@ impl AdbcStatement for DriverStatement {
         })
     }
 
-    fn execute_update(&mut self) -> std::result::Result<i64, AdbcError> {
+    fn execute_update(&mut self) -> Result<i64> {
         let mut error = FFI_AdbcError::empty();
 
         let stream = null_mut();
@@ -928,9 +907,7 @@ impl AdbcStatement for DriverStatement {
         Ok(rows_affected)
     }
 
-    fn execute_partitioned(
-        &mut self,
-    ) -> std::result::Result<PartitionedStatementResult, AdbcError> {
+    fn execute_partitioned(&mut self) -> Result<PartitionedStatementResult> {
         let mut error = FFI_AdbcError::empty();
 
         let mut schema = FFI_ArrowSchema::empty();
