@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             throw new NotImplementedException();
         }
 
-        public override object GetValue(IArrowArray arrowArray, Field field, int index)
+        public override object GetValue(IArrowArray arrowArray, int index)
         {
             throw new NotSupportedException();
         }

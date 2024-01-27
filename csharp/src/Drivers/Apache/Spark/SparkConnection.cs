@@ -98,5 +98,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 this.client = null;
             }
         }
+
+        public override Schema GetTableSchema(string catalog, string dbSchema, string tableName) => throw new NotImplementedException();
     }
 }

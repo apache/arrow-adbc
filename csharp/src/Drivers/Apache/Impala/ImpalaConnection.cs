@@ -74,5 +74,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
             throw new System.NotImplementedException();
         }
+
+        public override Schema GetTableSchema(string catalog, string dbSchema, string tableName) => throw new System.NotImplementedException();
     }
 }

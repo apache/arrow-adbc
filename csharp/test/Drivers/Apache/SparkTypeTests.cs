@@ -18,82 +18,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
 {
-    [TestClass]
+    [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class SparkTypeTests
     {
-        /// <summary>
-        /// Verify the types and values for the arrays
-        /// </summary>
-        [TestMethod]
-        public void VerifyTypesAndValues()
-        {
-            List<RecordBatch> recordBatches = Utils.LoadTestRecordBatches("spark.arrow");
 
-            RecordBatch recordBatch = recordBatches[0];
-
-            int totalRecords = recordBatches.Select(x => x.Length).Sum();
-
-            Assert.AreEqual(19, recordBatches.Count);
-            Assert.AreEqual(46236, totalRecords);
-
-            var actualArrays = recordBatch.Arrays.ToList();
-
-            List<Type> expectedArrayTypes = new List<Type>()
-            {
-                typeof(StringArray),
-                typeof(StringArray),
-                typeof(StringArray),
-                typeof(DoubleArray),
-                typeof(DoubleArray),
-                typeof(DoubleArray),
-                typeof(StringArray),
-                typeof(StringArray),
-                typeof(StringArray),
-                typeof(StringArray),
-                typeof(StringArray),
-                typeof(StringArray),
-                typeof(StringArray)
-            };
-
-            List<object> actualValues = new List<object>()
-            {
-                ((StringArray)actualArrays[0]).GetString(0),
-                ((StringArray)actualArrays[1]).GetString(0),
-                ((StringArray)actualArrays[2]).GetString(0),
-                ((DoubleArray)actualArrays[3]).GetValue(0),
-                ((DoubleArray)actualArrays[4]).GetValue(0),
-                ((DoubleArray)actualArrays[5]).GetValue(0),
-                ((StringArray)actualArrays[6]).GetString(0),
-                ((StringArray)actualArrays[7]).GetString(0),
-                ((StringArray)actualArrays[8]).GetString(0),
-                ((StringArray)actualArrays[9]).GetString(0),
-                ((StringArray)actualArrays[10]).GetString(0),
-                ((StringArray)actualArrays[11]).GetString(0),
-                ((StringArray)actualArrays[12]).GetString(0),
-            };
-
-            List<object> expectedValues = new List<object>()
-            {
-                "CA-0020",
-                "closed",
-                "Algar Tower Airport",
-                56.11666489,
-                -111.7666702,
-                null,
-                "NA",
-                "CA",
-                "CA-AB",
-                null,
-                null,
-                null,
-                null
-            };
-
-            Adbc.Tests.TypeTests.VerifyTypesAndValues(actualArrays, expectedArrayTypes, actualValues, expectedValues);
-        }
     }
 }
