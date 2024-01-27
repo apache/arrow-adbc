@@ -1360,7 +1360,49 @@ func (suite *SnowflakeTests) TestStatementEmptyResultSet() {
 	suite.True(rdr.Next())
 	rec := rdr.Record()
 	suite.Equal(n, rec.NumRows())
-	suite.EqualValues(26, rec.NumCols())
+
+	// Snowflake may add more columns to the result of this query in the future,
+	// so we just test a subset known to be supported at the time of writing
+	expectedFieldNames := []string{
+		"name",
+		"state",
+		"type",
+		"size",
+		"running",
+		"queued",
+		"is_default",
+		"is_current",
+		"auto_suspend",
+		"auto_resume",
+		"available",
+		"provisioning",
+		"quiescing",
+		"other",
+		"created_on",
+		"resumed_on",
+		"updated_on",
+		"owner",
+		"comment",
+		"resource_monitor",
+		"actives",
+		"pendings",
+		"failed",
+		"suspended",
+		"uuid",
+		"budget",
+		"owner_role_type",
+	}
+
+	fields := rec.Schema().Fields()
+outer: // Check that each of the expected field names are in the result schema
+	for _, expectedFieldName := range expectedFieldNames {
+		for _, f := range fields {
+			if f.Name == expectedFieldName {
+				continue outer
+			}
+		}
+		suite.Failf("unexpected result schema", "column '%s' expected but not found", expectedFieldName)
+	}
 
 	suite.False(rdr.Next())
 	suite.NoError(rdr.Err())
