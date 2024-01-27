@@ -177,12 +177,7 @@ impl From<std::ffi::NulError> for AdbcError {
 
 impl From<ArrowError> for AdbcError {
     fn from(value: ArrowError) -> Self {
-        let message = match value {
-            ArrowError::CDataInterface(msg) => msg,
-            ArrowError::SchemaError(msg) => msg,
-            _ => "Arrow error".to_string(), // TODO: Fill in remainder
-        };
-
+        let message = format!("Arrow error: {}", value.to_string());
         Self {
             message,
             vendor_code: -1,
