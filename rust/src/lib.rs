@@ -62,7 +62,7 @@
 //!
 //! use arrow_adbc::driver_manager::AdbcDriver;
 //! use arrow_adbc::ADBC_VERSION_1_0_0;
-//! use arrow_adbc::interface::StatementApi;
+//! use arrow_adbc::AdbcStatement;
 //!
 //! # fn main() -> arrow_adbc::driver_manager::Result<()> {
 //! let sqlite_driver = AdbcDriver::load("adbc_driver_sqlite", None, ADBC_VERSION_1_0_0)?;
