@@ -260,7 +260,7 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	case adbc.InfoVendorVersion:
 		return "sqlite 3"
 	case adbc.InfoVendorArrowVersion:
-		return "15.0.0-SNAPSHOT"
+		return "16.0.0-SNAPSHOT"
 	}
 
 	return nil
