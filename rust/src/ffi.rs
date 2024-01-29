@@ -31,7 +31,7 @@
 //! ```
 //! use std::ffi::CStr;
 //! use std::os::raw::c_char;
-//! use arrow_adbc::ffi::{FFI_AdbcError, check_err}
+//! use arrow_adbc::ffi::{FFI_AdbcError, check_err};
 //! use arrow_adbc::error::{AdbcStatusCode, AdbcError};
 //!
 //! unsafe fn adbc_str_utf8_len(
@@ -44,7 +44,7 @@
 //!     } else {
 //!         // AdbcError is implemented for Utf8Error
 //!         let key: &str = check_err!(CStr::from_ptr(key).to_str(), error);
-//!         let len: usize = key.chars().count();
+//!         let len: usize = key.len();
 //!         std::ptr::write_unaligned(out, len);
 //!     }
 //!    AdbcStatusCode::Ok
@@ -75,7 +75,7 @@
 //!
 //! assert_eq!(status_code, AdbcStatusCode::InvalidArguments);
 //! let error_msg = unsafe { CStr::from_ptr(error.message).to_str().unwrap() };
-//! assert_eq!(error_msg, "Invalid UTF-8 character");
+//! assert_eq!(error_msg, "Invalid UTF-8 character at position 0");
 //! assert_eq!(error.sqlstate, [2, 2, 0, 2, 1]);
 //! ```
 //!
