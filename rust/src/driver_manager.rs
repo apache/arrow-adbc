@@ -967,7 +967,7 @@ impl DatabaseCatalogCollection for ImportedCatalogCollection {
     type CatalogEntryType<'a> = ImportedCatalogEntry<'a>;
     type CatalogIterator<'a> = Box<dyn Iterator<Item = Self::CatalogEntryType<'a>> + 'a>;
 
-    fn catalogs<'a>(&'a self) -> Self::CatalogIterator<'a> {
+    fn catalogs(&self) -> Self::CatalogIterator<'_> {
         Box::new(self.batches.iter().flat_map(move |batch| {
             (0..batch.len()).map(move |pos| ImportedCatalogEntry::new(batch, pos))
         }))
