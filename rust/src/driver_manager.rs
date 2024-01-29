@@ -555,8 +555,20 @@ impl AdbcConnection for DriverConnection {
         Ok(())
     }
 
-    fn new_statement(&self) -> Result<Self::StatementType> {
-        todo!()
+    fn new_statement(&self) -> Result<DriverStatement> {
+        let mut inner = FFI_AdbcStatement::empty();
+        let mut error = FFI_AdbcError::empty();
+
+        let statement_new = driver_method!(self.driver, statement_new);
+        let status =
+            unsafe { statement_new(self.inner.borrow_mut().deref_mut(), &mut inner, &mut error) };
+        check_status(status, error)?;
+
+        Ok(DriverStatement {
+            inner,
+            _connection: self.inner.clone(),
+            driver: self.driver.clone(),
+        })
     }
 
     /// Get the valid table types for the database.
@@ -756,25 +768,6 @@ impl AdbcConnection for DriverConnection {
         let status = unsafe { rollback(self.inner.borrow_mut().deref_mut(), &mut error) };
         check_status(status, error)?;
         Ok(())
-    }
-}
-
-impl DriverConnection {
-    /// Create a new statement.
-    pub fn new_statement(&self) -> Result<DriverStatement> {
-        let mut inner = FFI_AdbcStatement::empty();
-        let mut error = FFI_AdbcError::empty();
-
-        let statement_new = driver_method!(self.driver, statement_new);
-        let status =
-            unsafe { statement_new(self.inner.borrow_mut().deref_mut(), &mut inner, &mut error) };
-        check_status(status, error)?;
-
-        Ok(DriverStatement {
-            inner,
-            _connection: self.inner.clone(),
-            driver: self.driver.clone(),
-        })
     }
 }
 
