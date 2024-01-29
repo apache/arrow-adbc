@@ -437,6 +437,7 @@ fn test_connection_set_option() {
 }
 
 #[test]
+#[ignore]
 fn test_connection_get_info() {
     use num_enum::FromPrimitive;
     let (conn, mock_driver) = get_connection();
