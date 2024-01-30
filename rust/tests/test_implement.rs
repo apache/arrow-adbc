@@ -373,13 +373,7 @@ macro_rules! set_driver_method {
 
 fn get_connection() -> (DriverConnection, Arc<Mutex<PatchableDriver>>) {
     let (builder, mock_driver) = get_database_builder();
-    let conn = builder
-        .init()
-        .unwrap()
-        .new_connection()
-        .unwrap()
-        .init()
-        .unwrap();
+    let conn = builder.init().new_connection().unwrap().init().unwrap();
     (conn, mock_driver)
 }
 
@@ -398,7 +392,7 @@ fn test_database_set_option() {
     );
 
     let builder = builder.set_option("test_key", "test value 😬").unwrap();
-    let database = builder.init().unwrap();
+    let database = builder.init();
     database.set_option("test_key", "test value 😬").unwrap();
 
     set_driver_method!(mock_driver, database_set_option, |_: &str, _: &str| {
@@ -413,7 +407,7 @@ fn test_database_set_option() {
 #[test]
 fn test_connection_set_option() {
     let (builder, mock_driver) = get_database_builder();
-    let conn_builder = builder.init().unwrap().new_connection().unwrap();
+    let conn_builder = builder.init().new_connection().unwrap();
 
     set_driver_method!(
         mock_driver,
