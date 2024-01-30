@@ -74,7 +74,7 @@ use crate::{
         DatabaseSchemaEntry, DatabaseTableEntry, ForeignKeyUsageRef, TableConstraintRef,
         TableConstraintTypeRef,
     },
-    AdbcConnection, AdbcStatement, PartitionedStatementResult, StatementResult,
+    AdbcConnection, AdbcDatabase, AdbcStatement, PartitionedStatementResult, StatementResult,
 };
 
 use self::util::{NullableCString, RowReference, StructArraySlice};
@@ -452,6 +452,28 @@ impl DriverDatabase {
             database: self.inner.clone(),
             driver: self.driver.clone(),
         })
+    }
+}
+
+impl AdbcDatabase for DriverDatabase {
+    type ConnectionType = DriverConnection;
+
+    fn set_option(&self, key: impl AsRef<str>, value: impl AsRef<str>) -> Result<()> {
+        self.set_option(key, value)
+    }
+
+    fn connect<K, V>(
+        &self,
+        options: impl IntoIterator<Item = (K, V)>,
+    ) -> Result<Self::ConnectionType>
+    where
+        K: AsRef<str>,
+        V: AsRef<str>,
+    {
+        options
+            .into_iter()
+            .try_for_each(|(k, v)| self.set_option(k, v))?;
+        self.new_connection()?.init()
     }
 }
 
