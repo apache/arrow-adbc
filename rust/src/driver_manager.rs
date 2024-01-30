@@ -84,10 +84,10 @@ pub(crate) mod util {
 
     use super::*;
 
-    /// Nullable CString wrapper type to avoid to avoid safety issues.
+    /// Nullable CString wrapper type to avoid safety issues.
     ///
     /// This struct makes it obvious how to get a pointer to the data without
-    /// *consuming* the struct. This is easily to accidentally do with methods
+    /// *consuming* the struct. This is easy to do accidentally with methods
     /// directly on Option, such as map.
     pub(crate) struct NullableCString(Option<CString>);
 
