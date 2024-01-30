@@ -612,31 +612,25 @@ impl AdbcConnection for DriverConnection {
         let reader = unsafe { ArrowArrayStreamReader::from_raw(&mut reader)? };
 
         let expected_schema = Schema::new(vec![Field::new("table_type", DataType::Utf8, false)]);
-        let schema_mismatch_error = |found_schema| AdbcError {
-            message: format!("Driver returned unexpected schema: {found_schema:?}"),
-            vendor_code: -1,
-            sqlstate: [0; 5],
-            status_code: AdbcStatusCode::Internal,
-        };
         if reader.schema().deref() != &expected_schema {
-            return Err(schema_mismatch_error(reader.schema()));
+            return Err(AdbcError {
+                message: format!("Driver returned unexpected schema: {:?}", reader.schema()),
+                vendor_code: -1,
+                sqlstate: [0; 5],
+                status_code: AdbcStatusCode::Internal,
+            });
         }
 
         let batches: Vec<RecordBatch> = reader.collect::<std::result::Result<_, ArrowError>>()?;
 
-        let mut out: Vec<String> =
-            Vec::with_capacity(batches.iter().map(|batch| batch.num_rows()).sum());
-        for batch in &batches {
-            if batch.schema().deref() != &expected_schema {
-                return Err(schema_mismatch_error(batch.schema()));
-            }
-            let column = as_string_array(batch.column(0));
-            for value in column.into_iter().flatten() {
-                out.push(value.to_string());
-            }
-        }
+        let table_types: Vec<String> = batches
+            .iter()
+            .map(|batch| as_string_array(batch.column(0)))
+            .flat_map(|arr| arr.iter().flat_map(|x| x))
+            .map(|s| s.to_string())
+            .collect();
 
-        Ok(out)
+        Ok(table_types)
     }
 
     fn get_info(&self, info_codes: Option<&[InfoCode]>) -> Result<HashMap<InfoCode, InfoData>> {
