@@ -379,11 +379,11 @@ impl DriverDatabaseBuilder {
         Ok(self)
     }
 
-    pub fn init(self) -> Result<DriverDatabase> {
-        Ok(DriverDatabase {
+    pub fn init(self) -> DriverDatabase {
+        DriverDatabase {
             inner: Arc::new(RwLock::new(self.inner)),
             driver: self.driver,
-        })
+        }
     }
 }
 

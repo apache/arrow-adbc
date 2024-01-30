@@ -66,7 +66,7 @@
 //!
 //! # fn main() -> arrow_adbc::driver_manager::Result<()> {
 //! let sqlite_driver = AdbcDriver::load("adbc_driver_sqlite", None, ADBC_VERSION_1_0_0)?;
-//! let sqlite_database = sqlite_driver.new_database()?.init()?;
+//! let sqlite_database = sqlite_driver.new_database()?.init();
 //! let sqlite_conn = sqlite_database.new_connection()?.init()?;
 //! let mut sqlite_statement = sqlite_conn.new_statement()?;
 //!
