@@ -23,7 +23,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"net/textproto"
 	"os"
 	"strconv"
@@ -32,14 +31,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
-	"github.com/apache/arrow/go/v15/arrow"
-	"github.com/apache/arrow/go/v15/arrow/array"
-	"github.com/apache/arrow/go/v15/arrow/flight"
-	"github.com/apache/arrow/go/v15/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v15/arrow/flight/flightsql/schema_ref"
-	"github.com/apache/arrow/go/v15/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/flight"
+	"github.com/apache/arrow/go/v16/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v16/arrow/flight/flightsql/schema_ref"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/maps"
@@ -1078,7 +1079,8 @@ func (ts *TimeoutTests) TestDontTimeout() {
 type CookieTestServer struct {
 	flightsql.BaseServer
 
-	cur time.Time
+	cur  time.Time
+	addr string
 }
 
 func (server *CookieTestServer) GetFlightInfoStatement(ctx context.Context, cmd flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
@@ -1095,7 +1097,13 @@ func (server *CookieTestServer) GetFlightInfoStatement(ctx context.Context, cmd 
 	info := &flight.FlightInfo{
 		FlightDescriptor: desc,
 		Endpoint: []*flight.FlightEndpoint{
-			{Ticket: &flight.Ticket{Ticket: tkt}},
+			{
+				Ticket: &flight.Ticket{Ticket: tkt},
+				// passing a non-empty location uri so that the test client
+				// creates a sub-client and we test that the cookies are
+				// preserved and copied over.
+				Location: []*flight.Location{{Uri: server.addr}},
+			},
 		},
 		TotalRecords: -1,
 		TotalBytes:   -1,
@@ -1173,9 +1181,11 @@ type CookieTests struct {
 }
 
 func (suite *CookieTests) SetupSuite() {
-	suite.DoSetupSuite(&CookieTestServer{}, nil, map[string]string{
+	ts := &CookieTestServer{}
+	suite.DoSetupSuite(ts, nil, map[string]string{
 		driver.OptionCookieMiddleware: adbc.OptionValueEnabled,
 	})
+	ts.addr = "grpc://" + suite.s.Addr().String()
 }
 
 func (suite *CookieTests) TestCookieUsage() {
