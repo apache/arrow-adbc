@@ -25,14 +25,16 @@ use arrow::compute::concat_batches;
 use arrow::datatypes::{DataType, Field, Schema};
 use arrow::error::ArrowError;
 use arrow::record_batch::RecordBatch;
-use arrow_adbc::driver_manager::{AdbcDriver, DriverDatabase, DriverStatement, Result};
+use arrow_adbc::driver_manager::{
+    AdbcDriver, DriverConnection, DriverDatabase, DriverStatement, Result,
+};
 use arrow_adbc::info::{InfoCode, InfoData};
 use arrow_adbc::objects::{
     ColumnSchemaRef, DatabaseCatalogCollection, DatabaseCatalogEntry, DatabaseSchemaEntry,
     DatabaseTableEntry,
 };
-use arrow_adbc::AdbcObjectDepth;
 use arrow_adbc::{AdbcConnection, AdbcStatement, ADBC_VERSION_1_0_0};
+use arrow_adbc::{AdbcDatabase, AdbcObjectDepth};
 
 fn get_driver() -> Result<AdbcDriver> {
     AdbcDriver::load("adbc_driver_sqlite", None, ADBC_VERSION_1_0_0)
@@ -45,45 +47,51 @@ fn get_database() -> Result<DriverDatabase> {
     Ok(driver.new_database()?.set_option("uri", "")?.init())
 }
 
+fn get_connection() -> Result<DriverConnection> {
+    let database = get_database()?;
+    database.new_connection()?.init()
+}
+
 #[test]
 fn test_database() {
     let driver = get_driver().unwrap();
-
-    let builder = driver
+    let database = driver
         .new_database()
         .unwrap()
         .set_option("uri", "test.db")
         .unwrap()
         .init();
-
-    builder.set_option("uri", "test2.db").unwrap();
+    database.set_option("uri", "test2.db").unwrap();
+    database.connect([("uri", "")]).unwrap();
+    database.new_connection().unwrap().init().unwrap();
 }
 
 #[test]
-fn test_connection_info() {
-    let database = get_database().unwrap();
-    let connection = database.new_connection().unwrap().init().unwrap();
-
+fn test_connection_get_table_types() {
+    let connection = get_connection().unwrap();
     let table_types = connection.get_table_types().unwrap();
     assert_eq!(table_types, vec!["table", "view"]);
+}
 
-    let info = connection
+#[test]
+fn test_connection_get_info() {
+    let connection = get_connection().unwrap();
+
+    let info_got: HashMap<InfoCode, InfoData> = connection
         .get_info(Some(&[InfoCode::DriverName, InfoCode::VendorName]))
         .unwrap();
 
-    let info: HashMap<InfoCode, String> = info
-        .into_iter()
-        .map(|(code, info)| match info {
-            InfoData::StringValue(val) => (code, val.into_owned()),
-            _ => unreachable!(),
-        })
-        .collect();
-    assert_eq!(info.len(), 2);
-    assert_eq!(
-        info.get(&InfoCode::DriverName),
-        Some(&"ADBC SQLite Driver".to_string())
-    );
-    assert_eq!(info.get(&InfoCode::VendorName), Some(&"SQLite".to_string()));
+    let info_expected = [
+        (
+            InfoCode::DriverName,
+            InfoData::StringValue("ADBC SQLite Driver".into()),
+        ),
+        (InfoCode::VendorName, InfoData::StringValue("SQLite".into())),
+    ]
+    .into_iter()
+    .collect();
+
+    assert_eq!(info_got, info_expected);
 }
 
 fn get_example_data() -> RecordBatch {
@@ -96,9 +104,9 @@ fn get_example_data() -> RecordBatch {
     RecordBatch::try_new(Arc::new(schema1), vec![ints_arr, str_arr]).unwrap()
 }
 
-fn upload_data(statement: &mut DriverStatement, data: RecordBatch, name: &str) {
+fn ingest_data(statement: &mut DriverStatement, data: RecordBatch, table: &str) {
     statement
-        .set_option(arrow_adbc::options::AdbcOptionKey::IngestTargetTable, name)
+        .set_option(arrow_adbc::options::AdbcOptionKey::IngestTargetTable, table)
         .unwrap();
     statement.bind_data(&data.into()).unwrap();
     statement.execute_update().unwrap();
@@ -106,12 +114,11 @@ fn upload_data(statement: &mut DriverStatement, data: RecordBatch, name: &str) {
 
 #[test]
 fn test_connection_get_objects() {
-    let database = get_database().unwrap();
-    let connection = database.new_connection().unwrap().init().unwrap();
+    let connection = get_connection().unwrap();
 
     let record_batch = get_example_data();
     let mut statement = connection.new_statement().unwrap();
-    upload_data(&mut statement, record_batch, "foo");
+    ingest_data(&mut statement, record_batch, "foo");
 
     let catalogs = connection
         .get_objects(AdbcObjectDepth::All, None, None, None, None, None)
@@ -145,12 +152,11 @@ fn test_connection_get_objects() {
 
 #[test]
 fn test_connection_get_table_schema() {
-    let database = get_database().unwrap();
-    let connection = database.new_connection().unwrap().init().unwrap();
+    let connection = get_connection().unwrap();
 
     let record_batch = get_example_data();
     let mut statement = connection.new_statement().unwrap();
-    upload_data(&mut statement, record_batch.clone(), "bar");
+    ingest_data(&mut statement, record_batch.clone(), "bar");
 
     let schema = connection.get_table_schema(None, None, "bar").unwrap();
 
@@ -159,8 +165,7 @@ fn test_connection_get_table_schema() {
 
 #[test]
 fn test_prepared() {
-    let database = get_database().unwrap();
-    let connection = database.new_connection().unwrap().init().unwrap();
+    let connection = get_connection().unwrap();
 
     let array = Arc::new(Int64Array::from_iter(vec![1, 2, 3, 4]));
 
@@ -185,19 +190,18 @@ fn test_prepared() {
         .unwrap()
         .collect::<std::result::Result<_, ArrowError>>()
         .unwrap();
-    let data: RecordBatch = concat_batches(&result_schema, data.iter()).unwrap();
+    let data = concat_batches(&result_schema, data.iter()).unwrap();
     let expected = RecordBatch::try_new(Arc::new(expected_schema), vec![array]).unwrap();
     assert_eq!(data, expected);
 }
 
 #[test]
 fn test_ingest() {
-    let database = get_database().unwrap();
-    let connection = database.new_connection().unwrap().init().unwrap();
+    let connection = get_connection().unwrap();
 
     let record_batch = get_example_data();
     let mut statement = connection.new_statement().unwrap();
-    upload_data(&mut statement, record_batch.clone(), "baz");
+    ingest_data(&mut statement, record_batch.clone(), "baz");
 
     statement.set_sql_query("SELECT * FROM baz").unwrap();
     let result = statement.execute().unwrap();
