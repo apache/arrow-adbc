@@ -49,7 +49,6 @@ namespace adbcpq {
 namespace {
 /// The flag indicating to PostgreSQL that we want binary-format values.
 constexpr int kPgBinaryFormat = 1;
-constexpr int kPgTextFormat = 0;
 
 /// One-value ArrowArrayStream used to unify the implementations of Bind
 struct OneValueStream {
@@ -696,9 +695,10 @@ int TupleReader::NZAppendRowAndFetchNext(struct  ArrowError* error) {
 
   InitResultArray(error);
 
-  int batch_size = 1677721; // move this var to a safe place.
-  int numRows = PQntuples(result_); // reduce calls and do it once, maybe in InitQueryAndFetchFirst.
-  int numCols = PQnfields(result_); // ...
+  // Move these vars to a safer place.
+  int batch_size = 1677721;
+  int numRows = PQntuples(result_);
+  int numCols = PQnfields(result_);
 
   char* val;
 
@@ -706,7 +706,10 @@ int TupleReader::NZAppendRowAndFetchNext(struct  ArrowError* error) {
     if (numRows > 0 && numCols > 0) {
       for (int j = 0; j < numCols; j++) {
         val = PQgetvalue(result_, row_id_, j);
-        // call AppendToArrayForColType(result_array.children[j], val) - use global schema var.
+        /*  TODO: 
+          define and call AppendToArrayForColType(result_array.children[j], val);
+          use global schema var.
+        */
         int val1 = atoi(val);
         ArrowArrayAppendInt(result_array.children[j], val1);
       }
@@ -720,7 +723,7 @@ int TupleReader::NZAppendRowAndFetchNext(struct  ArrowError* error) {
     }
 
     if (result_array.length == batch_size) {
-      /* checking if there's anything left, to came back for. */
+      /* checking if there's anything left, to come back for. */
       if (row_id_ < numRows) {
         is_finished_ = false;
       } else {
@@ -731,68 +734,6 @@ int TupleReader::NZAppendRowAndFetchNext(struct  ArrowError* error) {
   }
 
   return NANOARROW_OK;
-}
-
-int TupleReader::InitQueryAndFetchFirst(struct ArrowError* error) {
-  // Fetch + parse the header
-  int get_copy_res = 11; // PQgetlineAsync(conn_, pgbuf_, 0);
-  buffer_view_.size_bytes = get_copy_res;
-  buffer_view_.data.as_char = pgbuf_;
-
-  if (get_copy_res == -2) {
-    SetError(&error_, "[libpq] Fetch header failed: %s", PQerrorMessage(conn_));
-    status_ = ADBC_STATUS_IO;
-    return AdbcStatusCodeToErrno(status_);
-  }
-
-  int na_res = copy_reader_->ReadHeader(&buffer_view_, error);
-  if (na_res != NANOARROW_OK) {
-    SetError(&error_, "[libpq] ReadHeader failed: %s", error->message);
-    status_ = ADBC_STATUS_IO;
-    return AdbcStatusCodeToErrno(status_);
-  }
-  return NANOARROW_OK;
-}
-
-int TupleReader::AppendRowAndFetchNext(struct ArrowError* error) {
-  // Parse the result (the header AND the first row are included in the first
-  // call to PQgetCopyData())
-  int na_res = copy_reader_->ReadRecord(&buffer_view_, error);
-  if (na_res != NANOARROW_OK && na_res != ENODATA) {
-    SetError(&error_, "[libpq] ReadRecord failed at row %" PRId64 ": %s", row_id_,
-             error->message);
-    status_ = ADBC_STATUS_IO;
-    return na_res;
-  }
-
-  row_id_++;
-
-  // Fetch + check
-  /*
-  * https://www.postgresql.org/docs/current/libpq-misc.html#LIBPQ-PQFREEMEM
-  */
-  free(pgbuf_);
-  pgbuf_ = nullptr;
-  int get_copy_res = 10; // PQgetlineAsync(conn_, pgbuf_, 0);
-  buffer_view_.size_bytes = get_copy_res;
-  buffer_view_.data.as_char = pgbuf_;
-
-  if (get_copy_res == -2) {
-    SetError(&error_, "[libpq] PQgetCopyData failed at row %" PRId64 ": %s", row_id_,
-             PQerrorMessage(conn_));
-    status_ = ADBC_STATUS_IO;
-    return AdbcStatusCodeToErrno(status_);
-  } else if (get_copy_res == -1) {
-    // Returned when COPY has finished successfully
-    return ENODATA;
-  } else if ((copy_reader_->array_size_approx_bytes() + get_copy_res) >=
-             batch_size_hint_bytes_) {
-    // Appending the next row will result in an array larger than requested.
-    // Return EOVERFLOW to force GetNext() to build the current result and return.
-    return EOVERFLOW;
-  } else {
-    return NANOARROW_OK;
-  }
 }
 
 int TupleReader::BuildOutput(struct ArrowArray* out, struct ArrowError* error) {
@@ -1183,9 +1124,9 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                                                struct AdbcError* error) {
   ClearResult();
   if (prepared_) {
-    // if (bind_.release || !stream) {
+    if (bind_.release || !stream) {
       return ExecutePreparedStatement(stream, rows_affected, error);
-    // }
+    }
     // XXX: don't use a prepared statement to execute a no-parameter
     // result-set-returning query for now, since we can't easily get
     // access to COPY there. (This might have to become sequential
@@ -1241,7 +1182,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
 
   // 2. Execute the query with COPY to get binary tuples
   {
-    std::string copy_query = query_;
+    std::string copy_query = query_ ;
     reader_.result_ =
         PQexecParams(connection_->conn(), copy_query.c_str(), /*nParams=*/0,
                      /*paramTypes=*/nullptr, /*paramValues=*/nullptr,

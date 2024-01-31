@@ -66,8 +66,6 @@ class TupleReader final {
  private:
   friend class PostgresStatement;
 
-  int InitQueryAndFetchFirst(struct ArrowError* error);
-  int AppendRowAndFetchNext(struct ArrowError* error);
   int InitResultArray(struct ArrowError* error);
   int NZInitQueryAndFetchFirst(struct ArrowError* error);
   int NZAppendRowAndFetchNext(struct ArrowError* error);
