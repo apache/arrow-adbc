@@ -246,10 +246,10 @@ ORDER BY
   * Otherwise, you'll encounter 'ERROR: Query was cancelled'.
   */
   // Disconnect since PostgreSQL connections can be heavy.
-  /* {
+  {
     AdbcStatusCode status = Disconnect(&conn, error);
     if (status != ADBC_STATUS_OK) final_status = status;
-  } */
+  }
 
   if (final_status == ADBC_STATUS_OK) {
     type_resolver_ = std::move(resolver);

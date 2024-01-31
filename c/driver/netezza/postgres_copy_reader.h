@@ -1064,8 +1064,7 @@ class PostgresCopyStreamReader {
 
   ArrowErrorCode ReadRecord(ArrowBufferView* data, ArrowError* error) {
     if (array_->release == nullptr) {
-      NANOARROW_RETURN_NOT_OK(
-          ArrowArrayInitFromSchema(array_.get(), schema_.get(), error));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array_.get(), schema_.get(), error));
       NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array_.get()));
       NANOARROW_RETURN_NOT_OK(root_reader_.InitArray(array_.get()));
       array_size_approx_bytes_ = 0;
