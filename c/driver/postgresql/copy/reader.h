@@ -769,6 +769,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
         case PostgresTypeId::kText:
         case PostgresTypeId::kBpchar:
         case PostgresTypeId::kName:
+        case PostgresTypeId::kEnum:
           *out = new PostgresCopyBinaryFieldReader();
           return NANOARROW_OK;
         case PostgresTypeId::kNumeric:
