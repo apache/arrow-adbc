@@ -23,8 +23,10 @@ import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.sql.SqlQuirks;
+import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.util.AutoCloseables;
 
 /** An instance of a database (e.g. a handle to an in-memory database). */
 public final class FlightSqlDatabase implements AdbcDatabase {
@@ -50,11 +52,27 @@ public final class FlightSqlDatabase implements AdbcDatabase {
   @Override
   public AdbcConnection connect() throws AdbcException {
     final int count = counter.getAndIncrement();
-    return new FlightSqlConnection(
-        allocator.newChildAllocator("adbc-flight-connection-" + count, 0, allocator.getLimit()),
-        quirks,
-        location,
-        parameters);
+    BufferAllocator connectionAllocator =
+        allocator.newChildAllocator("adbc-flight-connection-" + count, 0, allocator.getLimit());
+    try {
+      return new FlightSqlConnection(connectionAllocator, quirks, location, parameters);
+    } catch (FlightRuntimeException ex) {
+      AdbcException adbcException = ErrorConverter.toAdbcException(ex);
+      try {
+        AutoCloseables.close(connectionAllocator);
+      } catch (Exception e) {
+        adbcException.addSuppressed(e);
+      }
+      throw adbcException;
+    } catch (Exception ex) {
+      AdbcException adbcException = ErrorConverter.fromGeneralException(ex);
+      try {
+        AutoCloseables.close(connectionAllocator);
+      } catch (Exception e) {
+        adbcException.addSuppressed(e);
+      }
+      throw adbcException;
+    }
   }
 
   @Override
