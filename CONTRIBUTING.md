@@ -274,6 +274,11 @@ $ cargo test
 
 ## Opening a Pull Request
 
+Before opening a pull request:
+
+1. please check if there is a corresponding issue (_and if not, please make one_), and
+2. assign the issue to yourself by commenting "take" in the issue.
+
 Before opening a pull request, please run the static checks, which are
 enforced via [`pre-commit`](https://pre-commit.com/).  This will run
 linters, formatters, and other analysis.  For example:
