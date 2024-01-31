@@ -82,12 +82,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+          submodules: recursive
       - uses: actions/setup-java@v4
         with:
           cache: "maven"
           distribution: "temurin"
           java-version: ${{ matrix.java }}
-          submodules: recursive
       - name: Build/Test
         run: |
           cd java
