@@ -18,6 +18,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
@@ -27,6 +28,7 @@ using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Google.Apis.Auth.OAuth2;
+using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.Storage.V1;
 using Google.Cloud.BigQuery.V2;
 using TableFieldSchema = Google.Apis.Bigquery.v2.Data.TableFieldSchema;
@@ -184,6 +186,33 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (keyValuePair.Key == BigQueryParameters.AllowLargeResults)
                 {
                     options.AllowLargeResults = true ? keyValuePair.Value.ToLower().Equals("true") : false;
+                }
+                if(keyValuePair.Key == BigQueryParameters.LargeResultsDestinationTable)
+                {
+                    string destinationTable = keyValuePair.Value;
+
+                    if (!destinationTable.Contains("."))
+                        throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} is invalid");
+
+                    string projectId = string.Empty;
+                    string datasetId = string.Empty;
+                    string tableId = string.Empty;
+
+                    List<string> segments = destinationTable.Split('.').Where(x => x.Length > 0).ToList();
+
+                    if(segments.Count != 3)
+                        throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} cannot be parsed");
+
+                    projectId = segments[0];
+                    datasetId = segments[1];
+                    tableId = segments[2];
+
+                    options.DestinationTable = new TableReference()
+                    {
+                        ProjectId = projectId,
+                        DatasetId = datasetId,
+                        TableId = tableId
+                    };
                 }
                 if (keyValuePair.Key == BigQueryParameters.UseLegacySQL)
                 {

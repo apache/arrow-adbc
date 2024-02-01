@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -72,6 +73,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             if (!string.IsNullOrEmpty(testConfiguration.Scopes))
             {
                 parameters.Add(BigQueryParameters.Scopes, testConfiguration.Scopes);
+            }
+
+            if(testConfiguration.AllowLargeResults)
+            {
+                parameters.Add(BigQueryParameters.AllowLargeResults, testConfiguration.AllowLargeResults.ToString());
+            }
+
+            if(!string.IsNullOrEmpty(testConfiguration.LargeResultsDestinationTable))
+            {
+                parameters.Add(BigQueryParameters.LargeResultsDestinationTable, testConfiguration.LargeResultsDestinationTable);
             }
 
             return parameters;
