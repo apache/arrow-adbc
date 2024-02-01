@@ -26,7 +26,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     {
         public BigQueryTestConfiguration()
         {
-            AllowLargeResults = true;
+            AllowLargeResults = false;
         }
 
         [JsonPropertyName("projectId")]
