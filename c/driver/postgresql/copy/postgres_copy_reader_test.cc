@@ -373,6 +373,60 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
   EXPECT_EQ(std::string(item.data, item.size_bytes), "inf");
 }
 
+TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric16_10) {
+  ArrowBufferView data;
+  data.data.as_uint8 = kTestPgCopyNumeric16_10;
+  data.size_bytes = sizeof(kTestPgCopyNumeric16_10);
+
+  auto col_type = PostgresType(PostgresTypeId::kNumeric);
+  PostgresType input_type(PostgresTypeId::kRecord);
+  input_type.AppendChild("col", col_type);
+
+  PostgresCopyStreamTester tester;
+  ASSERT_EQ(tester.Init(input_type), NANOARROW_OK);
+  ASSERT_EQ(tester.ReadAll(&data), ENODATA);
+  ASSERT_EQ(data.data.as_uint8 - kTestPgCopyNumeric16_10,
+            sizeof(kTestPgCopyNumeric16_10));
+  ASSERT_EQ(data.size_bytes, 0);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 7);
+  ASSERT_EQ(array->n_children, 1);
+
+  nanoarrow::UniqueSchema schema;
+  tester.GetSchema(schema.get());
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(array_view->children[0]->storage_type, NANOARROW_TYPE_STRING);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+
+  auto validity = array_view->children[0]->buffer_views[0].data.as_uint8;
+  ASSERT_TRUE(ArrowBitGet(validity, 0));
+  ASSERT_TRUE(ArrowBitGet(validity, 1));
+  ASSERT_TRUE(ArrowBitGet(validity, 2));
+  ASSERT_TRUE(ArrowBitGet(validity, 3));
+  ASSERT_TRUE(ArrowBitGet(validity, 4));
+  ASSERT_TRUE(ArrowBitGet(validity, 5));
+  ASSERT_FALSE(ArrowBitGet(validity, 6));
+
+  struct ArrowStringView item;
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 0);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "0.0000000000");
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 1);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "1.0123400000");
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 2);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "1.0123456789");
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 3);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "-1.0123400000");
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 4);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "-1.0123456789");
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 5);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "nan");
+}
+
 TEST(PostgresCopyUtilsTest, PostgresCopyReadTimestamp) {
   ArrowBufferView data;
   data.data.as_uint8 = kTestPgCopyTimestamp;

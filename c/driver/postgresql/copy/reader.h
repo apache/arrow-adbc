@@ -352,7 +352,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
         // To strip leading zeroes
         int append = (d > 0);
 
-        for (const auto pow10 : {1000, 100, 10, 1}) {
+        for (const auto pow10 : {1000, 100, 10}) {
           d1 = dig / pow10;
           dig -= d1 * pow10;
           append |= (d1 > 0);
@@ -360,6 +360,8 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
             *out++ = d1 + '0';
           }
         }
+
+        *out++ = dig + '0';
       }
     }
 
@@ -372,18 +374,20 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
       *out++ = '.';
       actual_chars_required += dscale + 1;
 
-      for (int i = 0; i < dscale; i++, d++, i += kDecDigits) {
+      for (int i = 0; i < dscale; d++, i += kDecDigits) {
         if (d >= 0 && d < ndigits) {
           dig = digits_[d];
         } else {
           dig = 0;
         }
 
-        for (const auto pow10 : {1000, 100, 10, 1}) {
+        for (const auto pow10 : {1000, 100, 10}) {
           d1 = dig / pow10;
           dig -= d1 * pow10;
           *out++ = d1 + '0';
         }
+
+        *out++ = dig + '0';
       }
     }
 
