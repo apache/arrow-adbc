@@ -84,8 +84,8 @@ public class FlightSqlConnection implements AdbcConnection {
     this.counter = new AtomicInteger(0);
     this.quirks = quirks;
     this.parameters = parameters;
-    this.client =
-        new FlightSqlClientWithCallOptions(new FlightSqlClient(createInitialConnection(location)));
+    FlightSqlClient flightSqlClient = new FlightSqlClient(createInitialConnection(location));
+    this.client = new FlightSqlClientWithCallOptions(flightSqlClient, callOptions);
     this.clientCache =
         Caffeine.newBuilder()
             .expireAfterAccess(5, TimeUnit.MINUTES)

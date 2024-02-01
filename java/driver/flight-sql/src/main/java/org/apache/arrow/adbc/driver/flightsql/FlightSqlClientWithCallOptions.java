@@ -284,6 +284,6 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
     final CallOption[] result = new CallOption[connectionOptions.length + options.length];
     System.arraycopy(connectionOptions, 0, result, 0, connectionOptions.length);
     System.arraycopy(options, 0, result, connectionOptions.length, options.length);
-    return options;
+    return result;
   }
 }
