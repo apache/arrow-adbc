@@ -57,7 +57,7 @@ public final class FlightSqlDatabase implements AdbcDatabase {
     try {
       return new FlightSqlConnection(connectionAllocator, quirks, location, parameters);
     } catch (FlightRuntimeException ex) {
-      AdbcException adbcException = ErrorConverter.toAdbcException(ex);
+      AdbcException adbcException = FlightSqlDriverUtil.fromFlightException(ex);
       try {
         AutoCloseables.close(connectionAllocator);
       } catch (Exception e) {
@@ -65,7 +65,7 @@ public final class FlightSqlDatabase implements AdbcDatabase {
       }
       throw adbcException;
     } catch (Exception ex) {
-      AdbcException adbcException = ErrorConverter.fromGeneralException(ex);
+      AdbcException adbcException = FlightSqlDriverUtil.fromGeneralException(ex);
       try {
         AutoCloseables.close(connectionAllocator);
       } catch (Exception e) {
