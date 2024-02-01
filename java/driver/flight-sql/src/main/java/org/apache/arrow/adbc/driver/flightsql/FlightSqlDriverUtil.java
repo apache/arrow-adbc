@@ -43,7 +43,7 @@ final class FlightSqlDriverUtil {
         e.getErrorCode());
   }
 
-   static AdbcException fromGeneralException(Exception ex) {
+  static AdbcException fromGeneralException(Exception ex) {
     return new AdbcException(ex.getMessage(), ex, AdbcStatusCode.UNKNOWN, null, 0);
   }
 
