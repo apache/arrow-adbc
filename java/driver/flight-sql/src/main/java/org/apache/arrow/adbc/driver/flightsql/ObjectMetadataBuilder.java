@@ -46,7 +46,7 @@ import org.apache.arrow.vector.types.pojo.Schema;
 
 final class ObjectMetadataBuilder {
 
-    private final FlightSqlClient client;
+    private final FlightSqlClientWithCallOptions client;
     private final VectorSchemaRoot root;
     private final VarCharVector adbcCatalogNames;
     private final UnionListWriter adbcCatalogDbSchemasWriter;
@@ -67,7 +67,7 @@ final class ObjectMetadataBuilder {
 
     ObjectMetadataBuilder(
             BufferAllocator allocator,
-            FlightSqlClient client,
+            FlightSqlClientWithCallOptions client,
             final AdbcConnection.GetObjectsDepth depth,
             final String catalogPattern,
             final String dbSchemaPattern,
@@ -105,6 +105,9 @@ final class ObjectMetadataBuilder {
         }
     }
 
+    /**
+     * The caller must close the returned root.
+     */
     VectorSchemaRoot build() throws AdbcException {
         // TODO Catalogs and schemas that don't contain tables are being left out
         FlightInfo info;
@@ -127,105 +130,108 @@ final class ObjectMetadataBuilder {
         int catalogIndex = 0;
 
         for (FlightEndpoint endpoint : info.getEndpoints()) {
-            FlightStream stream = client.getStream(endpoint.getTicket());
-            while (stream.next()) {
-                try (VectorSchemaRoot res = stream.getRoot()) {
-                    VarCharVector catalogVector = (VarCharVector) res.getVector(0);
+            try (FlightStream stream = client.getStream(endpoint.getTicket())) {
+                while (stream.next()) {
+                    try (VectorSchemaRoot res = stream.getRoot()) {
+                        VarCharVector catalogVector = (VarCharVector) res.getVector(0);
 
-                    for (int i = 0; i < res.getRowCount(); i++) {
-                        byte[] catalog = catalogVector.get(i);
+                        for (int i = 0; i < res.getRowCount(); i++) {
+                            byte[] catalog = catalogVector.get(i);
 
-                        if (i == 0 || lastCatalogAdded != catalog) {
-                            if (catalog == null) {
-                                adbcCatalogNames.setNull(catalogIndex);
-                            } else {
-                                adbcCatalogNames.setSafe(catalogIndex, catalog);
-                            }
-                            if (depth == AdbcConnection.GetObjectsDepth.CATALOGS) {
-                                adbcCatalogDbSchemasWriter.writeNull();
-                            } else {
-                                if (catalogIndex != 0) {
-                                    adbcCatalogDbSchemasWriter.endList();
+                            if (i == 0 || lastCatalogAdded != catalog) {
+                                if (catalog == null) {
+                                    adbcCatalogNames.setNull(catalogIndex);
+                                } else {
+                                    adbcCatalogNames.setSafe(catalogIndex, catalog);
                                 }
-                                adbcCatalogDbSchemasWriter.startList();
-                                lastDbSchemaAdded = null;
+                                if (depth == AdbcConnection.GetObjectsDepth.CATALOGS) {
+                                    adbcCatalogDbSchemasWriter.writeNull();
+                                } else {
+                                    if (catalogIndex != 0) {
+                                        adbcCatalogDbSchemasWriter.endList();
+                                    }
+                                    adbcCatalogDbSchemasWriter.startList();
+                                    lastDbSchemaAdded = null;
+                                }
+                                catalogIndex++;
+                                lastCatalogAdded = catalog;
                             }
-                            catalogIndex++;
-                            lastCatalogAdded = catalog;
+
+                            if (depth != AdbcConnection.GetObjectsDepth.CATALOGS) {
+                                VarCharVector dbSchemaVector = (VarCharVector) res.getVector(1);
+                                byte[] dbSchema = dbSchemaVector.get(i);
+
+                                if (!Arrays.equals(lastDbSchemaAdded, dbSchema)) {
+                                    if (i != 0) {
+                                        adbcCatalogDbSchemaTablesWriter.endList();
+                                        adbcCatalogDbSchemasStructWriter.end();
+                                    }
+                                    adbcCatalogDbSchemasStructWriter.start();
+                                    writeVarChar(
+                                        adbcCatalogDbSchemaNameWriter, new String(dbSchema, StandardCharsets.UTF_8));
+                                    if (depth == AdbcConnection.GetObjectsDepth.DB_SCHEMAS) {
+                                        adbcCatalogDbSchemaTablesWriter.writeNull();
+                                    } else {
+                                        adbcCatalogDbSchemaTablesWriter.startList();
+                                    }
+
+                                    lastDbSchemaAdded = dbSchema;
+                                }
+                            }
+
+                            if (depth != AdbcConnection.GetObjectsDepth.CATALOGS
+                                && depth != AdbcConnection.GetObjectsDepth.DB_SCHEMAS) {
+                                VarCharVector tableNameVector = (VarCharVector) res.getVector(2);
+                                VarCharVector tableTypeVector = (VarCharVector) res.getVector(3);
+
+                                adbcTablesStructWriter.start();
+                                writeVarChar(
+                                    adbcTableNameWriter, new String(tableNameVector.get(i), StandardCharsets.UTF_8));
+                                writeVarChar(
+                                    adbcTableTypeWriter, new String(tableTypeVector.get(i), StandardCharsets.UTF_8));
+
+                                if (depth == AdbcConnection.GetObjectsDepth.ALL) {
+                                    VarBinaryVector tableSchemaVector = (VarBinaryVector) res.getVector(4);
+                                    Schema schema;
+
+                                    try {
+                                        schema =
+                                            MessageSerializer.deserializeSchema(
+                                                new ReadChannel(
+                                                    Channels.newChannel(
+                                                        new ByteArrayInputStream(tableSchemaVector.get(i)))));
+                                    } catch (IOException e) {
+                                        throw new RuntimeException(e);
+                                    }
+
+                                    adbcTableColumnsWriter.startList();
+
+                                    for (int y = 0; y < schema.getFields().size(); y++) {
+                                        Field field = schema.getFields().get(y);
+                                        if (precompiledColumnNamePattern == null || precompiledColumnNamePattern.matcher(field.getName()).matches()) {
+                                            adbcTableColumnsWriter.struct().start();
+                                            writeVarChar(
+                                                adbcTableColumnsWriter.struct().varChar("column_name"), field.getName());
+                                            adbcTableColumnsWriter.struct().integer("ordinal_position").writeInt(y + 1);
+                                            adbcTableColumnsWriter.struct().end();
+                                        }
+                                    }
+                                    adbcTableColumnsWriter.endList();
+                                }
+
+                                adbcTablesStructWriter.end();
+                            }
                         }
 
                         if (depth != AdbcConnection.GetObjectsDepth.CATALOGS) {
-                            VarCharVector dbSchemaVector = (VarCharVector) res.getVector(1);
-                            byte[] dbSchema = dbSchemaVector.get(i);
-
-                            if (!Arrays.equals(lastDbSchemaAdded, dbSchema)) {
-                                if (i != 0) {
-                                    adbcCatalogDbSchemaTablesWriter.endList();
-                                    adbcCatalogDbSchemasStructWriter.end();
-                                }
-                                adbcCatalogDbSchemasStructWriter.start();
-                                writeVarChar(
-                                        adbcCatalogDbSchemaNameWriter, new String(dbSchema, StandardCharsets.UTF_8));
-                                if (depth == AdbcConnection.GetObjectsDepth.DB_SCHEMAS) {
-                                    adbcCatalogDbSchemaTablesWriter.writeNull();
-                                } else {
-                                    adbcCatalogDbSchemaTablesWriter.startList();
-                                }
-
-                                lastDbSchemaAdded = dbSchema;
-                            }
+                            adbcCatalogDbSchemaTablesWriter.endList();
+                            adbcCatalogDbSchemasStructWriter.end();
+                            adbcCatalogDbSchemasWriter.endList();
                         }
-
-                        if (depth != AdbcConnection.GetObjectsDepth.CATALOGS
-                                && depth != AdbcConnection.GetObjectsDepth.DB_SCHEMAS) {
-                            VarCharVector tableNameVector = (VarCharVector) res.getVector(2);
-                            VarCharVector tableTypeVector = (VarCharVector) res.getVector(3);
-
-                            adbcTablesStructWriter.start();
-                            writeVarChar(
-                                    adbcTableNameWriter, new String(tableNameVector.get(i), StandardCharsets.UTF_8));
-                            writeVarChar(
-                                    adbcTableTypeWriter, new String(tableTypeVector.get(i), StandardCharsets.UTF_8));
-
-                            if (depth == AdbcConnection.GetObjectsDepth.ALL) {
-                                VarBinaryVector tableSchemaVector = (VarBinaryVector) res.getVector(4);
-                                Schema schema;
-
-                                try {
-                                    schema =
-                                            MessageSerializer.deserializeSchema(
-                                                    new ReadChannel(
-                                                            Channels.newChannel(
-                                                                    new ByteArrayInputStream(tableSchemaVector.get(i)))));
-                                } catch (IOException e) {
-                                    throw new RuntimeException(e);
-                                }
-
-                                adbcTableColumnsWriter.startList();
-
-                                for (int y = 0; y < schema.getFields().size(); y++) {
-                                    Field field = schema.getFields().get(y);
-                                    if (precompiledColumnNamePattern == null || precompiledColumnNamePattern.matcher(field.getName()).matches()) {
-                                        adbcTableColumnsWriter.struct().start();
-                                        writeVarChar(
-                                                adbcTableColumnsWriter.struct().varChar("column_name"), field.getName());
-                                        adbcTableColumnsWriter.struct().integer("ordinal_position").writeInt(y + 1);
-                                        adbcTableColumnsWriter.struct().end();
-                                    }
-                                }
-                                adbcTableColumnsWriter.endList();
-                            }
-
-                            adbcTablesStructWriter.end();
-                        }
-                    }
-
-                    if (depth != AdbcConnection.GetObjectsDepth.CATALOGS) {
-                        adbcCatalogDbSchemaTablesWriter.endList();
-                        adbcCatalogDbSchemasStructWriter.end();
-                        adbcCatalogDbSchemasWriter.endList();
                     }
                 }
+            } catch (Exception e) {
+              throw new RuntimeException(e);
             }
         }
 
