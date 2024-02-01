@@ -22,7 +22,6 @@ import org.apache.arrow.adbc.core.TypedKey;
 
 /** Defines connection options that are used by the FlightSql driver. */
 public interface FlightSqlConnectionProperties {
-  //
   TypedKey<InputStream> MTLS_CERT_CHAIN =
       new TypedKey<>("adbc.flight.sql.client_option.mtls_cert_chain", InputStream.class);
   TypedKey<InputStream> MTLS_PRIVATE_KEY =
