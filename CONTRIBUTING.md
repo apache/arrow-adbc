@@ -277,7 +277,8 @@ $ cargo test
 Before opening a pull request:
 
 1. Please check if there is a corresponding issue (_and if not, please make one_).
-2. Assign the issue to yourself by commenting "take" in the issue. (_Here's an [example](https://github.com/apache/arrow-adbc/issues/1505#issuecomment-1920134722)._)
+2. Assign the issue to yourself by commenting "take" in the issue.
+   (_Here's an [example](https://github.com/apache/arrow-adbc/issues/1505#issuecomment-1920134722)._)
 3. At the bottom of the PR description, add `Closes #NNNN` where `NNNN` is the
    issue number, so that the issue gets linked to your PR properly. ("Fixes"
    and other keywords that GitHub recognizes are also OK, of course.)
