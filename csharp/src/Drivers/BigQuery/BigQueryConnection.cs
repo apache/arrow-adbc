@@ -1032,7 +1032,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     options[keyValuePair.Key] = keyValuePair.Value;
                 }
-                if(keyValuePair.Key == BigQueryParameters.LargeResultsDestinationTable)
+                if (keyValuePair.Key == BigQueryParameters.LargeResultsDestinationTable)
                 {
                     options[keyValuePair.Key] = keyValuePair.Value;
                 }
