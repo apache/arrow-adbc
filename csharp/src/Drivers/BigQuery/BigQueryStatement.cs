@@ -186,7 +186,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     options.AllowLargeResults = true ? keyValuePair.Value.ToLower().Equals("true") : false;
                 }
-                if(keyValuePair.Key == BigQueryParameters.LargeResultsDestinationTable)
+                if (keyValuePair.Key == BigQueryParameters.LargeResultsDestinationTable)
                 {
                     string destinationTable = keyValuePair.Value;
 
