@@ -30,3 +30,4 @@ r/*/NEWS.md
 r/*/cran-comments.md
 r/*/.Rbuildignore
 r/*/tests/testthat/_snaps/*
+testing/*
