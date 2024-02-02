@@ -21,7 +21,7 @@ import (
 	"context"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"golang.org/x/exp/slog"
 )
 
@@ -31,6 +31,7 @@ type DatabaseImpl interface {
 	adbc.GetSetOptions
 	Base() *DatabaseImplBase
 	Open(context.Context) (adbc.Connection, error)
+	Close() error
 	SetOptions(map[string]string) error
 }
 
@@ -132,6 +133,10 @@ func (db *database) SetOptionInt(key string, val int64) error {
 
 func (db *database) Open(ctx context.Context) (adbc.Connection, error) {
 	return db.impl.Open(ctx)
+}
+
+func (db *database) Close() error {
+	return db.impl.Close()
 }
 
 func (db *database) SetLogger(logger *slog.Logger) {

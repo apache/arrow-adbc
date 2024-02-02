@@ -30,9 +30,9 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/flight"
-	"github.com/apache/arrow/go/v14/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/flight"
+	"github.com/apache/arrow/go/v16/arrow/flight/flightsql"
 	"github.com/bluele/gcache"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -332,8 +332,11 @@ func (d *databaseImpl) SetOptionDouble(key string, value float64) error {
 	return d.DatabaseImplBase.SetOptionDouble(key, value)
 }
 
-func getFlightClient(ctx context.Context, loc string, d *databaseImpl) (*flightsql.Client, error) {
-	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy()}
+func (d *databaseImpl) Close() error {
+	return nil
+}
+
+func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddle *bearerAuthMiddleware, cookies flight.CookieMiddleware) (*flightsql.Client, error) {
 	middleware := []flight.ClientMiddleware{
 		{
 			Unary:  makeUnaryLoggingInterceptor(d.Logger),
@@ -347,7 +350,7 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl) (*flights
 	}
 
 	if d.enableCookies {
-		middleware = append(middleware, flight.NewClientCookieMiddleware())
+		middleware = append(middleware, flight.CreateClientMiddleware(cookies))
 	}
 
 	uri, err := url.Parse(loc)
@@ -374,17 +377,21 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl) (*flights
 	}
 
 	cl.Alloc = d.Alloc
-	if d.user != "" || d.pass != "" {
-		var header, trailer metadata.MD
-		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
-		if err != nil {
-			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
-		}
+	if len(authMiddle.hdrs.Get("authorization")) > 0 {
+		d.Logger.DebugContext(ctx, "reusing auth token", "location", loc)
+	} else {
+		if d.user != "" || d.pass != "" {
+			var header, trailer metadata.MD
+			ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
+			if err != nil {
+				return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
+			}
 
-		if md, ok := metadata.FromOutgoingContext(ctx); ok {
-			authMiddle.mutex.Lock()
-			defer authMiddle.mutex.Unlock()
-			authMiddle.hdrs.Set("authorization", md.Get("Authorization")[0])
+			if md, ok := metadata.FromOutgoingContext(ctx); ok {
+				authMiddle.mutex.Lock()
+				defer authMiddle.mutex.Unlock()
+				authMiddle.hdrs.Set("authorization", md.Get("Authorization")[0])
+			}
 		}
 	}
 
@@ -396,8 +403,14 @@ type support struct {
 	transactions bool
 }
 
-func (impl *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
-	cl, err := getFlightClient(ctx, impl.uri.String(), impl)
+func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
+	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy()}
+	var cookies flight.CookieMiddleware
+	if d.enableCookies {
+		cookies = flight.NewCookieMiddleware()
+	}
+
+	cl, err := getFlightClient(ctx, d.uri.String(), d, authMiddle, cookies)
 	if err != nil {
 		return nil, err
 	}
@@ -407,15 +420,23 @@ func (impl *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		LoaderFunc(func(loc interface{}) (interface{}, error) {
 			uri, ok := loc.(string)
 			if !ok {
-				return nil, adbc.Error{Msg: fmt.Sprintf("Location must be a string, got %#v", uri), Code: adbc.StatusInternal}
+				return nil, adbc.Error{Msg: fmt.Sprintf("Location must be a string, got %#v",
+					uri), Code: adbc.StatusInternal}
 			}
 
-			cl, err := getFlightClient(context.Background(), uri, impl)
+			var cookieMiddleware flight.CookieMiddleware
+			// if cookies are enabled, start by cloning the existing cookies
+			if d.enableCookies {
+				cookieMiddleware = cookies.Clone()
+			}
+			// use the existing auth token if there is one
+			cl, err := getFlightClient(context.Background(), uri, d,
+				&bearerAuthMiddleware{hdrs: authMiddle.hdrs.Copy()}, cookieMiddleware)
 			if err != nil {
 				return nil, err
 			}
 
-			cl.Alloc = impl.Alloc
+			cl.Alloc = d.Alloc
 			return cl, nil
 		}).
 		EvictedFunc(func(_, client interface{}) {
@@ -425,13 +446,13 @@ func (impl *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 
 	var cnxnSupport support
 
-	info, err := cl.GetSqlInfo(ctx, []flightsql.SqlInfo{flightsql.SqlInfoFlightSqlServerTransaction}, impl.timeout)
+	info, err := cl.GetSqlInfo(ctx, []flightsql.SqlInfo{flightsql.SqlInfoFlightSqlServerTransaction}, d.timeout)
 	// ignore this if it fails
 	if err == nil {
 		const int32code = 3
 
 		for _, endpoint := range info.Endpoint {
-			rdr, err := doGet(ctx, cl, endpoint, cache, impl.timeout)
+			rdr, err := doGet(ctx, cl, endpoint, cache, d.timeout)
 			if err != nil {
 				continue
 			}
@@ -465,8 +486,8 @@ func (impl *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		}
 	}
 
-	return &cnxn{cl: cl, db: impl, clientCache: cache,
-		hdrs: make(metadata.MD), timeouts: impl.timeout,
+	return &cnxn{cl: cl, db: d, clientCache: cache,
+		hdrs: make(metadata.MD), timeouts: d.timeout,
 		supportInfo: cnxnSupport}, nil
 }
 

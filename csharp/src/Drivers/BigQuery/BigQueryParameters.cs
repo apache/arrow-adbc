@@ -31,6 +31,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string AllowLargeResults = "adbc.bigquery.allow_large_results";
         public const string UseLegacySQL = "adbc.bigquery.use_legacy_sql";
         public const string LargeDecimalsAsString = "adbc.bigquery.large_decimals_as_string";
+        public const string Scopes = "adbc.bigquery.scopes";
     }
 
     /// <summary>

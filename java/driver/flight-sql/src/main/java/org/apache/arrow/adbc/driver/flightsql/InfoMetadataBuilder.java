@@ -31,7 +31,6 @@ import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.FlightStream;
-import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.flight.sql.impl.FlightSql;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
@@ -47,7 +46,7 @@ final class InfoMetadataBuilder implements AutoCloseable {
   private static final Map<Integer, AddInfo> SUPPORTED_CODES = new HashMap<>();
 
   private final Collection<Integer> requestedCodes;
-  private final FlightSqlClient client;
+  private final FlightSqlClientWithCallOptions client;
   private VectorSchemaRoot root;
 
   private final UInt4Vector infoCodes;
@@ -80,7 +79,8 @@ final class InfoMetadataBuilder implements AutoCloseable {
         });
   }
 
-  InfoMetadataBuilder(BufferAllocator allocator, FlightSqlClient client, int[] infoCodes) {
+  InfoMetadataBuilder(
+      BufferAllocator allocator, FlightSqlClientWithCallOptions client, int[] infoCodes) {
     if (infoCodes == null) {
       this.requestedCodes = new ArrayList<>(SUPPORTED_CODES.keySet());
       this.requestedCodes.add(AdbcInfoCode.DRIVER_NAME.getValue());

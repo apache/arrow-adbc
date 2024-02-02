@@ -30,8 +30,8 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/snowflakedb/gosnowflake"
 )
 
@@ -720,7 +720,7 @@ func prepareTablesSQL(matchingCatalogNames []string, catalog *string, dbSchema *
 
 func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (string, []interface{}) {
 	prefixQuery := ""
-	for _, catalog_name := range matchingCatalogNames {
+	for _, catalogName := range matchingCatalogNames {
 		if prefixQuery != "" {
 			prefixQuery += " UNION ALL "
 		}
@@ -728,9 +728,9 @@ func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema 
 					C.*,
 					K.constraint_name, K.constraint_type
 				FROM
-				"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES AS T
+				"` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES AS T
 			JOIN
-				"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.COLUMNS AS C
+				"` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.COLUMNS AS C
 			ON
 				T.table_catalog = C.table_catalog
 				AND T.table_schema = C.table_schema
@@ -1066,12 +1066,14 @@ func (c *cnxn) Rollback(_ context.Context) error {
 
 // NewStatement initializes a new statement object tied to this connection
 func (c *cnxn) NewStatement() (adbc.Statement, error) {
+	defaultIngestOptions := DefaultIngestOptions()
 	return &statement{
 		alloc:               c.db.Alloc,
 		cnxn:                c,
 		queueSize:           defaultStatementQueueSize,
 		prefetchConcurrency: defaultPrefetchConcurrency,
 		useHighPrecision:    c.useHighPrecision,
+		ingestOptions:       defaultIngestOptions,
 	}, nil
 }
 

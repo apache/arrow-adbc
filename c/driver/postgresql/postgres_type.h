@@ -50,6 +50,7 @@ enum class PostgresTypeId {
   kCstring,
   kDate,
   kDomain,
+  kEnum,
   kFloat4,
   kFloat8,
   kInet,
@@ -225,6 +226,7 @@ class PostgresType {
       case PostgresTypeId::kVarchar:
       case PostgresTypeId::kText:
       case PostgresTypeId::kName:
+      case PostgresTypeId::kEnum:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
       case PostgresTypeId::kBytea:
@@ -572,6 +574,8 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
       return "date_recv";
     case PostgresTypeId::kDomain:
       return "domain_recv";
+    case PostgresTypeId::kEnum:
+      return "enum_recv";
     case PostgresTypeId::kFloat4:
       return "float4recv";
     case PostgresTypeId::kFloat8:
@@ -737,6 +741,8 @@ static inline const char* PostgresTypname(PostgresTypeId type_id) {
       return "date";
     case PostgresTypeId::kDomain:
       return "domain";
+    case PostgresTypeId::kEnum:
+      return "enum";
     case PostgresTypeId::kFloat4:
       return "float4";
     case PostgresTypeId::kFloat8:
@@ -880,6 +886,7 @@ static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested) {
                                       PostgresTypeId::kCircle,
                                       PostgresTypeId::kCstring,
                                       PostgresTypeId::kDate,
+                                      PostgresTypeId::kEnum,
                                       PostgresTypeId::kFloat4,
                                       PostgresTypeId::kFloat8,
                                       PostgresTypeId::kInet,

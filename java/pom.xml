@@ -28,7 +28,7 @@
   <url>https://arrow.apache.org/</url>
 
   <properties>
-    <dep.arrow.version>14.0.0</dep.arrow.version>
+    <dep.arrow.version>15.0.0</dep.arrow.version>
     <adbc.version>0.10.0-SNAPSHOT</adbc.version>
   </properties>
 
@@ -97,28 +97,10 @@
       <!-- Arrow -->
       <dependency>
         <groupId>org.apache.arrow</groupId>
-        <artifactId>arrow-jdbc</artifactId>
+        <artifactId>arrow-bom</artifactId>
         <version>${dep.arrow.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.arrow</groupId>
-        <artifactId>arrow-memory-core</artifactId>
-        <version>${dep.arrow.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.arrow</groupId>
-        <artifactId>arrow-vector</artifactId>
-        <version>${dep.arrow.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.arrow</groupId>
-        <artifactId>flight-core</artifactId>
-        <version>${dep.arrow.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.arrow</groupId>
-        <artifactId>flight-sql</artifactId>
-        <version>${dep.arrow.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
 
       <!-- ADBC -->

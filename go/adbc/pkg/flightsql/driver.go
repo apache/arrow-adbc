@@ -61,10 +61,10 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/cdata"
-	"github.com/apache/arrow/go/v14/arrow/memory"
-	"github.com/apache/arrow/go/v14/arrow/memory/mallocator"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/cdata"
+	"github.com/apache/arrow/go/v16/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow/memory/mallocator"
 	"golang.org/x/exp/slog"
 )
 
@@ -594,10 +594,15 @@ func FlightSQLDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError
 	h := (*(*cgo.Handle)(db.private_data))
 
 	cdb := h.Value().(*cDatabase)
-	cdb.db = nil
+	if cdb.db != nil {
+		cdb.db.Close()
+		cdb.db = nil
+	}
 	cdb.opts = nil
-	C.free(unsafe.Pointer(db.private_data))
-	db.private_data = nil
+	if db.private_data != nil {
+		C.free(unsafe.Pointer(db.private_data))
+		db.private_data = nil
+	}
 	h.Delete()
 	// manually trigger GC for two reasons:
 	//  1. ASAN expects the release callback to be called before

@@ -40,6 +40,13 @@ main() {
     rm -rf "${base_name}/"
     git archive "${revision}" --prefix "${base_name}/" | tar xf -
 
+    # Resolve all submodules
+    while read SUBMODULE; do
+        SUBMODULE_REV=$(echo "${SUBMODULE}" | awk '{print $1}')
+        SUBMODULE_PATH=$(echo "${SUBMODULE}" | awk '{print $2}')
+        git -C "${SUBMODULE_PATH}" archive --prefix="${base_name}/${SUBMODULE_PATH}/" "${SUBMODULE_REV}" | tar xf - -C "${source_top_dir}"
+    done < <(git submodule status)
+
     # Resolve all hard and symbolic links
     rm -rf "${base_name}.tmp/"
     mv "${base_name}/" "${base_name}.tmp/"

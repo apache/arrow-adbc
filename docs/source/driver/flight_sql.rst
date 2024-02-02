@@ -152,6 +152,7 @@ the :cpp:class:`AdbcDatabase`.
             if err != nil {
                 // do something with the error
             }
+            defer db.Close()
 
             cnxn, err := db.Open(context.Background())
             if err != nil {

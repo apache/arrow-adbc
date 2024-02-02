@@ -17,17 +17,19 @@
 
 #pragma once
 
+#include <charconv>
 #include <cinttypes>
 #include <limits>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <nanoarrow/nanoarrow.hpp>
 
-#include "copy_common.h"
 #include "../postgres_util.h"
+#include "copy_common.h"
 
 namespace adbcpq {
 
@@ -46,7 +48,6 @@ constexpr int64_t kMaxSafeMillisToMicros = 9223372036854775L;
 // The minimum value in milliseconds that can be converted into microseconds
 // without overflow
 constexpr int64_t kMinSafeMillisToMicros = -9223372036854775L;
-
 
 // 2000-01-01 00:00:00.000000 in microseconds
 constexpr int64_t kPostgresTimestampEpoch = 946684800000000L;
@@ -211,11 +212,11 @@ class PostgresCopyIntervalFieldWriter : public PostgresCopyFieldWriter {
 
 // Inspiration for this taken from get_str_from_var in the pg source
 // src/backend/utils/adt/numeric.c
-template<enum ArrowType T>
+template <enum ArrowType T>
 class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
-public:
-  PostgresCopyNumericFieldWriter<T>(int32_t precision, int32_t scale) :
-    precision_{precision}, scale_{scale} {}
+ public:
+  PostgresCopyNumericFieldWriter<T>(int32_t precision, int32_t scale)
+      : precision_{precision}, scale_{scale} {}
 
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
     struct ArrowDecimal decimal;
@@ -235,13 +236,12 @@ public:
     char decimal_string[max_decimal_digits_ + 1];
     int digits_remaining = DecimalToString<bitwidth_>(&decimal, decimal_string);
     do {
-      const int start_pos = digits_remaining < kDecDigits ?
-        0 : digits_remaining - kDecDigits;
+      const int start_pos =
+          digits_remaining < kDecDigits ? 0 : digits_remaining - kDecDigits;
       const size_t len = digits_remaining < 4 ? digits_remaining : kDecDigits;
-      char substr[kDecDigits + 1];
-      std::memcpy(substr, decimal_string + start_pos, len);
-      substr[len] = '\0';
-      int16_t val = static_cast<int16_t>(std::atoi(substr));
+      const std::string_view substr{decimal_string + start_pos, len};
+      int16_t val{};
+      std::from_chars(substr.data(), substr.data() + substr.size(), val);
 
       if (val == 0) {
         if (!seen_decimal && truncating_trailing_zeros) {
@@ -272,11 +272,8 @@ public:
     } while (true);
 
     int16_t ndigits = pg_digits.size();
-    int32_t field_size_bytes = sizeof(ndigits)
-      + sizeof(weight)
-      + sizeof(sign)
-      + sizeof(dscale)
-      + ndigits * sizeof(int16_t);
+    int32_t field_size_bytes = sizeof(ndigits) + sizeof(weight) + sizeof(sign) +
+                               sizeof(dscale) + ndigits * sizeof(int16_t);
 
     NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
     NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, ndigits, error));
@@ -293,7 +290,7 @@ public:
     return ADBC_STATUS_OK;
   }
 
-private:
+ private:
   // returns the length of the string
   template <int32_t DEC_WIDTH>
   int DecimalToString(struct ArrowDecimal* decimal, char* out) {
@@ -321,11 +318,12 @@ private:
 
       carry = (buf[nwords - 1] >= 0x7FFFFFFFFFFFFFFF);
       for (size_t j = nwords - 1; j > 0; j--) {
-        buf[j] = ((buf[j] << 1) & 0xFFFFFFFFFFFFFFFF) + (buf[j-1] >= 0x7FFFFFFFFFFFFFFF);
+        buf[j] =
+            ((buf[j] << 1) & 0xFFFFFFFFFFFFFFFF) + (buf[j - 1] >= 0x7FFFFFFFFFFFFFFF);
       }
       buf[0] = ((buf[0] << 1) & 0xFFFFFFFFFFFFFFFF);
 
-      for (int j = sizeof(s) - 2; j>= 0; j--) {
+      for (int j = sizeof(s) - 2; j >= 0; j--) {
         s[j] += s[j] - '0' + carry;
         carry = (s[j] > '9');
         if (carry) {
@@ -350,7 +348,7 @@ private:
   static constexpr uint16_t kNumericNeg = 0x4000;
   static constexpr int32_t bitwidth_ = (T == NANOARROW_TYPE_DECIMAL128) ? 128 : 256;
   static constexpr size_t max_decimal_digits_ =
-    (T == NANOARROW_TYPE_DECIMAL128) ? 39 : 78;
+      (T == NANOARROW_TYPE_DECIMAL128) ? 39 : 78;
   const int32_t precision_;
   const int32_t scale_;
 };
@@ -477,7 +475,7 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
-    if (value < std::numeric_limits<int64_t>::min() + kPostgresTimestampEpoch) {
+    if (value < (std::numeric_limits<int64_t>::min)() + kPostgresTimestampEpoch) {
       ArrowErrorSet(error,
                     "[libpq] Row %" PRId64 " timestamp value %" PRId64
                     " with unit %d would underflow",
@@ -492,90 +490,99 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
-static inline ArrowErrorCode MakeCopyFieldWriter(struct ArrowSchema* schema,
-                                                 PostgresCopyFieldWriter** out,
-                                                 ArrowError* error) {
+static inline ArrowErrorCode MakeCopyFieldWriter(
+    struct ArrowSchema* schema, std::unique_ptr<PostgresCopyFieldWriter>* out,
+    ArrowError* error) {
   struct ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
 
   switch (schema_view.type) {
     case NANOARROW_TYPE_BOOL:
-      *out = new PostgresCopyBooleanFieldWriter();
+      *out = std::make_unique<PostgresCopyBooleanFieldWriter>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT8:
     case NANOARROW_TYPE_INT16:
-      *out = new PostgresCopyNetworkEndianFieldWriter<int16_t>();
+      *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int16_t>>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT32:
-      *out = new PostgresCopyNetworkEndianFieldWriter<int32_t>();
+      *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int32_t>>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT64:
-      *out = new PostgresCopyNetworkEndianFieldWriter<int64_t>();
+      *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int64_t>>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_DATE32: {
       constexpr int32_t kPostgresDateEpoch = 10957;
-      *out = new PostgresCopyNetworkEndianFieldWriter<int32_t, kPostgresDateEpoch>();
+      *out = std::make_unique<
+          PostgresCopyNetworkEndianFieldWriter<int32_t, kPostgresDateEpoch>>();
       return NANOARROW_OK;
     }
     case NANOARROW_TYPE_FLOAT:
-      *out = new PostgresCopyFloatFieldWriter();
+      *out = std::make_unique<PostgresCopyFloatFieldWriter>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_DOUBLE:
-      *out = new PostgresCopyDoubleFieldWriter();
+      *out = std::make_unique<PostgresCopyDoubleFieldWriter>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_DECIMAL128: {
       const auto precision = schema_view.decimal_precision;
       const auto scale = schema_view.decimal_scale;
-      *out = new PostgresCopyNumericFieldWriter<
-        NANOARROW_TYPE_DECIMAL128>(precision, scale);
+      *out = std::make_unique<PostgresCopyNumericFieldWriter<NANOARROW_TYPE_DECIMAL128>>(
+          precision, scale);
       return NANOARROW_OK;
     }
     case NANOARROW_TYPE_DECIMAL256: {
       const auto precision = schema_view.decimal_precision;
       const auto scale = schema_view.decimal_scale;
-      *out = new PostgresCopyNumericFieldWriter<
-        NANOARROW_TYPE_DECIMAL256>(precision, scale);
+      *out = std::make_unique<PostgresCopyNumericFieldWriter<NANOARROW_TYPE_DECIMAL256>>(
+          precision, scale);
       return NANOARROW_OK;
     }
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
-      *out = new PostgresCopyBinaryFieldWriter();
+      *out = std::make_unique<PostgresCopyBinaryFieldWriter>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_TIMESTAMP: {
       switch (schema_view.time_unit) {
         case NANOARROW_TIME_UNIT_NANO:
-          *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_NANO>();
+          *out = std::make_unique<
+              PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_NANO>>();
           break;
         case NANOARROW_TIME_UNIT_MILLI:
-          *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MILLI>();
+          *out = std::make_unique<
+              PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MILLI>>();
           break;
         case NANOARROW_TIME_UNIT_MICRO:
-          *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MICRO>();
+          *out = std::make_unique<
+              PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MICRO>>();
           break;
         case NANOARROW_TIME_UNIT_SECOND:
-          *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_SECOND>();
+          *out = std::make_unique<
+              PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_SECOND>>();
           break;
       }
       return NANOARROW_OK;
     }
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
-      *out = new PostgresCopyIntervalFieldWriter();
+      *out = std::make_unique<PostgresCopyIntervalFieldWriter>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_DURATION: {
       switch (schema_view.time_unit) {
         case NANOARROW_TIME_UNIT_SECOND:
-          *out = new PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_SECOND>();
+          *out = std::make_unique<
+              PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_SECOND>>();
           break;
         case NANOARROW_TIME_UNIT_MILLI:
-          *out = new PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_MILLI>();
+          *out = std::make_unique<
+              PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_MILLI>>();
           break;
         case NANOARROW_TIME_UNIT_MICRO:
-          *out = new PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_MICRO>();
+          *out = std::make_unique<
+              PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_MICRO>>();
 
           break;
         case NANOARROW_TIME_UNIT_NANO:
-          *out = new PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_NANO>();
+          *out = std::make_unique<
+              PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_NANO>>();
           break;
       }
       return NANOARROW_OK;
@@ -589,7 +596,7 @@ static inline ArrowErrorCode MakeCopyFieldWriter(struct ArrowSchema* schema,
         case NANOARROW_TYPE_STRING:
         case NANOARROW_TYPE_LARGE_BINARY:
         case NANOARROW_TYPE_LARGE_STRING:
-          *out = new PostgresCopyBinaryDictFieldWriter();
+          *out = std::make_unique<PostgresCopyBinaryDictFieldWriter>();
           return NANOARROW_OK;
         default:
           break;
@@ -646,10 +653,10 @@ class PostgresCopyStreamWriter {
     }
 
     for (int64_t i = 0; i < schema_->n_children; i++) {
-      PostgresCopyFieldWriter* child_writer = nullptr;
+      std::unique_ptr<PostgresCopyFieldWriter> child_writer;
       NANOARROW_RETURN_NOT_OK(
           MakeCopyFieldWriter(schema_->children[i], &child_writer, error));
-      root_writer_.AppendChild(std::unique_ptr<PostgresCopyFieldWriter>(child_writer));
+      root_writer_.AppendChild(std::move(child_writer));
     }
 
     return NANOARROW_OK;
@@ -670,4 +677,4 @@ class PostgresCopyStreamWriter {
   int64_t records_written_ = 0;
 };
 
- }  // namespace adbcpq
+}  // namespace adbcpq

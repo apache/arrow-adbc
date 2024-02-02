@@ -137,8 +137,8 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="sampleDataBuilder">The <see cref="SampleDataBuilder"/> to use</param>
         public static void VerifyTypesAndValues(Adbc.Client.AdbcConnection adbcConnection, SampleDataBuilder sampleDataBuilder)
         {
-            if(adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
-            if(sampleDataBuilder == null) throw new ArgumentNullException(nameof(sampleDataBuilder));
+            if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
+            if (sampleDataBuilder == null) throw new ArgumentNullException(nameof(sampleDataBuilder));
 
             adbcConnection.Open();
 
@@ -207,25 +207,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             if (netType != null)
             {
-                if (netType.BaseType.Name.Contains("PrimitiveArray") && value != null)
-                {
-                    int length = Convert.ToInt32(value.GetType().GetProperty("Length").GetValue(value));
-
-                    if (length > 0)
-                    {
-                        object internalValue = value.GetType().GetMethod("GetValue").Invoke(value, new object[] { 0 });
-
-                        Assert.True(internalValue.GetType() == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader for query [{query}]");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Could not validate the values inside of {netType.Name} because it is empty for query [{query}]");
-                    }
-                }
-                else
-                {
-                    Assert.True(netType == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader for query [{query}]");
-                }
+                Assert.True(netType == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader for query [{query}]");
             }
 
             if (value != null)

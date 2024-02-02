@@ -24,7 +24,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
 	"golang.org/x/exp/maps"
 )
@@ -202,5 +202,6 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err
 	}
+
 	return driverbase.NewDatabase(db), nil
 }
