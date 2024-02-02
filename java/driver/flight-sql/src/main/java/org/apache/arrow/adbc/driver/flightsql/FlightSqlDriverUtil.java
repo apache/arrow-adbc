@@ -43,6 +43,10 @@ final class FlightSqlDriverUtil {
         e.getErrorCode());
   }
 
+  static AdbcException fromGeneralException(Exception ex) {
+    return new AdbcException(ex.getMessage(), ex, AdbcStatusCode.UNKNOWN, null, 0);
+  }
+
   static AdbcStatusCode fromFlightStatusCode(FlightStatusCode code) {
     switch (code) {
       case OK:

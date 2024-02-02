@@ -17,56 +17,66 @@
 
 package org.apache.arrow.adbc.driver.flightsql;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.sql.SqlQuirks;
-import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.util.AutoCloseables;
 
 /** An instance of a database (e.g. a handle to an in-memory database). */
 public final class FlightSqlDatabase implements AdbcDatabase {
   private final BufferAllocator allocator;
   private final Location location;
   private final SqlQuirks quirks;
-  private final FlightClient client;
   private final AtomicInteger counter;
+  private final Map<String, Object> parameters;
 
-  FlightSqlDatabase(BufferAllocator allocator, Location location, SqlQuirks quirks)
+  FlightSqlDatabase(
+      BufferAllocator allocator,
+      Location location,
+      SqlQuirks quirks,
+      Map<String, Object> parameters)
       throws AdbcException {
     this.allocator = allocator;
     this.location = location;
     this.quirks = quirks;
-    try {
-      this.client = FlightClient.builder(allocator, location).build();
-    } catch (FlightRuntimeException e) {
-      throw FlightSqlDriverUtil.fromFlightException(e);
-    }
     this.counter = new AtomicInteger();
+    this.parameters = parameters;
   }
 
   @Override
   public AdbcConnection connect() throws AdbcException {
-    final FlightClient client;
-    try {
-      client = FlightClient.builder(allocator, location).build();
-    } catch (FlightRuntimeException e) {
-      throw FlightSqlDriverUtil.fromFlightException(e);
-    }
     final int count = counter.getAndIncrement();
-    return new FlightSqlConnection(
-        allocator.newChildAllocator("adbc-jdbc-connection-" + count, 0, allocator.getLimit()),
-        client,
-        quirks);
+    BufferAllocator connectionAllocator =
+        allocator.newChildAllocator("adbc-flight-connection-" + count, 0, allocator.getLimit());
+    try {
+      return new FlightSqlConnection(connectionAllocator, quirks, location, parameters);
+    } catch (FlightRuntimeException ex) {
+      AdbcException adbcException = FlightSqlDriverUtil.fromFlightException(ex);
+      try {
+        AutoCloseables.close(connectionAllocator);
+      } catch (Exception e) {
+        adbcException.addSuppressed(e);
+      }
+      throw adbcException;
+    } catch (Exception ex) {
+      AdbcException adbcException = FlightSqlDriverUtil.fromGeneralException(ex);
+      try {
+        AutoCloseables.close(connectionAllocator);
+      } catch (Exception e) {
+        adbcException.addSuppressed(e);
+      }
+      throw adbcException;
+    }
   }
 
   @Override
-  public void close() throws Exception {
-    client.close();
-  }
+  public void close() throws Exception {}
 
   @Override
   public String toString() {

@@ -29,7 +29,6 @@ import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.PartitionDescriptor;
 import org.apache.arrow.adbc.sql.SqlQuirks;
-import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.flight.FlightRuntimeException;
@@ -44,8 +43,8 @@ import org.apache.arrow.vector.types.pojo.Schema;
 
 public class FlightSqlStatement implements AdbcStatement {
   private final BufferAllocator allocator;
-  private final FlightSqlClient client;
-  private final LoadingCache<Location, FlightClient> clientCache;
+  private final FlightSqlClientWithCallOptions client;
+  private final LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache;
   private final SqlQuirks quirks;
 
   // State for SQL queries
@@ -57,8 +56,8 @@ public class FlightSqlStatement implements AdbcStatement {
 
   FlightSqlStatement(
       BufferAllocator allocator,
-      FlightSqlClient client,
-      LoadingCache<Location, FlightClient> clientCache,
+      FlightSqlClientWithCallOptions client,
+      LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache,
       SqlQuirks quirks) {
     this.allocator = allocator;
     this.client = client;
@@ -69,8 +68,8 @@ public class FlightSqlStatement implements AdbcStatement {
 
   static FlightSqlStatement ingestRoot(
       BufferAllocator allocator,
-      FlightSqlClient client,
-      LoadingCache<Location, FlightClient> clientCache,
+      FlightSqlClientWithCallOptions client,
+      LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache,
       SqlQuirks quirks,
       String targetTableName,
       BulkIngestMode mode) {
@@ -188,7 +187,7 @@ public class FlightSqlStatement implements AdbcStatement {
 
   private <R> R execute(
       Execute<FlightSqlClient.PreparedStatement, R> doPrepared,
-      Execute<FlightSqlClient, R> doRegular)
+      Execute<FlightSqlClientWithCallOptions, R> doRegular)
       throws AdbcException {
     try {
       if (preparedStatement != null) {

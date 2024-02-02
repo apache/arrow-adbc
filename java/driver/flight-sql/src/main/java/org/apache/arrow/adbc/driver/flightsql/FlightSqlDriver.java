@@ -39,7 +39,7 @@ public class FlightSqlDriver implements AdbcDriver {
   public AdbcDatabase open(Map<String, Object> parameters) throws AdbcException {
     String uri = PARAM_URI.get(parameters);
     if (uri == null) {
-      Object target = parameters.get("adbc.url");
+      Object target = parameters.get(AdbcDriver.PARAM_URL);
       if (!(target instanceof String)) {
         throw AdbcException.invalidArgument(
             "[Flight SQL] Must provide String " + PARAM_URI + " parameter");
@@ -65,6 +65,6 @@ public class FlightSqlDriver implements AdbcDriver {
     } else {
       quirks = new SqlQuirks();
     }
-    return new FlightSqlDatabase(allocator, location, (SqlQuirks) quirks);
+    return new FlightSqlDatabase(allocator, location, (SqlQuirks) quirks, parameters);
   }
 }
