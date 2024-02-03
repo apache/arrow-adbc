@@ -197,14 +197,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     string datasetId = string.Empty;
                     string tableId = string.Empty;
 
-                    List<string> segments = destinationTable.Split('.').Where(x => x.Length > 0).ToList();
+                    string[] segments = destinationTable.Split('.');
 
-                    if(segments.Count != 3)
+                    if(segments.Length != 3)
                         throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} cannot be parsed");
 
                     projectId = segments[0];
                     datasetId = segments[1];
                     tableId = segments[2];
+
+                    if(string.IsNullOrEmpty(projectId.Trim()) || string.IsNullOrEmpty(datasetId.Trim()) || string.IsNullOrEmpty(tableId.Trim()))
+                        throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} contains invalid values");
 
                     options.DestinationTable = new TableReference()
                     {
