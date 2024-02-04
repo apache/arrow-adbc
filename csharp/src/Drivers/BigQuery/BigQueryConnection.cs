@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -270,6 +271,23 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new BigQueryInfoArrowStream(StandardSchemas.GetObjectsSchema, dataArrays);
         }
 
+        /// <summary>
+        /// Executes the query using the BigQueryClient.
+        /// </summary>
+        /// <param name="sql">The query to execute.</param>
+        /// <param name="parameters">Parameters to include.</param>
+        /// <param name="queryOptions">Additional query options.</param>
+        /// <param name="resultsOptions">Additional result options.</param>
+        /// <returns></returns>
+        /// <remarks>
+        /// Can later add logging or metrics around query calls.
+        /// </remarks>
+        private BigQueryResults? ExecuteQuery(string sql, IEnumerable<BigQueryParameter>? parameters, QueryOptions? queryOptions = null, GetQueryResultsOptions? resultsOptions = null)
+        {
+            BigQueryResults? result = this.client?.ExecuteQuery(sql, parameters, queryOptions, resultsOptions);
+            return result;
+        }
+
         private List<IArrowArray> GetCatalogs(
             GetObjectsDepth depth,
             string catalogPattern,
@@ -405,7 +423,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
             }
 
-            BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
+            BigQueryResults? result = ExecuteQuery(query, parameters: null);
 
             if (result != null)
             {
@@ -481,7 +499,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 query = string.Concat(query, string.Format("AND column_name LIKE '{0}'", Sanitize(columnNamePattern)));
             }
 
-            BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
+            BigQueryResults? result = ExecuteQuery(query, parameters: null);
 
             if (result != null)
             {
@@ -570,7 +588,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE table_name = '{2}'",
                Sanitize(catalog), Sanitize(dbSchema), Sanitize(table));
 
-            BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
+            BigQueryResults? result = ExecuteQuery(query, parameters: null);
 
             if (result != null)
             {
@@ -631,7 +649,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             StringArray.Builder constraintColumnNamesBuilder = new StringArray.Builder();
 
-            BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
+            BigQueryResults? result = ExecuteQuery(query, parameters: null);
 
             if (result != null)
             {
@@ -661,7 +679,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE WHERE constraint_name = '{2}'",
                Sanitize(catalog), Sanitize(dbSchema), Sanitize(constraintName));
 
-            BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
+            BigQueryResults? result = ExecuteQuery(query, parameters: null);
 
             if (result != null)
             {
@@ -788,7 +806,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{2}'",
                 Sanitize(catalog), Sanitize(dbSchema), Sanitize(tableName));
 
-            BigQueryResults? result = this.client?.ExecuteQuery(query, parameters: null);
+            BigQueryResults? result = ExecuteQuery(query, parameters: null);
 
             List<Field> fields = new List<Field>();
 
@@ -1011,6 +1029,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     options[keyValuePair.Key] = keyValuePair.Value;
                 }
                 if (keyValuePair.Key == BigQueryParameters.LargeDecimalsAsString)
+                {
+                    options[keyValuePair.Key] = keyValuePair.Value;
+                }
+                if (keyValuePair.Key == BigQueryParameters.LargeResultsDestinationTable)
                 {
                     options[keyValuePair.Key] = keyValuePair.Value;
                 }
