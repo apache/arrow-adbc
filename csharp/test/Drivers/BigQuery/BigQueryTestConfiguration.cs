@@ -27,6 +27,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         public BigQueryTestConfiguration()
         {
             AllowLargeResults = false;
+            IncludeTableConstraints = true;
         }
 
         [JsonPropertyName("projectId")]
@@ -52,5 +53,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         [JsonPropertyName("largeResultsDestinationTable")]
         public string LargeResultsDestinationTable { get; set; }
+
+        [JsonPropertyName("includeTableConstraints")]
+        public bool IncludeTableConstraints { get; set; }
     }
 }

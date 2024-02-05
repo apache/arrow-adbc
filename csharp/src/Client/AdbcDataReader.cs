@@ -217,7 +217,7 @@ namespace Apache.Arrow.Adbc.Client
             if (value == null)
                 return null;
 
-            if(value is SqlDecimal dValue)
+            if (value is SqlDecimal dValue)
             {
                 if (this.DecimalBehavior == DecimalBehavior.UseSqlDecimal)
                 {
@@ -317,7 +317,7 @@ namespace Apache.Arrow.Adbc.Client
                 {
                     Type t = SchemaConverter.ConvertArrowType(f, this.DecimalBehavior);
 
-                    if(f.HasMetadata &&
+                    if (f.HasMetadata &&
                        f.Metadata.ContainsKey("precision") &&
                        f.Metadata.ContainsKey("scale"))
                     {
@@ -361,7 +361,7 @@ namespace Apache.Arrow.Adbc.Client
 
             RecordBatch recordBatch = this.adbcQueryResult.Stream.ReadNextRecordBatchAsync(cancellationToken).Result;
 
-            if( recordBatch != null )
+            if (recordBatch != null)
             {
                 this.TotalBatches += 1;
             }

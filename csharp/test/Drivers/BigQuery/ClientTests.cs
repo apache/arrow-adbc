@@ -101,6 +101,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         [SkippableFact]
+        public void VerifySchemaTablesWithNoConstraints()
+        {
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(includeTableConstraints: false))
+            {
+                adbcConnection.Open();
+
+                string schema = "Tables";
+
+                var tables = adbcConnection.GetSchema(schema);
+
+                Assert.True(tables.Rows.Count > 0, $"No tables were found in the schema '{schema}'");
+            }
+        }
+
+
+        [SkippableFact]
         public void VerifySchemaTables()
         {
             using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
@@ -166,8 +182,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
         }
 
-        private Adbc.Client.AdbcConnection GetAdbcConnection()
+        private Adbc.Client.AdbcConnection GetAdbcConnection(bool includeTableConstraints = true)
         {
+            _testConfiguration.IncludeTableConstraints = includeTableConstraints;
+
             return new Adbc.Client.AdbcConnection(
                 new BigQueryDriver(),
                 BigQueryTestingUtils.GetBigQueryParameters(_testConfiguration),

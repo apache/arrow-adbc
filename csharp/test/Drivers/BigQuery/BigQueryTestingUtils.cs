@@ -74,12 +74,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 parameters.Add(BigQueryParameters.Scopes, testConfiguration.Scopes);
             }
 
-            if(testConfiguration.AllowLargeResults)
+            if (testConfiguration.AllowLargeResults)
             {
                 parameters.Add(BigQueryParameters.AllowLargeResults, testConfiguration.AllowLargeResults.ToString());
             }
 
-            if(!string.IsNullOrEmpty(testConfiguration.LargeResultsDestinationTable))
+            parameters.Add(BigQueryParameters.IncludeConstraintsWithGetObjects, testConfiguration.IncludeTableConstraints.ToString());
+
+            if (!string.IsNullOrEmpty(testConfiguration.LargeResultsDestinationTable))
             {
                 parameters.Add(BigQueryParameters.LargeResultsDestinationTable, testConfiguration.LargeResultsDestinationTable);
             }

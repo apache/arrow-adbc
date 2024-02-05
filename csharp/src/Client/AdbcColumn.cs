@@ -59,7 +59,7 @@ namespace Apache.Arrow.Adbc.Client
             this.DataType = dataType;
             this.ArrowType = arrowType;
 
-            if(precision.HasValue && scale.HasValue)
+            if (precision.HasValue && scale.HasValue)
             {
                 this.NumericScale = scale.Value;
                 this.NumericPrecision = precision.Value;
