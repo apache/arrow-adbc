@@ -87,7 +87,7 @@ AdbcStatusCode ResolveNetezzaType(const NetezzaTypeResolver& type_resolver,
                                    struct AdbcError* error) {
   ArrowError na_error;
   const int num_fields = PQnfields(result);
-  NetezzaType root_type(NetezzaTypeId::kVarbinary);
+  NetezzaType root_type(NetezzaTypeId::kUnknown);
 
   for (int i = 0; i < num_fields; i++) {
     const Oid pg_oid = PQftype(result, i);

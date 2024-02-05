@@ -206,6 +206,12 @@ class NetezzaType {
         break;
 
       // ---- Nested --------------------
+      case NetezzaTypeId::kUnknown:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
+        for (int64_t i = 0; i < n_children(); i++) {
+          NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
+        }
+        break;
       case NetezzaTypeId::kOidvector:
       case NetezzaTypeId::kStgeometry:
       case NetezzaTypeId::kVarbinary:
@@ -321,6 +327,21 @@ class NetezzaTypeResolver {
     NetezzaType type = base.WithPgTypeInfo(item.oid, item.typname);
 
     switch (base.type_id()) {
+      case NetezzaTypeId::kUnknown: {
+        std::vector<std::pair<std::string, uint32_t>> child_desc;
+        NANOARROW_RETURN_NOT_OK(ResolveClass(item.class_oid, &child_desc, error));
+
+        NetezzaType out(NetezzaTypeId::kUnknown);
+        for (const auto& child_item : child_desc) {
+          NetezzaType child;
+          NANOARROW_RETURN_NOT_OK(Find(child_item.second, &child, error));
+          out.AppendChild(child_item.first, child);
+        }
+
+        mapping_.insert({item.oid, out.WithPgTypeInfo(item.oid, item.typname)});
+        reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
+        break;
+      }
       default:
         mapping_.insert({item.oid, type});
         reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
