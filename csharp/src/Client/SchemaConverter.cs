@@ -34,7 +34,7 @@ namespace Apache.Arrow.Adbc.Client
         /// <exception cref="ArgumentNullException"></exception>
         public static DataTable ConvertArrowSchema(Schema schema, AdbcStatement adbcStatement, DecimalBehavior decimalBehavior)
         {
-            if(schema == null)
+            if (schema == null)
                 throw new ArgumentNullException(nameof(schema));
 
             if (adbcStatement == null)

@@ -427,6 +427,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (result != null)
             {
+                bool includeConstraints = true;
+
+                if (this.properties.TryGetValue(BigQueryParameters.IncludeConstraintsWithGetObjects, out string includeConstraintsValue))
+                {
+                    bool.TryParse(includeConstraintsValue, out includeConstraints);
+                }
+
                 foreach (BigQueryRow row in result)
                 {
                     tableNameBuilder.Append(GetValue(row["table_name"]));
@@ -434,8 +441,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     nullBitmapBuffer.Append(true);
                     length++;
 
-                    tableConstraintsValues.Add(GetConstraintSchema(
-                        depth, catalog, dbSchema, GetValue(row["table_name"]), columnNamePattern));
+                    if (includeConstraints)
+                    {
+                        tableConstraintsValues.Add(GetConstraintSchema(
+                            depth, catalog, dbSchema, GetValue(row["table_name"]), columnNamePattern));
+                    }
+                    else
+                    {
+                        tableConstraintsValues.Add(null);
+                    }
 
                     if (depth == GetObjectsDepth.Tables)
                     {

@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
@@ -101,6 +102,24 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         [SkippableFact]
+        public void VerifySchemaTablesWithNoConstraints()
+        {
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(includeTableConstraints: false))
+            {
+                adbcConnection.Open();
+
+                Stopwatch sw = Stopwatch.StartNew();
+
+                var tables = adbcConnection.GetSchema("Tables");
+
+                sw.Stop();
+
+                Debug.WriteLine($"Tables call took {sw.Elapsed.TotalSeconds} seconds");
+            }
+        }
+
+
+        [SkippableFact]
         public void VerifySchemaTables()
         {
             using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
@@ -166,8 +185,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
         }
 
-        private Adbc.Client.AdbcConnection GetAdbcConnection()
+        private Adbc.Client.AdbcConnection GetAdbcConnection(bool includeTableConstraints = true)
         {
+            _testConfiguration.IncludeTableConstraints = includeTableConstraints;
+
             return new Adbc.Client.AdbcConnection(
                 new BigQueryDriver(),
                 BigQueryTestingUtils.GetBigQueryParameters(_testConfiguration),

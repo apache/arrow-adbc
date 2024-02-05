@@ -34,7 +34,7 @@ namespace Apache.Arrow.Adbc.Drivers.Interop.Snowflake
         {
             string file = "libadbc_driver_snowflake.dll";
 
-            if(File.Exists(file))
+            if (File.Exists(file))
             {
                 // get the full path because some .NET versions need it
                 file = Path.GetFullPath(file);
