@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\..\Build.props" />
+    <PropertyGroup>
+     <TargetFrameworks>net472;net6.0</TargetFrameworks>
+   </PropertyGroup>
+    <ItemGroup>
+      <Compile Include="..\..\..\Drivers\Interop\FlightSql\ClientTests.cs" Link="ClientTests.cs" />
+      <Compile Include="..\..\..\Drivers\Interop\FlightSql\FlightSqlData.cs" Link="FlightSqlData.cs" />
+      <Compile Include="..\..\..\Drivers\Interop\FlightSql\FlightSqlTestConfiguration.cs" Link="FlightSqlTestConfiguration.cs" />
+      <Compile Include="..\..\..\Drivers\Interop\FlightSql\FlightSqlTestingUtils.cs" Link="FlightSqlTestingUtils.cs" />
+    </ItemGroup>
+    <ItemGroup>
+     <PackageReference Include="Apache.Arrow.Adbc.Drivers.Interop.FlightSql" Version="[$(ApacheArrowAdbcDriversInteropFlightSqlVersion)]" />
+     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
+     <PackageReference Include="xunit" Version="2.5.3" />
+     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3">
+       <PrivateAssets>all</PrivateAssets>
+       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+     </PackageReference>
+     <PackageReference Include="Xunit.SkippableFact" Version="1.4.13" />
+   </ItemGroup>
+    <ItemGroup>
+      <Folder Include="Resources\" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Include="..\..\..\Drivers\Interop\FlightSql\Resources\FlightSqlData.sql" Link="Resources\FlightSqlData.sql">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\..\Apache.Arrow.Adbc.SmokeTests\Apache.Arrow.Adbc.SmokeTests.csproj" />
+    </ItemGroup>
+ </Project>
