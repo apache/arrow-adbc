@@ -108,13 +108,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             {
                 adbcConnection.Open();
 
-                Stopwatch sw = Stopwatch.StartNew();
+                string schema = "Tables";
 
-                var tables = adbcConnection.GetSchema("Tables");
+                var tables = adbcConnection.GetSchema(schema);
 
-                sw.Stop();
-
-                Debug.WriteLine($"Tables call took {sw.Elapsed.TotalSeconds} seconds");
+                Assert.True(tables.Rows.Count > 0, $"No tables were found in the schema '{schema}'");
             }
         }
 
