@@ -87,7 +87,7 @@ AdbcStatusCode ResolveNetezzaType(const NetezzaTypeResolver& type_resolver,
                                    struct AdbcError* error) {
   ArrowError na_error;
   const int num_fields = PQnfields(result);
-  NetezzaType root_type(NetezzaTypeId::kRecord);
+  NetezzaType root_type(NetezzaTypeId::kVarbinary);
 
   for (int i = 0; i < num_fields; i++) {
     const Oid pg_oid = PQftype(result, i);
@@ -656,6 +656,72 @@ int TupleReader::InitResultArray(struct ArrowError* error) {
   return NANOARROW_OK;
 }
 
+int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char* value, Oid cell_format) {
+
+  switch(cell_format) {
+    case static_cast<Oid>(NetezzaTypeId::kInt8):
+    case static_cast<Oid>(NetezzaTypeId::kInt2):
+    case static_cast<Oid>(NetezzaTypeId::kInt4):
+    {
+      int val1 = atoi(value);
+      ArrowArrayAppendInt(child, val1);
+      break;
+      
+    }
+    case static_cast<Oid>(NetezzaTypeId::kChar):
+    case static_cast<Oid>(NetezzaTypeId::kBpchar):
+    case static_cast<Oid>(NetezzaTypeId::kVarchar):
+    case static_cast<Oid>(NetezzaTypeId::kNchar):
+    case static_cast<Oid>(NetezzaTypeId::kNvarchar):
+    case static_cast<Oid>(NetezzaTypeId::kName):
+    case static_cast<Oid>(NetezzaTypeId::kJson):
+    case static_cast<Oid>(NetezzaTypeId::kJsonb):
+    case static_cast<Oid>(NetezzaTypeId::kJsonpath):
+    case static_cast<Oid>(NetezzaTypeId::kDate):
+    case static_cast<Oid>(NetezzaTypeId::kTime):
+    case static_cast<Oid>(NetezzaTypeId::kTimestamp):
+    case static_cast<Oid>(NetezzaTypeId::kTimetz):
+    case static_cast<Oid>(NetezzaTypeId::kAbstime):
+    case static_cast<Oid>(NetezzaTypeId::kText):
+    case static_cast<Oid>(NetezzaTypeId::kInterval): // to be removed
+    {
+      ArrowArrayAppendString(child, ArrowCharView(value));
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kBool):
+    case static_cast<Oid>(NetezzaTypeId::kInt1):
+    {
+      ArrowBufferView abv;
+      abv.data.as_char = value;
+      abv.size_bytes = sizeof(value);
+      ArrowArrayAppendBytes(child, abv);
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kFloat4):
+    case static_cast<Oid>(NetezzaTypeId::kFloat8):
+    case static_cast<Oid>(NetezzaTypeId::kNumeric):
+    {
+      ArrowArrayAppendDouble(child, std::stod(value));
+      break;
+    }
+    // case static_cast<Oid>(NetezzaTypeId::kInterval):
+    // {
+    //   ArrowInterval ainter{NANOARROW_TYPE_INTERVAL_DAY_TIME, 5, 5, 0, 0};
+    //   ArrowIntervalInit(&ainter, NANOARROW_TYPE_INTERVAL_DAY_TIME);
+    //   ArrowArrayAppendInterval(child, &ainter);
+    //   break;
+    // }
+    case static_cast<Oid>(NetezzaTypeId::kUnknown):
+    case static_cast<Oid>(NetezzaTypeId::kStgeometry):
+    case static_cast<Oid>(NetezzaTypeId::kVarbinary):
+    case static_cast<Oid>(NetezzaTypeId::kUnkbinary):
+    default:
+      std::cout << "printing schema" << std::endl;
+      break;
+  }
+  return NANOARROW_OK;
+}
+
 int TupleReader::NZInitQueryAndFetchFirst(struct ArrowError* error) {
   /* Alternate to InitQueryAndFetchFirst, the NZ way. */
   GetSchema(&result_schema);
@@ -677,14 +743,6 @@ int TupleReader::NZInitQueryAndFetchFirst(struct ArrowError* error) {
     }
   }
 
-  /* Initialize size_bytes with datatype size */
-  int size_bytes = 0;
-  for (int64_t i = 0; i < result_cols; i++) {
-    size_bytes += PQfsize(result_, i);
-  }
-  buffer_view_.size_bytes = size_bytes;
-  buffer_view_.data.as_char = "";
-
   return NANOARROW_OK;
 }
 
@@ -700,18 +758,14 @@ int TupleReader::NZAppendRowAndFetchNext(struct  ArrowError* error) {
   int numRows = PQntuples(result_);
   int numCols = PQnfields(result_);
 
-  char* val;
+  char* cell_value;
 
   while (true) {
     if (numRows > 0 && numCols > 0) {
       for (int j = 0; j < numCols; j++) {
-        val = PQgetvalue(result_, row_id_, j);
-        /*  TODO: 
-          define and call AppendToArrayForColType(result_array.children[j], val);
-          use global schema var.
-        */
-        int val1 = atoi(val);
-        ArrowArrayAppendInt(result_array.children[j], val1);
+        cell_value = PQgetvalue(result_, row_id_, j);
+        Oid cell_format = PQftype(result_, j);
+        AppendToChildArrayForColumnType(result_array.children[j], cell_value, cell_format);
       }
 
       result_array.length++;
