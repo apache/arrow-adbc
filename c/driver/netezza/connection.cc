@@ -1281,7 +1281,7 @@ AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
 
   RAISE_ADBC(database_->Connect(&conn_, error));
 
-  // RAISE_ADBC(conn_.SetOption("CLIENT_VERSION", NZ_CLIENT_VERSION, error));
+  RAISE_ADBC(database_->SetConnOptionInternal(&conn_, CLIENT_VERSION.c_str(), NZ_CLIENT_VERSION, error));
 
   std::ignore = PQsetNoticeProcessor(conn_, SilentNoticeProcessor, nullptr);
 
@@ -1348,17 +1348,6 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     RAISE_ADBC(result_helper.Prepare());
     RAISE_ADBC(result_helper.Execute());
     return ADBC_STATUS_OK;
-  } else if (std::strcmp(key, "CLIENT_VERSION") == 0) {
-    std::string query = "SET CLIENT_VERSION = ";
-    query.append(NZ_CLIENT_VERSION);
-    PGresult* result = PQexec(conn_, query.c_str());
-      if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-        SetError(error, "%s%s",
-                 "[libpq] Failed to update autocommit: ", PQerrorMessage(conn_));
-        PQclear(result);
-        return ADBC_STATUS_IO;
-      }
-      PQclear(result);
   }
   SetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
