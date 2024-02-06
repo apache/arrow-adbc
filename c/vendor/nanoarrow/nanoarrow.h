@@ -21,7 +21,7 @@
 #define NANOARROW_VERSION_MAJOR 0
 #define NANOARROW_VERSION_MINOR 4
 #define NANOARROW_VERSION_PATCH 0
-#define NANOARROW_VERSION "0.4.0-SNAPSHOT"
+#define NANOARROW_VERSION "0.4.0"
 
 #define NANOARROW_VERSION_INT                                        \
   (NANOARROW_VERSION_MAJOR * 10000 + NANOARROW_VERSION_MINOR * 100 + \
@@ -240,6 +240,11 @@ typedef int ArrowErrorCode;
 #if defined(NANOARROW_DEBUG)
 #define ArrowErrorCode NANOARROW_CHECK_RETURN_ATTRIBUTE ArrowErrorCode
 #endif
+
+/// \brief Flags supported by ArrowSchemaViewInit()
+/// \ingroup nanoarrow-schema-view
+#define NANOARROW_FLAG_ALL_SUPPORTED \
+  (ARROW_FLAG_DICTIONARY_ORDERED | ARROW_FLAG_NULLABLE | ARROW_FLAG_MAP_KEYS_SORTED)
 
 /// \brief Error type containing a UTF-8 encoded message.
 /// \ingroup nanoarrow-errors
@@ -3311,6 +3316,10 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
     }
     default:
       return EINVAL;
+  }
+
+  if (private_data->bitmap.buffer.data != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1));
   }
 
   array->length++;

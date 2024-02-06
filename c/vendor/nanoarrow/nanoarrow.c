@@ -1618,8 +1618,7 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
         ArrowSchemaViewValidate(schema_view, schema_view->type, error));
   }
 
-  int64_t unknown_flags = schema->flags & ~ARROW_FLAG_DICTIONARY_ORDERED &
-                          ~ARROW_FLAG_NULLABLE & ~ARROW_FLAG_MAP_KEYS_SORTED;
+  int64_t unknown_flags = schema->flags & ~NANOARROW_FLAG_ALL_SUPPORTED;
   if (unknown_flags != 0) {
     ArrowErrorSet(error, "Unknown ArrowSchema flag");
     return EINVAL;
