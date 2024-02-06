@@ -22,6 +22,7 @@ on:
     branches:
       - main
     paths:
+      - ".env"
       - "adbc.h"
       - "c/**"
       - "ci/**"
