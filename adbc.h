@@ -755,6 +755,8 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \since ADBC API revision 1.1.0
 #define ADBC_INGEST_OPTION_MODE_CREATE_APPEND "adbc.ingest.mode.create_append"
 
+#define NZ_CLIENT_VERSION "Release 11.3.0.0"
+
 /// @}
 
 /// @}

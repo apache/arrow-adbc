@@ -663,6 +663,7 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     case static_cast<Oid>(NetezzaTypeId::kInt2):
     case static_cast<Oid>(NetezzaTypeId::kInt4):
     {
+      // this block is tested.
       int val1 = atoi(value);
       ArrowArrayAppendInt(child, val1);
       break;
@@ -672,8 +673,7 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     case static_cast<Oid>(NetezzaTypeId::kBpchar):
     case static_cast<Oid>(NetezzaTypeId::kVarchar):
     case static_cast<Oid>(NetezzaTypeId::kNchar):
-    case static_cast<Oid>(NetezzaTypeId::kNvarchar):
-    case static_cast<Oid>(NetezzaTypeId::kName):
+    case static_cast<Oid>(NetezzaTypeId::kNvarchar): // this block is tested
     case static_cast<Oid>(NetezzaTypeId::kJson):
     case static_cast<Oid>(NetezzaTypeId::kJsonb):
     case static_cast<Oid>(NetezzaTypeId::kJsonpath):
@@ -683,9 +683,10 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     case static_cast<Oid>(NetezzaTypeId::kTimetz):
     case static_cast<Oid>(NetezzaTypeId::kAbstime):
     case static_cast<Oid>(NetezzaTypeId::kText):
+    case static_cast<Oid>(NetezzaTypeId::kVarbinary):
     case static_cast<Oid>(NetezzaTypeId::kInterval): // to be removed
     {
-      ArrowArrayAppendString(child, ArrowCharView(value));
+      ArrowArrayAppendString(child, ArrowCharView(value));  
       break;
     }
     case static_cast<Oid>(NetezzaTypeId::kBool):
@@ -713,7 +714,6 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     // }
     case static_cast<Oid>(NetezzaTypeId::kUnknown):
     case static_cast<Oid>(NetezzaTypeId::kStgeometry):
-    case static_cast<Oid>(NetezzaTypeId::kVarbinary):
     case static_cast<Oid>(NetezzaTypeId::kUnkbinary):
     default:
       std::cout << "printing schema" << std::endl;
