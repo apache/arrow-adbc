@@ -34,12 +34,12 @@
 //! onto Arrow record batches as returned by the C API ADBC drivers. The latter is
 //! implemented in [ImportedCatalogCollection][crate::driver_manager::ImportedCatalogCollection].
 //!
-//! | Trait                        | Simple Rust-based    | Arrow RecordBatch view |
-//! |------------------------------|----------------------|------------------------|
-//! | [DatabaseCatalogCollection]  | [SimpleSchemaEntry]  | [ImportedCatalogCollection][crate::driver_manager::ImportedCatalogCollection] |
-//! | [DatabaseCatalogEntry]       | [SimpleCatalogEntry] | [ImportedCatalogEntry][crate::driver_manager::ImportedCatalogEntry] |
-//! | [DatabaseSchemaEntry]        | [SimpleSchemaEntry]  | [ImportedSchemaEntry][crate::driver_manager::ImportedSchemaEntry] |
-//! | [DatabaseTableEntry]         | [SimpleTableEntry]   | [ImportedTableEntry][crate::driver_manager::ImportedTableEntry] |
+//! | Trait                        | Simple Rust-based         | Arrow RecordBatch view |
+//! |------------------------------|---------------------------|------------------------|
+//! | [DatabaseCatalogCollection]  | [SimpleCatalogCollection] | [ImportedCatalogCollection][crate::driver_manager::ImportedCatalogCollection] |
+//! | [DatabaseCatalogEntry]       | [SimpleCatalogEntry]      | [ImportedCatalogEntry][crate::driver_manager::ImportedCatalogEntry] |
+//! | [DatabaseSchemaEntry]        | [SimpleSchemaEntry]       | [ImportedSchemaEntry][crate::driver_manager::ImportedSchemaEntry] |
+//! | [DatabaseTableEntry]         | [SimpleTableEntry]        | [ImportedTableEntry][crate::driver_manager::ImportedTableEntry] |
 //!
 //! There are owned and reference variations of columns, table constraints,
 //! and foreign key usage. Each have a `borrow()` method to transform a owned
