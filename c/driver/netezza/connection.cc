@@ -1281,12 +1281,6 @@ AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
 
   RAISE_ADBC(database_->Connect(&conn_, error));
 
-  // cancel_ = PQrequestCancel(conn_);
-  // if (!cancel_) {
-  //   SetError(error, "[libpq] Could not initialize PGcancel");
-  //   return ADBC_STATUS_UNKNOWN;
-  // }
-
   // RAISE_ADBC(conn_.SetOption("CLIENT_VERSION", NZ_CLIENT_VERSION, error));
 
   std::ignore = PQsetNoticeProcessor(conn_, SilentNoticeProcessor, nullptr);
