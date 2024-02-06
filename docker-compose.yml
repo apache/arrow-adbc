@@ -150,6 +150,12 @@ services:
       dockerfile: ci/docker/flightsql-test.dockerfile
       args:
         GO: ${GO}
+    healthcheck:
+      test: ["CMD", "curl", "--http2-prior-knowledge", "-XPOST", "-H", "content-type: application/grpc"]
+      interval: 5s
+      timeout: 30s
+      retries: 3
+      start_period: 5m
     ports:
       - "41414:41414"
     volumes:
