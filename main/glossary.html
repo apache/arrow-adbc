@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/glossary.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="client API, The API that an application uses to interact with a database. May abstract over the underlying wire protocol and other details. For example, ADBC, JDBC, ODBC.,, driver, A library that i..." />
+<meta property="og:description" content="Arrow Flight SQL, A wire protocol for data systems that uses Apache Arrow. See the specification.,, client API, The API that an application uses to interact with a database. May abstract over the u..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="client API, The API that an application uses to interact with a database. May abstract over the underlying wire protocol and other details. For example, ADBC, JDBC, ODBC.,, driver, A library that i..." />
+<meta name="description" content="Arrow Flight SQL, A wire protocol for data systems that uses Apache Arrow. See the specification.,, client API, The API that an application uses to interact with a database. May abstract over the u..." />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="C and C++" href="cpp/index.html" /><link rel="prev" title="Frequently Asked Questions (FAQ)" href="faq.html" />
 
     <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
@@ -338,15 +338,18 @@
           <section id="glossary">
 <h1>Glossary<a class="headerlink" href="#glossary" title="Permalink to this heading">#</a></h1>
 <dl class="glossary">
+<dt id="term-Arrow-Flight-SQL">Arrow Flight SQL<a class="headerlink" href="#term-Arrow-Flight-SQL" title="Permalink to this term">#</a></dt><dd><p>A <a class="reference internal" href="#term-wire-protocol"><span class="xref std std-term">wire protocol</span></a> for data systems that uses Apache Arrow.
+See the <a class="reference external" href="https://arrow.apache.org/docs/format/FlightSql.html" title="(in Apache Arrow v15.0.0)"><span class="xref std std-doc">specification</span></a>.</p>
+</dd>
 <dt id="term-client-API">client API<a class="headerlink" href="#term-client-API" title="Permalink to this term">#</a></dt><dd><p>The API that an application uses to interact with a database.  May
 abstract over the underlying <a class="reference internal" href="#term-wire-protocol"><span class="xref std std-term">wire protocol</span></a> and other details.
 For example, ADBC, JDBC, ODBC.</p>
 </dd>
-<dt id="term-driver">driver<a class="headerlink" href="#term-driver" title="Permalink to this term">#</a></dt><dd><p>A library that implements a <a class="reference internal" href="#term-client-API"><span class="xref std std-term">client API</span></a> using a <a class="reference internal" href="#term-wire-protocol"><span class="xref std std-term">wire
-protocol</span></a>.  For example, the ADBC PostgreSQL driver exposes the ADBC
-client API and interacts with a PostgreSQL database via the PostgreSQL
-wire protocol.  The JDBC PostgreSQL driver uses the same wire protocol,
-but exposes the JDBC client API instead.</p>
+<dt id="term-driver">driver<a class="headerlink" href="#term-driver" title="Permalink to this term">#</a></dt><dd><p>Loosely speaking, a library that implements a <a class="reference internal" href="#term-client-API"><span class="xref std std-term">client API</span></a> using a
+<a class="reference internal" href="#term-wire-protocol"><span class="xref std std-term">wire protocol</span></a>.  For example, the ADBC PostgreSQL driver exposes
+the ADBC client API and interacts with a PostgreSQL database via the
+PostgreSQL wire protocol.  The JDBC PostgreSQL driver uses the same wire
+protocol, but exposes the JDBC client API instead.</p>
 </dd>
 <dt id="term-driver-manager">driver manager<a class="headerlink" href="#term-driver-manager" title="Permalink to this term">#</a></dt><dd><p>A library that helps manage multiple drivers for a given client API.
 For example, the JDBC driver manager can find a appropriate driver
@@ -357,10 +360,18 @@ link to them.  (Since all drivers expose the same API, their symbols
 would collide otherwise.)  In Python, it loads drivers and provides
 Python bindings on top.</p>
 </dd>
-<dt id="term-wire-protocol">wire protocol<a class="headerlink" href="#term-wire-protocol" title="Permalink to this term">#</a></dt><dd><p>The protocol that a database driver uses to interact with a database.
-For example, <a class="reference external" href="https://arrow.apache.org/docs/format/FlightSql.html" title="(in Apache Arrow v15.0.0)"><span>Arrow Flight SQL</span></a>, the <a class="reference external" href="https://www.postgresql.org/docs/current/protocol.html">PostgreSQL wire
-protocol</a>, or <a class="reference external" href="https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-tds/b46a581a-39de-4745-b076-ec4dbb7d13ec">Tabular Data Stream</a> (Microsoft SQL Server).  Generally
-not directly used by an application.</p>
+<dt id="term-Substrait">Substrait<a class="headerlink" href="#term-Substrait" title="Permalink to this term">#</a></dt><dd><p><a class="reference external" href="https://substrait.io/">Substrait</a> describes itself as a “cross-language serialization for
+relational algebra”.  It operates in a similar space as SQL, but is
+lower-level.  You’re unlikely to write a Substrait query by hand, but may
+use tools that opt to generate Substrait instead of SQL for more
+predictable semantics.</p>
+</dd>
+<dt id="term-wire-protocol">wire protocol<a class="headerlink" href="#term-wire-protocol" title="Permalink to this term">#</a></dt><dd><p>The actual way a database driver connects to a database, issues commands,
+gets results, and so forth.  For example, <a class="reference internal" href="#term-Arrow-Flight-SQL"><span class="xref std std-term">Arrow Flight SQL</span></a>, the
+<a class="reference external" href="https://www.postgresql.org/docs/current/protocol.html">PostgreSQL wire protocol</a>, or <a class="reference external" href="https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-tds/b46a581a-39de-4745-b076-ec4dbb7d13ec">Tabular Data Stream</a> (Microsoft SQL
+Server).  Generally, an application is not going to implement and use this
+directly, but instead use something higher-level, like an ADBC, JDBC, or
+ODBC driver.</p>
 </dd>
 </dl>
 </section>
