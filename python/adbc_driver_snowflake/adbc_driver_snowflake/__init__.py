@@ -132,9 +132,9 @@ def connect(
     if uri is not None:
         kwargs["uri"] = uri
     appname = kwargs.get(DatabaseOptions.APPLICATION_NAME.value, "")
-    kwargs[DatabaseOptions.APPLICATION_NAME.value] = (
-        f"[ADBC][Python-{__version__}]{appname}"
-    )
+    kwargs[
+        DatabaseOptions.APPLICATION_NAME.value
+    ] = f"[ADBC][Python-{__version__}]{appname}"
     return adbc_driver_manager.AdbcDatabase(driver=_driver_path(), **kwargs)
 
 
