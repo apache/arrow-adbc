@@ -48,6 +48,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+          submodules: recursive
       - uses: actions/setup-java@v4
         with:
           cache: "maven"
@@ -81,6 +82,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+          submodules: recursive
       - uses: actions/setup-java@v4
         with:
           cache: "maven"

@@ -477,7 +477,20 @@ jobs:
       - name: Test Python Driver Flight SQL
         shell: bash -l {0}
         run: |
+          # Can't use Docker on macOS
+          pushd $(pwd)/go/adbc
+          go build -o testserver ./driver/flightsql/cmd/testserver
+          popd
+          $(pwd)/go/adbc/testserver -host 0.0.0.0 -port 41414 &
+          while ! curl --http2-prior-knowledge -H "content-type: application/grpc" -v localhost:41414 -XPOST;
+          do
+              echo "Waiting for test server..."
+              jobs
+              sleep 5
+          done
+          export ADBC_TEST_FLIGHTSQL_URI=grpc://localhost:41414
           env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQL=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+          kill %1
       - name: Build Python Driver PostgreSQL
         shell: bash -l {0}
         run: |

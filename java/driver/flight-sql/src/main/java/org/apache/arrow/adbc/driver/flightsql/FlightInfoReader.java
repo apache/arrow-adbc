@@ -24,12 +24,10 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
-import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.Location;
-import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.VectorUnloader;
@@ -40,8 +38,8 @@ import org.apache.arrow.vector.types.pojo.Schema;
 /** An ArrowReader that wraps a FlightInfo. */
 public class FlightInfoReader extends ArrowReader {
   private final Schema schema;
-  private final FlightSqlClient client;
-  private final LoadingCache<Location, FlightClient> clientCache;
+  private final FlightSqlClientWithCallOptions client;
+  private final LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache;
   private final List<FlightEndpoint> flightEndpoints;
   private int nextEndpointIndex;
   private FlightStream currentStream;
@@ -49,8 +47,8 @@ public class FlightInfoReader extends ArrowReader {
 
   FlightInfoReader(
       BufferAllocator allocator,
-      FlightSqlClient client,
-      LoadingCache<Location, FlightClient> clientCache,
+      FlightSqlClientWithCallOptions client,
+      LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache,
       List<FlightEndpoint> flightEndpoints)
       throws AdbcException {
     super(allocator);

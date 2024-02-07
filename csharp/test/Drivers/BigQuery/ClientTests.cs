@@ -26,16 +26,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     /// <summary>
     /// Class for testing the ADBC Client using the BigQuery ADBC driver.
     /// </summary>
-    /// /// <remarks>
+    /// <remarks>
     /// Tests are ordered to ensure data is created for the other
     /// queries to run.
     /// </remarks>
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class ClientTests
     {
+        private BigQueryTestConfiguration _testConfiguration;
+
         public ClientTests()
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
+
+            _testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
         }
 
         /// <summary>
@@ -44,17 +48,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(1)]
         public void CanClientExecuteUpdate()
         {
-            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
             {
                 adbcConnection.Open();
 
-                string[] queries = BigQueryTestingUtils.GetQueries(testConfiguration);
+                string[] queries = BigQueryTestingUtils.GetQueries(_testConfiguration);
 
                 List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
-                Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, testConfiguration, queries, expectedResults);
+                Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, _testConfiguration, queries, expectedResults);
             }
         }
 
@@ -64,11 +66,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(2)]
         public void CanClientGetSchema()
         {
-            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
             {
-                Tests.ClientTests.CanClientGetSchema(adbcConnection, testConfiguration);
+                Tests.ClientTests.CanClientGetSchema(adbcConnection, _testConfiguration);
             }
         }
 
@@ -79,11 +79,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(3)]
         public void CanClientExecuteQuery()
         {
-            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
             {
-                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, _testConfiguration);
             }
         }
 
@@ -94,9 +92,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(4)]
         public void VerifyTypesAndValues()
         {
-            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
-
-            using(Adbc.Client.AdbcConnection dbConnection = GetAdbcConnection(testConfiguration))
+            using(Adbc.Client.AdbcConnection dbConnection = GetAdbcConnection())
             {
                 SampleDataBuilder sampleDataBuilder = BigQueryData.GetSampleData();
 
@@ -105,11 +101,25 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         [SkippableFact]
+        public void VerifySchemaTablesWithNoConstraints()
+        {
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(includeTableConstraints: false))
+            {
+                adbcConnection.Open();
+
+                string schema = "Tables";
+
+                var tables = adbcConnection.GetSchema(schema);
+
+                Assert.True(tables.Rows.Count > 0, $"No tables were found in the schema '{schema}'");
+            }
+        }
+
+
+        [SkippableFact]
         public void VerifySchemaTables()
         {
-            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
             {
                 adbcConnection.Open();
 
@@ -122,7 +132,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 Assert.Equal(3, restrictions.Columns.Count);
 
                 var catalogs = adbcConnection.GetSchema("Catalogs");
-                Assert.Equal(1, catalogs.Columns.Count);
+                Assert.Single(catalogs.Columns);
                 var catalog = (string)catalogs.Rows[0].ItemArray[0];
 
                 catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
@@ -150,7 +160,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 Assert.Equal(0, schemas.Rows.Count);
 
                 var tableTypes = adbcConnection.GetSchema("TableTypes");
-                Assert.Equal(1, tableTypes.Columns.Count);
+                Assert.Single(tableTypes.Columns);
 
                 var tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema });
                 Assert.Equal(4, tables.Columns.Count);
@@ -172,11 +182,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
         }
 
-        private Adbc.Client.AdbcConnection GetAdbcConnection(BigQueryTestConfiguration testConfiguration)
+        private Adbc.Client.AdbcConnection GetAdbcConnection(bool includeTableConstraints = true)
         {
+            _testConfiguration.IncludeTableConstraints = includeTableConstraints;
+
             return new Adbc.Client.AdbcConnection(
                 new BigQueryDriver(),
-                BigQueryTestingUtils.GetBigQueryParameters(testConfiguration),
+                BigQueryTestingUtils.GetBigQueryParameters(_testConfiguration),
                 new Dictionary<string,string>()
             );
         }

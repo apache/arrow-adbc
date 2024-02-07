@@ -352,7 +352,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
         // To strip leading zeroes
         int append = (d > 0);
 
-        for (const auto pow10 : {1000, 100, 10, 1}) {
+        for (const auto pow10 : {1000, 100, 10}) {
           d1 = dig / pow10;
           dig -= d1 * pow10;
           append |= (d1 > 0);
@@ -360,6 +360,8 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
             *out++ = d1 + '0';
           }
         }
+
+        *out++ = dig + '0';
       }
     }
 
@@ -372,18 +374,20 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
       *out++ = '.';
       actual_chars_required += dscale + 1;
 
-      for (int i = 0; i < dscale; i++, d++, i += kDecDigits) {
+      for (int i = 0; i < dscale; d++, i += kDecDigits) {
         if (d >= 0 && d < ndigits) {
           dig = digits_[d];
         } else {
           dig = 0;
         }
 
-        for (const auto pow10 : {1000, 100, 10, 1}) {
+        for (const auto pow10 : {1000, 100, 10}) {
           d1 = dig / pow10;
           dig -= d1 * pow10;
           *out++ = d1 + '0';
         }
+
+        *out++ = dig + '0';
       }
     }
 
@@ -698,10 +702,9 @@ static inline ArrowErrorCode ErrorCantConvert(ArrowError* error,
   return EINVAL;
 }
 
-static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
-                                                 ArrowSchema* schema,
-                                                 PostgresCopyFieldReader** out,
-                                                 ArrowError* error) {
+static inline ArrowErrorCode MakeCopyFieldReader(
+    const PostgresType& pg_type, ArrowSchema* schema,
+    std::unique_ptr<PostgresCopyFieldReader>* out, ArrowError* error) {
   ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, nullptr));
 
@@ -709,7 +712,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
     case NANOARROW_TYPE_BOOL:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kBool:
-          *out = new PostgresCopyBooleanFieldReader();
+          *out = std::make_unique<PostgresCopyBooleanFieldReader>();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
@@ -718,7 +721,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
     case NANOARROW_TYPE_INT16:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kInt2:
-          *out = new PostgresCopyNetworkEndianFieldReader<int16_t>();
+          *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<int16_t>>();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
@@ -729,7 +732,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
         case PostgresTypeId::kInt4:
         case PostgresTypeId::kOid:
         case PostgresTypeId::kRegproc:
-          *out = new PostgresCopyNetworkEndianFieldReader<int32_t>();
+          *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<int32_t>>();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
@@ -738,7 +741,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
     case NANOARROW_TYPE_INT64:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kInt8:
-          *out = new PostgresCopyNetworkEndianFieldReader<int64_t>();
+          *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<int64_t>>();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
@@ -747,7 +750,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
     case NANOARROW_TYPE_FLOAT:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kFloat4:
-          *out = new PostgresCopyNetworkEndianFieldReader<uint32_t>();
+          *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<uint32_t>>();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
@@ -756,7 +759,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
     case NANOARROW_TYPE_DOUBLE:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kFloat8:
-          *out = new PostgresCopyNetworkEndianFieldReader<uint64_t>();
+          *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<uint64_t>>();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
@@ -769,10 +772,11 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
         case PostgresTypeId::kText:
         case PostgresTypeId::kBpchar:
         case PostgresTypeId::kName:
-          *out = new PostgresCopyBinaryFieldReader();
+        case PostgresTypeId::kEnum:
+          *out = std::make_unique<PostgresCopyBinaryFieldReader>();
           return NANOARROW_OK;
         case PostgresTypeId::kNumeric:
-          *out = new PostgresCopyNumericFieldReader();
+          *out = std::make_unique<PostgresCopyNumericFieldReader>();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
@@ -781,7 +785,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
     case NANOARROW_TYPE_BINARY:
       // No need to check pg_type here: we can return the bytes of any
       // Postgres type as binary.
-      *out = new PostgresCopyBinaryFieldReader();
+      *out = std::make_unique<PostgresCopyBinaryFieldReader>();
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_LIST:
@@ -794,16 +798,15 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
             return EINVAL;
           }
 
-          auto array_reader = std::unique_ptr<PostgresCopyArrayFieldReader>(
-              new PostgresCopyArrayFieldReader());
+          auto array_reader = std::make_unique<PostgresCopyArrayFieldReader>();
           array_reader->Init(pg_type);
 
-          PostgresCopyFieldReader* child_reader;
+          std::unique_ptr<PostgresCopyFieldReader> child_reader;
           NANOARROW_RETURN_NOT_OK(MakeCopyFieldReader(
               pg_type.child(0), schema->children[0], &child_reader, error));
-          array_reader->InitChild(std::unique_ptr<PostgresCopyFieldReader>(child_reader));
+          array_reader->InitChild(std::move(child_reader));
 
-          *out = array_reader.release();
+          *out = std::move(array_reader);
           return NANOARROW_OK;
         }
         default:
@@ -822,19 +825,17 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
             return EINVAL;
           }
 
-          auto record_reader = std::unique_ptr<PostgresCopyRecordFieldReader>(
-              new PostgresCopyRecordFieldReader());
+          auto record_reader = std::make_unique<PostgresCopyRecordFieldReader>();
           record_reader->Init(pg_type);
 
           for (int64_t i = 0; i < pg_type.n_children(); i++) {
-            PostgresCopyFieldReader* child_reader;
+            std::unique_ptr<PostgresCopyFieldReader> child_reader;
             NANOARROW_RETURN_NOT_OK(MakeCopyFieldReader(
                 pg_type.child(i), schema->children[i], &child_reader, error));
-            record_reader->AppendChild(
-                std::unique_ptr<PostgresCopyFieldReader>(child_reader));
+            record_reader->AppendChild(std::move(child_reader));
           }
 
-          *out = record_reader.release();
+          *out = std::move(record_reader);
           return NANOARROW_OK;
         }
         default:
@@ -844,12 +845,13 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
     case NANOARROW_TYPE_DATE32: {
       // 2000-01-01
       constexpr int32_t kPostgresDateEpoch = 10957;
-      *out = new PostgresCopyNetworkEndianFieldReader<int32_t, kPostgresDateEpoch>();
+      *out = std::make_unique<
+          PostgresCopyNetworkEndianFieldReader<int32_t, kPostgresDateEpoch>>();
       return NANOARROW_OK;
     }
 
     case NANOARROW_TYPE_TIME64: {
-      *out = new PostgresCopyNetworkEndianFieldReader<int64_t>();
+      *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<int64_t>>();
       return NANOARROW_OK;
     }
 
@@ -859,8 +861,8 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
         case PostgresTypeId::kTimestamptz: {
           // 2000-01-01 00:00:00.000000 in microseconds
           constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
-          *out = new PostgresCopyNetworkEndianFieldReader<int64_t,
-                                                          kPostgresTimestampEpoch>();
+          *out = std::make_unique<
+              PostgresCopyNetworkEndianFieldReader<int64_t, kPostgresTimestampEpoch>>();
           return NANOARROW_OK;
         }
         default:
@@ -869,7 +871,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kInterval: {
-          *out = new PostgresCopyIntervalFieldReader();
+          *out = std::make_unique<PostgresCopyIntervalFieldReader>();
           return NANOARROW_OK;
         }
         default:
@@ -935,10 +937,10 @@ class PostgresCopyStreamReader {
 
     for (int64_t i = 0; i < root_type.n_children(); i++) {
       const PostgresType& child_type = root_type.child(i);
-      PostgresCopyFieldReader* child_reader;
+      std::unique_ptr<PostgresCopyFieldReader> child_reader;
       NANOARROW_RETURN_NOT_OK(
           MakeCopyFieldReader(child_type, schema_->children[i], &child_reader, error));
-      root_reader_.AppendChild(std::unique_ptr<PostgresCopyFieldReader>(child_reader));
+      root_reader_.AppendChild(std::move(child_reader));
     }
 
     NANOARROW_RETURN_NOT_OK(root_reader_.InitSchema(schema_.get()));

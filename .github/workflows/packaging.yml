@@ -22,6 +22,7 @@ on:
     branches:
       - main
     paths:
+      - ".env"
       - "adbc.h"
       - "c/**"
       - "ci/**"
@@ -64,6 +65,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
 
       # https://github.com/actions/checkout/issues/882
       - name: Update tags
@@ -894,6 +897,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+          submodules: recursive
       - name: Get All Artifacts
         uses: actions/download-artifact@v3
         with:
@@ -937,6 +941,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+          submodules: recursive
       - name: Get All Artifacts
         uses: actions/download-artifact@v3
         with:

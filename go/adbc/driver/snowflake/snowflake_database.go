@@ -176,6 +176,11 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		}
 	}
 
+	defaultAppName := "[ADBC][Go-" + infoDriverVersion + "]"
+	// set default application name to track
+	// unless user overrides it
+	d.cfg.Application = defaultAppName
+
 	var err error
 	for k, v := range cnOptions {
 		v := v // copy into loop scope
@@ -265,6 +270,9 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			}
 			d.cfg.ClientTimeout = dur
 		case OptionApplicationName:
+			if !strings.HasPrefix(v, "[ADBC]") {
+				v = defaultAppName + v
+			}
 			d.cfg.Application = v
 		case OptionSSLSkipVerify:
 			switch v {

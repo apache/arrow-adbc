@@ -13,7 +13,6 @@
    </ItemGroup>
     <ItemGroup>
      <ProjectReference Include="..\..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
-     <ProjectReference Include="..\..\..\src\arrow\csharp\src\Apache.Arrow\Apache.Arrow.csproj" />
      <ProjectReference Include="..\..\..\src\Client\Apache.Arrow.Adbc.Client.csproj" />
      <ProjectReference Include="..\..\..\src\Drivers\BigQuery\Apache.Arrow.Adbc.Drivers.BigQuery.csproj" />
      <ProjectReference Include="..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />

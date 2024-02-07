@@ -42,10 +42,10 @@ namespace Apache.Arrow.Adbc.Client
         /// <exception cref="ArgumentNullException"></exception>
         public AdbcCommand(AdbcStatement adbcStatement, AdbcConnection adbcConnection) : base()
         {
-            if(adbcStatement == null)
+            if (adbcStatement == null)
                 throw new ArgumentNullException(nameof(adbcStatement));
 
-            if(adbcConnection == null)
+            if (adbcConnection == null)
                 throw new ArgumentNullException(nameof(adbcConnection));
 
             this.adbcStatement = adbcStatement;
@@ -183,7 +183,7 @@ namespace Apache.Arrow.Adbc.Client
 
         protected override void Dispose(bool disposing)
         {
-            if(disposing)
+            if (disposing)
             {
                 // TODO: ensure not in the middle of pulling
                 this.adbcStatement?.Dispose();
