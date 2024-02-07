@@ -43,6 +43,8 @@
 #include "postgres_type.h"
 #include "postgres_util.h"
 #include "result_helper.h"
+#include <string>
+#include <bits/stdc++.h>
 
 namespace adbcpq {
 
@@ -647,6 +649,33 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
   return na_res;
 }
 
+int32_t getTimeToMilliseconds(std::string time_value) {
+   int32_t ms = 0;
+
+  std::istringstream iss(time_value);
+  std::string tmp;
+  std::vector<std::string> tokens;
+
+  while(getline(iss, tmp, ':')) {
+    tokens.push_back(tmp);
+  }
+
+  std::istringstream sms (tokens[2]);
+  tokens.pop_back();
+
+  while(getline(sms, tmp, '.')) {
+    tokens.push_back(tmp);
+  }
+
+  ms = (360000 * atoi(tokens[0].c_str())) 
+        + (60000 * atoi(tokens[1].c_str())) 
+        + (1000 * atoi(tokens[2].c_str()));
+  if(tokens.size() == 4)
+    ms += atoi(tokens[3].c_str());
+
+  return ms;
+}
+
 int TupleReader::InitResultArray(struct ArrowError* error) {
   /* Initialize the result array with schema */
   result_array = {};
@@ -667,24 +696,27 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
       int val1 = atoi(value);
       ArrowArrayAppendInt(child, val1);
       break;
-      
     }
-    case static_cast<Oid>(NetezzaTypeId::kChar):
-    case static_cast<Oid>(NetezzaTypeId::kBpchar):
-    case static_cast<Oid>(NetezzaTypeId::kVarchar):
-    case static_cast<Oid>(NetezzaTypeId::kNchar):
-    case static_cast<Oid>(NetezzaTypeId::kNvarchar): // this block is tested
-    case static_cast<Oid>(NetezzaTypeId::kJson):
-    case static_cast<Oid>(NetezzaTypeId::kJsonb):
-    case static_cast<Oid>(NetezzaTypeId::kJsonpath):
     case static_cast<Oid>(NetezzaTypeId::kDate):
     case static_cast<Oid>(NetezzaTypeId::kTime):
     case static_cast<Oid>(NetezzaTypeId::kTimestamp):
     case static_cast<Oid>(NetezzaTypeId::kTimetz):
     case static_cast<Oid>(NetezzaTypeId::kAbstime):
-    case static_cast<Oid>(NetezzaTypeId::kText):
+    // handle date-time scenarios. ???
+    {
+      int32_t val = atoi(value);
+      ArrowArrayAppendInt(child, val);
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kChar):
+    case static_cast<Oid>(NetezzaTypeId::kBpchar):
+    case static_cast<Oid>(NetezzaTypeId::kVarchar):
+    case static_cast<Oid>(NetezzaTypeId::kNchar):
+    case static_cast<Oid>(NetezzaTypeId::kNvarchar):
+    case static_cast<Oid>(NetezzaTypeId::kJson):
+    case static_cast<Oid>(NetezzaTypeId::kJsonb):
+    case static_cast<Oid>(NetezzaTypeId::kJsonpath):// this block is tested
     case static_cast<Oid>(NetezzaTypeId::kVarbinary):
-    case static_cast<Oid>(NetezzaTypeId::kInterval): // to be removed
     {
       ArrowArrayAppendString(child, ArrowCharView(value));  
       break;
@@ -705,13 +737,32 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
       ArrowArrayAppendDouble(child, std::stod(value));
       break;
     }
-    // case static_cast<Oid>(NetezzaTypeId::kInterval):
-    // {
-    //   ArrowInterval ainter{NANOARROW_TYPE_INTERVAL_DAY_TIME, 5, 5, 0, 0};
-    //   ArrowIntervalInit(&ainter, NANOARROW_TYPE_INTERVAL_DAY_TIME);
-    //   ArrowArrayAppendInterval(child, &ainter);
-    //   break;
-    // }
+    case static_cast<Oid>(NetezzaTypeId::kInterval):
+    {
+      int32_t months = 0, days = 0, milliseconds = 0;
+      std::string valuestr = std::string(value);
+      std::istringstream iss (valuestr);
+
+      std::string token, unit_value;
+      while(iss >> token) {
+        if (strncmp(token.c_str(), "year", 4) == 0) {
+          months += (12 * atoi(unit_value.c_str()));
+        } else if (strncmp(token.c_str(), "mon", 3) == 0) {
+          months += atoi(unit_value.c_str());
+        } else if (strncmp(token.c_str(), "day", 3) == 0) {
+          days = atoi(unit_value.c_str());
+        } else if (token.find(":") != std::string::npos) {
+          milliseconds = getTimeToMilliseconds(token);
+        } else {
+          unit_value = token;
+        }
+      }
+
+      // NZ doesn't have nano, hence last param will always be zero.
+      ArrowInterval ar_inter {NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO, months, days, milliseconds, 0};
+      ArrowArrayAppendInterval(child, &ar_inter);
+      break;
+    }
     case static_cast<Oid>(NetezzaTypeId::kUnknown):
     case static_cast<Oid>(NetezzaTypeId::kStgeometry):
     case static_cast<Oid>(NetezzaTypeId::kUnkbinary):

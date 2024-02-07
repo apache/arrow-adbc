@@ -2953,6 +2953,7 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
 
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->months));
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->days));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->ms));
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt64(data_buffer, value->ns));
       break;
     }
@@ -3336,10 +3337,11 @@ static inline void ArrowArrayViewGetIntervalUnsafe(struct ArrowArrayView* array_
       break;
     }
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
-      const size_t size = sizeof(int32_t) + sizeof(int32_t) + sizeof(int64_t);
+      const size_t size = sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int64_t);
       memcpy(&out->months, data_view + i * size, sizeof(int32_t));
       memcpy(&out->days, data_view + i * size + 4, sizeof(int32_t));
-      memcpy(&out->ns, data_view + i * size + 8, sizeof(int64_t));
+      memcpy(&out->ms, data_view + i * size + 8, sizeof(int32_t));
+      memcpy(&out->ns, data_view + i * size + 12, sizeof(int64_t));
       break;
     }
     default:
