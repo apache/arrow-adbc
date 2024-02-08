@@ -1,0 +1,47 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Bug Report
+description: For when something went wrong.
+labels: ["Type: bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for filing a bug report.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How can we reproduce the bug?
+      description: For example, can we access the dataset? Is there code that reproduces it?
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment/Setup
+      description: |
+        Tell us about what packages you use (e.g. the PostgreSQL driver version 0.9.0), what operating system (Linux/macOS/Windows), and what package manager (e.g. pip vs conda), as applicable.
+    validations:
+      required: false

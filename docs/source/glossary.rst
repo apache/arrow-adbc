@@ -21,17 +21,21 @@ Glossary
 
 .. glossary::
 
+   Arrow Flight SQL
+     A :term:`wire protocol` for data systems that uses Apache Arrow.
+     See the :external:doc:`specification <format/FlightSql>`.
+
    client API
      The API that an application uses to interact with a database.  May
      abstract over the underlying :term:`wire protocol` and other details.
      For example, ADBC, JDBC, ODBC.
 
    driver
-     A library that implements a :term:`client API` using a :term:`wire
-     protocol`.  For example, the ADBC PostgreSQL driver exposes the ADBC
-     client API and interacts with a PostgreSQL database via the PostgreSQL
-     wire protocol.  The JDBC PostgreSQL driver uses the same wire protocol,
-     but exposes the JDBC client API instead.
+     Loosely speaking, a library that implements a :term:`client API` using a
+     :term:`wire protocol`.  For example, the ADBC PostgreSQL driver exposes
+     the ADBC client API and interacts with a PostgreSQL database via the
+     PostgreSQL wire protocol.  The JDBC PostgreSQL driver uses the same wire
+     protocol, but exposes the JDBC client API instead.
 
    driver manager
      A library that helps manage multiple drivers for a given client API.
@@ -44,12 +48,21 @@ Glossary
      would collide otherwise.)  In Python, it loads drivers and provides
      Python bindings on top.
 
-   wire protocol
-     The protocol that a database driver uses to interact with a database.
-     For example, :external:doc:`format/FlightSql`, the `PostgreSQL wire
-     protocol`_, or `Tabular Data Stream`_ (Microsoft SQL Server).  Generally
-     not directly used by an application.
+   Substrait
+     `Substrait`_ describes itself as a "cross-language serialization for
+     relational algebra".  It operates in a similar space as SQL, but is
+     lower-level.  You're unlikely to write a Substrait query by hand, but may
+     use tools that opt to generate Substrait instead of SQL for more
+     predictable semantics.
 
-.. _Arrow Flight SQL: https://arrow.apache.org/docs/format/FlightSql.html
+   wire protocol
+     The actual way a database driver connects to a database, issues commands,
+     gets results, and so forth.  For example, :term:`Arrow Flight SQL`, the
+     `PostgreSQL wire protocol`_, or `Tabular Data Stream`_ (Microsoft SQL
+     Server).  Generally, an application is not going to implement and use this
+     directly, but instead use something higher-level, like an ADBC, JDBC, or
+     ODBC driver.
+
 .. _PostgreSQL wire protocol: https://www.postgresql.org/docs/current/protocol.html
+.. _Substrait: https://substrait.io/
 .. _Tabular Data Stream: https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-tds/b46a581a-39de-4745-b076-ec4dbb7d13ec

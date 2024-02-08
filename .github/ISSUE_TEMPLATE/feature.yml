@@ -15,16 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# setuptools manifest
-
-include LICENSE.txt
-include NOTICE.txt
-include adbc_driver_manager/adbc.h
-include adbc_driver_manager/adbc_driver_manager.cc
-include adbc_driver_manager/adbc_driver_manager.h
-include adbc_driver_manager/_blocking_impl.cc
-include adbc_driver_manager/_blocking_impl.h
-include adbc_driver_manager/_lib.pxd
-include adbc_driver_manager/_lib.pyi
-include adbc_driver_manager/_reader.pyi
-include adbc_driver_manager/py.typed
+name: Feature Request
+description: Ask for a feature or improvement.
+labels: ["Type: enhancement"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What feature or improvement would you like to see?
+    validations:
+      required: true

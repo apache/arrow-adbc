@@ -218,6 +218,8 @@ class PostgresType {
       // ---- Numeric/Decimal-------------------
       case PostgresTypeId::kNumeric:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
+        NANOARROW_RETURN_NOT_OK(AddPostgresTypeMetadata(schema));
+
         break;
 
       // ---- Binary/string --------------------
@@ -279,20 +281,13 @@ class PostgresType {
         break;
 
       case PostgresTypeId::kUserDefined:
-      default: {
+      default:
         // For user-defined types or types we don't explicitly know how to deal with, we
         // can still return the bytes postgres gives us and attach the type name as
         // metadata
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
-        nanoarrow::UniqueBuffer buffer;
-        ArrowMetadataBuilderInit(buffer.get(), nullptr);
-        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
-            buffer.get(), ArrowCharView("ADBC:postgresql:typname"),
-            ArrowCharView(typname_.c_str())));
-        NANOARROW_RETURN_NOT_OK(
-            ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(buffer->data)));
+        NANOARROW_RETURN_NOT_OK(AddPostgresTypeMetadata(schema));
         break;
-      }
     }
 
     NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema, field_name_.c_str()));
@@ -309,6 +304,25 @@ class PostgresType {
   std::string typname_;
   std::string field_name_;
   std::vector<PostgresType> children_;
+
+  static constexpr const char* kPostgresTypeKey = "ADBC:postgresql:typname";
+
+  ArrowErrorCode AddPostgresTypeMetadata(ArrowSchema* schema) const {
+    // the typname_ may not always be set: an instance of this class can be
+    // created with just the type id. That's why there is this here fallback to
+    // resolve the type name of built-in types.
+    const char* typname =
+        !typname_.empty() ? typname_.c_str() : PostgresTypname(type_id_);
+    nanoarrow::UniqueBuffer buffer;
+
+    ArrowMetadataBuilderInit(buffer.get(), nullptr);
+    NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
+        buffer.get(), ArrowCharView(kPostgresTypeKey), ArrowCharView(typname)));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(buffer->data)));
+
+    return NANOARROW_OK;
+  }
 };
 
 // Because type information is stored in a database's pg_type table, it can't

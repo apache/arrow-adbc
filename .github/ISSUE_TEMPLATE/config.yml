@@ -15,16 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# setuptools manifest
+blank_issues_enabled: false
+contact_links:
+  - name: Apache Arrow Developers Mailing List
+    url: https://arrow.apache.org/community/
+    about: Discuss project development on dev@arrow.apache.org
 
-include LICENSE.txt
-include NOTICE.txt
-include adbc_driver_manager/adbc.h
-include adbc_driver_manager/adbc_driver_manager.cc
-include adbc_driver_manager/adbc_driver_manager.h
-include adbc_driver_manager/_blocking_impl.cc
-include adbc_driver_manager/_blocking_impl.h
-include adbc_driver_manager/_lib.pxd
-include adbc_driver_manager/_lib.pyi
-include adbc_driver_manager/_reader.pyi
-include adbc_driver_manager/py.typed
+  - name: Apache Arrow Users Mailing List
+    url: https://arrow.apache.org/community/
+    about: Discuss project usage on dev@arrow.apache.org
