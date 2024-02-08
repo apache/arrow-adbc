@@ -597,6 +597,15 @@ namespace adbcpq {
           return ErrorCantConvert(error, pg_type, schema_view);
       }
 
+    case NANOARROW_TYPE_INT8:
+      switch (pg_type.type_id()) {
+        case NetezzaTypeId::kInt1:
+          *out = new PostgresCopyNetworkEndianFieldReader<int8_t>();
+          return NANOARROW_OK;
+        default:
+          return ErrorCantConvert(error, pg_type, schema_view);
+      }
+      
     case NANOARROW_TYPE_INT16:
       switch (pg_type.type_id()) {
         case NetezzaTypeId::kInt2:
