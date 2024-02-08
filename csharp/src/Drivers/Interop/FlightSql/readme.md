@@ -28,6 +28,3 @@ For details, see:
 
 ## Build the Flight SQL Driver
 Run the `Build-FlightSqlDriver.ps1` script to build the Flight SQL driver.
-
-## Why two Flight SQL drivers?
-The C# driver provides base functionality for working with Flight SQL. However, there are some limitations to which versions of Windows that it can execute on. The interop version removes that blocker.

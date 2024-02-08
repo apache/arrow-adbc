@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -24,20 +25,25 @@ using Apache.Arrow.Adbc.Drivers.Interop.FlightSql;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 {
-    internal class FlightSqlParameters
+    public class FlightSqlParameters
     {
-        public const string DATABASE = "adbc.snowflake.sql.db";
-        public const string SCHEMA = "adbc.snowflake.sql.schema";
-        public const string ACCOUNT = "adbc.snowflake.sql.account";
-        public const string USERNAME = "username";
-        public const string PASSWORD = "password";
-        public const string WAREHOUSE = "adbc.snowflake.sql.warehouse";
-        public const string AUTH_TYPE = "adbc.snowflake.sql.auth_type";
-        public const string AUTH_TOKEN = "adbc.snowflake.sql.client_option.auth_token";
-        public const string HOST = "adbc.snowflake.sql.uri.host";
-        public const string PKCS8_VALUE = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value";
-        public const string PKCS8_PASS = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password";
-        public const string USE_HIGH_PRECISION = "adbc.snowflake.sql.client_option.use_high_precision";
+        public const string Uri = "uri";
+        public const string OptionAuthorizationHeader = "adbc.flight.sql.authorization_header";
+        public const string OptionRPCCallHeaderPrefix = "adbc.flight.sql.rpc.call_header.";
+        public const string OptionTimeoutFetch = "adbc.flight.sql.rpc.timeout_seconds.fetch";
+        public const string OptionTimeoutQuery = "adbc.flight.sql.rpc.timeout_seconds.query";
+        public const string OptionTimeoutUpdate = "adbc.flight.sql.rpc.timeout_seconds.update";
+        public const string OptionSSLSkipVerify = "adbc.flight.sql.client_option.tls_skip_verify";
+        public const string OptionAuthority = "adbc.flight.sql.client_option.authority";
+
+        // not used, but also available:
+        //public const string OptionMTLSCertChain = "adbc.flight.sql.client_option.mtls_cert_chain";
+        //public const string OptionMTLSPrivateKey = "adbc.flight.sql.client_option.mtls_private_key";
+        //public const string OptionSSLOverrideHostname = "adbc.flight.sql.client_option.tls_override_hostname";
+        //public const string OptionSSLRootCerts = "adbc.flight.sql.client_option.tls_root_certs";
+        //public const string OptionWithBlock = "adbc.flight.sql.client_option.with_block";
+        //public const string OptionWithMaxMsgSize = "adbc.flight.sql.client_option.with_max_msg_size";
+        //public const string OptionCookieMiddleware = "adbc.flight.sql.rpc.with_cookie_middleware";
     }
 
     internal class FlightSqlTestingUtils
@@ -70,33 +76,39 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             out Dictionary<string, string> parameters
            )
         {
-            // see https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html
+            // see https://arrow.apache.org/adbc/main/driver/flight_sql.html
 
             parameters = new Dictionary<string, string>
             {
-                //{ SnowflakeParameters.ACCOUNT, testConfiguration.Account },
-                //{ SnowflakeParameters.USERNAME, testConfiguration.User },
-                //{ SnowflakeParameters.PASSWORD, testConfiguration.Password },
-                //{ SnowflakeParameters.WAREHOUSE, testConfiguration.Warehouse },
-                //{ SnowflakeParameters.USE_HIGH_PRECISION, testConfiguration.UseHighPrecision.ToString().ToLowerInvariant() }
+                { FlightSqlParameters.Uri, testConfiguration.Uri },
+                { FlightSqlParameters.OptionAuthorizationHeader, testConfiguration.AuthorizationHeader}
             };
 
-            //if (testConfiguration.Authentication.Default is not null)
-            //{
-            //    parameters[SnowflakeParameters.AUTH_TYPE] = SnowflakeAuthentication.AuthSnowflake;
-            //    parameters[SnowflakeParameters.USERNAME] = testConfiguration.Authentication.Default.User;
-            //    parameters[SnowflakeParameters.PASSWORD] = testConfiguration.Authentication.Default.Password;
-            //}
+            foreach(string key in testConfiguration.RPCCallHeaders.Keys)
+            {
+                parameters.Add(FlightSqlParameters.OptionRPCCallHeaderPrefix + key, testConfiguration.RPCCallHeaders[key]);
+            }
 
-            //if (!string.IsNullOrWhiteSpace(testConfiguration.Host))
-            //{
-            //    parameters[SnowflakeParameters.HOST] = testConfiguration.Host;
-            //}
+            if (!string.IsNullOrEmpty(testConfiguration.TimeoutQuery))
+                parameters.Add(FlightSqlParameters.OptionTimeoutQuery, testConfiguration.TimeoutQuery);
 
-            //if (!string.IsNullOrWhiteSpace(testConfiguration.Database))
-            //{
-            //    parameters[SnowflakeParameters.DATABASE] = testConfiguration.Database;
-            //}
+            if (!string.IsNullOrEmpty(testConfiguration.TimeoutFetch))
+                parameters.Add(FlightSqlParameters.OptionTimeoutFetch, testConfiguration.TimeoutFetch);
+
+            if (!string.IsNullOrEmpty(testConfiguration.TimeoutUpdate))
+                parameters.Add(FlightSqlParameters.OptionTimeoutUpdate, testConfiguration.TimeoutUpdate);
+
+            if (!string.IsNullOrEmpty(testConfiguration.SSLSkipVerify))
+                parameters.Add(FlightSqlParameters.OptionSSLSkipVerify, testConfiguration.SSLSkipVerify);
+
+            if (!string.IsNullOrEmpty(testConfiguration.Authority))
+                parameters.Add(FlightSqlParameters.OptionAuthority, testConfiguration.Authority);
+
+
+            foreach(string key in parameters.Keys)
+            {
+                Debug.WriteLine($"{key}={parameters[key]}");
+            }
 
             Dictionary<string, string> options = new Dictionary<string, string>() { };
             AdbcDriver driver = GetFlightSqlAdbcDriver(testConfiguration);

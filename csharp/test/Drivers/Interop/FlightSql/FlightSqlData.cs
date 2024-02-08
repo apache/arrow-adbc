@@ -16,8 +16,10 @@
 */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
+using System.Runtime.InteropServices;
 using System.Text;
 using Apache.Arrow.Types;
 
@@ -37,9 +39,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
             // standard data
             sampleDataBuilder.Samples.Add(
-                new SampleData()
+            new SampleData()
                 {
-                    Query = "SELECT " +
+    //                SELECT
+    //CAST(123 AS INT) AS col_integer,
+    //CAST(456789012345 AS BIGINT) AS col_bigint,
+    //CAST(123.45 AS FLOAT) AS col_float,
+    //CAST(1234.56789 AS DOUBLE) AS col_double,
+    //CAST(TRUE AS BOOLEAN) AS col_boolean,
+    //CAST('ABCDE' AS CHAR(10)) AS col_char,
+    //CAST('Sample VARCHAR data' AS VARCHAR(50)) AS col_varchar,
+    //CAST('2024-02-07' AS DATE) AS col_date,
+    //CAST('2024-02-07 15:30:00' AS TIMESTAMP) AS col_timestamp,
+    //            CAST('15:30:00' AS TIME) AS col_time,
+    //CAST(INTERVAL '5' DAY AS INTERVAL DAY TO SECOND) AS col_interval,
+    //CAST('binary data' AS VARBINARY) AS col_binary,
+    //CAST(1234.56 AS DECIMAL(10, 2)) AS col_decimal,
+    //--CAST(32767 AS SMALLINT) AS col_smallint,
+    //--CAST(127 AS TINYINT) AS col_tinyint,
+    //CAST('binary data' AS VARBINARY) AS col_varbinary,
+    //CAST(INTERVAL '2-3' YEAR TO MONTH AS INTERVAL YEAR TO MONTH) AS col_interval_ym; --,
+    //--CAST('{"key": "value"}' AS JSON) AS col_json,
+    //--CAST(ARRAY[1, 2, 3] AS ARRAY) AS col_list,
+    //--CAST(MAP['key' = 'value'] AS MAP) AS col_map,
+    //--CAST(ROW(field1 1, field2 'abc') AS ROW(field1 INT, field2 VARCHAR(10))) AS col_struct,
+    //--CAST(VARIANT('string') AS VARIANT) AS col_union;
+
+
+            Query = "SELECT " +
                             "CAST(1 as NUMBER(38,0)) as NUMBERTYPE, " +
                             "CAST(123.1 as NUMBER(18,1)) as DECIMALTYPE, " +
                             "CAST(123.1 as NUMBER(28,1)) as NUMERICTYPE, " +

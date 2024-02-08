@@ -1,8 +1,14 @@
 {
-    "serverAddress": "",
-    "routing_tag": "",
-    "routing_queue": "",
+    "driverPath": "",
+    "driverEntryPoint": "",
+    "uri": "",
+    "sslSkipVerify": "",
+    "headers": {
+        "routing_tag": "",
+        "routing_queue": ""
+    },
     "authorization": "",
+    "authority": "",
     "query": "",
-    "expectedResults": 0
+    "expectedResults": 50
 }

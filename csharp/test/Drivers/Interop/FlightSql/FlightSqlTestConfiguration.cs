@@ -15,23 +15,17 @@
 * limitations under the License.
 */
 
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 {
     internal class FlightSqlTestConfiguration : TestConfiguration
     {
-        [JsonPropertyName("serverAddress")]
-        public string ServerAddress { get; set; }
-
-        [JsonPropertyName("routing_tag"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string RoutingTag { get; set; }
-
-        [JsonPropertyName("routing_queue"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string RoutingQueue { get; set; }
-
-        [JsonPropertyName("authorization")]
-        public string Authorization { get; set; }
+        public FlightSqlTestConfiguration()
+        {
+            this.RPCCallHeaders = new Dictionary<string, string>();
+        }
 
         /// <summary>
         /// The file path location of the driver.
@@ -44,5 +38,38 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         /// </summary>
         [JsonPropertyName("driverEntryPoint")]
         public string DriverEntryPoint { get; set; }
+
+        /// <summary>
+        /// The service URI.
+        /// </summary>
+        [JsonPropertyName("uri")]
+        public string Uri { get; set; }
+
+        /// <summary>
+        /// Additional headers to add to the gRPC call.
+        /// </summary>
+        [JsonPropertyName("headers")]
+        public Dictionary<string,string> RPCCallHeaders { get; set; }
+
+        /// <summary>
+        /// The authorization header.
+        /// </summary>
+        [JsonPropertyName("authorization")]
+        public string AuthorizationHeader { get; set; }
+
+        [JsonPropertyName("timeoutFetch")]
+        public string TimeoutFetch { get; set; }
+
+        [JsonPropertyName("timeoutQuery")]
+        public string TimeoutQuery { get; set; }
+
+        [JsonPropertyName("timeoutUpdate")]
+        public string TimeoutUpdate { get; set; }
+
+        [JsonPropertyName("sslSkipVerify")]
+        public string SSLSkipVerify { get; set; }
+
+        [JsonPropertyName("authority")]
+        public string Authority { get; set; }
     }
 }
