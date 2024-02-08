@@ -15,29 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# All of the following environment variables are required to set default values
-# for the parameters in docker-compose.yml.
-
-# Default repository to pull and push images from
-REPO=apache/arrow-dev
-
-# different architecture notations
-ARCH=amd64
-ARCH_ALIAS=x86_64
-ARCH_SHORT=amd64
-ARCH_CONDA_FORGE=linux_64_
-
-# Default versions for various dependencies
-JDK=8
-MANYLINUX=2014
-MAVEN=3.5.4
-PYTHON=3.10
-GO=1.19.5
-ARROW_MAJOR_VERSION=14
-DOTNET=7.0
-
-# Used through docker-compose.yml and serves as the default version for the
-# ci/scripts/install_vcpkg.sh script. Keep in sync with apache/arrow .env.
-# When updating, also update the docs, which list the version of libpq/SQLite
-# that vcpkg (and hence our wheels) ship
-VCPKG="501db0f17ef6df184fcdbfbe0f87cde2313b6ab1"
+name: Feature Request
+description: Ask for a feature or improvement.
+labels: ["Type: enhancement"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What feature or improvement would you like to see?
+    validations:
+      required: true
