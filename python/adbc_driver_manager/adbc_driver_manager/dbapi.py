@@ -1089,7 +1089,10 @@ class Cursor(_Closeable):
                 "Cannot fetch_record_batch() before execute()",
                 status_code=_lib.AdbcStatusCode.INVALID_STATE,
             )
-        return self._results._reader
+        # XXX(https://github.com/apache/arrow-adbc/issues/1523): return the
+        # "real" PyArrow reader since PyArrow may try to poke the internal C++
+        # reader pointer
+        return self._results._reader._reader
 
 
 # ----------------------------------------------------------
