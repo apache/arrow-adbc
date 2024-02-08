@@ -319,3 +319,12 @@ being read or written.
                 adjusted to the PostgreSQL epoch (2000-01-01) and so may
                 overflow/underflow; an error will be returned if this would be
                 the case.
+
+Software Versions
+=================
+
+For Python wheels, the shipped version of the PostgreSQL client libraries is
+15.2.  For conda-forge packages, the version of libpq is the same as the
+version of libpq in your Conda environment.
+
+The PostgreSQL driver is tested against PostgreSQL versions 11 through 16.
