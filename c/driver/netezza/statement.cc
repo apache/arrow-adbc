@@ -688,11 +688,19 @@ int TupleReader::InitResultArray(struct ArrowError* error) {
 int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char* value, Oid cell_format) {
 
   switch(cell_format) {
-    case static_cast<Oid>(NetezzaTypeId::kInt8):
+    case static_cast<Oid>(NetezzaTypeId::kBool):
+    {
+      uint8_t converted_value = 0;
+      if (strcmp(value, "t"))
+        converted_value = 1;
+      ArrowArrayAppendInt(child, converted_value);
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kInt1):
     case static_cast<Oid>(NetezzaTypeId::kInt2):
     case static_cast<Oid>(NetezzaTypeId::kInt4):
+    case static_cast<Oid>(NetezzaTypeId::kInt8):
     {
-      // this block is tested.
       int val1 = atoi(value);
       ArrowArrayAppendInt(child, val1);
       break;
@@ -702,8 +710,8 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     case static_cast<Oid>(NetezzaTypeId::kTimestamp):
     case static_cast<Oid>(NetezzaTypeId::kTimetz):
     case static_cast<Oid>(NetezzaTypeId::kAbstime):
-    // handle date-time scenarios. ???
     {
+      // TODO:
       int32_t val = atoi(value);
       ArrowArrayAppendInt(child, val);
       break;
@@ -715,19 +723,10 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     case static_cast<Oid>(NetezzaTypeId::kNvarchar):
     case static_cast<Oid>(NetezzaTypeId::kJson):
     case static_cast<Oid>(NetezzaTypeId::kJsonb):
-    case static_cast<Oid>(NetezzaTypeId::kJsonpath):// this block is tested
+    case static_cast<Oid>(NetezzaTypeId::kJsonpath):
     case static_cast<Oid>(NetezzaTypeId::kVarbinary):
     {
       ArrowArrayAppendString(child, ArrowCharView(value));  
-      break;
-    }
-    case static_cast<Oid>(NetezzaTypeId::kBool):
-    case static_cast<Oid>(NetezzaTypeId::kInt1):
-    {
-      ArrowBufferView abv;
-      abv.data.as_char = value;
-      abv.size_bytes = sizeof(value);
-      ArrowArrayAppendBytes(child, abv);
       break;
     }
     case static_cast<Oid>(NetezzaTypeId::kFloat4):
@@ -767,7 +766,7 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     case static_cast<Oid>(NetezzaTypeId::kStgeometry):
     case static_cast<Oid>(NetezzaTypeId::kUnkbinary):
     default:
-      std::cout << "printing schema" << std::endl;
+      ArrowArrayAppendString(child, ArrowCharView("NULL"));
       break;
   }
   return NANOARROW_OK;

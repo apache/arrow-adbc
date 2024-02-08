@@ -136,6 +136,9 @@ class NetezzaType {
       case NetezzaTypeId::kBool:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL));
         break;
+      case NetezzaTypeId::kInt1:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT8));
+        break;
       case NetezzaTypeId::kInt2:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT16));
         break;
@@ -173,7 +176,6 @@ class NetezzaType {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
       case NetezzaTypeId::kBytea:
-      case NetezzaTypeId::kInt1:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
         break;
 
