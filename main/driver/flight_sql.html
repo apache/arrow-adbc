@@ -617,6 +617,12 @@ upload data or perform other updates.</p>
 calls that implement bulk ingestion, or transaction support.</p>
 </dd>
 </dl>
+<p>There is also a timeout that is set on the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.timeout_seconds.connect</span></code></dt><dd><p>A timeout (in floating-point seconds) for establishing a connection.  The
+default is 20 seconds.</p>
+</dd>
+</dl>
 </section>
 <section id="transactions">
 <h3>Transactions<a class="headerlink" href="#transactions" title="Permalink to this heading">#</a></h3>
