@@ -26,22 +26,23 @@ import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.memory.BufferAllocator;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** An instance of a database based on a {@link DataSource}. */
 public final class JdbcDataSourceDatabase implements AdbcDatabase {
   private final BufferAllocator allocator;
   private final DataSource dataSource;
-  private final String username;
-  private final String password;
+  private final @Nullable String username;
+  private final @Nullable String password;
   private final JdbcQuirks quirks;
   private final AtomicInteger counter;
-  private Connection connection;
+  private @Nullable Connection connection;
 
   JdbcDataSourceDatabase(
       BufferAllocator allocator,
       DataSource dataSource,
-      String username,
-      String password,
+      @Nullable String username,
+      @Nullable String password,
       JdbcQuirks quirks)
       throws AdbcException {
     this.allocator = Objects.requireNonNull(allocator);
@@ -55,12 +56,13 @@ public final class JdbcDataSourceDatabase implements AdbcDatabase {
 
   @Override
   public AdbcConnection connect() throws AdbcException {
+    @Nullable Connection conn = this.connection;
     try {
-      if (connection == null) {
+      if (conn == null) {
         if (username != null && password != null) {
-          connection = dataSource.getConnection(username, password);
+          conn = this.connection = dataSource.getConnection(username, password);
         } else {
-          connection = dataSource.getConnection();
+          conn = this.connection = dataSource.getConnection();
         }
       }
     } catch (SQLException e) {
@@ -70,7 +72,7 @@ public final class JdbcDataSourceDatabase implements AdbcDatabase {
     return new JdbcConnection(
         allocator.newChildAllocator(
             "adbc-jdbc-datasource-connection-" + count, 0, allocator.getLimit()),
-        connection,
+        conn,
         quirks);
   }
 

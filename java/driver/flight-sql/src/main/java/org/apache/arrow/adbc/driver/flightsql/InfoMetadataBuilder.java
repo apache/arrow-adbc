@@ -38,6 +38,7 @@ import org.apache.arrow.vector.UInt4Vector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.complex.DenseUnionVector;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Helper class to track state needed to build up the info structure. */
 final class InfoMetadataBuilder implements AutoCloseable {
@@ -45,6 +46,7 @@ final class InfoMetadataBuilder implements AutoCloseable {
   private static final Map<Integer, Integer> ADBC_TO_FLIGHT_SQL_CODES = new HashMap<>();
   private static final Map<Integer, AddInfo> SUPPORTED_CODES = new HashMap<>();
 
+  private final BufferAllocator allocator;
   private final Collection<Integer> requestedCodes;
   private final FlightSqlClientWithCallOptions client;
   private VectorSchemaRoot root;
@@ -80,7 +82,10 @@ final class InfoMetadataBuilder implements AutoCloseable {
   }
 
   InfoMetadataBuilder(
-      BufferAllocator allocator, FlightSqlClientWithCallOptions client, int[] infoCodes) {
+      BufferAllocator allocator,
+      FlightSqlClientWithCallOptions client,
+      int @Nullable [] infoCodes) {
+    this.allocator = allocator;
     if (infoCodes == null) {
       this.requestedCodes = new ArrayList<>(SUPPORTED_CODES.keySet());
       this.requestedCodes.add(AdbcInfoCode.DRIVER_NAME.getValue());
@@ -145,7 +150,12 @@ final class InfoMetadataBuilder implements AutoCloseable {
 
     root.setRowCount(dstIndex);
     VectorSchemaRoot result = root;
-    root = null;
+    try {
+      root = VectorSchemaRoot.create(StandardSchemas.GET_INFO_SCHEMA, allocator);
+    } catch (RuntimeException e) {
+      result.close();
+      throw e;
+    }
     return result;
   }
 

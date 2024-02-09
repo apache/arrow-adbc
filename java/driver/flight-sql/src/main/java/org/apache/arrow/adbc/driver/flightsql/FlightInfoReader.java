@@ -34,6 +34,7 @@ import org.apache.arrow.vector.VectorUnloader;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** An ArrowReader that wraps a FlightInfo. */
 public class FlightInfoReader extends ArrowReader {
@@ -45,6 +46,8 @@ public class FlightInfoReader extends ArrowReader {
   private FlightStream currentStream;
   private long bytesRead;
 
+  @SuppressWarnings(
+      "method.invocation") // Checker Framework does not like the ensureInitialized call
   FlightInfoReader(
       BufferAllocator allocator,
       FlightSqlClientWithCallOptions client,
@@ -118,8 +121,12 @@ public class FlightInfoReader extends ArrowReader {
       Collections.shuffle(locations);
       IOException failure = null;
       for (final Location location : locations) {
+        final @Nullable FlightSqlClientWithCallOptions client = clientCache.get(location);
+        if (client == null) {
+          throw new IllegalStateException("Could not connect to " + location);
+        }
         try {
-          return Objects.requireNonNull(clientCache.get(location)).getStream(endpoint.getTicket());
+          return client.getStream(endpoint.getTicket());
         } catch (RuntimeException e) {
           // Also handles CompletionException (from clientCache#get), FlightRuntimeException
           if (failure == null) {
@@ -130,6 +137,9 @@ public class FlightInfoReader extends ArrowReader {
                 new IOException("Failed to get stream from location " + location + ": " + e, e));
           }
         }
+      }
+      if (failure == null) {
+        throw new IllegalStateException("FlightEndpoint had no locations");
       }
       throw Objects.requireNonNull(failure);
     }
