@@ -649,14 +649,15 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
   return na_res;
 }
 
-int32_t getTimeToMilliseconds(std::string time_value) {
-   int32_t ms = 0;
+int64_t getTimeToNanoSeconds(std::string time_value) {
+   int64_t ns = 0;
 
   std::istringstream iss(time_value);
   std::string tmp;
   std::vector<std::string> tokens;
 
   while(getline(iss, tmp, ':')) {
+    // 10:20:32.[456]
     tokens.push_back(tmp);
   }
 
@@ -667,13 +668,13 @@ int32_t getTimeToMilliseconds(std::string time_value) {
     tokens.push_back(tmp);
   }
 
-  ms = (360000 * atoi(tokens[0].c_str())) 
+  ns = (360000 * atoi(tokens[0].c_str())) 
         + (60000 * atoi(tokens[1].c_str())) 
         + (1000 * atoi(tokens[2].c_str()));
   if(tokens.size() == 4)
-    ms += atoi(tokens[3].c_str());
+    ns += atoi(tokens[3].c_str());
 
-  return ms;
+  return ns * 1000000;
 }
 
 int TupleReader::InitResultArray(struct ArrowError* error) {
@@ -709,7 +710,6 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     case static_cast<Oid>(NetezzaTypeId::kTime):
     case static_cast<Oid>(NetezzaTypeId::kTimestamp):
     case static_cast<Oid>(NetezzaTypeId::kTimetz):
-    case static_cast<Oid>(NetezzaTypeId::kAbstime):
     {
       // TODO:
       int32_t val = atoi(value);
@@ -738,7 +738,8 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     }
     case static_cast<Oid>(NetezzaTypeId::kInterval):
     {
-      int32_t months = 0, days = 0, milliseconds = 0;
+      int32_t months = 0, days = 0;
+      int64_t nanoseconds = 0;
       std::string valuestr = std::string(value);
       std::istringstream iss (valuestr);
 
@@ -751,14 +752,14 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
         } else if (strncmp(token.c_str(), "day", 3) == 0) {
           days = atoi(unit_value.c_str());
         } else if (token.find(":") != std::string::npos) {
-          milliseconds = getTimeToMilliseconds(token);
+          nanoseconds = getTimeToNanoSeconds(token);
         } else {
           unit_value = token;
         }
       }
 
       // NZ doesn't have nano, hence last param will always be zero.
-      ArrowInterval ar_inter {NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO, months, days, milliseconds, 0};
+      ArrowInterval ar_inter {NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO, months, days, 0, nanoseconds};
       ArrowArrayAppendInterval(child, &ar_inter);
       break;
     }
