@@ -53,7 +53,6 @@ import org.apache.arrow.flight.impl.Flight;
 import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
-import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.checkerframework.checker.initialization.qual.UnknownInitialization;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -165,29 +164,25 @@ public class FlightSqlConnection implements AdbcConnection {
       String[] tableTypes,
       String columnNamePattern)
       throws AdbcException {
-    try (final VectorSchemaRoot root =
-        new ObjectMetadataBuilder(
-                allocator,
-                client,
-                depth,
-                catalogPattern,
-                dbSchemaPattern,
-                tableNamePattern,
-                tableTypes,
-                columnNamePattern)
-            .build()) {
-      return RootArrowReader.fromRoot(allocator, root);
-    }
+    return GetObjectsMetadataReaders.CreateGetObjectsReader(
+        allocator,
+        client,
+        clientCache,
+        depth,
+        catalogPattern,
+        dbSchemaPattern,
+        tableNamePattern,
+        tableTypes,
+        columnNamePattern);
   }
 
   @Override
   public ArrowReader getInfo(int @Nullable [] infoCodes) throws AdbcException {
-    try (InfoMetadataBuilder builder = new InfoMetadataBuilder(allocator, client, infoCodes)) {
-      try (final VectorSchemaRoot root = builder.build()) {
-        return RootArrowReader.fromRoot(allocator, root);
-      }
+    try {
+      return GetInfoMetadataReader.CreateGetInfoMetadataReader(
+          allocator, client, clientCache, infoCodes);
     } catch (Exception e) {
-      throw AdbcException.invalidState("[Flight SQL] Failed to get info");
+      throw AdbcException.invalidState("[Flight SQL] Failed to get info").withCause(e);
     }
   }
 
