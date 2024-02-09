@@ -326,6 +326,12 @@ The options are as follows:
     For example, this controls the timeout of the underlying Flight
     calls that implement bulk ingestion, or transaction support.
 
+There is also a timeout that is set on the :cpp:class:`AdbcDatabase`:
+
+``adbc.flight.sql.rpc.timeout_seconds.connect``
+    A timeout (in floating-point seconds) for establishing a connection.  The
+    default is 20 seconds.
+
 Transactions
 ------------
 

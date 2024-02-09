@@ -23,6 +23,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/textproto"
 	"os"
 	"strconv"
@@ -810,11 +811,18 @@ func (ts *IncrementalPollTests) TestQueryTransaction() {
 
 type TimeoutTestServer struct {
 	flightsql.BaseServer
+	badPort  int
+	goodPort int
 }
 
 func (ts *TimeoutTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
-	if string(tkt.GetStatementHandle()) == "sleep and succeed" {
+	ticket := string(tkt.GetStatementHandle())
+	if ticket == "sleep and succeed" {
 		time.Sleep(1 * time.Second)
+	}
+
+	switch ticket {
+	case "bad endpoint", "sleep and succeed":
 		sc := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
 		rec, _, err := array.RecordFromJSON(memory.DefaultAllocator, sc, strings.NewReader(`[{"a": 5}]`))
 		if err != nil {
@@ -850,6 +858,23 @@ func (ts *TimeoutTestServer) GetFlightInfoStatement(ctx context.Context, cmd fli
 	switch cmd.GetQuery() {
 	case "timeout":
 		<-ctx.Done()
+	case "bad endpoint":
+		tkt, _ := flightsql.CreateStatementQueryTicket([]byte("bad endpoint"))
+		info := &flight.FlightInfo{
+			FlightDescriptor: desc,
+			Endpoint: []*flight.FlightEndpoint{
+				{
+					Ticket: &flight.Ticket{Ticket: tkt},
+					Location: []*flight.Location{
+						{Uri: fmt.Sprintf("grpc://localhost:%d", ts.badPort)},
+						{Uri: fmt.Sprintf("grpc://localhost:%d", ts.goodPort)},
+					},
+				},
+			},
+			TotalRecords: -1,
+			TotalBytes:   -1,
+		}
+		return info, nil
 	case "fetch":
 		tkt, _ := flightsql.CreateStatementQueryTicket([]byte("fetch"))
 		info := &flight.FlightInfo{
@@ -884,10 +909,23 @@ func (ts *TimeoutTestServer) CreatePreparedStatement(ctx context.Context, req fl
 
 type TimeoutTests struct {
 	ServerBasedTests
+	server net.Listener
 }
 
 func (suite *TimeoutTests) SetupSuite() {
-	suite.DoSetupSuite(&TimeoutTestServer{}, nil, nil)
+	var err error
+	suite.server, err = net.Listen("tcp", "localhost:0")
+	suite.NoError(err)
+
+	badPort := suite.server.Addr().(*net.TCPAddr).Port
+	server := &TimeoutTestServer{badPort: badPort}
+	suite.DoSetupSuite(server, nil, nil)
+	server.goodPort = suite.s.Addr().(*net.TCPAddr).Port
+}
+
+func (suite *TimeoutTests) TearDownSuite() {
+	suite.ServerBasedTests.TearDownSuite()
+	suite.NoError(suite.server.Close())
 }
 
 func (ts *TimeoutTests) TestInvalidValues() {
@@ -1073,6 +1111,27 @@ func (ts *TimeoutTests) TestDontTimeout() {
 	ts.Require().NoError(err)
 	defer expected.Release()
 	ts.Truef(array.RecordEqual(rec, expected), "expected: %s\nactual: %s", expected, rec)
+}
+
+func (ts *TimeoutTests) TestBadAddress() {
+	stmt, err := ts.cnxn.NewStatement()
+	ts.Require().NoError(err)
+	defer stmt.Close()
+	ts.Require().NoError(stmt.SetSqlQuery("bad endpoint"))
+
+	ts.Require().NoError(ts.db.(adbc.GetSetOptions).SetOptionDouble(driver.OptionTimeoutConnect, 5))
+
+	rr, _, err := stmt.ExecuteQuery(context.Background())
+	ts.Require().NoError(err)
+	defer rr.Release()
+
+	rr, _, err = stmt.ExecuteQuery(context.Background())
+	ts.Require().NoError(err)
+	defer rr.Release()
+
+	rr, _, err = stmt.ExecuteQuery(context.Background())
+	ts.Require().NoError(err)
+	defer rr.Release()
 }
 
 // ---- Cookie Tests --------------------
