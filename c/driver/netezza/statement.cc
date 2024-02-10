@@ -649,15 +649,15 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
   return na_res;
 }
 
-int64_t getTimeToNanoSeconds(std::string time_value) {
-   int64_t ns = 0;
+int64_t getTimeToMilliSeconds(std::string time_value) {
+  // accepted input time format - 'hh:mm:ss[.mmm]'
+  int64_t ms = 0;
 
   std::istringstream iss(time_value);
   std::string tmp;
   std::vector<std::string> tokens;
 
   while(getline(iss, tmp, ':')) {
-    // 10:20:32.[456]
     tokens.push_back(tmp);
   }
 
@@ -668,13 +668,13 @@ int64_t getTimeToNanoSeconds(std::string time_value) {
     tokens.push_back(tmp);
   }
 
-  ns = (360000 * atoi(tokens[0].c_str())) 
+  ms = (360000 * atoi(tokens[0].c_str())) 
         + (60000 * atoi(tokens[1].c_str())) 
         + (1000 * atoi(tokens[2].c_str()));
   if(tokens.size() == 4)
-    ns += atoi(tokens[3].c_str());
+    ms += atoi(tokens[3].c_str());
 
-  return ns * 1000000;
+  return ms;
 }
 
 int TupleReader::InitResultArray(struct ArrowError* error) {
@@ -707,13 +707,58 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
       break;
     }
     case static_cast<Oid>(NetezzaTypeId::kDate):
+    {
+      std::tm t = {};
+      std::istringstream iss(value);
+      if (iss >> std::get_time(&t, "%Y-%m-%d")) {
+        time_t epoch = std::mktime(&t);
+        ArrowArrayAppendInt(child, (int32_t) epoch);
+      }
+      break;
+    }
     case static_cast<Oid>(NetezzaTypeId::kTime):
-    case static_cast<Oid>(NetezzaTypeId::kTimestamp):
+    {
+      int64_t milliseconds = getTimeToMilliSeconds(std::string(value));
+      ArrowArrayAppendInt(child, (int64_t) milliseconds);
+      break;
+    }
     case static_cast<Oid>(NetezzaTypeId::kTimetz):
     {
-      // TODO:
-      int32_t val = atoi(value);
-      ArrowArrayAppendInt(child, val);
+      std::string str_value = std::string(value);
+      int64_t milliseconds = 0;
+      std::istringstream iss (str_value);
+      std::string tz_token;
+
+      if (str_value.find("+") != std::string::npos) {
+        getline(iss, tz_token, '+');
+        milliseconds += getTimeToMilliSeconds(tz_token);
+
+        getline(iss, tz_token, '+');
+        if (tz_token != "00") {
+          tz_token += ":00";
+          milliseconds += getTimeToMilliSeconds(tz_token);
+        }
+      } else if (str_value.find("-") != std::string::npos) {
+        getline(iss, tz_token, '-');
+        milliseconds += getTimeToMilliSeconds(tz_token);
+
+        getline(iss, tz_token, '-');
+        if (tz_token != "00") {
+          tz_token += ":00";
+          milliseconds -= getTimeToMilliSeconds(tz_token); // note the subtraction here.
+        }
+      }
+      ArrowArrayAppendInt(child, (int64_t) milliseconds);
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kTimestamp):
+    {
+      std::tm t = {};
+      std::istringstream iss(value);
+      if (iss >> std::get_time(&t, "%Y-%m-%d %H:%M:%S")) {
+        time_t epoch = std::mktime(&t);
+        ArrowArrayAppendInt(child, (int64_t) epoch);
+      }
       break;
     }
     case static_cast<Oid>(NetezzaTypeId::kChar):
@@ -739,7 +784,7 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     case static_cast<Oid>(NetezzaTypeId::kInterval):
     {
       int32_t months = 0, days = 0;
-      int64_t nanoseconds = 0;
+      int64_t millisec = 0;
       std::string valuestr = std::string(value);
       std::istringstream iss (valuestr);
 
@@ -752,14 +797,17 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
         } else if (strncmp(token.c_str(), "day", 3) == 0) {
           days = atoi(unit_value.c_str());
         } else if (token.find(":") != std::string::npos) {
-          nanoseconds = getTimeToNanoSeconds(token);
+          millisec = getTimeToMilliSeconds(token);
         } else {
           unit_value = token;
         }
       }
 
-      // NZ doesn't have nano, hence last param will always be zero.
-      ArrowInterval ar_inter {NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO, months, days, 0, nanoseconds};
+      /*
+        ArrowArrayAppendInterval doesn't set 'ms', refer nanoarrow.h.
+        Hence, we set only nanoseconds field for time value.
+      */
+      ArrowInterval ar_inter {NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO, months, days, 0, millisec * 1000000};
       ArrowArrayAppendInterval(child, &ar_inter);
       break;
     }
@@ -767,8 +815,10 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     case static_cast<Oid>(NetezzaTypeId::kStgeometry):
     case static_cast<Oid>(NetezzaTypeId::kUnkbinary):
     default:
+    {
       ArrowArrayAppendString(child, ArrowCharView("NULL"));
       break;
+    }
   }
   return NANOARROW_OK;
 }

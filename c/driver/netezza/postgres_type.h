@@ -54,7 +54,7 @@ enum class NetezzaTypeId {
   kVarchar,
   kDate = 1082,
   kTime,
-  kTimestamp,
+  kTimestamp = 1184,
   kInterval = 1186,
   kTimetz = 1266,
   kNumeric = 1700,
