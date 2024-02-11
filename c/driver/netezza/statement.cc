@@ -689,8 +689,7 @@ int TupleReader::InitResultArray(struct ArrowError* error) {
 int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char* value, Oid cell_format) {
 
   switch(cell_format) {
-    case static_cast<Oid>(NetezzaTypeId::kBool):
-    {
+    case static_cast<Oid>(NetezzaTypeId::kBool): {
       uint8_t converted_value = 0;
       if (strcmp(value, "t"))
         converted_value = 1;
@@ -700,14 +699,12 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     case static_cast<Oid>(NetezzaTypeId::kInt1):
     case static_cast<Oid>(NetezzaTypeId::kInt2):
     case static_cast<Oid>(NetezzaTypeId::kInt4):
-    case static_cast<Oid>(NetezzaTypeId::kInt8):
-    {
+    case static_cast<Oid>(NetezzaTypeId::kInt8): {
       int val1 = atoi(value);
       ArrowArrayAppendInt(child, val1);
       break;
     }
-    case static_cast<Oid>(NetezzaTypeId::kDate):
-    {
+    case static_cast<Oid>(NetezzaTypeId::kDate): {
       std::tm t = {};
       std::istringstream iss(value);
       if (iss >> std::get_time(&t, "%Y-%m-%d")) {
@@ -716,14 +713,12 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
       }
       break;
     }
-    case static_cast<Oid>(NetezzaTypeId::kTime):
-    {
+    case static_cast<Oid>(NetezzaTypeId::kTime): {
       int64_t milliseconds = getTimeToMilliSeconds(std::string(value));
       ArrowArrayAppendInt(child, (int64_t) milliseconds);
       break;
     }
-    case static_cast<Oid>(NetezzaTypeId::kTimetz):
-    {
+    case static_cast<Oid>(NetezzaTypeId::kTimetz): {
       std::string str_value = std::string(value);
       int64_t milliseconds = 0;
       std::istringstream iss (str_value);
@@ -751,8 +746,7 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
       ArrowArrayAppendInt(child, (int64_t) milliseconds);
       break;
     }
-    case static_cast<Oid>(NetezzaTypeId::kTimestamp):
-    {
+    case static_cast<Oid>(NetezzaTypeId::kTimestamp): {
       std::tm t = {};
       std::istringstream iss(value);
       if (iss >> std::get_time(&t, "%Y-%m-%d %H:%M:%S")) {
@@ -770,19 +764,17 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
     case static_cast<Oid>(NetezzaTypeId::kJsonb):
     case static_cast<Oid>(NetezzaTypeId::kJsonpath):
     case static_cast<Oid>(NetezzaTypeId::kVarbinary):
-    {
+    case static_cast<Oid>(NetezzaTypeId::kNumeric):
+    case static_cast<Oid>(NetezzaTypeId::kStgeometry): {
       ArrowArrayAppendString(child, ArrowCharView(value));  
       break;
     }
     case static_cast<Oid>(NetezzaTypeId::kFloat4):
-    case static_cast<Oid>(NetezzaTypeId::kFloat8):
-    case static_cast<Oid>(NetezzaTypeId::kNumeric):
-    {
+    case static_cast<Oid>(NetezzaTypeId::kFloat8): {
       ArrowArrayAppendDouble(child, std::stod(value));
       break;
     }
-    case static_cast<Oid>(NetezzaTypeId::kInterval):
-    {
+    case static_cast<Oid>(NetezzaTypeId::kInterval): {
       int32_t months = 0, days = 0;
       int64_t millisec = 0;
       std::string valuestr = std::string(value);
@@ -811,12 +803,8 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
       ArrowArrayAppendInterval(child, &ar_inter);
       break;
     }
-    case static_cast<Oid>(NetezzaTypeId::kUnknown):
-    case static_cast<Oid>(NetezzaTypeId::kStgeometry):
-    case static_cast<Oid>(NetezzaTypeId::kUnkbinary):
-    default:
-    {
-      ArrowArrayAppendString(child, ArrowCharView("NULL"));
+    default: {
+      ArrowArrayAppendNull(child, 0);
       break;
     }
   }

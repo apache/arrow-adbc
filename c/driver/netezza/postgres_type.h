@@ -46,7 +46,7 @@ enum class NetezzaTypeId {
   kCid,
   kOidvector,
   kSmgr = 210,
-  kFloat4 = 701,
+  kFloat4 = 700,
   kFloat8,
   kAbstime,
   kUnknown = 705,
