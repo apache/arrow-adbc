@@ -43,6 +43,8 @@
 #include "postgres_type.h"
 #include "postgres_util.h"
 #include "result_helper.h"
+#include <string>
+#include <bits/stdc++.h>
 
 namespace adbcpq {
 
@@ -87,7 +89,7 @@ AdbcStatusCode ResolveNetezzaType(const NetezzaTypeResolver& type_resolver,
                                    struct AdbcError* error) {
   ArrowError na_error;
   const int num_fields = PQnfields(result);
-  NetezzaType root_type(NetezzaTypeId::kRecord);
+  NetezzaType root_type(NetezzaTypeId::kUnknown);
 
   for (int i = 0; i < num_fields; i++) {
     const Oid pg_oid = PQftype(result, i);
@@ -647,12 +649,177 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
   return na_res;
 }
 
+int64_t getTimeToMilliSeconds(std::string time_value) {
+  // accepted input time format - 'hh:mm:ss[.mmm]'
+  int64_t ms = 0;
+
+  std::istringstream iss(time_value);
+  std::string tmp;
+  std::vector<std::string> tokens;
+
+  while(getline(iss, tmp, ':')) {
+    tokens.push_back(tmp);
+  }
+
+  std::istringstream sms (tokens[2]);
+  tokens.pop_back();
+
+  while(getline(sms, tmp, '.')) {
+    tokens.push_back(tmp);
+  }
+
+  ms = (360000 * atoi(tokens[0].c_str())) 
+        + (60000 * atoi(tokens[1].c_str())) 
+        + (1000 * atoi(tokens[2].c_str()));
+  if(tokens.size() == 4)
+    ms += atoi(tokens[3].c_str());
+
+  return ms;
+}
+
 int TupleReader::InitResultArray(struct ArrowError* error) {
   /* Initialize the result array with schema */
   result_array = {};
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(&result_array, &result_schema, error));
   NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(&result_array));
 
+  return NANOARROW_OK;
+}
+
+int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char* value, Oid cell_format) {
+
+  switch(cell_format) {
+    case static_cast<Oid>(NetezzaTypeId::kBool):
+    {
+      uint8_t converted_value = 0;
+      if (strcmp(value, "t"))
+        converted_value = 1;
+      ArrowArrayAppendInt(child, converted_value);
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kInt1):
+    case static_cast<Oid>(NetezzaTypeId::kInt2):
+    case static_cast<Oid>(NetezzaTypeId::kInt4):
+    case static_cast<Oid>(NetezzaTypeId::kInt8):
+    {
+      int val1 = atoi(value);
+      ArrowArrayAppendInt(child, val1);
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kDate):
+    {
+      std::tm t = {};
+      std::istringstream iss(value);
+      if (iss >> std::get_time(&t, "%Y-%m-%d")) {
+        time_t epoch = std::mktime(&t);
+        ArrowArrayAppendInt(child, (int32_t) epoch);
+      }
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kTime):
+    {
+      int64_t milliseconds = getTimeToMilliSeconds(std::string(value));
+      ArrowArrayAppendInt(child, (int64_t) milliseconds);
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kTimetz):
+    {
+      std::string str_value = std::string(value);
+      int64_t milliseconds = 0;
+      std::istringstream iss (str_value);
+      std::string tz_token;
+
+      if (str_value.find("+") != std::string::npos) {
+        getline(iss, tz_token, '+');
+        milliseconds += getTimeToMilliSeconds(tz_token);
+
+        getline(iss, tz_token, '+');
+        if (tz_token != "00") {
+          tz_token += ":00";
+          milliseconds += getTimeToMilliSeconds(tz_token);
+        }
+      } else if (str_value.find("-") != std::string::npos) {
+        getline(iss, tz_token, '-');
+        milliseconds += getTimeToMilliSeconds(tz_token);
+
+        getline(iss, tz_token, '-');
+        if (tz_token != "00") {
+          tz_token += ":00";
+          milliseconds -= getTimeToMilliSeconds(tz_token); // note the subtraction here.
+        }
+      }
+      ArrowArrayAppendInt(child, (int64_t) milliseconds);
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kTimestamp):
+    {
+      std::tm t = {};
+      std::istringstream iss(value);
+      if (iss >> std::get_time(&t, "%Y-%m-%d %H:%M:%S")) {
+        time_t epoch = std::mktime(&t);
+        ArrowArrayAppendInt(child, (int64_t) epoch);
+      }
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kChar):
+    case static_cast<Oid>(NetezzaTypeId::kBpchar):
+    case static_cast<Oid>(NetezzaTypeId::kVarchar):
+    case static_cast<Oid>(NetezzaTypeId::kNchar):
+    case static_cast<Oid>(NetezzaTypeId::kNvarchar):
+    case static_cast<Oid>(NetezzaTypeId::kJson):
+    case static_cast<Oid>(NetezzaTypeId::kJsonb):
+    case static_cast<Oid>(NetezzaTypeId::kJsonpath):
+    case static_cast<Oid>(NetezzaTypeId::kVarbinary):
+    {
+      ArrowArrayAppendString(child, ArrowCharView(value));  
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kFloat4):
+    case static_cast<Oid>(NetezzaTypeId::kFloat8):
+    case static_cast<Oid>(NetezzaTypeId::kNumeric):
+    {
+      ArrowArrayAppendDouble(child, std::stod(value));
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kInterval):
+    {
+      int32_t months = 0, days = 0;
+      int64_t millisec = 0;
+      std::string valuestr = std::string(value);
+      std::istringstream iss (valuestr);
+
+      std::string token, unit_value;
+      while(iss >> token) {
+        if (strncmp(token.c_str(), "year", 4) == 0) {
+          months += (12 * atoi(unit_value.c_str()));
+        } else if (strncmp(token.c_str(), "mon", 3) == 0) {
+          months += atoi(unit_value.c_str());
+        } else if (strncmp(token.c_str(), "day", 3) == 0) {
+          days = atoi(unit_value.c_str());
+        } else if (token.find(":") != std::string::npos) {
+          millisec = getTimeToMilliSeconds(token);
+        } else {
+          unit_value = token;
+        }
+      }
+
+      /*
+        ArrowArrayAppendInterval doesn't set 'ms', refer nanoarrow.h.
+        Hence, we set only nanoseconds field for time value.
+      */
+      ArrowInterval ar_inter {NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO, months, days, 0, millisec * 1000000};
+      ArrowArrayAppendInterval(child, &ar_inter);
+      break;
+    }
+    case static_cast<Oid>(NetezzaTypeId::kUnknown):
+    case static_cast<Oid>(NetezzaTypeId::kStgeometry):
+    case static_cast<Oid>(NetezzaTypeId::kUnkbinary):
+    default:
+    {
+      ArrowArrayAppendString(child, ArrowCharView("NULL"));
+      break;
+    }
+  }
   return NANOARROW_OK;
 }
 
@@ -677,14 +844,6 @@ int TupleReader::NZInitQueryAndFetchFirst(struct ArrowError* error) {
     }
   }
 
-  /* Initialize size_bytes with datatype size */
-  int size_bytes = 0;
-  for (int64_t i = 0; i < result_cols; i++) {
-    size_bytes += PQfsize(result_, i);
-  }
-  buffer_view_.size_bytes = size_bytes;
-  buffer_view_.data.as_char = "";
-
   return NANOARROW_OK;
 }
 
@@ -700,18 +859,14 @@ int TupleReader::NZAppendRowAndFetchNext(struct  ArrowError* error) {
   int numRows = PQntuples(result_);
   int numCols = PQnfields(result_);
 
-  char* val;
+  char* cell_value;
 
   while (true) {
     if (numRows > 0 && numCols > 0) {
       for (int j = 0; j < numCols; j++) {
-        val = PQgetvalue(result_, row_id_, j);
-        /*  TODO: 
-          define and call AppendToArrayForColType(result_array.children[j], val);
-          use global schema var.
-        */
-        int val1 = atoi(val);
-        ArrowArrayAppendInt(result_array.children[j], val1);
+        cell_value = PQgetvalue(result_, row_id_, j);
+        Oid cell_format = PQftype(result_, j);
+        AppendToChildArrayForColumnType(result_array.children[j], cell_value, cell_format);
       }
 
       result_array.length++;

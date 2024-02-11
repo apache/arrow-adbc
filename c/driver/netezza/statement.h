@@ -50,8 +50,8 @@ class TupleReader final {
         row_id_(-1),
         batch_size_hint_bytes_(16777216),
         is_finished_(false) {
-    buffer_view_.data.as_char = nullptr;
-    buffer_view_.size_bytes = 0;
+    // buffer_view_.data.as_char = nullptr;
+    // buffer_view_.size_bytes = 0;
   }
 
   int GetSchema(struct ArrowSchema* out);
@@ -69,6 +69,7 @@ class TupleReader final {
   int InitResultArray(struct ArrowError* error);
   int NZInitQueryAndFetchFirst(struct ArrowError* error);
   int NZAppendRowAndFetchNext(struct ArrowError* error);
+  int AppendToChildArrayForColumnType(struct ArrowArray* child_, char* value, Oid cell_format);
   int BuildOutput(struct ArrowArray* out, struct ArrowError* error);
 
   static int GetSchemaTrampoline(struct ArrowArrayStream* self, struct ArrowSchema* out);

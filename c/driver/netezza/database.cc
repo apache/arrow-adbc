@@ -79,6 +79,31 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode PostgresDatabase::SetConnOptionInternal(PGconn** conn, const char* key, const char* value,
+                                           struct AdbcError* error) {
+/*
+This method is used for internal purpose only and should not be called from the frontend.
+Purpose: To set the options at the driver level, which we don't want the clients
+  to defined redundantly in their application(s).
+*/
+  if (std::strcmp(key, CLIENT_VERSION.c_str()) == 0) {
+    std::string query = "SET " + CLIENT_VERSION + " = ";
+    query.append(NZ_CLIENT_VERSION);
+    PGresult* result = PQexec(*conn, query.c_str());
+      if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+        SetError(error, "%s%s",
+                 "[libpq] Failed to update client version: ", PQerrorMessage(*conn));
+        PQclear(result);
+        return ADBC_STATUS_IO;
+      }
+      PQclear(result);
+  } else {
+    SetError(error, "%s%s", "[libpq] Unknown database option ", key);
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode PostgresDatabase::SetOptionBytes(const char* key, const uint8_t* value,
                                                 size_t length, struct AdbcError* error) {
   SetError(error, "%s%s", "[libpq] Unknown option ", key);

@@ -30,87 +30,43 @@ namespace adbcpq {
 
 // An enum of the types available in most Postgres pg_type tables
 enum class NetezzaTypeId {
-  kUninitialized,
-  kAclitem,
-  kAnyarray,
-  kAnycompatiblearray,
-  kArray,
-  kBit,
-  kBool,
-  kBox,
-  kBpchar,
-  kBrinBloomSummary,
-  kBrinMinmaxMultiSummary,
+  kBool = 16,
   kBytea,
-  kCash,
   kChar,
-  kCidr,
-  kCid,
-  kCircle,
-  kCstring,
-  kDate,
-  kDomain,
-  kFloat4,
-  kFloat8,
-  kInet,
+  kName,
+  kInt8,
   kInt2,
   kInt2vector,
   kInt4,
-  kInt8,
-  kInterval,
-  kJson,
-  kJsonb,
-  kJsonpath,
-  kLine,
-  kLseg,
-  kMacaddr,
-  kMacaddr8,
-  kMultirange,
-  kName,
-  kNumeric,
-  kOid,
-  kOidvector,
-  kPath,
-  kPgDdlCommand,
-  kPgDependencies,
-  kPgLsn,
-  kPgMcvList,
-  kPgNdistinct,
-  kPgNodeTree,
-  kPgSnapshot,
-  kPoint,
-  kPoly,
-  kRange,
-  kRecord,
-  kRegclass,
-  kRegcollation,
-  kRegconfig,
-  kRegdictionary,
-  kRegnamespace,
-  kRegoperator,
-  kRegoper,
-  kRegprocedure,
   kRegproc,
-  kRegrole,
-  kRegtype,
   kText,
+  kOid,
   kTid,
-  kTime,
-  kTimestamp,
-  kTimestamptz,
-  kTimetz,
-  kTsquery,
-  kTsvector,
-  kTxidSnapshot,
-  kUnknown,
-  kUuid,
-  kVarbit,
-  kVarchar,
-  kVoid,
-  kXid8,
   kXid,
-  kXml,
-  kUserDefined
+  kCid,
+  kOidvector,
+  kSmgr = 210,
+  kFloat4 = 701,
+  kFloat8,
+  kAbstime,
+  kUnknown = 705,
+  kBpchar = 1042,
+  kVarchar,
+  kDate = 1082,
+  kTime,
+  kTimestamp = 1184,
+  kInterval = 1186,
+  kTimetz = 1266,
+  kNumeric = 1700,
+  kInt1 = 2500,
+  kNchar = 2522,
+  kNvarchar = 2530,
+  kStgeometry = 2552,
+  kVarbinary = 2568,
+  kUnkbinary = 2569,
+  kJson = 2652,
+  kJsonb,
+  kJsonpath
 };
 
 // Returns the receive function name as defined in the typrecieve column
@@ -136,7 +92,7 @@ class NetezzaType {
  public:
   explicit NetezzaType(NetezzaTypeId type_id) : oid_(0), type_id_(type_id) {}
 
-  NetezzaType() : NetezzaType(NetezzaTypeId::kUninitialized) {}
+  NetezzaType() : NetezzaType(NetezzaTypeId::kUnknown) {}
 
   void AppendChild(const std::string& field_name, const NetezzaType& type) {
     NetezzaType child(type);
@@ -156,24 +112,8 @@ class NetezzaType {
     return out;
   }
 
-  NetezzaType Array(uint32_t oid = 0, const std::string& typname = "") const {
-    NetezzaType out(NetezzaTypeId::kArray);
-    out.AppendChild("item", *this);
-    out.oid_ = oid;
-    out.typname_ = typname;
-    return out;
-  }
-
   NetezzaType Domain(uint32_t oid, const std::string& typname) {
     return WithPgTypeInfo(oid, typname);
-  }
-
-  NetezzaType Range(uint32_t oid = 0, const std::string& typname = "") const {
-    NetezzaType out(NetezzaTypeId::kRange);
-    out.AppendChild("item", *this);
-    out.oid_ = oid;
-    out.typname_ = typname;
-    return out;
   }
 
   uint32_t oid() const { return oid_; }
@@ -195,6 +135,9 @@ class NetezzaType {
       // ---- Primitive types --------------------
       case NetezzaTypeId::kBool:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL));
+        break;
+      case NetezzaTypeId::kInt1:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT8));
         break;
       case NetezzaTypeId::kInt2:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT16));
@@ -223,8 +166,13 @@ class NetezzaType {
       case NetezzaTypeId::kChar:
       case NetezzaTypeId::kBpchar:
       case NetezzaTypeId::kVarchar:
+      case NetezzaTypeId::kNchar:
+      case NetezzaTypeId::kNvarchar:
       case NetezzaTypeId::kText:
       case NetezzaTypeId::kName:
+      case NetezzaTypeId::kJson:
+      case NetezzaTypeId::kJsonb:
+      case NetezzaTypeId::kJsonpath:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
       case NetezzaTypeId::kBytea:
@@ -237,6 +185,8 @@ class NetezzaType {
         break;
 
       case NetezzaTypeId::kTime:
+      case NetezzaTypeId::kTimetz:
+      case NetezzaTypeId::kAbstime:
         // We always return microsecond precision even if the type
         // specifies differently
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIME64,
@@ -252,31 +202,22 @@ class NetezzaType {
                                        NANOARROW_TIME_UNIT_MICRO, /*timezone=*/nullptr));
         break;
 
-      case NetezzaTypeId::kTimestamptz:
-        NANOARROW_RETURN_NOT_OK(
-            ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIMESTAMP,
-                                       NANOARROW_TIME_UNIT_MICRO, /*timezone=*/"UTC"));
-        break;
-
       case NetezzaTypeId::kInterval:
         NANOARROW_RETURN_NOT_OK(
             ArrowSchemaSetType(schema, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO));
         break;
 
       // ---- Nested --------------------
-      case NetezzaTypeId::kRecord:
+      case NetezzaTypeId::kUnknown:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
         for (int64_t i = 0; i < n_children(); i++) {
           NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
         }
         break;
-
-      case NetezzaTypeId::kArray:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
-        NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
-        break;
-
-      case NetezzaTypeId::kUserDefined:
+      case NetezzaTypeId::kOidvector:
+      case NetezzaTypeId::kStgeometry:
+      case NetezzaTypeId::kVarbinary:
+      case NetezzaTypeId::kUnkbinary:
       default: {
         // For user-defined types or types we don't explicitly know how to deal with, we
         // can still return the bytes postgres gives us and attach the type name as
@@ -285,7 +226,7 @@ class NetezzaType {
         nanoarrow::UniqueBuffer buffer;
         ArrowMetadataBuilderInit(buffer.get(), nullptr);
         NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
-            buffer.get(), ArrowCharView("ADBC:postgresql:typname"),
+            buffer.get(), ArrowCharView("ADBC:netezza:typname"),
             ArrowCharView(typname_.c_str())));
         NANOARROW_RETURN_NOT_OK(
             ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(buffer->data)));
@@ -380,7 +321,7 @@ class NetezzaTypeResolver {
       // This occurs when a user-defined type has defined a custom receive function
       // (e.g., PostGIS/geometry). The only way these types can be supported is
       // by returning binary unless we hard-code support for some extensions.
-      base = NetezzaType(NetezzaTypeId::kUserDefined);
+      base = NetezzaType(NetezzaTypeId::kUnknown);
     } else {
       base = result->second;
     }
@@ -388,20 +329,11 @@ class NetezzaTypeResolver {
     NetezzaType type = base.WithPgTypeInfo(item.oid, item.typname);
 
     switch (base.type_id()) {
-      case NetezzaTypeId::kArray: {
-        NetezzaType child;
-        NANOARROW_RETURN_NOT_OK(Find(item.child_oid, &child, error));
-        mapping_.insert({item.oid, child.Array(item.oid, item.typname)});
-        reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
-        array_mapping_.insert({child.oid(), item.oid});
-        break;
-      }
-
-      case NetezzaTypeId::kRecord: {
+      case NetezzaTypeId::kUnknown: {
         std::vector<std::pair<std::string, uint32_t>> child_desc;
         NANOARROW_RETURN_NOT_OK(ResolveClass(item.class_oid, &child_desc, error));
 
-        NetezzaType out(NetezzaTypeId::kRecord);
+        NetezzaType out(NetezzaTypeId::kUnknown);
         for (const auto& child_item : child_desc) {
           NetezzaType child;
           NANOARROW_RETURN_NOT_OK(Find(child_item.second, &child, error));
@@ -412,23 +344,6 @@ class NetezzaTypeResolver {
         reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
         break;
       }
-
-      case NetezzaTypeId::kDomain: {
-        NetezzaType base_type;
-        NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
-        mapping_.insert({item.oid, base_type.Domain(item.oid, item.typname)});
-        reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
-        break;
-      }
-
-      case NetezzaTypeId::kRange: {
-        NetezzaType base_type;
-        NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
-        mapping_.insert({item.oid, base_type.Range(item.oid, item.typname)});
-        reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
-        break;
-      }
-
       default:
         mapping_.insert({item.oid, type});
         reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
@@ -535,164 +450,80 @@ inline ArrowErrorCode NetezzaType::FromSchema(const NetezzaTypeResolver& resolve
 static inline const char* NetezzaTyprecv(NetezzaTypeId type_id) {
   // TODO: Remove the (Postgres) datatypes which are not applicable.
   switch (type_id) {
-    case NetezzaTypeId::kAclitem:
-      return "aclitem_recv";
-    case NetezzaTypeId::kAnyarray:
-      return "anyarray_recv";
-    case NetezzaTypeId::kAnycompatiblearray:
-      return "anycompatiblearray_recv";
-    case NetezzaTypeId::kArray:
-      return "ARRAY_IN";
-    case NetezzaTypeId::kBit:
-      return "bit_recv";
     case NetezzaTypeId::kBool:
       return "BOOLIN";
-    case NetezzaTypeId::kBox:
-      return "box_recv";
-    case NetezzaTypeId::kBpchar:
-      return "BPCHARIN";
-    case NetezzaTypeId::kBrinBloomSummary:
-      return "brin_bloom_summary_recv";
-    case NetezzaTypeId::kBrinMinmaxMultiSummary:
-      return "brin_minmax_multi_summary_recv";
     case NetezzaTypeId::kBytea:
       return "BYTEAIN";
-    case NetezzaTypeId::kCash:
-      return "cash_recv";
     case NetezzaTypeId::kChar:
       return "CHARIN";
-    case NetezzaTypeId::kCidr:
-      return "cidr_recv";
-    case NetezzaTypeId::kCid:
-      return "CIDIN";
-    case NetezzaTypeId::kCircle:
-      return "circle_recv";
-    case NetezzaTypeId::kCstring:
-      return "cstring_recv";
-    case NetezzaTypeId::kDate:
-      return "DATE_IN";
-    case NetezzaTypeId::kDomain:
-      return "domain_recv";
-    case NetezzaTypeId::kFloat4:
-      return "FLOAT4IN";
-    case NetezzaTypeId::kFloat8:
-      return "FLOAT8IN";
-    case NetezzaTypeId::kInet:
-      return "inet_recv";
+    case NetezzaTypeId::kName:
+      return "NAMEIN";
+    case NetezzaTypeId::kInt8:
+      return "INT8IN";
     case NetezzaTypeId::kInt2:
       return "INT2IN";
     case NetezzaTypeId::kInt2vector:
       return "INT2VECTORIN";
     case NetezzaTypeId::kInt4:
       return "INT4IN";
-    case NetezzaTypeId::kInt8:
-      return "INT8IN";
+    case NetezzaTypeId::kRegproc:
+      return "REGPROCIN";
+    case NetezzaTypeId::kText:
+      return "TEXTIN";
+    case NetezzaTypeId::kOid:
+      return "OIDIN";
+    case NetezzaTypeId::kTid:
+      return "TIDIN";
+    case NetezzaTypeId::kXid:
+      return "XIDIN";
+    case NetezzaTypeId::kCid:
+      return "CIDIN";
+    case NetezzaTypeId::kOidvector:
+      return "OIDVECTORIN";
+    case NetezzaTypeId::kSmgr:
+      return "SMGRIN";
+    case NetezzaTypeId::kFloat4:
+      return "FLOAT4IN";
+    case NetezzaTypeId::kFloat8:
+      return "FLOAT8IN";
+    case NetezzaTypeId::kAbstime:
+      return "NABSTIMEIN";
+    case NetezzaTypeId::kUnknown:
+      return "TEXTIN";
+    case NetezzaTypeId::kBpchar:
+      return "BPCHARIN";
+    case NetezzaTypeId::kVarchar:
+      return "VARCHARIN";
+    case NetezzaTypeId::kDate:
+      return "DATE_IN";
+    case NetezzaTypeId::kTime:
+      return "TIME_IN";
+    case NetezzaTypeId::kTimestamp:
+      return "TIMESTAMP_IN";
     case NetezzaTypeId::kInterval:
       return "INTERVAL_IN";
+    case NetezzaTypeId::kTimetz:
+      return "TIMETZ_IN";
+    case NetezzaTypeId::kNumeric:
+      return "NUMERIC_IN";
+    case NetezzaTypeId::kInt1:
+      return "INT1IN";
+    case NetezzaTypeId::kNchar:
+      return "NCHARIN";
+    case NetezzaTypeId::kNvarchar:
+      return "NVARCHARIN";
+    case NetezzaTypeId::kStgeometry:
+      return "GEOMETRYIN";
+    case NetezzaTypeId::kVarbinary:
+      return "VARBINARYIN";
+    case NetezzaTypeId::kUnkbinary:
+      return "VARBINARYIN";
     case NetezzaTypeId::kJson:
       return "JSON_IN";
     case NetezzaTypeId::kJsonb:
       return "JSONB_IN";
     case NetezzaTypeId::kJsonpath:
       return "JSONPATH_IN";
-    case NetezzaTypeId::kLine:
-      return "line_recv";
-    case NetezzaTypeId::kLseg:
-      return "lseg_recv";
-    case NetezzaTypeId::kMacaddr:
-      return "macaddr_recv";
-    case NetezzaTypeId::kMacaddr8:
-      return "macaddr8_recv";
-    case NetezzaTypeId::kMultirange:
-      return "multirange_recv";
-    case NetezzaTypeId::kName:
-      return "NAMEIN";
-    case NetezzaTypeId::kNumeric:
-      return "NUMERIC_IN";
-    case NetezzaTypeId::kOid:
-      return "OIDIN";
-    case NetezzaTypeId::kOidvector:
-      return "OIDVECTORIN";
-    case NetezzaTypeId::kPath:
-      return "path_recv";
-    case NetezzaTypeId::kPgNodeTree:
-      return "pg_node_tree_recv";
-    case NetezzaTypeId::kPgNdistinct:
-      return "pg_ndistinct_recv";
-    case NetezzaTypeId::kPgDependencies:
-      return "pg_dependencies_recv";
-    case NetezzaTypeId::kPgLsn:
-      return "pg_lsn_recv";
-    case NetezzaTypeId::kPgMcvList:
-      return "pg_mcv_list_recv";
-    case NetezzaTypeId::kPgDdlCommand:
-      return "pg_ddl_command_recv";
-    case NetezzaTypeId::kPgSnapshot:
-      return "pg_snapshot_recv";
-    case NetezzaTypeId::kPoint:
-      return "point_recv";
-    case NetezzaTypeId::kPoly:
-      return "poly_recv";
-    case NetezzaTypeId::kRange:
-      return "range_recv";
-    case NetezzaTypeId::kRecord:
-      return "record_recv";
-    case NetezzaTypeId::kRegclass:
-      return "regclassrecv";
-    case NetezzaTypeId::kRegcollation:
-      return "regcollationrecv";
-    case NetezzaTypeId::kRegconfig:
-      return "regconfigrecv";
-    case NetezzaTypeId::kRegdictionary:
-      return "regdictionaryrecv";
-    case NetezzaTypeId::kRegnamespace:
-      return "regnamespacerecv";
-    case NetezzaTypeId::kRegoperator:
-      return "regoperatorrecv";
-    case NetezzaTypeId::kRegoper:
-      return "regoperrecv";
-    case NetezzaTypeId::kRegprocedure:
-      return "regprocedurerecv";
-    case NetezzaTypeId::kRegproc:
-      return "REGPROCIN";
-    case NetezzaTypeId::kRegrole:
-      return "regrolerecv";
-    case NetezzaTypeId::kRegtype:
-      return "regtyperecv";
-    case NetezzaTypeId::kText:
-      return "TEXTIN";
-    case NetezzaTypeId::kTid:
-      return "TIDIN";
-    case NetezzaTypeId::kTime:
-      return "TIME_IN";
-    case NetezzaTypeId::kTimestamp:
-      return "TIMESTAMP_IN";
-    case NetezzaTypeId::kTimestamptz:
-      return "timestamptz_recv";
-    case NetezzaTypeId::kTimetz:
-      return "TIMETZ_IN";
-    case NetezzaTypeId::kTsquery:
-      return "tsqueryrecv";
-    case NetezzaTypeId::kTsvector:
-      return "tsvectorrecv";
-    case NetezzaTypeId::kTxidSnapshot:
-      return "txid_snapshot_recv";
-    case NetezzaTypeId::kUnknown:
-      return "TEXTIN";
-    case NetezzaTypeId::kUuid:
-      return "uuid_recv";
-    case NetezzaTypeId::kVarbit:
-      return "varbit_recv";
-    case NetezzaTypeId::kVarchar:
-      return "VARCHARIN";
-    case NetezzaTypeId::kVoid:
-      return "void_recv";
-    case NetezzaTypeId::kXid8:
-      return "xid8recv";
-    case NetezzaTypeId::kXid:
-      return "XIDIN";
-    case NetezzaTypeId::kXml:
-      return "xml_recv";
     default:
       return "";
   }
@@ -701,252 +532,124 @@ static inline const char* NetezzaTyprecv(NetezzaTypeId type_id) {
 static inline const char* NetezzaTypname(NetezzaTypeId type_id) {
   // TODO: Remove the (Postgres) datatypes which are not applicable.
   switch (type_id) {
-    case NetezzaTypeId::kAclitem:
-      return "aclitem";
-    case NetezzaTypeId::kAnyarray:
-      return "anyarray";
-    case NetezzaTypeId::kAnycompatiblearray:
-      return "anycompatiblearray";
-    case NetezzaTypeId::kArray:
-      return "array";
-    case NetezzaTypeId::kBit:
-      return "bit";
     case NetezzaTypeId::kBool:
       return "BOOL";
-    case NetezzaTypeId::kBox:
-      return "box";
-    case NetezzaTypeId::kBpchar:
-      return "BPCHAR";
-    case NetezzaTypeId::kBrinBloomSummary:
-      return "brin_bloom_summary";
-    case NetezzaTypeId::kBrinMinmaxMultiSummary:
-      return "brin_minmax_multi_summary";
     case NetezzaTypeId::kBytea:
       return "BYTEA";
-    case NetezzaTypeId::kCash:
-      return "cash";
     case NetezzaTypeId::kChar:
       return "CHAR";
-    case NetezzaTypeId::kCidr:
-      return "cidr";
-    case NetezzaTypeId::kCid:
-      return "CID";
-    case NetezzaTypeId::kCircle:
-      return "circle";
-    case NetezzaTypeId::kCstring:
-      return "cstring";
-    case NetezzaTypeId::kDate:
-      return "DATE";
-    case NetezzaTypeId::kDomain:
-      return "domain";
-    case NetezzaTypeId::kFloat4:
-      return "FLOAT4";
-    case NetezzaTypeId::kFloat8:
-      return "FLOAT8";
-    case NetezzaTypeId::kInet:
-      return "inet";
+    case NetezzaTypeId::kName:
+      return "NAME";
+    case NetezzaTypeId::kInt8:
+      return "INT8";
     case NetezzaTypeId::kInt2:
       return "INT2";
     case NetezzaTypeId::kInt2vector:
       return "INT2VECTOR";
     case NetezzaTypeId::kInt4:
       return "INT4";
-    case NetezzaTypeId::kInt8:
-      return "INT8";
+    case NetezzaTypeId::kRegproc:
+      return "REGPROC";
+    case NetezzaTypeId::kText:
+      return "TEXT";
+    case NetezzaTypeId::kOid:
+      return "OID";
+    case NetezzaTypeId::kTid:
+      return "TID";
+    case NetezzaTypeId::kXid:
+      return "XID";
+    case NetezzaTypeId::kCid:
+      return "CID";
+    case NetezzaTypeId::kOidvector:
+      return "OICVECTOR";
+    case NetezzaTypeId::kSmgr:
+      return "SMGR";
+    case NetezzaTypeId::kFloat4:
+      return "FLOAT4";
+    case NetezzaTypeId::kFloat8:
+      return "FLOAT8";
+    case NetezzaTypeId::kAbstime:
+      return "ABSTIME";
+    case NetezzaTypeId::kUnknown:
+      return "UNKNOWN";
+    case NetezzaTypeId::kBpchar:
+      return "BPCHAR";
+    case NetezzaTypeId::kVarchar:
+      return "VARCHAR";
+    case NetezzaTypeId::kDate:
+      return "DATE";
+    case NetezzaTypeId::kTime:
+      return "TIME";
+    case NetezzaTypeId::kTimestamp:
+      return "TIMESTAMP";
     case NetezzaTypeId::kInterval:
       return "INTERVAL";
+    case NetezzaTypeId::kTimetz:
+      return "TIMETZ";
+    case NetezzaTypeId::kNumeric:
+      return "NUMERIC";
+    case NetezzaTypeId::kInt1:
+      return "INT1";
+    case NetezzaTypeId::kNchar:
+      return "NCHAR";
+    case NetezzaTypeId::kNvarchar:
+      return "NVARCHAR";
+    case NetezzaTypeId::kStgeometry:
+      return "ST_GEOMETRY";
+    case NetezzaTypeId::kVarbinary:
+      return "VARBINARY";
+    case NetezzaTypeId::kUnkbinary:
+      return "UNKBINARY";
     case NetezzaTypeId::kJson:
       return "JSON";
     case NetezzaTypeId::kJsonb:
       return "JSONB";
     case NetezzaTypeId::kJsonpath:
       return "JSONBPATH";
-    case NetezzaTypeId::kLine:
-      return "line";
-    case NetezzaTypeId::kLseg:
-      return "lseg";
-    case NetezzaTypeId::kMacaddr:
-      return "macaddr";
-    case NetezzaTypeId::kMacaddr8:
-      return "macaddr8";
-    case NetezzaTypeId::kMultirange:
-      return "multirange";
-    case NetezzaTypeId::kName:
-      return "NAME";
-    case NetezzaTypeId::kNumeric:
-      return "NUMERIC";
-    case NetezzaTypeId::kOid:
-      return "OID";
-    case NetezzaTypeId::kOidvector:
-      return "OICVECTOR";
-    case NetezzaTypeId::kPath:
-      return "path";
-    case NetezzaTypeId::kPgNodeTree:
-      return "pg_node_tree";
-    case NetezzaTypeId::kPgNdistinct:
-      return "pg_ndistinct";
-    case NetezzaTypeId::kPgDependencies:
-      return "pg_dependencies";
-    case NetezzaTypeId::kPgLsn:
-      return "pg_lsn";
-    case NetezzaTypeId::kPgMcvList:
-      return "pg_mcv_list";
-    case NetezzaTypeId::kPgDdlCommand:
-      return "pg_ddl_command";
-    case NetezzaTypeId::kPgSnapshot:
-      return "pg_snapshot";
-    case NetezzaTypeId::kPoint:
-      return "point";
-    case NetezzaTypeId::kPoly:
-      return "poly";
-    case NetezzaTypeId::kRange:
-      return "range";
-    case NetezzaTypeId::kRecord:
-      return "record";
-    case NetezzaTypeId::kRegclass:
-      return "regclass";
-    case NetezzaTypeId::kRegcollation:
-      return "regcollation";
-    case NetezzaTypeId::kRegconfig:
-      return "regconfig";
-    case NetezzaTypeId::kRegdictionary:
-      return "regdictionary";
-    case NetezzaTypeId::kRegnamespace:
-      return "regnamespace";
-    case NetezzaTypeId::kRegoperator:
-      return "regoperator";
-    case NetezzaTypeId::kRegoper:
-      return "regoper";
-    case NetezzaTypeId::kRegprocedure:
-      return "regprocedure";
-    case NetezzaTypeId::kRegproc:
-      return "REGPROC";
-    case NetezzaTypeId::kRegrole:
-      return "regrole";
-    case NetezzaTypeId::kRegtype:
-      return "regtype";
-    case NetezzaTypeId::kText:
-      return "TEXT";
-    case NetezzaTypeId::kTid:
-      return "TID";
-    case NetezzaTypeId::kTime:
-      return "TIME";
-    case NetezzaTypeId::kTimestamp:
-      return "TIMESTAMP";
-    case NetezzaTypeId::kTimestamptz:
-      return "timestamptz";
-    case NetezzaTypeId::kTimetz:
-      return "TIMETZ";
-    case NetezzaTypeId::kTsquery:
-      return "tsquery";
-    case NetezzaTypeId::kTsvector:
-      return "tsvector";
-    case NetezzaTypeId::kTxidSnapshot:
-      return "txid_snapshot";
-    case NetezzaTypeId::kUnknown:
-      return "UNKNOWN";
-    case NetezzaTypeId::kUuid:
-      return "uuid";
-    case NetezzaTypeId::kVarbit:
-      return "varbit";
-    case NetezzaTypeId::kVarchar:
-      return "VARCHAR";
-    case NetezzaTypeId::kVoid:
-      return "void";
-    case NetezzaTypeId::kXid8:
-      return "xid8";
-    case NetezzaTypeId::kXid:
-      return "XID";
-    case NetezzaTypeId::kXml:
-      return "xml";
     default:
       return "";
   }
 }
 
 static inline std::vector<NetezzaTypeId> NetezzaTypeIdAll(bool nested) {
-  std::vector<NetezzaTypeId> base = {NetezzaTypeId::kAclitem,
-                                      NetezzaTypeId::kAnyarray,
-                                      NetezzaTypeId::kAnycompatiblearray,
-                                      NetezzaTypeId::kBit,
+  std::vector<NetezzaTypeId> base = {
                                       NetezzaTypeId::kBool,
-                                      NetezzaTypeId::kBox,
-                                      NetezzaTypeId::kBpchar,
-                                      NetezzaTypeId::kBrinBloomSummary,
-                                      NetezzaTypeId::kBrinMinmaxMultiSummary,
                                       NetezzaTypeId::kBytea,
-                                      NetezzaTypeId::kCash,
                                       NetezzaTypeId::kChar,
-                                      NetezzaTypeId::kCidr,
-                                      NetezzaTypeId::kCid,
-                                      NetezzaTypeId::kCircle,
-                                      NetezzaTypeId::kCstring,
-                                      NetezzaTypeId::kDate,
-                                      NetezzaTypeId::kFloat4,
-                                      NetezzaTypeId::kFloat8,
-                                      NetezzaTypeId::kInet,
+                                      NetezzaTypeId::kName,
+                                      NetezzaTypeId::kInt8,
                                       NetezzaTypeId::kInt2,
                                       NetezzaTypeId::kInt2vector,
                                       NetezzaTypeId::kInt4,
-                                      NetezzaTypeId::kInt8,
-                                      NetezzaTypeId::kInterval,
-                                      NetezzaTypeId::kJson,
-                                      NetezzaTypeId::kJsonb,
-                                      NetezzaTypeId::kJsonpath,
-                                      NetezzaTypeId::kLine,
-                                      NetezzaTypeId::kLseg,
-                                      NetezzaTypeId::kMacaddr,
-                                      NetezzaTypeId::kMacaddr8,
-                                      NetezzaTypeId::kMultirange,
-                                      NetezzaTypeId::kName,
-                                      NetezzaTypeId::kNumeric,
-                                      NetezzaTypeId::kOid,
-                                      NetezzaTypeId::kOidvector,
-                                      NetezzaTypeId::kPath,
-                                      NetezzaTypeId::kPgNodeTree,
-                                      NetezzaTypeId::kPgNdistinct,
-                                      NetezzaTypeId::kPgDependencies,
-                                      NetezzaTypeId::kPgLsn,
-                                      NetezzaTypeId::kPgMcvList,
-                                      NetezzaTypeId::kPgDdlCommand,
-                                      NetezzaTypeId::kPgSnapshot,
-                                      NetezzaTypeId::kPoint,
-                                      NetezzaTypeId::kPoly,
-                                      NetezzaTypeId::kRegclass,
-                                      NetezzaTypeId::kRegcollation,
-                                      NetezzaTypeId::kRegconfig,
-                                      NetezzaTypeId::kRegdictionary,
-                                      NetezzaTypeId::kRegnamespace,
-                                      NetezzaTypeId::kRegoperator,
-                                      NetezzaTypeId::kRegoper,
-                                      NetezzaTypeId::kRegprocedure,
                                       NetezzaTypeId::kRegproc,
-                                      NetezzaTypeId::kRegrole,
-                                      NetezzaTypeId::kRegtype,
                                       NetezzaTypeId::kText,
+                                      NetezzaTypeId::kOid,
                                       NetezzaTypeId::kTid,
+                                      NetezzaTypeId::kXid,
+                                      NetezzaTypeId::kCid,
+                                      NetezzaTypeId::kOidvector,
+                                      NetezzaTypeId::kSmgr,
+                                      NetezzaTypeId::kFloat4,
+                                      NetezzaTypeId::kFloat8,
+                                      NetezzaTypeId::kAbstime,
+                                      NetezzaTypeId::kUnknown,
+                                      NetezzaTypeId::kBpchar,
+                                      NetezzaTypeId::kVarchar,
+                                      NetezzaTypeId::kDate,
                                       NetezzaTypeId::kTime,
                                       NetezzaTypeId::kTimestamp,
-                                      NetezzaTypeId::kTimestamptz,
+                                      NetezzaTypeId::kInterval,
                                       NetezzaTypeId::kTimetz,
-                                      NetezzaTypeId::kTsquery,
-                                      NetezzaTypeId::kTsvector,
-                                      NetezzaTypeId::kTxidSnapshot,
-                                      NetezzaTypeId::kUnknown,
-                                      NetezzaTypeId::kUuid,
-                                      NetezzaTypeId::kVarbit,
-                                      NetezzaTypeId::kVarchar,
-                                      NetezzaTypeId::kVoid,
-                                      NetezzaTypeId::kXid8,
-                                      NetezzaTypeId::kXid,
-                                      NetezzaTypeId::kXml};
-
-  if (nested) {
-    base.push_back(NetezzaTypeId::kArray);
-    base.push_back(NetezzaTypeId::kRecord);
-    base.push_back(NetezzaTypeId::kRange);
-    base.push_back(NetezzaTypeId::kDomain);
-  }
+                                      NetezzaTypeId::kNumeric,
+                                      NetezzaTypeId::kInt1,
+                                      NetezzaTypeId::kNchar,
+                                      NetezzaTypeId::kNvarchar,
+                                      NetezzaTypeId::kStgeometry,
+                                      NetezzaTypeId::kVarbinary,
+                                      NetezzaTypeId::kUnkbinary,
+                                      NetezzaTypeId::kJson,
+                                      NetezzaTypeId::kJsonb,
+                                      NetezzaTypeId::kJsonpath};
 
   return base;
 }

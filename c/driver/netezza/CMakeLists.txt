@@ -35,6 +35,7 @@ add_arrow_lib(adbc_driver_netezza
               netezza.cc
               result_helper.cc
               statement.cc
+	      postgres_copy_reader.cc
               OUTPUTS
               ADBC_LIBRARIES
               CMAKE_PACKAGE_NAME
