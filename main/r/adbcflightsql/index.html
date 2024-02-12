@@ -105,13 +105,13 @@
 <span><span class="co"># Use the driver manager to connect to a database. This example URI is</span></span>
 <span><span class="co"># grpc://localhost:8080 and uses a Go FlightSQL/SQLite server docker image</span></span>
 <span><span class="va">uri</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"ADBC_FLIGHTSQL_TEST_URI"</span><span class="op">)</span></span>
-<span><span class="va">db</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/adbcdrivermanager/man/adbc_database_init.html" class="external-link">adbc_database_init</a></span><span class="op">(</span><span class="fu">adbcflightsql</span><span class="fu">::</span><span class="fu"><a href="reference/adbcflightsql.html">adbcflightsql</a></span><span class="op">(</span><span class="op">)</span>, uri <span class="op">=</span> <span class="va">uri</span><span class="op">)</span></span>
-<span><span class="va">con</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/adbcdrivermanager/man/adbc_connection_init.html" class="external-link">adbc_connection_init</a></span><span class="op">(</span><span class="va">db</span><span class="op">)</span></span>
+<span><span class="va">db</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_database_init.html" class="external-link">adbc_database_init</a></span><span class="op">(</span><span class="fu">adbcflightsql</span><span class="fu">::</span><span class="fu"><a href="reference/adbcflightsql.html">adbcflightsql</a></span><span class="op">(</span><span class="op">)</span>, uri <span class="op">=</span> <span class="va">uri</span><span class="op">)</span></span>
+<span><span class="va">con</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_connection_init.html" class="external-link">adbc_connection_init</a></span><span class="op">(</span><span class="va">db</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Write a table</span></span>
 <span><span class="va">con</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/adbcdrivermanager/man/read_adbc.html" class="external-link">execute_adbc</a></span><span class="op">(</span><span class="st">"CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER)"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/adbcdrivermanager/man/read_adbc.html" class="external-link">execute_adbc</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/read_adbc.html" class="external-link">execute_adbc</a></span><span class="op">(</span><span class="st">"CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER)"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/read_adbc.html" class="external-link">execute_adbc</a></span><span class="op">(</span></span>
 <span>    <span class="st">"INSERT INTO crossfit values</span></span>
 <span><span class="st">      ('Push Ups', 3),</span></span>
 <span><span class="st">      ('Pull Ups', 5),</span></span>
@@ -121,7 +121,7 @@
 <span></span>
 <span><span class="co"># Query it</span></span>
 <span><span class="va">con</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/adbcdrivermanager/man/read_adbc.html" class="external-link">read_adbc</a></span><span class="op">(</span><span class="st">"SELECT * from crossfit"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/read_adbc.html" class="external-link">read_adbc</a></span><span class="op">(</span><span class="st">"SELECT * from crossfit"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/as_tibble.html" class="external-link">as_tibble</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # A tibble: 4 × 2</span></span>
 <span><span class="co">#&gt;   exercise      difficulty_level</span></span>
@@ -133,9 +133,9 @@
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Clean up</span></span>
 <span><span class="va">con</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/adbcdrivermanager/man/read_adbc.html" class="external-link">execute_adbc</a></span><span class="op">(</span><span class="st">"DROP TABLE crossfit"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/adbcdrivermanager/man/adbc_connection_init.html" class="external-link">adbc_connection_release</a></span><span class="op">(</span><span class="va">con</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/adbcdrivermanager/man/adbc_database_init.html" class="external-link">adbc_database_release</a></span><span class="op">(</span><span class="va">db</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/read_adbc.html" class="external-link">execute_adbc</a></span><span class="op">(</span><span class="st">"DROP TABLE crossfit"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_connection_init.html" class="external-link">adbc_connection_release</a></span><span class="op">(</span><span class="va">con</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_database_init.html" class="external-link">adbc_database_release</a></span><span class="op">(</span><span class="va">db</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
