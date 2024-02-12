@@ -1361,6 +1361,10 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
     }
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     result = std::to_string(reader_.batch_size_hint_bytes_);
+  } else if (std::strcmp(key, ADBC_POSTGRESQL_NUMERIC_CONVERSION) == 0) {
+    result = numeric_conversion_ == NumericConversionStrategy::kToDouble
+                 ? ADBC_POSTGRESQL_NC_OPTION_TO_DOUBLE
+                 : ADBC_POSTGRESQL_NC_OPTION_TO_STRING;
   } else {
     SetError(error, "[libpq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_FOUND;
@@ -1480,6 +1484,15 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
     }
 
     this->reader_.batch_size_hint_bytes_ = int_value;
+  } else if (std::strcmp(key, ADBC_POSTGRESQL_NUMERIC_CONVERSION) == 0) {
+    if (std::strcmp(value, ADBC_POSTGRESQL_NC_OPTION_TO_STRING) == 0) {
+      numeric_conversion_ = NumericConversionStrategy::kToString;
+    } else if (std::strcmp(value, ADBC_POSTGRESQL_NC_OPTION_TO_DOUBLE) == 0) {
+      numeric_conversion_ = NumericConversionStrategy::kToDouble;
+    } else {
+      SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
   } else {
     SetError(error, "[libpq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -1548,7 +1561,7 @@ AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
   // Initialize the copy reader and infer the output schema (i.e., error for
   // unsupported types before issuing the COPY query)
   reader_.copy_reader_.reset(new PostgresCopyStreamReader());
-  reader_.copy_reader_->Init(root_type);
+  reader_.copy_reader_->Init(root_type, numeric_conversion_);
   struct ArrowError na_error;
   int na_res = reader_.copy_reader_->InferOutputSchema(&na_error);
   if (na_res != NANOARROW_OK) {

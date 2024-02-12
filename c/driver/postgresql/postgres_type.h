@@ -130,6 +130,9 @@ static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested = true);
 
 class PostgresTypeResolver;
 
+/// \brief Strategy to use when converting received NUMERIC values.
+enum class NumericConversionStrategy { kToString, kToDouble };
+
 // An abstraction of a (potentially nested and/or parameterized) Postgres
 // data type. This class is where default type conversion to/from Arrow
 // is defined. It is intentionally copyable.
@@ -191,7 +194,9 @@ class PostgresType {
   // do not have a corresponding Arrow type are returned as Binary with field
   // metadata ADBC:posgresql:typname. These types can be represented as their
   // binary COPY representation in the output.
-  ArrowErrorCode SetSchema(ArrowSchema* schema) const {
+  ArrowErrorCode SetSchema(ArrowSchema* schema,
+                           NumericConversionStrategy numeric_conversion =
+                               NumericConversionStrategy::kToString) const {
     switch (type_id_) {
       // ---- Primitive types --------------------
       case PostgresTypeId::kBool:
@@ -217,7 +222,12 @@ class PostgresType {
 
       // ---- Numeric/Decimal-------------------
       case PostgresTypeId::kNumeric:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
+        if (numeric_conversion == NumericConversionStrategy::kToDouble) {
+          NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DOUBLE));
+        } else {
+          NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
+        }
+
         NANOARROW_RETURN_NOT_OK(AddPostgresTypeMetadata(schema));
 
         break;
@@ -271,13 +281,15 @@ class PostgresType {
       case PostgresTypeId::kRecord:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
         for (int64_t i = 0; i < n_children(); i++) {
-          NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
+          NANOARROW_RETURN_NOT_OK(
+              children_[i].SetSchema(schema->children[i], numeric_conversion));
         }
         break;
 
       case PostgresTypeId::kArray:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
-        NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
+        NANOARROW_RETURN_NOT_OK(
+            children_[0].SetSchema(schema->children[0], numeric_conversion));
         break;
 
       case PostgresTypeId::kUserDefined:

@@ -33,6 +33,12 @@
 #define ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES \
   "adbc.postgresql.batch_size_hint_bytes"
 
+#define ADBC_POSTGRESQL_NUMERIC_CONVERSION "adbc.postgresql.numeric_conversion"
+
+#define ADBC_POSTGRESQL_NC_OPTION_TO_STRING "to_string"
+
+#define ADBC_POSTGRESQL_NC_OPTION_TO_DOUBLE "to_double"
+
 namespace adbcpq {
 class PostgresConnection;
 class PostgresStatement;
@@ -162,5 +168,6 @@ class PostgresStatement {
   } ingest_;
 
   TupleReader reader_;
+  NumericConversionStrategy numeric_conversion_;
 };
 }  // namespace adbcpq

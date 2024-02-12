@@ -16,6 +16,7 @@
 // under the License.
 
 #include <gtest/gtest.h>
+#include <cmath>
 #include <nanoarrow/nanoarrow.hpp>
 
 #include "postgres_copy_test_common.h"
@@ -25,8 +26,11 @@ namespace adbcpq {
 
 class PostgresCopyStreamTester {
  public:
-  ArrowErrorCode Init(const PostgresType& root_type, ArrowError* error = nullptr) {
-    NANOARROW_RETURN_NOT_OK(reader_.Init(root_type));
+  ArrowErrorCode Init(
+      const PostgresType& root_type,
+      NumericConversionStrategy numeric_conversion = NumericConversionStrategy::kToString,
+      ArrowError* error = nullptr) {
+    NANOARROW_RETURN_NOT_OK(reader_.Init(root_type, numeric_conversion));
     NANOARROW_RETURN_NOT_OK(reader_.InferOutputSchema(error));
     NANOARROW_RETURN_NOT_OK(reader_.InitFieldReaders(error));
     return NANOARROW_OK;
@@ -373,6 +377,59 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
   EXPECT_EQ(std::string(item.data, item.size_bytes), "inf");
 }
 
+TEST(PostgresCopyUtilsTest, PostgresCopyReadNumericToDouble) {
+  ArrowBufferView data;
+  data.data.as_uint8 = kTestPgCopyNumeric;
+  data.size_bytes = sizeof(kTestPgCopyNumeric);
+
+  auto col_type = PostgresType(PostgresTypeId::kNumeric);
+  PostgresType input_type(PostgresTypeId::kRecord);
+  input_type.AppendChild("col", col_type);
+
+  PostgresCopyStreamTester tester;
+  ASSERT_EQ(tester.Init(input_type, NumericConversionStrategy::kToDouble), NANOARROW_OK);
+  ASSERT_EQ(tester.ReadAll(&data), ENODATA);
+  ASSERT_EQ(data.data.as_uint8 - kTestPgCopyNumeric, sizeof(kTestPgCopyNumeric));
+  ASSERT_EQ(data.size_bytes, 0);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 9);
+  ASSERT_EQ(array->n_children, 1);
+
+  nanoarrow::UniqueSchema schema;
+  tester.GetSchema(schema.get());
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(array_view->children[0]->storage_type, NANOARROW_TYPE_DOUBLE);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
+  auto data_buffer = reinterpret_cast<const double*>(array->children[0]->buffers[1]);
+  ASSERT_NE(validity, nullptr);
+  ASSERT_NE(data_buffer, nullptr);
+  ASSERT_TRUE(ArrowBitGet(validity, 0));
+  ASSERT_TRUE(ArrowBitGet(validity, 1));
+  ASSERT_TRUE(ArrowBitGet(validity, 2));
+  ASSERT_TRUE(ArrowBitGet(validity, 3));
+  ASSERT_TRUE(ArrowBitGet(validity, 4));
+  ASSERT_TRUE(ArrowBitGet(validity, 5));
+  ASSERT_TRUE(ArrowBitGet(validity, 6));
+  ASSERT_TRUE(ArrowBitGet(validity, 7));
+  ASSERT_FALSE(ArrowBitGet(validity, 8));
+
+  ASSERT_DOUBLE_EQ(data_buffer[0], 1000000);
+  ASSERT_DOUBLE_EQ(data_buffer[1], 0.00001234);
+  ASSERT_DOUBLE_EQ(data_buffer[2], 1.0);
+  ASSERT_DOUBLE_EQ(data_buffer[3], -123.456);
+  ASSERT_DOUBLE_EQ(data_buffer[4], 123.456);
+  ASSERT_TRUE(std::isnan(data_buffer[5]));
+  ASSERT_TRUE(data_buffer[6] == -std::numeric_limits<double>::infinity());
+  ASSERT_TRUE(data_buffer[7] == std::numeric_limits<double>::infinity());
+}
+
 TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric16_10) {
   ArrowBufferView data;
   data.data.as_uint8 = kTestPgCopyNumeric16_10;
@@ -425,6 +482,56 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric16_10) {
   EXPECT_EQ(std::string(item.data, item.size_bytes), "-1.0123456789");
   item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 5);
   EXPECT_EQ(std::string(item.data, item.size_bytes), "nan");
+}
+
+TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric16_10ToDouble) {
+  ArrowBufferView data;
+  data.data.as_uint8 = kTestPgCopyNumeric16_10;
+  data.size_bytes = sizeof(kTestPgCopyNumeric16_10);
+
+  auto col_type = PostgresType(PostgresTypeId::kNumeric);
+  PostgresType input_type(PostgresTypeId::kRecord);
+  input_type.AppendChild("col", col_type);
+
+  PostgresCopyStreamTester tester;
+  ASSERT_EQ(tester.Init(input_type, NumericConversionStrategy::kToDouble), NANOARROW_OK);
+  ASSERT_EQ(tester.ReadAll(&data), ENODATA);
+  ASSERT_EQ(data.data.as_uint8 - kTestPgCopyNumeric16_10,
+            sizeof(kTestPgCopyNumeric16_10));
+  ASSERT_EQ(data.size_bytes, 0);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 7);
+  ASSERT_EQ(array->n_children, 1);
+
+  nanoarrow::UniqueSchema schema;
+  tester.GetSchema(schema.get());
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(array_view->children[0]->storage_type, NANOARROW_TYPE_DOUBLE);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
+  auto data_buffer = reinterpret_cast<const double*>(array->children[0]->buffers[1]);
+  ASSERT_NE(validity, nullptr);
+  ASSERT_NE(data_buffer, nullptr);
+  ASSERT_TRUE(ArrowBitGet(validity, 0));
+  ASSERT_TRUE(ArrowBitGet(validity, 1));
+  ASSERT_TRUE(ArrowBitGet(validity, 2));
+  ASSERT_TRUE(ArrowBitGet(validity, 3));
+  ASSERT_TRUE(ArrowBitGet(validity, 4));
+  ASSERT_TRUE(ArrowBitGet(validity, 5));
+  ASSERT_FALSE(ArrowBitGet(validity, 6));
+
+  ASSERT_DOUBLE_EQ(data_buffer[0], 0.0);
+  ASSERT_DOUBLE_EQ(data_buffer[1], 1.01234);
+  ASSERT_DOUBLE_EQ(data_buffer[2], 1.0123456789);
+  ASSERT_DOUBLE_EQ(data_buffer[3], -1.0123400000);
+  ASSERT_DOUBLE_EQ(data_buffer[4], -1.0123456789);
+  ASSERT_TRUE(std::isnan(data_buffer[5]));
 }
 
 TEST(PostgresCopyUtilsTest, PostgresCopyReadTimestamp) {
