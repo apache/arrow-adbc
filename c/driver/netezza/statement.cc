@@ -1627,9 +1627,8 @@ AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
 
 AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
   // TODO: we should pipeline here and assume this will succeed
-  transform(query_.begin(), query_.end(), query_.begin(), ::toupper);
   PGresult* result;
-  if (query_.rfind("SELECT", 0) != 0) {
+  if ((query_.rfind("SELECT", 0) != 0) || query_.rfind("select", 0) != 0) {
     /*
       For the queries not starting with 'SELECT', we need a result object to have 0 columns/rows.
       And we don't want to prepare since NZ's PQprepare is not meant for non-SELECT queries.
