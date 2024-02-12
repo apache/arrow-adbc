@@ -38,6 +38,7 @@ function build_drivers {
     if [[ $(uname) == "Linux" ]]; then
         export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.so
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.so
+        export ADBC_NETEZZA_LIBRARY=${build_dir}/lib/libadbc_driver_netezza.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
         export ADBC_SNOWFLAKE_LIBRARY=${build_dir}/lib/libadbc_driver_snowflake.so
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
