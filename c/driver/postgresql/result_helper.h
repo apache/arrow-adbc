@@ -18,6 +18,7 @@
 #pragma once
 
 #include <cassert>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -33,14 +34,13 @@ struct PqRecord {
   const int len;
   const bool is_null;
 
-  // XXX: can't use optional due to R
-  std::pair<bool, double> ParseDouble() const {
+  std::optional<double> ParseDouble() const {
     char* end;
     double result = std::strtod(data, &end);
     if (errno != 0 || end == data) {
-      return std::make_pair(false, 0.0);
+      return std::nullopt;
     }
-    return std::make_pair(true, result);
+    return result;
   }
 };
 
