@@ -111,6 +111,7 @@ jobs:
           export ADBC_USE_ASAN=OFF
           export ADBC_USE_UBSAN=OFF
           export PATH=$RUNNER_TOOL_CACHE/go/1.19.13/x64/bin:$PATH
+          export ADBC_CMAKE_ARGS="-DCMAKE_UNITY_BUILD=ON"
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Go Build
         shell: bash -l {0}
@@ -167,24 +168,25 @@ jobs:
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
 
-      - name: Build SQLite3 Driver
+      - name: Build
         shell: bash -l {0}
+        env:
+          ADBC_CMAKE_ARGS: "-DCMAKE_UNITY_BUILD=ON"
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          BUILD_DRIVER_SQLITE: "1"
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test SQLite3 Driver
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Test
         shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_test.sh "$(pwd)/build"
-      - name: Build PostgreSQL Driver
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Build Driver Manager
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test Driver Manager
-        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          # PostgreSQL is explicitly not tested here since we don't spawn
+          # Postgres; see integration.yml
+          BUILD_DRIVER_POSTGRESQL: "0"
+          BUILD_DRIVER_SQLITE: "1"
         run: |
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
