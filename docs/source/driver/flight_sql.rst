@@ -123,6 +123,8 @@ the :cpp:class:`AdbcDatabase`.
          ) as conn:
              pass
 
+      For more examples, see :doc:`../python/recipe/flight_sql`.
+
    .. tab-item:: Go
       :sync: go
 
