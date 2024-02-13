@@ -5,18 +5,18 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<meta property="og:title" content="adbc_driver_postgresql" />
+<meta property="og:title" content="Flight SQL Recipes" />
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://arrow.apache.org/adbc/main/python/api/adbc_driver_postgresql.html" />
+<meta property="og:url" content="https://arrow.apache.org/adbc/main/python/recipe/flight_sql.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Low-Level API: DBAPI 2.0 API: DBAPI 2.0-compatible facade for the ADBC libpq driver." />
+<meta property="og:description" content="Some of these recipes are written againt a demo Flight SQL service backed by SQLite. You can run it yourself as follows: Other recipes work using the OSS version of Dremio: If you have the ADBC rep..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Low-Level API: DBAPI 2.0 API: DBAPI 2.0-compatible facade for the ADBC libpq driver." />
-<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="adbc_driver_sqlite" href="adbc_driver_sqlite.html" /><link rel="prev" title="adbc_driver_flightsql" href="adbc_driver_flightsql.html" />
+<meta name="description" content="Some of these recipes are written againt a demo Flight SQL service backed by SQLite. You can run it yourself as follows: Other recipes work using the OSS version of Dremio: If you have the ADBC rep..." />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="PostgreSQL Recipes" href="postgresql.html" /><link rel="prev" title="Driver Manager Recipes" href="driver_manager.html" />
 
     <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
-        <title>adbc_driver_postgresql - ADBC 0.10.0 (dev) documentation</title>
+        <title>Flight SQL Recipes - ADBC 0.10.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
@@ -255,17 +255,17 @@
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../driver_manager.html">Driver Manager</a></li>
-<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Python API Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
-<li class="toctree-l3 current current-page"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../recipe/index.html">Python Cookbook</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Python Cookbook</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../recipe/driver_manager.html">Driver Manager Recipes</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../recipe/flight_sql.html">Flight SQL Recipes</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../recipe/postgresql.html">PostgreSQL Recipes</a></li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Python Cookbook</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Python Cookbook</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="driver_manager.html">Driver Manager Recipes</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">Flight SQL Recipes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="postgresql.html">PostgreSQL Recipes</a></li>
 </ul>
 </li>
 </ul>
@@ -314,7 +314,7 @@
         </a>
         <div class="content-icon-container">
           <div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/python/api/adbc_driver_postgresql.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/python/recipe/flight_sql.rst" title="Edit this page">
     <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
@@ -336,55 +336,121 @@
           </label>
         </div>
         <article role="main">
-          <section id="adbc-driver-postgresql">
-<h1><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code><a class="headerlink" href="#adbc-driver-postgresql" title="Permalink to this heading">#</a></h1>
-<section id="module-adbc_driver_postgresql">
-<span id="low-level-api"></span><h2>Low-Level API<a class="headerlink" href="#module-adbc_driver_postgresql" title="Permalink to this heading">#</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="adbc_driver_postgresql.StatementOptions">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_postgresql.</span></span><span class="sig-name descname"><span class="pre">StatementOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_postgresql.StatementOptions" title="Permalink to this definition">#</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
-<p>Statement options specific to the PostgreSQL driver.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="adbc_driver_postgresql.StatementOptions.BATCH_SIZE_HINT_BYTES">
-<span class="sig-name descname"><span class="pre">BATCH_SIZE_HINT_BYTES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.postgresql.batch_size_hint_bytes'</span></em><a class="headerlink" href="#adbc_driver_postgresql.StatementOptions.BATCH_SIZE_HINT_BYTES" title="Permalink to this definition">#</a></dt>
-<dd><p>Try to limit returned batches to this size (in bytes).</p>
-<p>This is merely a hint, and because the size is estimated, the
-actual size may differ.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="adbc_driver_postgresql.connect">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_postgresql.</span></span><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase" title="adbc_driver_manager._lib.AdbcDatabase"><span class="pre">AdbcDatabase</span></a></span></span><a class="headerlink" href="#adbc_driver_postgresql.connect" title="Permalink to this definition">#</a></dt>
-<dd><p>Create a low level ADBC connection to PostgreSQL.</p>
-</dd></dl>
-
+          <section id="flight-sql-recipes">
+<h1>Flight SQL Recipes<a class="headerlink" href="#flight-sql-recipes" title="Permalink to this heading">#</a></h1>
+<p>Some of these recipes are written againt a demo Flight SQL service backed by
+SQLite.  You can run it yourself as follows:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>go<span class="w"> </span>install<span class="w"> </span>github.com/apache/arrow/go/v<span class="si">${</span><span class="nv">ARROW_MAJOR_VERSION</span><span class="si">}</span>/arrow/flight/flightsql/example/cmd/sqlite_flightsql_server@latest
+$<span class="w"> </span>sqlite_flightsql_server<span class="w"> </span>-host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>-port<span class="w"> </span><span class="m">8080</span>
+</pre></div>
+</div>
+<p>Other recipes work using the OSS version of <a class="reference external" href="https://www.dremio.com/">Dremio</a>:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>docker<span class="w"> </span>run<span class="w"> </span>-p<span class="w"> </span><span class="m">9047</span>:9047<span class="w"> </span>-p<span class="w"> </span><span class="m">31010</span>:31010<span class="w"> </span>-p<span class="w"> </span><span class="m">45678</span>:45678<span class="w"> </span>dremio/dremio-oss
+</pre></div>
+</div>
+<p>If you have the ADBC repository checked out and Docker Compose installed, you
+can use our configuration to run both services:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>--detach<span class="w"> </span>--wait<span class="w"> </span>dremio<span class="w"> </span>dremio-init<span class="w"> </span>flightsql-sqlite-test
+</pre></div>
+</div>
+<section id="connect-to-an-unsecured-flight-sql-service">
+<h2>Connect to an unsecured Flight SQL service<a class="headerlink" href="#connect-to-an-unsecured-flight-sql-service" title="Permalink to this heading">#</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/flightsql_sqlite_connect.py">flightsql_sqlite_connect.py</a></p>
+<p>To connect to an unsecured Flight SQL service, just provide the URI.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">23</span>
+<span class="linenos">24</span><span class="kn">import</span> <span class="nn">adbc_driver_flightsql.dbapi</span>
+<span class="linenos">25</span>
+<span class="linenos">26</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_SQLITE_FLIGHTSQL_URI&quot;</span><span class="p">]</span>
+<span class="linenos">27</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_flightsql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can then execute a simple query.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">31</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">32</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+<span class="linenos">33</span>
+<span class="linenos">34</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+<span class="linenos">35</span>
+<span class="linenos">36</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
 </section>
-<section id="module-adbc_driver_postgresql.dbapi">
-<span id="dbapi-2-0-api"></span><h2>DBAPI 2.0 API<a class="headerlink" href="#module-adbc_driver_postgresql.dbapi" title="Permalink to this heading">#</a></h2>
-<p>DBAPI 2.0-compatible facade for the ADBC libpq driver.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="adbc_driver_postgresql.dbapi.connect">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_postgresql.dbapi.</span></span><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conn_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection" title="adbc_driver_manager.dbapi.Connection"><span class="pre">Connection</span></a></span></span><a class="headerlink" href="#adbc_driver_postgresql.dbapi.connect" title="Permalink to this definition">#</a></dt>
-<dd><p>Connect to PostgreSQL via ADBC.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>uri</strong><span class="classifier">str</span></dt><dd><p>The URI to connect to.</p>
-</dd>
-<dt><strong>db_kwargs</strong><span class="classifier">dict, optional</span></dt><dd><p>Initial database connection parameters.</p>
-</dd>
-<dt><strong>conn_kwargs</strong><span class="classifier">dict, optional</span></dt><dd><p>Connection-specific parameters.  (ADBC differentiates between
-a ‘database’ object shared between multiple ‘connection’
-objects.)</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
+<section id="connect-to-a-flight-sql-service-with-username-and-password">
+<h2>Connect to a Flight SQL service with username and password<a class="headerlink" href="#connect-to-a-flight-sql-service-with-username-and-password" title="Permalink to this heading">#</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/flightsql_dremio_connect.py">flightsql_dremio_connect.py</a></p>
+<p>Dremio requires a username and password.  To connect to a Flight SQL
+service with authentication, provide the options at connection time.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">23</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">24</span>
+<span class="linenos">25</span><span class="kn">import</span> <span class="nn">adbc_driver_flightsql.dbapi</span>
+<span class="linenos">26</span><span class="kn">import</span> <span class="nn">adbc_driver_manager</span>
+<span class="linenos">27</span>
+<span class="linenos">28</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_DREMIO_FLIGHTSQL_URI&quot;</span><span class="p">]</span>
+<span class="linenos">29</span><span class="n">username</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_DREMIO_FLIGHTSQL_USER&quot;</span><span class="p">]</span>
+<span class="linenos">30</span><span class="n">password</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_DREMIO_FLIGHTSQL_PASS&quot;</span><span class="p">]</span>
+<span class="linenos">31</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_flightsql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+<span class="linenos">32</span>    <span class="n">uri</span><span class="p">,</span>
+<span class="linenos">33</span>    <span class="n">db_kwargs</span><span class="o">=</span><span class="p">{</span>
+<span class="linenos">34</span>        <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">USERNAME</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">username</span><span class="p">,</span>
+<span class="linenos">35</span>        <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">PASSWORD</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">password</span><span class="p">,</span>
+<span class="linenos">36</span>    <span class="p">},</span>
+<span class="linenos">37</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can then execute a simple query.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">41</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">42</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+<span class="linenos">43</span>
+<span class="linenos">44</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+<span class="linenos">45</span>
+<span class="linenos">46</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="set-timeouts-and-other-options">
+<h2>Set timeouts and other options<a class="headerlink" href="#set-timeouts-and-other-options" title="Permalink to this heading">#</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/flightsql_sqlite_options.py">flightsql_sqlite_options.py</a></p>
+<p>The Flight SQL driver supports various options.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">23</span>
+<span class="linenos">24</span><span class="kn">import</span> <span class="nn">adbc_driver_flightsql.dbapi</span>
+<span class="linenos">25</span><span class="kn">from</span> <span class="nn">adbc_driver_flightsql</span> <span class="kn">import</span> <span class="n">ConnectionOptions</span><span class="p">,</span> <span class="n">DatabaseOptions</span>
+<span class="linenos">26</span>
+<span class="linenos">27</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_SQLITE_FLIGHTSQL_URI&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>We can enable cookie support, which some server implementations require.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">29</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_flightsql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+<span class="linenos">30</span>    <span class="n">uri</span><span class="p">,</span>
+<span class="linenos">31</span>    <span class="n">db_kwargs</span><span class="o">=</span><span class="p">{</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">WITH_COOKIE_MIDDLEWARE</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">},</span>
+<span class="linenos">32</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Other options are set on the connection or statement.</p>
+<p>For example, we can add a custom header to all outgoing requests.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">37</span><span class="n">custom_header</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ConnectionOptions</span><span class="o">.</span><span class="n">RPC_CALL_HEADER_PREFIX</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">x-custom-header&quot;</span>
+<span class="linenos">38</span><span class="n">conn</span><span class="o">.</span><span class="n">adbc_connection</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">custom_header</span><span class="p">:</span> <span class="s2">&quot;value&quot;</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>We can also set timeouts.  These are in floating-point seconds.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">41</span><span class="n">conn</span><span class="o">.</span><span class="n">adbc_connection</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span>
+<span class="linenos">42</span>    <span class="o">**</span><span class="p">{</span>
+<span class="linenos">43</span>        <span class="n">ConnectionOptions</span><span class="o">.</span><span class="n">TIMEOUT_FETCH</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="mf">30.0</span><span class="p">,</span>
+<span class="linenos">44</span>        <span class="n">ConnectionOptions</span><span class="o">.</span><span class="n">TIMEOUT_QUERY</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="mf">30.0</span><span class="p">,</span>
+<span class="linenos">45</span>        <span class="n">ConnectionOptions</span><span class="o">.</span><span class="n">TIMEOUT_UPDATE</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="mf">30.0</span><span class="p">,</span>
+<span class="linenos">46</span>    <span class="p">}</span>
+<span class="linenos">47</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>These options will apply to all cursors we create.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">51</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">52</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+<span class="linenos">53</span>
+<span class="linenos">54</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+<span class="linenos">55</span>
+<span class="linenos">56</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
 </section>
 </section>
 
@@ -393,23 +459,23 @@ objects.)</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="adbc_driver_sqlite.html">
+          <a class="next-page" href="postgresql.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></div>
+                <div class="title">PostgreSQL Recipes</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="adbc_driver_flightsql.html">
+          <a class="prev-page" href="driver_manager.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></div>
+                <div class="title">Driver Manager Recipes</div>
                 
               </div>
             </a>
@@ -446,19 +512,10 @@ United States and other countries.
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a><ul>
-<li><a class="reference internal" href="#module-adbc_driver_postgresql">Low-Level API</a><ul>
-<li><a class="reference internal" href="#adbc_driver_postgresql.StatementOptions"><code class="docutils literal notranslate"><span class="pre">StatementOptions</span></code></a><ul>
-<li><a class="reference internal" href="#adbc_driver_postgresql.StatementOptions.BATCH_SIZE_HINT_BYTES"><code class="docutils literal notranslate"><span class="pre">StatementOptions.BATCH_SIZE_HINT_BYTES</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#adbc_driver_postgresql.connect"><code class="docutils literal notranslate"><span class="pre">connect()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#module-adbc_driver_postgresql.dbapi">DBAPI 2.0 API</a><ul>
-<li><a class="reference internal" href="#adbc_driver_postgresql.dbapi.connect"><code class="docutils literal notranslate"><span class="pre">connect()</span></code></a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#">Flight SQL Recipes</a><ul>
+<li><a class="reference internal" href="#connect-to-an-unsecured-flight-sql-service">Connect to an unsecured Flight SQL service</a></li>
+<li><a class="reference internal" href="#connect-to-a-flight-sql-service-with-username-and-password">Connect to a Flight SQL service with username and password</a></li>
+<li><a class="reference internal" href="#set-timeouts-and-other-options">Set timeouts and other options</a></li>
 </ul>
 </li>
 </ul>
