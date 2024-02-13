@@ -1633,6 +1633,7 @@ AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
       For the queries not starting with 'SELECT', we need a result object to have 0 columns/rows.
       And we don't want to prepare since NZ's PQprepare is not meant for non-SELECT queries.
     */
+    // TODO: Running a query is not a good practice at customer's machine. Please change the approach.
     std::string tmp_query = "CREATE TEMP TABLE IF NOT EXISTS NZADBC_TEMP_TABLE__LONG_NAME_TO_NOT_MATCH_CUSTOMER_TABLE (C1 INT)";
     result = PQexec(connection_->conn(), tmp_query.c_str());
   } else {
