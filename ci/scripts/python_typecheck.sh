@@ -22,6 +22,7 @@ set -e
 : ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
+: ${BUILD_DRIVER_NETEZZA:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
 
@@ -40,6 +41,10 @@ main() {
 
     if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
         pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_postgresql"
+    fi
+
+    if [[ "${BUILD_DRIVER_NETEZZA}" -gt 0 ]]; then
+        pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_netezza"
     fi
 
     if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
