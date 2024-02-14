@@ -15,17 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-if(WIN32)
-  # XXX: for now, assume vcpkg
-  find_package(Netezza REQUIRED)
-  set(LIBPQ_LINK_LIBRARIES Netezza::Netezza wsock32 ws2_32)
-  set(LIBPQ_STATIC_LIBRARIES Netezza::Netezza)
-  set(LIBPQ_INCLUDE_DIRS)
-else()
-  set(ENV{PKG_CONFIG_PATH} ${REPOSITORY_ROOT}/c/driver/netezza/)
-  find_package(PkgConfig)
-  pkg_check_modules(LIBPQ REQUIRED libnzpq)
-endif()
+set(ENV{PKG_CONFIG_PATH} ${REPOSITORY_ROOT}/c/driver/netezza/)
+find_package(PkgConfig)
+pkg_check_modules(LIBPQ REQUIRED libnzpq)
+link_directories(nz_lib)
 
 add_arrow_lib(adbc_driver_netezza
               SOURCES
@@ -45,6 +38,7 @@ add_arrow_lib(adbc_driver_netezza
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
+              nzpq
               adbc_driver_common
               nanoarrow
               ${LIBPQ_LINK_LIBRARIES}
