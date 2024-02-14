@@ -81,6 +81,7 @@ build_drivers "${source_dir}" "${build_dir}"
 # Check that we don't expose any unwanted symbols
 check_visibility $ADBC_FLIGHTSQL_LIBRARY
 check_visibility $ADBC_POSTGRESQL_LIBRARY
+check_visibility $ADBC_NETEZZA_LIBRARY
 check_visibility $ADBC_SQLITE_LIBRARY
 check_visibility $ADBC_SNOWFLAKE_LIBRARY
 

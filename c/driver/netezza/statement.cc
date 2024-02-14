@@ -709,7 +709,7 @@ int TupleReader::AppendToChildArrayForColumnType(struct ArrowArray* child, char*
       std::istringstream iss(value);
       if (iss >> std::get_time(&t, "%Y-%m-%d")) {
         time_t epoch = std::mktime(&t);
-        ArrowArrayAppendInt(child, (int32_t) epoch);
+        ArrowArrayAppendInt(child, (int32_t) epoch / (60 * 60 * 24));
       }
       break;
     }
@@ -1628,7 +1628,10 @@ AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
 AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
   // TODO: we should pipeline here and assume this will succeed
   PGresult* result;
-  if ((query_.rfind("SELECT", 0) != 0) || query_.rfind("select", 0) != 0) {
+  if ((query_.rfind("SELECT", 0) == 0) || query_.rfind("select", 0) == 0) {
+    result = PQprepare(connection_->conn(), /*stmtName=*/"", query_.c_str(),
+                                /*nParams=*/0, nullptr);
+  } else {
     /*
       For the queries not starting with 'SELECT', we need a result object to have 0 columns/rows.
       And we don't want to prepare since NZ's PQprepare is not meant for non-SELECT queries.
@@ -1636,9 +1639,6 @@ AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
     // TODO: Running a query is not a good practice at customer's machine. Please change the approach.
     std::string tmp_query = "CREATE TEMP TABLE IF NOT EXISTS NZADBC_TEMP_TABLE__LONG_NAME_TO_NOT_MATCH_CUSTOMER_TABLE (C1 INT)";
     result = PQexec(connection_->conn(), tmp_query.c_str());
-  } else {
-    result = PQprepare(connection_->conn(), /*stmtName=*/"", query_.c_str(),
-                                /*nParams=*/0, nullptr);
   }
   if ((PQresultStatus(result) != PGRES_TUPLES_OK) && (PQresultStatus(result) != PGRES_COMMAND_OK)) {
     AdbcStatusCode code =
