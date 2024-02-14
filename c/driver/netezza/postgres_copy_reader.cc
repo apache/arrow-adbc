@@ -734,6 +734,7 @@ namespace adbcpq {
 
     case NANOARROW_TYPE_DATE32: {
       // 2000-01-01
+      // Stores number of DAYS since start of epoch - 1970-01-01.
       constexpr int32_t kPostgresDateEpoch = 10957;
       *out = new PostgresCopyNetworkEndianFieldReader<int32_t, kPostgresDateEpoch>();
       return NANOARROW_OK;

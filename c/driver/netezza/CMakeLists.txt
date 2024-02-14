@@ -39,6 +39,8 @@ add_arrow_lib(adbc_driver_netezza
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
               nzpq
+	      krb5
+	      ssl
               adbc_driver_common
               nanoarrow
               ${LIBPQ_LINK_LIBRARIES}
