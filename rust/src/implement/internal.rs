@@ -54,8 +54,7 @@ type ConnType<StatementType> = <StatementType as AdbcStatementImpl>::ConnectionT
 type DBType<StatementType> = <ConnType<StatementType> as AdbcConnectionImpl>::DatabaseType;
 
 /// Initialize an ADBC driver that dispatches to the types defined by the provided
-/// `StatementType`. The associated error type for the statement, connection, and
-/// database types must implement [AdbcError].
+/// `StatementType`.
 pub fn init_adbc_driver<StatementType>() -> FFI_AdbcDriver
 where
     StatementType: AdbcStatementImpl,
@@ -68,10 +67,10 @@ where
         database_new: Some(database_new::<DBType<StatementType>>),
         database_release: Some(database_release::<DBType<StatementType>>),
         database_set_option: Some(database_set_option::<DBType<StatementType>>),
-        connection_commit: Some(connection_commit::<StatementType::ConnectionType>),
-        connection_get_info: Some(connection_get_info::<StatementType::ConnectionType>),
-        connection_init: Some(connection_init::<StatementType::ConnectionType>),
-        connection_release: Some(connection_release::<StatementType::ConnectionType>),
+        connection_commit: Some(connection_commit::<ConnType<StatementType>>),
+        connection_get_info: Some(connection_get_info::<ConnType<StatementType>>),
+        connection_init: Some(connection_init::<ConnType<StatementType>>),
+        connection_release: Some(connection_release::<ConnType<StatementType>>),
         connection_get_objects: Some(connection_get_objects::<ConnType<StatementType>>),
         connection_get_table_schema: Some(connection_get_table_schema::<ConnType<StatementType>>),
         connection_get_table_types: Some(connection_get_table_types::<ConnType<StatementType>>),
@@ -545,8 +544,7 @@ unsafe extern "C" fn statement_new<StatementType: AdbcStatementImpl>(
     statement_out: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    let connection: &Rc<StatementType::ConnectionType> =
-        check_err!(try_unwrap(connection_ptr), error);
+    let connection: &Rc<ConnType<StatementType>> = check_err!(try_unwrap(connection_ptr), error);
     let statement = StatementType::new_from_connection(connection.clone());
     let res = statement_out
         .as_mut()
