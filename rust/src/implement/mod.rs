@@ -53,12 +53,13 @@ pub trait AdbcConnectionImpl: AdbcConnection {
     fn init(&self, database: Arc<Self::DatabaseType>) -> Result<(), AdbcError>;
 }
 
+/// An implementation of an ADBC statement. Must implement [AdbcStatement].
 pub trait AdbcStatementImpl: AdbcStatement {
     type ConnectionType: AdbcConnectionImpl + Default;
 
     /// Create a new statement.
     ///
-    /// The conn should be saved within the struct.
+    /// The Rc to the connection should be stored within your struct.
     fn new_from_connection(conn: Rc<Self::ConnectionType>) -> Self;
 }
 
@@ -66,10 +67,10 @@ pub trait AdbcStatementImpl: AdbcStatement {
 ///
 /// The default name recommended is `AdbcDriverInit` or `<Prefix>DriverInit`.
 ///
-/// The type must implement [AdbcStatementImpl].
+/// The statement type must implement [AdbcStatementImpl].
 #[macro_export]
 macro_rules! adbc_init_func {
-    ($func_name:ident, $statement_type:ident) => {
+    ($func_name:ident, $statement_type:ty) => {
         #[no_mangle]
         pub unsafe extern "C" fn $func_name(
             version: ::std::os::raw::c_int,
