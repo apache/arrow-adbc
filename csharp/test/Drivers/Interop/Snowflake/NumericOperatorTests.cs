@@ -31,14 +31,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
     public class NumericOperatorTests : IDisposable
     {
-        static readonly string s_testTablePrefix = "ADBCOPERATORTEST_"; // Make configurable? Also; must be all caps if not double quoted
+        private const string TestTablePrefix = "ADBCOPERATORTEST_"; // Make configurable? Also; must be all caps if not double quoted
+        private const string ColumnNameLeft = "LEFT_OPERAND";
+        private const string ColumnNameRight = "RIGHT_OPERAND";
         readonly SnowflakeTestConfiguration _snowflakeTestConfiguration;
         readonly AdbcConnection _connection;
         readonly AdbcStatement _statement;
         readonly string _catalogSchema;
         private readonly ITestOutputHelper _output;
-        private const string COLUMN_NAME_LEFT = "LEFT_OPERAND";
-        private const string COLUMN_NAME_RIGHT = "RIGHT_OPERAND";
 
         private readonly record struct ColumnPair
         {
@@ -50,8 +50,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 ValueRight = valueRight;
             }
 
-            public static string ColumnNameLeft { get; } = COLUMN_NAME_LEFT;
-            public static string ColumnNameRight { get; } = COLUMN_NAME_RIGHT;
+            public static string ColumnNameLeft { get; } = NumericOperatorTests.ColumnNameLeft;
+            public static string ColumnNameRight { get; } = NumericOperatorTests.ColumnNameRight;
             public string ColumnDefLeft { get; }
             public string ValueLeft { get; }
             public string ColumnDefRight { get; }
@@ -459,7 +459,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string columnsDef = $"{ColumnPair.ColumnNameLeft} {initialData.ColumnDefLeft}, {ColumnPair.ColumnNameRight} {initialData.ColumnDefRight}";
             table = CreateTemporaryTable(
                 _statement,
-                s_testTablePrefix,
+                TestTablePrefix,
                 _catalogSchema,
                 columnsDef);
             InsertValues(table, initialData);
@@ -472,10 +472,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             out string table,
             bool useSelectSyntax = false)
         {
-            columnName = COLUMN_NAME_LEFT;
+            columnName = ColumnNameLeft;
             table = CreateTemporaryTable(
                 _statement,
-                s_testTablePrefix,
+                TestTablePrefix,
                 _catalogSchema,
                 string.Format("{0} {1}", columnName, columnSpecification));
             if (useSelectSyntax)
