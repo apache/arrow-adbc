@@ -25,13 +25,16 @@ import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** An ADBC driver wrapping the JDBC API. */
 public class JdbcDriver implements AdbcDriver {
   /** A parameter for creating an {@link AdbcDatabase} from a {@link DataSource}. */
   public static final String PARAM_DATASOURCE = "adbc.jdbc.datasource";
+
   /** A parameter for specifying backend-specific configuration (type: {@link JdbcQuirks}). */
   public static final String PARAM_JDBC_QUIRKS = "adbc.jdbc.quirks";
+
   /**
    * A parameter for specifying a URI to connect to.
    *
@@ -85,8 +88,8 @@ public class JdbcDriver implements AdbcDriver {
     return new JdbcDataSourceDatabase(allocator, dataSource, username, password, jdbcQuirks);
   }
 
-  private static <T> T getParam(Class<T> klass, Map<String, Object> parameters, String... choices)
-      throws AdbcException {
+  private static <T> @Nullable T getParam(
+      Class<T> klass, Map<String, Object> parameters, String... choices) throws AdbcException {
     Object result = null;
     for (String choice : choices) {
       Object value = parameters.get(choice);

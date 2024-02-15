@@ -27,6 +27,7 @@ import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.memory.BufferAllocator;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Instantiate connections to ABDC databases generically based on driver name. */
 public final class AdbcDriverManager {
@@ -38,10 +39,13 @@ public final class AdbcDriverManager {
     driverFactoryFunctions = new ConcurrentHashMap<>();
     final ServiceLoader<AdbcDriverFactory> serviceLoader =
         ServiceLoader.load(AdbcDriverFactory.class);
-    serviceLoader.forEach(
-        driverFactory ->
-            driverFactoryFunctions.putIfAbsent(
-                driverFactory.getClass().getCanonicalName(), driverFactory::getDriver));
+    for (AdbcDriverFactory driverFactory : serviceLoader) {
+      final @Nullable String className = driverFactory.getClass().getCanonicalName();
+      if (className == null) {
+        throw new RuntimeException("Class has no canonical name");
+      }
+      driverFactoryFunctions.putIfAbsent(className, driverFactory::getDriver);
+    }
   }
 
   /**
@@ -77,7 +81,7 @@ public final class AdbcDriverManager {
    *     fully-qualified class name of an AdbcDriverFactory class.
    * @return A function to construct an AdbcDriver from a BufferAllocator, or null if not found.
    */
-  Function<BufferAllocator, AdbcDriver> lookupDriver(String driverFactoryName) {
+  @Nullable Function<BufferAllocator, AdbcDriver> lookupDriver(String driverFactoryName) {
     return driverFactoryFunctions.get(driverFactoryName);
   }
 
