@@ -638,6 +638,10 @@ impl AdbcConnection for DriverConnection {
 
         let mut reader = FFI_ArrowArrayStream::empty();
 
+        // `&[InfoCode]` cannot be directly interpreted as `*const u32` because
+        // `InfoCode` has length 8 bytes because of the `Other(u32)` variant.
+        let info_codes: Option<Vec<u32>> =
+            info_codes.map(|ic| ic.iter().map(|c| u32::from(*c)).collect());
         let (info_codes_ptr, info_codes_len) = match &info_codes {
             Some(info) => (info.as_ptr(), info.len()),
             None => (null(), 0),
@@ -647,7 +651,7 @@ impl AdbcConnection for DriverConnection {
         let status = unsafe {
             get_info(
                 self.inner.borrow_mut().deref_mut(),
-                info_codes_ptr as *const u32,
+                info_codes_ptr,
                 info_codes_len,
                 &mut reader,
                 &mut error,

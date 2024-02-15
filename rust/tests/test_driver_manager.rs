@@ -81,7 +81,11 @@ fn test_connection_get_info() {
     let connection = get_connection().unwrap();
 
     let info_got: HashMap<InfoCode, InfoData> = connection
-        .get_info(Some(&[InfoCode::DriverName, InfoCode::VendorName]))
+        .get_info(Some(&[
+            InfoCode::DriverName,
+            InfoCode::VendorName,
+            InfoCode::DriverVersion,
+        ]))
         .unwrap();
 
     let info_expected = [
@@ -90,6 +94,10 @@ fn test_connection_get_info() {
             InfoData::StringValue("ADBC SQLite Driver".into()),
         ),
         (InfoCode::VendorName, InfoData::StringValue("SQLite".into())),
+        (
+            InfoCode::DriverVersion,
+            InfoData::StringValue("(unknown)".into()),
+        ),
     ]
     .into_iter()
     .collect();
@@ -217,3 +225,5 @@ fn test_ingest() {
 
     assert_eq!(data, record_batch);
 }
+
+// TODOs: add tests for `bind_stream`, `commit` and `rollback`
