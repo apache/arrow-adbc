@@ -33,6 +33,7 @@ use arrow_adbc::objects::{
     ColumnSchemaRef, DatabaseCatalogCollection, DatabaseCatalogEntry, DatabaseSchemaEntry,
     DatabaseTableEntry,
 };
+use arrow_adbc::options::AdbcOptionKey;
 use arrow_adbc::{AdbcConnection, AdbcStatement, ADBC_VERSION_1_0_0};
 use arrow_adbc::{AdbcDatabase, AdbcObjectDepth};
 
@@ -54,16 +55,18 @@ fn get_connection() -> Result<DriverConnection> {
 
 #[test]
 fn test_database() {
-    let driver = get_driver().unwrap();
-    let database = driver
-        .new_database()
-        .unwrap()
-        .set_option("uri", "test.db")
-        .unwrap()
-        .init();
-    database.set_option("uri", "test2.db").unwrap();
-    database.connect([("uri", "")]).unwrap();
-    database.new_connection().unwrap().init().unwrap();
+    let database = get_database().unwrap();
+    database.set_option("uri", "").unwrap();
+    database.new_connection().unwrap();
+    database.connect::<&str, &str>([]).unwrap();
+}
+
+#[test]
+fn test_connection() {
+    let connection = get_connection().unwrap();
+    connection
+        .set_option(AdbcOptionKey::AutoCommit.as_ref(), "true")
+        .unwrap();
 }
 
 #[test]
