@@ -626,7 +626,7 @@ impl AdbcConnection for DriverConnection {
         let table_types: Vec<String> = batches
             .iter()
             .map(|batch| as_string_array(batch.column(0)))
-            .flat_map(|arr| arr.iter().flat_map(|x| x))
+            .flat_map(|arr| arr.iter().flatten())
             .map(|s| s.to_string())
             .collect();
 
