@@ -470,10 +470,10 @@ impl AdbcDatabase for DriverDatabase {
         K: AsRef<str>,
         V: AsRef<str>,
     {
-        options
+        let builder = options
             .into_iter()
-            .try_for_each(|(k, v)| self.set_option(k, v))?;
-        self.new_connection()?.init()
+            .try_fold(self.new_connection()?, |acc, (k, v)| acc.set_option(k, v))?;
+        builder.init()
     }
 }
 
