@@ -18,7 +18,7 @@
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     rc::Rc,
     sync::{Arc, Mutex},
 };
@@ -431,68 +431,94 @@ fn test_connection_set_option() {
 }
 
 #[test]
-#[ignore]
 fn test_connection_get_info() {
     use num_enum::FromPrimitive;
     let (conn, mock_driver) = get_connection();
 
-    let code_cases = &[
+    let infos: HashMap<InfoCode, InfoData> = [
+        (
+            InfoCode::VendorName,
+            InfoData::StringValue(Cow::Borrowed("A")),
+        ),
+        (
+            InfoCode::VendorVersion,
+            InfoData::StringValue(Cow::Borrowed("B")),
+        ),
+        (
+            InfoCode::VendorArrowVersion,
+            InfoData::StringValue(Cow::Borrowed("C")),
+        ),
+        (
+            InfoCode::DriverName,
+            InfoData::StringValue(Cow::Borrowed("D")),
+        ),
+        (
+            InfoCode::DriverVersion,
+            InfoData::StringValue(Cow::Borrowed("E")),
+        ),
+        (
+            InfoCode::DriverArrowVersion,
+            InfoData::StringValue(Cow::Borrowed("F")),
+        ),
+    ]
+    .into_iter()
+    .collect();
+
+    let codes_cases = &[
         None,
         Some(vec![
-            InfoCode::from_primitive(0u32),
-            InfoCode::from_primitive(100u32),
-            InfoCode::from_primitive(101u32),
+            InfoCode::VendorName,
+            InfoCode::DriverName,
+            InfoCode::DriverVersion,
         ]),
         Some(vec![InfoCode::from_primitive(u32::MAX)]),
         Some(vec![]),
     ];
     let output_cases = &[
-        vec!["x", "y", "z", "2"],
-        vec!["x", "y", "z"],
-        vec!["2"],
-        vec![],
+        infos.clone(),
+        [
+            (
+                InfoCode::VendorName,
+                InfoData::StringValue(Cow::Borrowed("A")),
+            ),
+            (
+                InfoCode::DriverName,
+                InfoData::StringValue(Cow::Borrowed("D")),
+            ),
+            (
+                InfoCode::DriverVersion,
+                InfoData::StringValue(Cow::Borrowed("E")),
+            ),
+        ]
+        .into_iter()
+        .collect(),
+        [].into_iter().collect(),
+        [].into_iter().collect(),
     ];
 
-    for (codes, expected_output) in code_cases.iter().zip(output_cases.iter()) {
-        let expected_codes = codes.clone();
-        let output = expected_output.clone();
+    for (codes, expected_output) in codes_cases.iter().zip(output_cases.iter()) {
+        let infos = infos.clone();
+
         set_driver_method!(
             mock_driver,
             connection_get_info,
             move |info_codes: Option<&[InfoCode]>| {
-                if let Some(info_codes) = info_codes {
-                    assert_eq!(info_codes, expected_codes.as_ref().unwrap().as_slice());
-                }
-                let data = output
-                    .iter()
-                    .copied()
-                    .into_iter()
-                    .map(|val| InfoData::StringValue(Cow::Borrowed(val)));
-                Ok(std::iter::repeat(1u32)
-                    .map(InfoCode::from_primitive)
-                    .zip(data)
-                    .collect())
+                Ok(match info_codes {
+                    None => infos.clone(),
+                    Some(info_codes) => info_codes
+                        .iter()
+                        .filter(|code| infos.contains_key(code))
+                        .map(|code| (*code, infos.get(code).unwrap().clone()))
+                        .collect(),
+                })
             }
         );
 
-        let res: HashSet<String> = conn
+        let got_output = conn
             .get_info(codes.as_ref().map(|codes| codes.as_slice()))
-            .unwrap()
-            .into_iter()
-            .map(|(_, info)| match info {
-                InfoData::StringValue(val) => val.into_owned(),
-                _ => unreachable!(),
-            })
-            .collect();
+            .unwrap();
 
-        assert_eq!(
-            res,
-            expected_output
-                .iter()
-                .cloned()
-                .map(|x| x.to_owned())
-                .collect()
-        );
+        assert_eq!(&got_output, expected_output);
 
         set_driver_method!(mock_driver, connection_get_info, |_: Option<
             &[InfoCode],
