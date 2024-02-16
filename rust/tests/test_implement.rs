@@ -34,7 +34,11 @@ use arrow_adbc::{
     error::{AdbcError, AdbcStatusCode},
     implement::{AdbcConnectionImpl, AdbcDatabaseImpl, AdbcStatementImpl},
     info::{InfoCode, InfoData},
-    objects::SimpleCatalogCollection,
+    objects::{
+        ColumnSchema, ColumnSchemaRef, DatabaseCatalogCollection, SimpleCatalogCollection,
+        SimpleCatalogEntry, SimpleSchemaEntry, SimpleTableEntry, TableConstraint,
+        TableConstraintRef, TableConstraintTypeRef,
+    },
     AdbcConnection, AdbcDatabase, AdbcObjectDepth, AdbcStatement, PartitionedStatementResult,
     StatementResult, ADBC_VERSION_1_0_0,
 };
@@ -159,7 +163,7 @@ impl AdbcDatabase for TestDatabase {
     fn connect<K, V>(
         &self,
         _options: impl IntoIterator<Item = (K, V)>,
-    ) -> std::result::Result<Self::ConnectionType, AdbcError>
+    ) -> Result<Self::ConnectionType>
     where
         K: AsRef<str>,
         V: AsRef<str>,
@@ -218,7 +222,7 @@ impl AdbcConnection for TestConnection {
     type StatementType = TestStatement;
     type ObjectCollectionType = SimpleCatalogCollection;
 
-    fn new_statement(&self) -> std::result::Result<Self::StatementType, AdbcError> {
+    fn new_statement(&self) -> Result<Self::StatementType> {
         todo!()
     }
 
@@ -532,10 +536,80 @@ fn test_connection_get_info() {
     }
 }
 
+fn column_schema(name: &str, ordinal_position: i32) -> ColumnSchema {
+    let column = ColumnSchemaRef {
+        name,
+        ordinal_position,
+        remarks: None,
+        xdbc_data_type: None,
+        xdbc_type_name: None,
+        xdbc_column_size: None,
+        xdbc_decimal_digits: None,
+        xdbc_num_prec_radix: None,
+        xdbc_nullable: None,
+        xdbc_column_def: None,
+        xdbc_sql_data_type: None,
+        xdbc_datetime_sub: None,
+        xdbc_char_octet_length: None,
+        xdbc_is_nullable: None,
+        xdbc_scope_catalog: None,
+        xdbc_scope_schema: None,
+        xdbc_scope_table: None,
+        xdbc_is_autoincrement: None,
+        xdbc_is_generatedcolumn: None,
+    };
+    column.to_owned()
+}
+
+fn table_constraint(name: &str, columns: Vec<&str>) -> TableConstraint {
+    let constraint = TableConstraintRef {
+        name: Some(name),
+        columns,
+        constraint_type: TableConstraintTypeRef::PrimaryKey,
+    };
+    constraint.to_owned()
+}
+
 #[test]
-#[ignore]
 fn test_connection_get_objects() {
-    todo!()
+    let catalogs = SimpleCatalogCollection::new(vec![SimpleCatalogEntry::new(
+        None,
+        vec![SimpleSchemaEntry::new(
+            None,
+            vec![SimpleTableEntry::new(
+                "t1".into(),
+                "table".into(),
+                vec![
+                    column_schema("c1", 1),
+                    column_schema("c2", 2),
+                    column_schema("c3", 3),
+                ],
+                vec![table_constraint("cons1", vec!["c1", "c2"])],
+            )],
+        )],
+    )]);
+
+    let (conn, mock_driver) = get_connection();
+
+    let expected_catalogs = catalogs.clone();
+    set_driver_method!(
+        mock_driver,
+        connection_get_objects,
+        move |depth, catalog, schema, table, table_type, column_name| {
+            assert_eq!(depth, AdbcObjectDepth::All);
+            assert_eq!(catalog, None);
+            assert_eq!(schema, None);
+            assert_eq!(table, None);
+            assert_eq!(table_type, None);
+            assert_eq!(column_name, None);
+            Ok(expected_catalogs.clone())
+        }
+    );
+
+    let got_catalogs = conn
+        .get_objects(AdbcObjectDepth::All, None, None, None, None, None)
+        .unwrap();
+    assert_eq!(catalogs.to_record_batch(), got_catalogs.to_record_batch());
 }
 
 #[test]
