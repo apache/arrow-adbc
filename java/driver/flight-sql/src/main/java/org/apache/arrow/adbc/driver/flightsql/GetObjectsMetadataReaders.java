@@ -189,7 +189,7 @@ final class GetObjectsMetadataReaders {
         String catalog)
         throws AdbcException {
       super(allocator, client, clientCache, () -> doRequest(client));
-      catalogPattern = Pattern.compile(sqlToRegexLike(catalog));
+      catalogPattern = catalog != null ? Pattern.compile(sqlToRegexLike(catalog)) : null;
     }
 
     @Override
@@ -356,7 +356,7 @@ final class GetObjectsMetadataReaders {
           () -> doRequest(client, catalogPattern, schemaPattern, tablePattern, tableTypes, true));
       this.catalogPattern = catalogPattern;
       this.dbSchemaPattern = schemaPattern;
-      compiledColumnNamePattern = Pattern.compile(sqlToRegexLike(columnPattern));
+      compiledColumnNamePattern = columnPattern != null ? Pattern.compile(sqlToRegexLike(columnPattern)) : null;
       shouldGetColumns = true;
     }
 
@@ -608,7 +608,7 @@ final class GetObjectsMetadataReaders {
         String[] tableTypes,
         boolean shouldGetColumns) {
       return client
-          .getTables(catalog, schemaPattern, table, Arrays.asList(tableTypes), shouldGetColumns)
+          .getTables(catalog, schemaPattern, table, null != tableTypes ? Arrays.asList(tableTypes) : null, shouldGetColumns)
           .getEndpoints();
     }
   }
