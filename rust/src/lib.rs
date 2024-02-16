@@ -252,7 +252,7 @@ pub trait AdbcConnection {
 }
 
 /// Depth parameter for GetObjects method.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(i32)]
 pub enum AdbcObjectDepth {
     /// Metadata on catalogs, schemas, tables, and columns.

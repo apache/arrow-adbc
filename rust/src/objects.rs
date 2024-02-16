@@ -54,12 +54,12 @@
 //! | [ForeignKeyUsage] | [ForeignKeyUsageRef] |
 use std::sync::Arc;
 
+use arrow::buffer::OffsetBuffer;
 use arrow_array::builder::{
     ArrayBuilder, BooleanBufferBuilder, BooleanBuilder, Int16Builder, Int32BufferBuilder,
     Int32Builder, ListBuilder, StringBuilder,
 };
-use arrow_array::{Array, ArrayRef, ListArray, RecordBatch, StructArray};
-use arrow_data::ArrayDataBuilder;
+use arrow_array::{ArrayRef, ListArray, RecordBatch, StructArray};
 use arrow_schema::{DataType, Field};
 
 pub(crate) struct UsageArrayBuilder {
@@ -246,18 +246,19 @@ impl ConstraintArrayBuilder {
     }
 
     pub fn finish(mut self) -> StructArray {
-        let usage_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
-            .null_bit_buffer(Some(self.usage_validity.into()))
-            .add_child_data(self.usage.finish().to_data().clone())
-            .add_buffer(self.usage_offsets.finish())
-            .build()
-            .expect("usage data is invalid");
+        let constraint_column_usage_type = DataType::Struct(UsageArrayBuilder::schema().into());
+        let constraint_column_usage = ListArray::new(
+            Arc::new(Field::new("item", constraint_column_usage_type, true)),
+            OffsetBuffer::new(self.usage_offsets.finish().into()),
+            Arc::new(self.usage.finish()),
+            Some(self.usage_validity.finish().into()),
+        );
 
         let arrays: &[ArrayRef; 4] = &[
             Arc::new(self.constraint_name.finish()),
             Arc::new(self.constraint_type.finish()),
             Arc::new(self.constraint_cols.finish()),
-            Arc::new(ListArray::from(usage_data)),
+            Arc::new(constraint_column_usage),
         ];
 
         StructArray::from(
@@ -462,7 +463,7 @@ pub(crate) struct TableArrayBuilder {
 }
 
 impl TableArrayBuilder {
-    pub fn with_capacity<T: DatabaseCatalogCollection>(catalogs: &T) -> Self {
+    pub fn with_capacity(catalogs: &impl DatabaseCatalogCollection) -> Self {
         let tables = catalogs
             .catalogs()
             .flat_map(|catalog| catalog.schemas())
@@ -542,25 +543,27 @@ impl TableArrayBuilder {
     }
 
     pub fn finish(mut self) -> StructArray {
-        let columns_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
-            .null_bit_buffer(Some(self.columns_validity.into()))
-            .add_child_data(self.table_columns.finish().to_data().clone())
-            .add_buffer(self.columns_offsets.finish())
-            .build()
-            .expect("columns data is invalid");
+        let column_schema_type = DataType::Struct(ColumnArrayBuilder::schema().into());
+        let table_columns = ListArray::new(
+            Arc::new(Field::new("item", column_schema_type, true)),
+            OffsetBuffer::new(self.columns_offsets.finish().into()),
+            Arc::new(self.table_columns.finish()),
+            Some(self.columns_validity.finish().into()),
+        );
 
-        let constraints_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
-            .null_bit_buffer(Some(self.constraints_validity.into()))
-            .add_child_data(self.table_constraints.finish().to_data().clone())
-            .add_buffer(self.constraints_offsets.finish())
-            .build()
-            .expect("constraints data is invalid");
+        let constraint_schema_type = DataType::Struct(ConstraintArrayBuilder::schema().into());
+        let table_constraints = ListArray::new(
+            Arc::new(Field::new("item", constraint_schema_type, true)),
+            OffsetBuffer::new(self.constraints_offsets.finish().into()),
+            Arc::new(self.table_constraints.finish()),
+            Some(self.constraints_validity.finish().into()),
+        );
 
         let arrays: &[ArrayRef; 4] = &[
             Arc::new(self.table_name.finish()),
             Arc::new(self.table_type.finish()),
-            Arc::new(ListArray::from(columns_data)),
-            Arc::new(ListArray::from(constraints_data)),
+            Arc::new(table_columns),
+            Arc::new(table_constraints),
         ];
 
         StructArray::from(
@@ -635,16 +638,17 @@ impl DbSchemaArrayBuilder {
     }
 
     pub fn finish(mut self) -> StructArray {
-        let tables_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
-            .null_bit_buffer(Some(self.tables_validity.into()))
-            .add_child_data(self.tables.finish().to_data().clone())
-            .add_buffer(self.tables_offsets.finish())
-            .build()
-            .expect("columns data is invalid");
+        let table_schema_type = DataType::Struct(TableArrayBuilder::schema().into());
+        let db_schema_tables = ListArray::new(
+            Arc::new(Field::new("item", table_schema_type, true)),
+            OffsetBuffer::new(self.tables_offsets.finish().into()),
+            Arc::new(self.tables.finish()),
+            Some(self.tables_validity.finish().into()),
+        );
 
         let arrays: &[ArrayRef; 2] = &[
             Arc::new(self.db_schema_name.finish()),
-            Arc::new(ListArray::from(tables_data)),
+            Arc::new(db_schema_tables),
         ];
 
         StructArray::from(
@@ -712,16 +716,17 @@ impl CatalogArrayBuilder {
     }
 
     pub fn finish(mut self) -> StructArray {
-        let schemas_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
-            .null_bit_buffer(Some(self.schemas_validity.into()))
-            .add_child_data(self.schemas.finish().to_data().clone())
-            .add_buffer(self.schemas_offsets.finish())
-            .build()
-            .expect("columns data is invalid");
+        let db_schema_schema_type = DataType::Struct(DbSchemaArrayBuilder::schema().into());
+        let catalog_db_schemas = ListArray::new(
+            Arc::new(Field::new("item", db_schema_schema_type, true)),
+            OffsetBuffer::new(self.schemas_offsets.finish().into()),
+            Arc::new(self.schemas.finish()),
+            Some(self.schemas_validity.finish().into()),
+        );
 
         let arrays: &[ArrayRef; 2] = &[
             Arc::new(self.catalog_name.finish()),
-            Arc::new(ListArray::from(schemas_data)),
+            Arc::new(catalog_db_schemas),
         ];
 
         StructArray::from(
@@ -983,8 +988,8 @@ impl<'a> TableConstraintTypeRef<'a> {
     pub fn variant_name(&self) -> &'static str {
         match self {
             Self::Check => "CHECK",
-            Self::ForeignKey { usage: _ } => "FOREIGN_KEY",
-            Self::PrimaryKey => "PRIMARY_KEY",
+            Self::ForeignKey { usage: _ } => "FOREIGN KEY",
+            Self::PrimaryKey => "PRIMARY KEY",
             Self::Unique => "UNIQUE",
         }
     }
