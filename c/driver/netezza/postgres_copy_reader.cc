@@ -660,6 +660,8 @@ namespace adbcpq {
         case NetezzaTypeId::kText:
         case NetezzaTypeId::kBpchar:
         case NetezzaTypeId::kName:
+        case NetezzaTypeId::kNvarchar:
+        case NetezzaTypeId::kNchar:
           *out = new PostgresCopyBinaryFieldReader();
           return NANOARROW_OK;
         case NetezzaTypeId::kNumeric:
