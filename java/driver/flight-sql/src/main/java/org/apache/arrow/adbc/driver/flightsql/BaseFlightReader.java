@@ -37,7 +37,7 @@ import org.apache.arrow.vector.VectorUnloader;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
 import org.apache.arrow.vector.types.pojo.Schema;
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Base class for ArrowReaders based on consuming data from FlightEndpoints. */
 public abstract class BaseFlightReader extends ArrowReader {
@@ -45,8 +45,8 @@ public abstract class BaseFlightReader extends ArrowReader {
   private final List<FlightEndpoint> flightEndpoints;
   private final Supplier<List<FlightEndpoint>> rpcCall;
   private int nextEndpointIndex = 0;
-  private @MonotonicNonNull FlightStream currentStream = null;
-  private @MonotonicNonNull Schema schema = null;
+  private @Nullable FlightStream currentStream = null;
+  private @Nullable Schema schema = null;
   private long bytesRead = 0;
   protected final FlightSqlClientWithCallOptions client;
   protected final LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache;
@@ -65,7 +65,7 @@ public abstract class BaseFlightReader extends ArrowReader {
 
   @Override
   public boolean loadNextBatch() throws IOException {
-    Preconditions.checkNotNull(currentStream);
+    Preconditions.checkState(currentStream != null);
     if (!currentStream.next()) {
       if (nextEndpointIndex >= flightEndpoints.size()) {
         return false;
@@ -94,7 +94,7 @@ public abstract class BaseFlightReader extends ArrowReader {
 
   @Override
   protected Schema readSchema() throws IOException {
-    Preconditions.checkNotNull(currentStream);
+    Preconditions.checkState(schema != null);
     return schema;
   }
 

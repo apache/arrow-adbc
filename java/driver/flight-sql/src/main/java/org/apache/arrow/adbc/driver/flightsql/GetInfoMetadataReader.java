@@ -40,7 +40,6 @@ import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.complex.DenseUnionVector;
 import org.apache.arrow.vector.types.pojo.Schema;
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Helper class to track state needed to build up the info structure. */
@@ -51,12 +50,12 @@ final class GetInfoMetadataReader extends BaseFlightReader {
 
   private final BufferAllocator allocator;
   private final Collection<Integer> requestedCodes;
-  private @MonotonicNonNull UInt4Vector infoCodes = null;
-  private @MonotonicNonNull DenseUnionVector infoValues = null;
-  private @MonotonicNonNull VarCharVector stringValues = null;
+  private @Nullable UInt4Vector infoCodes = null;
+  private @Nullable DenseUnionVector infoValues = null;
+  private @Nullable VarCharVector stringValues = null;
   private boolean hasInMemoryDataBeenWritten = false;
-  private boolean hasInMemoryData;
-  private boolean hasSupportedCodes;
+  private final boolean hasInMemoryData;
+  private final boolean hasSupportedCodes;
   private boolean hasRequestBeenIssued = false;
 
   @FunctionalInterface
@@ -75,14 +74,14 @@ final class GetInfoMetadataReader extends BaseFlightReader {
     SUPPORTED_CODES.put(
         FlightSql.SqlInfo.FLIGHT_SQL_SERVER_NAME.getNumber(),
         (b, sqlInfo, srcIndex, dstIndex) -> {
-          Preconditions.checkNotNull(b.infoCodes);
+          Preconditions.checkState(b.infoCodes != null);
           b.infoCodes.setSafe(dstIndex, AdbcInfoCode.VENDOR_NAME.getValue());
           b.setStringValue(dstIndex, sqlInfo.getVarCharVector(STRING_VALUE_TYPE_ID).get(srcIndex));
         });
     SUPPORTED_CODES.put(
         FlightSql.SqlInfo.FLIGHT_SQL_SERVER_VERSION.getNumber(),
         (b, sqlInfo, srcIndex, dstIndex) -> {
-          Preconditions.checkNotNull(b.infoCodes);
+          Preconditions.checkState(b.infoCodes != null);
           b.infoCodes.setSafe(dstIndex, AdbcInfoCode.VENDOR_VERSION.getValue());
           b.setStringValue(dstIndex, sqlInfo.getVarCharVector(STRING_VALUE_TYPE_ID).get(srcIndex));
         });
@@ -120,16 +119,18 @@ final class GetInfoMetadataReader extends BaseFlightReader {
     this.hasInMemoryData =
         requestedCodes.contains(AdbcInfoCode.DRIVER_NAME.getValue())
             || requestedCodes.contains(AdbcInfoCode.DRIVER_VERSION.getValue());
+    boolean hasRequestedCode = false;
     for (Integer requestedCode : requestedCodes) {
       if (SUPPORTED_CODES.containsKey(requestedCode)) {
-        hasSupportedCodes = true;
+        hasRequestedCode = true;
         break;
       }
     }
+    hasSupportedCodes = hasRequestedCode;
   }
 
   void setStringValue(int index, byte[] value) {
-    Preconditions.checkNotNull(infoValues, stringValues);
+    Preconditions.checkState(infoValues != null && stringValues != null);
     infoValues.setValueCount(index + 1);
     infoValues.setTypeId(index, STRING_VALUE_TYPE_ID);
     stringValues.setSafe(index, value);
