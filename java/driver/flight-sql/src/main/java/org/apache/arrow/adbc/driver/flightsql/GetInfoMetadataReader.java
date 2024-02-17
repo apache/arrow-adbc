@@ -143,6 +143,7 @@ final class GetInfoMetadataReader extends BaseFlightReader {
       hasInMemoryDataBeenWritten = true;
       int dstIndex = 0;
       try (VectorSchemaRoot root = VectorSchemaRoot.create(readSchema(), allocator)) {
+        root.allocateNew();
         this.infoCodes = (UInt4Vector) root.getVector(0);
 
         if (requestedCodes.contains(AdbcInfoCode.DRIVER_NAME.getValue())) {
@@ -184,6 +185,7 @@ final class GetInfoMetadataReader extends BaseFlightReader {
   @Override
   protected void processRootFromStream(VectorSchemaRoot root) {
     try (VectorSchemaRoot tmpRoot = VectorSchemaRoot.create(readSchema(), allocator)) {
+      root.allocateNew();
       this.infoCodes = (UInt4Vector) tmpRoot.getVector(0);
       this.infoValues = (DenseUnionVector) tmpRoot.getVector(1);
       this.stringValues = this.infoValues.getVarCharVector((byte) 0);

@@ -203,7 +203,7 @@ final class GetObjectsMetadataReaders {
   }
 
   private static class GetCatalogsMetadataReader extends GetObjectMetadataReader {
-    private final @Nullable  Pattern catalogPattern;
+    private final @Nullable Pattern catalogPattern;
 
     protected GetCatalogsMetadataReader(
         BufferAllocator allocator,
@@ -351,7 +351,7 @@ final class GetObjectsMetadataReaders {
 
     private final String catalogPattern;
     private final String dbSchemaPattern;
-    private final @Nullable  Pattern compiledColumnNamePattern;
+    private final @Nullable Pattern compiledColumnNamePattern;
     private final boolean shouldGetColumns;
     private final Map<String, Map<String, Map<String, TableDefinition>>> tablePathToColumnsMap =
         new LinkedHashMap<>();
@@ -490,11 +490,15 @@ final class GetObjectsMetadataReaders {
           for (Object schemaStructObj : sourceSchemaStructList.getObject(i)) {
             final Map<String, Object> schemaStructAsMap = (Map<String, Object>) schemaStructObj;
             if (schemaStructAsMap == null) {
-              throw new IllegalStateException(String.format("Error in catalog %s: Null schema encountered when schemas were requested.", catalog));
+              throw new IllegalStateException(
+                  String.format(
+                      "Error in catalog %s: Null schema encountered when schemas were requested.",
+                      catalog));
             }
             Object schemaNameObj = schemaStructAsMap.get("db_schema_name");
             if (schemaNameObj == null) {
-              throw new IllegalStateException(String.format("Error in catalog %s: Schema with no name encountered.", catalog));
+              throw new IllegalStateException(
+                  String.format("Error in catalog %s: Schema with no name encountered.", catalog));
             }
             String schemaName = schemaNameObj.toString();
 
