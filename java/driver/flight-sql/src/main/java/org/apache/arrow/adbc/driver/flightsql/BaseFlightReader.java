@@ -31,6 +31,7 @@ import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
+import org.apache.arrow.util.Preconditions;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.VectorUnloader;
 import org.apache.arrow.vector.ipc.ArrowReader;
@@ -64,7 +65,7 @@ public abstract class BaseFlightReader extends ArrowReader {
 
   @Override
   public boolean loadNextBatch() throws IOException {
-    assert (currentStream != null);
+    Preconditions.checkNotNull(currentStream);
     if (!currentStream.next()) {
       if (nextEndpointIndex >= flightEndpoints.size()) {
         return false;
@@ -93,7 +94,7 @@ public abstract class BaseFlightReader extends ArrowReader {
 
   @Override
   protected Schema readSchema() throws IOException {
-    assert (schema != null);
+    Preconditions.checkNotNull(currentStream);
     return schema;
   }
 

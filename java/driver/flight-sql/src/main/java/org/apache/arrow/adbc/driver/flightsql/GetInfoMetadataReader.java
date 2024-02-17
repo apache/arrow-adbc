@@ -34,6 +34,7 @@ import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.flight.sql.impl.FlightSql;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.util.Preconditions;
 import org.apache.arrow.vector.UInt4Vector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -74,12 +75,14 @@ final class GetInfoMetadataReader extends BaseFlightReader {
     SUPPORTED_CODES.put(
         FlightSql.SqlInfo.FLIGHT_SQL_SERVER_NAME.getNumber(),
         (b, sqlInfo, srcIndex, dstIndex) -> {
+          Preconditions.checkNotNull(b.infoCodes);
           b.infoCodes.setSafe(dstIndex, AdbcInfoCode.VENDOR_NAME.getValue());
           b.setStringValue(dstIndex, sqlInfo.getVarCharVector(STRING_VALUE_TYPE_ID).get(srcIndex));
         });
     SUPPORTED_CODES.put(
         FlightSql.SqlInfo.FLIGHT_SQL_SERVER_VERSION.getNumber(),
         (b, sqlInfo, srcIndex, dstIndex) -> {
+          Preconditions.checkNotNull(b.infoCodes);
           b.infoCodes.setSafe(dstIndex, AdbcInfoCode.VENDOR_VERSION.getValue());
           b.setStringValue(dstIndex, sqlInfo.getVarCharVector(STRING_VALUE_TYPE_ID).get(srcIndex));
         });
@@ -126,6 +129,7 @@ final class GetInfoMetadataReader extends BaseFlightReader {
   }
 
   void setStringValue(int index, byte[] value) {
+    Preconditions.checkNotNull(infoValues, stringValues);
     infoValues.setValueCount(index + 1);
     infoValues.setTypeId(index, STRING_VALUE_TYPE_ID);
     stringValues.setSafe(index, value);
