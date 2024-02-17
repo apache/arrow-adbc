@@ -54,6 +54,7 @@ import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.arrow.vector.util.Text;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 final class GetObjectsMetadataReaders {
 
@@ -121,7 +122,7 @@ final class GetObjectsMetadataReaders {
             tableTypes,
             columnNamePattern);
       default:
-        return null;
+        throw new IllegalArgumentException();
     }
   }
 
@@ -202,7 +203,7 @@ final class GetObjectsMetadataReaders {
   }
 
   private static class GetCatalogsMetadataReader extends GetObjectMetadataReader {
-    private final Pattern catalogPattern;
+    private final @Nullable  Pattern catalogPattern;
 
     protected GetCatalogsMetadataReader(
         BufferAllocator allocator,
@@ -322,28 +323,35 @@ final class GetObjectsMetadataReaders {
 
   private static class GetTablesMetadataReader extends GetObjectMetadataReader {
     private static class ColumnDefinition {
-      Field field;
-      FlightSqlColumnMetadata metadata;
-      int ordinal;
+      final Field field;
+      final FlightSqlColumnMetadata metadata;
+      final int ordinal;
+
+      private ColumnDefinition(Field field, int ordinal) {
+        this.field = field;
+        this.metadata = new FlightSqlColumnMetadata(field.getMetadata());
+        this.ordinal = ordinal;
+      }
 
       static ColumnDefinition from(Field field, int ordinal) {
-        ColumnDefinition columnDefinition = new ColumnDefinition();
-        columnDefinition.field = field;
-        columnDefinition.metadata = new FlightSqlColumnMetadata(field.getMetadata());
-        columnDefinition.ordinal = ordinal;
-        return columnDefinition;
+        return new ColumnDefinition(field, ordinal);
       }
     }
 
     private static class TableDefinition {
-      String tableType;
+      final String tableType;
 
-      List<ColumnDefinition> columnDefinitions;
+      final List<ColumnDefinition> columnDefinitions;
+
+      TableDefinition(String tableType, List<ColumnDefinition> columnDefinitions) {
+        this.tableType = tableType;
+        this.columnDefinitions = columnDefinitions;
+      }
     }
 
     private final String catalogPattern;
     private final String dbSchemaPattern;
-    private final Pattern compiledColumnNamePattern;
+    private final @Nullable  Pattern compiledColumnNamePattern;
     private final boolean shouldGetColumns;
     private final Map<String, Map<String, Map<String, TableDefinition>>> tablePathToColumnsMap =
         new LinkedHashMap<>();
@@ -396,7 +404,7 @@ final class GetObjectsMetadataReaders {
       VarCharVector schemaVector = (VarCharVector) root.getVector(1);
       VarCharVector tableVector = (VarCharVector) root.getVector(2);
       VarCharVector tableTypeVector = (VarCharVector) root.getVector(3);
-      VarBinaryVector tableSchemaVector =
+      @Nullable VarBinaryVector tableSchemaVector =
           shouldGetColumns ? (VarBinaryVector) root.getVector(4) : null;
 
       for (int i = 0; i < root.getRowCount(); ++i) {
@@ -442,9 +450,7 @@ final class GetObjectsMetadataReaders {
                     if (schemaEntryValue == null) {
                       schemaEntryValue = new LinkedHashMap<>();
                     }
-                    TableDefinition tableDefinition = new TableDefinition();
-                    tableDefinition.columnDefinitions = columns;
-                    tableDefinition.tableType = tableType;
+                    TableDefinition tableDefinition = new TableDefinition(tableType, columns);
                     schemaEntryValue.put(table, tableDefinition);
                     return schemaEntryValue;
                   });
@@ -483,7 +489,14 @@ final class GetObjectsMetadataReaders {
           schemaListWriter.startList();
           for (Object schemaStructObj : sourceSchemaStructList.getObject(i)) {
             final Map<String, Object> schemaStructAsMap = (Map<String, Object>) schemaStructObj;
-            String schemaName = schemaStructAsMap.get("db_schema_name").toString();
+            if (schemaStructAsMap == null) {
+              throw new IllegalStateException(String.format("Error in catalog %s: Null schema encountered when schemas were requested.", catalog));
+            }
+            Object schemaNameObj = schemaStructAsMap.get("db_schema_name");
+            if (schemaNameObj == null) {
+              throw new IllegalStateException(String.format("Error in catalog %s: Schema with no name encountered.", catalog));
+            }
+            String schemaName = schemaNameObj.toString();
 
             // Set up the schema list writer to write at the current position.
             schemaListWriter.setPosition(i);
@@ -664,7 +677,7 @@ final class GetObjectsMetadataReaders {
     }
   }
 
-  static Integer getDecimalDigits(final ArrowType fieldType) {
+  static @Nullable Integer getDecimalDigits(final ArrowType fieldType) {
     // We aren't setting DECIMAL_DIGITS for Float/Double as their precision and scale are variable.
     if (fieldType instanceof ArrowType.Decimal) {
       final ArrowType.Decimal thisDecimal = (ArrowType.Decimal) fieldType;
@@ -704,7 +717,7 @@ final class GetObjectsMetadataReaders {
     return null;
   }
 
-  static Integer getColumnSize(final ArrowType fieldType) {
+  static @Nullable Integer getColumnSize(final ArrowType fieldType) {
     // We aren't setting COLUMN_SIZE for ROWID SQL Types, as there's no such Arrow type.
     // We aren't setting COLUMN_SIZE nor DECIMAL_DIGITS for Float/Double as their precision and
     // scale are variable.

@@ -38,6 +38,7 @@ import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.flight.sql.impl.FlightSql;
 import org.apache.arrow.flight.sql.util.TableRef;
 import org.apache.arrow.util.AutoCloseables;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** A wrapper around FlightSqlClient which automatically adds CallOptions to each RPC call. */
 public class FlightSqlClientWithCallOptions implements AutoCloseable {
@@ -163,7 +164,7 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
       String catalog,
       String dbSchemaFilterPattern,
       String tableFilterPattern,
-      List<String> tableTypes,
+      @Nullable List<String> tableTypes,
       boolean includeSchema,
       CallOption... options) {
     return client.getTables(

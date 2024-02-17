@@ -49,9 +49,9 @@ final class GetInfoMetadataReader extends BaseFlightReader {
 
   private final BufferAllocator allocator;
   private final Collection<Integer> requestedCodes;
-  private UInt4Vector infoCodes;
-  private DenseUnionVector infoValues;
-  private VarCharVector stringValues;
+  private @Nullable UInt4Vector infoCodes = null;
+  private @Nullable DenseUnionVector infoValues = null;
+  private @Nullable VarCharVector stringValues = null;
   private boolean hasInMemoryDataBeenWritten = false;
   private boolean hasInMemoryData;
   private boolean hasSupportedCodes;
