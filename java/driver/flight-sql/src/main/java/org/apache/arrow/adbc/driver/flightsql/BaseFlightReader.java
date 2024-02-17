@@ -30,6 +30,7 @@ import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.VectorUnloader;
 import org.apache.arrow.vector.ipc.ArrowReader;
@@ -102,7 +103,7 @@ public abstract class BaseFlightReader extends ArrowReader {
   @Override
   protected void closeReadSource() throws IOException {
     try {
-      currentStream.close();
+      AutoCloseables.close(currentStream);
     } catch (Exception e) {
       throw new IOException(e);
     }

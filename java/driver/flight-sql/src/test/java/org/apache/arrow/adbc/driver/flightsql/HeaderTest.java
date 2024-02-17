@@ -127,6 +127,7 @@ public class HeaderTest {
       }
     } catch (Exception ex) {
       // Swallow exceptions from the RPC call. Only interested in tracking metadata.
+      // This is expected to fail since GetSqlInfo isn't implemented on this test FlightSqlProducer.
     }
     CallHeaders secondHeaders = headerValidatorFactory.getHeadersReceivedAtRequest(1);
     assertTrue(secondHeaders.get("authorization").contains("Bearer"));

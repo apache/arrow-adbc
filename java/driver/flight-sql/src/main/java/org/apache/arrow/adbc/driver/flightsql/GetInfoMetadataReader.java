@@ -145,6 +145,8 @@ final class GetInfoMetadataReader extends BaseFlightReader {
       try (VectorSchemaRoot root = VectorSchemaRoot.create(readSchema(), allocator)) {
         root.allocateNew();
         this.infoCodes = (UInt4Vector) root.getVector(0);
+        this.infoValues = (DenseUnionVector) root.getVector(1);
+        this.stringValues = this.infoValues.getVarCharVector((byte) 0);
 
         if (requestedCodes.contains(AdbcInfoCode.DRIVER_NAME.getValue())) {
           infoCodes.setSafe(dstIndex, AdbcInfoCode.DRIVER_NAME.getValue());
