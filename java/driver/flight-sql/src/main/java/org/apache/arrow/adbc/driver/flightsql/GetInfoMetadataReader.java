@@ -39,6 +39,7 @@ import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.complex.DenseUnionVector;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Helper class to track state needed to build up the info structure. */
@@ -49,13 +50,12 @@ final class GetInfoMetadataReader extends BaseFlightReader {
 
   private final BufferAllocator allocator;
   private final Collection<Integer> requestedCodes;
-  private @Nullable UInt4Vector infoCodes = null;
-  private @Nullable DenseUnionVector infoValues = null;
-  private @Nullable VarCharVector stringValues = null;
+  private @MonotonicNonNull UInt4Vector infoCodes = null;
+  private @MonotonicNonNull DenseUnionVector infoValues = null;
+  private @MonotonicNonNull VarCharVector stringValues = null;
   private boolean hasInMemoryDataBeenWritten = false;
   private boolean hasInMemoryData;
   private boolean hasSupportedCodes;
-
   private boolean hasRequestBeenIssued = false;
 
   @FunctionalInterface

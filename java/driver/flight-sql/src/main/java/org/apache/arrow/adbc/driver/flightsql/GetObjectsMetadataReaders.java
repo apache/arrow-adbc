@@ -560,7 +560,7 @@ final class GetObjectsMetadataReaders {
      * passes the column pattern filter, return the ColumnDefinition list.
      */
     private List<ColumnDefinition> getColumnDefinitions(
-        VarBinaryVector tableSchemaVector, int index) {
+        @Nullable VarBinaryVector tableSchemaVector, int index) {
       if (tableSchemaVector == null) {
         return Collections.emptyList();
       }

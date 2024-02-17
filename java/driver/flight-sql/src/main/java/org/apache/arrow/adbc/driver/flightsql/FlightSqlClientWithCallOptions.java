@@ -160,6 +160,8 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
     return client.getXdbcTypeInfoSchema(combine(options));
   }
 
+  @SuppressWarnings("argument")
+  // FlightSqlClient.getTableTyoes() allows for null tableTypes but isn't annotated correctly.
   public FlightInfo getTables(
       String catalog,
       String dbSchemaFilterPattern,
@@ -277,6 +279,7 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
     return client.renewFlightEndpoint(request, combine(options));
   }
 
+  @Override
   public void close() throws Exception {
     AutoCloseables.close(client);
   }
