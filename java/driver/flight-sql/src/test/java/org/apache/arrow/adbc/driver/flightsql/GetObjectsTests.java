@@ -18,23 +18,21 @@ package org.apache.arrow.adbc.driver.flightsql;
 
 import static com.google.protobuf.ByteString.copyFrom;
 import static java.lang.String.format;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.range;
 import static org.apache.arrow.driver.jdbc.utils.MockFlightSqlProducer.serializeSchema;
-import static org.apache.arrow.flight.sql.impl.FlightSql.SqlSupportsConvert.SQL_CONVERT_BIGINT_VALUE;
-import static org.apache.arrow.flight.sql.impl.FlightSql.SqlSupportsConvert.SQL_CONVERT_BIT_VALUE;
-import static org.apache.arrow.flight.sql.impl.FlightSql.SqlSupportsConvert.SQL_CONVERT_INTEGER_VALUE;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.google.protobuf.Message;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Consumer;
-
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
@@ -42,18 +40,17 @@ import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
 import org.apache.arrow.driver.jdbc.FlightServerTestRule;
 import org.apache.arrow.driver.jdbc.utils.MockFlightSqlProducer;
-import org.apache.arrow.driver.jdbc.utils.ResultSetTestUtils;
 import org.apache.arrow.flight.FlightProducer;
 import org.apache.arrow.flight.sql.FlightSqlProducer;
 import org.apache.arrow.flight.sql.impl.FlightSql;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
-import org.apache.arrow.vector.IntVector;
-import org.apache.arrow.vector.UInt1Vector;
+import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.VarBinaryVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.TimeUnit;
 import org.apache.arrow.vector.types.Types;
@@ -64,195 +61,26 @@ import org.apache.arrow.vector.util.Text;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ErrorCollector;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.protobuf.Message;
-
-/**
- * Test functions for returning database catalog information.
- */
+/** Test functions for returning database catalog information. */
 public class GetObjectsTests {
-
-  public static final boolean EXPECTED_MAX_ROW_SIZE_INCLUDES_BLOBS = false;
   private static final BufferAllocator allocator = new RootAllocator(Long.MAX_VALUE);
   private static final MockFlightSqlProducer FLIGHT_SQL_PRODUCER = new MockFlightSqlProducer();
+
   @ClassRule
-  public static final FlightServerTestRule FLIGHT_SERVER_TEST_RULE = FlightServerTestRule
-      .createStandardTestRule(FLIGHT_SQL_PRODUCER);
-  private static final int ROW_COUNT = 10;
-  private static final List<List<Object>> EXPECTED_GET_CATALOGS_RESULTS =
-      range(0, ROW_COUNT)
-          .mapToObj(i -> format("catalog #%d", i))
-          .map(Object.class::cast)
-          .map(Collections::singletonList)
-          .collect(toList());
-  private static final List<List<Object>> EXPECTED_GET_TABLE_TYPES_RESULTS =
-      range(0, ROW_COUNT)
-          .mapToObj(i -> format("table_type #%d", i))
-          .map(Object.class::cast)
-          .map(Collections::singletonList)
-          .collect(toList());
-  private static final List<List<Object>> EXPECTED_GET_TABLES_RESULTS =
-      range(0, ROW_COUNT)
-          .mapToObj(i -> new Object[] {
-              format("catalog_name #%d", i),
-              format("db_schema_name #%d", i),
-              format("table_name #%d", i),
-              format("table_type #%d", i),
-              // TODO Add these fields to FlightSQL, as it's currently not possible to fetch them.
-              null, null, null, null, null, null})
-          .map(Arrays::asList)
-          .collect(toList());
-  private static final List<List<Object>> EXPECTED_GET_SCHEMAS_RESULTS =
-      range(0, ROW_COUNT)
-          .mapToObj(i -> new Object[] {
-              format("db_schema_name #%d", i),
-              format("catalog_name #%d", i)})
-          .map(Arrays::asList)
-          .collect(toList());
-  private static final List<List<Object>> EXPECTED_GET_EXPORTED_AND_IMPORTED_KEYS_RESULTS =
-      range(0, ROW_COUNT)
-          .mapToObj(i -> new Object[] {
-              format("pk_catalog_name #%d", i),
-              format("pk_db_schema_name #%d", i),
-              format("pk_table_name #%d", i),
-              format("pk_column_name #%d", i),
-              format("fk_catalog_name #%d", i),
-              format("fk_db_schema_name #%d", i),
-              format("fk_table_name #%d", i),
-              format("fk_column_name #%d", i),
-              i,
-              format("fk_key_name #%d", i),
-              format("pk_key_name #%d", i),
-              (byte) i,
-              (byte) i,
-              // TODO Add this field to FlightSQL, as it's currently not possible to fetch it.
-              null})
-          .map(Arrays::asList)
-          .collect(toList());
-  private static final List<List<Object>> EXPECTED_CROSS_REFERENCE_RESULTS =
-      EXPECTED_GET_EXPORTED_AND_IMPORTED_KEYS_RESULTS;
-  private static final List<List<Object>> EXPECTED_PRIMARY_KEYS_RESULTS =
-      range(0, ROW_COUNT)
-          .mapToObj(i -> new Object[] {
-              format("catalog_name #%d", i),
-              format("db_schema_name #%d", i),
-              format("table_name #%d", i),
-              format("column_name #%d", i),
-              i,
-              format("key_name #%d", i)})
-          .map(Arrays::asList)
-          .collect(toList());
-  private static final List<String> FIELDS_GET_IMPORTED_EXPORTED_KEYS = ImmutableList.of(
-      "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME",
-      "PKCOLUMN_NAME", "FKTABLE_CAT", "FKTABLE_SCHEM",
-      "FKTABLE_NAME", "FKCOLUMN_NAME", "KEY_SEQ",
-      "FK_NAME", "PK_NAME", "UPDATE_RULE", "DELETE_RULE",
-      "DEFERRABILITY");
-  private static final List<String> FIELDS_GET_CROSS_REFERENCE = FIELDS_GET_IMPORTED_EXPORTED_KEYS;
-  private static final String TARGET_TABLE = "TARGET_TABLE";
-  private static final String TARGET_FOREIGN_TABLE = "FOREIGN_TABLE";
-  private static final String EXPECTED_DATABASE_PRODUCT_NAME = "Test Server Name";
-  private static final String EXPECTED_DATABASE_PRODUCT_VERSION = "v0.0.1-alpha";
-  private static final String EXPECTED_IDENTIFIER_QUOTE_STRING = "\"";
-  private static final boolean EXPECTED_IS_READ_ONLY = true;
-  private static final String EXPECTED_SQL_KEYWORDS =
-      "ADD, ADD CONSTRAINT, ALTER, ALTER TABLE, ANY, USER, TABLE";
-  private static final String EXPECTED_NUMERIC_FUNCTIONS =
-      "ABS(), ACOS(), ASIN(), ATAN(), CEIL(), CEILING(), COT()";
-  private static final String EXPECTED_STRING_FUNCTIONS =
-      "ASCII, CHAR, CHARINDEX, CONCAT, CONCAT_WS, FORMAT, LEFT";
-  private static final String EXPECTED_SYSTEM_FUNCTIONS =
-      "CAST, CONVERT, CHOOSE, ISNULL, IS_NUMERIC, IIF, TRY_CAST";
-  private static final String EXPECTED_TIME_DATE_FUNCTIONS =
-      "GETDATE(), DATEPART(), DATEADD(), DATEDIFF()";
-  private static final String EXPECTED_SEARCH_STRING_ESCAPE = "\\";
-  private static final String EXPECTED_EXTRA_NAME_CHARACTERS = "";
-  private static final boolean EXPECTED_SUPPORTS_COLUMN_ALIASING = true;
-  private static final boolean EXPECTED_NULL_PLUS_NULL_IS_NULL = true;
-  private static final boolean EXPECTED_SUPPORTS_TABLE_CORRELATION_NAMES = true;
-  private static final boolean EXPECTED_SUPPORTS_DIFFERENT_TABLE_CORRELATION_NAMES = false;
-  private static final boolean EXPECTED_EXPRESSIONS_IN_ORDER_BY = true;
-  private static final boolean EXPECTED_SUPPORTS_ORDER_BY_UNRELATED = true;
-  private static final boolean EXPECTED_SUPPORTS_LIKE_ESCAPE_CLAUSE = true;
-  private static final boolean EXPECTED_NON_NULLABLE_COLUMNS = true;
-  private static final String EXPECTED_SCHEMA_TERM = "schema";
-  private static final String EXPECTED_PROCEDURE_TERM = "procedure";
-  private static final String EXPECTED_CATALOG_TERM = "catalog";
-  private static final boolean EXPECTED_SUPPORTS_INTEGRITY_ENHANCEMENT_FACILITY = true;
-  private static final boolean EXPECTED_CATALOG_AT_START = true;
-  private static final boolean EXPECTED_SELECT_FOR_UPDATE_SUPPORTED = false;
-  private static final boolean EXPECTED_STORED_PROCEDURES_SUPPORTED = false;
-  private static final FlightSql.SqlSupportedSubqueries[] EXPECTED_SUPPORTED_SUBQUERIES = new FlightSql.SqlSupportedSubqueries[]
-      {FlightSql.SqlSupportedSubqueries.SQL_SUBQUERIES_IN_COMPARISONS};
-  private static final boolean EXPECTED_CORRELATED_SUBQUERIES_SUPPORTED = true;
-  private static final int EXPECTED_MAX_BINARY_LITERAL_LENGTH = 0;
-  private static final int EXPECTED_MAX_CHAR_LITERAL_LENGTH = 0;
-  private static final int EXPECTED_MAX_COLUMN_NAME_LENGTH = 1024;
-  private static final int EXPECTED_MAX_COLUMNS_IN_GROUP_BY = 0;
-  private static final int EXPECTED_MAX_COLUMNS_IN_INDEX = 0;
-  private static final int EXPECTED_MAX_COLUMNS_IN_ORDER_BY = 0;
-  private static final int EXPECTED_MAX_COLUMNS_IN_SELECT = 0;
-  private static final int EXPECTED_MAX_CONNECTIONS = 0;
-  private static final int EXPECTED_MAX_CURSOR_NAME_LENGTH = 1024;
-  private static final int EXPECTED_MAX_INDEX_LENGTH = 0;
-  private static final int EXPECTED_SCHEMA_NAME_LENGTH = 1024;
-  private static final int EXPECTED_MAX_PROCEDURE_NAME_LENGTH = 0;
-  private static final int EXPECTED_MAX_CATALOG_NAME_LENGTH = 1024;
-  private static final int EXPECTED_MAX_ROW_SIZE = 0;
-  private static final int EXPECTED_MAX_STATEMENT_LENGTH = 0;
-  private static final int EXPECTED_MAX_STATEMENTS = 0;
-  private static final int EXPECTED_MAX_TABLE_NAME_LENGTH = 1024;
-  private static final int EXPECTED_MAX_TABLES_IN_SELECT = 0;
-  private static final int EXPECTED_MAX_USERNAME_LENGTH = 1024;
-  private static final int EXPECTED_DEFAULT_TRANSACTION_ISOLATION = 0;
-  private static final boolean EXPECTED_TRANSACTIONS_SUPPORTED = false;
-  private static final boolean EXPECTED_DATA_DEFINITION_CAUSES_TRANSACTION_COMMIT = true;
-  private static final boolean EXPECTED_DATA_DEFINITIONS_IN_TRANSACTIONS_IGNORED = false;
-  private static final boolean EXPECTED_BATCH_UPDATES_SUPPORTED = true;
-  private static final boolean EXPECTED_SAVEPOINTS_SUPPORTED = false;
-  private static final boolean EXPECTED_NAMED_PARAMETERS_SUPPORTED = false;
-  private static final boolean EXPECTED_LOCATORS_UPDATE_COPY = true;
-  private static final boolean EXPECTED_STORED_FUNCTIONS_USING_CALL_SYNTAX_SUPPORTED = false;
-  private static final List<List<Object>> EXPECTED_GET_COLUMNS_RESULTS;
+  public static final FlightServerTestRule FLIGHT_SERVER_TEST_RULE =
+      FlightServerTestRule.createStandardTestRule(FLIGHT_SQL_PRODUCER);
+
+  private static final int BASE_ROW_COUNT = 10;
   private static AdbcConnection connection;
 
-  static {
-    List<Integer> expectedGetColumnsDataTypes = Arrays.asList(3, 93, 4);
-    List<String> expectedGetColumnsTypeName = Arrays.asList("DECIMAL", "TIMESTAMP", "INTEGER");
-    List<Integer> expectedGetColumnsRadix = Arrays.asList(10, null, 10);
-    List<Integer> expectedGetColumnsColumnSize = Arrays.asList(5, 29, 10);
-    List<Integer> expectedGetColumnsDecimalDigits = Arrays.asList(2, 9, 0);
-    List<String> expectedGetColumnsIsNullable = Arrays.asList("YES", "YES", "NO");
-    EXPECTED_GET_COLUMNS_RESULTS = range(0, ROW_COUNT * 3)
-        .mapToObj(i -> new Object[] {
-            format("catalog_name #%d", i / 3),
-            format("db_schema_name #%d", i / 3),
-            format("table_name%d", i / 3),
-            format("column_%d", (i % 3) + 1),
-            expectedGetColumnsDataTypes.get(i % 3),
-            expectedGetColumnsTypeName.get(i % 3),
-            expectedGetColumnsColumnSize.get(i % 3),
-            null,
-            expectedGetColumnsDecimalDigits.get(i % 3),
-            expectedGetColumnsRadix.get(i % 3),
-            !Objects.equals(expectedGetColumnsIsNullable.get(i % 3), "NO") ? 1 : 0,
-            null, null, null, null, null,
-            (i % 3) + 1,
-            expectedGetColumnsIsNullable.get(i % 3),
-            null, null, null, null,
-            "", ""})
-        .map(Arrays::asList)
-        .collect(toList());
+  private enum ExpectedColumnSelection {
+    COLUMNS_DISABLED,
+    EMPTY_COLUMNS,
+    FIRST_COLUMN,
+    ALL_COLUMNS
   }
-
-  @Rule
-  public final ErrorCollector collector = new ErrorCollector();
-  public final ResultSetTestUtils resultSetTestUtils = new ResultSetTestUtils(collector);
 
   @BeforeClass
   public static void setUpBeforeClass() throws AdbcException {
@@ -268,168 +96,28 @@ public class GetObjectsTests {
     connection = db.connect();
 
     final Message commandGetCatalogs = FlightSql.CommandGetCatalogs.getDefaultInstance();
-    final Consumer<FlightProducer.ServerStreamListener> commandGetCatalogsResultProducer = listener -> {
-      try (final BufferAllocator allocator = new RootAllocator();
-           final VectorSchemaRoot root = VectorSchemaRoot.create(FlightSqlProducer.Schemas.GET_CATALOGS_SCHEMA,
-               allocator)) {
-        final VarCharVector catalogName = (VarCharVector) root.getVector("catalog_name");
-        range(0, ROW_COUNT).forEach(
-            i -> catalogName.setSafe(i, new Text(format("catalog #%d", i))));
-        root.setRowCount(ROW_COUNT);
-        listener.start(root);
-        listener.putNext();
-      } catch (final Throwable throwable) {
-        listener.error(throwable);
-      } finally {
-        listener.completed();
-      }
-    };
-    FLIGHT_SQL_PRODUCER.addCatalogQuery(commandGetCatalogs, commandGetCatalogsResultProducer);
-
-    final Message commandGetTableTypes = FlightSql.CommandGetTableTypes.getDefaultInstance();
-    final Consumer<FlightProducer.ServerStreamListener> commandGetTableTypesResultProducer = listener -> {
-      try (final BufferAllocator allocator = new RootAllocator();
-           final VectorSchemaRoot root = VectorSchemaRoot.create(FlightSqlProducer.Schemas.GET_TABLE_TYPES_SCHEMA,
-               allocator)) {
-        final VarCharVector tableType = (VarCharVector) root.getVector("table_type");
-        range(0, ROW_COUNT).forEach(
-            i -> tableType.setSafe(i, new Text(format("table_type #%d", i))));
-        root.setRowCount(ROW_COUNT);
-        listener.start(root);
-        listener.putNext();
-      } catch (final Throwable throwable) {
-        listener.error(throwable);
-      } finally {
-        listener.completed();
-      }
-    };
-    FLIGHT_SQL_PRODUCER.addCatalogQuery(commandGetTableTypes, commandGetTableTypesResultProducer);
-
-    final Message commandGetTables = FlightSql.CommandGetTables.getDefaultInstance();
-    final Consumer<FlightProducer.ServerStreamListener> commandGetTablesResultProducer = listener -> {
-      try (final BufferAllocator allocator = new RootAllocator();
-           final VectorSchemaRoot root = VectorSchemaRoot.create(
-               FlightSqlProducer.Schemas.GET_TABLES_SCHEMA_NO_SCHEMA, allocator)) {
-        final VarCharVector catalogName = (VarCharVector) root.getVector("catalog_name");
-        final VarCharVector schemaName = (VarCharVector) root.getVector("db_schema_name");
-        final VarCharVector tableName = (VarCharVector) root.getVector("table_name");
-        final VarCharVector tableType = (VarCharVector) root.getVector("table_type");
-        range(0, ROW_COUNT)
-            .peek(i -> catalogName.setSafe(i, new Text(format("catalog_name #%d", i))))
-            .peek(i -> schemaName.setSafe(i, new Text(format("db_schema_name #%d", i))))
-            .peek(i -> tableName.setSafe(i, new Text(format("table_name #%d", i))))
-            .forEach(i -> tableType.setSafe(i, new Text(format("table_type #%d", i))));
-        root.setRowCount(ROW_COUNT);
-        listener.start(root);
-        listener.putNext();
-      } catch (final Throwable throwable) {
-        listener.error(throwable);
-      } finally {
-        listener.completed();
-      }
-    };
-    FLIGHT_SQL_PRODUCER.addCatalogQuery(commandGetTables, commandGetTablesResultProducer);
-
-    final Message commandGetTablesWithSchema = FlightSql.CommandGetTables.newBuilder()
-        .setIncludeSchema(true)
-        .build();
-    final Consumer<FlightProducer.ServerStreamListener> commandGetTablesWithSchemaResultProducer = listener -> {
-      try (final BufferAllocator allocator = new RootAllocator();
-           final VectorSchemaRoot root = VectorSchemaRoot.create(FlightSqlProducer.Schemas.GET_TABLES_SCHEMA,
-               allocator)) {
-        final byte[] filledTableSchemaBytes =
-            copyFrom(
-                serializeSchema(new Schema(Arrays.asList(
-                    Field.nullable("column_1", ArrowType.Decimal.createDecimal(5, 2, 128)),
-                    Field.nullable("column_2", new ArrowType.Timestamp(TimeUnit.NANOSECOND, "UTC")),
-                    Field.notNullable("column_3", Types.MinorType.INT.getType())))))
-                .toByteArray();
-        final VarCharVector catalogName = (VarCharVector) root.getVector("catalog_name");
-        final VarCharVector schemaName = (VarCharVector) root.getVector("db_schema_name");
-        final VarCharVector tableName = (VarCharVector) root.getVector("table_name");
-        final VarCharVector tableType = (VarCharVector) root.getVector("table_type");
-        final VarBinaryVector tableSchema = (VarBinaryVector) root.getVector("table_schema");
-        range(0, ROW_COUNT)
-            .peek(i -> catalogName.setSafe(i, new Text(format("catalog_name #%d", i))))
-            .peek(i -> schemaName.setSafe(i, new Text(format("db_schema_name #%d", i))))
-            .peek(i -> tableName.setSafe(i, new Text(format("table_name%d", i))))
-            .peek(i -> tableType.setSafe(i, new Text(format("table_type #%d", i))))
-            .forEach(i -> tableSchema.setSafe(i, filledTableSchemaBytes));
-        root.setRowCount(ROW_COUNT);
-        listener.start(root);
-        listener.putNext();
-      } catch (final Throwable throwable) {
-        listener.error(throwable);
-      } finally {
-        listener.completed();
-      }
-    };
-    FLIGHT_SQL_PRODUCER.addCatalogQuery(commandGetTablesWithSchema,
-        commandGetTablesWithSchemaResultProducer);
-
-    final Message commandGetDbSchemas = FlightSql.CommandGetDbSchemas.getDefaultInstance();
-    final Consumer<FlightProducer.ServerStreamListener> commandGetSchemasResultProducer = listener -> {
-      try (final BufferAllocator allocator = new RootAllocator();
-           final VectorSchemaRoot root = VectorSchemaRoot.create(FlightSqlProducer.Schemas.GET_SCHEMAS_SCHEMA,
-               allocator)) {
-        final VarCharVector catalogName = (VarCharVector) root.getVector("catalog_name");
-        final VarCharVector schemaName = (VarCharVector) root.getVector("db_schema_name");
-        range(0, ROW_COUNT)
-            .peek(i -> catalogName.setSafe(i, new Text(format("catalog_name #%d", i))))
-            .forEach(i -> schemaName.setSafe(i, new Text(format("db_schema_name #%d", i))));
-        root.setRowCount(ROW_COUNT);
-        listener.start(root);
-        listener.putNext();
-      } catch (final Throwable throwable) {
-        listener.error(throwable);
-      } finally {
-        listener.completed();
-      }
-    };
-    FLIGHT_SQL_PRODUCER.addCatalogQuery(commandGetDbSchemas, commandGetSchemasResultProducer);
-
-    final Message commandGetExportedKeys =
-        FlightSql.CommandGetExportedKeys.newBuilder().setTable(TARGET_TABLE).build();
-    final Message commandGetImportedKeys =
-        FlightSql.CommandGetImportedKeys.newBuilder().setTable(TARGET_TABLE).build();
-    final Message commandGetCrossReference = FlightSql.CommandGetCrossReference.newBuilder()
-        .setPkTable(TARGET_TABLE)
-        .setFkTable(TARGET_FOREIGN_TABLE)
-        .build();
-    final Consumer<FlightProducer.ServerStreamListener> commandGetExportedAndImportedKeysResultProducer =
+    final Consumer<FlightProducer.ServerStreamListener> commandGetCatalogsResultProducer =
         listener -> {
           try (final BufferAllocator allocator = new RootAllocator();
-               final VectorSchemaRoot root = VectorSchemaRoot.create(
-                   FlightSqlProducer.Schemas.GET_IMPORTED_KEYS_SCHEMA,
-                   allocator)) {
-            final VarCharVector pkCatalogName = (VarCharVector) root.getVector("pk_catalog_name");
-            final VarCharVector pkSchemaName = (VarCharVector) root.getVector("pk_db_schema_name");
-            final VarCharVector pkTableName = (VarCharVector) root.getVector("pk_table_name");
-            final VarCharVector pkColumnName = (VarCharVector) root.getVector("pk_column_name");
-            final VarCharVector fkCatalogName = (VarCharVector) root.getVector("fk_catalog_name");
-            final VarCharVector fkSchemaName = (VarCharVector) root.getVector("fk_db_schema_name");
-            final VarCharVector fkTableName = (VarCharVector) root.getVector("fk_table_name");
-            final VarCharVector fkColumnName = (VarCharVector) root.getVector("fk_column_name");
-            final IntVector keySequence = (IntVector) root.getVector("key_sequence");
-            final VarCharVector fkKeyName = (VarCharVector) root.getVector("fk_key_name");
-            final VarCharVector pkKeyName = (VarCharVector) root.getVector("pk_key_name");
-            final UInt1Vector updateRule = (UInt1Vector) root.getVector("update_rule");
-            final UInt1Vector deleteRule = (UInt1Vector) root.getVector("delete_rule");
-            range(0, ROW_COUNT)
-                .peek(i -> pkCatalogName.setSafe(i, new Text(format("pk_catalog_name #%d", i))))
-                .peek(i -> pkSchemaName.setSafe(i, new Text(format("pk_db_schema_name #%d", i))))
-                .peek(i -> pkTableName.setSafe(i, new Text(format("pk_table_name #%d", i))))
-                .peek(i -> pkColumnName.setSafe(i, new Text(format("pk_column_name #%d", i))))
-                .peek(i -> fkCatalogName.setSafe(i, new Text(format("fk_catalog_name #%d", i))))
-                .peek(i -> fkSchemaName.setSafe(i, new Text(format("fk_db_schema_name #%d", i))))
-                .peek(i -> fkTableName.setSafe(i, new Text(format("fk_table_name #%d", i))))
-                .peek(i -> fkColumnName.setSafe(i, new Text(format("fk_column_name #%d", i))))
-                .peek(i -> keySequence.setSafe(i, i))
-                .peek(i -> fkKeyName.setSafe(i, new Text(format("fk_key_name #%d", i))))
-                .peek(i -> pkKeyName.setSafe(i, new Text(format("pk_key_name #%d", i))))
-                .peek(i -> updateRule.setSafe(i, i))
-                .forEach(i -> deleteRule.setSafe(i, i));
-            root.setRowCount(ROW_COUNT);
+              final VectorSchemaRoot root =
+                  VectorSchemaRoot.create(
+                      FlightSqlProducer.Schemas.GET_CATALOGS_SCHEMA, allocator)) {
+            final VarCharVector catalogName = (VarCharVector) root.getVector("catalog_name");
+            range(0, BASE_ROW_COUNT)
+                .forEach(i -> catalogName.setSafe(i, new Text(format("catalog #%d", i))));
+
+            // Add an extra catalog that is empty.
+            catalogName.setSafe(BASE_ROW_COUNT, new Text("empty catalog"));
+
+            // For testing catalogs with schemas with multiple tables.
+            catalogName.setSafe(BASE_ROW_COUNT + 1, new Text("multi-schema catalog"));
+
+            // For testing catalogs with empty schemas.
+            catalogName.setSafe(BASE_ROW_COUNT + 2, new Text("empty-schema catalog"));
+
+            // For testing catalogs with schemas with multiple tables.
+            catalogName.setSafe(BASE_ROW_COUNT + 3, new Text("multi-table catalog"));
+            root.setRowCount(BASE_ROW_COUNT + 4);
             listener.start(root);
             listener.putNext();
           } catch (final Throwable throwable) {
@@ -438,42 +126,169 @@ public class GetObjectsTests {
             listener.completed();
           }
         };
-    FLIGHT_SQL_PRODUCER.addCatalogQuery(commandGetExportedKeys,
-        commandGetExportedAndImportedKeysResultProducer);
-    FLIGHT_SQL_PRODUCER.addCatalogQuery(commandGetImportedKeys,
-        commandGetExportedAndImportedKeysResultProducer);
-    FLIGHT_SQL_PRODUCER.addCatalogQuery(commandGetCrossReference,
-        commandGetExportedAndImportedKeysResultProducer);
+    FLIGHT_SQL_PRODUCER.addCatalogQuery(commandGetCatalogs, commandGetCatalogsResultProducer);
 
-    final Message commandGetPrimaryKeys =
-        FlightSql.CommandGetPrimaryKeys.newBuilder().setTable(TARGET_TABLE).build();
-    final Consumer<FlightProducer.ServerStreamListener> commandGetPrimaryKeysResultProducer = listener -> {
-      try (final BufferAllocator allocator = new RootAllocator();
-           final VectorSchemaRoot root = VectorSchemaRoot.create(FlightSqlProducer.Schemas.GET_PRIMARY_KEYS_SCHEMA,
-               allocator)) {
-        final VarCharVector catalogName = (VarCharVector) root.getVector("catalog_name");
-        final VarCharVector schemaName = (VarCharVector) root.getVector("db_schema_name");
-        final VarCharVector tableName = (VarCharVector) root.getVector("table_name");
-        final VarCharVector columnName = (VarCharVector) root.getVector("column_name");
-        final IntVector keySequence = (IntVector) root.getVector("key_sequence");
-        final VarCharVector keyName = (VarCharVector) root.getVector("key_name");
-        range(0, ROW_COUNT)
-            .peek(i -> catalogName.setSafe(i, new Text(format("catalog_name #%d", i))))
-            .peek(i -> schemaName.setSafe(i, new Text(format("db_schema_name #%d", i))))
-            .peek(i -> tableName.setSafe(i, new Text(format("table_name #%d", i))))
-            .peek(i -> columnName.setSafe(i, new Text(format("column_name #%d", i))))
-            .peek(i -> keySequence.setSafe(i, i))
-            .forEach(i -> keyName.setSafe(i, new Text(format("key_name #%d", i))));
-        root.setRowCount(ROW_COUNT);
-        listener.start(root);
-        listener.putNext();
-      } catch (final Throwable throwable) {
-        listener.error(throwable);
-      } finally {
-        listener.completed();
-      }
-    };
-    FLIGHT_SQL_PRODUCER.addCatalogQuery(commandGetPrimaryKeys, commandGetPrimaryKeysResultProducer);
+    final Message commandGetDbSchemas = FlightSql.CommandGetDbSchemas.getDefaultInstance();
+    final Consumer<FlightProducer.ServerStreamListener> commandGetSchemasResultProducer =
+        listener -> {
+          try (final BufferAllocator allocator = new RootAllocator();
+              final VectorSchemaRoot root =
+                  VectorSchemaRoot.create(
+                      FlightSqlProducer.Schemas.GET_SCHEMAS_SCHEMA, allocator)) {
+            final VarCharVector catalogName = (VarCharVector) root.getVector("catalog_name");
+            final VarCharVector schemaName = (VarCharVector) root.getVector("db_schema_name");
+            range(0, BASE_ROW_COUNT)
+                .peek(i -> catalogName.setSafe(i, new Text(format("catalog #%d", i))))
+                .forEach(i -> schemaName.setSafe(i, new Text(format("schema #%d", i))));
+
+            // Note: Intentionally do not show the empty catalog here.
+
+            // Put multiple schemas in catalog "multi-schema".
+            catalogName.setSafe(BASE_ROW_COUNT, new Text("multi-schema catalog"));
+            schemaName.setSafe(BASE_ROW_COUNT, new Text("multi-schema schema 0"));
+            catalogName.setSafe(BASE_ROW_COUNT + 1, new Text("multi-schema catalog"));
+            schemaName.setSafe(BASE_ROW_COUNT + 1, new Text("multi-schema schema 1"));
+
+            // For testing an empty schema.
+            catalogName.setSafe(BASE_ROW_COUNT + 2, new Text("empty-schema catalog"));
+            schemaName.setSafe(BASE_ROW_COUNT + 2, new Text("empty-schema schema 0"));
+
+            // For testing catalogs with schemas with multiple tables.
+            catalogName.setSafe(BASE_ROW_COUNT + 3, new Text("multi-table catalog"));
+            schemaName.setSafe(BASE_ROW_COUNT + 3, new Text("multi-table schema"));
+            root.setRowCount(BASE_ROW_COUNT + 4);
+            listener.start(root);
+            listener.putNext();
+          } catch (final Throwable throwable) {
+            listener.error(throwable);
+          } finally {
+            listener.completed();
+          }
+        };
+    FLIGHT_SQL_PRODUCER.addCatalogQuery(commandGetDbSchemas, commandGetSchemasResultProducer);
+
+    final Message commandGetTables = FlightSql.CommandGetTables.getDefaultInstance();
+    final Consumer<FlightProducer.ServerStreamListener> commandGetTablesResultProducer =
+        listener -> {
+          try (final BufferAllocator allocator = new RootAllocator();
+              final VectorSchemaRoot root =
+                  VectorSchemaRoot.create(
+                      FlightSqlProducer.Schemas.GET_TABLES_SCHEMA_NO_SCHEMA, allocator)) {
+            final VarCharVector catalogName = (VarCharVector) root.getVector("catalog_name");
+            final VarCharVector schemaName = (VarCharVector) root.getVector("db_schema_name");
+            final VarCharVector tableName = (VarCharVector) root.getVector("table_name");
+            final VarCharVector tableType = (VarCharVector) root.getVector("table_type");
+            range(0, BASE_ROW_COUNT)
+                .peek(i -> catalogName.setSafe(i, new Text(format("catalog #%d", i))))
+                .peek(i -> schemaName.setSafe(i, new Text(format("schema #%d", i))))
+                .peek(i -> tableName.setSafe(i, new Text(format("table_name #%d", i))))
+                .forEach(i -> tableType.setSafe(i, new Text(format("table_type #%d", i))));
+
+            // Explicitly don't add the empty catalog.
+
+            // Put multiple schemas in catalog "multi-schema".
+            catalogName.setSafe(BASE_ROW_COUNT, new Text("multi-schema catalog"));
+            schemaName.setSafe(BASE_ROW_COUNT, new Text("multi-schema schema 0"));
+            tableName.setSafe(BASE_ROW_COUNT, new Text("multi-schema table 0"));
+            tableType.setSafe(BASE_ROW_COUNT, new Text("multi-schema type 0"));
+            catalogName.setSafe(BASE_ROW_COUNT + 1, new Text("multi-schema catalog"));
+            schemaName.setSafe(BASE_ROW_COUNT + 1, new Text("multi-schema schema 1"));
+            tableName.setSafe(BASE_ROW_COUNT + 1, new Text("multi-schema table 1"));
+            tableType.setSafe(BASE_ROW_COUNT + 1, new Text("multi-schema type 1"));
+
+            // Explicitly don't add the empty schema.
+
+            // For testing catalogs with schemas with multiple tables.
+            catalogName.setSafe(BASE_ROW_COUNT + 2, new Text("multi-table catalog"));
+            schemaName.setSafe(BASE_ROW_COUNT + 2, new Text("multi-table schema"));
+            tableName.setSafe(BASE_ROW_COUNT + 2, new Text("multi-table table 0"));
+            tableType.setSafe(BASE_ROW_COUNT + 2, new Text("multi-table table type 0"));
+            catalogName.setSafe(BASE_ROW_COUNT + 3, new Text("multi-table catalog"));
+            schemaName.setSafe(BASE_ROW_COUNT + 3, new Text("multi-table schema"));
+            tableName.setSafe(BASE_ROW_COUNT + 3, new Text("multi-table table 1"));
+            tableType.setSafe(BASE_ROW_COUNT + 3, new Text("multi-table table type 1"));
+
+            root.setRowCount(BASE_ROW_COUNT + 4);
+            listener.start(root);
+            listener.putNext();
+          } catch (final Throwable throwable) {
+            listener.error(throwable);
+          } finally {
+            listener.completed();
+          }
+        };
+    FLIGHT_SQL_PRODUCER.addCatalogQuery(commandGetTables, commandGetTablesResultProducer);
+
+    final Message commandGetTablesWithSchema =
+        FlightSql.CommandGetTables.newBuilder().setIncludeSchema(true).build();
+    final Consumer<FlightProducer.ServerStreamListener> commandGetTablesWithSchemaResultProducer =
+        listener -> {
+          try (final BufferAllocator allocator = new RootAllocator();
+              final VectorSchemaRoot root =
+                  VectorSchemaRoot.create(FlightSqlProducer.Schemas.GET_TABLES_SCHEMA, allocator)) {
+            final byte[] filledTableSchemaBytes =
+                copyFrom(
+                        serializeSchema(
+                            new Schema(
+                                Arrays.asList(
+                                    Field.nullable(
+                                        "column_1", ArrowType.Decimal.createDecimal(5, 2, 128)),
+                                    Field.nullable(
+                                        "column_2",
+                                        new ArrowType.Timestamp(TimeUnit.NANOSECOND, "UTC")),
+                                    Field.notNullable("column_3", Types.MinorType.INT.getType())))))
+                    .toByteArray();
+            final VarCharVector catalogName = (VarCharVector) root.getVector("catalog_name");
+            final VarCharVector schemaName = (VarCharVector) root.getVector("db_schema_name");
+            final VarCharVector tableName = (VarCharVector) root.getVector("table_name");
+            final VarCharVector tableType = (VarCharVector) root.getVector("table_type");
+            final VarBinaryVector tableSchema = (VarBinaryVector) root.getVector("table_schema");
+            range(0, BASE_ROW_COUNT)
+                .peek(i -> catalogName.setSafe(i, new Text(format("catalog #%d", i))))
+                .peek(i -> schemaName.setSafe(i, new Text(format("schema #%d", i))))
+                .peek(i -> tableName.setSafe(i, new Text(format("table_name #%d", i))))
+                .peek(i -> tableType.setSafe(i, new Text(format("table_type #%d", i))))
+                .forEach(i -> tableSchema.setSafe(i, filledTableSchemaBytes));
+
+            // Explicitly don't add the empty catalog.
+
+            // Put multiple schemas in catalog "multi-schema".
+            catalogName.setSafe(BASE_ROW_COUNT, new Text("multi-schema catalog"));
+            schemaName.setSafe(BASE_ROW_COUNT, new Text("multi-schema schema 0"));
+            tableName.setSafe(BASE_ROW_COUNT, new Text("multi-schema table 0"));
+            tableType.setSafe(BASE_ROW_COUNT, new Text("multi-schema type 0"));
+            tableSchema.setSafe(BASE_ROW_COUNT, filledTableSchemaBytes);
+            catalogName.setSafe(BASE_ROW_COUNT + 1, new Text("multi-schema catalog"));
+            schemaName.setSafe(BASE_ROW_COUNT + 1, new Text("multi-schema schema 1"));
+            tableName.setSafe(BASE_ROW_COUNT + 1, new Text("multi-schema table 1"));
+            tableType.setSafe(BASE_ROW_COUNT + 1, new Text("multi-schema type 1"));
+            tableSchema.setSafe(BASE_ROW_COUNT + 1, filledTableSchemaBytes);
+
+            // Explicitly don't add the empty schema.
+
+            // For testing catalogs with schemas with multiple tables.
+            catalogName.setSafe(BASE_ROW_COUNT + 2, new Text("multi-table catalog"));
+            schemaName.setSafe(BASE_ROW_COUNT + 2, new Text("multi-table schema"));
+            tableName.setSafe(BASE_ROW_COUNT + 2, new Text("multi-table table 0"));
+            tableType.setSafe(BASE_ROW_COUNT + 2, new Text("multi-table table type 0"));
+            tableSchema.setSafe(BASE_ROW_COUNT + 2, filledTableSchemaBytes);
+            catalogName.setSafe(BASE_ROW_COUNT + 3, new Text("multi-table catalog"));
+            schemaName.setSafe(BASE_ROW_COUNT + 3, new Text("multi-table schema"));
+            tableName.setSafe(BASE_ROW_COUNT + 3, new Text("multi-table table 1"));
+            tableType.setSafe(BASE_ROW_COUNT + 3, new Text("multi-table table type 1"));
+            tableSchema.setSafe(BASE_ROW_COUNT + 3, filledTableSchemaBytes);
+
+            root.setRowCount(BASE_ROW_COUNT + 4);
+            listener.start(root);
+            listener.putNext();
+          } catch (final Throwable throwable) {
+            listener.error(throwable);
+          } finally {
+            listener.completed();
+          }
+        };
+    FLIGHT_SQL_PRODUCER.addCatalogQuery(
+        commandGetTablesWithSchema, commandGetTablesWithSchemaResultProducer);
   }
 
   @AfterClass
@@ -481,53 +296,235 @@ public class GetObjectsTests {
     AutoCloseables.close(connection, FLIGHT_SQL_PRODUCER, allocator);
   }
 
-
   @Test
-  public void testGetCatalogsCanBeAccessedByIndices() throws IOException, AdbcException {
-    try (final ArrowReader resultSet = connection.getObjects(AdbcConnection.GetObjectsDepth.CATALOGS, null, null, null, null, null)) {
-/*
-      resultSetTestUtils.testData(resultSet, EXPECTED_GET_CATALOGS_RESULTS);
-*/
+  public void testGetCatalogs() throws IOException, AdbcException {
+    try (final ArrowReader resultSet =
+        connection.getObjects(
+            AdbcConnection.GetObjectsDepth.CATALOGS, null, null, null, null, null)) {
+      boolean loadedBatch = resultSet.loadNextBatch();
+      assertTrue(loadedBatch);
+      VectorSchemaRoot root = resultSet.getVectorSchemaRoot();
+      VarCharVector catalogNameVector = (VarCharVector) root.getVector(0);
+      FieldVector schemas = root.getVector(1);
+      for (int i = 0; i < BASE_ROW_COUNT; ++i) {
+        assertEquals(String.format("catalog #%d", i), catalogNameVector.getObject(i).toString());
+        assertTrue(schemas.isNull(i));
+      }
+      assertEquals(BASE_ROW_COUNT + 4, root.getRowCount());
     }
   }
 
   @Test
-  public void testGetTablesCanBeAccessedByIndices() throws IOException, AdbcException {
-    try (final ArrowReader resultSet = connection.getObjects(AdbcConnection.GetObjectsDepth.TABLES, null, null, null, null, null)) {
-/*
-      resultSetTestUtils.testData(resultSet, EXPECTED_GET_TABLES_RESULTS);
-*/
+  public void testGetCatalogsWithCatalogFilter() throws IOException, AdbcException {
+    try (final ArrowReader resultSet =
+        connection.getObjects(
+            AdbcConnection.GetObjectsDepth.CATALOGS, "catalog #0", null, null, null, null)) {
+      boolean loadedBatch = resultSet.loadNextBatch();
+      assertTrue(loadedBatch);
+      VectorSchemaRoot root = resultSet.getVectorSchemaRoot();
+      VarCharVector catalogNameVector = (VarCharVector) root.getVector(0);
+      FieldVector schemas = root.getVector(1);
+      assertEquals(1, root.getRowCount());
+      assertEquals(String.format("catalog #%d", 0), catalogNameVector.getObject(0).toString());
+      assertTrue(schemas.isNull(0));
     }
   }
 
   @Test
-  public void testGetSchemasCanBeAccessedByIndices() throws IOException, AdbcException {
-    try (final ArrowReader resultSet = connection.getObjects(AdbcConnection.GetObjectsDepth.DB_SCHEMAS, null, null, null, null, null)) {
-/*
-      resultSetTestUtils.testData(resultSet, EXPECTED_GET_SCHEMAS_RESULTS);
-*/
+  public void testGetCatalogsWithEmptyingCatalogFilter() throws IOException, AdbcException {
+    try (final ArrowReader resultSet =
+        connection.getObjects(
+            AdbcConnection.GetObjectsDepth.CATALOGS, "invalid filter", null, null, null, null)) {
+      boolean loadedBatch = resultSet.loadNextBatch();
+      assertFalse(loadedBatch);
     }
   }
 
   @Test
-  public void testGetColumnsCanBeAccessedByIndices() throws IOException, AdbcException {
-    try (final ArrowReader resultSet = connection.getObjects(AdbcConnection.GetObjectsDepth.ALL, null, null, null, null, null)) {
-/*
-      resultSetTestUtils.testData(resultSet, EXPECTED_GET_COLUMNS_RESULTS);
-*/
+  public void testGetSchemas() throws IOException, AdbcException {
+    try (final ArrowReader resultSet =
+        connection.getObjects(
+            AdbcConnection.GetObjectsDepth.DB_SCHEMAS, null, null, null, null, null)) {
+      boolean loadedBatch = resultSet.loadNextBatch();
+      assertTrue(loadedBatch);
+      VectorSchemaRoot root = resultSet.getVectorSchemaRoot();
+      VarCharVector catalogNameVector = (VarCharVector) root.getVector(0);
+      // The schema is a List of structs.
+      ListVector schemaVector = (ListVector) root.getVector(1);
+      for (int i = 0; i < BASE_ROW_COUNT; ++i) {
+        assertEquals(String.format("catalog #%d", i), catalogNameVector.getObject(i).toString());
+        Map<String, Object> schemaStruct = (Map<String, Object>) schemaVector.getObject(i).get(0);
+        String entry = schemaStruct.get("db_schema_name").toString();
+        assertEquals(String.format("schema #%d", i), entry);
+        assertNull(schemaStruct.get("db_schema_tables"));
+      }
+
+      // Ensure empty catalogs are shown correctly.
+      assertEquals("empty catalog", catalogNameVector.getObject(BASE_ROW_COUNT).toString());
+      assertTrue(schemaVector.getObject(BASE_ROW_COUNT).isEmpty());
+
+      // Ensure multi-schema catalogs are shown correctly.
+      assertEquals(
+          "multi-schema catalog", catalogNameVector.getObject(BASE_ROW_COUNT + 1).toString());
+      Map<String, Object> schemaStruct =
+          (Map<String, Object>) schemaVector.getObject(BASE_ROW_COUNT + 1).get(0);
+      String entry = schemaStruct.get("db_schema_name").toString();
+      assertEquals("multi-schema schema 0", entry);
+      assertNull(schemaStruct.get("db_schema_tables"));
+      schemaStruct = (Map<String, Object>) schemaVector.getObject(BASE_ROW_COUNT + 1).get(1);
+      entry = schemaStruct.get("db_schema_name").toString();
+      assertEquals("multi-schema schema 1", entry);
+      assertNull(schemaStruct.get("db_schema_tables"));
+
+      assertEquals(BASE_ROW_COUNT + 4, root.getRowCount());
     }
   }
 
   @Test
-  public void testGetColumnsCanByIndicesFilteringColumnNames() throws IOException, AdbcException {
-    try (final ArrowReader resultSet = connection.getObjects(AdbcConnection.GetObjectsDepth.ALL, null, null, null, null, "column_1")) {
-/*
-      resultSetTestUtils.testData(resultSet, EXPECTED_GET_COLUMNS_RESULTS
-          .stream()
-          .filter(insideList -> Objects.equals(insideList.get(3), "column_1"))
-          .collect(toList())
-      );
-*/
+  public void testGetTables() throws IOException, AdbcException {
+    try (final ArrowReader reader =
+        connection.getObjects(
+            AdbcConnection.GetObjectsDepth.TABLES, null, null, null, null, null)) {
+      validateTables(reader, ExpectedColumnSelection.COLUMNS_DISABLED);
+    }
+  }
+
+  @Test
+  public void testGetColumns() throws IOException, AdbcException {
+    try (final ArrowReader reader =
+        connection.getObjects(AdbcConnection.GetObjectsDepth.ALL, null, null, null, null, null)) {
+      validateTables(reader, ExpectedColumnSelection.ALL_COLUMNS);
+    }
+  }
+
+  @Test
+  public void testGetColumnsWithColumnFilter() throws IOException, AdbcException {
+    try (final ArrowReader reader =
+        connection.getObjects(
+            AdbcConnection.GetObjectsDepth.ALL, null, null, null, null, "column_1")) {
+      validateTables(reader, ExpectedColumnSelection.FIRST_COLUMN);
+    }
+  }
+
+  @Test
+  public void testGetColumnsWithEmptyingColumnFilter() throws IOException, AdbcException {
+    try (final ArrowReader reader =
+        connection.getObjects(
+            AdbcConnection.GetObjectsDepth.ALL, null, null, null, null, "empty filter")) {
+      validateTables(reader, ExpectedColumnSelection.EMPTY_COLUMNS);
+    }
+  }
+
+  private void validateTables(ArrowReader reader, ExpectedColumnSelection columnSelection)
+      throws AdbcException, IOException {
+    boolean loadedBatch = reader.loadNextBatch();
+    assertTrue(loadedBatch);
+    VectorSchemaRoot root = reader.getVectorSchemaRoot();
+    VarCharVector catalogNameVector = (VarCharVector) root.getVector(0);
+    // The schema is a List of structs.
+    ListVector schemaVector = (ListVector) root.getVector(1);
+    for (int i = 0; i < BASE_ROW_COUNT; ++i) {
+      assertEquals(String.format("catalog #%d", i), catalogNameVector.getObject(i).toString());
+      Map<String, Object> schemaStruct = (Map<String, Object>) schemaVector.getObject(i).get(0);
+      String entry = schemaStruct.get("db_schema_name").toString();
+      assertEquals(String.format("schema #%d", i), entry);
+      List<Map<String, Object>> tableStructs =
+          (List<Map<String, Object>>) schemaStruct.get("db_schema_tables");
+      Map<String, Object> tableStruct = tableStructs.get(0);
+      assertNotNull(tableStruct);
+      assertEquals(String.format("table_name #%d", i), tableStruct.get("table_name").toString());
+      assertEquals(String.format("table_type #%d", i), tableStruct.get("table_type").toString());
+      validateColumns(tableStruct, columnSelection);
+    }
+
+    // Ensure empty catalogs are shown correctly.
+    assertEquals("empty catalog", catalogNameVector.getObject(BASE_ROW_COUNT).toString());
+    assertTrue(schemaVector.getObject(BASE_ROW_COUNT).isEmpty());
+
+    // Ensure multi-schema catalogs are shown correctly.
+    assertEquals(
+        "multi-schema catalog", catalogNameVector.getObject(BASE_ROW_COUNT + 1).toString());
+    Map<String, Object> schemaStruct =
+        (Map<String, Object>) schemaVector.getObject(BASE_ROW_COUNT + 1).get(0);
+    String entry = schemaStruct.get("db_schema_name").toString();
+    assertEquals("multi-schema schema 0", entry);
+    List<Map<String, Object>> tableStructs =
+        (List<Map<String, Object>>) schemaStruct.get("db_schema_tables");
+    Map<String, Object> tableStruct = tableStructs.get(0);
+    assertNotNull(tableStruct);
+    assertEquals("multi-schema table 0", tableStruct.get("table_name").toString());
+    assertEquals("multi-schema type 0", tableStruct.get("table_type").toString());
+    validateColumns(tableStruct, columnSelection);
+    schemaStruct = (Map<String, Object>) schemaVector.getObject(BASE_ROW_COUNT + 1).get(1);
+    entry = schemaStruct.get("db_schema_name").toString();
+    assertEquals("multi-schema schema 1", entry);
+    entry = schemaStruct.get("db_schema_name").toString();
+    assertEquals("multi-schema schema 1", entry);
+    tableStructs = (List<Map<String, Object>>) schemaStruct.get("db_schema_tables");
+    tableStruct = tableStructs.get(0);
+    assertNotNull(tableStruct);
+    assertEquals("multi-schema table 1", tableStruct.get("table_name").toString());
+    assertEquals("multi-schema type 1", tableStruct.get("table_type").toString());
+    validateColumns(tableStruct, columnSelection);
+
+    // Ensure empty schemas are shown correctly.
+    assertEquals(
+        "empty-schema catalog", catalogNameVector.getObject(BASE_ROW_COUNT + 2).toString());
+    schemaStruct = (Map<String, Object>) schemaVector.getObject(BASE_ROW_COUNT + 2).get(0);
+    entry = schemaStruct.get("db_schema_name").toString();
+    assertEquals("empty-schema schema 0", entry);
+    tableStructs = (List<Map<String, Object>>) schemaStruct.get("db_schema_tables");
+    assertTrue(tableStructs.isEmpty());
+
+    // Ensure schemas with multiple tables appear correctly.
+    assertEquals("multi-table catalog", catalogNameVector.getObject(BASE_ROW_COUNT + 3).toString());
+    schemaStruct = (Map<String, Object>) schemaVector.getObject(BASE_ROW_COUNT + 3).get(0);
+    entry = schemaStruct.get("db_schema_name").toString();
+    assertEquals("multi-table schema", entry);
+    tableStructs = (List<Map<String, Object>>) schemaStruct.get("db_schema_tables");
+    tableStruct = tableStructs.get(0);
+    assertEquals("multi-table table 0", tableStruct.get("table_name").toString());
+    assertEquals("multi-table table type 0", tableStruct.get("table_type").toString());
+    validateColumns(tableStruct, columnSelection);
+    tableStruct = tableStructs.get(1);
+    assertEquals("multi-table table 1", tableStruct.get("table_name").toString());
+    assertEquals("multi-table table type 1", tableStruct.get("table_type").toString());
+    validateColumns(tableStruct, columnSelection);
+  }
+
+  private void validateColumns(
+      Map<String, Object> tableStruct, ExpectedColumnSelection columnSelection) {
+    List<Map<String, Object>> columns =
+        (List<Map<String, Object>>) tableStruct.get("table_columns");
+    if (columnSelection == ExpectedColumnSelection.COLUMNS_DISABLED) {
+      assertNull(columns);
+      return;
+    }
+
+    if (columnSelection == ExpectedColumnSelection.EMPTY_COLUMNS) {
+      assertTrue(columns.isEmpty());
+      return;
+    }
+
+    assertFalse(columns.isEmpty());
+    Map<String, Object> columnStruct = columns.get(0);
+    assertEquals("column_1", columnStruct.get("column_name").toString());
+    assertEquals("1", columnStruct.get("ordinal_position").toString());
+    assertEquals("2", columnStruct.get("xdbc_decimal_digits").toString());
+    assertEquals("YES", columnStruct.get("xdbc_is_nullable").toString());
+
+    if (columnSelection == ExpectedColumnSelection.ALL_COLUMNS) {
+      columnStruct = columns.get(1);
+      assertEquals("column_2", columnStruct.get("column_name").toString());
+      assertEquals("2", columnStruct.get("ordinal_position").toString());
+      assertNull(columnStruct.get("xdbc_num_prec_radix"));
+      assertEquals("YES", columnStruct.get("xdbc_is_nullable").toString());
+
+      columnStruct = columns.get(2);
+      assertEquals("column_3", columnStruct.get("column_name").toString());
+      assertEquals("3", columnStruct.get("ordinal_position").toString());
+      assertEquals((short) 0, columnStruct.get("xdbc_decimal_digits"));
+      assertEquals("NO", columnStruct.get("xdbc_is_nullable").toString());
     }
   }
 }
