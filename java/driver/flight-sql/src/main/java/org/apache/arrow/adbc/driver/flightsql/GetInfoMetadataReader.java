@@ -34,19 +34,21 @@ import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.flight.sql.impl.FlightSql;
 import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.util.Preconditions;
 import org.apache.arrow.vector.UInt4Vector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.complex.DenseUnionVector;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.dataflow.qual.Pure;
 
 /** Helper class to track state needed to build up the info structure. */
 final class GetInfoMetadataReader extends BaseFlightReader {
   private static final byte STRING_VALUE_TYPE_ID = (byte) 0;
   private static final Map<Integer, Integer> ADBC_TO_FLIGHT_SQL_CODES = new HashMap<>();
   private static final Map<Integer, AddInfo> SUPPORTED_CODES = new HashMap<>();
+  private static final byte[] DRIVER_NAME =
+      "ADBC Flight SQL Driver".getBytes(StandardCharsets.UTF_8);
 
   private final BufferAllocator allocator;
   private final Collection<Integer> requestedCodes;
@@ -74,14 +76,18 @@ final class GetInfoMetadataReader extends BaseFlightReader {
     SUPPORTED_CODES.put(
         FlightSql.SqlInfo.FLIGHT_SQL_SERVER_NAME.getNumber(),
         (b, sqlInfo, srcIndex, dstIndex) -> {
-          Preconditions.checkState(b.infoCodes != null);
+          if (b.infoCodes == null) {
+            throw new IllegalStateException();
+          }
           b.infoCodes.setSafe(dstIndex, AdbcInfoCode.VENDOR_NAME.getValue());
           b.setStringValue(dstIndex, sqlInfo.getVarCharVector(STRING_VALUE_TYPE_ID).get(srcIndex));
         });
     SUPPORTED_CODES.put(
         FlightSql.SqlInfo.FLIGHT_SQL_SERVER_VERSION.getNumber(),
         (b, sqlInfo, srcIndex, dstIndex) -> {
-          Preconditions.checkState(b.infoCodes != null);
+          if (b.infoCodes == null) {
+            throw new IllegalStateException();
+          }
           b.infoCodes.setSafe(dstIndex, AdbcInfoCode.VENDOR_VERSION.getValue());
           b.setStringValue(dstIndex, sqlInfo.getVarCharVector(STRING_VALUE_TYPE_ID).get(srcIndex));
         });
@@ -119,18 +125,14 @@ final class GetInfoMetadataReader extends BaseFlightReader {
     this.hasInMemoryData =
         requestedCodes.contains(AdbcInfoCode.DRIVER_NAME.getValue())
             || requestedCodes.contains(AdbcInfoCode.DRIVER_VERSION.getValue());
-    boolean hasRequestedCode = false;
-    for (Integer requestedCode : requestedCodes) {
-      if (SUPPORTED_CODES.containsKey(requestedCode)) {
-        hasRequestedCode = true;
-        break;
-      }
-    }
-    hasSupportedCodes = hasRequestedCode;
+    this.hasSupportedCodes = requestedCodes.stream().anyMatch(SUPPORTED_CODES::containsKey);
   }
 
+  @SuppressWarnings("dereference.of.nullable")
+  // Framework is treating vector calls as having potential side-effects that later the nullity of
+  // fields.
+  @Pure
   void setStringValue(int index, byte[] value) {
-    Preconditions.checkState(infoValues != null && stringValues != null);
     infoValues.setValueCount(index + 1);
     infoValues.setTypeId(index, STRING_VALUE_TYPE_ID);
     stringValues.setSafe(index, value);
@@ -139,6 +141,10 @@ final class GetInfoMetadataReader extends BaseFlightReader {
         .setInt((long) index * DenseUnionVector.OFFSET_WIDTH, stringValues.getLastSet());
   }
 
+  @SuppressWarnings("dereference.of.nullable")
+  // Checker framework is considering Arrow methods such as getVarCharVectors() as impure and
+  // possibly altering
+  // the state of fields such as infoCodes.
   @Override
   public boolean loadNextBatch() throws IOException {
     if (hasInMemoryData && !hasInMemoryDataBeenWritten) {
@@ -155,7 +161,7 @@ final class GetInfoMetadataReader extends BaseFlightReader {
 
         if (requestedCodes.contains(AdbcInfoCode.DRIVER_NAME.getValue())) {
           infoCodes.setSafe(dstIndex, AdbcInfoCode.DRIVER_NAME.getValue());
-          setStringValue(dstIndex++, "ADBC Flight SQL Driver".getBytes(StandardCharsets.UTF_8));
+          setStringValue(dstIndex++, DRIVER_NAME);
         }
 
         if (requestedCodes.contains(AdbcInfoCode.DRIVER_VERSION.getValue())) {

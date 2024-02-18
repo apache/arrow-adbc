@@ -31,7 +31,6 @@ import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
-import org.apache.arrow.util.Preconditions;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.VectorUnloader;
 import org.apache.arrow.vector.ipc.ArrowReader;
@@ -63,9 +62,16 @@ public abstract class BaseFlightReader extends ArrowReader {
     this.rpcCall = rpcCall;
   }
 
+  @SuppressWarnings("dereference.of.nullable")
+  // Checker framework is considering Arrow functions such as FlightStream.next() as potentially
+  // altering the state
+  // and able to change currentStream or schema fields to null.
   @Override
   public boolean loadNextBatch() throws IOException {
-    Preconditions.checkState(currentStream != null);
+    if (currentStream == null || schema == null) {
+      throw new IllegalStateException();
+    }
+
     if (!currentStream.next()) {
       if (nextEndpointIndex >= flightEndpoints.size()) {
         return false;
@@ -74,6 +80,9 @@ public abstract class BaseFlightReader extends ArrowReader {
           currentStream.close();
           FlightEndpoint endpoint = flightEndpoints.get(nextEndpointIndex++);
           currentStream = tryLoadNextStream(endpoint, client, clientCache);
+          if (currentStream == null) {
+            throw new IllegalStateException();
+          }
           if (!schema.equals(currentStream.getSchema())) {
             throw new IOException(
                 "Stream has inconsistent schema. Expected: "
@@ -94,7 +103,9 @@ public abstract class BaseFlightReader extends ArrowReader {
 
   @Override
   protected Schema readSchema() throws IOException {
-    Preconditions.checkState(schema != null);
+    if (schema == null) {
+      throw new IllegalStateException();
+    }
     return schema;
   }
 

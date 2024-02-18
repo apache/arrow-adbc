@@ -59,8 +59,6 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 final class GetObjectsMetadataReaders {
 
   private static final String JAVA_REGEX_SPECIALS = "[]()|^-+*?{}$\\.";
-  private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
-
   static final int NO_DECIMAL_DIGITS = 0;
   static final int COLUMN_SIZE_BYTE = (int) Math.ceil((Byte.SIZE - 1) * Math.log(2) / Math.log(10));
   static final int COLUMN_SIZE_SHORT =
