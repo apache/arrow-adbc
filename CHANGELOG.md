@@ -439,3 +439,11 @@
 ### Refactor
 
 - **r/adbcdrivermanager**: Use C++ base driver to implement test drivers (#1269)
+
+## ADBC Libraries 0.10.0 (2024-02-18)
+
+### Fix
+
+- **dev/release**: remove gtest without prompting on Windows (#1439)
+- **dev/release,glib**: set library path to run example (#1436)
+- **dev/release,go**: ensure temporary directory removable (#1438)
