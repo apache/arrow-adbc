@@ -26,4 +26,5 @@ Python.
    :maxdepth: 2
 
    driver_manager
+   flight_sql
    postgresql

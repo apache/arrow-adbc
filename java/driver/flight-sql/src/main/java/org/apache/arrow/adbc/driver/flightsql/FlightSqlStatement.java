@@ -29,7 +29,6 @@ import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.PartitionDescriptor;
 import org.apache.arrow.adbc.sql.SqlQuirks;
-import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.flight.FlightRuntimeException;
@@ -41,45 +40,47 @@ import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class FlightSqlStatement implements AdbcStatement {
   private final BufferAllocator allocator;
-  private final FlightSqlClient client;
-  private final LoadingCache<Location, FlightClient> clientCache;
+  private final FlightSqlClientWithCallOptions client;
+  private final LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache;
   private final SqlQuirks quirks;
 
   // State for SQL queries
-  private String sqlQuery;
-  private FlightSqlClient.PreparedStatement preparedStatement;
+  private @Nullable String sqlQuery;
+  private FlightSqlClient.@Nullable PreparedStatement preparedStatement;
   // State for bulk ingest
-  private BulkState bulkOperation;
-  private VectorSchemaRoot bindRoot;
+  private @Nullable BulkState bulkOperation;
+  private @Nullable VectorSchemaRoot bindRoot;
 
   FlightSqlStatement(
       BufferAllocator allocator,
-      FlightSqlClient client,
-      LoadingCache<Location, FlightClient> clientCache,
+      FlightSqlClientWithCallOptions client,
+      LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache,
       SqlQuirks quirks) {
     this.allocator = allocator;
     this.client = client;
     this.clientCache = clientCache;
     this.quirks = quirks;
     this.sqlQuery = null;
+    this.preparedStatement = null;
+    this.bulkOperation = null;
+    this.bindRoot = null;
   }
 
   static FlightSqlStatement ingestRoot(
       BufferAllocator allocator,
-      FlightSqlClient client,
-      LoadingCache<Location, FlightClient> clientCache,
+      FlightSqlClientWithCallOptions client,
+      LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache,
       SqlQuirks quirks,
       String targetTableName,
       BulkIngestMode mode) {
     Objects.requireNonNull(targetTableName);
     final FlightSqlStatement statement =
         new FlightSqlStatement(allocator, client, clientCache, quirks);
-    statement.bulkOperation = new BulkState();
-    statement.bulkOperation.mode = mode;
-    statement.bulkOperation.targetTable = targetTableName;
+    statement.bulkOperation = new BulkState(mode, targetTableName);
     return statement;
   }
 
@@ -97,7 +98,8 @@ public class FlightSqlStatement implements AdbcStatement {
     bindRoot = root;
   }
 
-  private void createBulkTable() throws AdbcException {
+  private void createBulkTable(BulkState bulkOperation, VectorSchemaRoot bindRoot)
+      throws AdbcException {
     final StringBuilder create = new StringBuilder("CREATE TABLE ");
     create.append(bulkOperation.targetTable);
     create.append(" (");
@@ -129,20 +131,21 @@ public class FlightSqlStatement implements AdbcStatement {
     }
   }
 
-  private UpdateResult executeBulk() throws AdbcException {
+  private UpdateResult executeBulk(BulkState bulkOperation) throws AdbcException {
     if (bindRoot == null) {
       throw AdbcException.invalidState("[Flight SQL] Must call bind() before bulk insert");
     }
+    final VectorSchemaRoot bindParams = bindRoot;
 
     if (bulkOperation.mode == BulkIngestMode.CREATE) {
-      createBulkTable();
+      createBulkTable(bulkOperation, bindParams);
     }
 
     // XXX: potential injection
     final StringBuilder insert = new StringBuilder("INSERT INTO ");
     insert.append(bulkOperation.targetTable);
     insert.append(" VALUES (");
-    for (int col = 0; col < bindRoot.getFieldVectors().size(); col++) {
+    for (int col = 0; col < bindParams.getFieldVectors().size(); col++) {
       if (col > 0) {
         insert.append(", ");
       }
@@ -164,7 +167,7 @@ public class FlightSqlStatement implements AdbcStatement {
     }
     try {
       try {
-        statement.setParameters(new NonOwningRoot(bindRoot));
+        statement.setParameters(new NonOwningRoot(bindParams));
         statement.executeUpdate();
       } finally {
         statement.close();
@@ -178,7 +181,7 @@ public class FlightSqlStatement implements AdbcStatement {
       }
       throw FlightSqlDriverUtil.fromFlightException(e);
     }
-    return new UpdateResult(bindRoot.getRowCount());
+    return new UpdateResult(bindParams.getRowCount());
   }
 
   @FunctionalInterface
@@ -188,17 +191,18 @@ public class FlightSqlStatement implements AdbcStatement {
 
   private <R> R execute(
       Execute<FlightSqlClient.PreparedStatement, R> doPrepared,
-      Execute<FlightSqlClient, R> doRegular)
+      Execute<FlightSqlClientWithCallOptions, R> doRegular)
       throws AdbcException {
     try {
       if (preparedStatement != null) {
+        FlightSqlClient.PreparedStatement prepared = preparedStatement;
         // TODO: This binds only the LAST row
         // See https://lists.apache.org/thread/47zfk3xooojckvfjq2h6ldlqkjrqnsjt
         // "[DISC] Flight SQL: clarifying prepared statements with parameters and result sets"
         if (bindRoot != null) {
-          preparedStatement.setParameters(new NonOwningRoot(bindRoot));
+          prepared.setParameters(new NonOwningRoot(bindRoot));
         }
-        return doPrepared.execute(preparedStatement);
+        return doPrepared.execute(prepared);
       } else {
         return doRegular.execute(client);
       }
@@ -213,8 +217,8 @@ public class FlightSqlStatement implements AdbcStatement {
     } else if (sqlQuery == null) {
       throw AdbcException.invalidState("[Flight SQL] Must setSqlQuery() before execute");
     }
-    return execute(
-        FlightSqlClient.PreparedStatement::execute, (client) -> client.execute(sqlQuery));
+    final String query = sqlQuery;
+    return execute(FlightSqlClient.PreparedStatement::execute, (client) -> client.execute(query));
   }
 
   @Override
@@ -254,18 +258,20 @@ public class FlightSqlStatement implements AdbcStatement {
     } else if (sqlQuery == null) {
       throw AdbcException.invalidState("[Flight SQL] Must setSqlQuery() before execute");
     }
+    final String query = sqlQuery;
     return execute(
         FlightSqlClient.PreparedStatement::getResultSetSchema,
-        (client) -> client.getExecuteSchema(sqlQuery).getSchema());
+        (client) -> client.getExecuteSchema(query).getSchema());
   }
 
   @Override
   public UpdateResult executeUpdate() throws AdbcException {
     if (bulkOperation != null) {
-      return executeBulk();
+      return executeBulk(bulkOperation);
     } else if (sqlQuery == null) {
       throw AdbcException.invalidState("[Flight SQL] Must setSqlQuery() before executeUpdate");
     }
+    final String query = sqlQuery;
     long updatedRows =
         execute(
             (preparedStatement) -> {
@@ -276,7 +282,7 @@ public class FlightSqlStatement implements AdbcStatement {
                 throw FlightSqlDriverUtil.fromFlightException(e);
               }
             },
-            (client) -> client.executeUpdate(sqlQuery));
+            (client) -> client.executeUpdate(query));
     return new UpdateResult(updatedRows);
   }
 
@@ -304,12 +310,20 @@ public class FlightSqlStatement implements AdbcStatement {
 
   @Override
   public void close() throws Exception {
-    AutoCloseables.close(preparedStatement);
+    // TODO(https://github.com/apache/arrow/issues/39814): this is annotated wrongly upstream
+    if (preparedStatement != null) {
+      AutoCloseables.close(preparedStatement);
+    }
   }
 
   private static final class BulkState {
-    public BulkIngestMode mode;
+    BulkIngestMode mode;
     String targetTable;
+
+    public BulkState(BulkIngestMode mode, String targetTableName) {
+      this.mode = mode;
+      this.targetTable = targetTableName;
+    }
   }
 
   /** A VectorSchemaRoot which does not own its data. */

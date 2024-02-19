@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     internal class BigQueryInfoArrowStream : IArrowArrayStream
     {
         private Schema schema;
-        private RecordBatch batch;
+        private RecordBatch? batch;
 
         public BigQueryInfoArrowStream(Schema schema, List<IArrowArray> data)
         {
@@ -38,11 +38,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public Schema Schema { get { return this.schema; } }
 
-        public ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        public ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            RecordBatch batch = this.batch;
+            RecordBatch? batch = this.batch;
             this.batch = null;
-            return new ValueTask<RecordBatch>(batch);
+            return new ValueTask<RecordBatch?>(batch);
         }
 
         public void Dispose()

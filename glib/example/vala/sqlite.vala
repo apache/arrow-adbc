@@ -27,20 +27,15 @@ int main (string[] args) {
             var connection = new GADBC.Connection ();
             connection.init (database);
             try {
-                var statement = new GADBC.Statement (connection);
+                var statement = new GADBCArrow.Statement (connection);
                 string sql = "SELECT sqlite_version() AS version";
                 statement.set_sql_query (sql);
                 try {
-                    void *c_abi_array_stream = null;
+                    GArrow.RecordBatchReader reader;
                     int64 n_rows_affected;
-                    statement.execute (true, out c_abi_array_stream, out n_rows_affected);
-                    try {
-                        var reader = GArrow.RecordBatchReader.import (c_abi_array_stream);
-                        var table = reader.read_all ();
-                        stdout.printf ("Result:\n%s", table.to_string ());
-                    } finally {
-                        GLib.free (c_abi_array_stream);
-                    }
+                    statement.execute (true, out reader, out n_rows_affected);
+                    var table = reader.read_all ();
+                    stdout.printf ("Result:\n%s", table.to_string ());
                     exit_code = Posix.EXIT_SUCCESS;
                 } catch (GLib.Error error) {
                     GLib.error ("Failed to execute a statement: %s", error.message);

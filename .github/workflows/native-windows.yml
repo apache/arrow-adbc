@@ -69,7 +69,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -126,7 +126,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -204,7 +204,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -221,7 +221,7 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.20.8
           check-latest: true
@@ -272,7 +272,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0

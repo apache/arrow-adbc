@@ -53,7 +53,7 @@ for source in sources:
 # Resolve Version (miniver)
 
 
-def get_version_and_cmdclass(pkg_path):
+def get_version(pkg_path):
     """
     Load version.py module without importing the whole package.
 
@@ -64,10 +64,10 @@ def get_version_and_cmdclass(pkg_path):
     spec = spec_from_file_location("version", os.path.join(pkg_path, "_version.py"))
     module = module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.__version__, module.get_cmdclass(pkg_path)
+    return module.__version__
 
 
-version, cmdclass = get_version_and_cmdclass("adbc_driver_manager")
+version = get_version("adbc_driver_manager")
 
 # ------------------------------------------------------------
 # Resolve compiler flags
@@ -76,6 +76,8 @@ build_type = os.environ.get("ADBC_BUILD_TYPE", "release")
 
 if sys.platform == "win32":
     extra_compile_args = ["/std:c++17", "/DADBC_EXPORTING"]
+    if build_type == "debug":
+        extra_compile_args.extend(["/DEBUG:FULL"])
 else:
     extra_compile_args = ["-std=c++17"]
     if build_type == "debug":
@@ -86,7 +88,6 @@ else:
 # Setup
 
 setup(
-    cmdclass=cmdclass,
     ext_modules=[
         Extension(
             name="adbc_driver_manager._lib",
@@ -94,6 +95,7 @@ setup(
             include_dirs=[str(source_root.joinpath("adbc_driver_manager").resolve())],
             language="c++",
             sources=[
+                "adbc_driver_manager/_blocking_impl.cc",
                 "adbc_driver_manager/_lib.pyx",
                 "adbc_driver_manager/adbc_driver_manager.cc",
             ],

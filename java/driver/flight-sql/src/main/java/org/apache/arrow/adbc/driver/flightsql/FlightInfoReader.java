@@ -18,56 +18,27 @@ package org.apache.arrow.adbc.driver.flightsql;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
-import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightEndpoint;
-import org.apache.arrow.flight.FlightRuntimeException;
-import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.Location;
-import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
-import org.apache.arrow.vector.VectorUnloader;
-import org.apache.arrow.vector.ipc.ArrowReader;
-import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
-import org.apache.arrow.vector.types.pojo.Schema;
 
 /** An ArrowReader that wraps a FlightInfo. */
-public class FlightInfoReader extends ArrowReader {
-  private final Schema schema;
-  private final FlightSqlClient client;
-  private final LoadingCache<Location, FlightClient> clientCache;
-  private final List<FlightEndpoint> flightEndpoints;
-  private int nextEndpointIndex;
-  private FlightStream currentStream;
-  private long bytesRead;
-
+public class FlightInfoReader extends BaseFlightReader {
+  @SuppressWarnings(
+      "method.invocation") // Checker Framework does not like the ensureInitialized call
   FlightInfoReader(
       BufferAllocator allocator,
-      FlightSqlClient client,
-      LoadingCache<Location, FlightClient> clientCache,
+      FlightSqlClientWithCallOptions client,
+      LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache,
       List<FlightEndpoint> flightEndpoints)
       throws AdbcException {
-    super(allocator);
-    this.client = client;
-    this.clientCache = clientCache;
-    this.flightEndpoints = flightEndpoints;
-    this.nextEndpointIndex = 0;
-    this.bytesRead = 0;
+    super(allocator, client, clientCache, () -> flightEndpoints);
 
-    try {
-      this.currentStream =
-          client.getStream(flightEndpoints.get(this.nextEndpointIndex++).getTicket());
-      this.schema = this.currentStream.getSchema();
-    } catch (FlightRuntimeException e) {
-      throw FlightSqlDriverUtil.fromFlightException(e);
-    }
-
+    populateEndpointData();
     try {
       this.ensureInitialized();
     } catch (IOException e) {
@@ -81,78 +52,7 @@ public class FlightInfoReader extends ArrowReader {
   }
 
   @Override
-  public boolean loadNextBatch() throws IOException {
-    if (!currentStream.next()) {
-      if (nextEndpointIndex >= flightEndpoints.size()) {
-        return false;
-      } else {
-        try {
-          currentStream.close();
-          FlightEndpoint endpoint = flightEndpoints.get(nextEndpointIndex++);
-          currentStream = tryLoadNextStream(endpoint);
-          if (!schema.equals(currentStream.getSchema())) {
-            throw new IOException(
-                "Stream has inconsistent schema. Expected: "
-                    + schema
-                    + "\nFound: "
-                    + currentStream.getSchema());
-          }
-        } catch (IOException e) {
-          throw e;
-        } catch (Exception e) {
-          throw new IOException(e);
-        }
-      }
-    }
-    final VectorSchemaRoot root = currentStream.getRoot();
-    final VectorUnloader unloader = new VectorUnloader(root);
-    final ArrowRecordBatch recordBatch = unloader.getRecordBatch();
-    bytesRead += recordBatch.computeBodyLength();
-    loadRecordBatch(recordBatch);
-    return true;
-  }
-
-  private FlightStream tryLoadNextStream(FlightEndpoint endpoint) throws IOException {
-    if (endpoint.getLocations().isEmpty()) {
-      return client.getStream(endpoint.getTicket());
-    } else {
-      List<Location> locations = new ArrayList<>(endpoint.getLocations());
-      Collections.shuffle(locations);
-      IOException failure = null;
-      for (final Location location : locations) {
-        try {
-          return Objects.requireNonNull(clientCache.get(location)).getStream(endpoint.getTicket());
-        } catch (RuntimeException e) {
-          // Also handles CompletionException (from clientCache#get), FlightRuntimeException
-          if (failure == null) {
-            failure =
-                new IOException("Failed to get stream from location " + location + ": " + e, e);
-          } else {
-            failure.addSuppressed(
-                new IOException("Failed to get stream from location " + location + ": " + e, e));
-          }
-        }
-      }
-      throw Objects.requireNonNull(failure);
-    }
-  }
-
-  @Override
-  public long bytesRead() {
-    return bytesRead;
-  }
-
-  @Override
-  protected void closeReadSource() throws IOException {
-    try {
-      currentStream.close();
-    } catch (Exception e) {
-      throw new IOException(e);
-    }
-  }
-
-  @Override
-  protected Schema readSchema() {
-    return schema;
+  protected void processRootFromStream(VectorSchemaRoot root) {
+    loadRoot(root);
   }
 }

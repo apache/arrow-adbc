@@ -16,17 +16,15 @@
  */
 package org.apache.arrow.adbc.driver.jdbc;
 
-import java.sql.Types;
-import org.apache.arrow.adapter.jdbc.JdbcToArrowUtils;
-import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcFieldInfoExtra;
+import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcToArrowTypeConverters;
 import org.apache.arrow.adbc.sql.SqlQuirks;
-import org.apache.arrow.vector.types.TimeUnit;
-import org.apache.arrow.vector.types.Types.MinorType;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 
 public final class StandardJdbcQuirks {
   public static final JdbcQuirks MS_SQL_SERVER =
-      JdbcQuirks.builder("Microsoft SQL Server").typeConverter(StandardJdbcQuirks::mssql).build();
+      JdbcQuirks.builder("Microsoft SQL Server")
+          .typeConverter(JdbcToArrowTypeConverters.MICROSOFT_SQL_SERVER)
+          .build();
   public static final JdbcQuirks POSTGRESQL =
       JdbcQuirks.builder("PostgreSQL")
           .sqlQuirks(
@@ -40,41 +38,6 @@ public final class StandardJdbcQuirks {
                             arrowType);
                       }))
                   .build())
-          .typeConverter(StandardJdbcQuirks::postgresql)
+          .typeConverter(JdbcToArrowTypeConverters.POSTGRESQL)
           .build();
-  private static final int MS_SQL_TYPE_DATETIMEOFFSET = -155;
-
-  private static ArrowType mssql(JdbcFieldInfoExtra field) {
-    switch (field.getJdbcType()) {
-      case Types.TIME:
-        return MinorType.TIMENANO.getType();
-      case Types.TIMESTAMP:
-        // DATETIME2
-        // Precision is "100 nanoseconds" -> TimeUnit is NANOSECOND
-        return MinorType.TIMESTAMPNANO.getType();
-      case MS_SQL_TYPE_DATETIMEOFFSET:
-        // DATETIMEOFFSET
-        // Precision is "100 nanoseconds" -> TimeUnit is NANOSECOND
-        return new ArrowType.Timestamp(TimeUnit.NANOSECOND, "UTC");
-      default:
-        return JdbcToArrowUtils.getArrowTypeFromJdbcType(field.getFieldInfo(), /*calendar*/ null);
-    }
-  }
-
-  private static ArrowType postgresql(JdbcFieldInfoExtra field) {
-    switch (field.getJdbcType()) {
-      case Types.TIME:
-        return MinorType.TIMEMICRO.getType();
-      case Types.TIMESTAMP:
-        if ("timestamptz".equals(field.getTypeName())) {
-          return new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC");
-        } else if ("timestamp".equals(field.getTypeName())) {
-          return MinorType.TIMESTAMPMICRO.getType();
-        }
-        // Unknown type
-        return null;
-      default:
-        return JdbcToArrowUtils.getArrowTypeFromJdbcType(field.getFieldInfo(), /*calendar*/ null);
-    }
-  }
 }

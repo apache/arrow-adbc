@@ -40,8 +40,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -329,6 +329,9 @@ type Driver interface {
 type Database interface {
 	SetOptions(map[string]string) error
 	Open(ctx context.Context) (Connection, error)
+
+	// Close closes this database and releases any associated resources.
+	Close() error
 }
 
 type InfoCode uint32

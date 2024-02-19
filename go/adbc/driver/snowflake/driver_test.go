@@ -18,6 +18,7 @@
 package snowflake_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -37,10 +38,10 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/decimal128"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/decimal128"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/google/uuid"
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/stretchr/testify/require"
@@ -336,11 +337,17 @@ func (suite *SnowflakeTests) TearDownTest() {
 }
 
 func (suite *SnowflakeTests) TearDownSuite() {
+	suite.NoError(suite.db.Close())
 	suite.db = nil
 }
 
 func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest"))
+
+	sessionTimezone := "UTC"
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf(`ALTER SESSION SET TIMEZONE = "%s"`, sessionTimezone)))
+	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
 
 	sc := arrow.NewSchema([]arrow.Field{{
 		Name: "col", Type: arrow.FixedWidthTypes.Timestamp_us,
@@ -387,6 +394,959 @@ func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
 	suite.Require().NoError(rdr.Err())
 }
 
+func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_bind"))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_bind_stream"))
+
+	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
+	defer mem.AssertSize(suite.T(), 0)
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_float64", Type: arrow.PrimitiveTypes.Float64,
+			Nullable: true,
+		},
+		{
+			Name: "col_string", Type: arrow.BinaryTypes.String,
+			Nullable: true,
+		},
+		{
+			Name: "col_binary", Type: arrow.BinaryTypes.Binary,
+			Nullable: true,
+		},
+		{
+			Name: "col_boolean", Type: arrow.FixedWidthTypes.Boolean,
+			Nullable: true,
+		},
+		{
+			Name: "col_date32", Type: arrow.FixedWidthTypes.Date32,
+			Nullable: true,
+		},
+		{
+			Name: "col_time64ns", Type: arrow.FixedWidthTypes.Time64ns,
+			Nullable: true,
+		},
+		{
+			Name: "col_time64us", Type: arrow.FixedWidthTypes.Time64us,
+			Nullable: true,
+		},
+		{
+			Name: "col_time32ms", Type: arrow.FixedWidthTypes.Time32ms,
+			Nullable: true,
+		},
+		{
+			Name: "col_time32s", Type: arrow.FixedWidthTypes.Time32s,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_ns", Type: arrow.FixedWidthTypes.Timestamp_ns,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_us", Type: arrow.FixedWidthTypes.Timestamp_us,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s", Type: arrow.FixedWidthTypes.Timestamp_s,
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(mem, sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{-1, 0, 25}, nil)
+	bldr.Field(1).(*array.Float64Builder).AppendValues([]float64{-1.1, 0, 25.95}, nil)
+	bldr.Field(2).(*array.StringBuilder).AppendValues([]string{"first", "second", "third"}, nil)
+	bldr.Field(3).(*array.BinaryBuilder).AppendValues([][]byte{[]byte("first"), []byte("second"), []byte("third")}, nil)
+	bldr.Field(4).(*array.BooleanBuilder).AppendValues([]bool{true, false, true}, nil)
+	bldr.Field(5).(*array.Date32Builder).AppendValues([]arrow.Date32{1, 2, 3}, nil)
+	bldr.Field(6).(*array.Time64Builder).AppendValues([]arrow.Time64{1, 2, 3}, nil)
+	bldr.Field(7).(*array.Time64Builder).AppendValues([]arrow.Time64{1, 2, 3}, nil)
+	bldr.Field(8).(*array.Time32Builder).AppendValues([]arrow.Time32{1, 2, 3}, nil)
+	bldr.Field(9).(*array.Time32Builder).AppendValues([]arrow.Time32{1, 2, 3}, nil)
+	bldr.Field(10).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+	bldr.Field(11).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+	bldr.Field(12).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	stream, err := array.NewRecordReader(sc, []arrow.Record{rec})
+	suite.Require().NoError(err)
+	defer stream.Release()
+
+	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_bind"))
+	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(3, n)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_bind ORDER BY \"col_int64\" ASC"))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	resultBind := rdr.Record()
+
+	// New session to clean up TEMPORARY resources in Snowflake associated with the previous one
+	suite.NoError(suite.stmt.Close())
+	suite.NoError(suite.cnxn.Close())
+	suite.cnxn, err = suite.db.Open(suite.ctx)
+	suite.NoError(err)
+	suite.stmt, err = suite.cnxn.NewStatement()
+	suite.NoError(err)
+
+	suite.Require().NoError(suite.stmt.BindStream(suite.ctx, stream))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_bind_stream"))
+	n, err = suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(3, n)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_bind_stream ORDER BY \"col_int64\" ASC"))
+	rdr, n, err = suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	resultBindStream := rdr.Record()
+
+	suite.Truef(array.RecordEqual(resultBind, resultBindStream), "expected: %s\ngot: %s", resultBind, resultBindStream)
+	suite.False(rdr.Next())
+
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *SnowflakeTests) TestSqlIngestRoundtripTypes() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_roundtrip"))
+
+	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
+	defer mem.AssertSize(suite.T(), 0)
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_float64", Type: arrow.PrimitiveTypes.Float64,
+			Nullable: true,
+		},
+		{
+			Name: "col_string", Type: arrow.BinaryTypes.String,
+			Nullable: true,
+		},
+		{
+			Name: "col_binary", Type: arrow.BinaryTypes.Binary,
+			Nullable: true,
+		},
+		{
+			Name: "col_boolean", Type: arrow.FixedWidthTypes.Boolean,
+			Nullable: true,
+		},
+		{
+			Name: "col_date32", Type: arrow.FixedWidthTypes.Date32,
+			Nullable: true,
+		},
+		{
+			Name: "col_time64ns", Type: arrow.FixedWidthTypes.Time64ns,
+			Nullable: true,
+		},
+		{
+			Name: "col_time64us", Type: arrow.FixedWidthTypes.Time64us,
+			Nullable: true,
+		},
+		{
+			Name: "col_time32ms", Type: arrow.FixedWidthTypes.Time32ms,
+			Nullable: true,
+		},
+		{
+			Name: "col_time32s", Type: arrow.FixedWidthTypes.Time32s,
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(mem, sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{-1, 0, 25}, nil)
+	bldr.Field(1).(*array.Float64Builder).AppendValues([]float64{-1.1, 0, 25.95}, nil)
+	bldr.Field(2).(*array.StringBuilder).AppendValues([]string{"first", "second", "third"}, nil)
+	bldr.Field(3).(*array.BinaryBuilder).AppendValues([][]byte{[]byte("first"), []byte("second"), []byte("third")}, nil)
+	bldr.Field(4).(*array.BooleanBuilder).AppendValues([]bool{true, false, true}, nil)
+	bldr.Field(5).(*array.Date32Builder).AppendValues([]arrow.Date32{1, 2, 3}, nil)
+	bldr.Field(6).(*array.Time64Builder).AppendValues([]arrow.Time64{1, 2, 3}, nil)
+	bldr.Field(7).(*array.Time64Builder).AppendValues([]arrow.Time64{1, 2, 3}, nil)
+	bldr.Field(8).(*array.Time32Builder).AppendValues([]arrow.Time32{1, 2, 3}, nil)
+	bldr.Field(9).(*array.Time32Builder).AppendValues([]arrow.Time32{1, 2, 3}, nil)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_roundtrip"))
+	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(3, n)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_roundtrip ORDER BY \"col_int64\" ASC"))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+	suite.Truef(array.RecordEqual(rec, result), "expected: %s\ngot: %s", rec, result)
+	suite.False(rdr.Next())
+
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_timestamps"))
+
+	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
+	defer mem.AssertSize(suite.T(), 0)
+
+	sessionTimezone := "America/Phoenix"
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf(`ALTER SESSION SET TIMEZONE = "%s"`, sessionTimezone)))
+	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_ns", Type: arrow.FixedWidthTypes.Timestamp_ns,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_us", Type: arrow.FixedWidthTypes.Timestamp_us,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_ms", Type: arrow.FixedWidthTypes.Timestamp_ms,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s", Type: arrow.FixedWidthTypes.Timestamp_s,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s_tz", Type: &arrow.TimestampType{Unit: arrow.Second, TimeZone: "EST"},
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s_ntz", Type: &arrow.TimestampType{Unit: arrow.Second},
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(mem, sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+	bldr.Field(1).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+	bldr.Field(2).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+	bldr.Field(3).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+	bldr.Field(4).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+	bldr.Field(5).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+	bldr.Field(6).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_timestamps"))
+	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(3, n)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_timestamps ORDER BY \"col_int64\" ASC"))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_ns", Type: &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: sessionTimezone},
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_us", Type: &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: sessionTimezone},
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_ms", Type: &arrow.TimestampType{Unit: arrow.Millisecond, TimeZone: sessionTimezone},
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s", Type: &arrow.TimestampType{Unit: arrow.Second, TimeZone: sessionTimezone},
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s_tz", Type: &arrow.TimestampType{Unit: arrow.Second, TimeZone: sessionTimezone},
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s_ntz", Type: &arrow.TimestampType{Unit: arrow.Second},
+			Nullable: true,
+		},
+	}, nil)
+
+	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	[
+		{
+			"col_int64": 1,
+			"col_timestamp_ns": 1,
+			"col_timestamp_us": 1,
+			"col_timestamp_ms": 1,
+			"col_timestamp_s": 1,
+			"col_timestamp_s_tz": 1,
+			"col_timestamp_s_ntz": 1
+		},
+		{
+			"col_int64": 2,
+			"col_timestamp_ns": 2,
+			"col_timestamp_us": 2,
+			"col_timestamp_ms": 2,
+			"col_timestamp_s": 2,
+			"col_timestamp_s_tz": 2,
+			"col_timestamp_s_ntz": 2
+		},
+		{
+			"col_int64": 3,
+			"col_timestamp_ns": 3,
+			"col_timestamp_us": 3,
+			"col_timestamp_ms": 3,
+			"col_timestamp_s": 3,
+			"col_timestamp_s_tz": 3,
+			"col_timestamp_s_ntz": 3
+		}
+	]
+	`)))
+	suite.Require().NoError(err)
+	defer expectedRecord.Release()
+
+	suite.Truef(array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
+
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *SnowflakeTests) TestSqlIngestDate64Type() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_date64"))
+
+	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
+	defer mem.AssertSize(suite.T(), 0)
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_date64", Type: arrow.FixedWidthTypes.Date64,
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(mem, sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+	bldr.Field(1).(*array.Date64Builder).AppendValues([]arrow.Date64{86400000, 172800000, 259200000}, nil) // 1,2,3 days of milliseconds
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_date64"))
+	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(3, n)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_date64 ORDER BY \"col_int64\" ASC"))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_date64", Type: arrow.FixedWidthTypes.Date32,
+			Nullable: true,
+		},
+	}, nil)
+
+	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	[
+		{
+			"col_int64": 1,
+			"col_date64": 1
+		},
+		{
+			"col_int64": 2,
+			"col_date64": 2
+		},
+		{
+			"col_int64": 3,
+			"col_date64": 3
+		}
+	]
+	`)))
+	suite.Require().NoError(err)
+	defer expectedRecord.Release()
+
+	suite.Truef(array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
+
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *SnowflakeTests) TestSqlIngestHighPrecision() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_high_precision"))
+
+	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
+	defer mem.AssertSize(suite.T(), 0)
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_float64", Type: arrow.PrimitiveTypes.Float64,
+			Nullable: true,
+		},
+		{
+			Name: "col_decimal128_whole", Type: &arrow.Decimal128Type{Precision: 38, Scale: 0},
+			Nullable: true,
+		},
+		{
+			Name: "col_decimal128_fractional", Type: &arrow.Decimal128Type{Precision: 38, Scale: 2},
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(mem, sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+	bldr.Field(1).(*array.Float64Builder).AppendValues([]float64{1.2, 2.34, 3.456}, nil)
+	bldr.Field(2).(*array.Decimal128Builder).AppendValues([]decimal128.Num{decimal128.FromI64(123), decimal128.FromI64(456), decimal128.FromI64(789)}, nil)
+	num1, err := decimal128.FromString("123", 38, 2)
+	suite.Require().NoError(err)
+	num2, err := decimal128.FromString("456.7", 38, 2)
+	suite.Require().NoError(err)
+	num3, err := decimal128.FromString("891.01", 38, 2)
+	suite.Require().NoError(err)
+	bldr.Field(3).(*array.Decimal128Builder).AppendValues([]decimal128.Num{num1, num2, num3}, nil)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_high_precision"))
+	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(3, n)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_high_precision ORDER BY \"col_int64\" ASC"))
+	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueEnabled))
+	defer func() {
+		suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+	}()
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{ // INT64 -> DECIMAL(38, 0) on roundtrip
+			Name: "col_int64", Type: &arrow.Decimal128Type{Precision: 38, Scale: 0},
+			Nullable: true,
+		},
+		{ // Preserved on roundtrip
+			Name: "col_float64", Type: arrow.PrimitiveTypes.Float64,
+			Nullable: true,
+		},
+		{ // Preserved on roundtrip
+			Name: "col_decimal128_whole", Type: &arrow.Decimal128Type{Precision: 38, Scale: 0},
+			Nullable: true,
+		},
+		{ // Preserved on roundtrip
+			Name: "col_decimal128_fractional", Type: &arrow.Decimal128Type{Precision: 38, Scale: 2},
+			Nullable: true,
+		},
+	}, nil)
+
+	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	[
+		{
+			"col_int64": 1,
+			"col_float64": 1.2,
+			"col_decimal128_whole": 123,
+			"col_decimal128_fractional": 123.00
+		},
+		{
+			"col_int64": 2,
+			"col_float64": 2.34,
+			"col_decimal128_whole": 456,
+			"col_decimal128_fractional": 456.70
+		},
+		{
+			"col_int64": 3,
+			"col_float64": 3.456,
+			"col_decimal128_whole": 789,
+			"col_decimal128_fractional": 891.01
+		}
+	]
+	`)))
+	suite.Require().NoError(err)
+	defer expectedRecord.Release()
+
+	suite.Truef(array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
+
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *SnowflakeTests) TestSqlIngestLowPrecision() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_high_precision"))
+
+	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
+	defer mem.AssertSize(suite.T(), 0)
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_float64", Type: arrow.PrimitiveTypes.Float64,
+			Nullable: true,
+		},
+		{
+			Name: "col_decimal128_whole", Type: &arrow.Decimal128Type{Precision: 38, Scale: 0},
+			Nullable: true,
+		},
+		{
+			Name: "col_decimal128_fractional", Type: &arrow.Decimal128Type{Precision: 38, Scale: 2},
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(mem, sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+	bldr.Field(1).(*array.Float64Builder).AppendValues([]float64{1.2, 2.34, 3.456}, nil)
+	bldr.Field(2).(*array.Decimal128Builder).AppendValues([]decimal128.Num{decimal128.FromI64(123), decimal128.FromI64(456), decimal128.FromI64(789)}, nil)
+	num1, err := decimal128.FromString("123", 38, 2)
+	suite.Require().NoError(err)
+	num2, err := decimal128.FromString("456.7", 38, 2)
+	suite.Require().NoError(err)
+	num3, err := decimal128.FromString("891.01", 38, 2)
+	suite.Require().NoError(err)
+	bldr.Field(3).(*array.Decimal128Builder).AppendValues([]decimal128.Num{num1, num2, num3}, nil)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_high_precision"))
+	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(3, n)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_high_precision ORDER BY \"col_int64\" ASC"))
+	// OptionUseHighPrecision already disabled
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{ // Preserved on roundtrip
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{ // Preserved on roundtrip
+			Name: "col_float64", Type: arrow.PrimitiveTypes.Float64,
+			Nullable: true,
+		},
+		{ // DECIMAL(38, 0) -> INT64 on roundtrip
+			Name: "col_decimal128_whole", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{ // DECIMAL(38, 2) -> FLOAT64 on roundtrip
+			Name: "col_decimal128_fractional", Type: arrow.PrimitiveTypes.Float64,
+			Nullable: true,
+		},
+	}, nil)
+
+	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	[
+		{
+			"col_int64": 1,
+			"col_float64": 1.2,
+			"col_decimal128_whole": 123,
+			"col_decimal128_fractional": 123.00
+		},
+		{
+			"col_int64": 2,
+			"col_float64": 2.34,
+			"col_decimal128_whole": 456,
+			"col_decimal128_fractional": 456.70
+		},
+		{
+			"col_int64": 3,
+			"col_float64": 3.456,
+			"col_decimal128_whole": 789,
+			"col_decimal128_fractional": 891.01
+		}
+	]
+	`)))
+	suite.Require().NoError(err)
+	defer expectedRecord.Release()
+
+	suite.Truef(array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
+
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *SnowflakeTests) TestSqlIngestStructType() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_struct"))
+
+	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
+	defer mem.AssertSize(suite.T(), 0)
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_struct", Type: arrow.StructOf([]arrow.Field{
+				{Name: "name", Type: arrow.BinaryTypes.String},
+				{Name: "age", Type: arrow.PrimitiveTypes.Int64},
+			}...),
+			Nullable: true,
+		},
+		{
+			Name: "col_struct_of_struct", Type: arrow.StructOf([]arrow.Field{
+				{Name: "id", Type: arrow.PrimitiveTypes.Int64},
+				{Name: "nested", Type: arrow.StructOf([]arrow.Field{
+					{Name: "nested_id", Type: arrow.PrimitiveTypes.Int64},
+					{Name: "ready", Type: arrow.FixedWidthTypes.Boolean},
+				}...)},
+			}...),
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(mem, sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+
+	struct1bldr := bldr.Field(1).(*array.StructBuilder)
+	struct1bldr.AppendValues([]bool{true, true, true})
+	struct1bldr.FieldBuilder(0).(*array.StringBuilder).AppendValues([]string{"one", "two", "three"}, nil)
+	struct1bldr.FieldBuilder(1).(*array.Int64Builder).AppendValues([]int64{10, 20, 30}, nil)
+
+	struct2bldr := bldr.Field(2).(*array.StructBuilder)
+	struct2bldr.AppendValues([]bool{true, false, true})
+	struct2bldr.FieldBuilder(0).(*array.Int64Builder).AppendValues([]int64{1, 0, 3}, nil)
+
+	struct3bldr := struct2bldr.FieldBuilder(1).(*array.StructBuilder)
+	struct3bldr.AppendValues([]bool{true, false, true})
+	struct3bldr.FieldBuilder(0).(*array.Int64Builder).AppendValues([]int64{1, 0, 3}, nil)
+	struct3bldr.FieldBuilder(1).(*array.BooleanBuilder).AppendValues([]bool{true, false, false}, nil)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_struct"))
+	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(3, n)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_struct ORDER BY \"col_int64\" ASC"))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_struct", Type: arrow.BinaryTypes.String,
+			Nullable: true,
+		},
+		{
+			Name: "col_struct_of_struct", Type: arrow.BinaryTypes.String,
+			Nullable: true,
+		},
+	}, nil)
+
+	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	[
+		{
+			"col_int64": 1,
+			"col_struct": "{\n  \"age\": 10,\n  \"name\": \"one\"\n}",
+			"col_struct_of_struct": "{\n  \"id\": 1,\n  \"nested\": {\n    \"nested_id\": 1,\n    \"ready\": true\n  }\n}"
+		},
+		{
+			"col_int64": 2,
+			"col_struct": "{\n  \"age\": 20,\n  \"name\": \"two\"\n}"
+		},
+		{
+			"col_int64": 3,
+			"col_struct": "{\n  \"age\": 30,\n  \"name\": \"three\"\n}",
+			"col_struct_of_struct": "{\n  \"id\": 3,\n  \"nested\": {\n    \"nested_id\": 3,\n    \"ready\": false\n  }\n}"
+		}
+	]
+	`)))
+	suite.Require().NoError(err)
+	defer expectedRecord.Release()
+
+	suite.Truef(array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
+	logicalTypeStruct, ok := result.Schema().Field(1).Metadata.GetValue("logicalType")
+	suite.True(ok)
+	suite.Equal("OBJECT", logicalTypeStruct)
+	logicalTypeStructStruct, ok := result.Schema().Field(2).Metadata.GetValue("logicalType")
+	suite.True(ok)
+	suite.Equal("OBJECT", logicalTypeStructStruct)
+
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *SnowflakeTests) TestSqlIngestMapType() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_map"))
+
+	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
+	defer mem.AssertSize(suite.T(), 0)
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_map", Type: arrow.MapOf(arrow.BinaryTypes.String, arrow.PrimitiveTypes.Int64),
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(mem, sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+
+	mapbldr := bldr.Field(1).(*array.MapBuilder)
+	keybldr := mapbldr.KeyBuilder().(*array.StringBuilder)
+	itembldr := mapbldr.ItemBuilder().(*array.Int64Builder)
+
+	mapbldr.Append(true)
+	keybldr.Append("key1")
+	itembldr.Append(1)
+	// keybldr.Append("key1a") TODO(joellubi): Snowflake returns 'SQL execution internal error', seemingly for repetition levels > 0
+	// itembldr.Append(11)
+	mapbldr.Append(true)
+	keybldr.Append("key2")
+	itembldr.Append(2)
+	mapbldr.Append(true)
+	keybldr.Append("key3")
+	itembldr.Append(3)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_map"))
+	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(3, n)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_map ORDER BY \"col_int64\" ASC"))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_map", Type: arrow.BinaryTypes.String,
+			Nullable: true,
+		},
+	}, nil)
+
+	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	[
+		{
+			"col_int64": 1,
+			"col_map": "{\n  \"key_value\": [\n    {\n      \"key\": \"key1\",\n      \"value\": 1\n    }\n  ]\n}"
+		},
+		{
+			"col_int64": 2,
+			"col_map": "{\n  \"key_value\": [\n    {\n      \"key\": \"key2\",\n      \"value\": 2\n    }\n  ]\n}"
+		},
+		{
+			"col_int64": 3,
+			"col_map": "{\n  \"key_value\": [\n    {\n      \"key\": \"key3\",\n      \"value\": 3\n    }\n  ]\n}"
+		}
+	]
+	`)))
+	suite.Require().NoError(err)
+	defer expectedRecord.Release()
+
+	suite.Truef(array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
+	logicalTypeMap, ok := result.Schema().Field(1).Metadata.GetValue("logicalType")
+	suite.True(ok)
+	suite.Equal("OBJECT", logicalTypeMap)
+
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *SnowflakeTests) TestSqlIngestListType() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_list"))
+
+	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
+	defer mem.AssertSize(suite.T(), 0)
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_list", Type: arrow.ListOf(arrow.BinaryTypes.String),
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(mem, sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+
+	listbldr := bldr.Field(1).(*array.ListBuilder)
+	listvalbldr := listbldr.ValueBuilder().(*array.StringBuilder)
+	listbldr.Append(true)
+	listvalbldr.Append("one")
+	// listvalbldr.Append("one2") TODO(joellubi): Snowflake returns 'SQL execution internal error', seemingly for repetition levels > 0
+	listbldr.Append(true)
+	listvalbldr.Append("two")
+	listbldr.Append(true)
+	listvalbldr.Append("three")
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_list"))
+	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(3, n)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_list ORDER BY \"col_int64\" ASC"))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_list", Type: arrow.BinaryTypes.String,
+			Nullable: true,
+		},
+	}, nil)
+
+	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	[
+		{
+			"col_int64": 1,
+			"col_list": "[\n  \"one\"\n]"
+		},
+		{
+			"col_int64": 2,
+			"col_list": "[\n  \"two\"\n]"
+		},
+		{
+			"col_int64": 3,
+			"col_list": "[\n  \"three\"\n]"
+		}
+	]
+	`)))
+	suite.Require().NoError(err)
+	defer expectedRecord.Release()
+
+	suite.Truef(array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
+	logicalTypeList, ok := result.Schema().Field(1).Metadata.GetValue("logicalType")
+	suite.True(ok)
+	suite.Equal("ARRAY", logicalTypeList)
+
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+}
+
 func (suite *SnowflakeTests) TestStatementEmptyResultSet() {
 	// Regression test for https://github.com/apache/arrow-adbc/issues/863
 	suite.NoError(suite.stmt.SetSqlQuery("SHOW WAREHOUSES"))
@@ -400,7 +1360,49 @@ func (suite *SnowflakeTests) TestStatementEmptyResultSet() {
 	suite.True(rdr.Next())
 	rec := rdr.Record()
 	suite.Equal(n, rec.NumRows())
-	suite.EqualValues(25, rec.NumCols())
+
+	// Snowflake may add more columns to the result of this query in the future,
+	// so we just test a subset known to be supported at the time of writing
+	expectedFieldNames := []string{
+		"name",
+		"state",
+		"type",
+		"size",
+		"running",
+		"queued",
+		"is_default",
+		"is_current",
+		"auto_suspend",
+		"auto_resume",
+		"available",
+		"provisioning",
+		"quiescing",
+		"other",
+		"created_on",
+		"resumed_on",
+		"updated_on",
+		"owner",
+		"comment",
+		"resource_monitor",
+		"actives",
+		"pendings",
+		"failed",
+		"suspended",
+		"uuid",
+		"budget",
+		"owner_role_type",
+	}
+
+	fields := rec.Schema().Fields()
+outer: // Check that each of the expected field names are in the result schema
+	for _, expectedFieldName := range expectedFieldNames {
+		for _, f := range fields {
+			if f.Name == expectedFieldName {
+				continue outer
+			}
+		}
+		suite.Failf("unexpected result schema", "column '%s' expected but not found", expectedFieldName)
+	}
 
 	suite.False(rdr.Next())
 	suite.NoError(rdr.Err())
@@ -464,21 +1466,21 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 		xdbcDateTimeSub  []string
 	}{
 		{
-			"BASIC",                       //name
-			[]string{"int64s", "strings"}, //colNames
-			[]string{"1", "2"},            //positions
-			[]string{"NUMBER", "TEXT"},    //dataTypes
-			[]string{"", ""},              //comments
-			[]string{"9", "13"},           //xdbcDataType
-			[]string{"NUMBER", "TEXT"},    //xdbcTypeName
-			[]string{"-5", "12"},          //xdbcSqlDataType
-			[]string{"1", "1"},            //xdbcNullable
-			[]string{"YES", "YES"},        //xdbcIsNullable
-			[]string{"0", "0"},            //xdbcScale
-			[]string{"10", "0"},           //xdbcNumPrecRadix
-			[]string{"38", "16777216"},    //xdbcCharMaxLen (xdbcPrecision)
-			[]string{"0", "16777216"},     //xdbcCharOctetLen
-			[]string{"-5", "12", "0"},     //xdbcDateTimeSub
+			"BASIC",                       // name
+			[]string{"int64s", "strings"}, // colNames
+			[]string{"1", "2"},            // positions
+			[]string{"NUMBER", "TEXT"},    // dataTypes
+			[]string{"", ""},              // comments
+			[]string{"9", "13"},           // xdbcDataType
+			[]string{"NUMBER", "TEXT"},    // xdbcTypeName
+			[]string{"-5", "12"},          // xdbcSqlDataType
+			[]string{"1", "1"},            // xdbcNullable
+			[]string{"YES", "YES"},        // xdbcIsNullable
+			[]string{"0", "0"},            // xdbcScale
+			[]string{"10", "0"},           // xdbcNumPrecRadix
+			[]string{"38", "16777216"},    // xdbcCharMaxLen (xdbcPrecision)
+			[]string{"0", "16777216"},     // xdbcCharOctetLen
+			[]string{"-5", "12", "0"},     // xdbcDateTimeSub
 		},
 	}
 
@@ -576,20 +1578,20 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 
 			suite.False(rdr.Next())
 			suite.True(foundExpected)
-			suite.Equal(tt.colnames, colnames)                  //colNames
-			suite.Equal(tt.positions, positions)                //positions
-			suite.Equal(tt.comments, comments)                  //comments
-			suite.Equal(tt.xdbcDataType, xdbcDataTypes)         //xdbcDataType
-			suite.Equal(tt.dataTypes, dataTypes)                //dataTypes
-			suite.Equal(tt.xdbcTypeName, xdbcTypeNames)         //xdbcTypeName
-			suite.Equal(tt.xdbcCharMaxLen, xdbcCharMaxLens)     //xdbcCharMaxLen
-			suite.Equal(tt.xdbcScale, xdbcScales)               //xdbcScale
-			suite.Equal(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs) //xdbcNumPrecRadix
-			suite.Equal(tt.xdbcNullable, xdbcNullables)         //xdbcNullable
-			suite.Equal(tt.xdbcSqlDataType, xdbcSqlDataTypes)   //xdbcSqlDataType
-			suite.Equal(tt.xdbcDateTimeSub, xdbcDateTimeSub)    //xdbcDateTimeSub
-			suite.Equal(tt.xdbcCharOctetLen, xdbcCharOctetLen)  //xdbcCharOctetLen
-			suite.Equal(tt.xdbcIsNullable, xdbcIsNullables)     //xdbcIsNullable
+			suite.Equal(tt.colnames, colnames)                  // colNames
+			suite.Equal(tt.positions, positions)                // positions
+			suite.Equal(tt.comments, comments)                  // comments
+			suite.Equal(tt.xdbcDataType, xdbcDataTypes)         // xdbcDataType
+			suite.Equal(tt.dataTypes, dataTypes)                // dataTypes
+			suite.Equal(tt.xdbcTypeName, xdbcTypeNames)         // xdbcTypeName
+			suite.Equal(tt.xdbcCharMaxLen, xdbcCharMaxLens)     // xdbcCharMaxLen
+			suite.Equal(tt.xdbcScale, xdbcScales)               // xdbcScale
+			suite.Equal(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs) // xdbcNumPrecRadix
+			suite.Equal(tt.xdbcNullable, xdbcNullables)         // xdbcNullable
+			suite.Equal(tt.xdbcSqlDataType, xdbcSqlDataTypes)   // xdbcSqlDataType
+			suite.Equal(tt.xdbcDateTimeSub, xdbcDateTimeSub)    // xdbcDateTimeSub
+			suite.Equal(tt.xdbcCharOctetLen, xdbcCharOctetLen)  // xdbcCharOctetLen
+			suite.Equal(tt.xdbcIsNullable, xdbcIsNullables)     // xdbcIsNullable
 
 		})
 	}
@@ -605,6 +1607,7 @@ func (suite *SnowflakeTests) TestNewDatabaseGetSetOptions() {
 	})
 	suite.NoError(err)
 	suite.NotNil(db)
+	defer suite.NoError(db.Close())
 
 	getSetDB, ok := db.(adbc.GetSetOptions)
 	suite.True(ok)
@@ -862,6 +1865,7 @@ func ConnectWithJwt(uri, keyValue, passcode string) {
 	if err != nil {
 		panic(err)
 	}
+	defer db.Close()
 
 	cnxn, err := db.Open(context.Background())
 	if err != nil {
@@ -871,6 +1875,8 @@ func ConnectWithJwt(uri, keyValue, passcode string) {
 }
 
 func (suite *SnowflakeTests) TestJwtPrivateKey() {
+	suite.T().Skipf("apache/arrow-adbc#1364")
+
 	// grab the username from the DSN
 	cfg, err := gosnowflake.ParseDSN(suite.Quirks.dsn)
 	suite.NoError(err)
@@ -910,6 +1916,7 @@ func (suite *SnowflakeTests) TestJwtPrivateKey() {
 		opts[driver.OptionJwtPrivateKey] = keyFile
 		db, err := suite.driver.NewDatabase(opts)
 		suite.NoError(err)
+		defer db.Close()
 		cnxn, err := db.Open(suite.ctx)
 		suite.NoError(err)
 		defer cnxn.Close()

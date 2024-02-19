@@ -61,10 +61,10 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/panicdummy"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/cdata"
-	"github.com/apache/arrow/go/v14/arrow/memory"
-	"github.com/apache/arrow/go/v14/arrow/memory/mallocator"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/cdata"
+	"github.com/apache/arrow/go/v16/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow/memory/mallocator"
 	"golang.org/x/exp/slog"
 )
 
@@ -594,6 +594,7 @@ func PanicDummyDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcErro
 	h := (*(*cgo.Handle)(db.private_data))
 
 	cdb := h.Value().(*cDatabase)
+	cdb.db.Close()
 	cdb.db = nil
 	cdb.opts = nil
 	C.free(unsafe.Pointer(db.private_data))

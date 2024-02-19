@@ -157,7 +157,7 @@ echo "::group::Test ADBC Snowflake Driver"
 ${install_command} --enablerepo=epel adbc-driver-snowflake-devel-${package_version}
 echo "::endgroup::"
 
-echo "::group::Test Apache Arrow GLib"
+echo "::group::Test ADBC GLib"
 export G_DEBUG=fatal-warnings
 
 ${install_command} --enablerepo=epel adbc-glib-devel-${package_version}
@@ -166,4 +166,12 @@ ${install_command} --enablerepo=epel adbc-glib-doc-${package_version}
 ${install_command} "${ruby_devel_packages[@]}"
 gem install gobject-introspection
 ruby -r gi -e "p GI.load('ADBC')"
+echo "::endgroup::"
+
+echo "::group::Test ADBC Arrow GLib"
+
+${install_command} --enablerepo=epel adbc-arrow-glib-devel-${package_version}
+${install_command} --enablerepo=epel adbc-arrow-glib-doc-${package_version}
+
+ruby -r gi -e "p GI.load('ADBCArrow')"
 echo "::endgroup::"

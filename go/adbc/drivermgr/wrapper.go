@@ -39,13 +39,13 @@ package drivermgr
 import "C"
 import (
 	"context"
-	"runtime"
+	"sync"
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/cdata"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/cdata"
 )
 
 type option struct {
@@ -100,27 +100,15 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 		return nil, errOut
 	}
 
-	runtime.SetFinalizer(db, func(db *Database) {
-		if db.db != nil {
-			var err C.struct_AdbcError
-			code := adbc.Status(C.AdbcDatabaseRelease(db.db, &err))
-			if code != adbc.StatusOK {
-				panic(toAdbcError(code, &err))
-			}
-		}
-
-		for _, o := range db.options {
-			C.free(unsafe.Pointer(o.key))
-			C.free(unsafe.Pointer(o.val))
-		}
-	})
-
 	return db, nil
 }
 
 type Database struct {
 	options map[string]option
 	db      *C.struct_AdbcDatabase
+
+	mu     sync.Mutex // protects following fields
+	closed bool
 }
 
 func toAdbcError(code adbc.Status, e *C.struct_AdbcError) error {
@@ -180,6 +168,32 @@ func (d *Database) Open(context.Context) (adbc.Connection, error) {
 	}
 
 	return &cnxn{conn: &c}, nil
+}
+
+func (d *Database) Close() error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.closed {
+		return nil
+	}
+
+	d.closed = true
+
+	for _, o := range d.options {
+		C.free(unsafe.Pointer(o.key))
+		C.free(unsafe.Pointer(o.val))
+	}
+
+	if d.db != nil {
+		var err C.struct_AdbcError
+		code := adbc.Status(C.AdbcDatabaseRelease(d.db, &err))
+		if code != adbc.StatusOK {
+			return toAdbcError(code, &err)
+		}
+	}
+
+	return nil
 }
 
 func getRdr(out *C.struct_ArrowArrayStream) (array.RecordReader, error) {

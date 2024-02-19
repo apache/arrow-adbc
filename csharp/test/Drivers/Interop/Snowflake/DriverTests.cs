@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Apache.Arrow.Adbc.Tests.Metadata;
@@ -82,12 +83,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             Dictionary<string, string> options = new Dictionary<string, string>();
             _snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_testConfiguration, out parameters);
 
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
-
-            parameters[SnowflakeParameters.DATABASE] = databaseName;
-            parameters[SnowflakeParameters.SCHEMA] = schemaName;
-
             _database = _snowflakeDriver.Open(parameters);
             _connection = _database.Connect(options);
         }
@@ -110,10 +105,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             for (int i = 0; i < queries.Length; i++)
             {
                 string query = queries[i];
-                using AdbcStatement statement = _connection.CreateStatement();
-                statement.SqlQuery = query;
-
-                UpdateResult updateResult = statement.ExecuteUpdate();
+                UpdateResult updateResult = ExecuteUpdateStatement(query);
 
                 Assert.Equal(expectedResults[i], updateResult.AffectedRows);
             }
@@ -214,7 +206,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string tableName = _testConfiguration.Metadata.Table;
 
             using IArrowArrayStream stream = _connection.GetObjects(
-                    depth: AdbcConnection.GetObjectsDepth.All,
+                    depth: AdbcConnection.GetObjectsDepth.Tables,
                     catalogPattern: databaseName,
                     dbSchemaPattern: schemaName,
                     tableNamePattern: tableNamePattern,
@@ -235,6 +227,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             AdbcTable table = tables.Where((table) => string.Equals(table.Name, tableName)).FirstOrDefault();
             Assert.True(table != null, "table should not be null");
+            Assert.Equal("BASE TABLE", table.Type);
         }
 
         /// <summary>
@@ -260,8 +253,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
-
-            List<AdbcColumn> columns = catalogs
+            AdbcTable table = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
                 .FirstOrDefault()
@@ -269,8 +261,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 .Select(s => s.Tables)
                 .FirstOrDefault()
                 .Where(t => string.Equals(t.Name, tableName))
-                .Select(t => t.Columns)
                 .FirstOrDefault();
+
+
+            Assert.True(table != null, "table should not be null");
+            Assert.Equal("BASE TABLE", table.Type);
+            List<AdbcColumn> columns = table.Columns;
 
             Assert.True(columns != null, "Columns cannot be null");
             Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
@@ -279,15 +275,64 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             {
                 IEnumerable<AdbcColumn> highPrecisionColumns = columns.Where(c => c.XdbcTypeName == "NUMBER");
 
-                if(highPrecisionColumns.Count() > 0)
+                if (highPrecisionColumns.Count() > 0)
                 {
                     // ensure they all are coming back as XdbcDataType_XDBC_DECIMAL because they are Decimal128
                     short XdbcDataType_XDBC_DECIMAL = 3;
-                    IEnumerable<AdbcColumn> invalidHighPrecisionColumns  = highPrecisionColumns.Where(c => c.XdbcSqlDataType != XdbcDataType_XDBC_DECIMAL);
+                    IEnumerable<AdbcColumn> invalidHighPrecisionColumns = highPrecisionColumns.Where(c => c.XdbcSqlDataType != XdbcDataType_XDBC_DECIMAL);
                     int count = invalidHighPrecisionColumns.Count();
                     Assert.True(count == 0, $"There are {count} columns that do not map to the correct XdbcSqlDataType when UseHighPrecision=true");
                 }
             }
+        }
+
+        /// <summary>
+        /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables with TableName as a Special Character.
+        /// </summary>
+        [SkippableTheory, Order(3)]
+        [InlineData(@"ADBCDEMO_DB",@"PUBLIC","MyIdentifier")]
+        [InlineData(@"ADBCDEMO'DB", @"PUBLIC'SCHEMA","my.identifier")]
+        [InlineData(@"ADBCDEM""DB", @"PUBLIC""SCHEMA", "my.identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "my identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "My 'Identifier'")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "3rd_identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "$Identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "My ^Identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "My ^Ident~ifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", @"My\^Ident~ifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "идентификатор")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", @"ADBCTest_""ALL""TYPES")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", @"ADBC\TEST""\TAB_""LE")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "ONE")]
+        public void CanGetObjectsTablesWithSpecialCharacter(string databaseName, string schemaName, string tableName)
+        {
+            CreateDatabaseAndTable(databaseName, schemaName, tableName);
+
+            using IArrowArrayStream stream = _connection.GetObjects(
+                    depth: AdbcConnection.GetObjectsDepth.Tables,
+                    catalogPattern: databaseName,
+                    dbSchemaPattern: schemaName,
+                    tableNamePattern: tableName,
+                    tableTypes: new List<string> { "BASE TABLE", "VIEW" },
+                    columnNamePattern: null);
+
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+
+            List<AdbcTable> tables = catalogs
+                .Where(c => string.Equals(c.Name, databaseName))
+                .Select(c => c.DbSchemas)
+                .FirstOrDefault()
+                .Where(s => string.Equals(s.Name, schemaName))
+                .Select(s => s.Tables)
+                .FirstOrDefault();
+
+            AdbcTable table = tables.FirstOrDefault();
+
+            Assert.True(table != null, "table should not be null");
+            Assert.Equal(tableName, table.Name, true);
+            DropDatabaseAndTable(databaseName, schemaName, tableName);
         }
 
         /// <summary>
@@ -352,6 +397,50 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             QueryResult queryResult = statement.ExecuteQuery();
 
             Tests.DriverTests.CanExecuteQuery(queryResult, _testConfiguration.ExpectedResultsCount);
+        }
+
+        private void CreateDatabaseAndTable(string databaseName, string schemaName, string tableName)
+        {
+            databaseName = databaseName.Replace("\"", "\"\"");
+            schemaName = schemaName.Replace("\"", "\"\"");
+            tableName = tableName.Replace("\"", "\"\"");
+
+            string createDatabase = string.Format("CREATE DATABASE IF NOT EXISTS \"{0}\"", databaseName);
+            ExecuteUpdateStatement(createDatabase);
+
+            string createSchema = string.Format("CREATE SCHEMA IF NOT EXISTS \"{0}\".\"{1}\"", databaseName, schemaName);
+            ExecuteUpdateStatement(createSchema);
+
+            string fullyQualifiedTableName = string.Format("\"{0}\".\"{1}\".\"{2}\"", databaseName, schemaName, tableName);
+            string createTableStatement = string.Format("CREATE OR REPLACE TABLE {0} (INDEX INT)", fullyQualifiedTableName);
+            ExecuteUpdateStatement(createTableStatement);
+
+        }
+
+        private void DropDatabaseAndTable(string databaseName, string schemaName, string tableName)
+        {
+            tableName = tableName.Replace("\"", "\"\"");
+            schemaName = schemaName.Replace("\"", "\"\"");
+            databaseName = databaseName.Replace("\"", "\"\"");
+
+            string fullyQualifiedTableName = string.Format("\"{0}\".\"{1}\".\"{2}\"", databaseName, schemaName, tableName);
+            string createTableStatement = string.Format("DROP TABLE IF EXISTS {0} ", fullyQualifiedTableName);
+            ExecuteUpdateStatement(createTableStatement);
+
+            string createSchema = string.Format("DROP SCHEMA IF EXISTS \"{0}\".\"{1}\"", databaseName, schemaName);
+            ExecuteUpdateStatement(createSchema);
+
+            string createDatabase = string.Format("DROP DATABASE IF EXISTS \"{0}\"", databaseName);
+            ExecuteUpdateStatement(createDatabase);
+
+        }
+
+        private UpdateResult ExecuteUpdateStatement(string query)
+        {
+            using AdbcStatement statement = _connection.CreateStatement();
+            statement.SqlQuery = query;
+            UpdateResult updateResult = statement.ExecuteUpdate();
+            return updateResult;
         }
 
         private static string GetPartialNameForPatternMatch(string name)

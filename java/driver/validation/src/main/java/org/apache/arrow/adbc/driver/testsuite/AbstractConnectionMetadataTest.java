@@ -323,8 +323,7 @@ public abstract class AbstractConnectionMetadataTest {
     final Schema schema =
         new Schema(
             Arrays.asList(
-                Field.nullable(
-                    quirks.caseFoldColumnName("INTS"), new ArrowType.Int(32, /*signed=*/ true)),
+                Field.nullable(quirks.caseFoldColumnName("INTS"), new ArrowType.Int(32, true)),
                 Field.nullable(quirks.caseFoldColumnName("STRS"), new ArrowType.Utf8())));
     try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator);
         final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {

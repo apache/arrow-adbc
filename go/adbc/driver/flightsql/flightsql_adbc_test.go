@@ -42,12 +42,12 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/flight"
-	"github.com/apache/arrow/go/v14/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v14/arrow/flight/flightsql/example"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/flight"
+	"github.com/apache/arrow/go/v16/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v16/arrow/flight/flightsql/example"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -260,7 +260,7 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	case adbc.InfoVendorVersion:
 		return "sqlite 3"
 	case adbc.InfoVendorArrowVersion:
-		return "14.0.0"
+		return "16.0.0-SNAPSHOT"
 	}
 
 	return nil
@@ -352,6 +352,7 @@ func (suite *DefaultDialOptionsTests) SetupSuite() {
 
 func (suite *DefaultDialOptionsTests) TearDownSuite() {
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -361,6 +362,7 @@ func (suite *DefaultDialOptionsTests) TestMaxIncomingMessageSizeDefault() {
 	opts["adbc.flight.sql.client_option.with_max_msg_size"] = "1000000"
 	db, err := suite.Driver.NewDatabase(opts)
 	suite.NoError(err)
+	defer suite.NoError(db.Close())
 
 	cnxn, err := db.Open(suite.ctx)
 	suite.NoError(err)
@@ -505,6 +507,7 @@ func (suite *PartitionTests) TearDownTest() {
 	suite.Require().NoError(suite.Cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Cnxn = nil
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -558,6 +561,7 @@ func (suite *StatementTests) TearDownTest() {
 	suite.Require().NoError(suite.Cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Cnxn = nil
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -639,6 +643,7 @@ func (suite *HeaderTests) TearDownTest() {
 	suite.Require().NoError(suite.Cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Cnxn = nil
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -842,6 +847,7 @@ func (suite *TLSTests) TearDownTest() {
 	suite.Require().NoError(suite.Cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Cnxn = nil
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -863,6 +869,7 @@ func (suite *TLSTests) TestInvalidOptions() {
 		"adbc.flight.sql.client_option.tls_skip_verify": "false",
 	})
 	suite.Require().NoError(err)
+	defer suite.NoError(db.Close())
 
 	cnxn, err := db.Open(suite.ctx)
 	suite.Require().NoError(err)
@@ -912,6 +919,7 @@ func (suite *ConnectionTests) SetupSuite() {
 }
 
 func (suite *ConnectionTests) TearDownSuite() {
+	suite.NoError(suite.DB.Close())
 	suite.server.Shutdown()
 	suite.alloc.AssertSize(suite.T(), 0)
 }
@@ -1009,6 +1017,7 @@ func (suite *DomainSocketTests) SetupSuite() {
 func (suite *DomainSocketTests) TearDownSuite() {
 	suite.Require().NoError(suite.Stmt.Close())
 	suite.Require().NoError(suite.Cnxn.Close())
+	suite.NoError(suite.DB.Close())
 	suite.server.Shutdown()
 	suite.alloc.AssertSize(suite.T(), 0)
 }

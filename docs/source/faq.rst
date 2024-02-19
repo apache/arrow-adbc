@@ -155,9 +155,7 @@ result set as Arrow data.  In that respect, it's like JDBC.  (ODBC has
 a "standard" SQL dialect it defines; ADBC does not do this.)
 
 For a project that does try to tackle the problem of defining a
-vendor-independent query language, see Substrait_.
-
-.. _Substrait: https://substrait.io/
+vendor-independent query language, see :term:`Substrait`.
 
 When is the next release?
 =========================

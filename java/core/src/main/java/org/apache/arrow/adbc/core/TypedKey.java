@@ -19,6 +19,8 @@ package org.apache.arrow.adbc.core;
 
 import java.util.Map;
 import java.util.Objects;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A typesafe option key.
@@ -45,8 +47,8 @@ public final class TypedKey<T> {
    *
    * @throws ClassCastException if the value is of the wrong type.
    */
-  public T get(Map<String, Object> options) {
-    Object value = options.get(key);
+  public @Nullable T get(Map<String, Object> options) {
+    @Nullable Object value = options.get(key);
     if (value == null) {
       return null;
     }
@@ -59,12 +61,12 @@ public final class TypedKey<T> {
    * @param options The options.
    * @param value The option value.
    */
-  public void set(Map<String, Object> options, T value) {
+  public void set(Map<String, Object> options, @NonNull T value) {
     options.put(key, value);
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(@Nullable Object o) {
     if (this == o) {
       return true;
     }

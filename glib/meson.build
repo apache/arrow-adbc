@@ -23,7 +23,7 @@ project('adbc-glib',
           'c_std=c99',
         ],
         license: 'Apache-2.0',
-        version: '0.9.0-SNAPSHOT')
+        version: '0.10.0-SNAPSHOT')
 
 version_numbers = meson.project_version().split('-')[0].split('.')
 version_major = version_numbers[0].to_int()
@@ -78,11 +78,20 @@ if generate_vapi
 endif
 
 subdir('adbc-glib')
+arrow_glib = dependency('arrow-glib', required: generate_vapi)
+if arrow_glib.found()
+  subdir('adbc-arrow-glib')
+endif
 subdir('example')
 
 install_data('../LICENSE.txt',
              'README.md',
              install_dir: data_dir / 'doc' / meson.project_name())
+if arrow_glib.found()
+  install_data('../LICENSE.txt',
+               'README.md',
+               install_dir: data_dir / 'doc' / 'adbc-arrow-glib')
+endif
 
 ruby = find_program('ruby', required: false)
 if ruby.found()

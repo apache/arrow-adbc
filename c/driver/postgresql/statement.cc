@@ -38,8 +38,8 @@
 #include "common/options.h"
 #include "common/utils.h"
 #include "connection.h"
+#include "copy/writer.h"
 #include "error.h"
-#include "postgres_copy_reader.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
 #include "result_helper.h"
@@ -213,6 +213,11 @@ struct BindStream {
         case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
           type_id = PostgresTypeId::kInterval;
           param_lengths[i] = 16;
+          break;
+        case ArrowType::NANOARROW_TYPE_DECIMAL128:
+        case ArrowType::NANOARROW_TYPE_DECIMAL256:
+          type_id = PostgresTypeId::kNumeric;
+          param_lengths[i] = 0;
           break;
         case ArrowType::NANOARROW_TYPE_DICTIONARY: {
           struct ArrowSchemaView value_view;
@@ -471,7 +476,7 @@ struct BindStream {
                 return ADBC_STATUS_INVALID_ARGUMENT;
               }
 
-              if (val < std::numeric_limits<int64_t>::min() + kPostgresTimestampEpoch) {
+              if (val < (std::numeric_limits<int64_t>::min)() + kPostgresTimestampEpoch) {
                 SetError(error,
                          "[libpq] Field #%" PRId64 " ('%s') Row #%" PRId64
                          " has value '%" PRIi64 "' which would underflow",
@@ -1062,6 +1067,10 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
       case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
         create += " INTERVAL";
         break;
+      case ArrowType::NANOARROW_TYPE_DECIMAL128:
+      case ArrowType::NANOARROW_TYPE_DECIMAL256:
+        create += " DECIMAL";
+        break;
       case ArrowType::NANOARROW_TYPE_DICTIONARY: {
         struct ArrowSchemaView value_view;
         CHECK_NA(INTERNAL,
@@ -1538,7 +1547,7 @@ AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
 
   // Initialize the copy reader and infer the output schema (i.e., error for
   // unsupported types before issuing the COPY query)
-  reader_.copy_reader_.reset(new PostgresCopyStreamReader());
+  reader_.copy_reader_ = std::make_unique<PostgresCopyStreamReader>();
   reader_.copy_reader_->Init(root_type);
   struct ArrowError na_error;
   int na_res = reader_.copy_reader_->InferOutputSchema(&na_error);

@@ -70,7 +70,7 @@ if [ ! -z "$R_ADBC_SQLITE_ON_WINDOWS" ]; then
   PKG_CPPFLAGS="$PKG_CPPFLAGS -D__USE_MINGW_ANSI_STDIO"
 fi
 
-rm -f tools/test.o sqlite_test sqlite_test.log || true
+rm -f tools/test.o tools/test_extension.o sqlite_test sqlite_test.log || true
 
 sed \
   -e "s|@cppflags@|$PKG_CPPFLAGS|" \

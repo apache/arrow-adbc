@@ -25,9 +25,9 @@ import (
 	"os"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 )
 
 func maybePanic(fname string) {
@@ -64,6 +64,11 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
 	maybePanic("DatabaseOpen")
 	return &cnxn{}, nil
+}
+
+func (d *database) Close() error {
+	maybePanic("DatabaseClose")
+	return nil
 }
 
 type cnxn struct{}

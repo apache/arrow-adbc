@@ -55,6 +55,7 @@ else:
 import adbc_driver_manager
 
 from . import _lib, _reader
+from ._lib import _blocking_call
 
 if typing.TYPE_CHECKING:
     import pandas
@@ -677,9 +678,12 @@ class Cursor(_Closeable):
             parameters, which will each be bound in turn).
         """
         self._prepare_execute(operation, parameters)
-        handle, self._rowcount = self._stmt.execute_query()
+
+        handle, self._rowcount = _blocking_call(
+            self._stmt.execute_query, (), {}, self._stmt.cancel
+        )
         self._results = _RowIterator(
-            _reader.AdbcRecordBatchReader._import_from_c(handle.address)
+            self._stmt, _reader.AdbcRecordBatchReader._import_from_c(handle.address)
         )
 
     def executemany(self, operation: Union[bytes, str], seq_of_parameters) -> None:
@@ -991,7 +995,7 @@ class Cursor(_Closeable):
         handle = self._conn._conn.read_partition(partition)
         self._rowcount = -1
         self._results = _RowIterator(
-            pyarrow.RecordBatchReader._import_from_c(handle.address)
+            self._stmt, pyarrow.RecordBatchReader._import_from_c(handle.address)
         )
 
     @property
@@ -1085,7 +1089,10 @@ class Cursor(_Closeable):
                 "Cannot fetch_record_batch() before execute()",
                 status_code=_lib.AdbcStatusCode.INVALID_STATE,
             )
-        return self._results._reader
+        # XXX(https://github.com/apache/arrow-adbc/issues/1523): return the
+        # "real" PyArrow reader since PyArrow may try to poke the internal C++
+        # reader pointer
+        return self._results._reader._reader
 
 
 # ----------------------------------------------------------
@@ -1095,7 +1102,8 @@ class Cursor(_Closeable):
 class _RowIterator(_Closeable):
     """Track state needed to iterate over the result set."""
 
-    def __init__(self, reader: pyarrow.RecordBatchReader) -> None:
+    def __init__(self, stmt, reader: pyarrow.RecordBatchReader) -> None:
+        self._stmt = stmt
         self._reader = reader
         self._current_batch = None
         self._next_row = 0
@@ -1118,7 +1126,9 @@ class _RowIterator(_Closeable):
         if self._current_batch is None or self._next_row >= len(self._current_batch):
             try:
                 while True:
-                    self._current_batch = self._reader.read_next_batch()
+                    self._current_batch = _blocking_call(
+                        self._reader.read_next_batch, (), {}, self._stmt.cancel
+                    )
                     if self._current_batch.num_rows > 0:
                         break
                 self._next_row = 0

@@ -55,6 +55,9 @@ build_subproject() {
           "${build_dir}/glib" \
           "${source_dir}/glib"
     meson install -C "${build_dir}/glib"
+
+    export DYLD_LIBRARY_PATH="${install_dir}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}"
+    export LD_LIBRARY_PATH="${install_dir}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
     "${build_dir}/glib/example/sqlite"
     if [[ "${enable_vapi}" = "true" ]]; then
         "${build_dir}/glib/example/vala/sqlite"

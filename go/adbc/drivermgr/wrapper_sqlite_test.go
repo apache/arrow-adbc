@@ -27,9 +27,9 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/drivermgr"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -72,6 +72,10 @@ func (dm *DriverMgrSuite) SetupSuite() {
 	nrows, err = stmt.ExecuteUpdate(dm.ctx)
 	dm.NoError(err)
 	dm.Equal(int64(1), nrows)
+}
+
+func (dm *DriverMgrSuite) TearDownSuite() {
+	dm.NoError(dm.db.Close())
 }
 
 func (dm *DriverMgrSuite) SetupTest() {
@@ -597,6 +601,7 @@ func TestDriverMgrCustomInitFunc(t *testing.T) {
 	cnxn, err := db.Open(context.Background())
 	assert.NoError(t, err)
 	require.NoError(t, cnxn.Close())
+	require.NoError(t, db.Close())
 
 	// set invalid entrypoint
 	drv = drivermgr.Driver{}

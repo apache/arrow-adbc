@@ -25,9 +25,12 @@ sys.path.append(str(Path("./ext").resolve()))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "ADBC"
-copyright = "2022, Apache Arrow Developers"
+copyright = """2022–2024 The Apache Software Foundation.  Apache Arrow, Arrow,
+Apache, the Apache feather logo, and the Apache Arrow project logo are either
+registered trademarks or trademarks of The Apache Software Foundation in the
+United States and other countries."""
 author = "the Apache Arrow Developers"
-release = "0.9.0 (dev)"
+release = "0.10.0 (dev)"
 # Needed to generate version switcher
 version = release
 

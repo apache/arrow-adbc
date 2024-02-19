@@ -30,6 +30,11 @@ test_dir = base_dir + "test"
 require "gi"
 
 ADBC = GI.load("ADBC")
+begin
+  ADBCArrow = GI.load("ADBCArrow")
+rescue GObjectIntrospection::RepositoryError => error
+  puts("ADBCArrow isn't found: #{error}")
+end
 
 require_relative "helper"
 

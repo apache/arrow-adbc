@@ -33,8 +33,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// </summary>
         public static SampleDataBuilder GetSampleData()
         {
-            Int64Array.Builder numbersBuilder = new Int64Array.Builder();
+            ListArray.Builder labuilder = new ListArray.Builder(Int64Type.Default);
+            Int64Array.Builder numbersBuilder = labuilder.ValueBuilder as Int64Array.Builder;
+            labuilder.Append();
             numbersBuilder.AppendRange(new List<long>() { 1, 2, 3 });
+
             Int64Array numbersArray = numbersBuilder.Build();
 
             SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
@@ -76,10 +79,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                         new ColumnNetTypeArrowTypeValue("datetime", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023, 9, 8, 12, 34, 56), TimeSpan.Zero)),
                         new ColumnNetTypeArrowTypeValue("timestamp", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023, 9, 8, 12, 34, 56), TimeSpan.Zero)),
                         new ColumnNetTypeArrowTypeValue("point", typeof(string), typeof(StringType), "POINT(1 2)"),
-                        new ColumnNetTypeArrowTypeValue("numbers", typeof(long), typeof(Int64Type), numbersArray),
+                        new ColumnNetTypeArrowTypeValue("numbers", typeof(Int64Array), typeof(ListType), numbersArray),
                         new ColumnNetTypeArrowTypeValue("person", typeof(string), typeof(StringType), "{\"name\":\"John Doe\",\"age\":30}"),
                         new ColumnNetTypeArrowTypeValue("json", typeof(string), typeof(StringType), "{\"age\":29,\"name\":\"Jane Doe\"}")
-
                     }
                 });
 
@@ -139,10 +141,66 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                         new ColumnNetTypeArrowTypeValue("datetime", typeof(DateTimeOffset), typeof(TimestampType), null),
                         new ColumnNetTypeArrowTypeValue("timestamp", typeof(DateTimeOffset), typeof(TimestampType), null),
                         new ColumnNetTypeArrowTypeValue("point", typeof(string), typeof(StringType), null),
-                        new ColumnNetTypeArrowTypeValue("numbers", typeof(long), typeof(Int64Type), emptyNumbersArray),
+                        new ColumnNetTypeArrowTypeValue("numbers", typeof(Int64Array), typeof(ListType), emptyNumbersArray),
                         new ColumnNetTypeArrowTypeValue("person", typeof(string), typeof(StringType), "{\"name\":null,\"age\":null}")
                     }
                 });
+
+            // complex struct
+            sampleDataBuilder.Samples.Add(
+               new SampleData()
+               {
+                   Query =  "SELECT " +
+                            "STRUCT(" +
+                            "\"Iron Man\" as name," +
+                            "\"Avengers\" as team," +
+                            "[\"Genius\", \"Billionaire\", \"Playboy\", \"Philanthropist\"] as powers," +
+                            "[" +
+                            "  STRUCT(" +
+                            "    \"Captain America\" as name, " +
+                            "    \"Avengers\" as team, " +
+                            "    [\"Super Soldier Serum\", \"Vibranium Shield\"] as powers, " +
+                            "    [" +
+                            "     STRUCT(" +
+                            "       \"Thanos\" as name, " +
+                            "       \"Black Order\" as team, " +
+                            "       [\"Infinity Gauntlet\", \"Super Strength\", \"Teleportation\"] as powers, " +
+                            "       [" +
+                            "         STRUCT(" +
+                            "           \"Loki\" as name, " +
+                            "           \"Asgard\" as team, " +
+                            "           [\"Magic\", \"Shapeshifting\", \"Trickery\"] as powers " +
+                            "          )" +
+                            "        ] as allies" +
+                            "      )" +
+                            "    ] as enemies" +
+                            " )," +
+                            " STRUCT(" +
+                            "    \"Spider-Man\" as name, " +
+                            "    \"Avengers\" as team, " +
+                            "    [\"Spider-Sense\", \"Web-Shooting\", \"Wall-Crawling\"] as powers, " +
+                            "    [" +
+                            "      STRUCT(" +
+                            "        \"Green Goblin\" as name, " +
+                            "        \"Sinister Six\" as team, " +
+                            "        [\"Glider\", \"Pumpkin Bombs\", \"Super Strength\"] as powers, " +
+                            "         [" +
+                            "          STRUCT(" +
+                            "            \"Doctor Octopus\" as name, " +
+                            "            \"Sinister Six\" as team, " +
+                            "            [\"Mechanical Arms\", \"Genius\", \"Madness\"] as powers " +
+                            "          )" +
+                            "        ] as allies" +
+                            "      )" +
+                            "    ] as enemies" +
+                            "  )" +
+                            " ] as friends" +
+                            ") as iron_man",
+                   ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                   {
+                        new ColumnNetTypeArrowTypeValue("iron_man", typeof(string), typeof(StringType), "{\"name\":\"Iron Man\",\"team\":\"Avengers\",\"powers\":[\"Genius\",\"Billionaire\",\"Playboy\",\"Philanthropist\"],\"friends\":[{\"name\":\"Captain America\",\"team\":\"Avengers\",\"powers\":[\"Super Soldier Serum\",\"Vibranium Shield\"],\"enemies\":{\"name\":\"Thanos\",\"team\":\"Black Order\",\"powers\":[\"Infinity Gauntlet\",\"Super Strength\",\"Teleportation\"],\"allies\":{\"name\":\"Loki\",\"team\":\"Asgard\",\"powers\":[\"Magic\",\"Shapeshifting\",\"Trickery\"]}}},{\"name\":\"Spider-Man\",\"team\":\"Avengers\",\"powers\":[\"Spider-Sense\",\"Web-Shooting\",\"Wall-Crawling\"],\"enemies\":{\"name\":\"Green Goblin\",\"team\":\"Sinister Six\",\"powers\":[\"Glider\",\"Pumpkin Bombs\",\"Super Strength\"],\"allies\":{\"name\":\"Doctor Octopus\",\"team\":\"Sinister Six\",\"powers\":[\"Mechanical Arms\",\"Genius\",\"Madness\"]}}}]}")
+                   }
+               });
 
             return sampleDataBuilder;
         }
