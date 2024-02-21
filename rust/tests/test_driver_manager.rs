@@ -45,7 +45,7 @@ fn get_database() -> Result<DriverDatabase> {
     let driver = get_driver()?;
     // By passing in "" for uri, we create a distinct temporary database for each
     // test, preventing noisy neighbor issues on tests.
-    Ok(driver.new_database()?.set_option("uri", "")?.init())
+    Ok(driver.new_database()?.set_option("uri", "")?.init()?)
 }
 
 fn get_connection() -> Result<DriverConnection> {
