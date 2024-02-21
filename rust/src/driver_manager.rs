@@ -348,7 +348,7 @@ impl AdbcDriver {
 
         check_status(status, error)?;
 
-        inner.private_driver = &self.inner.as_ref().driver;
+        inner.private_driver = &(self.inner.as_ref().driver);
 
         Ok(DriverDatabaseBuilder {
             inner,
@@ -381,11 +381,16 @@ impl DriverDatabaseBuilder {
         Ok(self)
     }
 
-    pub fn init(self) -> DriverDatabase {
-        DriverDatabase {
+    pub fn init(mut self) -> Result<DriverDatabase> {
+        let mut error = FFI_AdbcError::empty();
+        let database_init = driver_method!(self.driver, database_init);
+        let status = unsafe { database_init(&mut self.inner, &mut error) };
+        check_status(status, error)?;
+
+        Ok(DriverDatabase {
             inner: Arc::new(RwLock::new(self.inner)),
             driver: self.driver,
-        }
+        })
     }
 }
 
