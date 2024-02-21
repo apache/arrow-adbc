@@ -71,5 +71,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         [JsonPropertyName("authority")]
         public string Authority { get; set; }
+
+        [JsonPropertyName("username")]
+        public string Username { get; set; }
+
+        [JsonPropertyName("password")]
+        public string Password { get; set; }
     }
 }

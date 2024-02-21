@@ -35,6 +35,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public const string OptionTimeoutUpdate = "adbc.flight.sql.rpc.timeout_seconds.update";
         public const string OptionSSLSkipVerify = "adbc.flight.sql.client_option.tls_skip_verify";
         public const string OptionAuthority = "adbc.flight.sql.client_option.authority";
+        public const string Username = "username";
+        public const string Password = "password";
 
         // not used, but also available:
         //public const string OptionMTLSCertChain = "adbc.flight.sql.client_option.mtls_cert_chain";
@@ -81,12 +83,24 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             parameters = new Dictionary<string, string>
             {
                 { FlightSqlParameters.Uri, testConfiguration.Uri },
-                { FlightSqlParameters.OptionAuthorizationHeader, testConfiguration.AuthorizationHeader}
             };
 
             foreach(string key in testConfiguration.RPCCallHeaders.Keys)
             {
                 parameters.Add(FlightSqlParameters.OptionRPCCallHeaderPrefix + key, testConfiguration.RPCCallHeaders[key]);
+            }
+
+            if (!string.IsNullOrEmpty(testConfiguration.AuthorizationHeader))
+            {
+                parameters.Add(FlightSqlParameters.OptionAuthorizationHeader, testConfiguration.AuthorizationHeader);
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(testConfiguration.Username) && !string.IsNullOrEmpty(testConfiguration.Password))
+                {
+                    parameters.Add(FlightSqlParameters.Username, testConfiguration.Username);
+                    parameters.Add(FlightSqlParameters.Password, testConfiguration.Password);
+                }
             }
 
             if (!string.IsNullOrEmpty(testConfiguration.TimeoutQuery))
@@ -103,12 +117,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
             if (!string.IsNullOrEmpty(testConfiguration.Authority))
                 parameters.Add(FlightSqlParameters.OptionAuthority, testConfiguration.Authority);
-
-
-            foreach(string key in parameters.Keys)
-            {
-                Debug.WriteLine($"{key}={parameters[key]}");
-            }
 
             Dictionary<string, string> options = new Dictionary<string, string>() { };
             AdbcDriver driver = GetFlightSqlAdbcDriver(testConfiguration);
