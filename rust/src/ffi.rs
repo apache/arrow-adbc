@@ -274,7 +274,7 @@ pub struct FFI_AdbcConnection {
     pub private_data: *mut c_void,
     /// The associated driver (used by the driver manager to help
     ///   track state).
-    pub private_driver: *mut FFI_AdbcDriver,
+    pub private_driver: *const FFI_AdbcDriver,
 }
 
 impl FFI_AdbcConnection {
@@ -328,7 +328,7 @@ pub struct FFI_AdbcStatement {
     pub private_data: *mut c_void,
     /// The associated driver (used by the driver manager to help
     /// track state).
-    pub private_driver: *mut FFI_AdbcDriver,
+    pub private_driver: *const FFI_AdbcDriver,
 }
 
 impl FFI_AdbcStatement {

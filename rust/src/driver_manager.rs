@@ -348,6 +348,8 @@ impl AdbcDriver {
 
         check_status(status, error)?;
 
+        inner.private_driver = &self.inner.as_ref().driver;
+
         Ok(DriverDatabaseBuilder {
             inner,
             driver: self.inner.clone(),
@@ -444,6 +446,8 @@ impl DriverDatabase {
         let mut error = FFI_AdbcError::empty();
         let connection_new = driver_method!(self.driver, connection_new);
         let status = unsafe { connection_new(&mut inner, &mut error) };
+
+        inner.private_driver = &self.driver.as_ref().driver;
 
         check_status(status, error)?;
 
@@ -585,6 +589,8 @@ impl AdbcConnection for DriverConnection {
         let status =
             unsafe { statement_new(self.inner.borrow_mut().deref_mut(), &mut inner, &mut error) };
         check_status(status, error)?;
+
+        inner.private_driver = &self.driver.as_ref().driver;
 
         Ok(DriverStatement {
             inner,
