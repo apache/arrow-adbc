@@ -76,6 +76,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+          submodules: recursive
       - uses: conda-incubator/setup-miniconda@v3
         # The Unix script will set up conda itself
         if: matrix.os == 'windows-latest'

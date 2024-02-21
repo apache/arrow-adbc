@@ -28,6 +28,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -40,6 +41,8 @@ type timeoutOption struct {
 	queryTimeout time.Duration
 	// timeout for DoPut or DoAction requests
 	updateTimeout time.Duration
+	// timeout for establishing a new connection
+	connectTimeout time.Duration
 }
 
 func (t *timeoutOption) setTimeout(key string, value float64) error {
@@ -60,6 +63,8 @@ func (t *timeoutOption) setTimeout(key string, value float64) error {
 		t.queryTimeout = timeout
 	case OptionTimeoutUpdate:
 		t.updateTimeout = timeout
+	case OptionTimeoutConnect:
+		t.connectTimeout = timeout
 	default:
 		return adbc.Error{
 			Msg:  fmt.Sprintf("[Flight SQL] Unknown timeout option '%s'", key),
@@ -79,6 +84,13 @@ func (t *timeoutOption) setTimeoutString(key string, value string) error {
 		}
 	}
 	return t.setTimeout(key, timeout)
+}
+
+func (t *timeoutOption) connectParams() grpc.ConnectParams {
+	return grpc.ConnectParams{
+		Backoff:           backoff.DefaultConfig,
+		MinConnectTimeout: t.connectTimeout,
+	}
 }
 
 func getTimeout(method string, callOptions []grpc.CallOption) (time.Duration, bool) {

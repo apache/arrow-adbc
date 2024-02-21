@@ -53,26 +53,27 @@ import org.apache.arrow.flight.impl.Flight;
 import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
-import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
+import org.checkerframework.checker.initialization.qual.UnknownInitialization;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class FlightSqlConnection implements AdbcConnection {
   private final BufferAllocator allocator;
-  private final AtomicInteger counter;
+  private final AtomicInteger counter = new AtomicInteger(0);
   private final FlightSqlClientWithCallOptions client;
   private final SqlQuirks quirks;
   private final Map<String, Object> parameters;
   private final LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache;
 
   // Cached data to use across additional connections.
-  private ClientCookieMiddleware.Factory cookieMiddlewareFactory;
+  private ClientCookieMiddleware.@Nullable Factory cookieMiddlewareFactory;
   private CallOption[] callOptions;
 
   // Used to cache the InputStream content as a byte array since
   // subsequent connections may need to use it but it is supplied as a stream.
-  private byte[] mtlsCertChainBytes;
-  private byte[] mtlsPrivateKeyBytes;
-  private byte[] tlsRootCertsBytes;
+  private byte @Nullable [] mtlsCertChainBytes;
+  private byte @Nullable [] mtlsPrivateKeyBytes;
+  private byte @Nullable [] tlsRootCertsBytes;
 
   FlightSqlConnection(
       BufferAllocator allocator,
@@ -81,16 +82,18 @@ public class FlightSqlConnection implements AdbcConnection {
       Map<String, Object> parameters)
       throws AdbcException {
     this.allocator = allocator;
-    this.counter = new AtomicInteger(0);
     this.quirks = quirks;
     this.parameters = parameters;
+    this.callOptions = new CallOption[0];
     FlightSqlClient flightSqlClient = new FlightSqlClient(createInitialConnection(location));
     this.client = new FlightSqlClientWithCallOptions(flightSqlClient, callOptions);
     this.clientCache =
         Caffeine.newBuilder()
             .expireAfterAccess(5, TimeUnit.MINUTES)
             .removalListener(
-                (Location key, FlightSqlClientWithCallOptions value, RemovalCause cause) -> {
+                (@Nullable Location key,
+                    @Nullable FlightSqlClientWithCallOptions value,
+                    RemovalCause cause) -> {
                   if (value == null) return;
                   try {
                     value.close();
@@ -153,13 +156,33 @@ public class FlightSqlConnection implements AdbcConnection {
   }
 
   @Override
-  public ArrowReader getInfo(int[] infoCodes) throws AdbcException {
-    try (InfoMetadataBuilder builder = new InfoMetadataBuilder(allocator, client, infoCodes)) {
-      try (final VectorSchemaRoot root = builder.build()) {
-        return RootArrowReader.fromRoot(allocator, root);
-      }
+  public ArrowReader getObjects(
+      GetObjectsDepth depth,
+      String catalogPattern,
+      String dbSchemaPattern,
+      String tableNamePattern,
+      String[] tableTypes,
+      String columnNamePattern)
+      throws AdbcException {
+    return GetObjectsMetadataReaders.CreateGetObjectsReader(
+        allocator,
+        client,
+        clientCache,
+        depth,
+        catalogPattern,
+        dbSchemaPattern,
+        tableNamePattern,
+        tableTypes,
+        columnNamePattern);
+  }
+
+  @Override
+  public ArrowReader getInfo(int @Nullable [] infoCodes) throws AdbcException {
+    try {
+      return GetInfoMetadataReader.CreateGetInfoMetadataReader(
+          allocator, client, clientCache, infoCodes);
     } catch (Exception e) {
-      throw AdbcException.invalidState("[Flight SQL] Failed to get info");
+      throw AdbcException.invalidState("[Flight SQL] Failed to get info").withCause(e);
     }
   }
 
@@ -195,24 +218,28 @@ public class FlightSqlConnection implements AdbcConnection {
    * Initialize cached data to share between connections and create, test, and authenticate the
    * first connection.
    */
-  private FlightClient createInitialConnection(Location location) throws AdbcException {
+  private FlightClient createInitialConnection(
+      @UnknownInitialization FlightSqlConnection this, Location location) throws AdbcException {
     // Setup cached pre-connection properties.
     try {
-      final InputStream mtlsCertChain =
-          FlightSqlConnectionProperties.MTLS_CERT_CHAIN.get(parameters);
-      if (mtlsCertChain != null) {
-        this.mtlsCertChainBytes = inputStreamToBytes(mtlsCertChain);
-      }
+      if (parameters != null) {
+        final InputStream mtlsCertChain =
+            FlightSqlConnectionProperties.MTLS_CERT_CHAIN.get(parameters);
+        if (mtlsCertChain != null) {
+          this.mtlsCertChainBytes = inputStreamToBytes(mtlsCertChain);
+        }
 
-      final InputStream mtlsPrivateKey =
-          FlightSqlConnectionProperties.MTLS_PRIVATE_KEY.get(parameters);
-      if (mtlsPrivateKey != null) {
-        this.mtlsPrivateKeyBytes = inputStreamToBytes(mtlsPrivateKey);
-      }
+        final InputStream mtlsPrivateKey =
+            FlightSqlConnectionProperties.MTLS_PRIVATE_KEY.get(parameters);
+        if (mtlsPrivateKey != null) {
+          this.mtlsPrivateKeyBytes = inputStreamToBytes(mtlsPrivateKey);
+        }
 
-      final InputStream tlsRootCerts = FlightSqlConnectionProperties.TLS_ROOT_CERTS.get(parameters);
-      if (tlsRootCerts != null) {
-        this.tlsRootCertsBytes = inputStreamToBytes(tlsRootCerts);
+        final InputStream tlsRootCerts =
+            FlightSqlConnectionProperties.TLS_ROOT_CERTS.get(parameters);
+        if (tlsRootCerts != null) {
+          this.tlsRootCertsBytes = inputStreamToBytes(tlsRootCerts);
+        }
       }
     } catch (IOException ex) {
       throw new AdbcException(
@@ -227,10 +254,12 @@ public class FlightSqlConnection implements AdbcConnection {
           0);
     }
 
-    final boolean useCookieMiddleware =
-        Boolean.TRUE.equals(FlightSqlConnectionProperties.WITH_COOKIE_MIDDLEWARE.get(parameters));
-    if (useCookieMiddleware) {
-      this.cookieMiddlewareFactory = new ClientCookieMiddleware.Factory();
+    if (parameters != null) {
+      final boolean useCookieMiddleware =
+          Boolean.TRUE.equals(FlightSqlConnectionProperties.WITH_COOKIE_MIDDLEWARE.get(parameters));
+      if (useCookieMiddleware) {
+        this.cookieMiddlewareFactory = new ClientCookieMiddleware.Factory();
+      }
     }
 
     // Build the client using the above properties.
@@ -284,7 +313,11 @@ public class FlightSqlConnection implements AdbcConnection {
   }
 
   /** Returns a yet-to-be authenticated FlightClient */
-  private FlightClient buildClient(Location location) throws AdbcException {
+  private FlightClient buildClient(
+      @UnknownInitialization FlightSqlConnection this, Location location) throws AdbcException {
+    if (allocator == null) {
+      throw new IllegalStateException("Internal error: allocator was not initialized");
+    }
     final FlightClient.Builder builder =
         FlightClient.builder()
             .allocator(
@@ -327,13 +360,15 @@ public class FlightSqlConnection implements AdbcConnection {
       builder.trustedCertificates(new ByteArrayInputStream(tlsRootCertsBytes));
     }
 
-    if (Boolean.TRUE.equals(FlightSqlConnectionProperties.TLS_SKIP_VERIFY.get(parameters))) {
-      builder.verifyServer(false);
-    }
+    if (parameters != null) {
+      if (Boolean.TRUE.equals(FlightSqlConnectionProperties.TLS_SKIP_VERIFY.get(parameters))) {
+        builder.verifyServer(false);
+      }
 
-    String hostnameOverride = FlightSqlConnectionProperties.TLS_OVERRIDE_HOSTNAME.get(parameters);
-    if (hostnameOverride != null) {
-      builder.overrideHostname(hostnameOverride);
+      String hostnameOverride = FlightSqlConnectionProperties.TLS_OVERRIDE_HOSTNAME.get(parameters);
+      if (hostnameOverride != null) {
+        builder.overrideHostname(hostnameOverride);
+      }
     }
 
     // Setup cookies if needed.

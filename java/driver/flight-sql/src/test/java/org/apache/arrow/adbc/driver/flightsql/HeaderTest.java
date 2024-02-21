@@ -26,6 +26,7 @@ import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
+import org.apache.arrow.adbc.core.AdbcInfoCode;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
 import org.apache.arrow.driver.jdbc.utils.MockFlightSqlProducer;
@@ -96,8 +97,11 @@ public class HeaderTest {
 
     params.put(FlightSqlConnectionProperties.WITH_COOKIE_MIDDLEWARE.getKey(), true);
     connect();
-    try (ArrowReader reader = connection.getInfo(new int[] {})) {
-
+    // Use GetInfo but with a type that requires connecting to the server.
+    try (ArrowReader reader = connection.getInfo(new int[] {AdbcInfoCode.VENDOR_NAME.getValue()})) {
+      while (reader.loadNextBatch()) {
+        ; // Just iterate through the result.
+      }
     } catch (Exception ex) {
       // Swallow exceptions from the RPC call. Only interested in tracking metadata.
     }
@@ -116,10 +120,14 @@ public class HeaderTest {
     params.put(AdbcDriver.PARAM_USERNAME.getKey(), "dummy_user");
     params.put(AdbcDriver.PARAM_PASSWORD.getKey(), "dummy_password");
     connect();
-    try (ArrowReader reader = connection.getInfo(new int[] {})) {
-
+    // Use GetInfo but with a type that requires connecting to the server.
+    try (ArrowReader reader = connection.getInfo(new int[] {AdbcInfoCode.VENDOR_NAME.getValue()})) {
+      while (reader.loadNextBatch()) {
+        ; // Just iterate through the result.
+      }
     } catch (Exception ex) {
       // Swallow exceptions from the RPC call. Only interested in tracking metadata.
+      // This is expected to fail since GetSqlInfo isn't implemented on this test FlightSqlProducer.
     }
     CallHeaders secondHeaders = headerValidatorFactory.getHeadersReceivedAtRequest(1);
     assertTrue(secondHeaders.get("authorization").contains("Bearer"));

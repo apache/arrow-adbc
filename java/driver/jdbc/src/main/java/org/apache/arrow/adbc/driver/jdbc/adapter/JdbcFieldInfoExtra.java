@@ -20,6 +20,7 @@ package org.apache.arrow.adbc.driver.jdbc.adapter;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import org.apache.arrow.adapter.jdbc.JdbcFieldInfo;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Information about a column from JDBC for inferring column type.
@@ -31,8 +32,8 @@ public final class JdbcFieldInfoExtra {
   final JdbcFieldInfo info;
   final String typeName;
   final int numPrecRadix;
-  final String remarks;
-  final String columnDef;
+  final @Nullable String remarks;
+  final @Nullable String columnDef;
   final int sqlDataType;
   final int sqlDatetimeSub;
   final int charOctetLength;
@@ -46,7 +47,11 @@ public final class JdbcFieldInfoExtra {
    */
   public JdbcFieldInfoExtra(ResultSet rs) throws SQLException {
     final int dataType = rs.getInt("DATA_TYPE");
-    this.typeName = rs.getString("TYPE_NAME");
+    final @Nullable String maybeTypeName = rs.getString("TYPE_NAME");
+    if (maybeTypeName == null) {
+      throw new RuntimeException("Field " + "TYPE_NAME" + " was null");
+    }
+    this.typeName = maybeTypeName;
     final int columnSize = rs.getInt("COLUMN_SIZE");
     final int decimalDigits = rs.getInt("DECIMAL_DIGITS");
     this.numPrecRadix = rs.getInt("NUM_PREC_RADIX");
@@ -79,11 +84,11 @@ public final class JdbcFieldInfoExtra {
     return numPrecRadix;
   }
 
-  public String getRemarks() {
+  public @Nullable String getRemarks() {
     return remarks;
   }
 
-  public String getColumnDef() {
+  public @Nullable String getColumnDef() {
     return columnDef;
   }
 
