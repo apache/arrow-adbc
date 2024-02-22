@@ -595,9 +595,9 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
-    ASSERT_NE(nullptr, reader.array->release);    
+    ASSERT_NE(nullptr, reader.array->release);
     if (expected.second) {
-      ASSERT_GT(reader.array->length, 0); 
+      ASSERT_GT(reader.array->length, 0);
     } else {
       ASSERT_EQ(reader.array->length, 0);
     }
