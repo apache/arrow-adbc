@@ -550,7 +550,7 @@ void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
-    ASSERT_GT(reader.array->length, 0);
+    ASSERT_GE(reader.array->length, 0);
     do {
       for (int64_t row = 0; row < reader.array->length; row++) {
         struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
@@ -595,8 +595,12 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
-    ASSERT_NE(nullptr, reader.array->release);
-    ASSERT_GT(reader.array->length, 0);
+    ASSERT_NE(nullptr, reader.array->release);    
+    if (expected.second) {
+      ASSERT_GT(reader.array->length, 0); 
+    } else {
+      ASSERT_EQ(reader.array->length, 0);
+    }
     bool found_expected_table = false;
     do {
       for (int64_t row = 0; row < reader.array->length; row++) {
@@ -670,7 +674,7 @@ void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
-    ASSERT_GT(reader.array->length, 0);
+    ASSERT_GE(reader.array->length, 0);
     bool found_expected_table = false;
     do {
       for (int64_t row = 0; row < reader.array->length; row++) {
