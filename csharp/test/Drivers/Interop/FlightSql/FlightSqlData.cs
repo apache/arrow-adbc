@@ -16,10 +16,8 @@
 */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
-using System.Runtime.InteropServices;
 using System.Text;
 using Apache.Arrow.Types;
 

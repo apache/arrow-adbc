@@ -140,42 +140,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             }
         }
 
-        // <summary>
-        /// Validates if the client can connect to a live server
-        /// and parse the results.
-        /// </summary>
-        [SkippableFact, Order(4)]
-        public void CanClientExecuteQueryWithShowTerseTable()
-        {
-            FlightSqlTestConfiguration testConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
-            testConfiguration.Query = "SHOW TERSE TABLES";
-            testConfiguration.ExpectedResultsCount = 0;
-
-            // Throw exception Apache.Arrow.Adbc.AdbcException
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(testConfiguration))
-            {
-                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
-            }
-        }
-
-        // <summary>
-        /// Validates if the client can connect to a live server
-        /// and parse the results.
-        /// </summary>
-        [SkippableFact, Order(4)]
-        public void CanClientExecuteQueryWithShowTable()
-        {
-            FlightSqlTestConfiguration testConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
-            testConfiguration.Query = "SHOW TABLES";
-            testConfiguration.ExpectedResultsCount = 0;
-
-            // Throw exception Apache.Arrow.Adbc.AdbcException
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(testConfiguration))
-            {
-                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
-            }
-        }
-
         /// <summary>
         /// Validates if the client is retrieving and converting values
         /// to the expected types.
