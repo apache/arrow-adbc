@@ -92,14 +92,21 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override object GetValue(IArrowArray arrowArray, int index)
         {
-            switch (arrowArray)
+            try
             {
-                case StructArray structArray:
-                    return SerializeToJson(structArray, index);
-                case ListArray listArray:
-                    return listArray.GetSlicedValues(index);
-                default:
-                    return base.GetValue(arrowArray, index);
+                switch (arrowArray)
+                {
+                    case StructArray structArray:
+                        return SerializeToJson(structArray, index);
+                    case ListArray listArray:
+                        return listArray.GetSlicedValues(index);
+                    default:
+                        return base.GetValue(arrowArray, index);
+                }
+            }
+            catch
+            {
+                return null;
             }
         }
 
