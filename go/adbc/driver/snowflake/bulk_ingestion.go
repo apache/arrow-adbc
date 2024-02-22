@@ -29,6 +29,7 @@ import (
 	"io"
 	"math"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -172,13 +173,13 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 	}
 
 	// Load the uploaded file into the target table
-	_, err = st.cnxn.cn.ExecContext(ctx, copyQuery, []driver.NamedValue{{Value: st.targetTable}})
+	_, err = st.cnxn.cn.ExecContext(ctx, copyQuery, []driver.NamedValue{{Value: strconv.Quote(st.targetTable)}})
 	if err != nil {
 		return
 	}
 
 	// Check final row count of target table to get definitive rows affected
-	nrows, err = countRowsInTable(ctx, st.cnxn.sqldb, st.targetTable)
+	nrows, err = countRowsInTable(ctx, st.cnxn.sqldb, strconv.Quote(st.targetTable))
 	return
 }
 
@@ -249,7 +250,7 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 	}
 
 	// Kickoff background tasks to COPY Parquet files into Snowflake table as they are uploaded
-	fileReady, finishCopy, cancelCopy := runCopyTasks(ctx, st.cnxn.cn, st.targetTable, int(st.ingestOptions.copyConcurrency))
+	fileReady, finishCopy, cancelCopy := runCopyTasks(ctx, st.cnxn.cn, strconv.Quote(st.targetTable), int(st.ingestOptions.copyConcurrency))
 
 	// Read Parquet files from buffer pool and upload to Snowflake stage in parallel
 	g.Go(func() error {

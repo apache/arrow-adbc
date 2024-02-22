@@ -143,7 +143,7 @@ void StatementTest::TestSqlIngestType(ArrowType type,
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(
                   &statement,
-                  "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error),
+                  "SELECT * FROM \"bulk_ingest\" ORDER BY \"col\" ASC NULLS FIRST", &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -305,7 +305,7 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(
                   &statement,
-                  "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error),
+                  "SELECT * FROM \"bulk_ingest\" ORDER BY \"col\" ASC NULLS FIRST", &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -451,7 +451,7 @@ void StatementTest::TestSqlIngestInterval() {
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(
                   &statement,
-                  "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error),
+                  "SELECT * FROM \"bulk_ingest\" ORDER BY \"col\" ASC NULLS FIRST", &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -589,7 +589,7 @@ void StatementTest::TestSqlIngestAppend() {
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(2), ::testing::Eq(-1)));
 
   // Read data back
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM \"bulk_ingest\"", &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -648,7 +648,7 @@ void StatementTest::TestSqlIngestReplace() {
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
 
   // Read data back
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM \"bulk_ingest\"", &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -693,7 +693,7 @@ void StatementTest::TestSqlIngestReplace() {
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(2), ::testing::Eq(-1)));
 
   // Read data back
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM \"bulk_ingest\"", &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -766,7 +766,7 @@ void StatementTest::TestSqlIngestCreateAppend() {
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(2), ::testing::Eq(-1)));
 
   // Read data back
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM \"bulk_ingest\"", &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -912,7 +912,7 @@ void StatementTest::TestSqlIngestMultipleConnections() {
 
     ASSERT_THAT(
         AdbcStatementSetSqlQuery(
-            &statement, "SELECT * FROM bulk_ingest ORDER BY \"int64s\" DESC NULLS LAST",
+            &statement, "SELECT * FROM \"bulk_ingest\" ORDER BY \"int64s\" DESC NULLS LAST",
             &error),
         IsOkStatus(&error));
 
@@ -955,7 +955,7 @@ void StatementTest::TestSqlIngestSample() {
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetSqlQuery(
-                  &statement, "SELECT * FROM bulk_ingest ORDER BY int64s ASC NULLS FIRST",
+                  &statement, "SELECT * FROM \"bulk_ingest\" ORDER BY int64s ASC NULLS FIRST",
                   &error),
               IsOkStatus(&error));
   StreamReader reader;
@@ -1863,7 +1863,7 @@ void StatementTest::TestSqlPrepareUpdate() {
 
   // Prepare
   std::string query =
-      "INSERT INTO bulk_ingest VALUES (" + quirks()->BindParameter(0) + ")";
+      "INSERT INTO \"bulk_ingest\" VALUES (" + quirks()->BindParameter(0) + ")";
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
@@ -1879,7 +1879,7 @@ void StatementTest::TestSqlPrepareUpdate() {
               IsOkStatus(&error));
 
   // Read data back
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM \"bulk_ingest\"", &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -1958,7 +1958,7 @@ void StatementTest::TestSqlPrepareUpdateStream() {
 
   // Prepare
   std::string query =
-      "INSERT INTO bulk_ingest VALUES (" + quirks()->BindParameter(0) + ")";
+      "INSERT INTO \"bulk_ingest\" VALUES (" + quirks()->BindParameter(0) + ")";
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
@@ -1970,7 +1970,7 @@ void StatementTest::TestSqlPrepareUpdateStream() {
               IsOkStatus(&error));
 
   // Read data back
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM \"bulk_ingest\"", &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -2394,7 +2394,7 @@ void StatementTest::TestTransactions() {
     ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
                 IsOkStatus(&error));
     ASSERT_THAT(
-        AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM bulk_ingest", &error),
+        AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM \"bulk_ingest\"", &error),
         IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
                                           &reader.rows_affected, &error),
@@ -2411,7 +2411,7 @@ void StatementTest::TestTransactions() {
 
                 CHECK_OK(AdbcStatementNew(&connection2.value, &statement.value, &error));
                 CHECK_OK(AdbcStatementSetSqlQuery(&statement.value,
-                                                  "SELECT * FROM bulk_ingest", &error));
+                                                  "SELECT * FROM \"bulk_ingest\"", &error));
                 CHECK_OK(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
                                                    &reader.rows_affected, &error));
                 return ADBC_STATUS_OK;
@@ -2430,7 +2430,7 @@ void StatementTest::TestTransactions() {
 
                 CHECK_OK(AdbcStatementNew(&connection, &statement.value, &error));
                 CHECK_OK(AdbcStatementSetSqlQuery(&statement.value,
-                                                  "SELECT * FROM bulk_ingest", &error));
+                                                  "SELECT * FROM \"bulk_ingest\"", &error));
                 CHECK_OK(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
                                                    &reader.rows_affected, &error));
                 return ADBC_STATUS_OK;
@@ -2450,7 +2450,7 @@ void StatementTest::TestTransactions() {
     ASSERT_THAT(AdbcStatementNew(&connection2.value, &statement.value, &error),
                 IsOkStatus(&error));
     ASSERT_THAT(
-        AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM bulk_ingest", &error),
+        AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM \"bulk_ingest\"", &error),
         IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
                                           &reader.rows_affected, &error),
