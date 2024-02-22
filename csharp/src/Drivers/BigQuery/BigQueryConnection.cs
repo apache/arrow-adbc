@@ -85,9 +85,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
                 throw new ArgumentException($"The {BigQueryParameters.ProjectId} parameter is not present");
 
-            if (this.properties.ContainsKey(BigQueryParameters.AuthenticationType))
+            if (this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out string? newAuthenticationType))
             {
-                authenticationType = this.properties[BigQueryParameters.AuthenticationType];
+                if (!string.IsNullOrEmpty(newAuthenticationType))
+                    authenticationType = newAuthenticationType;
 
                 if (!authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase) &&
                     !authenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase))
