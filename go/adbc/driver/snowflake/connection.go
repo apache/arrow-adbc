@@ -968,14 +968,14 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 	defer rows.Close()
 
 	var (
-		name, typ, kind, isnull, primary, unique string
-		def, check, expr, comment, policyName    sql.NullString
-		fields                                   = []arrow.Field{}
+		name, typ, kind, isnull, primary, unique          string
+		def, check, expr, comment, policyName, privDomain sql.NullString
+		fields                                            = []arrow.Field{}
 	)
 
 	for rows.Next() {
 		err := rows.Scan(&name, &typ, &kind, &isnull, &def, &primary, &unique,
-			&check, &expr, &comment, &policyName)
+			&check, &expr, &comment, &policyName, &privDomain)
 		if err != nil {
 			return nil, errToAdbcErr(adbc.StatusIO, err)
 		}

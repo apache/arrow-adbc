@@ -236,13 +236,14 @@ func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool { return true }
 func (s *FlightSQLQuirks) SupportsCurrentCatalogSchema() bool { return false }
 
 // The driver supports it, but the server we use for testing does not.
-func (s *FlightSQLQuirks) SupportsExecuteSchema() bool           { return false }
-func (s *FlightSQLQuirks) SupportsGetSetOptions() bool           { return true }
-func (s *FlightSQLQuirks) SupportsPartitionedData() bool         { return true }
-func (s *FlightSQLQuirks) SupportsStatistics() bool              { return false }
-func (s *FlightSQLQuirks) SupportsTransactions() bool            { return true }
-func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool      { return false }
-func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool { return true }
+func (s *FlightSQLQuirks) SupportsErrorIngestIncompatibleSchema() bool { return true }
+func (s *FlightSQLQuirks) SupportsExecuteSchema() bool                 { return false }
+func (s *FlightSQLQuirks) SupportsGetSetOptions() bool                 { return true }
+func (s *FlightSQLQuirks) SupportsPartitionedData() bool               { return true }
+func (s *FlightSQLQuirks) SupportsStatistics() bool                    { return false }
+func (s *FlightSQLQuirks) SupportsTransactions() bool                  { return true }
+func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool            { return false }
+func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool       { return true }
 func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:

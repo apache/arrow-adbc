@@ -143,7 +143,7 @@ func getArr(arr arrow.Array) interface{} {
 func (s *SnowflakeQuirks) CreateSampleTable(tableName string, r arrow.Record) error {
 	var b strings.Builder
 	b.WriteString("CREATE OR REPLACE TABLE ")
-	b.WriteString(tableName)
+	b.WriteString(strconv.Quote(tableName))
 	b.WriteString(" (")
 
 	for i := 0; i < int(r.NumCols()); i++ {
@@ -164,7 +164,7 @@ func (s *SnowflakeQuirks) CreateSampleTable(tableName string, r arrow.Record) er
 		return err
 	}
 
-	insertQuery := "INSERT INTO " + tableName + " VALUES ("
+	insertQuery := "INSERT INTO " + strconv.Quote(tableName) + " VALUES ("
 	bindings := strings.Repeat("?,", int(r.NumCols()))
 	insertQuery += bindings[:len(bindings)-1] + ")"
 
@@ -184,7 +184,7 @@ func (s *SnowflakeQuirks) DropTable(cnxn adbc.Connection, tblname string) error 
 	}
 	defer stmt.Close()
 
-	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + tblname); err != nil {
+	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + strconv.Quote(tblname)); err != nil {
 		return err
 	}
 
@@ -192,20 +192,21 @@ func (s *SnowflakeQuirks) DropTable(cnxn adbc.Connection, tblname string) error 
 	return err
 }
 
-func (s *SnowflakeQuirks) Alloc() memory.Allocator               { return s.mem }
-func (s *SnowflakeQuirks) BindParameter(_ int) string            { return "?" }
-func (s *SnowflakeQuirks) SupportsBulkIngest(string) bool        { return true }
-func (s *SnowflakeQuirks) SupportsConcurrentStatements() bool    { return true }
-func (s *SnowflakeQuirks) SupportsCurrentCatalogSchema() bool    { return true }
-func (s *SnowflakeQuirks) SupportsExecuteSchema() bool           { return true }
-func (s *SnowflakeQuirks) SupportsGetSetOptions() bool           { return true }
-func (s *SnowflakeQuirks) SupportsPartitionedData() bool         { return false }
-func (s *SnowflakeQuirks) SupportsStatistics() bool              { return false }
-func (s *SnowflakeQuirks) SupportsTransactions() bool            { return true }
-func (s *SnowflakeQuirks) SupportsGetParameterSchema() bool      { return false }
-func (s *SnowflakeQuirks) SupportsDynamicParameterBinding() bool { return false }
-func (s *SnowflakeQuirks) Catalog() string                       { return s.catalogName }
-func (s *SnowflakeQuirks) DBSchema() string                      { return s.schemaName }
+func (s *SnowflakeQuirks) Alloc() memory.Allocator                     { return s.mem }
+func (s *SnowflakeQuirks) BindParameter(_ int) string                  { return "?" }
+func (s *SnowflakeQuirks) SupportsBulkIngest(string) bool              { return true }
+func (s *SnowflakeQuirks) SupportsConcurrentStatements() bool          { return true }
+func (s *SnowflakeQuirks) SupportsCurrentCatalogSchema() bool          { return true }
+func (s *SnowflakeQuirks) SupportsExecuteSchema() bool                 { return true }
+func (s *SnowflakeQuirks) SupportsGetSetOptions() bool                 { return true }
+func (s *SnowflakeQuirks) SupportsPartitionedData() bool               { return false }
+func (s *SnowflakeQuirks) SupportsStatistics() bool                    { return false }
+func (s *SnowflakeQuirks) SupportsTransactions() bool                  { return true }
+func (s *SnowflakeQuirks) SupportsGetParameterSchema() bool            { return false }
+func (s *SnowflakeQuirks) SupportsDynamicParameterBinding() bool       { return false }
+func (s *SnowflakeQuirks) SupportsErrorIngestIncompatibleSchema() bool { return false }
+func (s *SnowflakeQuirks) Catalog() string                             { return s.catalogName }
+func (s *SnowflakeQuirks) DBSchema() string                            { return s.schemaName }
 func (s *SnowflakeQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:
@@ -281,7 +282,9 @@ func withQuirks(t *testing.T, fn func(*SnowflakeQuirks)) {
 	// avoid multiple runs clashing by operating in a fresh schema and then
 	// dropping that schema when we're done.
 	q := &SnowflakeQuirks{dsn: uri, catalogName: database, schemaName: createTempSchema(database, uri)}
-	defer dropTempSchema(uri, q.schemaName)
+	t.Cleanup(func() {
+		dropTempSchema(uri, q.schemaName)
+	})
 
 	fn(q)
 }
@@ -380,7 +383,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest" ORDER BY "col" ASC NULLS FIRST`))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
@@ -486,7 +489,7 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_bind ORDER BY \"col_int64\" ASC"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest_bind" ORDER BY "col_int64" ASC`))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
@@ -509,7 +512,7 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_bind_stream ORDER BY \"col_int64\" ASC"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest_bind_stream" ORDER BY "col_int64" ASC`))
 	rdr, n, err = suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
@@ -596,7 +599,7 @@ func (suite *SnowflakeTests) TestSqlIngestRoundtripTypes() {
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_roundtrip ORDER BY \"col_int64\" ASC"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest_roundtrip" ORDER BY "col_int64" ASC`))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
@@ -672,7 +675,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_timestamps ORDER BY \"col_int64\" ASC"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest_timestamps" ORDER BY "col_int64" ASC`))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
@@ -784,7 +787,7 @@ func (suite *SnowflakeTests) TestSqlIngestDate64Type() {
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_date64 ORDER BY \"col_int64\" ASC"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest_date64" ORDER BY "col_int64" ASC`))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
@@ -877,7 +880,7 @@ func (suite *SnowflakeTests) TestSqlIngestHighPrecision() {
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_high_precision ORDER BY \"col_int64\" ASC"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest_high_precision" ORDER BY "col_int64" ASC`))
 	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueEnabled))
 	defer func() {
 		suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
@@ -988,7 +991,7 @@ func (suite *SnowflakeTests) TestSqlIngestLowPrecision() {
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_high_precision ORDER BY \"col_int64\" ASC"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest_high_precision" ORDER BY "col_int64" ASC`))
 	// OptionUseHighPrecision already disabled
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
@@ -1106,7 +1109,7 @@ func (suite *SnowflakeTests) TestSqlIngestStructType() {
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_struct ORDER BY \"col_int64\" ASC"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest_struct" ORDER BY "col_int64" ASC`))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
@@ -1210,7 +1213,7 @@ func (suite *SnowflakeTests) TestSqlIngestMapType() {
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_map ORDER BY \"col_int64\" ASC"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest_map" ORDER BY "col_int64" ASC`))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
@@ -1299,7 +1302,7 @@ func (suite *SnowflakeTests) TestSqlIngestListType() {
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest_list ORDER BY \"col_int64\" ASC"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest_list" ORDER BY "col_int64" ASC`))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
