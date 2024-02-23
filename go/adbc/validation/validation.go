@@ -64,6 +64,8 @@ type DriverQuirks interface {
 	SupportsGetParameterSchema() bool
 	// Whether it supports dynamic parameter binding in queries
 	SupportsDynamicParameterBinding() bool
+	// Whether it returns an error when attempting to ingest with an incompatible schema
+	SupportsErrorIngestIncompatibleSchema() bool
 	// Expected Metadata responses
 	GetMetadata(adbc.InfoCode) interface{}
 	// Create a sample table from an arrow record

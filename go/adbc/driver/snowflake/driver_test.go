@@ -192,20 +192,21 @@ func (s *SnowflakeQuirks) DropTable(cnxn adbc.Connection, tblname string) error 
 	return err
 }
 
-func (s *SnowflakeQuirks) Alloc() memory.Allocator               { return s.mem }
-func (s *SnowflakeQuirks) BindParameter(_ int) string            { return "?" }
-func (s *SnowflakeQuirks) SupportsBulkIngest(string) bool        { return true }
-func (s *SnowflakeQuirks) SupportsConcurrentStatements() bool    { return true }
-func (s *SnowflakeQuirks) SupportsCurrentCatalogSchema() bool    { return true }
-func (s *SnowflakeQuirks) SupportsExecuteSchema() bool           { return true }
-func (s *SnowflakeQuirks) SupportsGetSetOptions() bool           { return true }
-func (s *SnowflakeQuirks) SupportsPartitionedData() bool         { return false }
-func (s *SnowflakeQuirks) SupportsStatistics() bool              { return false }
-func (s *SnowflakeQuirks) SupportsTransactions() bool            { return true }
-func (s *SnowflakeQuirks) SupportsGetParameterSchema() bool      { return false }
-func (s *SnowflakeQuirks) SupportsDynamicParameterBinding() bool { return false }
-func (s *SnowflakeQuirks) Catalog() string                       { return s.catalogName }
-func (s *SnowflakeQuirks) DBSchema() string                      { return s.schemaName }
+func (s *SnowflakeQuirks) Alloc() memory.Allocator                     { return s.mem }
+func (s *SnowflakeQuirks) BindParameter(_ int) string                  { return "?" }
+func (s *SnowflakeQuirks) SupportsBulkIngest(string) bool              { return true }
+func (s *SnowflakeQuirks) SupportsConcurrentStatements() bool          { return true }
+func (s *SnowflakeQuirks) SupportsCurrentCatalogSchema() bool          { return true }
+func (s *SnowflakeQuirks) SupportsExecuteSchema() bool                 { return true }
+func (s *SnowflakeQuirks) SupportsGetSetOptions() bool                 { return true }
+func (s *SnowflakeQuirks) SupportsPartitionedData() bool               { return false }
+func (s *SnowflakeQuirks) SupportsStatistics() bool                    { return false }
+func (s *SnowflakeQuirks) SupportsTransactions() bool                  { return true }
+func (s *SnowflakeQuirks) SupportsGetParameterSchema() bool            { return false }
+func (s *SnowflakeQuirks) SupportsDynamicParameterBinding() bool       { return false }
+func (s *SnowflakeQuirks) SupportsErrorIngestIncompatibleSchema() bool { return false }
+func (s *SnowflakeQuirks) Catalog() string                             { return s.catalogName }
+func (s *SnowflakeQuirks) DBSchema() string                            { return s.schemaName }
 func (s *SnowflakeQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:
@@ -281,7 +282,9 @@ func withQuirks(t *testing.T, fn func(*SnowflakeQuirks)) {
 	// avoid multiple runs clashing by operating in a fresh schema and then
 	// dropping that schema when we're done.
 	q := &SnowflakeQuirks{dsn: uri, catalogName: database, schemaName: createTempSchema(database, uri)}
-	defer dropTempSchema(uri, q.schemaName)
+	t.Cleanup(func() {
+		dropTempSchema(uri, q.schemaName)
+	})
 
 	fn(q)
 }

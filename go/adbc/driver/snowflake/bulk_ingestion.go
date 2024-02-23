@@ -546,7 +546,7 @@ func countRowsInTable(ctx context.Context, db *sql.DB, tableName string) (int64,
 
 	row := db.QueryRowContext(ctx, countQuery, tableName)
 	if err := row.Scan(&nrows); err != nil {
-		return 0, err
+		return 0, errToAdbcErr(adbc.StatusIO, err)
 	}
 
 	return nrows, nil

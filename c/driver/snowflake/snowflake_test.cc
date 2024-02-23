@@ -23,6 +23,7 @@
 #include <nanoarrow/nanoarrow.h>
 #include <algorithm>
 #include <cstring>
+#include <random>
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
@@ -34,6 +35,26 @@ using adbc_validation::IsOkStatus;
       return adbc_status;                                           \
     }                                                               \
   } while (false)
+
+namespace {
+std::string get_uuid() {
+  static std::random_device dev;
+  static std::mt19937 rng(dev());
+
+  std::uniform_int_distribution<int> dist(0, 15);
+
+  const char* v = "0123456789ABCDEF";
+  const bool dash[] = {0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0};
+
+  std::string res;
+  for (int i = 0; i < 16; i++) {
+    if (dash[i]) res += "-";
+    res += v[dist(rng)];
+    res += v[dist(rng)];
+  }
+  return res;
+}
+}  // namespace
 
 class SnowflakeQuirks : public adbc_validation::DriverQuirks {
  public:
@@ -125,10 +146,11 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
   bool supports_dynamic_parameter_binding() const override { return false; }
   bool supports_error_on_incompatible_schema() const override { return false; }
   bool ddl_implicit_commit_txn() const override { return true; }
-  std::string db_schema() const override { return "ADBC_TESTING"; }
+  std::string db_schema() const override { return schema_; }
 
   const char* uri_;
   bool skip_{false};
+  std::string schema_{"ADBC_TESTING"};
 };
 
 class SnowflakeTest : public ::testing::Test, public adbc_validation::DatabaseTest {
@@ -180,6 +202,7 @@ class SnowflakeStatementTest : public ::testing::Test,
                                public adbc_validation::StatementTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
+
   void SetUp() override {
     if (quirks_.skip_) {
       GTEST_SKIP();
@@ -196,6 +219,70 @@ class SnowflakeStatementTest : public ::testing::Test,
   void TestSqlIngestDuration() { GTEST_SKIP(); }
 
   void TestSqlIngestColumnEscaping() { GTEST_SKIP(); }
+
+ public:
+  static void SetUpTestCase() {
+    struct AdbcError error;
+    struct AdbcDatabase db;
+    struct AdbcConnection connection;
+    struct AdbcStatement statement;
+
+    std::memset(&error, 0, sizeof(error));
+    std::memset(&db, 0, sizeof(db));
+    std::memset(&connection, 0, sizeof(connection));
+    std::memset(&statement, 0, sizeof(statement));
+
+    AdbcDatabaseNew(&db, &error);
+    quirks_.SetupDatabase(&db, &error);
+    AdbcDatabaseInit(&db, &error);
+
+    AdbcConnectionNew(&connection, &error);
+    AdbcConnectionInit(&connection, &db, &error);
+
+    std::string schema_name = "ADBC_TESTING_" + get_uuid();
+    std::string query = "CREATE SCHEMA IDENTIFIER('\"ADBC_TESTING\".\"" + schema_name + "\"')";
+
+    AdbcStatementNew(&connection, &statement, &error);
+    AdbcStatementSetSqlQuery(&statement, query.c_str(), &error);
+    AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error);
+
+    quirks_.schema_ = schema_name;
+
+    AdbcStatementRelease(&statement, &error);
+    AdbcConnectionRelease(&connection, &error);
+    AdbcDatabaseRelease(&db, &error);
+  }
+
+  static void TearDownTestCase() {
+    struct AdbcError error;
+    struct AdbcDatabase db;
+    struct AdbcConnection connection;
+    struct AdbcStatement statement;
+
+    std::memset(&error, 0, sizeof(error));
+    std::memset(&db, 0, sizeof(db));
+    std::memset(&connection, 0, sizeof(connection));
+    std::memset(&statement, 0, sizeof(statement));
+
+    AdbcDatabaseNew(&db, &error);
+    quirks_.SetupDatabase(&db, &error);
+    AdbcDatabaseInit(&db, &error);
+
+    AdbcConnectionNew(&connection, &error);
+    AdbcConnectionInit(&connection, &db, &error);
+
+    std::string query = "DROP SCHEMA IDENTIFIER('\"ADBC_TESTING\".\"" + quirks_.schema_ + "\"')";
+
+    AdbcStatementNew(&connection, &statement, &error);
+    AdbcStatementSetSqlQuery(&statement, query.c_str(), &error);
+    AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error);
+
+    quirks_.schema_ = "ADBC_TESTING";
+
+    AdbcStatementRelease(&statement, &error);
+    AdbcConnectionRelease(&connection, &error);
+    AdbcDatabaseRelease(&db, &error);
+  }
 
  protected:
   void ValidateIngestedTemporalData(struct ArrowArrayView* values, ArrowType type,
@@ -227,6 +314,8 @@ class SnowflakeStatementTest : public ::testing::Test,
     }
   }
 
-  SnowflakeQuirks quirks_;
+  static SnowflakeQuirks quirks_;
 };
+
+SnowflakeQuirks SnowflakeStatementTest::quirks_;
 ADBCV_TEST_STATEMENT(SnowflakeStatementTest)
