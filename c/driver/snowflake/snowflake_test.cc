@@ -72,6 +72,9 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
                     database, "adbc.snowflake.sql.client_option.use_high_precision",
                     "false", error),
                 IsOkStatus(error));
+    EXPECT_THAT(AdbcDatabaseSetOption(database, "adbc.snowflake.sql.schema",
+                                      schema_.c_str(), error),
+                IsOkStatus(error));
     return ADBC_STATUS_OK;
   }
 
