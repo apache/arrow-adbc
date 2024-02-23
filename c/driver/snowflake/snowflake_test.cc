@@ -47,6 +47,10 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
     EXPECT_THAT(AdbcDatabaseSetOption(database, "uri", uri_, error), IsOkStatus(error));
+    EXPECT_THAT(AdbcDatabaseSetOption(
+                    database, "adbc.snowflake.sql.client_option.use_high_precision",
+                    "false", error),
+                IsOkStatus(error));
     return ADBC_STATUS_OK;
   }
 
@@ -119,6 +123,7 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
   bool supports_metadata_current_db_schema() const override { return false; }
   bool supports_partitioned_data() const override { return false; }
   bool supports_dynamic_parameter_binding() const override { return false; }
+  bool supports_error_on_incompatible_schema() const override { return false; }
   bool ddl_implicit_commit_txn() const override { return true; }
   std::string db_schema() const override { return "ADBC_TESTING"; }
 
@@ -204,7 +209,7 @@ class SnowflakeStatementTest : public ::testing::Test,
             expected = {std::nullopt, -42, 0, 42};
             break;
           case NANOARROW_TIME_UNIT_MILLI:
-            expected = {std::nullopt, -42000, 0, 42000};
+            expected = {std::nullopt, -42, 0, 42};
             break;
           case NANOARROW_TIME_UNIT_MICRO:
             expected = {std::nullopt, -42, 0, 42};

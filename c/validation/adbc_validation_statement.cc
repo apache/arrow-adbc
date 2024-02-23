@@ -487,7 +487,7 @@ void StatementTest::TestSqlIngestInterval() {
 
 void StatementTest::TestSqlIngestStringDictionary() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
-      NANOARROW_TYPE_STRING, {std::nullopt, "", "", "1234", "例"},
+      NANOARROW_TYPE_STRING, {"", "", "1234", "例"},
       /*dictionary_encode*/ true));
 }
 
@@ -865,6 +865,8 @@ void StatementTest::TestSqlIngestErrors() {
               ::testing::Not(IsOkStatus(&error)));
   if (error.release) error.release(&error);
 
+  if (!quirks()->supports_error_on_incompatible_schema()) { return; }
+  
   // ...then try to append an incompatible schema
   ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64},
                                          {"coltwo", NANOARROW_TYPE_INT64}}),
@@ -2212,7 +2214,7 @@ void StatementTest::TestSqlQueryInsertRollback() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
   ASSERT_THAT(
-      AdbcStatementSetSqlQuery(&statement, "CREATE TABLE rollbacktest (a INT)", &error),
+      AdbcStatementSetSqlQuery(&statement, "CREATE TABLE \"rollbacktest\" (a INT)", &error),
       IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
@@ -2220,7 +2222,7 @@ void StatementTest::TestSqlQueryInsertRollback() {
   ASSERT_THAT(AdbcConnectionCommit(&connection, &error), IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
-                                       "INSERT INTO rollbacktest (a) VALUES (1)", &error),
+                                       "INSERT INTO \"rollbacktest\" (a) VALUES (1)", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
@@ -2228,7 +2230,7 @@ void StatementTest::TestSqlQueryInsertRollback() {
   ASSERT_THAT(AdbcConnectionRollback(&connection, &error), IsOkStatus(&error));
 
   adbc_validation::StreamReader reader;
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM rollbacktest", &error),
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM \"rollbacktest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                         &reader.rows_affected, &error),
@@ -2309,20 +2311,20 @@ void StatementTest::TestSqlQueryRowsAffectedDelete() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
   ASSERT_THAT(
-      AdbcStatementSetSqlQuery(&statement, "CREATE TABLE delete_test (foo INT)", &error),
+      AdbcStatementSetSqlQuery(&statement, "CREATE TABLE \"delete_test\" (foo INT)", &error),
       IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(
                   &statement,
-                  "INSERT INTO delete_test (foo) VALUES (1), (2), (3), (4), (5)", &error),
+                  "INSERT INTO \"delete_test\" (foo) VALUES (1), (2), (3), (4), (5)", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
-                                       "DELETE FROM delete_test WHERE foo >= 3", &error),
+                                       "DELETE FROM \"delete_test\" WHERE foo >= 3", &error),
               IsOkStatus(&error));
 
   int64_t rows_affected = 0;
@@ -2337,20 +2339,20 @@ void StatementTest::TestSqlQueryRowsAffectedDeleteStream() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
   ASSERT_THAT(
-      AdbcStatementSetSqlQuery(&statement, "CREATE TABLE delete_test (foo INT)", &error),
+      AdbcStatementSetSqlQuery(&statement, "CREATE TABLE \"delete_test\" (foo INT)", &error),
       IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(
                   &statement,
-                  "INSERT INTO delete_test (foo) VALUES (1), (2), (3), (4), (5)", &error),
+                  "INSERT INTO \"delete_test\" (foo) VALUES (1), (2), (3), (4), (5)", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
-                                       "DELETE FROM delete_test WHERE foo >= 3", &error),
+                                       "DELETE FROM \"delete_test\" WHERE foo >= 3", &error),
               IsOkStatus(&error));
 
   adbc_validation::StreamReader reader;

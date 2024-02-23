@@ -220,6 +220,10 @@ class DriverQuirks {
   /// \brief Whether we can get statistics
   virtual bool supports_statistics() const { return false; }
 
+  /// \brief Whether ingest errors on an incompatible schema or simply performs
+  /// column matching.
+  virtual bool supports_error_on_incompatible_schema() const { return true; }
+
   /// \brief Default catalog to use for tests
   virtual std::string catalog() const { return ""; }
 

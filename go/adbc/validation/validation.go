@@ -800,7 +800,7 @@ func (s *StatementTests) TestSqlIngestInts() {
 	}
 
 	// use order by clause to ensure we get the same order as the input batch
-	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM bulk_ingest ORDER BY "int64s" DESC NULLS LAST`))
+	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest" ORDER BY "int64s" DESC NULLS LAST`))
 	rdr, rows, err := stmt.ExecuteQuery(s.ctx)
 	s.Require().NoError(err)
 	if rows != -1 && rows != 3 {
@@ -871,7 +871,7 @@ func (s *StatementTests) TestSqlIngestAppend() {
 	}
 
 	// use order by clause to ensure we get the same order as the input batch
-	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM bulk_ingest ORDER BY "int64s" DESC NULLS LAST`))
+	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest" ORDER BY "int64s" DESC NULLS LAST`))
 	rdr, rows, err := stmt.ExecuteQuery(s.ctx)
 	s.Require().NoError(err)
 	if rows != -1 && rows != 3 {
@@ -945,7 +945,7 @@ func (s *StatementTests) TestSqlIngestReplace() {
 		s.FailNowf("invalid number of affected rows", "should be -1 or 1, got: %d", affected)
 	}
 
-	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM bulk_ingest`))
+	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest"`))
 	rdr, rows, err := stmt.ExecuteQuery(s.ctx)
 	s.Require().NoError(err)
 	if rows != -1 && rows != 1 {
@@ -1010,7 +1010,7 @@ func (s *StatementTests) TestSqlIngestCreateAppend() {
 	}
 
 	// validate
-	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM bulk_ingest`))
+	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest"`))
 	rdr, rows, err := stmt.ExecuteQuery(s.ctx)
 	s.Require().NoError(err)
 	if rows != -1 && rows != 2 {
