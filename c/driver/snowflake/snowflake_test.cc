@@ -240,7 +240,8 @@ class SnowflakeStatementTest : public ::testing::Test,
     AdbcConnectionInit(&connection, &db, &error);
 
     std::string schema_name = "ADBC_TESTING_" + get_uuid();
-    std::string query = "CREATE SCHEMA IDENTIFIER('\"ADBC_TESTING\".\"" + schema_name + "\"')";
+    std::string query =
+        "CREATE SCHEMA IDENTIFIER('\"ADBC_TESTING\".\"" + schema_name + "\"')";
 
     AdbcStatementNew(&connection, &statement, &error);
     AdbcStatementSetSqlQuery(&statement, query.c_str(), &error);
@@ -271,7 +272,8 @@ class SnowflakeStatementTest : public ::testing::Test,
     AdbcConnectionNew(&connection, &error);
     AdbcConnectionInit(&connection, &db, &error);
 
-    std::string query = "DROP SCHEMA IDENTIFIER('\"ADBC_TESTING\".\"" + quirks_.schema_ + "\"')";
+    std::string query =
+        "DROP SCHEMA IDENTIFIER('\"ADBC_TESTING\".\"" + quirks_.schema_ + "\"')";
 
     AdbcStatementNew(&connection, &statement, &error);
     AdbcStatementSetSqlQuery(&statement, query.c_str(), &error);

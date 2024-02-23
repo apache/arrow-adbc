@@ -2361,9 +2361,9 @@ void StatementTest::TestSqlQueryRowsAffectedDeleteStream() {
               IsOkStatus(&error));
 
   adbc_validation::StreamReader reader;
-  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr,
-                                        &reader.rows_affected, &error),
-              IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcStatementExecuteQuery(&statement, nullptr, &reader.rows_affected, &error),
+      IsOkStatus(&error));
   ASSERT_THAT(reader.rows_affected,
               ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
 }
