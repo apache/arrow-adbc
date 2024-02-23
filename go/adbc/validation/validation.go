@@ -1083,6 +1083,10 @@ func (s *StatementTests) TestSqlIngestErrors() {
 	})
 
 	s.Run("overwrite and incompatible schema", func() {
+		if !s.Quirks.SupportsErrorIngestIncompatibleSchema() {
+			s.T().SkipNow()
+		}
+
 		s.Require().NoError(s.Quirks.DropTable(s.Cnxn, "bulk_ingest"))
 		schema := arrow.NewSchema([]arrow.Field{{
 			Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true}}, nil)
