@@ -214,7 +214,7 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 	defer func() {
 		// Always check the resulting row count, even in the case of an error. We may have ingested part of the data.
 		ctx := context.Background() // TODO(joellubi): switch to context.WithoutCancel(ctx) once we're on Go 1.21
-		n, countErr := countRowsInTable(ctx, st.cnxn.sqldb, st.targetTable)
+		n, countErr := countRowsInTable(ctx, st.cnxn.sqldb, strconv.Quote(st.targetTable))
 		nrows = n - initialRows
 
 		// Ingestion, row-count check, or both could have failed

@@ -380,7 +380,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest" ORDER BY "col" ASC NULLS FIRST`))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
