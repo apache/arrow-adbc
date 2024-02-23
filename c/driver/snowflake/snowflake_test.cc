@@ -37,7 +37,7 @@ using adbc_validation::IsOkStatus;
   } while (false)
 
 namespace {
-std::string get_uuid() {
+std::string GetUuid() {
   static std::random_device dev;
   static std::mt19937 rng(dev());
 
@@ -224,6 +224,7 @@ class SnowflakeStatementTest : public ::testing::Test,
   void TestSqlIngestColumnEscaping() { GTEST_SKIP(); }
 
  public:
+  // will need to be updated to SetUpTestSuite when gtest is upgraded
   static void SetUpTestCase() {
     struct AdbcError error;
     struct AdbcDatabase db;
@@ -235,28 +236,31 @@ class SnowflakeStatementTest : public ::testing::Test,
     std::memset(&connection, 0, sizeof(connection));
     std::memset(&statement, 0, sizeof(statement));
 
-    AdbcDatabaseNew(&db, &error);
-    quirks_.SetupDatabase(&db, &error);
-    AdbcDatabaseInit(&db, &error);
+    ASSERT_THAT(AdbcDatabaseNew(&db, &error), IsOkStatus(&error));
+    ASSERT_THAT(quirks_.SetupDatabase(&db, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcDatabaseInit(&db, &error), IsOkStatus(&error));
 
-    AdbcConnectionNew(&connection, &error);
-    AdbcConnectionInit(&connection, &db, &error);
+    ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionInit(&connection, &db, &error), IsOkStatus(&error));
 
-    std::string schema_name = "ADBC_TESTING_" + get_uuid();
+    std::string schema_name = "ADBC_TESTING_" + GetUuid();
     std::string query =
         "CREATE SCHEMA IDENTIFIER('\"ADBC_TESTING\".\"" + schema_name + "\"')";
 
-    AdbcStatementNew(&connection, &statement, &error);
-    AdbcStatementSetSqlQuery(&statement, query.c_str(), &error);
-    AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error);
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                IsOkStatus(&error));
 
     quirks_.schema_ = schema_name;
 
-    AdbcStatementRelease(&statement, &error);
-    AdbcConnectionRelease(&connection, &error);
-    AdbcDatabaseRelease(&db, &error);
+    ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcDatabaseRelease(&db, &error), IsOkStatus(&error));
   }
 
+  // will need to be updated to TearDownTestSuite when gtest is upgraded
   static void TearDownTestCase() {
     struct AdbcError error;
     struct AdbcDatabase db;
@@ -268,25 +272,27 @@ class SnowflakeStatementTest : public ::testing::Test,
     std::memset(&connection, 0, sizeof(connection));
     std::memset(&statement, 0, sizeof(statement));
 
-    AdbcDatabaseNew(&db, &error);
-    quirks_.SetupDatabase(&db, &error);
-    AdbcDatabaseInit(&db, &error);
+    ASSERT_THAT(AdbcDatabaseNew(&db, &error), IsOkStatus(&error));
+    ASSERT_THAT(quirks_.SetupDatabase(&db, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcDatabaseInit(&db, &error), IsOkStatus(&error));
 
-    AdbcConnectionNew(&connection, &error);
-    AdbcConnectionInit(&connection, &db, &error);
+    ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionInit(&connection, &db, &error), IsOkStatus(&error));
 
     std::string query =
         "DROP SCHEMA IDENTIFIER('\"ADBC_TESTING\".\"" + quirks_.schema_ + "\"')";
 
-    AdbcStatementNew(&connection, &statement, &error);
-    AdbcStatementSetSqlQuery(&statement, query.c_str(), &error);
-    AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error);
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                IsOkStatus(&error));
 
     quirks_.schema_ = "ADBC_TESTING";
 
-    AdbcStatementRelease(&statement, &error);
-    AdbcConnectionRelease(&connection, &error);
-    AdbcDatabaseRelease(&db, &error);
+    ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcDatabaseRelease(&db, &error), IsOkStatus(&error));
   }
 
  protected:
