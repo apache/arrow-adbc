@@ -63,6 +63,10 @@ class Error {
   }
 
   void ToAdbc(AdbcError* adbc_error, AdbcDriver* driver = nullptr) {
+    if (adbc_error == nullptr) {
+      return;
+    }
+
     if (adbc_error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
       auto error_owned_by_adbc_error =
           new Error(std::move(message_), std::move(details_));
