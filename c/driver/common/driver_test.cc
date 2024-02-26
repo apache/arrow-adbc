@@ -36,6 +36,12 @@ static inline void clean_up(AdbcStatement* ptr) {
   ptr->private_driver->StatementRelease(ptr, nullptr);
 }
 
+static inline void clean_up(AdbcError* ptr) {
+  if (ptr->release != nullptr) {
+    ptr->release(ptr);
+  }
+}
+
 template <typename T>
 class Handle {
  public:
@@ -60,6 +66,7 @@ AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver, AdbcError* erro
 }
 
 TEST(TestDriverBase, TestVoidDriverOptions) {
+  // Test the get/set option implementation in the base driver
   struct AdbcDriver driver;
   memset(&driver, 0, sizeof(driver));
   ASSERT_EQ(VoidDriverInitFunc(ADBC_VERSION_1_1_0, &driver, nullptr), ADBC_STATUS_OK);
@@ -145,6 +152,56 @@ TEST(TestDriverBase, TestVoidDriverOptions) {
             ADBC_STATUS_NOT_FOUND);
   ASSERT_EQ(driver.DatabaseGetOptionDouble(&database, "key_bytes", &opt_double, nullptr),
             ADBC_STATUS_NOT_FOUND);
+}
+
+TEST(TestDriverBase, TestVoidDriverError) {
+  // Test the extended error detail implementation in the base driver
+  struct AdbcDriver driver;
+  memset(&driver, 0, sizeof(driver));
+  ASSERT_EQ(VoidDriverInitFunc(ADBC_VERSION_1_1_0, &driver, nullptr), ADBC_STATUS_OK);
+  Handle<AdbcDriver> driver_handle(&driver);
+
+  struct AdbcDatabase database;
+  memset(&database, 0, sizeof(database));
+  ASSERT_EQ(driver.DatabaseNew(&database, nullptr), ADBC_STATUS_OK);
+  database.private_driver = &driver;
+  Handle<AdbcDatabase> database_handle(&database);
+  ASSERT_EQ(driver.DatabaseInit(&database, nullptr), ADBC_STATUS_OK);
+
+  struct AdbcError error;
+  memset(&error, 0, sizeof(error));
+  Handle<AdbcError> error_handle(&error);
+  size_t opt_size = 0;
+
+  // With zero-initialized error, should populate message but not details
+  ASSERT_EQ(driver.DatabaseGetOption(&database, "key_does_not_exist", nullptr, &opt_size,
+                                     &error),
+            ADBC_STATUS_NOT_FOUND);
+  EXPECT_EQ(error.vendor_code, 0);
+  EXPECT_STREQ(error.message, "Option not found for key 'key_does_not_exist'");
+  EXPECT_EQ(error.private_data, nullptr);
+  EXPECT_EQ(error.private_driver, nullptr);
+
+  // Release callback implementation should reset callback
+  error.release(&error);
+  ASSERT_EQ(error.release, nullptr);
+
+  // With the vendor code pre-set, should populate a version with details
+  memset(&error, 0, sizeof(error));
+  error.vendor_code = ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
+
+  ASSERT_EQ(driver.DatabaseGetOption(&database, "key_does_not_exist", nullptr, &opt_size,
+                                     &error),
+            ADBC_STATUS_NOT_FOUND);
+  EXPECT_NE(error.private_data, nullptr);
+  EXPECT_EQ(error.private_driver, &driver);
+
+  ASSERT_EQ(error.private_driver->ErrorGetDetailCount(&error), 1);
+
+  struct AdbcErrorDetail detail = error.private_driver->ErrorGetDetail(&error, 0);
+  ASSERT_STREQ(detail.key, "adbc.driver_base.option_key");
+  ASSERT_EQ(detail.value_length, strlen("key_does_not_exist") + 1);
+  ASSERT_STREQ(reinterpret_cast<const char*>(detail.value), "key_does_not_exist");
 }
 
 TEST(TestDriverBase, TestVoidDriverMethods) {

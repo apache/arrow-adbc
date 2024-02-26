@@ -99,7 +99,7 @@ class Error {
   AdbcErrorDetail CDetail(int index) const {
     const auto& detail = details_[index];
     return {detail.first.c_str(), reinterpret_cast<const uint8_t*>(detail.second.data()),
-            detail.second.size()};
+            detail.second.size() + 1};
   }
 
   static void CRelease(AdbcError* error) {
@@ -312,7 +312,7 @@ class ObjectBase {
     std::stringstream msg_builder;
     msg_builder << "Option not found for key '" << key << "'";
     Error cpperror(msg_builder.str());
-    cpperror.AddDetail("adbc.r.option_key", key);
+    cpperror.AddDetail("adbc.driver_base.option_key", key);
     cpperror.ToAdbc(error, driver());
   }
 
@@ -320,7 +320,7 @@ class ObjectBase {
     std::stringstream msg_builder;
     msg_builder << "Wrong type requested for option key '" << key << "'";
     Error cpperror(msg_builder.str());
-    cpperror.AddDetail("adbc.r.option_key", key);
+    cpperror.AddDetail("adbc.driver_base.option_key", key);
     cpperror.ToAdbc(error, driver());
   }
 };
