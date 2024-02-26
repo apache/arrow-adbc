@@ -59,33 +59,6 @@ AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver, AdbcError* erro
   return VoidDriver::Init(version, raw_driver, error);
 }
 
-TEST(TestDriverBase, TestVoidDriverMethods) {
-  struct AdbcDriver driver;
-  memset(&driver, 0, sizeof(driver));
-  ASSERT_EQ(VoidDriverInitFunc(ADBC_VERSION_1_1_0, &driver, nullptr), ADBC_STATUS_OK);
-  Handle<AdbcDriver> driver_handle(&driver);
-
-  struct AdbcDatabase database;
-  memset(&database, 0, sizeof(database));
-  ASSERT_EQ(driver.DatabaseNew(&database, nullptr), ADBC_STATUS_OK);
-  database.private_driver = &driver;
-  Handle<AdbcDatabase> database_handle(&database);
-  ASSERT_EQ(driver.DatabaseInit(&database, nullptr), ADBC_STATUS_OK);
-
-  struct AdbcConnection connection;
-  memset(&connection, 0, sizeof(connection));
-  ASSERT_EQ(driver.ConnectionNew(&connection, nullptr), ADBC_STATUS_OK);
-  connection.private_driver = &driver;
-  Handle<AdbcConnection> connection_handle(&connection);
-  ASSERT_EQ(driver.ConnectionInit(&connection, &database, nullptr), ADBC_STATUS_OK);
-
-  struct AdbcStatement statement;
-  memset(&statement, 0, sizeof(statement));
-  ASSERT_EQ(driver.StatementNew(&connection, &statement, nullptr), ADBC_STATUS_OK);
-  statement.private_driver = &driver;
-  Handle<AdbcStatement> statement_handle(&statement);
-}
-
 TEST(TestDriverBase, TestVoidDriverOptions) {
   struct AdbcDriver driver;
   memset(&driver, 0, sizeof(driver));
@@ -172,4 +145,70 @@ TEST(TestDriverBase, TestVoidDriverOptions) {
             ADBC_STATUS_NOT_FOUND);
   ASSERT_EQ(driver.DatabaseGetOptionDouble(&database, "key_bytes", &opt_double, nullptr),
             ADBC_STATUS_NOT_FOUND);
+}
+
+TEST(TestDriverBase, TestVoidDriverMethods) {
+  struct AdbcDriver driver;
+  memset(&driver, 0, sizeof(driver));
+  ASSERT_EQ(VoidDriverInitFunc(ADBC_VERSION_1_1_0, &driver, nullptr), ADBC_STATUS_OK);
+  Handle<AdbcDriver> driver_handle(&driver);
+
+  // Database methods are only option related
+  struct AdbcDatabase database;
+  memset(&database, 0, sizeof(database));
+  ASSERT_EQ(driver.DatabaseNew(&database, nullptr), ADBC_STATUS_OK);
+  database.private_driver = &driver;
+  Handle<AdbcDatabase> database_handle(&database);
+  ASSERT_EQ(driver.DatabaseInit(&database, nullptr), ADBC_STATUS_OK);
+
+  // Test connection methods
+  struct AdbcConnection connection;
+  memset(&connection, 0, sizeof(connection));
+  ASSERT_EQ(driver.ConnectionNew(&connection, nullptr), ADBC_STATUS_OK);
+  connection.private_driver = &driver;
+  Handle<AdbcConnection> connection_handle(&connection);
+  ASSERT_EQ(driver.ConnectionInit(&connection, &database, nullptr), ADBC_STATUS_OK);
+
+  EXPECT_EQ(driver.ConnectionCommit(&connection, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.ConnectionGetInfo(&connection, nullptr, 0, nullptr, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.ConnectionGetObjects(&connection, 0, nullptr, nullptr, 0, nullptr,
+                                        nullptr, nullptr, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.ConnectionGetTableSchema(&connection, nullptr, nullptr, nullptr,
+                                            nullptr, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.ConnectionGetTableTypes(&connection, nullptr, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.ConnectionReadPartition(&connection, nullptr, 0, nullptr, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.ConnectionRollback(&connection, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.ConnectionCancel(&connection, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.ConnectionGetStatistics(&connection, nullptr, nullptr, nullptr, 0,
+                                           nullptr, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.ConnectionGetStatisticNames(&connection, nullptr, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+
+  // Test statement methods
+  struct AdbcStatement statement;
+  memset(&statement, 0, sizeof(statement));
+  ASSERT_EQ(driver.StatementNew(&connection, &statement, nullptr), ADBC_STATUS_OK);
+  statement.private_driver = &driver;
+  Handle<AdbcStatement> statement_handle(&statement);
+
+  EXPECT_EQ(driver.StatementExecuteQuery(&statement, nullptr, nullptr, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.StatementExecuteSchema(&statement, nullptr, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.StatementPrepare(&statement, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.StatementSetSqlQuery(&statement, nullptr, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.StatementSetSubstraitPlan(&statement, nullptr, 0, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.StatementBind(&statement, nullptr, nullptr, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.StatementBindStream(&statement, nullptr, nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.StatementCancel(&statement, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
 }
