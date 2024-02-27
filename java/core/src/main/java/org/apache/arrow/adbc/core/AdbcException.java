@@ -18,6 +18,7 @@ package org.apache.arrow.adbc.core;
 
 import java.util.Collection;
 import java.util.Collections;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * An error in the database or ADBC driver.
@@ -34,20 +35,24 @@ import java.util.Collections;
  */
 public class AdbcException extends Exception {
   private final AdbcStatusCode status;
-  private final String sqlState;
+  private final @Nullable String sqlState;
   private final int vendorCode;
   private Collection<ErrorDetail> details;
 
   public AdbcException(
-      String message, Throwable cause, AdbcStatusCode status, String sqlState, int vendorCode) {
+      @Nullable String message,
+      @Nullable Throwable cause,
+      AdbcStatusCode status,
+      @Nullable String sqlState,
+      int vendorCode) {
     this(message, cause, status, sqlState, vendorCode, Collections.emptyList());
   }
 
   public AdbcException(
-      String message,
-      Throwable cause,
+      @Nullable String message,
+      @Nullable Throwable cause,
       AdbcStatusCode status,
-      String sqlState,
+      @Nullable String sqlState,
       int vendorCode,
       Collection<ErrorDetail> details) {
     super(message, cause);
@@ -83,7 +88,7 @@ public class AdbcException extends Exception {
   }
 
   /** A SQLSTATE error code, if provided, as defined by the SQL:2003 standard. */
-  public String getSqlState() {
+  public @Nullable String getSqlState() {
     return sqlState;
   }
 

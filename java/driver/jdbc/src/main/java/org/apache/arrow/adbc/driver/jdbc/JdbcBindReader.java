@@ -31,13 +31,14 @@ import org.apache.arrow.vector.VectorUnloader;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** An Arrow reader that binds parameters. */
 final class JdbcBindReader extends ArrowReader {
   private final PreparedStatement statement;
   private final JdbcParameterBinder binder;
-  private ResultSet currentResultSet;
-  private ArrowVectorIterator currentSource;
+  private @Nullable ResultSet currentResultSet;
+  private @Nullable ArrowVectorIterator currentSource;
 
   JdbcBindReader(
       BufferAllocator allocator, PreparedStatement statement, VectorSchemaRoot bindParameters) {
@@ -52,6 +53,9 @@ final class JdbcBindReader extends ArrowReader {
       if (!advance()) {
         return false;
       }
+    }
+    if (currentSource == null) {
+      throw new IllegalStateException("Source was null after advancing reader");
     }
 
     try (final VectorSchemaRoot root = currentSource.next()) {
@@ -85,6 +89,9 @@ final class JdbcBindReader extends ArrowReader {
       if (!advance()) {
         throw new IOException("Parameter set is empty!");
       }
+      if (currentResultSet == null) {
+        throw new IllegalStateException("Driver returned null result set");
+      }
       return JdbcToArrowUtils.jdbcToArrowSchema(
           currentResultSet.getMetaData(), JdbcToArrowUtils.getUtcCalendar());
     } catch (SQLException e) {
@@ -95,8 +102,10 @@ final class JdbcBindReader extends ArrowReader {
   private boolean advance() throws IOException {
     try {
       if (binder.next()) {
-        if (currentResultSet != null) {
+        if (currentSource != null) {
           currentSource.close();
+        }
+        if (currentResultSet != null) {
           currentResultSet.close();
         }
         currentResultSet = statement.executeQuery();

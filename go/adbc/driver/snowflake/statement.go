@@ -24,9 +24,9 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v15/arrow"
-	"github.com/apache/arrow/go/v15/arrow/array"
-	"github.com/apache/arrow/go/v15/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
 )
 
@@ -361,7 +361,7 @@ func (st *statement) initIngest(ctx context.Context) error {
 	if st.ingestMode == adbc.OptionValueIngestModeCreateAppend {
 		createBldr.WriteString(" IF NOT EXISTS ")
 	}
-	createBldr.WriteString(st.targetTable)
+	createBldr.WriteString(strconv.Quote(st.targetTable))
 	createBldr.WriteString(" (")
 
 	var schema *arrow.Schema
@@ -398,7 +398,7 @@ func (st *statement) initIngest(ctx context.Context) error {
 	case adbc.OptionValueIngestModeAppend:
 		// Do nothing
 	case adbc.OptionValueIngestModeReplace:
-		replaceQuery := "DROP TABLE IF EXISTS " + st.targetTable
+		replaceQuery := "DROP TABLE IF EXISTS " + strconv.Quote(st.targetTable)
 		_, err := st.cnxn.cn.ExecContext(ctx, replaceQuery, nil)
 		if err != nil {
 			return errToAdbcErr(adbc.StatusInternal, err)

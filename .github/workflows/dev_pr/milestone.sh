@@ -32,24 +32,45 @@ main() {
 
     if [[ -n "${existing_milestone}" ]]; then
         echo "PR has milestone: ${existing_milestone}"
-        return 0
+        local -r milestone="${existing_milestone}"
+    else
+        local -r latest_version=$(git ls-remote --heads origin |
+                                      grep -o '[0-9.]*$' |
+                                      sort --version-sort |
+                                      tail -n1)
+
+        local -r milestone=$(gh api "/repos/${repo}/milestones" |
+                                 jq -r '.[] | .title' |
+                                 grep -E '^ADBC Libraries' |
+                                 grep -v "${latest_version}" |
+                                 head -n1)
+
+        echo "Latest tagged version: ${latest_version}"
+        echo "Assigning milestone: ${milestone}"
+
+        gh pr edit "${pr_number}" -m "${milestone}"
     fi
 
-    local -r latest_version=$(git ls-remote --heads origin |
-                                  grep -o '[0-9.]*$' |
-                                  sort --version-sort |
-                                  tail -n1)
-
-    local -r milestone=$(gh api "/repos/${repo}/milestones" |
-                             jq -r '.[] | .title' |
-                             grep -E '^ADBC Libraries' |
-                             grep -v "${latest_version}" |
-                             head -n1)
-
-    echo "Latest tagged version: ${latest_version}"
-    echo "Assigning milestone: ${milestone}"
-
-    gh pr edit "${pr_number}" -m "${milestone}"
+    local -r repo_owner=$(echo "${repo}" | cut -d'/' -f1)
+    local -r repo_name=$(echo "${repo}" | cut -d'/' -f2)
+    local -r graphql_query="{
+      repository(owner: \"${repo_owner}\", name: \"${repo_name}\") {
+        pullRequest(number: ${pr_number}) {
+          closingIssuesReferences(first: 5) {
+            edges {
+              node {
+                number
+              }
+            }
+          }
+        }
+      }
+    }"
+    local -r linked_issues=$(gh api graphql -f query="${graphql_query}" | jq -r '.data.repository.pullRequest.closingIssuesReferences.edges | .[].node.number')
+    for issue in ${linked_issues}; do
+        echo "Linked issue: ${issue}"
+        gh issue edit "${issue}" --milestone "${milestone}"
+    done
 }
 
 main "$@"

@@ -17,7 +17,7 @@
 
 package utils
 
-import "github.com/apache/arrow/go/v15/arrow"
+import "github.com/apache/arrow/go/v16/arrow"
 
 func RemoveSchemaMetadata(schema *arrow.Schema) *arrow.Schema {
 	fields := make([]arrow.Field, len(schema.Fields()))

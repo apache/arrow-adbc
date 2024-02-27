@@ -16,6 +16,8 @@
 # under the License.
 
 import re
+import threading
+import time
 
 import google.protobuf.any_pb2 as any_pb2
 import google.protobuf.wrappers_pb2 as wrappers_pb2
@@ -38,6 +40,24 @@ def test_query_cancel(test_dbapi):
     with test_dbapi.cursor() as cur:
         cur.execute("forever")
         cur.adbc_cancel()
+        with pytest.raises(
+            test_dbapi.OperationalError,
+            match=re.escape("CANCELLED: [FlightSQL] context canceled"),
+        ):
+            cur.fetchone()
+
+
+def test_query_cancel_async(test_dbapi):
+    with test_dbapi.cursor() as cur:
+        cur.execute("forever")
+
+        def _cancel():
+            time.sleep(2)
+            cur.adbc_cancel()
+
+        t = threading.Thread(target=_cancel, daemon=True)
+        t.start()
+
         with pytest.raises(
             test_dbapi.OperationalError,
             match=re.escape("CANCELLED: [FlightSQL] context canceled"),

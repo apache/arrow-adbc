@@ -273,3 +273,10 @@ Driver-specific options:
 ``adbc.sqlite.query.batch_rows``
     The size of batches to read.  Hence, this also controls how many
     rows are read to infer the Arrow type.
+
+Software Versions
+=================
+
+For Python wheels, the shipped version of SQLite is 3.40.1.  For conda-forge
+packages, the version of sqlite is the same as the version of sqlite in your
+Conda environment.

@@ -25,15 +25,17 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.Objects;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Adapt a JDBC URL to the DataSource interface. */
 class UrlDataSource implements DataSource {
   final String target;
-  PrintWriter logWriter;
+  @Nullable PrintWriter logWriter;
   int loginTimeout;
 
   UrlDataSource(String target) {
     this.target = Objects.requireNonNull(target);
+    this.logWriter = null;
   }
 
   @Override
@@ -47,7 +49,8 @@ class UrlDataSource implements DataSource {
   }
 
   @Override
-  public PrintWriter getLogWriter() throws SQLException {
+  @SuppressWarnings("override.return")
+  public @Nullable PrintWriter getLogWriter() throws SQLException {
     return logWriter;
   }
 

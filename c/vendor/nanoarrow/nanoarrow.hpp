@@ -16,8 +16,8 @@
 // under the License.
 
 #include <stdexcept>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "nanoarrow.h"
 
@@ -88,70 +88,108 @@ namespace internal {
 ///
 /// @{
 
-static inline void init_pointer(struct ArrowSchema* data) { data->release = nullptr; }
+template <typename T>
+static inline void init_pointer(T* data);
 
-static inline void move_pointer(struct ArrowSchema* src, struct ArrowSchema* dst) {
-  ArrowSchemaMove(src, dst);
-}
+template <typename T>
+static inline void move_pointer(T* src, T* dst);
 
-static inline void release_pointer(struct ArrowSchema* data) {
-  if (data->release != nullptr) {
-    data->release(data);
-  }
-}
+template <typename T>
+static inline void release_pointer(T* data);
 
-static inline void init_pointer(struct ArrowArray* data) { data->release = nullptr; }
-
-static inline void move_pointer(struct ArrowArray* src, struct ArrowArray* dst) {
-  ArrowArrayMove(src, dst);
-}
-
-static inline void release_pointer(struct ArrowArray* data) {
-  if (data->release != nullptr) {
-    data->release(data);
-  }
-}
-
-static inline void init_pointer(struct ArrowArrayStream* data) {
+template <>
+inline void init_pointer(struct ArrowSchema* data) {
   data->release = nullptr;
 }
 
-static inline void move_pointer(struct ArrowArrayStream* src,
-                                struct ArrowArrayStream* dst) {
-  ArrowArrayStreamMove(src, dst);
+template <>
+inline void move_pointer(struct ArrowSchema* src, struct ArrowSchema* dst) {
+  ArrowSchemaMove(src, dst);
 }
 
-static inline void release_pointer(ArrowArrayStream* data) {
+template <>
+inline void release_pointer(struct ArrowSchema* data) {
   if (data->release != nullptr) {
     data->release(data);
   }
 }
 
-static inline void init_pointer(struct ArrowBuffer* data) { ArrowBufferInit(data); }
+template <>
+inline void init_pointer(struct ArrowArray* data) {
+  data->release = nullptr;
+}
 
-static inline void move_pointer(struct ArrowBuffer* src, struct ArrowBuffer* dst) {
+template <>
+inline void move_pointer(struct ArrowArray* src, struct ArrowArray* dst) {
+  ArrowArrayMove(src, dst);
+}
+
+template <>
+inline void release_pointer(struct ArrowArray* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
+}
+
+template <>
+inline void init_pointer(struct ArrowArrayStream* data) {
+  data->release = nullptr;
+}
+
+template <>
+inline void move_pointer(struct ArrowArrayStream* src, struct ArrowArrayStream* dst) {
+  ArrowArrayStreamMove(src, dst);
+}
+
+template <>
+inline void release_pointer(ArrowArrayStream* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
+}
+
+template <>
+inline void init_pointer(struct ArrowBuffer* data) {
+  ArrowBufferInit(data);
+}
+
+template <>
+inline void move_pointer(struct ArrowBuffer* src, struct ArrowBuffer* dst) {
   ArrowBufferMove(src, dst);
 }
 
-static inline void release_pointer(struct ArrowBuffer* data) { ArrowBufferReset(data); }
+template <>
+inline void release_pointer(struct ArrowBuffer* data) {
+  ArrowBufferReset(data);
+}
 
-static inline void init_pointer(struct ArrowBitmap* data) { ArrowBitmapInit(data); }
+template <>
+inline void init_pointer(struct ArrowBitmap* data) {
+  ArrowBitmapInit(data);
+}
 
-static inline void move_pointer(struct ArrowBitmap* src, struct ArrowBitmap* dst) {
+template <>
+inline void move_pointer(struct ArrowBitmap* src, struct ArrowBitmap* dst) {
   ArrowBitmapMove(src, dst);
 }
 
-static inline void release_pointer(struct ArrowBitmap* data) { ArrowBitmapReset(data); }
+template <>
+inline void release_pointer(struct ArrowBitmap* data) {
+  ArrowBitmapReset(data);
+}
 
-static inline void init_pointer(struct ArrowArrayView* data) {
+template <>
+inline void init_pointer(struct ArrowArrayView* data) {
   ArrowArrayViewInitFromType(data, NANOARROW_TYPE_UNINITIALIZED);
 }
 
-static inline void move_pointer(struct ArrowArrayView* src, struct ArrowArrayView* dst) {
+template <>
+inline void move_pointer(struct ArrowArrayView* src, struct ArrowArrayView* dst) {
   ArrowArrayViewMove(src, dst);
 }
 
-static inline void release_pointer(struct ArrowArrayView* data) {
+template <>
+inline void release_pointer(struct ArrowArrayView* data) {
   ArrowArrayViewReset(data);
 }
 
@@ -168,15 +206,21 @@ class Unique {
 
   /// \brief Move and take ownership of data wrapped by rhs
   Unique(Unique&& rhs) : Unique(rhs.get()) {}
+  Unique& operator=(Unique&& rhs) {
+    reset(rhs.get());
+    return *this;
+  }
 
   // These objects are not copyable
-  Unique(Unique& rhs) = delete;
+  Unique(const Unique& rhs) = delete;
 
   /// \brief Get a pointer to the data owned by this object
   T* get() noexcept { return &data_; }
+  const T* get() const noexcept { return &data_; }
 
   /// \brief Use the pointer operator to access fields of this object
-  T* operator->() { return &data_; }
+  T* operator->() noexcept { return &data_; }
+  const T* operator->() const noexcept { return &data_; }
 
   /// \brief Call data's release callback if valid
   void reset() { release_pointer(&data_); }
@@ -231,28 +275,124 @@ using UniqueArrayView = internal::Unique<struct ArrowArrayView>;
 
 /// \defgroup nanoarrow_hpp-array-stream ArrayStream helpers
 ///
-/// These classes provide simple struct ArrowArrayStream implementations that
+/// These classes provide simple ArrowArrayStream implementations that
 /// can be extended to help simplify the process of creating a valid
 /// ArrowArrayStream implementation or used as-is for testing.
 ///
 /// @{
 
+/// @brief Export an ArrowArrayStream from a standard C++ class
+/// @tparam T A class with methods `int GetSchema(ArrowSchema*)`, `int
+/// GetNext(ArrowArray*)`, and `const char* GetLastError()`
+///
+/// This class allows a standard C++ class to be exported to a generic ArrowArrayStream
+/// consumer by mapping C callback invocations to method calls on an instance of the
+/// object whose lifecycle is owned by the ArrowArrayStream. See VectorArrayStream for
+/// minimal useful example of this pattern.
+///
+/// The methods must be accessible to the ArrayStreamFactory, either as public methods or
+/// by declaring ArrayStreamFactory<ImplClass> a friend. Implementors are encouraged (but
+/// not required) to implement a ToArrayStream(ArrowArrayStream*) that creates a new
+/// instance owned by the ArrowArrayStream and moves the relevant data to that instance.
+///
+/// An example implementation might be:
+///
+/// \code
+/// class StreamImpl {
+///  public:
+///   // Public methods (e.g., constructor) used from C++ to initialize relevant data
+///
+///   // Idiomatic exporter to move data + lifecycle responsibility to an instance
+///   // managed by the ArrowArrayStream callbacks
+///   void ToArrayStream(struct ArrowArrayStream* out) {
+///     ArrayStreamFactory<StreamImpl>::InitArrayStream(new StreamImpl(...), out);
+///   }
+///
+///  private:
+///   // Make relevant methods available to the ArrayStreamFactory
+///   friend class ArrayStreamFactory<StreamImpl>;
+///
+///   // Method implementations (called from C, not normally interacted with from C++)
+///   int GetSchema(struct ArrowSchema* schema) { return ENOTSUP; }
+///   int GetNext(struct ArrowArray* array) { return ENOTSUP; }
+///   const char* GetLastError() { nullptr; }
+/// };
+/// \endcode
+///
+/// An example usage might be:
+///
+/// \code
+/// // Call constructor and/or public methods to initialize relevant data
+/// StreamImpl impl;
+///
+/// // Export to ArrowArrayStream after data are finalized
+/// UniqueArrayStream stream;
+/// impl.ToArrayStream(stream.get());
+/// \endcode
+template <typename T>
+class ArrayStreamFactory {
+ public:
+  /// \brief Take ownership of instance and populate callbacks of out
+  static void InitArrayStream(T* instance, struct ArrowArrayStream* out) {
+    out->get_schema = &get_schema_wrapper;
+    out->get_next = &get_next_wrapper;
+    out->get_last_error = &get_last_error_wrapper;
+    out->release = &release_wrapper;
+    out->private_data = instance;
+  }
+
+ private:
+  static int get_schema_wrapper(struct ArrowArrayStream* stream,
+                                struct ArrowSchema* schema) {
+    return reinterpret_cast<T*>(stream->private_data)->GetSchema(schema);
+  }
+
+  static int get_next_wrapper(struct ArrowArrayStream* stream, struct ArrowArray* array) {
+    return reinterpret_cast<T*>(stream->private_data)->GetNext(array);
+  }
+
+  static const char* get_last_error_wrapper(struct ArrowArrayStream* stream) {
+    return reinterpret_cast<T*>(stream->private_data)->GetLastError();
+  }
+
+  static void release_wrapper(struct ArrowArrayStream* stream) {
+    delete reinterpret_cast<T*>(stream->private_data);
+    stream->release = nullptr;
+    stream->private_data = nullptr;
+  }
+};
+
 /// \brief An empty array stream
 ///
-/// This class can be constructed from an enum ArrowType or
-/// struct ArrowSchema and implements a default get_next() method that
-/// always marks the output ArrowArray as released. This class can
-/// be extended with an implementation of get_next() for a custom
-/// source.
+/// This class can be constructed from an struct ArrowSchema and implements a default
+/// get_next() method that always marks the output ArrowArray as released.
+///
+/// DEPRECATED (0.4.0): Early versions of nanoarrow allowed subclasses to override
+/// get_schema(), get_next(), and get_last_error(). This functionality will be removed
+/// in a future release: use the pattern documented in ArrayStreamFactory to create
+/// custom ArrowArrayStream implementations.
 class EmptyArrayStream {
  public:
+  /// \brief Create an EmptyArrayStream from an ArrowSchema
+  ///
+  /// Takes ownership of schema.
+  EmptyArrayStream(struct ArrowSchema* schema) : schema_(schema) {
+    ArrowErrorInit(&error_);
+  }
+
+  /// \brief Export to ArrowArrayStream
+  void ToArrayStream(struct ArrowArrayStream* out) {
+    EmptyArrayStream* impl = new EmptyArrayStream(schema_.get());
+    ArrayStreamFactory<EmptyArrayStream>::InitArrayStream(impl, out);
+  }
+
   /// \brief Create an empty UniqueArrayStream from a struct ArrowSchema
   ///
-  /// This object takes ownership of the schema and marks the source schema
-  /// as released.
+  /// DEPRECATED (0.4.0): Use the constructor + ToArrayStream() to export an
+  /// EmptyArrayStream to an ArrowArrayStream consumer.
   static UniqueArrayStream MakeUnique(struct ArrowSchema* schema) {
     UniqueArrayStream stream;
-    (new EmptyArrayStream(schema))->MakeStream(stream.get());
+    EmptyArrayStream(schema).ToArrayStream(stream.get());
     return stream;
   }
 
@@ -262,17 +402,7 @@ class EmptyArrayStream {
   UniqueSchema schema_;
   struct ArrowError error_;
 
-  EmptyArrayStream(struct ArrowSchema* schema) : schema_(schema) {
-    error_.message[0] = '\0';
-  }
-
-  void MakeStream(struct ArrowArrayStream* stream) {
-    stream->get_schema = &get_schema_wrapper;
-    stream->get_next = &get_next_wrapper;
-    stream->get_last_error = &get_last_error_wrapper;
-    stream->release = &release_wrapper;
-    stream->private_data = this;
-  }
+  void MakeStream(struct ArrowArrayStream* stream) { ToArrayStream(stream); }
 
   virtual int get_schema(struct ArrowSchema* schema) {
     return ArrowSchemaDeepCopy(schema_.get(), schema);
@@ -286,54 +416,72 @@ class EmptyArrayStream {
   virtual const char* get_last_error() { return error_.message; }
 
  private:
-  static int get_schema_wrapper(struct ArrowArrayStream* stream,
-                                struct ArrowSchema* schema) {
-    return reinterpret_cast<EmptyArrayStream*>(stream->private_data)->get_schema(schema);
-  }
+  friend class ArrayStreamFactory<EmptyArrayStream>;
 
-  static int get_next_wrapper(struct ArrowArrayStream* stream, struct ArrowArray* array) {
-    return reinterpret_cast<EmptyArrayStream*>(stream->private_data)->get_next(array);
-  }
+  int GetSchema(struct ArrowSchema* schema) { return get_schema(schema); }
 
-  static const char* get_last_error_wrapper(struct ArrowArrayStream* stream) {
-    return reinterpret_cast<EmptyArrayStream*>(stream->private_data)->get_last_error();
-  }
+  int GetNext(struct ArrowArray* array) { return get_next(array); }
 
-  static void release_wrapper(struct ArrowArrayStream* stream) {
-    delete reinterpret_cast<EmptyArrayStream*>(stream->private_data);
-    stream->release = nullptr;
-    stream->private_data = nullptr;
-  }
+  const char* GetLastError() { return get_last_error(); }
 };
 
-/// \brief Implementation of an ArrowArrayStream backed by a vector of ArrowArray objects
-class VectorArrayStream : public EmptyArrayStream {
+/// \brief Implementation of an ArrowArrayStream backed by a vector of UniqueArray objects
+class VectorArrayStream {
  public:
+  /// \brief Create a VectorArrayStream from an ArrowSchema + vector of UniqueArray
+  ///
+  /// Takes ownership of schema and moves arrays if possible.
+  VectorArrayStream(struct ArrowSchema* schema, std::vector<UniqueArray> arrays)
+      : offset_(0), schema_(schema), arrays_(std::move(arrays)) {}
+
+  /// \brief Create a one-shot VectorArrayStream from an ArrowSchema + ArrowArray
+  ///
+  /// Takes ownership of schema and array.
+  VectorArrayStream(struct ArrowSchema* schema, struct ArrowArray* array)
+      : offset_(0), schema_(schema) {
+    arrays_.emplace_back(array);
+  }
+
+  /// \brief Export to ArrowArrayStream
+  void ToArrayStream(struct ArrowArrayStream* out) {
+    VectorArrayStream* impl = new VectorArrayStream(schema_.get(), std::move(arrays_));
+    ArrayStreamFactory<VectorArrayStream>::InitArrayStream(impl, out);
+  }
+
   /// \brief Create a UniqueArrowArrayStream from an existing array
   ///
-  /// Takes ownership of the schema and the array.
+  /// DEPRECATED (0.4.0): Use the constructors + ToArrayStream() to export a
+  /// VectorArrayStream to an ArrowArrayStream consumer.
   static UniqueArrayStream MakeUnique(struct ArrowSchema* schema,
                                       struct ArrowArray* array) {
-    std::vector<UniqueArray> arrays;
-    arrays.emplace_back(array);
-    return MakeUnique(schema, std::move(arrays));
+    UniqueArrayStream stream;
+    VectorArrayStream(schema, array).ToArrayStream(stream.get());
+    return stream;
   }
 
   /// \brief Create a UniqueArrowArrayStream from existing arrays
   ///
-  /// This object takes ownership of the schema and arrays.
+  /// DEPRECATED (0.4.0): Use the constructor + ToArrayStream() to export a
+  /// VectorArrayStream to an ArrowArrayStream consumer.
   static UniqueArrayStream MakeUnique(struct ArrowSchema* schema,
                                       std::vector<UniqueArray> arrays) {
     UniqueArrayStream stream;
-    (new VectorArrayStream(schema, std::move(arrays)))->MakeStream(stream.get());
+    VectorArrayStream(schema, std::move(arrays)).ToArrayStream(stream.get());
     return stream;
   }
 
- protected:
-  VectorArrayStream(struct ArrowSchema* schema, std::vector<UniqueArray> arrays)
-      : EmptyArrayStream(schema), arrays_(std::move(arrays)), offset_(0) {}
+ private:
+  int64_t offset_;
+  UniqueSchema schema_;
+  std::vector<UniqueArray> arrays_;
 
-  int get_next(struct ArrowArray* array) {
+  friend class ArrayStreamFactory<VectorArrayStream>;
+
+  int GetSchema(struct ArrowSchema* schema) {
+    return ArrowSchemaDeepCopy(schema_.get(), schema);
+  }
+
+  int GetNext(struct ArrowArray* array) {
     if (offset_ < static_cast<int64_t>(arrays_.size())) {
       arrays_[offset_++].move(array);
     } else {
@@ -343,9 +491,7 @@ class VectorArrayStream : public EmptyArrayStream {
     return NANOARROW_OK;
   }
 
- private:
-  std::vector<UniqueArray> arrays_;
-  int64_t offset_;
+  const char* GetLastError() { return ""; }
 };
 
 /// @}

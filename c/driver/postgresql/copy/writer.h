@@ -490,90 +490,99 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
-static inline ArrowErrorCode MakeCopyFieldWriter(struct ArrowSchema* schema,
-                                                 PostgresCopyFieldWriter** out,
-                                                 ArrowError* error) {
+static inline ArrowErrorCode MakeCopyFieldWriter(
+    struct ArrowSchema* schema, std::unique_ptr<PostgresCopyFieldWriter>* out,
+    ArrowError* error) {
   struct ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
 
   switch (schema_view.type) {
     case NANOARROW_TYPE_BOOL:
-      *out = new PostgresCopyBooleanFieldWriter();
+      *out = std::make_unique<PostgresCopyBooleanFieldWriter>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT8:
     case NANOARROW_TYPE_INT16:
-      *out = new PostgresCopyNetworkEndianFieldWriter<int16_t>();
+      *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int16_t>>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT32:
-      *out = new PostgresCopyNetworkEndianFieldWriter<int32_t>();
+      *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int32_t>>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT64:
-      *out = new PostgresCopyNetworkEndianFieldWriter<int64_t>();
+      *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int64_t>>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_DATE32: {
       constexpr int32_t kPostgresDateEpoch = 10957;
-      *out = new PostgresCopyNetworkEndianFieldWriter<int32_t, kPostgresDateEpoch>();
+      *out = std::make_unique<
+          PostgresCopyNetworkEndianFieldWriter<int32_t, kPostgresDateEpoch>>();
       return NANOARROW_OK;
     }
     case NANOARROW_TYPE_FLOAT:
-      *out = new PostgresCopyFloatFieldWriter();
+      *out = std::make_unique<PostgresCopyFloatFieldWriter>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_DOUBLE:
-      *out = new PostgresCopyDoubleFieldWriter();
+      *out = std::make_unique<PostgresCopyDoubleFieldWriter>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_DECIMAL128: {
       const auto precision = schema_view.decimal_precision;
       const auto scale = schema_view.decimal_scale;
-      *out =
-          new PostgresCopyNumericFieldWriter<NANOARROW_TYPE_DECIMAL128>(precision, scale);
+      *out = std::make_unique<PostgresCopyNumericFieldWriter<NANOARROW_TYPE_DECIMAL128>>(
+          precision, scale);
       return NANOARROW_OK;
     }
     case NANOARROW_TYPE_DECIMAL256: {
       const auto precision = schema_view.decimal_precision;
       const auto scale = schema_view.decimal_scale;
-      *out =
-          new PostgresCopyNumericFieldWriter<NANOARROW_TYPE_DECIMAL256>(precision, scale);
+      *out = std::make_unique<PostgresCopyNumericFieldWriter<NANOARROW_TYPE_DECIMAL256>>(
+          precision, scale);
       return NANOARROW_OK;
     }
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
-      *out = new PostgresCopyBinaryFieldWriter();
+      *out = std::make_unique<PostgresCopyBinaryFieldWriter>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_TIMESTAMP: {
       switch (schema_view.time_unit) {
         case NANOARROW_TIME_UNIT_NANO:
-          *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_NANO>();
+          *out = std::make_unique<
+              PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_NANO>>();
           break;
         case NANOARROW_TIME_UNIT_MILLI:
-          *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MILLI>();
+          *out = std::make_unique<
+              PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MILLI>>();
           break;
         case NANOARROW_TIME_UNIT_MICRO:
-          *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MICRO>();
+          *out = std::make_unique<
+              PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MICRO>>();
           break;
         case NANOARROW_TIME_UNIT_SECOND:
-          *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_SECOND>();
+          *out = std::make_unique<
+              PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_SECOND>>();
           break;
       }
       return NANOARROW_OK;
     }
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
-      *out = new PostgresCopyIntervalFieldWriter();
+      *out = std::make_unique<PostgresCopyIntervalFieldWriter>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_DURATION: {
       switch (schema_view.time_unit) {
         case NANOARROW_TIME_UNIT_SECOND:
-          *out = new PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_SECOND>();
+          *out = std::make_unique<
+              PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_SECOND>>();
           break;
         case NANOARROW_TIME_UNIT_MILLI:
-          *out = new PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_MILLI>();
+          *out = std::make_unique<
+              PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_MILLI>>();
           break;
         case NANOARROW_TIME_UNIT_MICRO:
-          *out = new PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_MICRO>();
+          *out = std::make_unique<
+              PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_MICRO>>();
 
           break;
         case NANOARROW_TIME_UNIT_NANO:
-          *out = new PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_NANO>();
+          *out = std::make_unique<
+              PostgresCopyDurationFieldWriter<NANOARROW_TIME_UNIT_NANO>>();
           break;
       }
       return NANOARROW_OK;
@@ -587,7 +596,7 @@ static inline ArrowErrorCode MakeCopyFieldWriter(struct ArrowSchema* schema,
         case NANOARROW_TYPE_STRING:
         case NANOARROW_TYPE_LARGE_BINARY:
         case NANOARROW_TYPE_LARGE_STRING:
-          *out = new PostgresCopyBinaryDictFieldWriter();
+          *out = std::make_unique<PostgresCopyBinaryDictFieldWriter>();
           return NANOARROW_OK;
         default:
           break;
@@ -644,10 +653,10 @@ class PostgresCopyStreamWriter {
     }
 
     for (int64_t i = 0; i < schema_->n_children; i++) {
-      PostgresCopyFieldWriter* child_writer = nullptr;
+      std::unique_ptr<PostgresCopyFieldWriter> child_writer;
       NANOARROW_RETURN_NOT_OK(
           MakeCopyFieldWriter(schema_->children[i], &child_writer, error));
-      root_writer_.AppendChild(std::unique_ptr<PostgresCopyFieldWriter>(child_writer));
+      root_writer_.AppendChild(std::move(child_writer));
     }
 
     return NANOARROW_OK;

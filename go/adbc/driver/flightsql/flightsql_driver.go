@@ -35,10 +35,11 @@ import (
 	"net/url"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
-	"github.com/apache/arrow/go/v15/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/metadata"
 )
@@ -53,6 +54,7 @@ const (
 	OptionWithBlock           = "adbc.flight.sql.client_option.with_block"
 	OptionWithMaxMsgSize      = "adbc.flight.sql.client_option.with_max_msg_size"
 	OptionAuthorizationHeader = "adbc.flight.sql.authorization_header"
+	OptionTimeoutConnect      = "adbc.flight.sql.rpc.timeout_seconds.connect"
 	OptionTimeoutFetch        = "adbc.flight.sql.rpc.timeout_seconds.fetch"
 	OptionTimeoutQuery        = "adbc.flight.sql.rpc.timeout_seconds.query"
 	OptionTimeoutUpdate       = "adbc.flight.sql.rpc.timeout_seconds.update"
@@ -126,7 +128,11 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 
 	db := &databaseImpl{
 		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
-		hdrs:             make(metadata.MD),
+		timeout: timeoutOption{
+			// Match gRPC default
+			connectTimeout: time.Second * 20,
+		},
+		hdrs: make(metadata.MD),
 	}
 
 	var err error

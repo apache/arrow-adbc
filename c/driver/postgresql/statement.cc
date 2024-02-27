@@ -1547,7 +1547,7 @@ AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
 
   // Initialize the copy reader and infer the output schema (i.e., error for
   // unsupported types before issuing the COPY query)
-  reader_.copy_reader_.reset(new PostgresCopyStreamReader());
+  reader_.copy_reader_ = std::make_unique<PostgresCopyStreamReader>();
   reader_.copy_reader_->Init(root_type);
   struct ArrowError na_error;
   int na_res = reader_.copy_reader_->InferOutputSchema(&na_error);

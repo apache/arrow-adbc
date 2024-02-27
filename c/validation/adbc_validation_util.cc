@@ -21,6 +21,21 @@
 #include "adbc_validation.h"
 
 namespace adbc_validation {
+
+std::optional<std::string> ConnectionGetOption(struct AdbcConnection* connection,
+                                               std::string_view option,
+                                               struct AdbcError* error) {
+  char buffer[128];
+  size_t buffer_size = sizeof(buffer);
+  AdbcStatusCode status =
+      AdbcConnectionGetOption(connection, option.data(), buffer, &buffer_size, error);
+  EXPECT_THAT(status, IsOkStatus(error));
+  if (status != ADBC_STATUS_OK) return std::nullopt;
+  EXPECT_GT(buffer_size, 0);
+  if (buffer_size == 0) return std::nullopt;
+  return std::string(buffer, buffer_size - 1);
+}
+
 std::string StatusCodeToString(AdbcStatusCode code) {
 #define CASE(CONSTANT)         \
   case ADBC_STATUS_##CONSTANT: \

@@ -17,6 +17,7 @@
 
 # NOTE: generated with mypy's stubgen, then hand-edited to fix things
 
+import typing_extensions
 from typing import Any, ClassVar, Dict, List, Literal, Optional, Tuple, Union
 
 from typing import overload
@@ -201,3 +202,13 @@ def _test_error(
     vendor_code: Optional[int],
     sqlstate: Optional[str],
 ) -> Error: ...
+
+_P = typing_extensions.ParamSpec("_P")
+_T = typing.TypeVar("_T")
+
+def _blocking_call(
+    func: typing.Callable[_P, _T],
+    args: tuple,
+    kwargs: dict,
+    cancel: typing.Callable[[], None],
+) -> _T: ...

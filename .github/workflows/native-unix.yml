@@ -111,6 +111,7 @@ jobs:
           export ADBC_USE_ASAN=OFF
           export ADBC_USE_UBSAN=OFF
           export PATH=$RUNNER_TOOL_CACHE/go/1.19.13/x64/bin:$PATH
+          export ADBC_CMAKE_ARGS="-DCMAKE_UNITY_BUILD=ON"
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Go Build
         shell: bash -l {0}
@@ -167,24 +168,25 @@ jobs:
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
 
-      - name: Build SQLite3 Driver
+      - name: Build
         shell: bash -l {0}
+        env:
+          ADBC_CMAKE_ARGS: "-DCMAKE_UNITY_BUILD=ON"
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          BUILD_DRIVER_SQLITE: "1"
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test SQLite3 Driver
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Test
         shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_test.sh "$(pwd)/build"
-      - name: Build PostgreSQL Driver
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Build Driver Manager
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test Driver Manager
-        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          # PostgreSQL is explicitly not tested here since we don't spawn
+          # Postgres; see integration.yml
+          BUILD_DRIVER_POSTGRESQL: "0"
+          BUILD_DRIVER_SQLITE: "1"
         run: |
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
@@ -449,10 +451,14 @@ jobs:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
 
-      - name: Build Python Driver Manager
+      - name: Build
         shell: bash -l {0}
+        env:
+          BUILD_ALL: "1"
+          ADBC_USE_ASAN: "0"
+          ADBC_USE_UBSAN: "0"
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+          ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Build Panic Dummy
         shell: bash -l {0}
         run: |
@@ -470,34 +476,31 @@ jobs:
             export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.so
           fi
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-      - name: Build Python Driver Flight SQL
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQL=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver Flight SQL
         shell: bash -l {0}
         run: |
+          # Can't use Docker on macOS
+          pushd $(pwd)/go/adbc
+          go build -o testserver ./driver/flightsql/cmd/testserver
+          popd
+          $(pwd)/go/adbc/testserver -host 0.0.0.0 -port 41414 &
+          while ! curl --http2-prior-knowledge -H "content-type: application/grpc" -v localhost:41414 -XPOST;
+          do
+              echo "Waiting for test server..."
+              jobs
+              sleep 5
+          done
+          export ADBC_TEST_FLIGHTSQL_URI=grpc://localhost:41414
           env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQL=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-      - name: Build Python Driver PostgreSQL
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+          kill %1
       - name: Test Python Driver PostgreSQL
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-      - name: Build Python Driver SQLite
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver SQLite
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-      - name: Build Python Driver Snowflake
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_SNOWFLAKE=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver Snowflake
         shell: bash -l {0}
         run: |
@@ -512,19 +515,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs:
       - drivers-build-conda
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_PASSWORD: password
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
     strategy:
       matrix:
         os: ["ubuntu-latest"]
@@ -564,8 +554,12 @@ jobs:
 
       - name: Build Python
         shell: bash -l {0}
+        env:
+          BUILD_ALL: "1"
+          ADBC_USE_ASAN: "0"
+          ADBC_USE_UBSAN: "0"
         run: |
-          env BUILD_ALL=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+          ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       # Docs requires Python packages since it runs doctests
       - name: Build Docs
         shell: bash -l {0}
@@ -586,5 +580,10 @@ jobs:
         shell: bash -l {0}
         env:
           ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
+          ADBC_DREMIO_FLIGHTSQL_URI: "grpc+tcp://localhost:32010"
+          ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
+          ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
+          ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
         run: |
+          docker compose up --detach --wait dremio dremio-init flightsql-sqlite-test postgres-test
           pytest -vvs docs/source/tests/

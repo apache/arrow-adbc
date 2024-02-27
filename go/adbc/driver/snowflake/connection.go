@@ -30,8 +30,8 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
-	"github.com/apache/arrow/go/v15/arrow"
-	"github.com/apache/arrow/go/v15/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/snowflakedb/gosnowflake"
 )
 
@@ -968,14 +968,14 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 	defer rows.Close()
 
 	var (
-		name, typ, kind, isnull, primary, unique string
-		def, check, expr, comment, policyName    sql.NullString
-		fields                                   = []arrow.Field{}
+		name, typ, kind, isnull, primary, unique          string
+		def, check, expr, comment, policyName, privDomain sql.NullString
+		fields                                            = []arrow.Field{}
 	)
 
 	for rows.Next() {
 		err := rows.Scan(&name, &typ, &kind, &isnull, &def, &primary, &unique,
-			&check, &expr, &comment, &policyName)
+			&check, &expr, &comment, &policyName, &privDomain)
 		if err != nil {
 			return nil, errToAdbcErr(adbc.StatusIO, err)
 		}

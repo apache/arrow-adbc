@@ -32,6 +32,8 @@ The ADBC driver passes the configured credentials to BigQuery, but you may need 
 
 ## Parameters
 
+The following parameters can be used to configure the driver behavior. The parameters are case sensitive.
+
 **adbc.bigquery.allow_large_results**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Sets the [AllowLargeResults](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_AllowLargeResults) value of the QueryOptions to `true` if configured; otherwise, the default is `false`.
 
@@ -48,6 +50,12 @@ https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/G
 
 **adbc.bigquery.auth_json_credential**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Required if using `service` authentication. This value is passed to the [GoogleCredential.FromJson](https://cloud.google.com/dotnet/docs/reference/Google.Apis/latest/Google.Apis.Auth.OAuth2.GoogleCredential#Google_Apis_Auth_OAuth2_GoogleCredential_FromJson_System_String) method.
+
+**adbc.bigquery.include_constraints_getobjects**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. Some callers do not need the constraint details when they get the table information and can improve the speed of obtaining the results. Setting this value to `"false"` will not include the constraint details. The default value is `"true"`.
+
+**adbc.bigquery.large_results_destination_table**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the [DestinationTable](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_DestinationTable) value of the QueryOptions if configured. Expects the format to be `{projectId}.{datasetId}.{tableId}` to set the corresponding values in the [TableReference](https://github.com/googleapis/google-api-dotnet-client/blob/6c415c73788b848711e47c6dd33c2f93c76faf97/Src/Generated/Google.Apis.Bigquery.v2/Google.Apis.Bigquery.v2.cs#L9348) class.
 
 **adbc.bigquery.project_id**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The [Project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects) used for accessing BigQuery.

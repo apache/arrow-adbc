@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.Set;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 final class JdbcDriverUtil {
   // Do our best to properly map database-specific errors to NOT_FOUND status.
@@ -41,11 +42,14 @@ final class JdbcDriverUtil {
     throw new AssertionError("Do not instantiate this class");
   }
 
-  static String prefixExceptionMessage(final String s) {
+  static String prefixExceptionMessage(final @Nullable String s) {
+    if (s == null) {
+      return "[JDBC] (No or unknown error)";
+    }
     return "[JDBC] " + s;
   }
 
-  static AdbcStatusCode guessStatusCode(String sqlState) {
+  static AdbcStatusCode guessStatusCode(@Nullable String sqlState) {
     if (sqlState == null) {
       return AdbcStatusCode.UNKNOWN;
     } else if (SQLSTATE_TABLE_NOT_FOUND.contains(sqlState)) {
@@ -56,10 +60,11 @@ final class JdbcDriverUtil {
 
   static AdbcException fromSqlException(SQLException e) {
     // Unwrap an unknown exception with a known cause inside of it
-    if (isUnknown(e)
-        && e.getCause() instanceof SQLException
-        && !isUnknown((SQLException) e.getCause())) {
-      return fromSqlException((SQLException) e.getCause());
+    if (isUnknown(e)) {
+      final Throwable cause = e.getCause();
+      if (cause instanceof SQLException && !isUnknown((SQLException) cause)) {
+        return fromSqlException((SQLException) cause);
+      }
     }
 
     // Only JDBC-prefix the message if it is actually JDBC specific

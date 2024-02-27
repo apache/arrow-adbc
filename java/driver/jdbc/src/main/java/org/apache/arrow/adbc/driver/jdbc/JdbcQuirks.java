@@ -20,12 +20,13 @@ import java.util.Objects;
 import org.apache.arrow.adapter.jdbc.JdbcToArrowUtils;
 import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcToArrowTypeConverter;
 import org.apache.arrow.adbc.sql.SqlQuirks;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Backend-specific quirks for the JDBC adapter. */
 public class JdbcQuirks {
   final String backendName;
   JdbcToArrowTypeConverter typeConverter;
-  SqlQuirks sqlQuirks;
+  @Nullable SqlQuirks sqlQuirks;
 
   public JdbcQuirks(String backendName) {
     this.backendName = Objects.requireNonNull(backendName);
@@ -45,7 +46,7 @@ public class JdbcQuirks {
   }
 
   /** The SQL syntax quirks. */
-  public SqlQuirks getSqlQuirks() {
+  public @Nullable SqlQuirks getSqlQuirks() {
     return sqlQuirks;
   }
 

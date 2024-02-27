@@ -932,7 +932,7 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
 
     for (PqResultRow row : result_helper) {
       auto reltuples = row[5].ParseDouble();
-      if (!reltuples.first) {
+      if (!reltuples) {
         SetError(error, "[libpq] Invalid double value in reltuples: '%s'", row[5].data);
         return ADBC_STATUS_INTERNAL;
       }
@@ -946,8 +946,7 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
         CHECK_NA(INTERNAL,
                  ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_ROW_COUNT_KEY),
                  error);
-        CHECK_NA(INTERNAL, ArrowArrayAppendDouble(value_float64_col, reltuples.second),
-                 error);
+        CHECK_NA(INTERNAL, ArrowArrayAppendDouble(value_float64_col, *reltuples), error);
         CHECK_NA(INTERNAL,
                  ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
                  error);
@@ -957,7 +956,7 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
       }
 
       auto null_frac = row[2].ParseDouble();
-      if (!null_frac.first) {
+      if (!null_frac) {
         SetError(error, "[libpq] Invalid double value in null_frac: '%s'", row[2].data);
         return ADBC_STATUS_INTERNAL;
       }
@@ -973,10 +972,8 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
       CHECK_NA(INTERNAL,
                ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_NULL_COUNT_KEY),
                error);
-      CHECK_NA(
-          INTERNAL,
-          ArrowArrayAppendDouble(value_float64_col, null_frac.second * reltuples.second),
-          error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendDouble(value_float64_col, *null_frac * *reltuples), error);
       CHECK_NA(INTERNAL,
                ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
                error);
@@ -984,7 +981,7 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_items), error);
 
       auto average_byte_width = row[3].ParseDouble();
-      if (!average_byte_width.first) {
+      if (!average_byte_width) {
         SetError(error, "[libpq] Invalid double value in avg_width: '%s'", row[3].data);
         return ADBC_STATUS_INTERNAL;
       }
@@ -1001,8 +998,7 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
           INTERNAL,
           ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY),
           error);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendDouble(value_float64_col, average_byte_width.second),
+      CHECK_NA(INTERNAL, ArrowArrayAppendDouble(value_float64_col, *average_byte_width),
                error);
       CHECK_NA(INTERNAL,
                ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
@@ -1011,7 +1007,7 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_items), error);
 
       auto n_distinct = row[4].ParseDouble();
-      if (!n_distinct.first) {
+      if (!n_distinct) {
         SetError(error, "[libpq] Invalid double value in avg_width: '%s'", row[4].data);
         return ADBC_STATUS_INTERNAL;
       }
@@ -1031,13 +1027,11 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
       // > the column. If less than zero, the negative of the number of
       // > distinct values divided by the number of rows.
       // https://www.postgresql.org/docs/current/view-pg-stats.html
-      CHECK_NA(
-          INTERNAL,
-          ArrowArrayAppendDouble(value_float64_col,
-                                 n_distinct.second > 0
-                                     ? n_distinct.second
-                                     : (std::fabs(n_distinct.second) * reltuples.second)),
-          error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendDouble(
+                   value_float64_col,
+                   *n_distinct > 0 ? *n_distinct : (std::fabs(*n_distinct) * *reltuples)),
+               error);
       CHECK_NA(INTERNAL,
                ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
                error);

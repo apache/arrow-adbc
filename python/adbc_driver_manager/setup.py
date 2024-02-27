@@ -76,6 +76,8 @@ build_type = os.environ.get("ADBC_BUILD_TYPE", "release")
 
 if sys.platform == "win32":
     extra_compile_args = ["/std:c++17", "/DADBC_EXPORTING"]
+    if build_type == "debug":
+        extra_compile_args.extend(["/DEBUG:FULL"])
 else:
     extra_compile_args = ["-std=c++17"]
     if build_type == "debug":
@@ -93,6 +95,7 @@ setup(
             include_dirs=[str(source_root.joinpath("adbc_driver_manager").resolve())],
             language="c++",
             sources=[
+                "adbc_driver_manager/_blocking_impl.cc",
                 "adbc_driver_manager/_lib.pyx",
                 "adbc_driver_manager/adbc_driver_manager.cc",
             ],

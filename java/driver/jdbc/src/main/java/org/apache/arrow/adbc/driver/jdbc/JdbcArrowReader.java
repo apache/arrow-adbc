@@ -32,6 +32,7 @@ import org.apache.arrow.vector.VectorUnloader;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** An ArrowReader that wraps a JDBC ResultSet. */
 public class JdbcArrowReader extends ArrowReader {
@@ -39,7 +40,9 @@ public class JdbcArrowReader extends ArrowReader {
   private final Schema schema;
   private long bytesRead;
 
-  JdbcArrowReader(BufferAllocator allocator, ResultSet resultSet, Schema overrideSchema)
+  // ensureInitialized() call isn't annotated right
+  @SuppressWarnings({"under.initialization", "method.invocation"})
+  JdbcArrowReader(BufferAllocator allocator, ResultSet resultSet, @Nullable Schema overrideSchema)
       throws AdbcException {
     super(allocator);
     final JdbcToArrowConfig config = makeJdbcConfig(allocator);

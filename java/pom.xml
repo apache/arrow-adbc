@@ -20,7 +20,7 @@
 
   <groupId>org.apache.arrow.adbc</groupId>
   <artifactId>arrow-adbc-java-root</artifactId>
-  <version>0.10.0-SNAPSHOT</version>
+  <version>0.11.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Arrow ADBC Java Root POM</name>
@@ -29,7 +29,7 @@
 
   <properties>
     <dep.arrow.version>15.0.0</dep.arrow.version>
-    <adbc.version>0.10.0-SNAPSHOT</adbc.version>
+    <adbc.version>0.11.0-SNAPSHOT</adbc.version>
   </properties>
 
   <scm>
@@ -97,28 +97,10 @@
       <!-- Arrow -->
       <dependency>
         <groupId>org.apache.arrow</groupId>
-        <artifactId>arrow-jdbc</artifactId>
+        <artifactId>arrow-bom</artifactId>
         <version>${dep.arrow.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.arrow</groupId>
-        <artifactId>arrow-memory-core</artifactId>
-        <version>${dep.arrow.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.arrow</groupId>
-        <artifactId>arrow-vector</artifactId>
-        <version>${dep.arrow.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.arrow</groupId>
-        <artifactId>flight-core</artifactId>
-        <version>${dep.arrow.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.arrow</groupId>
-        <artifactId>flight-sql</artifactId>
-        <version>${dep.arrow.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
 
       <!-- ADBC -->
@@ -151,6 +133,13 @@
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-sql</artifactId>
         <version>${adbc.version}</version>
+      </dependency>
+
+      <!-- Linting and static analysis -->
+      <dependency>
+        <groupId>org.checkerframework</groupId>
+        <artifactId>checker-qual</artifactId>
+        <version>3.42.0</version>
       </dependency>
 
       <!-- Testing -->
@@ -297,15 +286,26 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-compiler-plugin</artifactId>
-            <version>3.10.1</version>
+            <version>3.11.0</version>
             <configuration>
               <source>1.8</source>
               <target>1.8</target>
-              <compilerArgs>
+              <encoding>UTF-8</encoding>
+              <compilerArgs combine.children="append">
                 <arg>-XDcompilePolicy=simple</arg>
                 <arg>-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.uber</arg>
+
+                <arg>-Xmaxerrs</arg> <!-- javac only reports the first 100 errors or warnings -->
+                <arg>10000</arg>
+                <arg>-Xmaxwarns</arg>
+                <arg>10000</arg>
+                <arg>-AskipDefs=.*Test</arg> <!-- Skip analysis for Testing classes -->
+                <arg>-AatfDoNotCache</arg> <!-- not cache results -->
+		<arg>-AprintVerboseGenerics</arg>
+		<arg>-AprintAllQualifiers</arg>
+		<arg>-Astubs=.checker-framework/:stubs</arg>
               </compilerArgs>
-              <annotationProcessorPaths>
+              <annotationProcessorPaths combine.children="append">
                 <path>
                   <groupId>com.google.errorprone</groupId>
                   <artifactId>error_prone_core</artifactId>
@@ -316,7 +316,15 @@
                   <artifactId>nullaway</artifactId>
                   <version>0.10.10</version>
                 </path>
+                <path>
+                  <groupId>org.checkerframework</groupId>
+                  <artifactId>checker</artifactId>
+                  <version>3.42.0</version>
+                </path>
               </annotationProcessorPaths>
+              <annotationProcessors>
+                <annotationProcessor>org.checkerframework.checker.nullness.NullnessChecker</annotationProcessor>
+              </annotationProcessors>
             </configuration>
           </plugin>
         </plugins>

@@ -85,9 +85,7 @@ public abstract class AbstractTransactionTest {
   @Test
   void rollback() throws Exception {
     final Schema schema =
-        new Schema(
-            Collections.singletonList(
-                Field.nullable("ints", new ArrowType.Int(32, /*signed=*/ true))));
+        new Schema(Collections.singletonList(Field.nullable("ints", new ArrowType.Int(32, true))));
 
     connection.setAutoCommit(false);
     try (VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
@@ -116,9 +114,7 @@ public abstract class AbstractTransactionTest {
   @Test
   void commit() throws Exception {
     final Schema schema =
-        new Schema(
-            Collections.singletonList(
-                Field.nullable("ints", new ArrowType.Int(32, /*signed=*/ true))));
+        new Schema(Collections.singletonList(Field.nullable("ints", new ArrowType.Int(32, true))));
     final String tableName = quirks.caseFoldTableName("temptable");
 
     connection.setAutoCommit(false);
@@ -149,9 +145,7 @@ public abstract class AbstractTransactionTest {
   @Test
   void enableAutoCommitAlsoCommits() throws Exception {
     final Schema schema =
-        new Schema(
-            Collections.singletonList(
-                Field.nullable("ints", new ArrowType.Int(32, /*signed=*/ true))));
+        new Schema(Collections.singletonList(Field.nullable("ints", new ArrowType.Int(32, true))));
     final String tableName = quirks.caseFoldTableName("temptable");
 
     connection.setAutoCommit(false);

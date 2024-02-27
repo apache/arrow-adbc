@@ -24,6 +24,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     /// </summary>
     internal class BigQueryTestConfiguration : TestConfiguration
     {
+        public BigQueryTestConfiguration()
+        {
+            AllowLargeResults = false;
+            IncludeTableConstraints = true;
+        }
+
         [JsonPropertyName("projectId")]
         public string ProjectId { get; set; }
 
@@ -42,5 +48,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("jsonCredential")]
         public string JsonCredential { get; set; }
 
+        [JsonPropertyName("allowLargeResults")]
+        public bool AllowLargeResults { get; set; }
+
+        [JsonPropertyName("largeResultsDestinationTable")]
+        public string LargeResultsDestinationTable { get; set; }
+
+        [JsonPropertyName("includeTableConstraints")]
+        public bool IncludeTableConstraints { get; set; }
     }
 }

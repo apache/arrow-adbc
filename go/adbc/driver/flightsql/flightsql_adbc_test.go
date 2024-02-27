@@ -42,12 +42,12 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v15/arrow"
-	"github.com/apache/arrow/go/v15/arrow/array"
-	"github.com/apache/arrow/go/v15/arrow/flight"
-	"github.com/apache/arrow/go/v15/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v15/arrow/flight/flightsql/example"
-	"github.com/apache/arrow/go/v15/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/flight"
+	"github.com/apache/arrow/go/v16/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v16/arrow/flight/flightsql/example"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -236,13 +236,14 @@ func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool { return true }
 func (s *FlightSQLQuirks) SupportsCurrentCatalogSchema() bool { return false }
 
 // The driver supports it, but the server we use for testing does not.
-func (s *FlightSQLQuirks) SupportsExecuteSchema() bool           { return false }
-func (s *FlightSQLQuirks) SupportsGetSetOptions() bool           { return true }
-func (s *FlightSQLQuirks) SupportsPartitionedData() bool         { return true }
-func (s *FlightSQLQuirks) SupportsStatistics() bool              { return false }
-func (s *FlightSQLQuirks) SupportsTransactions() bool            { return true }
-func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool      { return false }
-func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool { return true }
+func (s *FlightSQLQuirks) SupportsErrorIngestIncompatibleSchema() bool { return true }
+func (s *FlightSQLQuirks) SupportsExecuteSchema() bool                 { return false }
+func (s *FlightSQLQuirks) SupportsGetSetOptions() bool                 { return true }
+func (s *FlightSQLQuirks) SupportsPartitionedData() bool               { return true }
+func (s *FlightSQLQuirks) SupportsStatistics() bool                    { return false }
+func (s *FlightSQLQuirks) SupportsTransactions() bool                  { return true }
+func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool            { return false }
+func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool       { return true }
 func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:
@@ -260,7 +261,7 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	case adbc.InfoVendorVersion:
 		return "sqlite 3"
 	case adbc.InfoVendorArrowVersion:
-		return "15.0.0-SNAPSHOT"
+		return "16.0.0-SNAPSHOT"
 	}
 
 	return nil

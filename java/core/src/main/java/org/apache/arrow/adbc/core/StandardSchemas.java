@@ -98,30 +98,64 @@ public final class StandardSchemas {
 
   public static final List<Field> COLUMN_SCHEMA =
       Arrays.asList(
-          new Field("column_name", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
-          new Field("ordinal_position", FieldType.nullable(INT32), null),
-          new Field("remarks", FieldType.nullable(ArrowType.Utf8.INSTANCE), null),
-          new Field("xdbc_data_type", FieldType.nullable(INT16), null),
-          new Field("xdbc_type_name", FieldType.nullable(ArrowType.Utf8.INSTANCE), null),
-          new Field("xdbc_column_size", FieldType.nullable(INT32), null),
-          new Field("xdbc_decimal_digits", FieldType.nullable(INT16), null),
-          new Field("xdbc_num_prec_radix", FieldType.nullable(INT16), null),
-          new Field("xdbc_nullable", FieldType.nullable(INT16), null),
-          new Field("xdbc_column_def", FieldType.nullable(ArrowType.Utf8.INSTANCE), null),
-          new Field("xdbc_sql_data_type", FieldType.nullable(INT16), null),
-          new Field("xdbc_datetime_sub", FieldType.nullable(INT16), null),
-          new Field("xdbc_char_octet_length", FieldType.nullable(INT32), null),
-          new Field("xdbc_is_nullable", FieldType.nullable(ArrowType.Utf8.INSTANCE), null),
-          new Field("xdbc_scope_catalog", FieldType.nullable(ArrowType.Utf8.INSTANCE), null),
-          new Field("xdbc_scope_schema", FieldType.nullable(ArrowType.Utf8.INSTANCE), null),
-          new Field("xdbc_scope_table", FieldType.nullable(ArrowType.Utf8.INSTANCE), null),
-          new Field("xdbc_is_autoincrement", FieldType.nullable(ArrowType.Bool.INSTANCE), null),
-          new Field("xdbc_is_generatedcolumn", FieldType.nullable(ArrowType.Bool.INSTANCE), null));
+          new Field(
+              "column_name",
+              FieldType.notNullable(ArrowType.Utf8.INSTANCE),
+              Collections.emptyList()),
+          new Field("ordinal_position", FieldType.nullable(INT32), Collections.emptyList()),
+          new Field(
+              "remarks", FieldType.nullable(ArrowType.Utf8.INSTANCE), Collections.emptyList()),
+          new Field("xdbc_data_type", FieldType.nullable(INT16), Collections.emptyList()),
+          new Field(
+              "xdbc_type_name",
+              FieldType.nullable(ArrowType.Utf8.INSTANCE),
+              Collections.emptyList()),
+          new Field("xdbc_column_size", FieldType.nullable(INT32), Collections.emptyList()),
+          new Field("xdbc_decimal_digits", FieldType.nullable(INT16), Collections.emptyList()),
+          new Field("xdbc_num_prec_radix", FieldType.nullable(INT16), Collections.emptyList()),
+          new Field("xdbc_nullable", FieldType.nullable(INT16), Collections.emptyList()),
+          new Field(
+              "xdbc_column_def",
+              FieldType.nullable(ArrowType.Utf8.INSTANCE),
+              Collections.emptyList()),
+          new Field("xdbc_sql_data_type", FieldType.nullable(INT16), Collections.emptyList()),
+          new Field("xdbc_datetime_sub", FieldType.nullable(INT16), Collections.emptyList()),
+          new Field("xdbc_char_octet_length", FieldType.nullable(INT32), Collections.emptyList()),
+          new Field(
+              "xdbc_is_nullable",
+              FieldType.nullable(ArrowType.Utf8.INSTANCE),
+              Collections.emptyList()),
+          new Field(
+              "xdbc_scope_catalog",
+              FieldType.nullable(ArrowType.Utf8.INSTANCE),
+              Collections.emptyList()),
+          new Field(
+              "xdbc_scope_schema",
+              FieldType.nullable(ArrowType.Utf8.INSTANCE),
+              Collections.emptyList()),
+          new Field(
+              "xdbc_scope_table",
+              FieldType.nullable(ArrowType.Utf8.INSTANCE),
+              Collections.emptyList()),
+          new Field(
+              "xdbc_is_autoincrement",
+              FieldType.nullable(ArrowType.Bool.INSTANCE),
+              Collections.emptyList()),
+          new Field(
+              "xdbc_is_generatedcolumn",
+              FieldType.nullable(ArrowType.Bool.INSTANCE),
+              Collections.emptyList()));
 
   public static final List<Field> TABLE_SCHEMA =
       Arrays.asList(
-          new Field("table_name", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
-          new Field("table_type", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
+          new Field(
+              "table_name",
+              FieldType.notNullable(ArrowType.Utf8.INSTANCE),
+              Collections.emptyList()),
+          new Field(
+              "table_type",
+              FieldType.notNullable(ArrowType.Utf8.INSTANCE),
+              Collections.emptyList()),
           new Field(
               "table_columns",
               FieldType.nullable(ArrowType.List.INSTANCE),
@@ -136,7 +170,10 @@ public final class StandardSchemas {
 
   public static final List<Field> DB_SCHEMA_SCHEMA =
       Arrays.asList(
-          new Field("db_schema_name", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
+          new Field(
+              "db_schema_name",
+              FieldType.notNullable(ArrowType.Utf8.INSTANCE),
+              Collections.emptyList()),
           new Field(
               "db_schema_tables",
               FieldType.nullable(ArrowType.List.INSTANCE),
@@ -150,7 +187,10 @@ public final class StandardSchemas {
   public static final Schema GET_OBJECTS_SCHEMA =
       new Schema(
           Arrays.asList(
-              new Field("catalog_name", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
+              new Field(
+                  "catalog_name",
+                  FieldType.notNullable(ArrowType.Utf8.INSTANCE),
+                  Collections.emptyList()),
               new Field(
                   "catalog_db_schemas",
                   FieldType.nullable(ArrowType.List.INSTANCE),
@@ -180,7 +220,10 @@ public final class StandardSchemas {
 
   public static final List<Field> STATISTICS_DB_SCHEMA_SCHEMA =
       Arrays.asList(
-          new Field("db_schema_name", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
+          new Field(
+              "db_schema_name",
+              FieldType.notNullable(ArrowType.Utf8.INSTANCE),
+              Collections.emptyList()),
           new Field(
               "db_schema_statistics",
               FieldType.notNullable(ArrowType.List.INSTANCE),
@@ -195,7 +238,10 @@ public final class StandardSchemas {
   public static final Schema GET_STATISTICS_SCHEMA =
       new Schema(
           Arrays.asList(
-              new Field("catalog_name", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
+              new Field(
+                  "catalog_name",
+                  FieldType.notNullable(ArrowType.Utf8.INSTANCE),
+                  Collections.emptyList()),
               new Field(
                   "catalog_db_schemas",
                   FieldType.notNullable(ArrowType.List.INSTANCE),

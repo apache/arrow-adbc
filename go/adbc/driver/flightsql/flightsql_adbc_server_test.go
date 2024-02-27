@@ -23,7 +23,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
+	"net"
 	"net/textproto"
 	"os"
 	"strconv"
@@ -32,14 +32,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
-	"github.com/apache/arrow/go/v15/arrow"
-	"github.com/apache/arrow/go/v15/arrow/array"
-	"github.com/apache/arrow/go/v15/arrow/flight"
-	"github.com/apache/arrow/go/v15/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v15/arrow/flight/flightsql/schema_ref"
-	"github.com/apache/arrow/go/v15/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/flight"
+	"github.com/apache/arrow/go/v16/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v16/arrow/flight/flightsql/schema_ref"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/maps"
@@ -440,6 +442,9 @@ func (ts *ExecuteSchemaTests) TestQuery() {
 type IncrementalQuery struct {
 	query     string
 	nextIndex int
+	// if set, then return an error in the next poll and unset
+	// for testing the client's error handling
+	unavailable bool
 }
 
 type IncrementalPollTestServer struct {
@@ -447,6 +452,10 @@ type IncrementalPollTestServer struct {
 	mu        sync.Mutex
 	queries   map[string]*IncrementalQuery
 	testCases map[string]IncrementalPollTestCase
+}
+
+var unavailableCase = IncrementalPollTestCase{
+	progress: []int{1, 1},
 }
 
 func (srv *IncrementalPollTestServer) PollFlightInfo(ctx context.Context, desc *flight.FlightDescriptor) (*flight.PollInfo, error) {
@@ -476,26 +485,45 @@ func (srv *IncrementalPollTestServer) PollFlightInfo(ctx context.Context, desc *
 
 	testCase, ok := srv.testCases[query.query]
 	if !ok {
-		return nil, status.Errorf(codes.Unimplemented, fmt.Sprintf("Invalid case %s", query.query))
+		if query.query == "unavailable" {
+			testCase = unavailableCase
+		} else {
+			return nil, status.Errorf(codes.Unimplemented, fmt.Sprintf("Invalid case %s", query.query))
+		}
 	}
 
 	if testCase.differentRetryDescriptor && progress != int64(query.nextIndex) {
 		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Used wrong retry descriptor, expected %d but got %d", query.nextIndex, progress))
 	}
 
+	if query.unavailable {
+		query.unavailable = false
+		return nil, status.Errorf(codes.Unavailable, "Server temporarily unavailable")
+	}
+
 	return srv.MakePollInfo(&testCase, query, queryId)
 }
 
 func (srv *IncrementalPollTestServer) PollFlightInfoStatement(ctx context.Context, query flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.PollInfo, error) {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+
 	queryId := uuid.New().String()
+
+	if query.GetQuery() == "unavailable" {
+		srv.queries[queryId] = &IncrementalQuery{
+			query:       query.GetQuery(),
+			nextIndex:   0,
+			unavailable: true,
+		}
+
+		return srv.MakePollInfo(&unavailableCase, srv.queries[queryId], queryId)
+	}
 
 	testCase, ok := srv.testCases[query.GetQuery()]
 	if !ok {
 		return nil, status.Errorf(codes.Unimplemented, fmt.Sprintf("Invalid case %s", query.GetQuery()))
 	}
-
-	srv.mu.Lock()
-	defer srv.mu.Unlock()
 
 	srv.queries[queryId] = &IncrementalQuery{
 		query:     query.GetQuery(),
@@ -699,6 +727,34 @@ func (ts *IncrementalPollTests) TestOptionValue() {
 	ts.Equal(adbc.StatusInvalidArgument, adbcErr.Code)
 }
 
+func (ts *IncrementalPollTests) TestUnavailable() {
+	// An error from the server should not tear down all the state.  We
+	// should be able to retry the request.
+	ctx := context.Background()
+	stmt, err := ts.cnxn.NewStatement()
+	ts.NoError(err)
+	defer stmt.Close()
+
+	ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
+
+	ts.NoError(stmt.SetSqlQuery("unavailable"))
+	_, partitions, _, err := stmt.ExecutePartitions(ctx)
+	ts.NoError(err)
+	ts.Equalf(uint64(1), partitions.NumPartitions, "%#v", partitions)
+
+	_, partitions, _, err = stmt.ExecutePartitions(ctx)
+	ts.ErrorContains(err, "Server temporarily unavailable")
+	ts.Equal(uint64(0), partitions.NumPartitions)
+
+	_, partitions, _, err = stmt.ExecutePartitions(ctx)
+	ts.NoError(err)
+	ts.Equalf(uint64(1), partitions.NumPartitions, "%#v", partitions)
+
+	_, partitions, _, err = stmt.ExecutePartitions(ctx)
+	ts.NoError(err)
+	ts.Equal(uint64(0), partitions.NumPartitions)
+}
+
 func (ts *IncrementalPollTests) RunOneTestCase(ctx context.Context, stmt adbc.Statement, name string, testCase *IncrementalPollTestCase) {
 	opts := stmt.(adbc.GetSetOptions)
 
@@ -809,11 +865,18 @@ func (ts *IncrementalPollTests) TestQueryTransaction() {
 
 type TimeoutTestServer struct {
 	flightsql.BaseServer
+	badPort  int
+	goodPort int
 }
 
 func (ts *TimeoutTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
-	if string(tkt.GetStatementHandle()) == "sleep and succeed" {
+	ticket := string(tkt.GetStatementHandle())
+	if ticket == "sleep and succeed" {
 		time.Sleep(1 * time.Second)
+	}
+
+	switch ticket {
+	case "bad endpoint", "sleep and succeed":
 		sc := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
 		rec, _, err := array.RecordFromJSON(memory.DefaultAllocator, sc, strings.NewReader(`[{"a": 5}]`))
 		if err != nil {
@@ -849,6 +912,23 @@ func (ts *TimeoutTestServer) GetFlightInfoStatement(ctx context.Context, cmd fli
 	switch cmd.GetQuery() {
 	case "timeout":
 		<-ctx.Done()
+	case "bad endpoint":
+		tkt, _ := flightsql.CreateStatementQueryTicket([]byte("bad endpoint"))
+		info := &flight.FlightInfo{
+			FlightDescriptor: desc,
+			Endpoint: []*flight.FlightEndpoint{
+				{
+					Ticket: &flight.Ticket{Ticket: tkt},
+					Location: []*flight.Location{
+						{Uri: fmt.Sprintf("grpc://localhost:%d", ts.badPort)},
+						{Uri: fmt.Sprintf("grpc://localhost:%d", ts.goodPort)},
+					},
+				},
+			},
+			TotalRecords: -1,
+			TotalBytes:   -1,
+		}
+		return info, nil
 	case "fetch":
 		tkt, _ := flightsql.CreateStatementQueryTicket([]byte("fetch"))
 		info := &flight.FlightInfo{
@@ -883,10 +963,23 @@ func (ts *TimeoutTestServer) CreatePreparedStatement(ctx context.Context, req fl
 
 type TimeoutTests struct {
 	ServerBasedTests
+	server net.Listener
 }
 
 func (suite *TimeoutTests) SetupSuite() {
-	suite.DoSetupSuite(&TimeoutTestServer{}, nil, nil)
+	var err error
+	suite.server, err = net.Listen("tcp", "localhost:0")
+	suite.NoError(err)
+
+	badPort := suite.server.Addr().(*net.TCPAddr).Port
+	server := &TimeoutTestServer{badPort: badPort}
+	suite.DoSetupSuite(server, nil, nil)
+	server.goodPort = suite.s.Addr().(*net.TCPAddr).Port
+}
+
+func (suite *TimeoutTests) TearDownSuite() {
+	suite.ServerBasedTests.TearDownSuite()
+	suite.NoError(suite.server.Close())
 }
 
 func (ts *TimeoutTests) TestInvalidValues() {
@@ -1074,11 +1167,33 @@ func (ts *TimeoutTests) TestDontTimeout() {
 	ts.Truef(array.RecordEqual(rec, expected), "expected: %s\nactual: %s", expected, rec)
 }
 
+func (ts *TimeoutTests) TestBadAddress() {
+	stmt, err := ts.cnxn.NewStatement()
+	ts.Require().NoError(err)
+	defer stmt.Close()
+	ts.Require().NoError(stmt.SetSqlQuery("bad endpoint"))
+
+	ts.Require().NoError(ts.db.(adbc.GetSetOptions).SetOptionDouble(driver.OptionTimeoutConnect, 5))
+
+	rr, _, err := stmt.ExecuteQuery(context.Background())
+	ts.Require().NoError(err)
+	defer rr.Release()
+
+	rr, _, err = stmt.ExecuteQuery(context.Background())
+	ts.Require().NoError(err)
+	defer rr.Release()
+
+	rr, _, err = stmt.ExecuteQuery(context.Background())
+	ts.Require().NoError(err)
+	defer rr.Release()
+}
+
 // ---- Cookie Tests --------------------
 type CookieTestServer struct {
 	flightsql.BaseServer
 
-	cur time.Time
+	cur  time.Time
+	addr string
 }
 
 func (server *CookieTestServer) GetFlightInfoStatement(ctx context.Context, cmd flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
@@ -1095,7 +1210,13 @@ func (server *CookieTestServer) GetFlightInfoStatement(ctx context.Context, cmd 
 	info := &flight.FlightInfo{
 		FlightDescriptor: desc,
 		Endpoint: []*flight.FlightEndpoint{
-			{Ticket: &flight.Ticket{Ticket: tkt}},
+			{
+				Ticket: &flight.Ticket{Ticket: tkt},
+				// passing a non-empty location uri so that the test client
+				// creates a sub-client and we test that the cookies are
+				// preserved and copied over.
+				Location: []*flight.Location{{Uri: server.addr}},
+			},
 		},
 		TotalRecords: -1,
 		TotalBytes:   -1,
@@ -1173,9 +1294,11 @@ type CookieTests struct {
 }
 
 func (suite *CookieTests) SetupSuite() {
-	suite.DoSetupSuite(&CookieTestServer{}, nil, map[string]string{
+	ts := &CookieTestServer{}
+	suite.DoSetupSuite(ts, nil, map[string]string{
 		driver.OptionCookieMiddleware: adbc.OptionValueEnabled,
 	})
+	ts.addr = "grpc://" + suite.s.Addr().String()
 }
 
 func (suite *CookieTests) TestCookieUsage() {
