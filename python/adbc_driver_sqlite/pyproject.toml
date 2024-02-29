@@ -44,3 +44,6 @@ include-package-data = true
 license-files = ["LICENSE.txt", "NOTICE.txt"]
 packages = ["adbc_driver_sqlite"]
 py-modules = ["adbc_driver_sqlite"]
+
+[tool.pytest.ini_options]
+xfail_strict = true

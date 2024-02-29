@@ -253,6 +253,16 @@ func (srv *ErrorDetailsTestServer) GetFlightInfoStatement(ctx context.Context, q
 			panic(err)
 		}
 		return &flight.FlightInfo{Endpoint: []*flight.FlightEndpoint{{Ticket: &flight.Ticket{Ticket: tkt}}}}, nil
+	} else if query.GetQuery() == "vendorcode" {
+		return nil, status.Errorf(codes.ResourceExhausted, "Resource exhausted")
+	} else if query.GetQuery() == "binaryheader" {
+		if err := grpc.SendHeader(ctx, metadata.Pairs("x-header-bin", string([]byte{0, 110}))); err != nil {
+			return nil, err
+		}
+		if err := grpc.SetTrailer(ctx, metadata.Pairs("x-trailer-bin", string([]byte{111, 0, 112}))); err != nil {
+			return nil, err
+		}
+		return nil, status.Errorf(codes.FailedPrecondition, "Resource exhausted")
 	}
 	return nil, status.Errorf(codes.Unimplemented, "GetSchemaStatement not implemented")
 }
@@ -287,6 +297,43 @@ func (suite *ErrorDetailsTests) SetupSuite() {
 	suite.DoSetupSuite(&srv, nil, nil)
 }
 
+func (ts *ErrorDetailsTests) TestBinaryDetails() {
+	stmt, err := ts.cnxn.NewStatement()
+	ts.NoError(err)
+	defer stmt.Close()
+
+	ts.NoError(stmt.SetSqlQuery("binaryheader"))
+
+	_, _, err = stmt.ExecuteQuery(context.Background())
+	var adbcErr adbc.Error
+	ts.ErrorAs(err, &adbcErr)
+
+	ts.Equal(int32(codes.FailedPrecondition), adbcErr.VendorCode)
+
+	ts.Equal(2, len(adbcErr.Details))
+
+	headerFound := false
+	trailerFound := false
+	for _, wrapper := range adbcErr.Details {
+		switch wrapper.Key() {
+		case "x-header-bin":
+			val, err := wrapper.Serialize()
+			ts.NoError(err)
+			ts.Equal([]byte{0, 110}, val)
+			headerFound = true
+		case "x-trailer-bin":
+			val, err := wrapper.Serialize()
+			ts.NoError(err)
+			ts.Equal([]byte{111, 0, 112}, val)
+			trailerFound = true
+		default:
+			ts.Failf("Unexpected detail key: %s", wrapper.Key())
+		}
+	}
+	ts.Truef(headerFound, "Did not find x-header-bin")
+	ts.Truef(trailerFound, "Did not find x-trailer-bin")
+}
+
 func (ts *ErrorDetailsTests) TestGetFlightInfo() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
@@ -297,6 +344,8 @@ func (ts *ErrorDetailsTests) TestGetFlightInfo() {
 	_, _, err = stmt.ExecuteQuery(context.Background())
 	var adbcErr adbc.Error
 	ts.ErrorAs(err, &adbcErr)
+
+	ts.Equal(int32(codes.Unknown), adbcErr.VendorCode)
 
 	ts.Equal(1, len(adbcErr.Details))
 
@@ -345,6 +394,20 @@ func (ts *ErrorDetailsTests) TestDoGet() {
 	message := wrappers.Int32Value{}
 	ts.NoError(any.UnmarshalTo(&message))
 	ts.Equal(int32(42), message.Value)
+}
+
+func (ts *ErrorDetailsTests) TestVendorCode() {
+	stmt, err := ts.cnxn.NewStatement()
+	ts.NoError(err)
+	defer stmt.Close()
+
+	ts.NoError(stmt.SetSqlQuery("vendorcode"))
+
+	_, _, err = stmt.ExecuteQuery(context.Background())
+	var adbcErr adbc.Error
+	ts.ErrorAs(err, &adbcErr)
+
+	ts.Equal(int32(codes.ResourceExhausted), adbcErr.VendorCode)
 }
 
 // ---- ExecuteSchema Tests --------------------
