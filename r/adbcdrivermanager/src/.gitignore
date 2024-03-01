@@ -21,3 +21,4 @@
 adbc.h
 adbc_driver_manager.h
 adbc_driver_manager.cc
+driver_base.h
