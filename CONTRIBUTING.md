@@ -220,6 +220,35 @@ $ cd java/
 $ mvn clean install
 ```
 
+CI also builds the project with [Checker Framework][checker-framework] and
+[ErrorProne][error-prone] enabled.  These projects require additional
+configuration.  First, create a file `java/.mvn/jvm.config` containing this:
+
+```
+--add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+--add-opens jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED
+--add-opens jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED
+```
+
+This is required so that the above static analysis tools can continue to
+access necessary Java compiler internals to do their job.
+
+Then, build with the `errorprone` Maven profile enabled:
+
+```
+mvn install -Perrorprone
+```
+
+[checker-framework]: https://checkerframework.org/
+[errorprone]: https://errorprone.info/
+
 ### Python
 
 Python libraries are managed with [setuptools][setuptools].  See
