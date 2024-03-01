@@ -104,6 +104,15 @@ class ConnectionOptions(enum.Enum):
 class StatementOptions(enum.Enum):
     """Statement options specific to the Flight SQL driver."""
 
+    #: The latest FlightInfo value.
+    #:
+    #: Thread-safe.  Mostly useful when using incremental execution, where an
+    #: advanced client may want to inspect the latest FlightInfo from the
+    #: service, but without waiting for execute_partitions to return.  (The
+    #: service may send an updated FlightInfo with progress/app_metadata
+    #: values, but execute_partitions will only return if there are new
+    #: endpoints.)
+    LAST_FLIGHT_INFO = "adbc.flight.sql.statement.exec.last_flight_info"
     #: The number of batches to queue per partition. Defaults to 5.
     #:
     #: This controls how much we read ahead on result sets.

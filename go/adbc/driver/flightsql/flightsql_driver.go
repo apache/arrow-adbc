@@ -60,6 +60,7 @@ const (
 	OptionTimeoutUpdate       = "adbc.flight.sql.rpc.timeout_seconds.update"
 	OptionRPCCallHeaderPrefix = "adbc.flight.sql.rpc.call_header."
 	OptionCookieMiddleware    = "adbc.flight.sql.rpc.with_cookie_middleware"
+	OptionLastFlightInfo      = "adbc.flight.sql.statement.exec.last_flight_info"
 	infoDriverName            = "ADBC Flight SQL Driver - Go"
 )
 

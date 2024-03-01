@@ -166,6 +166,8 @@ type statement struct {
 	timeouts         timeoutOption
 	incrementalState *incrementalState
 	progress         float64
+	// may seem redundant, but incrementalState isn't locked
+	lastInfo atomic.Pointer[flight.FlightInfo]
 }
 
 func (s *statement) closePreparedStatement() error {
@@ -249,6 +251,18 @@ func (s *statement) GetOption(key string) (string, error) {
 	}
 }
 func (s *statement) GetOptionBytes(key string) ([]byte, error) {
+	switch key {
+	case OptionLastFlightInfo:
+		info := s.lastInfo.Load()
+		serialized, err := proto.Marshal(info)
+		if err != nil {
+			return nil, adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] Could not serialize result for '%s': %s", key, err.Error()),
+				Code: adbc.StatusInternal,
+			}
+		}
+		return serialized, nil
+	}
 	return nil, adbc.Error{
 		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
 		Code: adbc.StatusNotFound,
@@ -594,6 +608,7 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 			// Reset the statement for reuse
 			s.incrementalState = &incrementalState{}
 			atomicStoreFloat64(&s.progress, 0.0)
+			s.lastInfo.Store(nil)
 			return schema, adbc.Partitions{}, totalRecords, nil
 		}
 
@@ -628,6 +643,7 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 			s.incrementalState.previousInfo = poll.GetInfo()
 			s.incrementalState.retryDescriptor = poll.GetFlightDescriptor()
 			atomicStoreFloat64(&s.progress, poll.GetProgress())
+			s.lastInfo.Store(poll.GetInfo())
 
 			if s.incrementalState.retryDescriptor == nil {
 				// Query is finished
@@ -651,6 +667,7 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 		if s.incrementalState.complete && len(info.Endpoint) == 0 {
 			s.incrementalState = &incrementalState{}
 			atomicStoreFloat64(&s.progress, 0.0)
+			s.lastInfo.Store(nil)
 		}
 	} else if s.prepared != nil {
 		info, err = s.prepared.Execute(ctx, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
