@@ -54,6 +54,27 @@ develop and support Conda users.
 [conda]: https://docs.conda.io/en/latest/
 [mambaforge]: https://mamba.readthedocs.io/en/latest/installation.html
 
+### Running Integration Tests
+
+Many of the test suites need to run against external services.  For example,
+the PostgreSQL driver needs to test against a running database!  This can be
+done by setting environment variables to tell tests where the services they
+need can be located.
+
+To standardize the configuration of these services, we use a Docker Compose
+file and a dotenv file.  Services can be started with Docker Compose:
+
+```shell
+$ docker compose up --detach --wait postgres-test
+```
+
+Then, source the .env file at the root of the repo to set the environment
+variables before running tests:
+
+```shell
+$ source .env
+```
+
 ### C/C++
 
 All libraries here contained within one CMake project. To build any
