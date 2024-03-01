@@ -149,6 +149,7 @@ Update Queries
    :header-rows: 1
 
    * - Driver
+     - Incremental Queries
      - Partitioned Data
      - Parameterized Queries
      - Prepared Statements
@@ -161,8 +162,10 @@ Update Queries
      - Y
      - Y
      - Y
+     - Y
 
    * - Flight SQL (Java)
+     - N
      - Y
      - Y
      - Y
@@ -171,6 +174,7 @@ Update Queries
 
    * - JDBC
      - N/A
+     - N/A
      - Y
      - Y
      - Y
@@ -178,12 +182,14 @@ Update Queries
 
    * - PostgreSQL
      - N/A
+     - N/A
      - Y
      - Y
      - Y
      - Y
 
    * - SQLite
+     - N/A
      - N/A
      - Y
      - Y

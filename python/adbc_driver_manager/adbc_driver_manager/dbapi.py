@@ -919,7 +919,9 @@ class Cursor(_Closeable):
         return self._stmt.execute_update()
 
     def adbc_execute_partitions(
-        self, operation, parameters=None
+        self,
+        operation,
+        parameters=None,
     ) -> Tuple[List[bytes], pyarrow.Schema]:
         """
         Execute a query and get the partitions of a distributed result set.
@@ -929,16 +931,21 @@ class Cursor(_Closeable):
         partitions : list of byte
             A list of partition descriptors, which can be read with
             read_partition.
-        schema : pyarrow.Schema
-            The schema of the result set.
+        schema : pyarrow.Schema or None
+            The schema of the result set.  May be None if incremental query
+            execution is enabled and the server has not returned a schema.
 
         Notes
         -----
         This is an extension and not part of the DBAPI standard.
         """
         self._prepare_execute(operation, parameters)
-        partitions, schema, self._rowcount = self._stmt.execute_partitions()
-        return partitions, pyarrow.Schema._import_from_c(schema.address)
+        partitions, schema_handle, self._rowcount = self._stmt.execute_partitions()
+        if schema_handle and schema_handle.address:
+            schema = pyarrow.Schema._import_from_c(schema_handle.address)
+        else:
+            schema = None
+        return partitions, schema
 
     def adbc_execute_schema(self, operation, parameters=None) -> pyarrow.Schema:
         """
