@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
@@ -50,7 +51,9 @@ type snowflakeConn interface {
 	QueryArrowStream(context.Context, string, ...driver.NamedValue) (gosnowflake.ArrowStreamLoader, error)
 }
 
-type cnxn struct {
+type connectionImpl struct {
+	driverbase.ConnectionImplBase
+
 	cn    snowflakeConn
 	db    *databaseImpl
 	ctor  gosnowflake.Connector
@@ -77,80 +80,6 @@ type cnxn struct {
 // characters, or "_" to match exactly one character. (See the
 // documentation of DatabaseMetaData in JDBC or "Pattern Value Arguments"
 // in the ODBC documentation.) Escaping is not currently supported.
-// GetInfo returns metadata about the database/driver.
-//
-// The result is an Arrow dataset with the following schema:
-//
-//	Field Name									| Field Type
-//	----------------------------|-----------------------------
-//	info_name					   				| uint32 not null
-//	info_value									| INFO_SCHEMA
-//
-// INFO_SCHEMA is a dense union with members:
-//
-//	Field Name (Type Code)			| Field Type
-//	----------------------------|-----------------------------
-//	string_value (0)						| utf8
-//	bool_value (1)							| bool
-//	int64_value (2)							| int64
-//	int32_bitmask (3)						| int32
-//	string_list (4)							| list<utf8>
-//	int32_to_int32_list_map (5)	| map<int32, list<int32>>
-//
-// Each metadatum is identified by an integer code. The recognized
-// codes are defined as constants. Codes [0, 10_000) are reserved
-// for ADBC usage. Drivers/vendors will ignore requests for unrecognized
-// codes (the row will be omitted from the result).
-func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
-	const strValTypeID arrow.UnionTypeCode = 0
-	const intValTypeID arrow.UnionTypeCode = 2
-
-	if len(infoCodes) == 0 {
-		infoCodes = infoSupportedCodes
-	}
-
-	bldr := array.NewRecordBuilder(c.db.Alloc, adbc.GetInfoSchema)
-	defer bldr.Release()
-	bldr.Reserve(len(infoCodes))
-
-	infoNameBldr := bldr.Field(0).(*array.Uint32Builder)
-	infoValueBldr := bldr.Field(1).(*array.DenseUnionBuilder)
-	strInfoBldr := infoValueBldr.Child(int(strValTypeID)).(*array.StringBuilder)
-	intInfoBldr := infoValueBldr.Child(int(intValTypeID)).(*array.Int64Builder)
-
-	for _, code := range infoCodes {
-		switch code {
-		case adbc.InfoDriverName:
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.Append(strValTypeID)
-			strInfoBldr.Append(infoDriverName)
-		case adbc.InfoDriverVersion:
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.Append(strValTypeID)
-			strInfoBldr.Append(infoDriverVersion)
-		case adbc.InfoDriverArrowVersion:
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.Append(strValTypeID)
-			strInfoBldr.Append(infoDriverArrowVersion)
-		case adbc.InfoDriverADBCVersion:
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.Append(intValTypeID)
-			intInfoBldr.Append(adbc.AdbcVersion1_1_0)
-		case adbc.InfoVendorName:
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.Append(strValTypeID)
-			strInfoBldr.Append(infoVendorName)
-		default:
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.AppendNull()
-		}
-	}
-
-	final := bldr.NewRecord()
-	defer final.Release()
-	return array.NewRecordReader(adbc.GetInfoSchema, []arrow.Record{final})
-}
-
 // GetObjects gets a hierarchical view of all catalogs, database schemas,
 // tables, and columns.
 //
@@ -238,7 +167,7 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 //
 // All non-empty, non-nil strings should be a search pattern (as described
 // earlier).
-func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
+func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	metadataRecords, err := c.populateMetadata(ctx, depth, catalog, dbSchema, tableName, columnName, tableType)
 	if err != nil {
 		return nil, err
@@ -266,7 +195,7 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 	return g.Finish()
 }
 
-func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, metadataRecords []internal.Metadata) (result map[string][]string, err error) {
+func (c *connectionImpl) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, metadataRecords []internal.Metadata) (result map[string][]string, err error) {
 	if depth == adbc.ObjectDepthCatalogs {
 		return
 	}
@@ -453,7 +382,7 @@ func toXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
 	}
 }
 
-func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (result internal.SchemaToTableInfo, err error) {
+func (c *connectionImpl) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (result internal.SchemaToTableInfo, err error) {
 	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
 		return
 	}
@@ -525,7 +454,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	return
 }
 
-func (c *cnxn) populateMetadata(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) ([]internal.Metadata, error) {
+func (c *connectionImpl) populateMetadata(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) ([]internal.Metadata, error) {
 	var metadataRecords []internal.Metadata
 	catalogMetadataRecords, err := c.getCatalogsMetadata(ctx)
 	if err != nil {
@@ -557,7 +486,7 @@ func (c *cnxn) populateMetadata(ctx context.Context, depth adbc.ObjectDepth, cat
 	return metadataRecords, nil
 }
 
-func (c *cnxn) getCatalogsMetadata(ctx context.Context) ([]internal.Metadata, error) {
+func (c *connectionImpl) getCatalogsMetadata(ctx context.Context) ([]internal.Metadata, error) {
 	metadataRecords := make([]internal.Metadata, 0)
 
 	rows, err := c.sqldb.QueryContext(ctx, prepareCatalogsSQL(), nil)
@@ -586,7 +515,7 @@ func (c *cnxn) getCatalogsMetadata(ctx context.Context) ([]internal.Metadata, er
 	return metadataRecords, nil
 }
 
-func (c *cnxn) getDbSchemasMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string) ([]internal.Metadata, error) {
+func (c *connectionImpl) getDbSchemasMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string) ([]internal.Metadata, error) {
 	var metadataRecords []internal.Metadata
 	query, queryArgs := prepareDbSchemasSQL(matchingCatalogNames, catalog, dbSchema)
 	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
@@ -605,7 +534,7 @@ func (c *cnxn) getDbSchemasMetadata(ctx context.Context, matchingCatalogNames []
 	return metadataRecords, nil
 }
 
-func (c *cnxn) getTablesMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, tableType []string) ([]internal.Metadata, error) {
+func (c *connectionImpl) getTablesMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, tableType []string) ([]internal.Metadata, error) {
 	metadataRecords := make([]internal.Metadata, 0)
 	query, queryArgs := prepareTablesSQL(matchingCatalogNames, catalog, dbSchema, tableName, tableType)
 	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
@@ -624,7 +553,7 @@ func (c *cnxn) getTablesMetadata(ctx context.Context, matchingCatalogNames []str
 	return metadataRecords, nil
 }
 
-func (c *cnxn) getColumnsMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) ([]internal.Metadata, error) {
+func (c *connectionImpl) getColumnsMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) ([]internal.Metadata, error) {
 	metadataRecords := make([]internal.Metadata, 0)
 	query, queryArgs := prepareColumnsSQL(matchingCatalogNames, catalog, dbSchema, tableName, columnName, tableType)
 	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
@@ -871,7 +800,7 @@ func descToField(name, typ, isnull, primary string, comment sql.NullString) (fie
 	return
 }
 
-func (c *cnxn) GetOption(key string) (string, error) {
+func (c *connectionImpl) GetOption(key string) (string, error) {
 	switch key {
 	case adbc.OptionKeyAutoCommit:
 		if c.activeTransaction {
@@ -887,13 +816,10 @@ func (c *cnxn) GetOption(key string) (string, error) {
 		return c.getStringQuery("SELECT CURRENT_SCHEMA()")
 	}
 
-	return "", adbc.Error{
-		Msg:  "[Snowflake] unknown connection option",
-		Code: adbc.StatusNotFound,
-	}
+	return c.ConnectionImplBase.GetOption(key)
 }
 
-func (c *cnxn) getStringQuery(query string) (string, error) {
+func (c *connectionImpl) getStringQuery(query string) (string, error) {
 	result, err := c.cn.QueryContext(context.Background(), query, nil)
 	if err != nil {
 		return "", errToAdbcErr(adbc.StatusInternal, err)
@@ -929,28 +855,7 @@ func (c *cnxn) getStringQuery(query string) (string, error) {
 	return value, nil
 }
 
-func (c *cnxn) GetOptionBytes(key string) ([]byte, error) {
-	return nil, adbc.Error{
-		Msg:  "[Snowflake] unknown connection option",
-		Code: adbc.StatusNotFound,
-	}
-}
-
-func (c *cnxn) GetOptionInt(key string) (int64, error) {
-	return 0, adbc.Error{
-		Msg:  "[Snowflake] unknown connection option",
-		Code: adbc.StatusNotFound,
-	}
-}
-
-func (c *cnxn) GetOptionDouble(key string) (float64, error) {
-	return 0.0, adbc.Error{
-		Msg:  "[Snowflake] unknown connection option",
-		Code: adbc.StatusNotFound,
-	}
-}
-
-func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
+func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
 	tblParts := make([]string, 0, 3)
 	if catalog != nil {
 		tblParts = append(tblParts, strconv.Quote(*catalog))
@@ -998,7 +903,7 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 //	Field Name			| Field Type
 //	----------------|--------------
 //	table_type			| utf8 not null
-func (c *cnxn) GetTableTypes(_ context.Context) (array.RecordReader, error) {
+func (c *connectionImpl) GetTableTypes(_ context.Context) (array.RecordReader, error) {
 	bldr := array.NewRecordBuilder(c.db.Alloc, adbc.TableTypesSchema)
 	defer bldr.Release()
 
@@ -1012,7 +917,7 @@ func (c *cnxn) GetTableTypes(_ context.Context) (array.RecordReader, error) {
 // only be used if autocommit is disabled.
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
-func (c *cnxn) Commit(_ context.Context) error {
+func (c *connectionImpl) Commit(_ context.Context) error {
 	if !c.activeTransaction {
 		return adbc.Error{
 			Msg:  "no active transaction, cannot commit",
@@ -1033,7 +938,7 @@ func (c *cnxn) Commit(_ context.Context) error {
 // is disabled.
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
-func (c *cnxn) Rollback(_ context.Context) error {
+func (c *connectionImpl) Rollback(_ context.Context) error {
 	if !c.activeTransaction {
 		return adbc.Error{
 			Msg:  "no active transaction, cannot rollback",
@@ -1051,20 +956,21 @@ func (c *cnxn) Rollback(_ context.Context) error {
 }
 
 // NewStatement initializes a new statement object tied to this connection
-func (c *cnxn) NewStatement() (adbc.Statement, error) {
+func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	defaultIngestOptions := DefaultIngestOptions()
-	return &statement{
+	return &statementImpl{
 		alloc:               c.db.Alloc,
 		cnxn:                c,
 		queueSize:           defaultStatementQueueSize,
 		prefetchConcurrency: defaultPrefetchConcurrency,
 		useHighPrecision:    c.useHighPrecision,
 		ingestOptions:       defaultIngestOptions,
+		StatementImplBase:   driverbase.NewStatementImplBase(&c.ConnectionImplBase),
 	}, nil
 }
 
 // Close closes this connection and releases any associated resources.
-func (c *cnxn) Close() error {
+func (c *connectionImpl) Close() error {
 	if c.sqldb == nil || c.cn == nil {
 		return adbc.Error{Code: adbc.StatusInvalidState}
 	}
@@ -1084,14 +990,14 @@ func (c *cnxn) Close() error {
 // results can then be read independently using the returned RecordReader.
 //
 // A partition can be retrieved by using ExecutePartitions on a statement.
-func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error) {
+func (c *connectionImpl) ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error) {
 	return nil, adbc.Error{
 		Code: adbc.StatusNotImplemented,
 		Msg:  "ReadPartition not yet implemented for snowflake driver",
 	}
 }
 
-func (c *cnxn) SetOption(key, value string) error {
+func (c *connectionImpl) SetOption(key, value string) error {
 	switch key {
 	case adbc.OptionKeyAutoCommit:
 		switch value {
@@ -1148,26 +1054,5 @@ func (c *cnxn) SetOption(key, value string) error {
 			Msg:  "[Snowflake] unknown connection option " + key + ": " + value,
 			Code: adbc.StatusInvalidArgument,
 		}
-	}
-}
-
-func (c *cnxn) SetOptionBytes(key string, value []byte) error {
-	return adbc.Error{
-		Msg:  "[Snowflake] unknown connection option",
-		Code: adbc.StatusNotImplemented,
-	}
-}
-
-func (c *cnxn) SetOptionInt(key string, value int64) error {
-	return adbc.Error{
-		Msg:  "[Snowflake] unknown connection option",
-		Code: adbc.StatusNotImplemented,
-	}
-}
-
-func (c *cnxn) SetOptionDouble(key string, value float64) error {
-	return adbc.Error{
-		Msg:  "[Snowflake] unknown connection option",
-		Code: adbc.StatusNotImplemented,
 	}
 }

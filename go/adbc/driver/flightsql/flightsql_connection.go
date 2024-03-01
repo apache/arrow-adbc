@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
@@ -43,7 +44,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type cnxn struct {
+type connectionImpl struct {
+	driverbase.ConnectionImplBase
+
 	cl *flightsql.Client
 
 	db          *databaseImpl
@@ -97,7 +100,7 @@ func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEnd
 	return nil, err
 }
 
-func (c *cnxn) getSessionOptions(ctx context.Context) (map[string]interface{}, error) {
+func (c *connectionImpl) getSessionOptions(ctx context.Context) (map[string]interface{}, error) {
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	var header, trailer metadata.MD
 	rawOptions, err := c.cl.GetSessionOptions(ctx, &flight.GetSessionOptionsRequest{}, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
@@ -140,7 +143,7 @@ func (c *cnxn) getSessionOptions(ctx context.Context) (map[string]interface{}, e
 	return options, nil
 }
 
-func (c *cnxn) setSessionOptions(ctx context.Context, key string, val interface{}) error {
+func (c *connectionImpl) setSessionOptions(ctx context.Context, key string, val interface{}) error {
 	req := flight.SetSessionOptionsRequest{}
 
 	var err error
@@ -206,7 +209,7 @@ func getSessionOption[T any](options map[string]interface{}, key string, default
 	return value, nil
 }
 
-func (c *cnxn) GetOption(key string) (string, error) {
+func (c *connectionImpl) GetOption(key string) (string, error) {
 	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
 		name := strings.TrimPrefix(key, OptionRPCCallHeaderPrefix)
 		headers := c.hdrs.Get(name)
@@ -333,7 +336,7 @@ func (c *cnxn) GetOption(key string) (string, error) {
 	}
 }
 
-func (c *cnxn) GetOptionBytes(key string) ([]byte, error) {
+func (c *connectionImpl) GetOptionBytes(key string) ([]byte, error) {
 	switch key {
 	case OptionSessionOptions:
 		options, err := c.getSessionOptions(context.Background())
@@ -356,7 +359,7 @@ func (c *cnxn) GetOptionBytes(key string) ([]byte, error) {
 	}
 }
 
-func (c *cnxn) GetOptionInt(key string) (int64, error) {
+func (c *connectionImpl) GetOptionInt(key string) (int64, error) {
 	switch key {
 	case OptionTimeoutFetch:
 		fallthrough
@@ -378,13 +381,10 @@ func (c *cnxn) GetOptionInt(key string) (int64, error) {
 		return getSessionOption(options, name, int64(0), "an integer")
 	}
 
-	return 0, adbc.Error{
-		Msg:  "[Flight SQL] unknown connection option",
-		Code: adbc.StatusNotFound,
-	}
+	return c.ConnectionImplBase.GetOptionInt(key)
 }
 
-func (c *cnxn) GetOptionDouble(key string) (float64, error) {
+func (c *connectionImpl) GetOptionDouble(key string) (float64, error) {
 	switch key {
 	case OptionTimeoutFetch:
 		return c.timeouts.fetchTimeout.Seconds(), nil
@@ -402,13 +402,10 @@ func (c *cnxn) GetOptionDouble(key string) (float64, error) {
 		return getSessionOption(options, name, float64(0.0), "a floating-point")
 	}
 
-	return 0.0, adbc.Error{
-		Msg:  "[Flight SQL] unknown connection option",
-		Code: adbc.StatusNotFound,
-	}
+	return c.ConnectionImplBase.GetOptionDouble(key)
 }
 
-func (c *cnxn) SetOption(key, value string) error {
+func (c *connectionImpl) SetOption(key, value string) error {
 	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
 		name := strings.TrimPrefix(key, OptionRPCCallHeaderPrefix)
 		if value == "" {
@@ -506,20 +503,10 @@ func (c *cnxn) SetOption(key, value string) error {
 		return c.setSessionOptions(context.Background(), name, nil)
 	}
 
-	return adbc.Error{
-		Msg:  "[Flight SQL] unknown connection option",
-		Code: adbc.StatusNotImplemented,
-	}
+	return c.ConnectionImplBase.SetOption(key, value)
 }
 
-func (c *cnxn) SetOptionBytes(key string, value []byte) error {
-	return adbc.Error{
-		Msg:  "[Flight SQL] unknown connection option",
-		Code: adbc.StatusNotImplemented,
-	}
-}
-
-func (c *cnxn) SetOptionInt(key string, value int64) error {
+func (c *connectionImpl) SetOptionInt(key string, value int64) error {
 	switch key {
 	case OptionTimeoutFetch, OptionTimeoutQuery, OptionTimeoutUpdate:
 		return c.timeouts.setTimeout(key, float64(value))
@@ -529,13 +516,10 @@ func (c *cnxn) SetOptionInt(key string, value int64) error {
 		return c.setSessionOptions(context.Background(), name, value)
 	}
 
-	return adbc.Error{
-		Msg:  "[Flight SQL] unknown connection option",
-		Code: adbc.StatusNotImplemented,
-	}
+	return c.ConnectionImplBase.SetOptionInt(key, value)
 }
 
-func (c *cnxn) SetOptionDouble(key string, value float64) error {
+func (c *connectionImpl) SetOptionDouble(key string, value float64) error {
 	switch key {
 	case OptionTimeoutFetch:
 		fallthrough
@@ -549,10 +533,7 @@ func (c *cnxn) SetOptionDouble(key string, value float64) error {
 		return c.setSessionOptions(context.Background(), name, value)
 	}
 
-	return adbc.Error{
-		Msg:  "[Flight SQL] unknown connection option",
-		Code: adbc.StatusNotImplemented,
-	}
+	return c.ConnectionImplBase.SetOptionDouble(key, value)
 }
 
 // GetInfo returns metadata about the database/driver.
@@ -579,97 +560,77 @@ func (c *cnxn) SetOptionDouble(key string, value float64) error {
 // codes are defined as constants. Codes [0, 10_000) are reserved
 // for ADBC usage. Drivers/vendors will ignore requests for unrecognized
 // codes (the row will be omitted from the result).
-func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
-	const strValTypeID arrow.UnionTypeCode = 0
-	const intValTypeID arrow.UnionTypeCode = 2
+func (c *connectionImpl) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
+	driverInfo := c.ConnectionImplBase.DriverInfo
 
 	if len(infoCodes) == 0 {
-		infoCodes = infoSupportedCodes
+		infoCodes = driverInfo.InfoSupportedCodes()
 	}
-
-	bldr := array.NewRecordBuilder(c.cl.Alloc, adbc.GetInfoSchema)
-	defer bldr.Release()
-	bldr.Reserve(len(infoCodes))
-
-	infoNameBldr := bldr.Field(0).(*array.Uint32Builder)
-	infoValueBldr := bldr.Field(1).(*array.DenseUnionBuilder)
-	strInfoBldr := infoValueBldr.Child(int(strValTypeID)).(*array.StringBuilder)
-	intInfoBldr := infoValueBldr.Child(int(intValTypeID)).(*array.Int64Builder)
 
 	translated := make([]flightsql.SqlInfo, 0, len(infoCodes))
 	for _, code := range infoCodes {
 		if t, ok := adbcToFlightSQLInfo[code]; ok {
 			translated = append(translated, t)
-			continue
 		}
+	}
 
-		switch code {
-		case adbc.InfoDriverName:
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.Append(strValTypeID)
-			strInfoBldr.Append(infoDriverName)
-		case adbc.InfoDriverVersion:
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.Append(strValTypeID)
-			strInfoBldr.Append(infoDriverVersion)
-		case adbc.InfoDriverArrowVersion:
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.Append(strValTypeID)
-			strInfoBldr.Append(infoDriverArrowVersion)
-		case adbc.InfoDriverADBCVersion:
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.Append(intValTypeID)
-			intInfoBldr.Append(adbc.AdbcVersion1_1_0)
-		}
+	// None of the requested info codes are available on the server, so just return the local info
+	if len(translated) == 0 {
+		return c.ConnectionImplBase.GetInfo(ctx, infoCodes)
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	var header, trailer metadata.MD
 	info, err := c.cl.GetSqlInfo(ctx, translated, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
-	if err == nil {
-		for i, endpoint := range info.Endpoint {
-			var header, trailer metadata.MD
-			rdr, err := doGet(ctx, c.cl, endpoint, c.clientCache, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
-			if err != nil {
-				return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
-			}
 
-			for rdr.Next() {
-				rec := rdr.Record()
-				field := rec.Column(0).(*array.Uint32)
-				info := rec.Column(1).(*array.DenseUnion)
+	// Just return local driver info if GetSqlInfo hasn't been implemented on the server
+	if grpcstatus.Code(err) == grpccodes.Unimplemented {
+		return c.ConnectionImplBase.GetInfo(ctx, infoCodes)
+	}
 
-				for i := 0; i < int(rec.NumRows()); i++ {
-					switch flightsql.SqlInfo(field.Value(i)) {
-					case flightsql.SqlInfoFlightSqlServerName:
-						infoNameBldr.Append(uint32(adbc.InfoVendorName))
-					case flightsql.SqlInfoFlightSqlServerVersion:
-						infoNameBldr.Append(uint32(adbc.InfoVendorVersion))
-					case flightsql.SqlInfoFlightSqlServerArrowVersion:
-						infoNameBldr.Append(uint32(adbc.InfoVendorArrowVersion))
-					default:
-						continue
-					}
-
-					infoValueBldr.Append(info.TypeCode(i))
-					// we know we're only doing string fields here right now
-					v := info.Field(info.ChildID(i)).(*array.String).
-						Value(int(info.ValueOffset(i)))
-					strInfoBldr.Append(v)
-				}
-			}
-
-			if err := checkContext(rdr.Err(), ctx); err != nil {
-				return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
-			}
-		}
-	} else if grpcstatus.Code(err) != grpccodes.Unimplemented {
+	if err != nil {
 		return nil, adbcFromFlightStatus(err, "GetInfo(GetSqlInfo)")
 	}
 
-	final := bldr.NewRecord()
-	defer final.Release()
-	return array.NewRecordReader(adbc.GetInfoSchema, []arrow.Record{final})
+	// No error, go get the SqlInfo from the server
+	for i, endpoint := range info.Endpoint {
+		var header, trailer metadata.MD
+		rdr, err := doGet(ctx, c.cl, endpoint, c.clientCache, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
+		if err != nil {
+			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
+		}
+
+		for rdr.Next() {
+			rec := rdr.Record()
+			field := rec.Column(0).(*array.Uint32)
+			info := rec.Column(1).(*array.DenseUnion)
+
+			var adbcInfoCode adbc.InfoCode
+			for i := 0; i < int(rec.NumRows()); i++ {
+				switch flightsql.SqlInfo(field.Value(i)) {
+				case flightsql.SqlInfoFlightSqlServerName:
+					adbcInfoCode = adbc.InfoVendorName
+				case flightsql.SqlInfoFlightSqlServerVersion:
+					adbcInfoCode = adbc.InfoVendorVersion
+				case flightsql.SqlInfoFlightSqlServerArrowVersion:
+					adbcInfoCode = adbc.InfoVendorArrowVersion
+				default:
+					continue
+				}
+
+				// we know we're only doing string fields here right now
+				v := info.Field(info.ChildID(i)).(*array.String).
+					Value(int(info.ValueOffset(i)))
+				driverInfo.RegisterInfoCode(adbcInfoCode, v)
+			}
+		}
+
+		if err := checkContext(rdr.Err(), ctx); err != nil {
+			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
+		}
+	}
+
+	return c.ConnectionImplBase.GetInfo(ctx, infoCodes)
 }
 
 // GetObjects gets a hierarchical view of all catalogs, database schemas,
@@ -759,7 +720,7 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 //
 // All non-empty, non-nil strings should be a search pattern (as described
 // earlier).
-func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
+func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
 	if err := g.Init(c.db.Alloc, c.getObjectsDbSchemas, c.getObjectsTables); err != nil {
@@ -805,7 +766,7 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 }
 
 // Helper function to read and validate a metadata stream
-func (c *cnxn) readInfo(ctx context.Context, expectedSchema *arrow.Schema, info *flight.FlightInfo, opts ...grpc.CallOption) (array.RecordReader, error) {
+func (c *connectionImpl) readInfo(ctx context.Context, expectedSchema *arrow.Schema, info *flight.FlightInfo, opts ...grpc.CallOption) (array.RecordReader, error) {
 	// use a default queueSize for the reader
 	rdr, err := newRecordReader(ctx, c.db.Alloc, c.cl, info, c.clientCache, 5, opts...)
 	if err != nil {
@@ -823,7 +784,7 @@ func (c *cnxn) readInfo(ctx context.Context, expectedSchema *arrow.Schema, info 
 }
 
 // Helper function to build up a map of catalogs to DB schemas
-func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, metadataRecords []internal.Metadata) (result map[string][]string, err error) {
+func (c *connectionImpl) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, metadataRecords []internal.Metadata) (result map[string][]string, err error) {
 	if depth == adbc.ObjectDepthCatalogs {
 		return
 	}
@@ -864,7 +825,7 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 	return
 }
 
-func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (result internal.SchemaToTableInfo, err error) {
+func (c *connectionImpl) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (result internal.SchemaToTableInfo, err error) {
 	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
 		return
 	}
@@ -944,7 +905,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	return
 }
 
-func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
+func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
 	opts := &flightsql.GetTablesOpts{
 		Catalog:                catalog,
 		DbSchemaFilterPattern:  dbSchema,
@@ -1023,7 +984,7 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 //	Field Name			| Field Type
 //	----------------|--------------
 //	table_type			| utf8 not null
-func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
+func (c *connectionImpl) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	var header, trailer metadata.MD
 	info, err := c.cl.GetTableTypes(ctx, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
@@ -1040,7 +1001,7 @@ func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
 // Behavior is undefined if this is mixed with SQL transaction statements.
 // When not supported, the convention is that it should act as if autocommit
 // is enabled and return INVALID_STATE errors.
-func (c *cnxn) Commit(ctx context.Context) error {
+func (c *connectionImpl) Commit(ctx context.Context) error {
 	if c.txn == nil {
 		return adbc.Error{
 			Msg:  "[Flight SQL] Cannot commit when autocommit is enabled",
@@ -1074,7 +1035,7 @@ func (c *cnxn) Commit(ctx context.Context) error {
 // Behavior is undefined if this is mixed with SQL transaction statements.
 // When not supported, the convention is that it should act as if autocommit
 // is enabled and return INVALID_STATE errors.
-func (c *cnxn) Rollback(ctx context.Context) error {
+func (c *connectionImpl) Rollback(ctx context.Context) error {
 	if c.txn == nil {
 		return adbc.Error{
 			Msg:  "[Flight SQL] Cannot rollback when autocommit is enabled",
@@ -1103,18 +1064,19 @@ func (c *cnxn) Rollback(ctx context.Context) error {
 }
 
 // NewStatement initializes a new statement object tied to this connection
-func (c *cnxn) NewStatement() (adbc.Statement, error) {
-	return &statement{
-		alloc:       c.db.Alloc,
-		clientCache: c.clientCache,
-		hdrs:        c.hdrs.Copy(),
-		queueSize:   5,
-		timeouts:    c.timeouts,
-		cnxn:        c,
+func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
+	return &statementImpl{
+		StatementImplBase: driverbase.NewStatementImplBase(&c.ConnectionImplBase),
+		alloc:             c.db.Alloc,
+		clientCache:       c.clientCache,
+		hdrs:              c.hdrs.Copy(),
+		queueSize:         5,
+		timeouts:          c.timeouts,
+		cnxn:              c,
 	}, nil
 }
 
-func (c *cnxn) execute(ctx context.Context, query string, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
+func (c *connectionImpl) execute(ctx context.Context, query string, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
 	if c.txn != nil {
 		return c.txn.Execute(ctx, query, opts...)
 	}
@@ -1122,7 +1084,7 @@ func (c *cnxn) execute(ctx context.Context, query string, opts ...grpc.CallOptio
 	return c.cl.Execute(ctx, query, opts...)
 }
 
-func (c *cnxn) executeSchema(ctx context.Context, query string, opts ...grpc.CallOption) (*flight.SchemaResult, error) {
+func (c *connectionImpl) executeSchema(ctx context.Context, query string, opts ...grpc.CallOption) (*flight.SchemaResult, error) {
 	if c.txn != nil {
 		return c.txn.GetExecuteSchema(ctx, query, opts...)
 	}
@@ -1130,7 +1092,7 @@ func (c *cnxn) executeSchema(ctx context.Context, query string, opts ...grpc.Cal
 	return c.cl.GetExecuteSchema(ctx, query, opts...)
 }
 
-func (c *cnxn) executeSubstrait(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
+func (c *connectionImpl) executeSubstrait(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
 	if c.txn != nil {
 		return c.txn.ExecuteSubstrait(ctx, plan, opts...)
 	}
@@ -1138,7 +1100,7 @@ func (c *cnxn) executeSubstrait(ctx context.Context, plan flightsql.SubstraitPla
 	return c.cl.ExecuteSubstrait(ctx, plan, opts...)
 }
 
-func (c *cnxn) executeSubstraitSchema(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (*flight.SchemaResult, error) {
+func (c *connectionImpl) executeSubstraitSchema(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (*flight.SchemaResult, error) {
 	if c.txn != nil {
 		return c.txn.GetExecuteSubstraitSchema(ctx, plan, opts...)
 	}
@@ -1146,7 +1108,7 @@ func (c *cnxn) executeSubstraitSchema(ctx context.Context, plan flightsql.Substr
 	return c.cl.GetExecuteSubstraitSchema(ctx, plan, opts...)
 }
 
-func (c *cnxn) executeUpdate(ctx context.Context, query string, opts ...grpc.CallOption) (n int64, err error) {
+func (c *connectionImpl) executeUpdate(ctx context.Context, query string, opts ...grpc.CallOption) (n int64, err error) {
 	if c.txn != nil {
 		return c.txn.ExecuteUpdate(ctx, query, opts...)
 	}
@@ -1154,7 +1116,7 @@ func (c *cnxn) executeUpdate(ctx context.Context, query string, opts ...grpc.Cal
 	return c.cl.ExecuteUpdate(ctx, query, opts...)
 }
 
-func (c *cnxn) executeSubstraitUpdate(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (n int64, err error) {
+func (c *connectionImpl) executeSubstraitUpdate(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (n int64, err error) {
 	if c.txn != nil {
 		return c.txn.ExecuteSubstraitUpdate(ctx, plan, opts...)
 	}
@@ -1162,7 +1124,7 @@ func (c *cnxn) executeSubstraitUpdate(ctx context.Context, plan flightsql.Substr
 	return c.cl.ExecuteSubstraitUpdate(ctx, plan, opts...)
 }
 
-func (c *cnxn) poll(ctx context.Context, query string, retryDescriptor *flight.FlightDescriptor, opts ...grpc.CallOption) (*flight.PollInfo, error) {
+func (c *connectionImpl) poll(ctx context.Context, query string, retryDescriptor *flight.FlightDescriptor, opts ...grpc.CallOption) (*flight.PollInfo, error) {
 	if c.txn != nil {
 		return c.txn.ExecutePoll(ctx, query, retryDescriptor, opts...)
 	}
@@ -1170,7 +1132,7 @@ func (c *cnxn) poll(ctx context.Context, query string, retryDescriptor *flight.F
 	return c.cl.ExecutePoll(ctx, query, retryDescriptor, opts...)
 }
 
-func (c *cnxn) pollSubstrait(ctx context.Context, plan flightsql.SubstraitPlan, retryDescriptor *flight.FlightDescriptor, opts ...grpc.CallOption) (*flight.PollInfo, error) {
+func (c *connectionImpl) pollSubstrait(ctx context.Context, plan flightsql.SubstraitPlan, retryDescriptor *flight.FlightDescriptor, opts ...grpc.CallOption) (*flight.PollInfo, error) {
 	if c.txn != nil {
 		return c.txn.ExecuteSubstraitPoll(ctx, plan, retryDescriptor, opts...)
 	}
@@ -1178,7 +1140,7 @@ func (c *cnxn) pollSubstrait(ctx context.Context, plan flightsql.SubstraitPlan, 
 	return c.cl.ExecuteSubstraitPoll(ctx, plan, retryDescriptor, opts...)
 }
 
-func (c *cnxn) prepare(ctx context.Context, query string, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
+func (c *connectionImpl) prepare(ctx context.Context, query string, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
 	if c.txn != nil {
 		return c.txn.Prepare(ctx, query, opts...)
 	}
@@ -1186,7 +1148,7 @@ func (c *cnxn) prepare(ctx context.Context, query string, opts ...grpc.CallOptio
 	return c.cl.Prepare(ctx, query, opts...)
 }
 
-func (c *cnxn) prepareSubstrait(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
+func (c *connectionImpl) prepareSubstrait(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
 	if c.txn != nil {
 		return c.txn.PrepareSubstrait(ctx, plan, opts...)
 	}
@@ -1195,7 +1157,7 @@ func (c *cnxn) prepareSubstrait(ctx context.Context, plan flightsql.SubstraitPla
 }
 
 // Close closes this connection and releases any associated resources.
-func (c *cnxn) Close() error {
+func (c *connectionImpl) Close() error {
 	if c.cl == nil {
 		return adbc.Error{
 			Msg:  "[Flight SQL Connection] trying to close already closed connection",
@@ -1225,7 +1187,7 @@ func (c *cnxn) Close() error {
 // results can then be read independently using the returned RecordReader.
 //
 // A partition can be retrieved by using ExecutePartitions on a statement.
-func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (rdr array.RecordReader, err error) {
+func (c *connectionImpl) ReadPartition(ctx context.Context, serializedPartition []byte) (rdr array.RecordReader, err error) {
 	var info flight.FlightInfo
 	if err := proto.Unmarshal(serializedPartition, &info); err != nil {
 		return nil, adbc.Error{
@@ -1251,5 +1213,5 @@ func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (r
 }
 
 var (
-	_ adbc.PostInitOptions = (*cnxn)(nil)
+	_ adbc.PostInitOptions = (*connectionImpl)(nil)
 )

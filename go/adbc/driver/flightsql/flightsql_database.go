@@ -503,9 +503,11 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		}
 	}
 
-	return &cnxn{cl: cl, db: d, clientCache: cache,
-		hdrs: make(metadata.MD), timeouts: d.timeout,
-		supportInfo: cnxnSupport}, nil
+	return &connectionImpl{
+		cl: cl, db: d, clientCache: cache,
+		hdrs: make(metadata.MD), timeouts: d.timeout, supportInfo: cnxnSupport,
+		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+	}, nil
 }
 
 type bearerAuthMiddleware struct {

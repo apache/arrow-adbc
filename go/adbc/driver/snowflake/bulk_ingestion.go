@@ -124,7 +124,7 @@ func DefaultIngestOptions() *ingestOptions {
 //
 // The Record must already be bound by calling stmt.Bind(), and will be released
 // and reset upon completion.
-func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) {
+func (st *statementImpl) ingestRecord(ctx context.Context) (nrows int64, err error) {
 	defer func() {
 		// Record already released by writeParquet()
 		st.bound = nil
@@ -198,7 +198,7 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 //
 // The RecordReader must already be bound by calling stmt.BindStream(), and will
 // be released and reset upon completion.
-func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) {
+func (st *statementImpl) ingestStream(ctx context.Context) (nrows int64, err error) {
 	defer func() {
 		st.streamBind.Release()
 		st.streamBind = nil

@@ -136,28 +136,7 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 			return *val, nil
 		}
 	}
-	return "", adbc.Error{
-		Msg:  fmt.Sprintf("[Snowflake] Unknown database option '%s'", key),
-		Code: adbc.StatusNotFound,
-	}
-}
-func (d *databaseImpl) GetOptionBytes(key string) ([]byte, error) {
-	return nil, adbc.Error{
-		Msg:  fmt.Sprintf("[Snowflake] Unknown database option '%s'", key),
-		Code: adbc.StatusNotFound,
-	}
-}
-func (d *databaseImpl) GetOptionInt(key string) (int64, error) {
-	return 0, adbc.Error{
-		Msg:  fmt.Sprintf("[Snowflake] Unknown database option '%s'", key),
-		Code: adbc.StatusNotFound,
-	}
-}
-func (d *databaseImpl) GetOptionDouble(key string) (float64, error) {
-	return 0, adbc.Error{
-		Msg:  fmt.Sprintf("[Snowflake] Unknown database option '%s'", key),
-		Code: adbc.StatusNotFound,
-	}
+	return d.DatabaseImplBase.GetOption(key)
 }
 
 func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
@@ -464,14 +443,15 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
 
-	return &cnxn{
+	return &connectionImpl{
 		cn: cn.(snowflakeConn),
 		db: d, ctor: connector,
 		sqldb: sql.OpenDB(connector),
 		// default enable high precision
 		// SetOption(OptionUseHighPrecision, adbc.OptionValueDisabled) to
 		// get Int64/Float64 instead
-		useHighPrecision: d.useHighPrecision,
+		useHighPrecision:   d.useHighPrecision,
+		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 	}, nil
 }
 

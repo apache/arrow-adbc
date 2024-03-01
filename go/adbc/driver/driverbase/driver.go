@@ -28,39 +28,39 @@ import (
 // DriverImpl is an interface that drivers implement to provide
 // vendor-specific functionality.
 type DriverImpl interface {
+	adbc.Driver
 	Base() *DriverImplBase
-	NewDatabase(opts map[string]string) (adbc.Database, error)
 }
 
-// DriverImplBase is a struct that provides default implementations of the
-// DriverImpl interface. It is meant to be used as a composite struct for a
-// driver's DriverImpl implementation.
+// DriverImplBase is a struct that provides default implementations of some of the
+// methods defined in the DriverImpl interface. It is meant to be used as a composite
+// struct for a driver's DriverImpl implementation.
+//
+// It is up to the driver implementor to understand the semantics of the default
+// behavior provided. For example, in some cases the default implementation may provide
+// a fallback value while in other cases it may provide a partial-result which must be
+// merged with the driver-specific-result, if any.
 type DriverImplBase struct {
 	Alloc       memory.Allocator
 	ErrorHelper ErrorHelper
+	DriverInfo  *DriverInfo
 }
 
-func NewDriverImplBase(name string, alloc memory.Allocator) DriverImplBase {
+// NewDriverImplBase instantiates DriverImplBase.
+//
+//   - name is the driver's name and is used to construct error messages.
+//   - alloc is an Arrow allocator to use.
+func NewDriverImplBase(info *DriverInfo, alloc memory.Allocator) DriverImplBase {
 	if alloc == nil {
 		alloc = memory.DefaultAllocator
 	}
-	return DriverImplBase{Alloc: alloc, ErrorHelper: ErrorHelper{DriverName: name}}
+	return DriverImplBase{
+		Alloc:       alloc,
+		ErrorHelper: ErrorHelper{DriverName: info.GetName()},
+		DriverInfo:  info,
+	}
 }
 
 func (base *DriverImplBase) Base() *DriverImplBase {
 	return base
-}
-
-// driver is the actual implementation of adbc.Driver.
-type driver struct {
-	impl DriverImpl
-}
-
-// NewDriver wraps a DriverImpl to create an adbc.Driver.
-func NewDriver(impl DriverImpl) adbc.Driver {
-	return &driver{impl}
-}
-
-func (drv *driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
-	return drv.impl.NewDatabase(opts)
 }
