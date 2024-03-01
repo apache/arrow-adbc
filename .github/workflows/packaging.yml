@@ -151,7 +151,7 @@ jobs:
       - name: Build and test
         run: |
           pushd adbc
-          docker-compose run \
+          docker compose run \
             -e SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.VERSION }} \
             docs
           popd
@@ -199,7 +199,7 @@ jobs:
       - name: Build and test
         run: |
           pushd adbc/
-          docker-compose run java-dist
+          docker compose run java-dist
           popd
           cp -a adbc/dist/ ./
 
@@ -383,7 +383,7 @@ jobs:
           ARCH_CONDA_FORGE: ${{ matrix.arch }}
         run: |
           pushd adbc
-          docker-compose run \
+          docker compose run \
             -e HOST_USER_ID=$(id -u) \
             python-conda
           popd
@@ -402,7 +402,7 @@ jobs:
           ARCH_CONDA_FORGE: ${{ matrix.arch }}
         run: |
           pushd adbc
-          docker-compose run \
+          docker compose run \
             python-conda-test
           popd
 
@@ -527,7 +527,7 @@ jobs:
           MANYLINUX: ${{ matrix.manylinux_version }}
         run: |
           pushd adbc
-          docker-compose run \
+          docker compose run \
             -e SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.VERSION }} \
             python-wheel-manylinux
           popd
@@ -550,9 +550,9 @@ jobs:
           MANYLINUX: ${{ matrix.manylinux_version }}
         run: |
           pushd adbc
-          env PYTHON=3.9 docker-compose run python-wheel-manylinux-test
-          env PYTHON=3.10 docker-compose run python-wheel-manylinux-test
-          env PYTHON=3.11 docker-compose run python-wheel-manylinux-test
+          env PYTHON=3.9 docker compose run python-wheel-manylinux-test
+          env PYTHON=3.10 docker compose run python-wheel-manylinux-test
+          env PYTHON=3.11 docker compose run python-wheel-manylinux-test
 
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
@@ -807,7 +807,7 @@ jobs:
       - name: Build sdist
         run: |
           pushd adbc
-          docker-compose run  \
+          docker compose run  \
             -e SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.VERSION }} \
             python-sdist
           popd
@@ -827,7 +827,7 @@ jobs:
       - name: Test sdist
         run: |
           pushd adbc
-          docker-compose run python-sdist-test
+          docker compose run python-sdist-test
           popd
 
   release:
