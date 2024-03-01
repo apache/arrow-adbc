@@ -1076,7 +1076,7 @@ serialize accesses to a connection.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.execute_partitions">
-<span class="sig-name descname"><span class="pre">execute_partitions</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#adbc_driver_manager.ArrowSchemaHandle" title="adbc_driver_manager._lib.ArrowSchemaHandle"><span class="pre">ArrowSchemaHandle</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.execute_partitions" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">execute_partitions</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#adbc_driver_manager.ArrowSchemaHandle" title="adbc_driver_manager._lib.ArrowSchemaHandle"><span class="pre">ArrowSchemaHandle</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.execute_partitions" title="Permalink to this definition">#</a></dt>
 <dd><p>Execute the query and get the partitions of the result set.</p>
 <p>Not all drivers will support this.</p>
 <dl class="field-list simple">
@@ -1084,7 +1084,8 @@ serialize accesses to a connection.</p>
 <dd class="field-odd"><dl class="simple">
 <dt>list of byte</dt><dd><p>The partitions of the distributed result set.</p>
 </dd>
-<dt>ArrowSchemaHandle</dt><dd><p>The schema of the result set.</p>
+<dt>ArrowSchemaHandle or None</dt><dd><p>The schema of the result set.  May be None if incremental
+execution is enabled and the server does not return a schema.</p>
 </dd>
 <dt>int</dt><dd><p>The number of rows if known, else -1.</p>
 </dd>
@@ -1750,7 +1751,8 @@ connections.</p>
 <dt><strong>partitions</strong><span class="classifier">list of byte</span></dt><dd><p>A list of partition descriptors, which can be read with
 read_partition.</p>
 </dd>
-<dt><strong>schema</strong><span class="classifier">pyarrow.Schema</span></dt><dd><p>The schema of the result set.</p>
+<dt><strong>schema</strong><span class="classifier">pyarrow.Schema or None</span></dt><dd><p>The schema of the result set.  May be None if incremental query
+execution is enabled and the server has not returned a schema.</p>
 </dd>
 </dl>
 </dd>
