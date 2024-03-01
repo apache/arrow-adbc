@@ -16,13 +16,16 @@
 # under the License.
 
 import re
+import threading
 
 import google.protobuf.any_pb2 as any_pb2
 import google.protobuf.wrappers_pb2 as wrappers_pb2
 import pyarrow
+import pyarrow.flight
 import pytest
 
 import adbc_driver_manager
+from adbc_driver_flightsql import StatementOptions as FlightSqlStatementOptions
 from adbc_driver_manager import StatementOptions
 
 SCHEMA = pyarrow.schema([("ints", "int32")])
@@ -104,6 +107,54 @@ def test_incremental_error_poll(test_dbapi) -> None:
 
         partitions, _ = cur.adbc_execute_partitions("error_poll_later")
         assert partitions == []
+
+
+def test_incremental_cancel(test_dbapi) -> None:
+    with test_dbapi.cursor() as cur:
+        assert (
+            cur.adbc_statement.get_option_bytes(
+                FlightSqlStatementOptions.LAST_FLIGHT_INFO.value
+            )
+            == b""
+        )
+
+        cur.adbc_statement.set_options(
+            **{
+                StatementOptions.INCREMENTAL.value: "true",
+            }
+        )
+        partitions, schema = cur.adbc_execute_partitions("forever")
+        assert len(partitions) == 1
+
+        passed = False
+
+        def _bg():
+            nonlocal passed
+            while True:
+                progress = cur.adbc_statement.get_option_float(
+                    StatementOptions.PROGRESS.value
+                )
+                # XXX: upstream PyArrow never bothered exposing app_metadata
+                raw_info = cur.adbc_statement.get_option_bytes(
+                    FlightSqlStatementOptions.LAST_FLIGHT_INFO.value
+                )
+
+                # check that it's a valid info
+                pyarrow.flight.FlightInfo.deserialize(raw_info)
+                passed = b"app metadata" in raw_info
+
+                if progress > 0.07:
+                    break
+            cur.adbc_cancel()
+
+        t = threading.Thread(target=_bg, daemon=True)
+        t.start()
+
+        with pytest.raises(test_dbapi.OperationalError, match="(?i)cancelled"):
+            cur.adbc_execute_partitions("forever")
+
+        t.join()
+        assert passed
 
 
 def test_incremental_immediately(test_dbapi) -> None:

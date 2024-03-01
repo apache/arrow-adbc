@@ -134,15 +134,32 @@ func (srv *ExampleServer) PollFlightInfo(ctx context.Context, desc *flight.Fligh
 		return nil, err
 	}
 
-	srv.pollingStatus[val.Value]--
-	progress := srv.pollingStatus[val.Value]
-
 	ticket, err := flightsql.CreateStatementQueryTicket([]byte(val.Value))
 	if err != nil {
 		return nil, err
 	}
 
-	endpoints := make([]*flight.FlightEndpoint, 5-progress)
+	if val.Value == "forever" {
+		srv.pollingStatus[val.Value]++
+		return &flight.PollInfo{
+			Info: &flight.FlightInfo{
+				Schema:           flight.SerializeSchema(arrow.NewSchema([]arrow.Field{{Name: "ints", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil), srv.Alloc),
+				Endpoint:         []*flight.FlightEndpoint{{Ticket: &flight.Ticket{Ticket: ticket}}},
+				FlightDescriptor: desc,
+				TotalRecords:     -1,
+				TotalBytes:       -1,
+				AppMetadata:      []byte("app metadata"),
+			},
+			FlightDescriptor: desc,
+			Progress:         proto.Float64(float64(srv.pollingStatus[val.Value]) / 100.0),
+		}, nil
+	}
+
+	srv.pollingStatus[val.Value]--
+	progress := srv.pollingStatus[val.Value]
+
+	numEndpoints := 5 - progress
+	endpoints := make([]*flight.FlightEndpoint, numEndpoints)
 	for i := range endpoints {
 		endpoints[i] = &flight.FlightEndpoint{Ticket: &flight.Ticket{Ticket: ticket}}
 	}

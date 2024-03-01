@@ -546,6 +546,32 @@ func (srv *IncrementalPollTestServer) PollFlightInfo(ctx context.Context, desc *
 		return nil, status.Errorf(codes.NotFound, "Query ID not found")
 	}
 
+	if query.query == "infinite" {
+		query.nextIndex++
+
+		descriptor, err := proto.Marshal(&wrapperspb.StringValue{Value: queryId})
+		if err != nil {
+			return nil, err
+		}
+		return &flight.PollInfo{
+			Info: &flight.FlightInfo{
+				Schema: nil,
+				Endpoint: []*flight.FlightEndpoint{{
+					Ticket: &flight.Ticket{
+						Ticket: []byte{},
+					},
+				}},
+				AppMetadata: []byte("app metadata"),
+			},
+			FlightDescriptor: &flight.FlightDescriptor{
+				Type: flight.DescriptorCMD,
+				Cmd:  descriptor,
+			},
+			// always makes a bit of progress, never gets anywhere
+			Progress: proto.Float64(float64(query.nextIndex) / 100.0),
+		}, nil
+	}
+
 	testCase, ok := srv.testCases[query.query]
 	if !ok {
 		if query.query == "unavailable" {
@@ -581,6 +607,32 @@ func (srv *IncrementalPollTestServer) PollFlightInfoStatement(ctx context.Contex
 		}
 
 		return srv.MakePollInfo(&unavailableCase, srv.queries[queryId], queryId)
+	} else if query.GetQuery() == "infinite" {
+		srv.queries[queryId] = &IncrementalQuery{
+			query:     query.GetQuery(),
+			nextIndex: 0,
+		}
+
+		descriptor, err := proto.Marshal(&wrapperspb.StringValue{Value: queryId})
+		if err != nil {
+			return nil, err
+		}
+		return &flight.PollInfo{
+			Info: &flight.FlightInfo{
+				Schema: nil,
+				Endpoint: []*flight.FlightEndpoint{{
+					Ticket: &flight.Ticket{
+						Ticket: []byte{},
+					},
+				}},
+				AppMetadata: []byte("app metadata"),
+			},
+			FlightDescriptor: &flight.FlightDescriptor{
+				Type: flight.DescriptorCMD,
+				Cmd:  descriptor,
+			},
+			Progress: proto.Float64(0),
+		}, nil
 	}
 
 	testCase, ok := srv.testCases[query.GetQuery()]
@@ -788,6 +840,48 @@ func (ts *IncrementalPollTests) TestOptionValue() {
 	var adbcErr adbc.Error
 	ts.ErrorAs(stmt.SetOption(adbc.OptionKeyIncremental, "foobar"), &adbcErr)
 	ts.Equal(adbc.StatusInvalidArgument, adbcErr.Code)
+}
+
+func (ts *IncrementalPollTests) TestAppMetadata() {
+	ctx, cancel := context.WithCancel(context.Background())
+	stmt, err := ts.cnxn.NewStatement()
+	ts.NoError(err)
+	defer stmt.Close()
+
+	ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
+
+	ts.NoError(stmt.SetSqlQuery("infinite"))
+	_, partitions, _, err := stmt.ExecutePartitions(ctx)
+	ts.NoError(err)
+	ts.Equalf(uint64(1), partitions.NumPartitions, "%#v", partitions)
+
+	progress := 0.0
+	go func() {
+		var err error
+		var info []byte
+		for {
+			// While the below is stuck, we should be able to get the app metadata and progress
+			progress, err = stmt.(adbc.GetSetOptions).GetOptionDouble(adbc.OptionKeyProgress)
+			ts.NoError(err)
+
+			info, err = stmt.(adbc.GetSetOptions).GetOptionBytes(driver.OptionLastFlightInfo)
+			ts.NoError(err)
+			var flightInfo flight.FlightInfo
+			ts.NoError(proto.Unmarshal(info, &flightInfo))
+			ts.Equal([]byte("app metadata"), flightInfo.AppMetadata)
+
+			if progress > 0.03 {
+				break
+			}
+		}
+		cancel()
+	}()
+
+	// will get stuck forever, but will "make progress"
+	_, _, _, err = stmt.ExecutePartitions(ctx)
+	var adbcErr adbc.Error
+	ts.ErrorAs(err, &adbcErr)
+	ts.Equal(adbc.StatusCancelled, adbcErr.Code)
 }
 
 func (ts *IncrementalPollTests) TestUnavailable() {
