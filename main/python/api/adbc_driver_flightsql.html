@@ -484,6 +484,18 @@ floating-point seconds).</p>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
 <p>Statement options specific to the Flight SQL driver.</p>
 <dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.StatementOptions.LAST_FLIGHT_INFO">
+<span class="sig-name descname"><span class="pre">LAST_FLIGHT_INFO</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.statement.exec.last_flight_info'</span></em><a class="headerlink" href="#adbc_driver_flightsql.StatementOptions.LAST_FLIGHT_INFO" title="Permalink to this definition">#</a></dt>
+<dd><p>The latest FlightInfo value.</p>
+<p>Thread-safe.  Mostly useful when using incremental execution, where an
+advanced client may want to inspect the latest FlightInfo from the
+service, but without waiting for execute_partitions to return.  (The
+service may send an updated FlightInfo with progress/app_metadata
+values, but execute_partitions will only return if there are new
+endpoints.)</p>
+</dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="adbc_driver_flightsql.StatementOptions.QUEUE_SIZE">
 <span class="sig-name descname"><span class="pre">QUEUE_SIZE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.rpc.result_queue_size'</span></em><a class="headerlink" href="#adbc_driver_flightsql.StatementOptions.QUEUE_SIZE" title="Permalink to this definition">#</a></dt>
 <dd><p>The number of batches to queue per partition. Defaults to 5.</p>
@@ -662,6 +674,7 @@ United States and other countries.
 </ul>
 </li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.StatementOptions"><code class="docutils literal notranslate"><span class="pre">StatementOptions</span></code></a><ul>
+<li><a class="reference internal" href="#adbc_driver_flightsql.StatementOptions.LAST_FLIGHT_INFO"><code class="docutils literal notranslate"><span class="pre">StatementOptions.LAST_FLIGHT_INFO</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.StatementOptions.QUEUE_SIZE"><code class="docutils literal notranslate"><span class="pre">StatementOptions.QUEUE_SIZE</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.StatementOptions.RPC_CALL_HEADER_PREFIX"><code class="docutils literal notranslate"><span class="pre">StatementOptions.RPC_CALL_HEADER_PREFIX</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.StatementOptions.SUBSTRAIT_VERSION"><code class="docutils literal notranslate"><span class="pre">StatementOptions.SUBSTRAIT_VERSION</span></code></a></li>
