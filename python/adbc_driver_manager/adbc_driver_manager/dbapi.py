@@ -386,9 +386,10 @@ class Connection(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        handle = self._conn.get_info()
+        handle = _blocking_call(self._conn.get_info, (), {}, self._conn.cancel)
         reader = pyarrow.RecordBatchReader._import_from_c(handle.address)
-        info = reader.read_all().to_pylist()
+        table = _blocking_call(reader.read_all, (), {}, self._conn.cancel)
+        info = table.to_pylist()
         return dict(
             {
                 _KNOWN_INFO_VALUES.get(row["info_name"], row["info_name"]): row[
@@ -440,13 +441,17 @@ class Connection(_Closeable):
             c_depth = _lib.GetObjectsDepth.TABLES
         else:
             raise ValueError(f"Invalid value for 'depth': {depth}")
-        handle = self._conn.get_objects(
-            c_depth,
-            catalog=catalog_filter,
-            db_schema=db_schema_filter,
-            table_name=table_name_filter,
-            table_types=table_types_filter,
-            column_name=column_name_filter,
+        handle = _blocking_call(
+            self._conn.get_objects,
+            (c_depth,),
+            dict(
+                catalog=catalog_filter,
+                db_schema=db_schema_filter,
+                table_name=table_name_filter,
+                table_types=table_types_filter,
+                column_name=column_name_filter,
+            ),
+            self._conn.cancel,
         )
         return pyarrow.RecordBatchReader._import_from_c(handle.address)
 
@@ -473,8 +478,15 @@ class Connection(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        handle = self._conn.get_table_schema(
-            catalog_filter, db_schema_filter, table_name
+        handle = _blocking_call(
+            self._conn.get_table_schema,
+            (
+                catalog_filter,
+                db_schema_filter,
+                table_name,
+            ),
+            {},
+            self._conn.cancel,
         )
         return pyarrow.Schema._import_from_c(handle.address)
 
@@ -486,7 +498,12 @@ class Connection(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        handle = self._conn.get_table_types()
+        handle = _blocking_call(
+            self._conn.get_table_types,
+            (),
+            {},
+            self._conn.cancel,
+        )
         reader = pyarrow.RecordBatchReader._import_from_c(handle.address)
         table = reader.read_all()
         return table[0].to_pylist()
@@ -648,7 +665,7 @@ class Cursor(_Closeable):
             else:
                 self._stmt.set_sql_query(operation)
             try:
-                self._stmt.prepare()
+                _blocking_call(self._stmt.prepare, (), {}, self._stmt.cancel)
             except NotSupportedError:
                 # Not all drivers support it
                 pass
@@ -722,7 +739,9 @@ class Cursor(_Closeable):
             arrow_parameters = pyarrow.record_batch([])
 
         self._bind(arrow_parameters)
-        self._rowcount = self._stmt.execute_update()
+        self._rowcount = _blocking_call(
+            self._stmt.execute_update, (), {}, self._stmt.cancel
+        )
 
     def fetchone(self) -> Optional[tuple]:
         """Fetch one row of the result."""
@@ -916,7 +935,7 @@ class Cursor(_Closeable):
             self._stmt.bind_stream(handle)
 
         self._last_query = None
-        return self._stmt.execute_update()
+        return _blocking_call(self._stmt.execute_update, (), {}, self._stmt.cancel)
 
     def adbc_execute_partitions(
         self,
@@ -940,7 +959,9 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         self._prepare_execute(operation, parameters)
-        partitions, schema_handle, self._rowcount = self._stmt.execute_partitions()
+        partitions, schema_handle, self._rowcount = _blocking_call(
+            self._stmt.execute_partitions, (), {}, self._stmt.cancel
+        )
         if schema_handle and schema_handle.address:
             schema = pyarrow.Schema._import_from_c(schema_handle.address)
         else:
@@ -961,7 +982,7 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         self._prepare_execute(operation, parameters)
-        schema = self._stmt.execute_schema()
+        schema = _blocking_call(self._stmt.execute_schema, (), {}, self._stmt.cancel)
         return pyarrow.Schema._import_from_c(schema.address)
 
     def adbc_prepare(self, operation: Union[bytes, str]) -> Optional[pyarrow.Schema]:
@@ -985,7 +1006,9 @@ class Cursor(_Closeable):
         self._prepare_execute(operation)
 
         try:
-            handle = self._stmt.get_parameter_schema()
+            handle = _blocking_call(
+                self._stmt.get_parameter_schema, (), {}, self._stmt.cancel
+            )
         except NotSupportedError:
             return None
         return pyarrow.Schema._import_from_c(handle.address)
@@ -999,7 +1022,9 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         self._results = None
-        handle = self._conn._conn.read_partition(partition)
+        handle = _blocking_call(
+            self._conn._conn.read_partition, (partition,), {}, self._stmt.cancel
+        )
         self._rowcount = -1
         self._results = _RowIterator(
             self._stmt, pyarrow.RecordBatchReader._import_from_c(handle.address)
@@ -1032,7 +1057,7 @@ class Cursor(_Closeable):
         self._last_query = None
         self._results = None
         self._stmt.set_sql_query(operation)
-        self._stmt.execute_update()
+        _blocking_call(self._stmt.execute_update, (), {}, self._stmt.cancel)
 
     def fetchallarrow(self) -> pyarrow.Table:
         """
@@ -1170,10 +1195,10 @@ class _RowIterator(_Closeable):
         return rows
 
     def fetch_arrow_table(self) -> pyarrow.Table:
-        return self._reader.read_all()
+        return _blocking_call(self._reader.read_all, (), {}, self._stmt.cancel)
 
     def fetch_df(self) -> "pandas.DataFrame":
-        return self._reader.read_pandas()
+        return _blocking_call(self._reader.read_pandas, (), {}, self._stmt.cancel)
 
 
 _PYTEST_ENV_VAR = "PYTEST_CURRENT_TEST"
