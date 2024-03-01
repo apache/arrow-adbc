@@ -111,6 +111,13 @@ def test_incremental_error_poll(test_dbapi) -> None:
 
 def test_incremental_cancel(test_dbapi) -> None:
     with test_dbapi.cursor() as cur:
+        assert (
+            cur.adbc_statement.get_option_bytes(
+                FlightSqlStatementOptions.LAST_FLIGHT_INFO.value
+            )
+            == b""
+        )
+
         cur.adbc_statement.set_options(
             **{
                 StatementOptions.INCREMENTAL.value: "true",

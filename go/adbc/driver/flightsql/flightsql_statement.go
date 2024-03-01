@@ -186,6 +186,7 @@ func (s *statement) clearIncrementalQuery() error {
 			}
 		}
 		s.incrementalState = &incrementalState{}
+		s.lastInfo.Store(nil)
 	}
 	return nil
 }
@@ -254,6 +255,9 @@ func (s *statement) GetOptionBytes(key string) ([]byte, error) {
 	switch key {
 	case OptionLastFlightInfo:
 		info := s.lastInfo.Load()
+		if info == nil {
+			return []byte{}, nil
+		}
 		serialized, err := proto.Marshal(info)
 		if err != nil {
 			return nil, adbc.Error{
