@@ -84,6 +84,21 @@ def test_query_error_fetch(test_dbapi):
         assert_detail(excval.value)
 
 
+@pytest.mark.xfail(reason="apache/arrow-adbc#1576")
+def test_query_error_vendor_code(test_dbapi):
+    with test_dbapi.cursor() as cur:
+        cur.execute("error_do_get")
+        with pytest.raises(
+            test_dbapi.ProgrammingError,
+            match=re.escape("INVALID_ARGUMENT: [FlightSQL] expected error (DoGet)"),
+        ) as excval:
+            cur.fetch_arrow_table()
+
+        # TODO(https://github.com/apache/arrow-adbc/issues/1576): vendor code
+        # is gRPC status code; 3 is gRPC INVALID_ARGUMENT
+        assert excval.value.vendor_code == 3
+
+
 def test_query_error_stream(test_dbapi):
     with test_dbapi.cursor() as cur:
         cur.execute("error_do_get_stream")

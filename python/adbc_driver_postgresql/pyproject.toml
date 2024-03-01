@@ -43,6 +43,7 @@ build-backend = "setuptools.build_meta"
 markers = [
     "polars: integration tests with polars",
 ]
+xfail_strict = true
 
 [tool.setuptools]
 include-package-data = true

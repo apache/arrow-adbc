@@ -44,3 +44,6 @@ include-package-data = true
 license-files = ["LICENSE.txt", "NOTICE.txt"]
 packages = ["adbc_driver_flightsql"]
 py-modules = ["adbc_driver_flightsql"]
+
+[tool.pytest.ini_options]
+xfail_strict = true
