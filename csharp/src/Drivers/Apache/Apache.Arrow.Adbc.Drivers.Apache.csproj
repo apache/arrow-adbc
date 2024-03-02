@@ -5,11 +5,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ApacheThrift" Version="0.18.1" />
+    <PackageReference Include="ApacheThrift" Version="0.19.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
   </ItemGroup>
-  
+
 </Project>

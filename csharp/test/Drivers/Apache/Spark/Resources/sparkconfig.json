@@ -3,5 +3,11 @@
     "path": "",
     "token": "",
     "query": "",
-    "expectedResults": 0
+    "expectedResults": 0,
+    "metadata": {
+        "catalog": "",
+        "schema": "",
+        "table": "",
+        "expectedColumnCount": 0
+    }
 }

@@ -15,9 +15,15 @@
 * limitations under the License.
 */
 
+using System;
 using System.IO;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Threading;
 using Thrift;
+using Thrift.Transport;
 using Thrift.Transport.Client;
+using System.Reflection;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache
 {
@@ -29,6 +35,34 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
         }
 
         public Stream Input { get { return this.InputStream; } }
-        public Stream Output { get { return this.InputStream; } }
+        public Stream Output { get { return this.OutputStream; } }
+    }
+
+    // TODO: Experimental
+    class ThriftHttpTransport : THttpTransport, IPeekableTransport
+    {
+        public ThriftHttpTransport(HttpClient httpClient, TConfiguration config)
+            : base(httpClient, config)
+        {
+
+        }
+
+        public Stream Input
+        {
+            get
+            {
+                // not advocating for this, but it works
+                Stream stream = ((FieldInfo[])((TypeInfo)this.GetType().BaseType).DeclaredFields)[4].GetValue(this) as Stream;
+                return stream;
+            }
+        }
+        public Stream Output
+        {
+            get
+            {
+                Stream stream = this.GetType().BaseType.GetField("_outputStream", BindingFlags.NonPublic).GetValue(this) as Stream;
+                return stream;
+            }
+        }
     }
 }

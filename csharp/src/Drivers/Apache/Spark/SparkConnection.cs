@@ -54,7 +54,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             string path = properties["Path"];
             string token = properties["Token"];
 
-            string uri = "https://" + hostName + path;
+            string uri = "https://" + hostName + "/" + path;
 
             HttpClient httpClient = new HttpClient();
             httpClient.BaseAddress = new Uri(uri);
@@ -67,6 +67,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TConfiguration config = new TConfiguration();
 
             THttpTransport transport = new THttpTransport(httpClient, config);
+            // can switch to the one below if want to use the experimental one with IPeekableTransport
+            // ThriftHttpTransport transport = new ThriftHttpTransport(httpClient, config);
             transport.OpenAsync(CancellationToken.None).Wait();
             return new TBinaryProtocol(transport);
         }
