@@ -18,6 +18,8 @@
 package driverbase
 
 import (
+	"context"
+
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v16/arrow/memory"
 	"golang.org/x/exp/slog"
@@ -71,6 +73,23 @@ func (base *DatabaseImplBase) SetLogger(logger *slog.Logger) {
 	}
 }
 
+func (base *DatabaseImplBase) Close() error {
+	return nil
+}
+
+func (base *DatabaseImplBase) Open(ctx context.Context) (adbc.Connection, error) {
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "Open is not implemented")
+}
+
+func (base *DatabaseImplBase) SetOptions(options map[string]string) error {
+	for key, val := range options {
+		if err := base.SetOption(key, val); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (base *DatabaseImplBase) GetOption(key string) (string, error) {
 	return "", base.ErrorHelper.Errorf(adbc.StatusNotFound, "%s '%s'", DatabaseMessageOptionUnknown, key)
 }
@@ -102,3 +121,5 @@ func (base *DatabaseImplBase) SetOptionDouble(key string, val float64) error {
 func (base *DatabaseImplBase) SetOptionInt(key string, val int64) error {
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", DatabaseMessageOptionUnknown, key)
 }
+
+var _ DatabaseImpl = (*DatabaseImplBase)(nil)

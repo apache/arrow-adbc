@@ -330,11 +330,3 @@ func (stmt *statementImpl) SetSqlQuery(query string) error {
 func (stmt *statementImpl) SetSubstraitPlan(plan []byte) error {
 	panic("unimplemented")
 }
-
-// Make sure the expected interfaces are fully implemented
-var (
-	_ driverbase.DriverImpl     = (*driverImpl)(nil)
-	_ driverbase.DatabaseImpl   = (*databaseImpl)(nil)
-	_ driverbase.ConnectionImpl = (*connectionImpl)(nil)
-	_ driverbase.StatementImpl  = (*statementImpl)(nil)
-)

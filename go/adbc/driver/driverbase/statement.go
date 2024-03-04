@@ -18,7 +18,11 @@
 package driverbase
 
 import (
+	"context"
+
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/apache/arrow/go/v16/arrow/memory"
 	"golang.org/x/exp/slog"
 )
@@ -71,6 +75,50 @@ func (base *StatementImplBase) SetLogger(logger *slog.Logger) {
 	}
 }
 
+func (base *StatementImplBase) Bind(ctx context.Context, values arrow.Record) error {
+	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "Bind is not implemented")
+}
+
+func (base *StatementImplBase) BindStream(ctx context.Context, stream array.RecordReader) error {
+	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "BindStream is not implemented")
+}
+
+func (base *StatementImplBase) Close() error {
+	return nil
+}
+
+func (base *StatementImplBase) ExecutePartitions(context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
+	return nil, adbc.Partitions{}, 0, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecutePartitions is not implemented")
+}
+
+func (base *StatementImplBase) ExecuteQuery(context.Context) (array.RecordReader, int64, error) {
+	return nil, 0, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteQuery is not implemented")
+}
+
+func (base *StatementImplBase) ExecuteSchema(context.Context) (*arrow.Schema, error) {
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteSchema is not implemented")
+}
+
+func (base *StatementImplBase) ExecuteUpdate(context.Context) (int64, error) {
+	return 0, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteUpdate is not implemented")
+}
+
+func (base *StatementImplBase) GetParameterSchema() (*arrow.Schema, error) {
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetParameterSchema is not implemented")
+}
+
+func (base *StatementImplBase) Prepare(context.Context) error {
+	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "Prepare is not implemented")
+}
+
+func (base *StatementImplBase) SetSqlQuery(query string) error {
+	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "SetSqlQuery is not implemented")
+}
+
+func (base *StatementImplBase) SetSubstraitPlan(plan []byte) error {
+	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "SetSubstraitPlan is not implemented")
+}
+
 func (base *StatementImplBase) GetOption(key string) (string, error) {
 	return "", base.ErrorHelper.Errorf(adbc.StatusNotFound, "%s '%s'", StatementMessageOptionUnknown, key)
 }
@@ -102,3 +150,5 @@ func (base *StatementImplBase) SetOptionDouble(key string, val float64) error {
 func (base *StatementImplBase) SetOptionInt(key string, val int64) error {
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", StatementMessageOptionUnknown, key)
 }
+
+var _ StatementImpl = (*StatementImplBase)(nil)

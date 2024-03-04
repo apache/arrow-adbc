@@ -151,11 +151,3 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 
 	return db, nil
 }
-
-// Make sure the expected interfaces are fully implemented
-var (
-	_ driverbase.DriverImpl     = (*driverImpl)(nil)
-	_ driverbase.DatabaseImpl   = (*databaseImpl)(nil)
-	_ driverbase.ConnectionImpl = (*connectionImpl)(nil)
-	_ driverbase.StatementImpl  = (*statementImpl)(nil)
-)

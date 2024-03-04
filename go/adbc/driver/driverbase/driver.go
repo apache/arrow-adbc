@@ -46,6 +46,10 @@ type DriverImplBase struct {
 	DriverInfo  *DriverInfo
 }
 
+func (base *DriverImplBase) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "NewDatabase is not implemented")
+}
+
 // NewDriverImplBase instantiates DriverImplBase.
 //
 //   - name is the driver's name and is used to construct error messages.
@@ -64,3 +68,5 @@ func NewDriverImplBase(info *DriverInfo, alloc memory.Allocator) DriverImplBase 
 func (base *DriverImplBase) Base() *DriverImplBase {
 	return base
 }
+
+var _ DriverImpl = (*DriverImplBase)(nil)

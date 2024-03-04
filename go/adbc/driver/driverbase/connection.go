@@ -167,6 +167,30 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 	return array.NewRecordReader(adbc.GetInfoSchema, []arrow.Record{final})
 }
 
+func (base *ConnectionImplBase) Close() error {
+	return nil
+}
+
+func (base *ConnectionImplBase) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetObjects is not implemented")
+}
+
+func (base *ConnectionImplBase) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetTableSchema is not implemented")
+}
+
+func (base *ConnectionImplBase) GetTableTypes(context.Context) (array.RecordReader, error) {
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetTableTypes is not implemented")
+}
+
+func (base *ConnectionImplBase) NewStatement() (adbc.Statement, error) {
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "NewStatement is not implemented")
+}
+
+func (base *ConnectionImplBase) ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error) {
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "ReadPartition is not implemented")
+}
+
 func (base *ConnectionImplBase) GetOption(key string) (string, error) {
 	return "", base.ErrorHelper.Errorf(adbc.StatusNotFound, "%s '%s'", ConnectionMessageOptionUnknown, key)
 }
@@ -198,3 +222,5 @@ func (base *ConnectionImplBase) SetOptionDouble(key string, val float64) error {
 func (base *ConnectionImplBase) SetOptionInt(key string, val int64) error {
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnknown, key)
 }
+
+var _ ConnectionImpl = (*ConnectionImplBase)(nil)
