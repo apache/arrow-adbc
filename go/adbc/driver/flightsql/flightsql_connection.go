@@ -621,7 +621,9 @@ func (c *connectionImpl) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode)
 				// we know we're only doing string fields here right now
 				v := info.Field(info.ChildID(i)).(*array.String).
 					Value(int(info.ValueOffset(i)))
-				driverInfo.RegisterInfoCode(adbcInfoCode, v)
+				if err := driverInfo.RegisterInfoCode(adbcInfoCode, v); err != nil {
+					return nil, err
+				}
 			}
 		}
 

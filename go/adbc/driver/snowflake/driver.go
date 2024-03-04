@@ -175,10 +175,14 @@ type driverImpl struct {
 func NewDriver(alloc memory.Allocator) adbc.Driver {
 	info := driverbase.DefaultDriverInfo("Snowflake")
 	if infoDriverVersion != "" {
-		info.RegisterInfoCode(adbc.InfoDriverVersion, infoDriverVersion)
+		if err := info.RegisterInfoCode(adbc.InfoDriverVersion, infoDriverVersion); err != nil {
+			panic(err)
+		}
 	}
 	if infoDriverArrowVersion != "" {
-		info.RegisterInfoCode(adbc.InfoDriverArrowVersion, infoDriverArrowVersion)
+		if err := info.RegisterInfoCode(adbc.InfoDriverArrowVersion, infoDriverArrowVersion); err != nil {
+			panic(err)
+		}
 	}
 	return &driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)}
 }
