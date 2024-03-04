@@ -3,7 +3,8 @@ package driverbase
 import (
 	"fmt"
 	"runtime/debug"
-	"slices"
+	"sort"
+
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -67,7 +68,9 @@ func (di *DriverInfo) InfoSupportedCodes() []adbc.InfoCode {
 	// Sorting info codes helps present them to the client in a consistent way.
 	// It also helps add some determinism to internal tests.
 	// The ordering is in no way part of the API contract and should not be relied upon.
-	slices.Sort(codes)
+	sort.SliceStable(codes, func(i, j int) bool {
+		return codes[i] < codes[j]
+	})
 	return codes
 }
 
