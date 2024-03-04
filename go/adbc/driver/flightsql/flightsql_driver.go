@@ -72,7 +72,6 @@ const (
 var (
 	infoDriverVersion      string
 	infoDriverArrowVersion string
-	infoSupportedCodes     []adbc.InfoCode
 )
 
 var errNoTransactionSupport = adbc.Error{
@@ -91,24 +90,6 @@ func init() {
 			}
 		}
 	}
-	// XXX: Deps not populated in tests
-	// https://github.com/golang/go/issues/33976
-	if infoDriverVersion == "" {
-		infoDriverVersion = "(unknown or development build)"
-	}
-	if infoDriverArrowVersion == "" {
-		infoDriverArrowVersion = "(unknown or development build)"
-	}
-
-	infoSupportedCodes = []adbc.InfoCode{
-		adbc.InfoDriverName,
-		adbc.InfoDriverVersion,
-		adbc.InfoDriverArrowVersion,
-		adbc.InfoDriverADBCVersion,
-		adbc.InfoVendorName,
-		adbc.InfoVendorVersion,
-		adbc.InfoVendorArrowVersion,
-	}
 }
 
 type driverImpl struct {
@@ -118,6 +99,12 @@ type driverImpl struct {
 // NewDriver creates a new Flight SQL driver using the given Arrow allocator.
 func NewDriver(alloc memory.Allocator) adbc.Driver {
 	info := driverbase.DefaultDriverInfo("Flight SQL")
+	if infoDriverVersion != "" {
+		info.RegisterInfoCode(adbc.InfoDriverVersion, infoDriverVersion)
+	}
+	if infoDriverArrowVersion != "" {
+		info.RegisterInfoCode(adbc.InfoDriverArrowVersion, infoDriverArrowVersion)
+	}
 	return &driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)}
 }
 

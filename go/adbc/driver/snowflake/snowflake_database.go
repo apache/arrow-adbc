@@ -155,7 +155,8 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		}
 	}
 
-	defaultAppName := "[ADBC][Go-" + infoDriverVersion + "]"
+	driverVersion, _ := d.DatabaseImplBase.DriverInfo.GetInfoDriverVersion()
+	defaultAppName := "[ADBC][Go-" + driverVersion + "]"
 	// set default application name to track
 	// unless user overrides it
 	d.cfg.Application = defaultAppName
