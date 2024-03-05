@@ -141,10 +141,6 @@ func TestDriver(t *testing.T) {
 	err = cnxn.(driverbase.Connection).SetOption(OptionKeyUnrecognized, "should-fail")
 	require.Error(t, err)
 	require.Equal(t, "Not Implemented: [MockDriver] Unknown connection option 'unrecognized'", err.Error())
-
-	stmt, err := cnxn.NewStatement()
-	require.NoError(t, err)
-	defer stmt.Close()
 }
 
 type driverImpl struct {
@@ -220,75 +216,10 @@ func (cnxn *connectionImpl) GetTableTypes(context.Context) (array.RecordReader, 
 
 // NewStatement implements adbc.Connection.
 func (cnxn *connectionImpl) NewStatement() (adbc.Statement, error) {
-	return &statementImpl{StatementImplBase: driverbase.NewStatementImplBase(&cnxn.ConnectionImplBase), cnxn: cnxn}, nil
+	panic("unimplemented")
 }
 
 // ReadPartition implements adbc.Connection.
 func (cnxn *connectionImpl) ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error) {
-	panic("unimplemented")
-}
-
-type statementImpl struct {
-	driverbase.StatementImplBase
-	cnxn *connectionImpl
-}
-
-// ExecuteSchema implements driverbase.StatementImpl.
-func (*statementImpl) ExecuteSchema(context.Context) (*arrow.Schema, error) {
-	panic("unimplemented")
-}
-
-// Bind implements adbc.Statement.
-func (stmt *statementImpl) Bind(ctx context.Context, values arrow.Record) error {
-	panic("unimplemented")
-}
-
-// BindStream implements adbc.Statement.
-func (stmt *statementImpl) BindStream(ctx context.Context, stream array.RecordReader) error {
-	panic("unimplemented")
-}
-
-// Close implements adbc.Statement.
-func (stmt *statementImpl) Close() error {
-	return nil
-}
-
-// ExecutePartitions implements adbc.Statement.
-func (stmt *statementImpl) ExecutePartitions(context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
-	panic("unimplemented")
-}
-
-// ExecuteQuery implements adbc.Statement.
-func (stmt *statementImpl) ExecuteQuery(context.Context) (array.RecordReader, int64, error) {
-	panic("unimplemented")
-}
-
-// ExecuteUpdate implements adbc.Statement.
-func (stmt *statementImpl) ExecuteUpdate(context.Context) (int64, error) {
-	panic("unimplemented")
-}
-
-// GetParameterSchema implements adbc.Statement.
-func (stmt *statementImpl) GetParameterSchema() (*arrow.Schema, error) {
-	panic("unimplemented")
-}
-
-// Prepare implements adbc.Statement.
-func (stmt *statementImpl) Prepare(context.Context) error {
-	panic("unimplemented")
-}
-
-// SetOption implements adbc.Statement.
-func (stmt *statementImpl) SetOption(key string, val string) error {
-	panic("unimplemented")
-}
-
-// SetSqlQuery implements adbc.Statement.
-func (stmt *statementImpl) SetSqlQuery(query string) error {
-	panic("unimplemented")
-}
-
-// SetSubstraitPlan implements adbc.Statement.
-func (stmt *statementImpl) SetSubstraitPlan(plan []byte) error {
 	panic("unimplemented")
 }

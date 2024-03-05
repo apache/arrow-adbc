@@ -1067,14 +1067,13 @@ func (c *connectionImpl) Rollback(ctx context.Context) error {
 
 // NewStatement initializes a new statement object tied to this connection
 func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
-	return &statementImpl{
-		StatementImplBase: driverbase.NewStatementImplBase(&c.ConnectionImplBase),
-		alloc:             c.db.Alloc,
-		clientCache:       c.clientCache,
-		hdrs:              c.hdrs.Copy(),
-		queueSize:         5,
-		timeouts:          c.timeouts,
-		cnxn:              c,
+	return &statement{
+		alloc:       c.db.Alloc,
+		clientCache: c.clientCache,
+		hdrs:        c.hdrs.Copy(),
+		queueSize:   5,
+		timeouts:    c.timeouts,
+		cnxn:        c,
 	}, nil
 }
 

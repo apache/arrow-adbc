@@ -28,7 +28,6 @@ import (
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/apache/arrow/go/v16/arrow/flight"
@@ -155,9 +154,7 @@ type incrementalState struct {
 	complete        bool
 }
 
-type statementImpl struct {
-	driverbase.StatementImplBase
-
+type statement struct {
 	alloc       memory.Allocator
 	cnxn        *connectionImpl
 	clientCache gcache.Cache
@@ -173,13 +170,13 @@ type statementImpl struct {
 	lastInfo atomic.Pointer[flight.FlightInfo]
 }
 
-func (s *statementImpl) closePreparedStatement() error {
+func (s *statement) closePreparedStatement() error {
 	var header, trailer metadata.MD
 	err := s.prepared.Close(metadata.NewOutgoingContext(context.Background(), s.hdrs), grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	return adbcFromFlightStatusWithDetails(err, header, trailer, "ClosePreparedStatement")
 }
 
-func (s *statementImpl) clearIncrementalQuery() error {
+func (s *statement) clearIncrementalQuery() error {
 	// retryDescriptor != nil ==> query is in progress
 	if s.incrementalState != nil {
 		if !s.incrementalState.complete && s.incrementalState.retryDescriptor != nil {
@@ -194,7 +191,7 @@ func (s *statementImpl) clearIncrementalQuery() error {
 	return nil
 }
 
-func (s *statementImpl) poll(ctx context.Context, opts ...grpc.CallOption) (*flight.PollInfo, error) {
+func (s *statement) poll(ctx context.Context, opts ...grpc.CallOption) (*flight.PollInfo, error) {
 	if s.prepared != nil {
 		return s.prepared.ExecutePoll(ctx, s.incrementalState.retryDescriptor, opts...)
 	}
@@ -205,7 +202,7 @@ func (s *statementImpl) poll(ctx context.Context, opts ...grpc.CallOption) (*fli
 // and closes it (particularly if it is a prepared statement).
 //
 // A statement instance should not be used after Close is called.
-func (s *statementImpl) Close() (err error) {
+func (s *statement) Close() (err error) {
 	if s.prepared != nil {
 		err = s.closePreparedStatement()
 		s.prepared = nil
@@ -224,7 +221,7 @@ func (s *statementImpl) Close() (err error) {
 	return err
 }
 
-func (s *statementImpl) GetOption(key string) (string, error) {
+func (s *statement) GetOption(key string) (string, error) {
 	switch key {
 	case OptionStatementSubstraitVersion:
 		return s.query.substraitVersion, nil
@@ -249,9 +246,12 @@ func (s *statementImpl) GetOption(key string) (string, error) {
 		}
 	}
 
-	return s.StatementImplBase.GetOption(key)
+	return "", adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
 }
-func (s *statementImpl) GetOptionBytes(key string) ([]byte, error) {
+func (s *statement) GetOptionBytes(key string) ([]byte, error) {
 	switch key {
 	case OptionLastFlightInfo:
 		info := s.lastInfo.Load()
@@ -272,8 +272,7 @@ func (s *statementImpl) GetOptionBytes(key string) ([]byte, error) {
 		Code: adbc.StatusNotFound,
 	}
 }
-
-func (s *statementImpl) GetOptionInt(key string) (int64, error) {
+func (s *statement) GetOptionInt(key string) (int64, error) {
 	switch key {
 	case OptionTimeoutFetch:
 		fallthrough
@@ -287,9 +286,12 @@ func (s *statementImpl) GetOptionInt(key string) (int64, error) {
 		return int64(val), nil
 	}
 
-	return s.StatementImplBase.GetOptionInt(key)
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
 }
-func (s *statementImpl) GetOptionDouble(key string) (float64, error) {
+func (s *statement) GetOptionDouble(key string) (float64, error) {
 	switch key {
 	case OptionTimeoutFetch:
 		return s.timeouts.fetchTimeout.Seconds(), nil
@@ -303,11 +305,14 @@ func (s *statementImpl) GetOptionDouble(key string) (float64, error) {
 		return 1.0, nil
 	}
 
-	return s.StatementImplBase.GetOptionDouble(key)
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
 }
 
 // SetOption sets a string option on this statement
-func (s *statementImpl) SetOption(key string, val string) error {
+func (s *statement) SetOption(key string, val string) error {
 	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
 		name := strings.TrimPrefix(key, OptionRPCCallHeaderPrefix)
 		if val == "" {
@@ -356,12 +361,22 @@ func (s *statementImpl) SetOption(key string, val string) error {
 			}
 		}
 	default:
-		return s.StatementImplBase.SetOption(key, val)
+		return adbc.Error{
+			Msg:  "[Flight SQL] Unknown statement option '" + key + "'",
+			Code: adbc.StatusNotImplemented,
+		}
 	}
 	return nil
 }
 
-func (s *statementImpl) SetOptionInt(key string, value int64) error {
+func (s *statement) SetOptionBytes(key string, value []byte) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (s *statement) SetOptionInt(key string, value int64) error {
 	switch key {
 	case OptionStatementQueueSize:
 		if value <= 0 {
@@ -376,7 +391,7 @@ func (s *statementImpl) SetOptionInt(key string, value int64) error {
 	return s.SetOptionDouble(key, float64(value))
 }
 
-func (s *statementImpl) SetOptionDouble(key string, value float64) error {
+func (s *statement) SetOptionDouble(key string, value float64) error {
 	switch key {
 	case OptionTimeoutFetch:
 		fallthrough
@@ -385,7 +400,10 @@ func (s *statementImpl) SetOptionDouble(key string, value float64) error {
 	case OptionTimeoutUpdate:
 		return s.timeouts.setTimeout(key, value)
 	}
-	return s.StatementImplBase.SetOptionDouble(key, value)
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
 // SetSqlQuery sets the query string to be executed.
@@ -393,7 +411,7 @@ func (s *statementImpl) SetOptionDouble(key string, value float64) error {
 // The query can then be executed with any of the Execute methods.
 // For queries expected to be executed repeatedly, Prepare should be
 // called before execution.
-func (s *statementImpl) SetSqlQuery(query string) error {
+func (s *statement) SetSqlQuery(query string) error {
 	if s.prepared != nil {
 		if err := s.closePreparedStatement(); err != nil {
 			return err
@@ -412,7 +430,7 @@ func (s *statementImpl) SetSqlQuery(query string) error {
 // of rows affected if known, otherwise it will be -1.
 //
 // This invalidates any prior result sets on this statement.
-func (s *statementImpl) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, nrec int64, err error) {
+func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, nrec int64, err error) {
 	if err := s.clearIncrementalQuery(); err != nil {
 		return nil, -1, err
 	}
@@ -438,7 +456,7 @@ func (s *statementImpl) ExecuteQuery(ctx context.Context) (rdr array.RecordReade
 
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
-func (s *statementImpl) ExecuteUpdate(ctx context.Context) (n int64, err error) {
+func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	if err := s.clearIncrementalQuery(); err != nil {
 		return -1, err
 	}
@@ -461,7 +479,7 @@ func (s *statementImpl) ExecuteUpdate(ctx context.Context) (n int64, err error) 
 
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
-func (s *statementImpl) Prepare(ctx context.Context) error {
+func (s *statement) Prepare(ctx context.Context) error {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var header, trailer metadata.MD
 	prep, err := s.query.prepare(ctx, s.cnxn, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
@@ -481,7 +499,7 @@ func (s *statementImpl) Prepare(ctx context.Context) error {
 // Like SetSqlQuery, after this is called the query can be executed
 // using any of the Execute methods. If the query is expected to be
 // executed repeatedly, Prepare should be called first on the statement.
-func (s *statementImpl) SetSubstraitPlan(plan []byte) error {
+func (s *statement) SetSubstraitPlan(plan []byte) error {
 	if s.prepared != nil {
 		if err := s.closePreparedStatement(); err != nil {
 			return err
@@ -502,7 +520,7 @@ func (s *statementImpl) SetSubstraitPlan(plan []byte) error {
 // The driver will call release on the passed in Record when it is done,
 // but it may not do this until the statement is closed or another
 // record is bound.
-func (s *statementImpl) Bind(_ context.Context, values arrow.Record) error {
+func (s *statement) Bind(_ context.Context, values arrow.Record) error {
 	// TODO: handle bulk insert situation
 
 	if s.prepared == nil {
@@ -521,7 +539,7 @@ func (s *statementImpl) Bind(_ context.Context, values arrow.Record) error {
 //
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
-func (s *statementImpl) BindStream(_ context.Context, stream array.RecordReader) error {
+func (s *statement) BindStream(_ context.Context, stream array.RecordReader) error {
 	if s.prepared == nil {
 		return adbc.Error{
 			Msg:  "[Flight SQL Statement] must call Prepare before calling Bind",
@@ -550,7 +568,7 @@ func (s *statementImpl) BindStream(_ context.Context, stream array.RecordReader)
 //
 // This should return an error with StatusNotImplemented if the schema
 // cannot be determined.
-func (s *statementImpl) GetParameterSchema() (*arrow.Schema, error) {
+func (s *statement) GetParameterSchema() (*arrow.Schema, error) {
 	if s.prepared == nil {
 		return nil, adbc.Error{
 			Msg:  "[Flight SQL Statement] must call Prepare before GetParameterSchema",
@@ -575,7 +593,7 @@ func (s *statementImpl) GetParameterSchema() (*arrow.Schema, error) {
 //
 // If the driver does not support partitioned results, this will return
 // an error with a StatusNotImplemented code.
-func (s *statementImpl) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
+func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 
 	var (
@@ -696,7 +714,7 @@ func (s *statementImpl) ExecutePartitions(ctx context.Context) (*arrow.Schema, a
 }
 
 // ExecuteSchema gets the schema of the result set of a query without executing it.
-func (s *statementImpl) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, err error) {
+func (s *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, err error) {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 
 	if s.prepared != nil {
