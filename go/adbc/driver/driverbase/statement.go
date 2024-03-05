@@ -24,7 +24,6 @@ import (
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/apache/arrow/go/v16/arrow/memory"
-	"golang.org/x/exp/slog"
 )
 
 const (
@@ -37,7 +36,6 @@ type StatementImpl interface {
 	adbc.Statement
 	adbc.GetSetOptions
 	adbc.StatementExecuteSchema
-	adbc.DatabaseLogging
 	Base() *StatementImplBase
 }
 
@@ -52,7 +50,6 @@ type StatementImpl interface {
 type StatementImplBase struct {
 	Alloc       memory.Allocator
 	ErrorHelper ErrorHelper
-	Logger      *slog.Logger
 }
 
 // NewStatementImplBase instantiates StatementImplBase.
@@ -60,19 +57,11 @@ type StatementImplBase struct {
 //   - connection is a ConnectionImplBase containing the common resources from the parent
 //     connection, allowing the Arrow allocator, error handler, and logger to be reused.
 func NewStatementImplBase(connection *ConnectionImplBase) StatementImplBase {
-	return StatementImplBase{Alloc: connection.Alloc, ErrorHelper: connection.ErrorHelper, Logger: connection.Logger}
+	return StatementImplBase{Alloc: connection.Alloc, ErrorHelper: connection.ErrorHelper}
 }
 
 func (base *StatementImplBase) Base() *StatementImplBase {
 	return base
-}
-
-func (base *StatementImplBase) SetLogger(logger *slog.Logger) {
-	if logger != nil {
-		base.Logger = logger
-	} else {
-		base.Logger = nilLogger()
-	}
 }
 
 func (base *StatementImplBase) Bind(ctx context.Context, values arrow.Record) error {

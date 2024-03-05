@@ -32,10 +32,19 @@ const (
 // DatabaseImpl is an interface that drivers implement to provide
 // vendor-specific functionality.
 type DatabaseImpl interface {
+	adbc.GetSetOptions
+	Base() *DatabaseImplBase
+	Open(context.Context) (adbc.Connection, error)
+	Close() error
+	SetOptions(map[string]string) error
+}
+
+// Database is the interface satisfied by the result of the NewDatabase constructor,
+// given an input is provided satisfying the DatabaseImpl interface.
+type Database interface {
 	adbc.Database
 	adbc.GetSetOptions
 	adbc.DatabaseLogging
-	Base() *DatabaseImplBase
 }
 
 // DatabaseImplBase is a struct that provides default implementations of some of the
@@ -63,31 +72,6 @@ func NewDatabaseImplBase(driver *DriverImplBase) DatabaseImplBase {
 
 func (base *DatabaseImplBase) Base() *DatabaseImplBase {
 	return base
-}
-
-func (base *DatabaseImplBase) SetLogger(logger *slog.Logger) {
-	if logger != nil {
-		base.Logger = logger
-	} else {
-		base.Logger = nilLogger()
-	}
-}
-
-func (base *DatabaseImplBase) Close() error {
-	return nil
-}
-
-func (base *DatabaseImplBase) Open(ctx context.Context) (adbc.Connection, error) {
-	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "Open is not implemented")
-}
-
-func (base *DatabaseImplBase) SetOptions(options map[string]string) error {
-	for key, val := range options {
-		if err := base.SetOption(key, val); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (base *DatabaseImplBase) GetOption(key string) (string, error) {
@@ -120,6 +104,43 @@ func (base *DatabaseImplBase) SetOptionDouble(key string, val float64) error {
 
 func (base *DatabaseImplBase) SetOptionInt(key string, val int64) error {
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", DatabaseMessageOptionUnknown, key)
+}
+
+func (base *DatabaseImplBase) Close() error {
+	return nil
+}
+
+func (base *DatabaseImplBase) Open(ctx context.Context) (adbc.Connection, error) {
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "Open")
+}
+
+func (base *DatabaseImplBase) SetOptions(options map[string]string) error {
+	for key, val := range options {
+		if err := base.SetOption(key, val); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// database is the implementation of adbc.Database.
+type database struct {
+	DatabaseImpl
+}
+
+// NewDatabase wraps a DatabaseImpl to create an adbc.Database.
+func NewDatabase(impl DatabaseImpl) Database {
+	return &database{
+		DatabaseImpl: impl,
+	}
+}
+
+func (db *database) SetLogger(logger *slog.Logger) {
+	if logger != nil {
+		db.Base().Logger = logger
+	} else {
+		db.Base().Logger = nilLogger()
+	}
 }
 
 var _ DatabaseImpl = (*DatabaseImplBase)(nil)

@@ -22,10 +22,10 @@ import (
 	"fmt"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/apache/arrow/go/v16/arrow/memory"
-	"golang.org/x/exp/slog"
 )
 
 const (
@@ -37,10 +37,32 @@ const (
 // ConnectionImpl is an interface that drivers implement to provide
 // vendor-specific functionality.
 type ConnectionImpl interface {
+	// adbc.ConnectionGetStatistics
+	adbc.GetSetOptions
+	Base() *ConnectionImplBase
+
+	// Will be called at most once
+	Close() error
+	// Will not be called unless autocommit is disabled
+	Commit(context.Context) error
+	CurrentCatalog() (string, bool)
+	CurrentDbSchema() (string, bool)
+	RegisterDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error
+	GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error)
+	GetTableSchema(ctx context.Context, catalog, dbSchema *string, tableName string) (*arrow.Schema, error)
+	GetTableTypes(ctx context.Context) (array.RecordReader, error)
+	NewStatement() (adbc.Statement, error)
+	ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error)
+	// Will not be called unless autocommit is disabled
+	Rollback(context.Context) error
+	SetAutocommit(enabled bool) error
+}
+
+// Connection is the interface satisfied by the result of the NewConnection constructor,
+// given an input is provided satisfying the ConnectionImpl interface.
+type Connection interface {
 	adbc.Connection
 	adbc.GetSetOptions
-	adbc.DatabaseLogging
-	Base() *ConnectionImplBase
 }
 
 // ConnectionImplBase is a struct that provides default implementations of some of the
@@ -55,7 +77,9 @@ type ConnectionImplBase struct {
 	Alloc       memory.Allocator
 	ErrorHelper ErrorHelper
 	DriverInfo  *DriverInfo
-	Logger      *slog.Logger
+
+	Autocommit bool
+	Closed     bool
 }
 
 // NewConnectionImplBase instantiates ConnectionImplBase.
@@ -63,19 +87,29 @@ type ConnectionImplBase struct {
 //   - database is a DatabaseImplBase containing the common resources from the parent
 //     database, allowing the Arrow allocator, error handler, and logger to be reused.
 func NewConnectionImplBase(database *DatabaseImplBase) ConnectionImplBase {
-	return ConnectionImplBase{Alloc: database.Alloc, ErrorHelper: database.ErrorHelper, DriverInfo: database.DriverInfo, Logger: database.Logger}
+	return ConnectionImplBase{
+		Alloc:       database.Alloc,
+		ErrorHelper: database.ErrorHelper,
+		DriverInfo:  database.DriverInfo,
+		Autocommit:  true,
+		Closed:      false,
+	}
 }
 
 func (base *ConnectionImplBase) Base() *ConnectionImplBase {
 	return base
 }
 
-func (base *ConnectionImplBase) SetLogger(logger *slog.Logger) {
-	if logger != nil {
-		base.Logger = logger
-	} else {
-		base.Logger = nilLogger()
-	}
+func (base *ConnectionImplBase) CurrentCatalog() (string, bool) {
+	return "", false
+}
+
+func (base *ConnectionImplBase) CurrentDbSchema() (string, bool) {
+	return "", false
+}
+
+func (base *ConnectionImplBase) SetAutocommit(enabled bool) error {
+	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "SetAutocommit")
 }
 
 func (base *ConnectionImplBase) Commit(ctx context.Context) error {
@@ -171,24 +205,28 @@ func (base *ConnectionImplBase) Close() error {
 	return nil
 }
 
+func (base *ConnectionImplBase) RegisterDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
+	return nil
+}
+
 func (base *ConnectionImplBase) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
-	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetObjects is not implemented")
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetObjects")
 }
 
 func (base *ConnectionImplBase) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
-	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetTableSchema is not implemented")
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetTableSchema")
 }
 
 func (base *ConnectionImplBase) GetTableTypes(context.Context) (array.RecordReader, error) {
-	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetTableTypes is not implemented")
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetTableTypes")
 }
 
 func (base *ConnectionImplBase) NewStatement() (adbc.Statement, error) {
-	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "NewStatement is not implemented")
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "NewStatement")
 }
 
 func (base *ConnectionImplBase) ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error) {
-	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "ReadPartition is not implemented")
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "ReadPartition")
 }
 
 func (base *ConnectionImplBase) GetOption(key string) (string, error) {
@@ -221,6 +259,116 @@ func (base *ConnectionImplBase) SetOptionDouble(key string, val float64) error {
 
 func (base *ConnectionImplBase) SetOptionInt(key string, val int64) error {
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnknown, key)
+}
+
+type connection struct {
+	ConnectionImpl
+
+	getObjectsHelper GetObjectsHelper
+}
+
+type GetObjectsHelper interface {
+	GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error)
+	GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, metadataRecords []internal.Metadata) (map[string][]string, error)
+	GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (map[internal.CatalogAndSchema][]internal.TableInfo, error)
+}
+
+type connectionImplOption = func(*connection)
+
+func WithGetObjectsHelper(helper GetObjectsHelper) connectionImplOption {
+	return func(conn *connection) {
+		conn.getObjectsHelper = helper
+	}
+}
+
+// NewConnection wraps a ConnectionImpl to create an adbc.Connection.
+func NewConnection(impl ConnectionImpl, opts ...connectionImplOption) Connection {
+	conn := &connection{ConnectionImpl: impl}
+	for _, opt := range opts {
+		opt(conn)
+	}
+
+	return conn
+}
+
+// GetObjects implements Connection.
+func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
+	helper := cnxn.getObjectsHelper
+
+	// If the getObjectsHelper has not been set, then the driver implementor has elected to provide their own GetObjects implementation
+	if helper == nil {
+		return cnxn.ConnectionImpl.GetObjects(ctx, depth, catalog, dbSchema, tableName, columnName, tableType)
+	}
+
+	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
+	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
+	if err := g.Init(cnxn.Base().Alloc, helper.GetObjectsDbSchemas, helper.GetObjectsTables); err != nil {
+		return nil, err
+	}
+	defer g.Release()
+
+	catalogs, err := helper.GetObjectsCatalogs(ctx, catalog)
+	if err != nil {
+		return nil, err
+	}
+
+	foundCatalog := false
+	for _, catalog := range catalogs {
+		g.AppendCatalog(catalog)
+		foundCatalog = true
+	}
+
+	// Implementations like Dremio report no catalogs, but still have schemas
+	if !foundCatalog && depth != adbc.ObjectDepthCatalogs {
+		g.AppendCatalog("")
+	}
+	return g.Finish()
+}
+
+func (cnxn *connection) GetOption(key string) (string, error) {
+	switch key {
+	case adbc.OptionKeyAutoCommit:
+		if cnxn.Base().Autocommit {
+			return adbc.OptionValueEnabled, nil
+		} else {
+			return adbc.OptionValueDisabled, nil
+		}
+	case adbc.OptionKeyCurrentCatalog:
+		val, ok := cnxn.CurrentCatalog()
+		if !ok {
+			return "", cnxn.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "%s not supported", key)
+		}
+		return val, nil
+	case adbc.OptionKeyCurrentDbSchema:
+		val, ok := cnxn.CurrentDbSchema()
+		if !ok {
+			return "", cnxn.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "%s not supported", key)
+		}
+		return val, nil
+	}
+	return cnxn.GetOption(key)
+}
+
+func (cnxn *connection) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
+	if err := cnxn.Base().RegisterDriverInfo(ctx, infoCodes); err != nil {
+		return nil, err
+	}
+
+	return cnxn.Base().GetInfo(ctx, infoCodes)
+}
+
+func (cnxn *connection) Commit(ctx context.Context) error {
+	if cnxn.Base().Autocommit {
+		return cnxn.Base().ErrorHelper.Errorf(adbc.StatusInvalidState, ConnectionMessageCannotCommit)
+	}
+	return cnxn.ConnectionImpl.Commit(ctx)
+}
+
+func (cnxn *connection) Rollback(ctx context.Context) error {
+	if cnxn.Base().Autocommit {
+		return cnxn.Base().ErrorHelper.Errorf(adbc.StatusInvalidState, ConnectionMessageCannotRollback)
+	}
+	return cnxn.ConnectionImpl.Rollback(ctx)
 }
 
 var _ ConnectionImpl = (*ConnectionImplBase)(nil)

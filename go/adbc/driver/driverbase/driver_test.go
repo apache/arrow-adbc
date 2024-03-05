@@ -53,22 +53,15 @@ func (h *MockedHandler) Handle(ctx context.Context, r slog.Record) error {
 func NewDriver(alloc memory.Allocator, m *mock.Mock) adbc.Driver {
 	info := driverbase.DefaultDriverInfo("MockDriver")
 	_ = info.RegisterInfoCode(adbc.InfoCode(10_001), "my custom info")
-	return &driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc), mock: m}
+	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc), mock: m})
 }
 
 func TestDriver(t *testing.T) {
 	var (
-		m mock.Mock
-
-		dbHandler   MockedHandler
-		cnxnHandler MockedHandler
-		stmtHandler MockedHandler
+		m         mock.Mock
+		dbHandler MockedHandler
 	)
-
-	// Handlers will panic for any input that doesn't match these expectations
 	dbHandler.On("Handle", mock.Anything, "only db can say this").Return(nil)
-	cnxnHandler.On("Handle", mock.Anything, "only cnxn can say this").Return(nil)
-	stmtHandler.On("Handle", mock.Anything, "only stmt can say this").Return(nil)
 
 	ctx := context.TODO()
 	alloc := memory.DefaultAllocator
@@ -84,10 +77,8 @@ func TestDriver(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, "Not Implemented: [MockDriver] Unknown database option 'unrecognized'", err.Error())
 
-	// Setup a logger at the database scope
-	dbImpl := db.(driverbase.DatabaseImpl) // access base functionality
-	dbImpl.SetLogger(slog.New(&dbHandler))
-	dbImpl.Base().Logger.Log(ctx, slog.LevelInfo, "only db can say this")
+	// Setup a logger for the database
+	db.(driverbase.Database).SetLogger(slog.New(&dbHandler))
 
 	cnxn, err := db.Open(ctx)
 	require.NoError(t, err)
@@ -146,43 +137,14 @@ func TestDriver(t *testing.T) {
 
 	require.Truef(t, array.TableEqual(expectedGetInfoTable, getInfoTable), "expected: %s\ngot: %s", expectedGetInfoTable, getInfoTable)
 
-	cnxnImpl := cnxn.(driverbase.ConnectionImpl)
-	// By default, connection inherits logger from parent database
-	cnxnImpl.Base().Logger.Log(ctx, slog.LevelInfo, "only db can say this")
-
-	// After setting a logger for the connection, the db logger is shadowed
-	cnxnImpl.SetLogger(slog.New(&cnxnHandler))
-	cnxnImpl.Base().Logger.Log(ctx, slog.LevelInfo, "only cnxn can say this")
-
 	// Can also access default Get/Set methods
-	err = cnxnImpl.SetOption(OptionKeyUnrecognized, "should-fail")
+	err = cnxn.(driverbase.Connection).SetOption(OptionKeyUnrecognized, "should-fail")
 	require.Error(t, err)
 	require.Equal(t, "Not Implemented: [MockDriver] Unknown connection option 'unrecognized'", err.Error())
 
 	stmt, err := cnxn.NewStatement()
 	require.NoError(t, err)
 	defer stmt.Close()
-
-	stmtImpl := stmt.(driverbase.StatementImpl)
-	// By default, statement inherits logger from parent connection
-	stmtImpl.Base().Logger.Log(ctx, slog.LevelInfo, "only cnxn can say this")
-
-	// After setting a logger for the statement, the cnxn logger is shadowed
-	stmtImpl.SetLogger(slog.New(&stmtHandler))
-	stmtImpl.Base().Logger.Log(ctx, slog.LevelInfo, "only stmt can say this")
-
-	// The top-level database logger has not been changed
-	dbImpl.Base().Logger.Log(ctx, slog.LevelInfo, "only db can say this")
-
-	// Assert expectations
-	dbHandler.AssertExpectations(t)
-	dbHandler.AssertNumberOfCalls(t, "Handle", 3)
-
-	cnxnHandler.AssertExpectations(t)
-	cnxnHandler.AssertNumberOfCalls(t, "Handle", 2)
-
-	stmtHandler.AssertExpectations(t)
-	stmtHandler.AssertNumberOfCalls(t, "Handle", 1)
 }
 
 type driverImpl struct {
@@ -192,7 +154,7 @@ type driverImpl struct {
 
 // NewDatabase implements driverbase.DriverImpl.
 func (drv *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
-	return &databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&drv.DriverImplBase), drv: drv}, nil
+	return driverbase.NewDatabase(&databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&drv.DriverImplBase), drv: drv}), nil
 }
 
 type databaseImpl struct {
