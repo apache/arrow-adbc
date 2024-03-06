@@ -50,22 +50,16 @@ func (h *MockedHandler) Handle(ctx context.Context, r slog.Record) error {
 	return args.Error(0)
 }
 
-func NewDriver(alloc memory.Allocator, m *mock.Mock) adbc.Driver {
+func NewDriver(alloc memory.Allocator, useHelpers bool) adbc.Driver {
 	info := driverbase.DefaultDriverInfo("MockDriver")
 	_ = info.RegisterInfoCode(adbc.InfoCode(10_001), "my custom info")
-	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc), mock: m})
+	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc), useHelpers: useHelpers})
 }
 
-func TestDriver(t *testing.T) {
-	var (
-		m         mock.Mock
-		dbHandler MockedHandler
-	)
-	dbHandler.On("Handle", mock.Anything, "only db can say this").Return(nil)
-
+func TestDefaultDriver(t *testing.T) {
 	ctx := context.TODO()
 	alloc := memory.DefaultAllocator
-	drv := NewDriver(alloc, &m)
+	drv := NewDriver(alloc, false)
 
 	db, err := drv.NewDatabase(nil)
 	require.NoError(t, err)
@@ -76,9 +70,6 @@ func TestDriver(t *testing.T) {
 	err = db.SetOptions(map[string]string{OptionKeyUnrecognized: "should-fail"})
 	require.Error(t, err)
 	require.Equal(t, "Not Implemented: [MockDriver] Unknown database option 'unrecognized'", err.Error())
-
-	// Setup a logger for the database
-	db.(driverbase.Database).SetLogger(slog.New(&dbHandler))
 
 	cnxn, err := db.Open(ctx)
 	require.NoError(t, err)
@@ -137,35 +128,198 @@ func TestDriver(t *testing.T) {
 
 	require.Truef(t, array.TableEqual(expectedGetInfoTable, getInfoTable), "expected: %s\ngot: %s", expectedGetInfoTable, getInfoTable)
 
-	// Can also access default Get/Set methods
-	err = cnxn.(driverbase.Connection).SetOption(OptionKeyUnrecognized, "should-fail")
+	_, err = cnxn.GetObjects(ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, nil)
 	require.Error(t, err)
-	require.Equal(t, "Not Implemented: [MockDriver] Unknown connection option 'unrecognized'", err.Error())
+	require.Equal(t, "Not Implemented: [MockDriver] GetObjects", err.Error())
+
+	_, err = cnxn.GetTableTypes(ctx)
+	require.Error(t, err)
+	require.Equal(t, "Not Implemented: [MockDriver] GetTableTypes", err.Error())
+
+	autocommit, err := cnxn.(adbc.GetSetOptions).GetOption(adbc.OptionKeyAutoCommit)
+	require.NoError(t, err)
+	require.Equal(t, adbc.OptionValueEnabled, autocommit)
+
+	err = cnxn.(adbc.GetSetOptions).SetOption(adbc.OptionKeyAutoCommit, "false")
+	require.Error(t, err)
+	require.Equal(t, "Not Implemented: [MockDriver] Unsupported connection option 'adbc.connection.autocommit'", err.Error())
+
+	_, err = cnxn.(adbc.GetSetOptions).GetOption(adbc.OptionKeyCurrentCatalog)
+	require.Error(t, err)
+	require.Equal(t, "Not Found: [MockDriver] Unknown connection option 'adbc.connection.catalog'", err.Error())
+
+	err = cnxn.(adbc.GetSetOptions).SetOption(adbc.OptionKeyCurrentCatalog, "test_catalog")
+	require.Error(t, err)
+	require.Equal(t, "Not Implemented: [MockDriver] Unknown connection option 'adbc.connection.catalog'", err.Error())
+}
+
+func TestCustomizedDriver(t *testing.T) {
+	ctx := context.TODO()
+	alloc := memory.DefaultAllocator
+	drv := NewDriver(alloc, true)
+
+	db, err := drv.NewDatabase(nil)
+	require.NoError(t, err)
+	defer db.Close()
+
+	require.NoError(t, db.SetOptions(map[string]string{OptionKeyRecognized: "should-pass"}))
+
+	err = db.SetOptions(map[string]string{OptionKeyUnrecognized: "should-fail"})
+	require.Error(t, err)
+	require.Equal(t, "Not Implemented: [MockDriver] Unknown database option 'unrecognized'", err.Error())
+
+	cnxn, err := db.Open(ctx)
+	require.NoError(t, err)
+	defer cnxn.Close()
+
+	err = cnxn.Commit(ctx)
+	require.Error(t, err)
+	require.Equal(t, "Invalid State: [MockDriver] Cannot commit when autocommit is enabled", err.Error())
+
+	err = cnxn.Rollback(ctx)
+	require.Error(t, err)
+	require.Equal(t, "Invalid State: [MockDriver] Cannot rollback when autocommit is enabled", err.Error())
+
+	info, err := cnxn.GetInfo(ctx, nil)
+	require.NoError(t, err)
+
+	// This is the arrow table representation of GetInfo produced by merging:
+	//  - the default DriverInfo set at initialization
+	//  - the DriverInfo set once in the NewDriver constructor
+	//  - the DriverInfo set dynamically when GetInfo is called by implementing DriverInfoPreparer interface
+	expectedGetInfoTable, err := array.TableFromJSON(alloc, adbc.GetInfoSchema, []string{`[
+		{
+			"info_name": 0,
+			"info_value": [0, "MockDriver"]
+		},
+		{
+			"info_name": 100,
+			"info_value": [0, "ADBC MockDriver Driver - Go"]
+		},
+		{
+			"info_name": 101,
+			"info_value": [0, "(unknown or development build)"]
+		},
+		{
+			"info_name": 102,
+			"info_value": [0, "(unknown or development build)"]
+		},
+		{
+			"info_name": 103,
+			"info_value": [2, 1001000]
+		},
+		{
+			"info_name": 10001,
+			"info_value": [0, "my custom info"]
+		},
+		{
+			"info_name": 10002,
+			"info_value": [0, "this was fetched dynamically"]
+		}
+	]`})
+	require.NoError(t, err)
+
+	getInfoRecs := make([]arrow.Record, 0)
+	for info.Next() {
+		rec := info.Record()
+		rec.Retain()
+		defer rec.Release()
+		getInfoRecs = append(getInfoRecs, rec)
+	}
+	getInfoTable := array.NewTableFromRecords(info.Schema(), getInfoRecs)
+	defer getInfoTable.Release()
+
+	require.Truef(t, array.TableEqual(expectedGetInfoTable, getInfoTable), "expected: %s\ngot: %s", expectedGetInfoTable, getInfoTable)
+
+	_, err = cnxn.GetObjects(ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, nil)
+	require.Error(t, err)
+	require.Equal(t, "Not Implemented: [MockDriver] GetObjects", err.Error())
+
+	tableTypes, err := cnxn.GetTableTypes(ctx)
+	require.NoError(t, err)
+
+	// This is the arrow table representation of the GetTableTypes output we get by implementing
+	// the simplified TableTypeLister interface
+	expectedTableTypesTable, err := array.TableFromJSON(alloc, adbc.TableTypesSchema, []string{`[
+		{ "table_type": "TABLE" },
+		{ "table_type": "VIEW" }
+	]`})
+	require.NoError(t, err)
+
+	tableTypeRecs := make([]arrow.Record, 0)
+	for tableTypes.Next() {
+		rec := tableTypes.Record()
+		rec.Retain()
+		defer rec.Release()
+		tableTypeRecs = append(tableTypeRecs, rec)
+	}
+	tableTypeTable := array.NewTableFromRecords(tableTypes.Schema(), tableTypeRecs)
+	defer tableTypeTable.Release()
+
+	require.Truef(t, array.TableEqual(expectedTableTypesTable, tableTypeTable), "expected: %s\ngot: %s", expectedTableTypesTable, tableTypeTable)
+
+	autocommit, err := cnxn.(adbc.GetSetOptions).GetOption(adbc.OptionKeyAutoCommit)
+	require.NoError(t, err)
+	require.Equal(t, adbc.OptionValueEnabled, autocommit)
+
+	// By implementing AutocommitSetter, we are able to successfully toggle autocommit
+	err = cnxn.(adbc.GetSetOptions).SetOption(adbc.OptionKeyAutoCommit, "false")
+	require.NoError(t, err)
+
+	// We haven't implemented Commit, but we get NotImplemented instead of InvalidState because
+	// Autocommit has been explicitly disabled
+	err = cnxn.Commit(ctx)
+	require.Error(t, err)
+	require.Equal(t, "Not Implemented: [MockDriver] Commit", err.Error())
+
+	// By implementing CurrentNamespacer, we can now get/set the current catalog/dbschema
+	// Default current(catalog|dSchema) is driver-specific, but the stub implementation falls back
+	// to a 'not found' error instead of 'not implemented'
+	_, err = cnxn.(adbc.GetSetOptions).GetOption(adbc.OptionKeyCurrentCatalog)
+	require.Error(t, err)
+	require.Equal(t, "Not Found: [MockDriver] The current catalog has not been set", err.Error())
+
+	err = cnxn.(adbc.GetSetOptions).SetOption(adbc.OptionKeyCurrentCatalog, "test_catalog")
+	require.NoError(t, err)
+
+	currentCatalog, err := cnxn.(adbc.GetSetOptions).GetOption(adbc.OptionKeyCurrentCatalog)
+	require.NoError(t, err)
+	require.Equal(t, "test_catalog", currentCatalog)
+
+	_, err = cnxn.(adbc.GetSetOptions).GetOption(adbc.OptionKeyCurrentDbSchema)
+	require.Error(t, err)
+	require.Equal(t, "Not Found: [MockDriver] The current db schema has not been set", err.Error())
+
+	err = cnxn.(adbc.GetSetOptions).SetOption(adbc.OptionKeyCurrentDbSchema, "test_schema")
+	require.NoError(t, err)
+
+	currentDbSchema, err := cnxn.(adbc.GetSetOptions).GetOption(adbc.OptionKeyCurrentDbSchema)
+	require.NoError(t, err)
+	require.Equal(t, "test_schema", currentDbSchema)
 }
 
 type driverImpl struct {
 	driverbase.DriverImplBase
-	mock *mock.Mock
+
+	useHelpers bool
 }
 
-// NewDatabase implements driverbase.DriverImpl.
 func (drv *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
-	return driverbase.NewDatabase(&databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&drv.DriverImplBase), drv: drv}), nil
+	var handler MockedHandler
+	db := driverbase.NewDatabase(
+		&databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&drv.DriverImplBase),
+			drv:        drv,
+			useHelpers: drv.useHelpers,
+		})
+	db.SetLogger(slog.New(&handler))
+	return db, nil
 }
 
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
 	drv *driverImpl
-}
 
-// Close implements adbc.Database.
-func (db *databaseImpl) Close() error {
-	return nil
-}
-
-// Open implements adbc.Database.
-func (db *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
-	return &connectionImpl{ConnectionImplBase: driverbase.NewConnectionImplBase(&db.DatabaseImplBase), db: db}, nil
+	useHelpers bool
 }
 
 // SetOptions implements adbc.Database.
@@ -189,37 +343,61 @@ func (d *databaseImpl) SetOption(key, value string) error {
 	return d.DatabaseImplBase.SetOption(key, value)
 }
 
+func (db *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
+	cnxn := &connectionImpl{ConnectionImplBase: driverbase.NewConnectionImplBase(&db.DatabaseImplBase), db: db}
+	if db.useHelpers { // this toggles between the NewDefaultDriver and NewCustomizedDriver scenarios
+		return driverbase.NewConnection(
+			cnxn,
+			driverbase.WithAutocommitSetter(cnxn),
+			driverbase.WithCurrentNamespacer(cnxn),
+			driverbase.WithTableTypeLister(cnxn),
+			driverbase.WithDriverInfoPreparer(cnxn),
+		), nil
+	}
+	return driverbase.NewConnection(cnxn), nil
+}
+
 type connectionImpl struct {
 	driverbase.ConnectionImplBase
 	db *databaseImpl
+
+	currentCatalog  string
+	currentDbSchema string
 }
 
-// Close implements adbc.Connection.
-func (cnxn *connectionImpl) Close() error {
+func (c *connectionImpl) SetAutocommit(enabled bool) error {
+	c.ConnectionImplBase.Autocommit = enabled
 	return nil
 }
 
-// GetObjects implements adbc.Connection.
-func (cnxn *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
-	panic("unimplemented")
+func (c *connectionImpl) CurrentCatalog() (string, bool) {
+	if c.currentCatalog == "" {
+		return "", false
+	}
+	return c.currentCatalog, true
 }
 
-// GetTableSchema implements adbc.Connection.
-func (cnxn *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
-	panic("unimplemented")
+func (c *connectionImpl) CurrentDbSchema() (string, bool) {
+	if c.currentDbSchema == "" {
+		return "", false
+	}
+	return c.currentDbSchema, true
 }
 
-// GetTableTypes implements adbc.Connection.
-func (cnxn *connectionImpl) GetTableTypes(context.Context) (array.RecordReader, error) {
-	panic("unimplemented")
+func (c *connectionImpl) SetCurrentCatalog(val string) error {
+	c.currentCatalog = val
+	return nil
 }
 
-// NewStatement implements adbc.Connection.
-func (cnxn *connectionImpl) NewStatement() (adbc.Statement, error) {
-	panic("unimplemented")
+func (c *connectionImpl) SetCurrentDbSchema(val string) error {
+	c.currentDbSchema = val
+	return nil
 }
 
-// ReadPartition implements adbc.Connection.
-func (cnxn *connectionImpl) ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error) {
-	panic("unimplemented")
+func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
+	return []string{"TABLE", "VIEW"}, nil
+}
+
+func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
+	return c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoCode(10_002), "this was fetched dynamically")
 }

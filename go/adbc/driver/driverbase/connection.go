@@ -29,32 +29,47 @@ import (
 )
 
 const (
-	ConnectionMessageOptionUnknown  = "Unknown connection option"
-	ConnectionMessageCannotCommit   = "Cannot commit when autocommit is enabled"
-	ConnectionMessageCannotRollback = "Cannot rollback when autocommit is enabled"
+	ConnectionMessageOptionUnknown     = "Unknown connection option"
+	ConnectionMessageOptionUnsupported = "Unsupported connection option"
+	ConnectionMessageCannotCommit      = "Cannot commit when autocommit is enabled"
+	ConnectionMessageCannotRollback    = "Cannot rollback when autocommit is enabled"
 )
 
 // ConnectionImpl is an interface that drivers implement to provide
 // vendor-specific functionality.
 type ConnectionImpl interface {
-	// adbc.ConnectionGetStatistics
+	adbc.Connection
 	adbc.GetSetOptions
 	Base() *ConnectionImplBase
 
-	// Will be called at most once
-	Close() error
-	// Will not be called unless autocommit is disabled
-	Commit(context.Context) error
+	// // Will be called at most once
+	// Close() error
+	// // Will not be called unless autocommit is disabled
+	// Commit(context.Context) error
+	// GetTableSchema(ctx context.Context, catalog, dbSchema *string, tableName string) (*arrow.Schema, error)
+	// NewStatement() (adbc.Statement, error)
+	// ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error)
+	// // Will not be called unless autocommit is disabled
+	// Rollback(context.Context) error
+	// SetAutocommit(enabled bool) error
+}
+
+type CurrentNamespacer interface {
 	CurrentCatalog() (string, bool)
 	CurrentDbSchema() (string, bool)
-	RegisterDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error
-	GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error)
-	GetTableSchema(ctx context.Context, catalog, dbSchema *string, tableName string) (*arrow.Schema, error)
-	GetTableTypes(ctx context.Context) (array.RecordReader, error)
-	NewStatement() (adbc.Statement, error)
-	ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error)
-	// Will not be called unless autocommit is disabled
-	Rollback(context.Context) error
+	SetCurrentCatalog(string) error
+	SetCurrentDbSchema(string) error
+}
+
+type DriverInfoPreparer interface {
+	PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error
+}
+
+type TableTypeLister interface {
+	ListTableTypes(ctx context.Context) ([]string, error)
+}
+
+type AutocommitSetter interface {
 	SetAutocommit(enabled bool) error
 }
 
@@ -100,24 +115,12 @@ func (base *ConnectionImplBase) Base() *ConnectionImplBase {
 	return base
 }
 
-func (base *ConnectionImplBase) CurrentCatalog() (string, bool) {
-	return "", false
-}
-
-func (base *ConnectionImplBase) CurrentDbSchema() (string, bool) {
-	return "", false
-}
-
-func (base *ConnectionImplBase) SetAutocommit(enabled bool) error {
-	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "SetAutocommit")
-}
-
 func (base *ConnectionImplBase) Commit(ctx context.Context) error {
-	return base.ErrorHelper.Errorf(adbc.StatusInvalidState, ConnectionMessageCannotCommit)
+	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "Commit")
 }
 
 func (base *ConnectionImplBase) Rollback(context.Context) error {
-	return base.ErrorHelper.Errorf(adbc.StatusInvalidState, ConnectionMessageCannotRollback)
+	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "Rollback")
 }
 
 func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
@@ -205,10 +208,6 @@ func (base *ConnectionImplBase) Close() error {
 	return nil
 }
 
-func (base *ConnectionImplBase) RegisterDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
-	return nil
-}
-
 func (base *ConnectionImplBase) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetObjects")
 }
@@ -246,6 +245,10 @@ func (base *ConnectionImplBase) GetOptionInt(key string) (int64, error) {
 }
 
 func (base *ConnectionImplBase) SetOption(key string, val string) error {
+	switch key {
+	case adbc.OptionKeyAutoCommit:
+		return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnsupported, key)
+	}
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnknown, key)
 }
 
@@ -264,7 +267,11 @@ func (base *ConnectionImplBase) SetOptionInt(key string, val int64) error {
 type connection struct {
 	ConnectionImpl
 
-	getObjectsHelper GetObjectsHelper
+	getObjectsHelper   GetObjectsHelper
+	currentNamespacer  CurrentNamespacer
+	driverInfoPreparer DriverInfoPreparer
+	tableTypeLister    TableTypeLister
+	autocommitSetter   AutocommitSetter
 }
 
 type GetObjectsHelper interface {
@@ -278,6 +285,30 @@ type connectionImplOption = func(*connection)
 func WithGetObjectsHelper(helper GetObjectsHelper) connectionImplOption {
 	return func(conn *connection) {
 		conn.getObjectsHelper = helper
+	}
+}
+
+func WithCurrentNamespacer(helper CurrentNamespacer) connectionImplOption {
+	return func(conn *connection) {
+		conn.currentNamespacer = helper
+	}
+}
+
+func WithDriverInfoPreparer(helper DriverInfoPreparer) connectionImplOption {
+	return func(conn *connection) {
+		conn.driverInfoPreparer = helper
+	}
+}
+
+func WithTableTypeLister(helper TableTypeLister) connectionImplOption {
+	return func(conn *connection) {
+		conn.tableTypeLister = helper
+	}
+}
+
+func WithAutocommitSetter(helper AutocommitSetter) connectionImplOption {
+	return func(conn *connection) {
+		conn.autocommitSetter = helper
 	}
 }
 
@@ -334,27 +365,75 @@ func (cnxn *connection) GetOption(key string) (string, error) {
 			return adbc.OptionValueDisabled, nil
 		}
 	case adbc.OptionKeyCurrentCatalog:
-		val, ok := cnxn.CurrentCatalog()
-		if !ok {
-			return "", cnxn.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "%s not supported", key)
+		if cnxn.currentNamespacer != nil {
+			val, ok := cnxn.currentNamespacer.CurrentCatalog()
+			if !ok {
+				return "", cnxn.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "The current catalog has not been set")
+			}
+			return val, nil
 		}
-		return val, nil
 	case adbc.OptionKeyCurrentDbSchema:
-		val, ok := cnxn.CurrentDbSchema()
-		if !ok {
-			return "", cnxn.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "%s not supported", key)
+		if cnxn.currentNamespacer != nil {
+			val, ok := cnxn.currentNamespacer.CurrentDbSchema()
+			if !ok {
+				return "", cnxn.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "The current db schema has not been set")
+			}
+			return val, nil
 		}
-		return val, nil
 	}
-	return cnxn.GetOption(key)
+	return cnxn.ConnectionImpl.GetOption(key)
+}
+
+func (cnxn *connection) SetOption(key string, val string) error {
+	switch key {
+	case adbc.OptionKeyAutoCommit:
+		if cnxn.autocommitSetter != nil {
+			if val == adbc.OptionValueEnabled {
+				return cnxn.autocommitSetter.SetAutocommit(true)
+			}
+			if val == adbc.OptionValueDisabled {
+				return cnxn.autocommitSetter.SetAutocommit(false)
+			}
+		}
+	case adbc.OptionKeyCurrentCatalog:
+		if cnxn.currentNamespacer != nil {
+			return cnxn.currentNamespacer.SetCurrentCatalog(val)
+		}
+	case adbc.OptionKeyCurrentDbSchema:
+		if cnxn.currentNamespacer != nil {
+			return cnxn.currentNamespacer.SetCurrentDbSchema(val)
+		}
+	}
+	return cnxn.ConnectionImpl.SetOption(key, val)
 }
 
 func (cnxn *connection) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
-	if err := cnxn.Base().RegisterDriverInfo(ctx, infoCodes); err != nil {
-		return nil, err
+	if cnxn.driverInfoPreparer != nil {
+		if err := cnxn.driverInfoPreparer.PrepareDriverInfo(ctx, infoCodes); err != nil {
+			return nil, err
+		}
 	}
 
 	return cnxn.Base().GetInfo(ctx, infoCodes)
+}
+
+func (cnxn *connection) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
+	if cnxn.tableTypeLister != nil {
+		tableTypes, err := cnxn.tableTypeLister.ListTableTypes(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		bldr := array.NewRecordBuilder(cnxn.Base().Alloc, adbc.TableTypesSchema)
+		defer bldr.Release()
+
+		bldr.Field(0).(*array.StringBuilder).AppendValues(tableTypes, nil)
+		final := bldr.NewRecord()
+		defer final.Release()
+		return array.NewRecordReader(adbc.TableTypesSchema, []arrow.Record{final})
+	}
+
+	return cnxn.ConnectionImpl.GetTableTypes(ctx)
 }
 
 func (cnxn *connection) Commit(ctx context.Context) error {
