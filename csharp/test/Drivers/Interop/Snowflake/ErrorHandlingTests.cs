@@ -162,14 +162,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// A test.
         /// </summary>
-        /// <param name="testConfiguration">A test configuration.</param>
-        /// <param name="exceptionType">Expected exception type.</param>
-        /// <param name="exceptionMessageComponents">Expected keywords/phrases to be found in exception message.</param>
-        public readonly struct SnowflakeTestConfigurationTest(TestConfiguration testConfiguration, Type exceptionType, string[] exceptionMessageComponents)
+        public readonly struct SnowflakeTestConfigurationTest
         {
-            public readonly TestConfiguration TestConfiguration = testConfiguration;
-            public readonly Type ExceptionType = exceptionType;
-            public readonly string[] ExceptionMessageComponents = exceptionMessageComponents;
+            public TestConfiguration TestConfiguration { get; }
+
+            public Type ExceptionType { get; }
+
+            public string[] ExceptionMessageComponents { get; }
+
+            /// <param name="testConfiguration">A test configuration.</param>
+            /// <param name="exceptionType">Expected exception type.</param>
+            /// <param name="exceptionMessageComponents">Expected keywords/phrases to be found in exception message.</param>
+            public SnowflakeTestConfigurationTest(
+                TestConfiguration testConfiguration,
+                Type exceptionType,
+                string[] exceptionMessageComponents)
+            {
+                TestConfiguration = testConfiguration;
+                ExceptionType = exceptionType;
+                ExceptionMessageComponents = exceptionMessageComponents;
+            }
         }
 
         private void SelectAndValidateException(
