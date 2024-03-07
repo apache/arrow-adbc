@@ -908,28 +908,6 @@ func getQualifiedConstraint(dbName string, schema string, tableName string, cons
 	}
 }
 
-// func getConstraintSchemaFromTableConstraint(tableConstraint TableConstraint) internal.ConstraintSchema {
-// 	var constraintSchema internal.ConstraintSchema
-// 	constraintName :=
-// 	usageSchema := getUsageSchemaFromTableConstraint(tableConstraint)
-// 	if tableConstraint.fkConstraintName.Valid {
-// 		usageSchema := getUsageSchemaFromTableConstraint(tableConstraint)
-// 		constraintSchema = internal.ConstraintSchema{
-// 			ConstraintName:         tableConstraint.fkConstraintName.String,
-// 			ConstraintType:         tableConstraint.constraintType,
-// 			ConstraintColumnNames:  []string{tableConstraint.fkColName.String},
-// 			ConstraintColumnUsages: []internal.UsageSchema{usageSchema},
-// 		}
-// 	} else {
-// 		constraintSchema = internal.ConstraintSchema{
-// 			ConstraintName:        tableConstraint.constraintName,
-// 			ConstraintType:        tableConstraint.constraintType,
-// 			ConstraintColumnNames: []string{tableConstraint.colName},
-// 		}
-// 	}
-// 	return constraintSchema
-// }
-
 func getConstraintSchemaFromTableConstraint(tableConstraint TableConstraint) internal.ConstraintSchema {
 	var constraintSchema internal.ConstraintSchema
 	constraintSchema.ConstraintType = tableConstraint.constraintType
