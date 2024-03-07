@@ -226,6 +226,10 @@ class SnowflakeStatementTest : public ::testing::Test,
  public:
   // will need to be updated to SetUpTestSuite when gtest is upgraded
   static void SetUpTestCase() {
+    if (quirks_.skip_) {
+      GTEST_SKIP();
+    }
+
     struct AdbcError error;
     struct AdbcDatabase db;
     struct AdbcConnection connection;
@@ -262,6 +266,10 @@ class SnowflakeStatementTest : public ::testing::Test,
 
   // will need to be updated to TearDownTestSuite when gtest is upgraded
   static void TearDownTestCase() {
+    if (quirks_.skip_) {
+      GTEST_SKIP();
+    }
+
     struct AdbcError error;
     struct AdbcDatabase db;
     struct AdbcConnection connection;
