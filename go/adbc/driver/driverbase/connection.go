@@ -269,45 +269,42 @@ type connection struct {
 	autocommitSetter    AutocommitSetter
 }
 
-type connectionImplOption = func(*connection)
-
-func WithDbObjectsEnumerator(helper DbObjectsEnumerator) connectionImplOption {
-	return func(conn *connection) {
-		conn.dbObjectsEnumerator = helper
-	}
+type ConnectionBuilder struct {
+	connection *connection
 }
 
-func WithCurrentNamespacer(helper CurrentNamespacer) connectionImplOption {
-	return func(conn *connection) {
-		conn.currentNamespacer = helper
-	}
+func NewConnectionBuilder(impl ConnectionImpl) *ConnectionBuilder {
+	return &ConnectionBuilder{connection: &connection{ConnectionImpl: impl}}
 }
 
-func WithDriverInfoPreparer(helper DriverInfoPreparer) connectionImplOption {
-	return func(conn *connection) {
-		conn.driverInfoPreparer = helper
-	}
+func (b *ConnectionBuilder) WithDbObjectsEnumerator(helper DbObjectsEnumerator) *ConnectionBuilder {
+	b.connection.dbObjectsEnumerator = helper
+	return b
 }
 
-func WithTableTypeLister(helper TableTypeLister) connectionImplOption {
-	return func(conn *connection) {
-		conn.tableTypeLister = helper
-	}
+func (b *ConnectionBuilder) WithCurrentNamespacer(helper CurrentNamespacer) *ConnectionBuilder {
+	b.connection.currentNamespacer = helper
+	return b
 }
 
-func WithAutocommitSetter(helper AutocommitSetter) connectionImplOption {
-	return func(conn *connection) {
-		conn.autocommitSetter = helper
-	}
+func (b *ConnectionBuilder) WithDriverInfoPreparer(helper DriverInfoPreparer) *ConnectionBuilder {
+	b.connection.driverInfoPreparer = helper
+	return b
 }
 
-// NewConnection wraps a ConnectionImpl to create an adbc.Connection.
-func NewConnection(impl ConnectionImpl, opts ...connectionImplOption) Connection {
-	conn := &connection{ConnectionImpl: impl}
-	for _, opt := range opts {
-		opt(conn)
-	}
+func (b *ConnectionBuilder) WithAutocommitSetter(helper AutocommitSetter) *ConnectionBuilder {
+	b.connection.autocommitSetter = helper
+	return b
+}
 
+func (b *ConnectionBuilder) WithTableTypeLister(helper TableTypeLister) *ConnectionBuilder {
+	b.connection.tableTypeLister = helper
+	return b
+}
+
+func (b *ConnectionBuilder) Connection() Connection {
+	conn := b.connection
+	b.connection = nil
 	return conn
 }
 

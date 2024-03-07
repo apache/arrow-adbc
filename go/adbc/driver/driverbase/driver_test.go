@@ -378,17 +378,17 @@ func (d *databaseImpl) SetOption(key, value string) error {
 
 func (db *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	cnxn := &connectionImpl{ConnectionImplBase: driverbase.NewConnectionImplBase(&db.DatabaseImplBase), db: db}
+	bldr := driverbase.NewConnectionBuilder(cnxn)
 	if db.useHelpers { // this toggles between the NewDefaultDriver and NewCustomizedDriver scenarios
-		return driverbase.NewConnection(
-			cnxn,
-			driverbase.WithAutocommitSetter(cnxn),
-			driverbase.WithCurrentNamespacer(cnxn),
-			driverbase.WithTableTypeLister(cnxn),
-			driverbase.WithDriverInfoPreparer(cnxn),
-			driverbase.WithDbObjectsEnumerator(cnxn),
-		), nil
+		return bldr.
+			WithAutocommitSetter(cnxn).
+			WithCurrentNamespacer(cnxn).
+			WithTableTypeLister(cnxn).
+			WithDriverInfoPreparer(cnxn).
+			WithDbObjectsEnumerator(cnxn).
+			Connection(), nil
 	}
-	return driverbase.NewConnection(cnxn), nil
+	return bldr.Connection(), nil
 }
 
 type connectionImpl struct {
