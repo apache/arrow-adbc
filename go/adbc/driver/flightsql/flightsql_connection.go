@@ -64,10 +64,16 @@ func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEnd
 	}
 
 	var (
-		cc interface{}
+		cc          interface{}
+		hasFallback bool
 	)
 
 	for _, loc := range endpoint.Location {
+		if loc.Uri == flight.LocationReuseConnection {
+			hasFallback = true
+			continue
+		}
+
 		cc, err = clientCache.Get(loc.Uri)
 		if err != nil {
 			continue
@@ -80,6 +86,10 @@ func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEnd
 		}
 
 		return
+	}
+
+	if hasFallback {
+		return cl.DoGet(ctx, endpoint.Ticket, opts...)
 	}
 
 	return nil, err
