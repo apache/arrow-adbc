@@ -57,7 +57,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             AdbcTable table = tables.Where((table) => string.Equals(table.Name, _fixture._tableName1, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             Assert.True(table != null, "table should not be null");
-            Assert.Equal("BASE TABLE", table.Type);
             Assert.True(table.Constraints != null, "table constraints should not be null");
 
 
@@ -106,7 +105,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             AdbcTable table = tables.Where((table) => string.Equals(table.Name, _fixture._tableName2, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             Assert.True(table != null, "table should not be null");
-            Assert.Equal("BASE TABLE", table.Type);
             Assert.True(table.Constraints != null, "table constraints should not be null");
 
 

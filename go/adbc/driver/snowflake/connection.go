@@ -18,13 +18,14 @@
 package snowflake
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"io"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -61,9 +62,17 @@ type cnxn struct {
 	useHighPrecision  bool
 }
 
+// Uniquely identify a constraint based on the dbName, schema, and tblName
+// As Snowflake allows creating duplicate constraintName in a separate schema
+// Table Name is stored additional for mapping to internal.CatalogSchemaTable struct
+type QualifiedConstraint struct {
+	catalogSchemaTable internal.CatalogSchemaTable
+	constraintName     string
+}
+
 type TableConstraint struct {
 	dbName, schema, tblName, colName, constraintName, constraintType string
-	fkDbName, fkSchema, fkTblName, fkColName, fk_constraintName      sql.NullString
+	fkDbName, fkSchema, fkTblName, fkColName, fkConstraintName       sql.NullString
 	skipUpdateRule, skipDeleteRule, skipDeferrability                string
 	keySequence                                                      int
 	skipComment                                                      sql.NullString
@@ -427,8 +436,6 @@ func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadi
 }
 
 func toXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
-	// golangci-lint: ineffectual assignment to xdbcType (ineffassign)
-	// xdbcType = internal.XdbcDataType_XDBC_UNKNOWN_TYPE
 	switch dt.ID() {
 	case arrow.EXTENSION:
 		return toXdbcDataType(dt.(arrow.ExtensionType).StorageType())
@@ -594,56 +601,38 @@ func (c *cnxn) populateConstraintSchema(ctx context.Context, depth adbc.ObjectDe
 		return nil, err
 	}
 
-	fullyQualifiedConstraintSchemaLookup := make(map[string]internal.ConstraintSchema)
+	// we want to avoid creating duplicate entries for a constraint
+	qualifiedConstraintLookup := make(map[QualifiedConstraint]internal.ConstraintSchema)
 	for _, data := range tableConstraintsData {
-		var fullyQualifiedConstraintName string
-		if data.fk_constraintName.Valid {
-			fullyQualifiedConstraintName = getFullyQualifiedConstraintName(data.fkDbName.String, data.fkSchema.String, data.fkTblName.String, data.fk_constraintName.String)
-			if _, exists := fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName]; !exists {
-				fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName] = internal.ConstraintSchema{
-					ConstraintName:        data.fk_constraintName.String,
-					ConstraintType:        data.constraintType,
-					ConstraintColumnNames: []string{data.fkColName.String},
-					ConstraintColumnUsages: []internal.UsageSchema{
-						{
-							ForeignKeyCatalog:  data.dbName,
-							ForeignKeyDbSchema: data.schema,
-							ForeignKeyTable:    data.tblName,
-							ForeignKeyColName:  data.colName,
-						},
-					},
-				}
+		var qualifiedConstraint QualifiedConstraint
+		// columnUsages is only relevant for a foreign key
+		if data.fkConstraintName.Valid {
+			qualifiedConstraint = getQualifiedConstraint(data.fkDbName.String, data.fkSchema.String, data.fkTblName.String, data.fkConstraintName.String)
+			if _, exists := qualifiedConstraintLookup[qualifiedConstraint]; !exists {
+				qualifiedConstraintLookup[qualifiedConstraint] = getConstraintSchemaFromTableConstraint(data)
 			} else {
-				constraintInfo := fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName]
+				constraintInfo := qualifiedConstraintLookup[qualifiedConstraint]
+				// appending additional column names and column usages for foreign key constraints
 				constraintInfo.ConstraintColumnNames = append(constraintInfo.ConstraintColumnNames, data.fkColName.String)
-
-				constraintInfo.ConstraintColumnUsages = append(constraintInfo.ConstraintColumnUsages, internal.UsageSchema{
-					ForeignKeyCatalog:  data.dbName,
-					ForeignKeyDbSchema: data.schema,
-					ForeignKeyTable:    data.tblName,
-					ForeignKeyColName:  data.colName,
-				})
-
-				fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName] = constraintInfo
+				constraintInfo.ConstraintColumnUsages = append(constraintInfo.ConstraintColumnUsages, getUsageSchemaFromTableConstraint(data))
+				qualifiedConstraintLookup[qualifiedConstraint] = constraintInfo
 			}
 		} else {
-			fullyQualifiedConstraintName = getFullyQualifiedConstraintName(data.dbName, data.schema, data.tblName, data.constraintName)
-			if _, exists := fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName]; !exists {
-				fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName] = internal.ConstraintSchema{
-					ConstraintName:        data.constraintName,
-					ConstraintType:        data.constraintType,
-					ConstraintColumnNames: []string{data.colName},
-				}
+			qualifiedConstraint = getQualifiedConstraint(data.dbName, data.schema, data.tblName, data.constraintName)
+			if _, exists := qualifiedConstraintLookup[qualifiedConstraint]; !exists {
+				qualifiedConstraintLookup[qualifiedConstraint] = getConstraintSchemaFromTableConstraint(data)
 			} else {
-				constraintInfo := fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName]
+				constraintInfo := qualifiedConstraintLookup[qualifiedConstraint]
+				// appending additional column names for primary and unique key constraints
 				constraintInfo.ConstraintColumnNames = append(constraintInfo.ConstraintColumnNames, data.colName)
-				fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName] = constraintInfo
+				qualifiedConstraintLookup[qualifiedConstraint] = constraintInfo
 			}
 		}
 	}
 
-	for key, constraintSchema := range fullyQualifiedConstraintSchemaLookup {
-		catalogSchemaTable := getCatalogSchemaTableFromFullyQualifiedConstraintName(key)
+	// adding all the unique constraints to a constraint lookup using the catalogSchemaTable as a key
+	for qualifiedConstraint, constraintSchema := range qualifiedConstraintLookup {
+		catalogSchemaTable := qualifiedConstraint.catalogSchemaTable
 		constraintLookup[catalogSchemaTable] = append(constraintLookup[catalogSchemaTable], constraintSchema)
 	}
 
@@ -655,7 +644,7 @@ func (c *cnxn) getConstraintsData(ctx context.Context, depth adbc.ObjectDepth, m
 		return nil, nil
 	}
 	availableConstraintTypes := getAvailableConstraintTypes(metadataRecords)
-	availableFullyQualifiedConstraints := getAvailableFullyQualifiedConstraints(metadataRecords)
+	availableFullyQualifiedConstraints := getAvailableConstraints(metadataRecords)
 
 	var uniqueConstraintsData []TableConstraint
 	var primaryKeyConstraintsData []TableConstraint
@@ -687,17 +676,18 @@ func (c *cnxn) getConstraintsData(ctx context.Context, depth adbc.ObjectDepth, m
 
 	tableConstraintsData := append(append(uniqueConstraintsData, primaryKeyConstraintsData...), foreignKeyConstraintsData...)
 
-	sort.Slice(tableConstraintsData, func(i, j int) bool {
-		if tableConstraintsData[i].constraintName == tableConstraintsData[j].constraintName {
-			return tableConstraintsData[i].keySequence < tableConstraintsData[j].keySequence
+	slices.SortFunc(tableConstraintsData, func(i, j TableConstraint) int {
+		if n := cmp.Compare(i.constraintName, j.constraintName); n != 0 {
+			return n
 		}
-		return tableConstraintsData[i].constraintName == tableConstraintsData[j].constraintName
+		// If constrain names are equal, order by keySequence
+		return cmp.Compare(i.keySequence, j.keySequence)
 	})
 
 	return tableConstraintsData, nil
 }
 
-func (c *cnxn) getUniqueConstraints(ctx context.Context, fullyQualifiedConstraints map[string]bool) ([]TableConstraint, error) {
+func (c *cnxn) getUniqueConstraints(ctx context.Context, fullyQualifiedConstraints map[QualifiedConstraint]bool) ([]TableConstraint, error) {
 	uniqueConstraintsData := make([]TableConstraint, 0)
 
 	rows, err := c.sqldb.QueryContext(ctx, prepareUniqueConstraintSQL(), nil)
@@ -708,14 +698,16 @@ func (c *cnxn) getUniqueConstraints(ctx context.Context, fullyQualifiedConstrain
 
 	for rows.Next() {
 		var uniqueConstraint TableConstraint
-		if err := rows.Scan(&uniqueConstraint.skipCreatedOn, &uniqueConstraint.dbName, &uniqueConstraint.schema, &uniqueConstraint.tblName, &uniqueConstraint.colName, &uniqueConstraint.keySequence, &uniqueConstraint.constraintName, &uniqueConstraint.skipRely, &uniqueConstraint.skipComment); err != nil {
+		if err := rows.Scan(&uniqueConstraint.skipCreatedOn, &uniqueConstraint.dbName, &uniqueConstraint.schema,
+			&uniqueConstraint.tblName, &uniqueConstraint.colName, &uniqueConstraint.keySequence,
+			&uniqueConstraint.constraintName, &uniqueConstraint.skipRely, &uniqueConstraint.skipComment); err != nil {
 			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
 		}
 
-		currentConstraintQualifiedName := getFullyQualifiedConstraintName(uniqueConstraint.dbName, uniqueConstraint.schema, uniqueConstraint.tblName, uniqueConstraint.constraintName)
+		currentQualifiedConstraint := getQualifiedConstraint(uniqueConstraint.dbName, uniqueConstraint.schema, uniqueConstraint.tblName, uniqueConstraint.constraintName)
 
 		// skip constraint if it doesn't exist in fullyQualifiedConstraints
-		if _, exists := fullyQualifiedConstraints[currentConstraintQualifiedName]; exists {
+		if _, exists := fullyQualifiedConstraints[currentQualifiedConstraint]; exists {
 			uniqueConstraint.constraintType = internal.Unique
 			uniqueConstraintsData = append(uniqueConstraintsData, uniqueConstraint)
 		}
@@ -724,7 +716,7 @@ func (c *cnxn) getUniqueConstraints(ctx context.Context, fullyQualifiedConstrain
 	return uniqueConstraintsData, nil
 }
 
-func (c *cnxn) getPrimaryKeyConstraints(ctx context.Context, fullyQualifiedConstraints map[string]bool) ([]TableConstraint, error) {
+func (c *cnxn) getPrimaryKeyConstraints(ctx context.Context, fullyQualifiedConstraints map[QualifiedConstraint]bool) ([]TableConstraint, error) {
 	primaryKeyConstraintsData := make([]TableConstraint, 0)
 
 	rows, err := c.sqldb.QueryContext(ctx, preparePrimaryKeyConstraintSQL(), nil)
@@ -735,14 +727,16 @@ func (c *cnxn) getPrimaryKeyConstraints(ctx context.Context, fullyQualifiedConst
 
 	for rows.Next() {
 		var primaryKeyConstraint TableConstraint
-		if err := rows.Scan(&primaryKeyConstraint.skipCreatedOn, &primaryKeyConstraint.dbName, &primaryKeyConstraint.schema, &primaryKeyConstraint.tblName, &primaryKeyConstraint.colName, &primaryKeyConstraint.keySequence, &primaryKeyConstraint.constraintName, &primaryKeyConstraint.skipRely, &primaryKeyConstraint.skipComment); err != nil {
+		if err := rows.Scan(&primaryKeyConstraint.skipCreatedOn, &primaryKeyConstraint.dbName, &primaryKeyConstraint.schema,
+			&primaryKeyConstraint.tblName, &primaryKeyConstraint.colName, &primaryKeyConstraint.keySequence,
+			&primaryKeyConstraint.constraintName, &primaryKeyConstraint.skipRely, &primaryKeyConstraint.skipComment); err != nil {
 			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
 		}
 
-		currentConstraintQualifiedName := getFullyQualifiedConstraintName(primaryKeyConstraint.dbName, primaryKeyConstraint.schema, primaryKeyConstraint.tblName, primaryKeyConstraint.constraintName)
+		currentQualifiedConstraint := getQualifiedConstraint(primaryKeyConstraint.dbName, primaryKeyConstraint.schema, primaryKeyConstraint.tblName, primaryKeyConstraint.constraintName)
 
 		// skip constraint if it doesn't exist in fullyQualifiedConstraints
-		if _, exists := fullyQualifiedConstraints[currentConstraintQualifiedName]; exists {
+		if _, exists := fullyQualifiedConstraints[currentQualifiedConstraint]; exists {
 			primaryKeyConstraint.constraintType = internal.PrimaryKey
 			primaryKeyConstraintsData = append(primaryKeyConstraintsData, primaryKeyConstraint)
 		}
@@ -751,7 +745,7 @@ func (c *cnxn) getPrimaryKeyConstraints(ctx context.Context, fullyQualifiedConst
 	return primaryKeyConstraintsData, nil
 }
 
-func (c *cnxn) getForeignKeyConstraints(ctx context.Context, fullyQualifiedConstraints map[string]bool) ([]TableConstraint, error) {
+func (c *cnxn) getForeignKeyConstraints(ctx context.Context, qualifiedConstraints map[QualifiedConstraint]bool) ([]TableConstraint, error) {
 	foreignKeyConstraintsData := make([]TableConstraint, 0)
 
 	rows, err := c.sqldb.QueryContext(ctx, prepareForeignKeyConstraintSQL(), nil)
@@ -761,17 +755,21 @@ func (c *cnxn) getForeignKeyConstraints(ctx context.Context, fullyQualifiedConst
 	defer rows.Close()
 
 	for rows.Next() {
-		var foreignKeyConstraint TableConstraint
-		if err := rows.Scan(&foreignKeyConstraint.skipCreatedOn, &foreignKeyConstraint.dbName, &foreignKeyConstraint.schema, &foreignKeyConstraint.tblName, &foreignKeyConstraint.colName, &foreignKeyConstraint.fkDbName, &foreignKeyConstraint.fkSchema, &foreignKeyConstraint.fkTblName, &foreignKeyConstraint.fkColName, &foreignKeyConstraint.keySequence, &foreignKeyConstraint.skipUpdateRule, &foreignKeyConstraint.skipDeleteRule, &foreignKeyConstraint.fk_constraintName, &foreignKeyConstraint.constraintName, &foreignKeyConstraint.skipDeferrability, &foreignKeyConstraint.skipRely, &foreignKeyConstraint.skipComment); err != nil {
+		var fkConstraint TableConstraint
+		if err := rows.Scan(&fkConstraint.skipCreatedOn, &fkConstraint.dbName, &fkConstraint.schema,
+			&fkConstraint.tblName, &fkConstraint.colName, &fkConstraint.fkDbName, &fkConstraint.fkSchema,
+			&fkConstraint.fkTblName, &fkConstraint.fkColName, &fkConstraint.keySequence,
+			&fkConstraint.skipUpdateRule, &fkConstraint.skipDeleteRule, &fkConstraint.fkConstraintName,
+			&fkConstraint.constraintName, &fkConstraint.skipDeferrability, &fkConstraint.skipRely, &fkConstraint.skipComment); err != nil {
 			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
 		}
 
-		currentConstraintQualifiedName := getFullyQualifiedConstraintName(foreignKeyConstraint.fkDbName.String, foreignKeyConstraint.fkSchema.String, foreignKeyConstraint.fkTblName.String, foreignKeyConstraint.fk_constraintName.String)
+		currentQualifiedConstaint := getQualifiedConstraint(fkConstraint.fkDbName.String, fkConstraint.fkSchema.String, fkConstraint.fkTblName.String, fkConstraint.fkConstraintName.String)
 
-		// skip constraint if it doesn't exist in fullyQualifiedConstraints
-		if _, exists := fullyQualifiedConstraints[currentConstraintQualifiedName]; exists {
-			foreignKeyConstraint.constraintType = internal.ForeignKey
-			foreignKeyConstraintsData = append(foreignKeyConstraintsData, foreignKeyConstraint)
+		// skip constraint if it doesn't exist in qualifiedConstraints
+		if _, exists := qualifiedConstraints[currentQualifiedConstaint]; exists {
+			fkConstraint.constraintType = internal.ForeignKey
+			foreignKeyConstraintsData = append(foreignKeyConstraintsData, fkConstraint)
 		}
 	}
 	return foreignKeyConstraintsData, nil
@@ -888,29 +886,79 @@ func getAvailableConstraintTypes(metadataRecords []internal.Metadata) map[string
 	return availableConstraintType
 }
 
-func getAvailableFullyQualifiedConstraints(metadataRecords []internal.Metadata) map[string]bool {
-	fullyQualifiedConstraints := make(map[string]bool)
+func getAvailableConstraints(metadataRecords []internal.Metadata) map[QualifiedConstraint]bool {
+	qualifiedConstraints := make(map[QualifiedConstraint]bool)
 	for _, data := range metadataRecords {
 		if data.ConstraintName.Valid {
-			fullyQualifiedConstraintName := getFullyQualifiedConstraintName(data.Dbname.String, data.Schema.String, data.TblName.String, data.ConstraintName.String)
-			fullyQualifiedConstraints[fullyQualifiedConstraintName] = true
+			qualifiedConstraint := getQualifiedConstraint(data.Dbname.String, data.Schema.String, data.TblName.String, data.ConstraintName.String)
+			qualifiedConstraints[qualifiedConstraint] = true
 		}
 	}
-	return fullyQualifiedConstraints
+	return qualifiedConstraints
 }
 
-func getFullyQualifiedConstraintName(dbName string, schema string, tableName string, constraintName string) string {
-	return fmt.Sprintf("%s.%s.%s.%s", dbName, schema, tableName, constraintName)
-}
-
-func getCatalogSchemaTableFromFullyQualifiedConstraintName(fullyQualifiedConstraintName string) internal.CatalogSchemaTable {
-	parts := strings.Split(fullyQualifiedConstraintName, ".")
-	catalogSchemaTable := internal.CatalogSchemaTable{
-		Catalog: parts[0],
-		Schema:  parts[1],
-		Table:   parts[2],
+func getQualifiedConstraint(dbName string, schema string, tableName string, constraintName string) QualifiedConstraint {
+	return QualifiedConstraint{
+		catalogSchemaTable: internal.CatalogSchemaTable{
+			Catalog: dbName,
+			Schema:  schema,
+			Table:   tableName,
+		},
+		constraintName: constraintName,
 	}
-	return catalogSchemaTable
+}
+
+// func getConstraintSchemaFromTableConstraint(tableConstraint TableConstraint) internal.ConstraintSchema {
+// 	var constraintSchema internal.ConstraintSchema
+// 	constraintName :=
+// 	usageSchema := getUsageSchemaFromTableConstraint(tableConstraint)
+// 	if tableConstraint.fkConstraintName.Valid {
+// 		usageSchema := getUsageSchemaFromTableConstraint(tableConstraint)
+// 		constraintSchema = internal.ConstraintSchema{
+// 			ConstraintName:         tableConstraint.fkConstraintName.String,
+// 			ConstraintType:         tableConstraint.constraintType,
+// 			ConstraintColumnNames:  []string{tableConstraint.fkColName.String},
+// 			ConstraintColumnUsages: []internal.UsageSchema{usageSchema},
+// 		}
+// 	} else {
+// 		constraintSchema = internal.ConstraintSchema{
+// 			ConstraintName:        tableConstraint.constraintName,
+// 			ConstraintType:        tableConstraint.constraintType,
+// 			ConstraintColumnNames: []string{tableConstraint.colName},
+// 		}
+// 	}
+// 	return constraintSchema
+// }
+
+func getConstraintSchemaFromTableConstraint(tableConstraint TableConstraint) internal.ConstraintSchema {
+	var constraintSchema internal.ConstraintSchema
+	constraintSchema.ConstraintType = tableConstraint.constraintType
+
+	if tableConstraint.fkConstraintName.Valid {
+		usageSchema := getUsageSchemaFromTableConstraint(tableConstraint)
+		constraintSchema.ConstraintName = tableConstraint.fkConstraintName.String
+		constraintSchema.ConstraintColumnNames = []string{tableConstraint.fkColName.String}
+		constraintSchema.ConstraintColumnUsages = []internal.UsageSchema{usageSchema}
+	} else {
+		constraintSchema.ConstraintName = tableConstraint.constraintName
+		constraintSchema.ConstraintColumnNames = []string{tableConstraint.colName}
+	}
+	return constraintSchema
+}
+
+func getUsageSchemaFromTableConstraint(tableConstraint TableConstraint) internal.UsageSchema {
+	var usageSchema internal.UsageSchema
+	// usageSchema is only applicable for foreign key constraint
+	if tableConstraint.fkConstraintName.Valid {
+		// reference column for a foreign key constraint
+		usageSchema = internal.UsageSchema{
+			ForeignKeyCatalog:  tableConstraint.dbName,
+			ForeignKeyDbSchema: tableConstraint.schema,
+			ForeignKeyTable:    tableConstraint.tblName,
+			ForeignKeyColName:  tableConstraint.colName,
+		}
+	}
+	return usageSchema
 }
 
 func getMatchingCatalogNames(metadataRecords []internal.Metadata, catalog *string) ([]string, error) {

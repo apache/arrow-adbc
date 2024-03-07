@@ -170,14 +170,14 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
                 c.Name = name.GetString(i);
                 c.Type = type.GetString(i);
 
-                StringArray col_names = column_names.GetSlicedValues(i) as StringArray;
+                StringArray colNames = column_names.GetSlicedValues(i) as StringArray;
                 StructArray usage = column_usage.GetSlicedValues(i) as StructArray;
 
-                if (col_names != null)
+                if (colNames != null)
                 {
-                    for (int j = 0; j < col_names.Length; j++)
+                    for (int j = 0; j < colNames.Length; j++)
                     {
-                        c.ColumnNames.Add(col_names.GetString(j));
+                        c.ColumnNames.Add(colNames.GetString(j));
                     }
                 }
 
