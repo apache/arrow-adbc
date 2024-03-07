@@ -41,22 +41,11 @@ type ConnectionImpl interface {
 	adbc.Connection
 	adbc.GetSetOptions
 	Base() *ConnectionImplBase
-
-	// // Will be called at most once
-	// Close() error
-	// // Will not be called unless autocommit is disabled
-	// Commit(context.Context) error
-	// GetTableSchema(ctx context.Context, catalog, dbSchema *string, tableName string) (*arrow.Schema, error)
-	// NewStatement() (adbc.Statement, error)
-	// ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error)
-	// // Will not be called unless autocommit is disabled
-	// Rollback(context.Context) error
-	// SetAutocommit(enabled bool) error
 }
 
 type CurrentNamespacer interface {
-	CurrentCatalog() (string, bool)
-	CurrentDbSchema() (string, bool)
+	GetCurrentCatalog() (string, bool)
+	GetCurrentDbSchema() (string, bool)
 	SetCurrentCatalog(string) error
 	SetCurrentDbSchema(string) error
 }
@@ -71,6 +60,12 @@ type TableTypeLister interface {
 
 type AutocommitSetter interface {
 	SetAutocommit(enabled bool) error
+}
+
+type DbObjectsEnumerator interface {
+	GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error)
+	GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, metadataRecords []internal.Metadata) (map[string][]string, error)
+	GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (map[internal.CatalogAndSchema][]internal.TableInfo, error)
 }
 
 // Connection is the interface satisfied by the result of the NewConnection constructor,
@@ -267,24 +262,18 @@ func (base *ConnectionImplBase) SetOptionInt(key string, val int64) error {
 type connection struct {
 	ConnectionImpl
 
-	getObjectsHelper   GetObjectsHelper
-	currentNamespacer  CurrentNamespacer
-	driverInfoPreparer DriverInfoPreparer
-	tableTypeLister    TableTypeLister
-	autocommitSetter   AutocommitSetter
-}
-
-type GetObjectsHelper interface {
-	GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error)
-	GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, metadataRecords []internal.Metadata) (map[string][]string, error)
-	GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (map[internal.CatalogAndSchema][]internal.TableInfo, error)
+	dbObjectsEnumerator DbObjectsEnumerator
+	currentNamespacer   CurrentNamespacer
+	driverInfoPreparer  DriverInfoPreparer
+	tableTypeLister     TableTypeLister
+	autocommitSetter    AutocommitSetter
 }
 
 type connectionImplOption = func(*connection)
 
-func WithGetObjectsHelper(helper GetObjectsHelper) connectionImplOption {
+func WithDbObjectsEnumerator(helper DbObjectsEnumerator) connectionImplOption {
 	return func(conn *connection) {
-		conn.getObjectsHelper = helper
+		conn.dbObjectsEnumerator = helper
 	}
 }
 
@@ -324,9 +313,9 @@ func NewConnection(impl ConnectionImpl, opts ...connectionImplOption) Connection
 
 // GetObjects implements Connection.
 func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
-	helper := cnxn.getObjectsHelper
+	helper := cnxn.dbObjectsEnumerator
 
-	// If the getObjectsHelper has not been set, then the driver implementor has elected to provide their own GetObjects implementation
+	// If the dbObjectsEnumerator has not been set, then the driver implementor has elected to provide their own GetObjects implementation
 	if helper == nil {
 		return cnxn.ConnectionImpl.GetObjects(ctx, depth, catalog, dbSchema, tableName, columnName, tableType)
 	}
@@ -366,7 +355,7 @@ func (cnxn *connection) GetOption(key string) (string, error) {
 		}
 	case adbc.OptionKeyCurrentCatalog:
 		if cnxn.currentNamespacer != nil {
-			val, ok := cnxn.currentNamespacer.CurrentCatalog()
+			val, ok := cnxn.currentNamespacer.GetCurrentCatalog()
 			if !ok {
 				return "", cnxn.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "The current catalog has not been set")
 			}
@@ -374,7 +363,7 @@ func (cnxn *connection) GetOption(key string) (string, error) {
 		}
 	case adbc.OptionKeyCurrentDbSchema:
 		if cnxn.currentNamespacer != nil {
-			val, ok := cnxn.currentNamespacer.CurrentDbSchema()
+			val, ok := cnxn.currentNamespacer.GetCurrentDbSchema()
 			if !ok {
 				return "", cnxn.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "The current db schema has not been set")
 			}

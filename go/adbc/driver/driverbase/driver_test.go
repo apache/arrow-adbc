@@ -25,6 +25,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/apache/arrow/go/v16/arrow/memory"
@@ -116,14 +117,7 @@ func TestDefaultDriver(t *testing.T) {
 	]`})
 	require.NoError(t, err)
 
-	getInfoRecs := make([]arrow.Record, 0)
-	for info.Next() {
-		rec := info.Record()
-		rec.Retain()
-		defer rec.Release()
-		getInfoRecs = append(getInfoRecs, rec)
-	}
-	getInfoTable := array.NewTableFromRecords(info.Schema(), getInfoRecs)
+	getInfoTable := tableFromRecordReader(info)
 	defer getInfoTable.Release()
 
 	require.Truef(t, array.TableEqual(expectedGetInfoTable, getInfoTable), "expected: %s\ngot: %s", expectedGetInfoTable, getInfoTable)
@@ -219,21 +213,67 @@ func TestCustomizedDriver(t *testing.T) {
 	]`})
 	require.NoError(t, err)
 
-	getInfoRecs := make([]arrow.Record, 0)
-	for info.Next() {
-		rec := info.Record()
-		rec.Retain()
-		defer rec.Release()
-		getInfoRecs = append(getInfoRecs, rec)
-	}
-	getInfoTable := array.NewTableFromRecords(info.Schema(), getInfoRecs)
+	getInfoTable := tableFromRecordReader(info)
 	defer getInfoTable.Release()
 
 	require.Truef(t, array.TableEqual(expectedGetInfoTable, getInfoTable), "expected: %s\ngot: %s", expectedGetInfoTable, getInfoTable)
 
-	_, err = cnxn.GetObjects(ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, nil)
-	require.Error(t, err)
-	require.Equal(t, "Not Implemented: [MockDriver] GetObjects", err.Error())
+	dbObjects, err := cnxn.GetObjects(ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	// This is the arrow table representation of the GetObjects output we get by implementing
+	// the simplified TableTypeLister interface
+	expectedDbObjectsTable, err := array.TableFromJSON(alloc, adbc.GetObjectsSchema, []string{`[
+		{
+			"catalog_name": "default",
+			"catalog_db_schemas": [
+				{
+					"db_schema_name": "public",
+					"db_schema_tables": [
+						{
+							"table_name": "foo",
+							"table_type": "TABLE",
+							"table_columns": [],
+							"table_constraints": []
+						}
+					]
+				},
+				{
+					"db_schema_name": "test",
+					"db_schema_tables": [
+						{
+							"table_name": "bar",
+							"table_type": "TABLE",
+							"table_columns": [],
+							"table_constraints": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"catalog_name": "my_db",
+			"catalog_db_schemas": [
+				{
+					"db_schema_name": "public",
+					"db_schema_tables": [
+						{
+							"table_name": "baz",
+							"table_type": "TABLE",
+							"table_columns": [],
+							"table_constraints": []
+						}
+					]
+				}
+			]
+		}
+	]`})
+	require.NoError(t, err)
+
+	dbObjectsTable := tableFromRecordReader(dbObjects)
+	defer dbObjectsTable.Release()
+
+	require.Truef(t, array.TableEqual(expectedDbObjectsTable, dbObjectsTable), "expected: %s\ngot: %s", expectedDbObjectsTable, dbObjectsTable)
 
 	tableTypes, err := cnxn.GetTableTypes(ctx)
 	require.NoError(t, err)
@@ -246,14 +286,7 @@ func TestCustomizedDriver(t *testing.T) {
 	]`})
 	require.NoError(t, err)
 
-	tableTypeRecs := make([]arrow.Record, 0)
-	for tableTypes.Next() {
-		rec := tableTypes.Record()
-		rec.Retain()
-		defer rec.Release()
-		tableTypeRecs = append(tableTypeRecs, rec)
-	}
-	tableTypeTable := array.NewTableFromRecords(tableTypes.Schema(), tableTypeRecs)
+	tableTypeTable := tableFromRecordReader(tableTypes)
 	defer tableTypeTable.Release()
 
 	require.Truef(t, array.TableEqual(expectedTableTypesTable, tableTypeTable), "expected: %s\ngot: %s", expectedTableTypesTable, tableTypeTable)
@@ -352,6 +385,7 @@ func (db *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 			driverbase.WithCurrentNamespacer(cnxn),
 			driverbase.WithTableTypeLister(cnxn),
 			driverbase.WithDriverInfoPreparer(cnxn),
+			driverbase.WithDbObjectsEnumerator(cnxn),
 		), nil
 	}
 	return driverbase.NewConnection(cnxn), nil
@@ -370,14 +404,14 @@ func (c *connectionImpl) SetAutocommit(enabled bool) error {
 	return nil
 }
 
-func (c *connectionImpl) CurrentCatalog() (string, bool) {
+func (c *connectionImpl) GetCurrentCatalog() (string, bool) {
 	if c.currentCatalog == "" {
 		return "", false
 	}
 	return c.currentCatalog, true
 }
 
-func (c *connectionImpl) CurrentDbSchema() (string, bool) {
+func (c *connectionImpl) GetCurrentDbSchema() (string, bool) {
 	if c.currentDbSchema == "" {
 		return "", false
 	}
@@ -400,4 +434,34 @@ func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
 
 func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
 	return c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoCode(10_002), "this was fetched dynamically")
+}
+
+func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error) {
+	return []string{"default", "my_db"}, nil
+}
+
+func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, metadataRecords []internal.Metadata) (map[string][]string, error) {
+	return map[string][]string{
+		"default": {"public", "test"},
+		"my_db":   {"public"},
+	}, nil
+}
+
+func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (map[internal.CatalogAndSchema][]internal.TableInfo, error) {
+	return map[internal.CatalogAndSchema][]internal.TableInfo{
+		{Catalog: "default", Schema: "public"}: {internal.TableInfo{Name: "foo", TableType: "TABLE"}},
+		{Catalog: "default", Schema: "test"}:   {internal.TableInfo{Name: "bar", TableType: "TABLE"}},
+		{Catalog: "my_db", Schema: "public"}:   {internal.TableInfo{Name: "baz", TableType: "TABLE"}},
+	}, nil
+}
+
+func tableFromRecordReader(rdr array.RecordReader) arrow.Table {
+	recs := make([]arrow.Record, 0)
+	for rdr.Next() {
+		rec := rdr.Record()
+		rec.Retain()
+		defer rec.Release()
+		recs = append(recs, rec)
+	}
+	return array.NewTableFromRecords(rdr.Schema(), recs)
 }
