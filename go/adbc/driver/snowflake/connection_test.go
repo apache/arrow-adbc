@@ -158,15 +158,38 @@ func TestPrepareTablesSQLWithNoFilter(t *testing.T) {
 	tableNamePattern := ""
 	tableType := make([]string, 0)
 
-	expected := `SELECT table_catalog, table_schema, table_name, table_type
-					FROM
-					(
-						SELECT * FROM "DEMO_DB".INFORMATION_SCHEMA.TABLES
-						UNION ALL
-						SELECT * FROM "DEMOADB".INFORMATION_SCHEMA.TABLES
-						UNION ALL
-						SELECT * FROM "DEMO'DB".INFORMATION_SCHEMA.TABLES
-					)`
+	expected := `SELECT table_catalog, table_schema, table_name, table_type, constraint_name, constraint_type FROM (SELECT T.table_catalog, T.table_schema, T.table_name, T.table_type,
+			 	TC.constraint_name, TC.constraint_type
+				FROM
+				(
+					"DEMO_DB".INFORMATION_SCHEMA.TABLES AS T
+					LEFT JOIN
+					"DEMO_DB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+					ON
+						T.table_catalog = TC.table_catalog
+						AND T.table_schema = TC.table_schema
+						AND t.table_name = TC.table_name
+				) UNION ALL SELECT T.table_catalog, T.table_schema, T.table_name, T.table_type, TC.constraint_name, TC.constraint_type
+				FROM
+				(
+					"DEMOADB".INFORMATION_SCHEMA.TABLES AS T
+					LEFT JOIN
+					"DEMOADB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+					ON
+						T.table_catalog = TC.table_catalog
+						AND T.table_schema = TC.table_schema
+						AND t.table_name = TC.table_name
+				) UNION ALL SELECT T.table_catalog, T.table_schema, T.table_name, T.table_type, TC.constraint_name, TC.constraint_type
+				FROM
+				(
+					"DEMO'DB".INFORMATION_SCHEMA.TABLES AS T
+					LEFT JOIN
+					"DEMO'DB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+					ON
+						T.table_catalog = TC.table_catalog
+						AND T.table_schema = TC.table_schema
+						AND t.table_name = TC.table_name
+				))`
 	actual, queryArgs := prepareTablesSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, tableType[:])
 
 	println("Query Args", queryArgs)
@@ -180,16 +203,37 @@ func TestPrepareTablesSQLWithNoTableTypeFilter(t *testing.T) {
 	tableNamePattern := "ADBC-TABLE"
 	tableType := make([]string, 0)
 
-	expected := `SELECT table_catalog, table_schema, table_name, table_type
-					FROM
-					(
-						SELECT * FROM "DEMO_DB".INFORMATION_SCHEMA.TABLES
-						UNION ALL
-						SELECT * FROM "DEMOADB".INFORMATION_SCHEMA.TABLES
-						UNION ALL
-						SELECT * FROM "DEMO'DB".INFORMATION_SCHEMA.TABLES
-					)
-					WHERE  TABLE_CATALOG ILIKE ? AND  TABLE_SCHEMA ILIKE ? AND  TABLE_NAME ILIKE ? `
+	expected := `SELECT table_catalog, table_schema, table_name, table_type, constraint_name, constraint_type FROM (SELECT T.table_catalog, T.table_schema, T.table_name, T.table_type, TC.constraint_name, TC.constraint_type
+				FROM
+				(
+					"DEMO_DB".INFORMATION_SCHEMA.TABLES AS T
+					LEFT JOIN
+					"DEMO_DB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+					ON
+						T.table_catalog = TC.table_catalog
+						AND T.table_schema = TC.table_schema
+						AND t.table_name = TC.table_name
+				) UNION ALL SELECT T.table_catalog, T.table_schema, T.table_name, T.table_type, TC.constraint_name, TC.constraint_type
+				FROM
+				(
+					"DEMOADB".INFORMATION_SCHEMA.TABLES AS T
+					LEFT JOIN
+					"DEMOADB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+					ON
+						T.table_catalog = TC.table_catalog
+						AND T.table_schema = TC.table_schema
+						AND t.table_name = TC.table_name
+				) UNION ALL SELECT T.table_catalog, T.table_schema, T.table_name, T.table_type, TC.constraint_name, TC.constraint_type
+				FROM
+				(
+					"DEMO'DB".INFORMATION_SCHEMA.TABLES AS T
+					LEFT JOIN
+					"DEMO'DB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+					ON
+						T.table_catalog = TC.table_catalog
+						AND T.table_schema = TC.table_schema
+						AND t.table_name = TC.table_name
+				)) WHERE  TABLE_CATALOG ILIKE ?  AND  TABLE_SCHEMA ILIKE ?  AND  TABLE_NAME ILIKE ? `
 	actual, queryArgs := prepareTablesSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, tableType[:])
 
 	stringqueryArgs := make([]string, len(queryArgs)) // Pre-allocate the right size
@@ -208,16 +252,37 @@ func TestPrepareTablesSQL(t *testing.T) {
 	tableNamePattern := "ADBC-TABLE"
 	tableType := [2]string{"BASE TABLE", "VIEW"}
 
-	expected := `SELECT table_catalog, table_schema, table_name, table_type
-					FROM
-					(
-						SELECT * FROM "DEMO_DB".INFORMATION_SCHEMA.TABLES
-						UNION ALL
-						SELECT * FROM "DEMOADB".INFORMATION_SCHEMA.TABLES
-						UNION ALL
-						SELECT * FROM "DEMO'DB".INFORMATION_SCHEMA.TABLES
-					)
-					WHERE  TABLE_CATALOG ILIKE ? AND  TABLE_SCHEMA ILIKE ? AND  TABLE_NAME ILIKE ? AND  TABLE_TYPE IN ('BASE TABLE','VIEW')`
+	expected := `SELECT table_catalog, table_schema, table_name, table_type, constraint_name, constraint_type FROM (SELECT T.table_catalog, T.table_schema, T.table_name, T.table_type, TC.constraint_name, TC.constraint_type
+				FROM
+				(
+					"DEMO_DB".INFORMATION_SCHEMA.TABLES AS T
+					LEFT JOIN
+					"DEMO_DB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+					ON
+						T.table_catalog = TC.table_catalog
+						AND T.table_schema = TC.table_schema
+						AND t.table_name = TC.table_name
+				) UNION ALL SELECT T.table_catalog, T.table_schema, T.table_name, T.table_type, TC.constraint_name, TC.constraint_type
+				FROM
+				(
+					"DEMOADB".INFORMATION_SCHEMA.TABLES AS T
+					LEFT JOIN
+					"DEMOADB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+					ON
+						T.table_catalog = TC.table_catalog
+						AND T.table_schema = TC.table_schema
+						AND t.table_name = TC.table_name
+				) UNION ALL SELECT T.table_catalog, T.table_schema, T.table_name, T.table_type, TC.constraint_name, TC.constraint_type
+				FROM
+				(
+					"DEMO'DB".INFORMATION_SCHEMA.TABLES AS T
+					LEFT JOIN
+					"DEMO'DB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+					ON
+						T.table_catalog = TC.table_catalog
+						AND T.table_schema = TC.table_schema
+						AND t.table_name = TC.table_name
+				)) WHERE  TABLE_CATALOG ILIKE ?  AND  TABLE_SCHEMA ILIKE ?  AND  TABLE_NAME ILIKE ? AND  TABLE_TYPE IN ('BASE TABLE','VIEW')`
 	actual, queryArgs := prepareTablesSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, tableType[:])
 
 	stringqueryArgs := make([]string, len(queryArgs)) // Pre-allocate the right size
@@ -237,30 +302,30 @@ func TestPrepareColumnsSQLNoFilter(t *testing.T) {
 	columnNamePattern := ""
 	tableType := make([]string, 0)
 
-	expected := `SELECT table_type, table_catalog, table_schema, table_name, column_name,
-						ordinal_position, is_nullable::boolean, data_type, numeric_precision,
-						numeric_precision_radix, numeric_scale, is_identity::boolean,
-						identity_generation, identity_increment,
-						character_maximum_length, character_octet_length, datetime_precision, comment
-						FROM
-						(
-							SELECT T.table_type, C.*
-							FROM
-								"DEMO_DB".INFORMATION_SCHEMA.TABLES AS T
-								JOIN
-								"DEMO_DB".INFORMATION_SCHEMA.COLUMNS AS C
-							ON
-								T.table_catalog = C.table_catalog AND T.table_schema = C.table_schema AND t.table_name = C.table_name
-							UNION ALL
-							SELECT T.table_type, C.*
-							FROM
-								"DEMOADB".INFORMATION_SCHEMA.TABLES AS T
-								JOIN
-								"DEMOADB".INFORMATION_SCHEMA.COLUMNS AS C
-							ON
-								T.table_catalog = C.table_catalog AND T.table_schema = C.table_schema AND t.table_name = C.table_name
-						)
-						ORDER BY table_catalog, table_schema, table_name, ordinal_position`
+	expected := `SELECT table_type, table_catalog, table_schema, table_name, column_name, ordinal_position, is_nullable::boolean, data_type, numeric_precision,
+				numeric_precision_radix, numeric_scale, is_identity::boolean, identity_generation, identity_increment,
+				character_maximum_length, character_octet_length, datetime_precision, comment, constraint_name, constraint_type FROM (SELECT T.table_type, C.*,
+				TC.constraint_name, TC.constraint_type
+				FROM
+					"DEMO_DB".INFORMATION_SCHEMA.TABLES AS T
+				JOIN
+					"DEMO_DB".INFORMATION_SCHEMA.COLUMNS AS C
+				LEFT JOIN
+					"DEMO_DB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+				ON
+					T.table_catalog = C.table_catalog
+					AND T.table_schema = C.table_schema
+					AND t.table_name = C.table_name UNION ALL SELECT T.table_type, C.*, TC.constraint_name, TC.constraint_type
+				FROM
+					"DEMOADB".INFORMATION_SCHEMA.TABLES AS T
+				JOIN
+					"DEMOADB".INFORMATION_SCHEMA.COLUMNS AS C
+				LEFT JOIN
+					"DEMOADB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+				ON
+					T.table_catalog = C.table_catalog
+					AND T.table_schema = C.table_schema
+					AND t.table_name = C.table_name) ORDER BY table_catalog, table_schema, table_name, ordinal_position`
 	actual, queryArgs := prepareColumnsSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, &columnNamePattern, tableType[:])
 
 	println("Query Args", queryArgs)
@@ -276,30 +341,34 @@ func TestPrepareColumnsSQL(t *testing.T) {
 	tableType := [2]string{"BASE TABLE", "VIEW"}
 
 	expected := `SELECT table_type, table_catalog, table_schema, table_name, column_name,
-						ordinal_position, is_nullable::boolean, data_type, numeric_precision,
-						numeric_precision_radix, numeric_scale, is_identity::boolean,
-						identity_generation, identity_increment,
-						character_maximum_length, character_octet_length, datetime_precision, comment
-						FROM
-						(
-							SELECT T.table_type, C.*
-							FROM
-								"DEMO_DB".INFORMATION_SCHEMA.TABLES AS T
-								JOIN
-								"DEMO_DB".INFORMATION_SCHEMA.COLUMNS AS C
-							ON
-								T.table_catalog = C.table_catalog AND T.table_schema = C.table_schema AND t.table_name = C.table_name
-							UNION ALL
-							SELECT T.table_type, C.*
-							FROM
-								"DEMOADB".INFORMATION_SCHEMA.TABLES AS T
-								JOIN
-								"DEMOADB".INFORMATION_SCHEMA.COLUMNS AS C
-							ON
-								T.table_catalog = C.table_catalog AND T.table_schema = C.table_schema AND t.table_name = C.table_name
-						)
-						WHERE  TABLE_CATALOG ILIKE ? AND  TABLE_SCHEMA ILIKE ? AND  TABLE_NAME ILIKE ? AND  COLUMN_NAME ILIKE ? AND  TABLE_TYPE IN ('BASE TABLE','VIEW')
-						ORDER BY table_catalog, table_schema, table_name, ordinal_position`
+			ordinal_position, is_nullable::boolean, data_type, numeric_precision,
+			numeric_precision_radix, numeric_scale, is_identity::boolean,
+			identity_generation, identity_increment, character_maximum_length, character_octet_length,
+			datetime_precision, comment, constraint_name, constraint_type
+			FROM
+				(SELECT T.table_type, C.*, TC.constraint_name, TC.constraint_type
+					FROM
+						"DEMO_DB".INFORMATION_SCHEMA.TABLES AS T
+					JOIN
+						"DEMO_DB".INFORMATION_SCHEMA.COLUMNS AS C
+					LEFT JOIN
+						"DEMO_DB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+					ON
+						T.table_catalog = C.table_catalog
+						AND T.table_schema = C.table_schema
+						AND t.table_name = C.table_name UNION ALL SELECT T.table_type, C.*, TC.constraint_name, TC.constraint_type
+					FROM
+						"DEMOADB".INFORMATION_SCHEMA.TABLES AS T
+					JOIN
+						"DEMOADB".INFORMATION_SCHEMA.COLUMNS AS C
+					LEFT JOIN
+						"DEMOADB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+					ON
+						T.table_catalog = C.table_catalog
+						AND T.table_schema = C.table_schema
+						AND t.table_name = C.table_name)
+			WHERE  TABLE_CATALOG ILIKE ?  AND  TABLE_SCHEMA ILIKE ?  AND  TABLE_NAME ILIKE ?  AND  COLUMN_NAME ILIKE ?  AND  TABLE_TYPE IN ('BASE TABLE','VIEW')
+			ORDER BY table_catalog, table_schema, table_name, ordinal_position`
 	actual, queryArgs := prepareColumnsSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, &columnNamePattern, tableType[:])
 
 	stringqueryArgs := make([]string, len(queryArgs)) // Pre-allocate the right size

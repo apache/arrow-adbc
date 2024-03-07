@@ -31,8 +31,22 @@ import (
 	"github.com/apache/arrow/go/v16/arrow/memory"
 )
 
+const (
+	Unique     = "UNIQUE"
+	PrimaryKey = "PRIMARY KEY"
+	ForeignKey = "FOREIGN KEY"
+)
+
 type CatalogAndSchema struct {
 	Catalog, Schema string
+}
+
+type CatalogSchemaTable struct {
+	Catalog, Schema, Table string
+}
+
+type CatalogSchemaTableColumn struct {
+	Catalog, Schema, Table, Column string
 }
 
 type TableInfo struct {
@@ -41,13 +55,23 @@ type TableInfo struct {
 }
 
 type Metadata struct {
-	Created                                                                   time.Time
-	ColName, DataType                                                         string
-	Dbname, Kind, Schema, TblName, TblType, IdentGen, IdentIncrement, Comment sql.NullString
-	OrdinalPos                                                                int
-	NumericPrec, NumericPrecRadix, NumericScale, DatetimePrec                 sql.NullInt16
-	IsNullable, IsIdent                                                       bool
-	CharMaxLength, CharOctetLength                                            sql.NullInt32
+	Created                                                                                                   time.Time
+	ColName, DataType                                                                                         string
+	Dbname, Kind, Schema, TblName, TblType, IdentGen, IdentIncrement, Comment, ConstraintName, ConstraintType sql.NullString
+	OrdinalPos                                                                                                int
+	NumericPrec, NumericPrecRadix, NumericScale, DatetimePrec                                                 sql.NullInt16
+	IsNullable, IsIdent                                                                                       bool
+	CharMaxLength, CharOctetLength                                                                            sql.NullInt32
+}
+
+type UsageSchema struct {
+	ForeignKeyCatalog, ForeignKeyDbSchema, ForeignKeyTable, ForeignKeyColName string
+}
+
+type ConstraintSchema struct {
+	ConstraintName, ConstraintType string
+	ConstraintColumnNames          []string
+	ConstraintColumnUsages         []UsageSchema
 }
 
 type GetObjDBSchemasFn func(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, metadataRecords []Metadata) (map[string][]string, error)
@@ -99,6 +123,7 @@ type GetObjects struct {
 	builder           *array.RecordBuilder
 	schemaLookup      map[string][]string
 	tableLookup       map[CatalogAndSchema][]TableInfo
+	ConstraintLookup  map[CatalogSchemaTable][]ConstraintSchema
 	MetadataRecords   []Metadata
 	catalogPattern    *regexp.Regexp
 	columnNamePattern *regexp.Regexp
@@ -133,6 +158,17 @@ type GetObjects struct {
 	xdbcIsAutoincrementBuilder   *array.BooleanBuilder
 	xdbcIsGeneratedcolumnBuilder *array.BooleanBuilder
 	tableConstraintsBuilder      *array.ListBuilder
+	tableConstraintsItems        *array.StructBuilder
+	constraintNameBuilder        *array.StringBuilder
+	constraintTypeBuilder        *array.StringBuilder
+	constraintColumnNameBuilder  *array.ListBuilder
+	constraintColumnUsageBuilder *array.ListBuilder
+	constraintColumnNameItems    *array.StringBuilder
+	constraintColumnUsageItems   *array.StructBuilder
+	columnUsageCatalogBuilder    *array.StringBuilder
+	columnUsageSchemaBuilder     *array.StringBuilder
+	columnUsageTableBuilder      *array.StringBuilder
+	columnUsageColumnBuilder     *array.StringBuilder
 }
 
 func (g *GetObjects) Init(mem memory.Allocator, getObj GetObjDBSchemasFn, getTbls GetObjTablesFn) error {
@@ -196,6 +232,17 @@ func (g *GetObjects) Init(mem memory.Allocator, getObj GetObjDBSchemasFn, getTbl
 	g.xdbcIsAutoincrementBuilder = g.tableColumnsItems.FieldBuilder(17).(*array.BooleanBuilder)
 	g.xdbcIsGeneratedcolumnBuilder = g.tableColumnsItems.FieldBuilder(18).(*array.BooleanBuilder)
 	g.tableConstraintsBuilder = g.dbSchemaTablesItems.FieldBuilder(3).(*array.ListBuilder)
+	g.tableConstraintsItems = g.tableConstraintsBuilder.ValueBuilder().(*array.StructBuilder)
+	g.constraintNameBuilder = g.tableConstraintsItems.FieldBuilder(0).(*array.StringBuilder)
+	g.constraintTypeBuilder = g.tableConstraintsItems.FieldBuilder(1).(*array.StringBuilder)
+	g.constraintColumnNameBuilder = g.tableConstraintsItems.FieldBuilder(2).(*array.ListBuilder)
+	g.constraintColumnNameItems = g.constraintColumnNameBuilder.ValueBuilder().(*array.StringBuilder)
+	g.constraintColumnUsageBuilder = g.tableConstraintsItems.FieldBuilder(3).(*array.ListBuilder)
+	g.constraintColumnUsageItems = g.constraintColumnUsageBuilder.ValueBuilder().(*array.StructBuilder)
+	g.columnUsageCatalogBuilder = g.constraintColumnUsageItems.FieldBuilder(0).(*array.StringBuilder)
+	g.columnUsageSchemaBuilder = g.constraintColumnUsageItems.FieldBuilder(1).(*array.StringBuilder)
+	g.columnUsageTableBuilder = g.constraintColumnUsageItems.FieldBuilder(2).(*array.StringBuilder)
+	g.columnUsageColumnBuilder = g.constraintColumnUsageItems.FieldBuilder(3).(*array.StringBuilder)
 
 	return nil
 }
@@ -246,27 +293,63 @@ func (g *GetObjects) appendDbSchema(catalogName, dbSchemaName string) {
 	}
 	g.dbSchemaTablesBuilder.Append(true)
 
-	for _, tableInfo := range g.tableLookup[CatalogAndSchema{
-		Catalog: catalogName,
-		Schema:  dbSchemaName,
-	}] {
-		g.appendTableInfo(tableInfo)
+	catalogAndSchema := CatalogAndSchema{Catalog: catalogName, Schema: dbSchemaName}
+	for _, tableInfo := range g.tableLookup[catalogAndSchema] {
+		g.appendTableInfo(tableInfo, catalogAndSchema)
 	}
 }
 
-func (g *GetObjects) appendTableInfo(tableInfo TableInfo) {
+func (g *GetObjects) appendTableInfo(tableInfo TableInfo, catalogAndSchema CatalogAndSchema) {
 	g.tableNameBuilder.Append(tableInfo.Name)
 	g.tableTypeBuilder.Append(tableInfo.TableType)
 	g.dbSchemaTablesItems.Append(true)
 
+	if len(g.ConstraintLookup) != 0 {
+		g.tableConstraintsBuilder.Append(true)
+
+		catalogSchemaTable := CatalogSchemaTable{Catalog: catalogAndSchema.Catalog, Schema: catalogAndSchema.Schema, Table: tableInfo.Name}
+		constraintSchemaData, exists := g.ConstraintLookup[catalogSchemaTable]
+
+		if exists {
+			for _, data := range constraintSchemaData {
+				g.constraintNameBuilder.Append(data.ConstraintName)
+				g.constraintTypeBuilder.Append(data.ConstraintType)
+
+				if len(data.ConstraintColumnNames) == 0 {
+					g.constraintColumnNameBuilder.AppendNull()
+				} else {
+					g.constraintColumnNameBuilder.Append(true)
+					for _, columnName := range data.ConstraintColumnNames {
+						g.constraintColumnNameItems.Append(columnName)
+					}
+				}
+
+				if len(data.ConstraintColumnUsages) == 0 {
+					g.constraintColumnUsageBuilder.AppendNull()
+				} else {
+					g.constraintColumnUsageBuilder.Append(true)
+					for _, columnUsages := range data.ConstraintColumnUsages {
+						g.columnUsageCatalogBuilder.Append(columnUsages.ForeignKeyCatalog)
+						g.columnUsageSchemaBuilder.Append(columnUsages.ForeignKeyDbSchema)
+						g.columnUsageTableBuilder.Append(columnUsages.ForeignKeyTable)
+						g.columnUsageColumnBuilder.Append(columnUsages.ForeignKeyColName)
+						g.constraintColumnUsageItems.Append(true)
+					}
+				}
+
+				g.tableConstraintsItems.Append(true)
+			}
+		}
+	} else {
+		g.tableConstraintsBuilder.AppendNull()
+	}
+
 	if g.Depth == adbc.ObjectDepthTables {
 		g.tableColumnsBuilder.AppendNull()
-		g.tableConstraintsBuilder.AppendNull()
 		return
 	}
+
 	g.tableColumnsBuilder.Append(true)
-	// TODO: unimplemented for now
-	g.tableConstraintsBuilder.Append(true)
 
 	if tableInfo.Schema == nil {
 		return

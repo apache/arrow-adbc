@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -58,6 +59,16 @@ type cnxn struct {
 
 	activeTransaction bool
 	useHighPrecision  bool
+}
+
+type TableConstraint struct {
+	dbName, schema, tblName, colName, constraintName, constraintType string
+	fkDbName, fkSchema, fkTblName, fkColName, fk_constraintName      sql.NullString
+	skipUpdateRule, skipDeleteRule, skipDeferrability                string
+	keySequence                                                      int
+	skipComment                                                      sql.NullString
+	skipCreatedOn                                                    time.Time
+	skipRely                                                         bool
 }
 
 // Metadata methods
@@ -246,6 +257,13 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 
 	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
 	g.MetadataRecords = metadataRecords
+
+	constraintLookup, err := c.populateConstraintSchema(ctx, depth, metadataRecords)
+	g.ConstraintLookup = constraintLookup
+	if err != nil {
+		return nil, err
+	}
+
 	if err := g.Init(c.db.Alloc, c.getObjectsDbSchemas, c.getObjectsTables); err != nil {
 		return nil, err
 	}
@@ -272,15 +290,16 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 	}
 
 	result = make(map[string][]string)
-	uniqueCatalogSchema := make(map[string]map[string]bool)
+	uniqueCatalogSchema := make(map[internal.CatalogAndSchema]bool)
 
 	for _, data := range metadataRecords {
 		if !data.Dbname.Valid || !data.Schema.Valid {
 			continue
 		}
 
-		if _, exists := uniqueCatalogSchema[data.Dbname.String]; !exists {
-			uniqueCatalogSchema[data.Dbname.String] = make(map[string]bool)
+		catalogSchemaInfo := internal.CatalogAndSchema{
+			Catalog: data.Dbname.String,
+			Schema:  data.Schema.String,
 		}
 
 		cat, exists := result[data.Dbname.String]
@@ -288,9 +307,9 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 			cat = make([]string, 0, 1)
 		}
 
-		if _, exists := uniqueCatalogSchema[data.Dbname.String][data.Schema.String]; !exists {
+		if _, exists := uniqueCatalogSchema[catalogSchemaInfo]; !exists {
+			uniqueCatalogSchema[catalogSchemaInfo] = true
 			result[data.Dbname.String] = append(cat, data.Schema.String)
-			uniqueCatalogSchema[data.Dbname.String][data.Schema.String] = true
 		}
 	}
 
@@ -408,7 +427,8 @@ func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadi
 }
 
 func toXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
-	xdbcType = internal.XdbcDataType_XDBC_UNKNOWN_TYPE
+	// golangci-lint: ineffectual assignment to xdbcType (ineffassign)
+	// xdbcType = internal.XdbcDataType_XDBC_UNKNOWN_TYPE
 	switch dt.ID() {
 	case arrow.EXTENSION:
 		return toXdbcDataType(dt.(arrow.ExtensionType).StorageType())
@@ -461,22 +481,20 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	result = make(internal.SchemaToTableInfo)
 	includeSchema := depth == adbc.ObjectDepthAll || depth == adbc.ObjectDepthColumns
 
-	uniqueCatalogSchemaTable := make(map[string]map[string]map[string]bool)
+	uniqueCatalogSchemaTable := make(map[internal.CatalogSchemaTable]bool)
 	for _, data := range metadataRecords {
 		if !data.Dbname.Valid || !data.Schema.Valid || !data.TblName.Valid || !data.TblType.Valid {
 			continue
 		}
 
-		if _, exists := uniqueCatalogSchemaTable[data.Dbname.String]; !exists {
-			uniqueCatalogSchemaTable[data.Dbname.String] = make(map[string]map[string]bool)
+		catalogSchemaTableInfo := internal.CatalogSchemaTable{
+			Catalog: data.Dbname.String,
+			Schema:  data.Schema.String,
+			Table:   data.TblName.String,
 		}
 
-		if _, exists := uniqueCatalogSchemaTable[data.Dbname.String][data.Schema.String]; !exists {
-			uniqueCatalogSchemaTable[data.Dbname.String][data.Schema.String] = make(map[string]bool)
-		}
-
-		if _, exists := uniqueCatalogSchemaTable[data.Dbname.String][data.Schema.String][data.TblName.String]; !exists {
-			uniqueCatalogSchemaTable[data.Dbname.String][data.Schema.String][data.TblName.String] = true
+		if _, exists := uniqueCatalogSchemaTable[catalogSchemaTableInfo]; !exists {
+			uniqueCatalogSchemaTable[catalogSchemaTableInfo] = true
 
 			key := internal.CatalogAndSchema{
 				Catalog: data.Dbname.String, Schema: data.Schema.String}
@@ -492,6 +510,8 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			curTableInfo *internal.TableInfo
 			fieldList    = make([]arrow.Field, 0)
 		)
+
+		uniqueColumn := make(map[internal.CatalogSchemaTableColumn]bool)
 
 		for _, data := range metadataRecords {
 			if !data.Dbname.Valid || !data.Schema.Valid || !data.TblName.Valid {
@@ -515,7 +535,16 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			}
 
 			prevKey = key
-			fieldList = append(fieldList, toField(data.ColName, data.IsNullable, data.DataType, data.NumericPrec, data.NumericPrecRadix, data.NumericScale, data.IsIdent, c.useHighPrecision, data.IdentGen, data.IdentIncrement, data.CharMaxLength, data.CharOctetLength, data.DatetimePrec, data.Comment, data.OrdinalPos))
+			columnInfo := internal.CatalogSchemaTableColumn{
+				Catalog: data.Dbname.String,
+				Schema:  data.Schema.String,
+				Table:   data.TblName.String,
+				Column:  data.ColName,
+			}
+			if _, exists := uniqueColumn[columnInfo]; !exists {
+				uniqueColumn[columnInfo] = true
+				fieldList = append(fieldList, toField(data.ColName, data.IsNullable, data.DataType, data.NumericPrec, data.NumericPrecRadix, data.NumericScale, data.IsIdent, c.useHighPrecision, data.IdentGen, data.IdentIncrement, data.CharMaxLength, data.CharOctetLength, data.DatetimePrec, data.Comment, data.OrdinalPos))
+			}
 		}
 
 		if len(fieldList) > 0 && curTableInfo != nil {
@@ -527,6 +556,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 
 func (c *cnxn) populateMetadata(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) ([]internal.Metadata, error) {
 	var metadataRecords []internal.Metadata
+
 	catalogMetadataRecords, err := c.getCatalogsMetadata(ctx)
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
@@ -557,6 +587,196 @@ func (c *cnxn) populateMetadata(ctx context.Context, depth adbc.ObjectDepth, cat
 	return metadataRecords, nil
 }
 
+func (c *cnxn) populateConstraintSchema(ctx context.Context, depth adbc.ObjectDepth, metadataRecords []internal.Metadata) (map[internal.CatalogSchemaTable][]internal.ConstraintSchema, error) {
+	constraintLookup := make(map[internal.CatalogSchemaTable][]internal.ConstraintSchema)
+	tableConstraintsData, err := c.getConstraintsData(ctx, depth, metadataRecords)
+	if err != nil {
+		return nil, err
+	}
+
+	fullyQualifiedConstraintSchemaLookup := make(map[string]internal.ConstraintSchema)
+	for _, data := range tableConstraintsData {
+		var fullyQualifiedConstraintName string
+		if data.fk_constraintName.Valid {
+			fullyQualifiedConstraintName = getFullyQualifiedConstraintName(data.fkDbName.String, data.fkSchema.String, data.fkTblName.String, data.fk_constraintName.String)
+			if _, exists := fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName]; !exists {
+				fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName] = internal.ConstraintSchema{
+					ConstraintName:        data.fk_constraintName.String,
+					ConstraintType:        data.constraintType,
+					ConstraintColumnNames: []string{data.fkColName.String},
+					ConstraintColumnUsages: []internal.UsageSchema{
+						{
+							ForeignKeyCatalog:  data.dbName,
+							ForeignKeyDbSchema: data.schema,
+							ForeignKeyTable:    data.tblName,
+							ForeignKeyColName:  data.colName,
+						},
+					},
+				}
+			} else {
+				constraintInfo := fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName]
+				constraintInfo.ConstraintColumnNames = append(constraintInfo.ConstraintColumnNames, data.fkColName.String)
+
+				constraintInfo.ConstraintColumnUsages = append(constraintInfo.ConstraintColumnUsages, internal.UsageSchema{
+					ForeignKeyCatalog:  data.dbName,
+					ForeignKeyDbSchema: data.schema,
+					ForeignKeyTable:    data.tblName,
+					ForeignKeyColName:  data.colName,
+				})
+
+				fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName] = constraintInfo
+			}
+		} else {
+			fullyQualifiedConstraintName = getFullyQualifiedConstraintName(data.dbName, data.schema, data.tblName, data.constraintName)
+			if _, exists := fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName]; !exists {
+				fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName] = internal.ConstraintSchema{
+					ConstraintName:        data.constraintName,
+					ConstraintType:        data.constraintType,
+					ConstraintColumnNames: []string{data.colName},
+				}
+			} else {
+				constraintInfo := fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName]
+				constraintInfo.ConstraintColumnNames = append(constraintInfo.ConstraintColumnNames, data.colName)
+				fullyQualifiedConstraintSchemaLookup[fullyQualifiedConstraintName] = constraintInfo
+			}
+		}
+	}
+
+	for key, constraintSchema := range fullyQualifiedConstraintSchemaLookup {
+		catalogSchemaTable := getCatalogSchemaTableFromFullyQualifiedConstraintName(key)
+		constraintLookup[catalogSchemaTable] = append(constraintLookup[catalogSchemaTable], constraintSchema)
+	}
+
+	return constraintLookup, nil
+}
+
+func (c *cnxn) getConstraintsData(ctx context.Context, depth adbc.ObjectDepth, metadataRecords []internal.Metadata) ([]TableConstraint, error) {
+	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
+		return nil, nil
+	}
+	availableConstraintTypes := getAvailableConstraintTypes(metadataRecords)
+	availableFullyQualifiedConstraints := getAvailableFullyQualifiedConstraints(metadataRecords)
+
+	var uniqueConstraintsData []TableConstraint
+	var primaryKeyConstraintsData []TableConstraint
+	var foreignKeyConstraintsData []TableConstraint
+	var err error
+
+	if availableConstraintTypes != nil {
+		if _, exists := availableConstraintTypes[internal.Unique]; exists {
+			uniqueConstraintsData, err = c.getUniqueConstraints(ctx, availableFullyQualifiedConstraints)
+			if err != nil {
+				return nil, errToAdbcErr(adbc.StatusIO, err)
+			}
+		}
+
+		if _, exists := availableConstraintTypes[internal.PrimaryKey]; exists {
+			primaryKeyConstraintsData, err = c.getPrimaryKeyConstraints(ctx, availableFullyQualifiedConstraints)
+			if err != nil {
+				return nil, errToAdbcErr(adbc.StatusIO, err)
+			}
+		}
+
+		if _, exists := availableConstraintTypes[internal.ForeignKey]; exists {
+			foreignKeyConstraintsData, err = c.getForeignKeyConstraints(ctx, availableFullyQualifiedConstraints)
+			if err != nil {
+				return nil, errToAdbcErr(adbc.StatusIO, err)
+			}
+		}
+	}
+
+	tableConstraintsData := append(append(uniqueConstraintsData, primaryKeyConstraintsData...), foreignKeyConstraintsData...)
+
+	sort.Slice(tableConstraintsData, func(i, j int) bool {
+		if tableConstraintsData[i].constraintName == tableConstraintsData[j].constraintName {
+			return tableConstraintsData[i].keySequence < tableConstraintsData[j].keySequence
+		}
+		return tableConstraintsData[i].constraintName == tableConstraintsData[j].constraintName
+	})
+
+	return tableConstraintsData, nil
+}
+
+func (c *cnxn) getUniqueConstraints(ctx context.Context, fullyQualifiedConstraints map[string]bool) ([]TableConstraint, error) {
+	uniqueConstraintsData := make([]TableConstraint, 0)
+
+	rows, err := c.sqldb.QueryContext(ctx, prepareUniqueConstraintSQL(), nil)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var uniqueConstraint TableConstraint
+		if err := rows.Scan(&uniqueConstraint.skipCreatedOn, &uniqueConstraint.dbName, &uniqueConstraint.schema, &uniqueConstraint.tblName, &uniqueConstraint.colName, &uniqueConstraint.keySequence, &uniqueConstraint.constraintName, &uniqueConstraint.skipRely, &uniqueConstraint.skipComment); err != nil {
+			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
+		}
+
+		currentConstraintQualifiedName := getFullyQualifiedConstraintName(uniqueConstraint.dbName, uniqueConstraint.schema, uniqueConstraint.tblName, uniqueConstraint.constraintName)
+
+		// skip constraint if it doesn't exist in fullyQualifiedConstraints
+		if _, exists := fullyQualifiedConstraints[currentConstraintQualifiedName]; exists {
+			uniqueConstraint.constraintType = internal.Unique
+			uniqueConstraintsData = append(uniqueConstraintsData, uniqueConstraint)
+		}
+
+	}
+	return uniqueConstraintsData, nil
+}
+
+func (c *cnxn) getPrimaryKeyConstraints(ctx context.Context, fullyQualifiedConstraints map[string]bool) ([]TableConstraint, error) {
+	primaryKeyConstraintsData := make([]TableConstraint, 0)
+
+	rows, err := c.sqldb.QueryContext(ctx, preparePrimaryKeyConstraintSQL(), nil)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var primaryKeyConstraint TableConstraint
+		if err := rows.Scan(&primaryKeyConstraint.skipCreatedOn, &primaryKeyConstraint.dbName, &primaryKeyConstraint.schema, &primaryKeyConstraint.tblName, &primaryKeyConstraint.colName, &primaryKeyConstraint.keySequence, &primaryKeyConstraint.constraintName, &primaryKeyConstraint.skipRely, &primaryKeyConstraint.skipComment); err != nil {
+			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
+		}
+
+		currentConstraintQualifiedName := getFullyQualifiedConstraintName(primaryKeyConstraint.dbName, primaryKeyConstraint.schema, primaryKeyConstraint.tblName, primaryKeyConstraint.constraintName)
+
+		// skip constraint if it doesn't exist in fullyQualifiedConstraints
+		if _, exists := fullyQualifiedConstraints[currentConstraintQualifiedName]; exists {
+			primaryKeyConstraint.constraintType = internal.PrimaryKey
+			primaryKeyConstraintsData = append(primaryKeyConstraintsData, primaryKeyConstraint)
+		}
+
+	}
+	return primaryKeyConstraintsData, nil
+}
+
+func (c *cnxn) getForeignKeyConstraints(ctx context.Context, fullyQualifiedConstraints map[string]bool) ([]TableConstraint, error) {
+	foreignKeyConstraintsData := make([]TableConstraint, 0)
+
+	rows, err := c.sqldb.QueryContext(ctx, prepareForeignKeyConstraintSQL(), nil)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var foreignKeyConstraint TableConstraint
+		if err := rows.Scan(&foreignKeyConstraint.skipCreatedOn, &foreignKeyConstraint.dbName, &foreignKeyConstraint.schema, &foreignKeyConstraint.tblName, &foreignKeyConstraint.colName, &foreignKeyConstraint.fkDbName, &foreignKeyConstraint.fkSchema, &foreignKeyConstraint.fkTblName, &foreignKeyConstraint.fkColName, &foreignKeyConstraint.keySequence, &foreignKeyConstraint.skipUpdateRule, &foreignKeyConstraint.skipDeleteRule, &foreignKeyConstraint.fk_constraintName, &foreignKeyConstraint.constraintName, &foreignKeyConstraint.skipDeferrability, &foreignKeyConstraint.skipRely, &foreignKeyConstraint.skipComment); err != nil {
+			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
+		}
+
+		currentConstraintQualifiedName := getFullyQualifiedConstraintName(foreignKeyConstraint.fkDbName.String, foreignKeyConstraint.fkSchema.String, foreignKeyConstraint.fkTblName.String, foreignKeyConstraint.fk_constraintName.String)
+
+		// skip constraint if it doesn't exist in fullyQualifiedConstraints
+		if _, exists := fullyQualifiedConstraints[currentConstraintQualifiedName]; exists {
+			foreignKeyConstraint.constraintType = internal.ForeignKey
+			foreignKeyConstraintsData = append(foreignKeyConstraintsData, foreignKeyConstraint)
+		}
+	}
+	return foreignKeyConstraintsData, nil
+}
+
 func (c *cnxn) getCatalogsMetadata(ctx context.Context) ([]internal.Metadata, error) {
 	metadataRecords := make([]internal.Metadata, 0)
 
@@ -564,6 +784,7 @@ func (c *cnxn) getCatalogsMetadata(ctx context.Context) ([]internal.Metadata, er
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var data internal.Metadata
@@ -616,7 +837,7 @@ func (c *cnxn) getTablesMetadata(ctx context.Context, matchingCatalogNames []str
 
 	for rows.Next() {
 		var data internal.Metadata
-		if err = rows.Scan(&data.Dbname, &data.Schema, &data.TblName, &data.TblType); err != nil {
+		if err = rows.Scan(&data.Dbname, &data.Schema, &data.TblName, &data.TblType, &data.ConstraintName, &data.ConstraintType); err != nil {
 			return nil, errToAdbcErr(adbc.StatusIO, err)
 		}
 		metadataRecords = append(metadataRecords, data)
@@ -640,13 +861,56 @@ func (c *cnxn) getColumnsMetadata(ctx context.Context, matchingCatalogNames []st
 		err = rows.Scan(&data.TblType, &data.Dbname, &data.Schema, &data.TblName, &data.ColName,
 			&data.OrdinalPos, &data.IsNullable, &data.DataType, &data.NumericPrec,
 			&data.NumericPrecRadix, &data.NumericScale, &data.IsIdent, &data.IdentGen,
-			&data.IdentIncrement, &data.CharMaxLength, &data.CharOctetLength, &data.DatetimePrec, &data.Comment)
+			&data.IdentIncrement, &data.CharMaxLength, &data.CharOctetLength, &data.DatetimePrec, &data.Comment, &data.ConstraintName, &data.ConstraintType)
 		if err != nil {
 			return nil, errToAdbcErr(adbc.StatusIO, err)
 		}
 		metadataRecords = append(metadataRecords, data)
 	}
 	return metadataRecords, nil
+}
+
+func getAvailableConstraintTypes(metadataRecords []internal.Metadata) map[string]bool {
+	availableConstraintType := make(map[string]bool)
+	for _, data := range metadataRecords {
+		if data.ConstraintType.Valid {
+			switch data.ConstraintType.String {
+			case internal.Unique:
+				availableConstraintType[internal.Unique] = true
+			case internal.PrimaryKey:
+				availableConstraintType[internal.PrimaryKey] = true
+			case internal.ForeignKey:
+				availableConstraintType[internal.ForeignKey] = true
+			default:
+			}
+		}
+	}
+	return availableConstraintType
+}
+
+func getAvailableFullyQualifiedConstraints(metadataRecords []internal.Metadata) map[string]bool {
+	fullyQualifiedConstraints := make(map[string]bool)
+	for _, data := range metadataRecords {
+		if data.ConstraintName.Valid {
+			fullyQualifiedConstraintName := getFullyQualifiedConstraintName(data.Dbname.String, data.Schema.String, data.TblName.String, data.ConstraintName.String)
+			fullyQualifiedConstraints[fullyQualifiedConstraintName] = true
+		}
+	}
+	return fullyQualifiedConstraints
+}
+
+func getFullyQualifiedConstraintName(dbName string, schema string, tableName string, constraintName string) string {
+	return fmt.Sprintf("%s.%s.%s.%s", dbName, schema, tableName, constraintName)
+}
+
+func getCatalogSchemaTableFromFullyQualifiedConstraintName(fullyQualifiedConstraintName string) internal.CatalogSchemaTable {
+	parts := strings.Split(fullyQualifiedConstraintName, ".")
+	catalogSchemaTable := internal.CatalogSchemaTable{
+		Catalog: parts[0],
+		Schema:  parts[1],
+		Table:   parts[2],
+	}
+	return catalogSchemaTable
 }
 
 func getMatchingCatalogNames(metadataRecords []internal.Metadata, catalog *string) ([]string, error) {
@@ -701,10 +965,20 @@ func prepareTablesSQL(matchingCatalogNames []string, catalog *string, dbSchema *
 		if query != "" {
 			query += " UNION ALL "
 		}
-		query += `SELECT * FROM "` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES`
+		query += `SELECT T.table_catalog, T.table_schema, T.table_name, T.table_type, TC.constraint_name, TC.constraint_type
+					FROM
+					(
+						"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES AS T
+						LEFT JOIN
+						"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+						ON
+							T.table_catalog = TC.table_catalog
+							AND T.table_schema = TC.table_schema
+							AND t.table_name = TC.table_name
+					)`
 	}
 
-	query = `SELECT table_catalog, table_schema, table_name, table_type FROM (` + query + `)`
+	query = `SELECT table_catalog, table_schema, table_name, table_type, constraint_name, constraint_type FROM (` + query + `)`
 	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthTables, catalog, dbSchema, tableName, nil, tableType)
 	if conditions != "" {
 		query += " WHERE " + conditions
@@ -718,12 +992,13 @@ func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema 
 		if prefixQuery != "" {
 			prefixQuery += " UNION ALL "
 		}
-		prefixQuery += `SELECT T.table_type,
-					C.*
+		prefixQuery += `SELECT T.table_type, C.*, TC.constraint_name, TC.constraint_type
 				FROM
 				"` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES AS T
 			JOIN
 				"` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.COLUMNS AS C
+			LEFT JOIN
+				"` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
 			ON
 				T.table_catalog = C.table_catalog
 				AND T.table_schema = C.table_schema
@@ -734,7 +1009,7 @@ func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema 
 						ordinal_position, is_nullable::boolean, data_type, numeric_precision,
 						numeric_precision_radix, numeric_scale, is_identity::boolean,
 						identity_generation, identity_increment,
-						character_maximum_length, character_octet_length, datetime_precision, comment FROM (` + prefixQuery + `)`
+						character_maximum_length, character_octet_length, datetime_precision, comment, constraint_name, constraint_type FROM (` + prefixQuery + `)`
 	ordering := ` ORDER BY table_catalog, table_schema, table_name, ordinal_position`
 	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthColumns, catalog, dbSchema, tableName, columnName, tableType)
 	query := prefixQuery
@@ -784,6 +1059,18 @@ func prepareFilterConditions(depth adbc.ObjectDepth, catalog *string, dbSchema *
 
 	cond := strings.Join(tblConditions, " AND ")
 	return cond, queryArgs
+}
+
+func prepareUniqueConstraintSQL() string {
+	return "SHOW UNIQUE KEYS"
+}
+
+func preparePrimaryKeyConstraintSQL() string {
+	return "SHOW PRIMARY KEYS"
+}
+
+func prepareForeignKeyConstraintSQL() string {
+	return "SHOW EXPORTED KEYS"
 }
 
 func descToField(name, typ, isnull, primary string, comment sql.NullString) (field arrow.Field, err error) {

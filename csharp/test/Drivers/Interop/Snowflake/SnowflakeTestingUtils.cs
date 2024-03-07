@@ -133,11 +133,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Parses the queries from resources/SnowflakeData.sql
         /// </summary>
         /// <param name="testConfiguration"><see cref="SnowflakeTestConfiguration"/></param>
-        internal static string[] GetQueries(SnowflakeTestConfiguration testConfiguration)
+        internal static string[] GetQueries(SnowflakeTestConfiguration testConfiguration, string sqlFilePath = "resources/SnowflakeData.sql")
         {
             StringBuilder content = new StringBuilder();
 
-            string[] sql = File.ReadAllLines("resources/SnowflakeData.sql");
+            string[] sql = File.ReadAllLines(sqlFilePath);
 
             Dictionary<string, string> placeholderValues = new Dictionary<string, string>() {
                 {"{ADBC_CATALOG}", testConfiguration.Metadata.Catalog },

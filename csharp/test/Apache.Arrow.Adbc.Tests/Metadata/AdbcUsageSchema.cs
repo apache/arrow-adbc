@@ -26,5 +26,26 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         public string FkTable { get; set; }
 
         public string FkColumnName { get; set; }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null || obj.GetType() != this.GetType())
+            {
+                return false;
+            }
+
+            var other = (AdbcUsageSchema)obj;
+            return this.FkCatalog == other.FkCatalog && this.FkDbSchema == other.FkDbSchema && this.FkTable == other.FkTable && this.FkColumnName == other.FkColumnName;
+        }
+
+        public override int GetHashCode()
+        {
+            int hash = 17;
+            hash = hash * 31 + (FkCatalog != null ? FkCatalog.GetHashCode() : 0);
+            hash = hash * 31 + (FkDbSchema != null ? FkDbSchema.GetHashCode() : 0);
+            hash = hash * 31 + (FkTable != null ? FkTable.GetHashCode() : 0);
+            hash = hash * 31 + (FkColumnName != null ? FkColumnName.GetHashCode() : 0);
+            return hash;
+        }
     }
 }

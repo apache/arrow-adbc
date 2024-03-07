@@ -173,6 +173,14 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
                 StringArray col_names = column_names.GetSlicedValues(i) as StringArray;
                 StructArray usage = column_usage.GetSlicedValues(i) as StructArray;
 
+                if (col_names != null)
+                {
+                    for (int j = 0; j < col_names.Length; j++)
+                    {
+                        c.ColumnNames.Add(col_names.GetString(j));
+                    }
+                }
+
                 if (usage != null)
                 {
                     for (int j = 0; j < usage.Length; j++)

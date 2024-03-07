@@ -17,6 +17,9 @@
       <ProjectReference Include="..\..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
     </ItemGroup>
     <ItemGroup>
+     <None Update="Resources\SnowflakeConstraints.sql">
+       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     </None>
      <None Update="Resources\SnowflakeData.sql">
        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
      </None>
