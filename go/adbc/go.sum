@@ -27,6 +27,8 @@ github.com/apache/arrow/go/v14 v14.0.2 h1:N8OkaJEOfI3mEZt07BIkvo4sC6XDbL+48MBPWO
 github.com/apache/arrow/go/v14 v14.0.2/go.mod h1:u3fgh3EdgN/YQ8cVQRguVW3R+seMybFg8QBQ5LU+eBY=
 github.com/apache/arrow/go/v16 v16.0.0-20240129203910-c2ca9bcedeb0 h1:ooLFCCZ/sq3KDyrcFBxWweB1wTr1oAIgjj1+Zl3WsRw=
 github.com/apache/arrow/go/v16 v16.0.0-20240129203910-c2ca9bcedeb0/go.mod h1:+HkSDKotr3KDBxj7gTVgj8Egy18Y1ECzQdnY5XsXwlQ=
+github.com/apache/arrow/go/v16 v16.0.0-20240307132415-1c9a3122c603 h1:UOXjIpzPxFAsxrtqUa+e8yuVdhMklFi+Uyo6oB+sDK4=
+github.com/apache/arrow/go/v16 v16.0.0-20240307132415-1c9a3122c603/go.mod h1:+HkSDKotr3KDBxj7gTVgj8Egy18Y1ECzQdnY5XsXwlQ=
 github.com/apache/thrift v0.17.0 h1:cMd2aj52n+8VoAtvSvLn4kDC3aZ6IAkBuqWQ2IDu7wo=
 github.com/apache/thrift v0.17.0/go.mod h1:OLxhMRJxomX+1I/KUw03qoV3mMz16BwaKI+d4fPBx7Q=
 github.com/aws/aws-sdk-go-v2 v1.24.1 h1:xAojnj+ktS95YZlDf0zxWBkbFtymPeDP+rvUQIH3uAU=

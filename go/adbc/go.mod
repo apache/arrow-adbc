@@ -20,7 +20,7 @@ module github.com/apache/arrow-adbc/go/adbc
 go 1.19
 
 require (
-	github.com/apache/arrow/go/v16 v16.0.0-20240129203910-c2ca9bcedeb0
+	github.com/apache/arrow/go/v16 v16.0.0-20240307132415-1c9a3122c603
 	github.com/bluele/gcache v0.0.2
 	github.com/golang/protobuf v1.5.3
 	github.com/google/uuid v1.6.0

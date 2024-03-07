@@ -1597,7 +1597,7 @@ func (server *MultiTableTestServer) GetFlightInfoTables(ctx context.Context, cmd
 	server.Alloc = memory.NewCheckedAllocator(memory.DefaultAllocator)
 	info := &flight.FlightInfo{
 		Endpoint: []*flight.FlightEndpoint{
-			{Ticket: &flight.Ticket{Ticket: desc.Cmd}},
+			{Ticket: &flight.Ticket{Ticket: desc.Cmd}, Location: []*flight.Location{{Uri: flight.LocationReuseConnection}}},
 		},
 		FlightDescriptor: desc,
 		Schema:           flight.SerializeSchema(schema, server.Alloc),
