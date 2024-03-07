@@ -15,11 +15,30 @@
 # specific language governing permissions and limitations
 # under the License.
 
-adbc_driver_manager/*.c
-adbc_driver_manager/*.cc
-adbc_driver_manager/*.cpp
-adbc_driver_manager/*.h
-adbc_driver_manager/*.hpp
-build/
-dist/
-repaired_wheels/
+# cython: language_level = 3
+
+"""
+For debugging, install crash handlers that print a backtrace.
+"""
+
+import threading
+
+cdef extern from "backward.hpp" nogil:
+    cdef struct CSignalHandling"backward::SignalHandling":
+        pass
+
+
+cdef class _SignalHandling:
+    cdef CSignalHandling _c_signal_handler
+
+
+_CRASH_HANDLER = None
+_CRASH_HANDLER_LOCK = threading.Lock()
+
+
+def _install_crash_handler():
+    global _CRASH_HANDLER
+    with _CRASH_HANDLER_LOCK:
+        if _CRASH_HANDLER:
+            return
+        _CRASH_HANDLER = _SignalHandling()

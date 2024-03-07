@@ -427,7 +427,8 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
     ColumnXdbc xdbc;
     bool notnull = sqlite3_column_int(columns->stmt(), 3) != 0;
     xdbc.xdbc_type_name = GetColumnText(columns->stmt(), 2);
-    xdbc.xdbc_nullable = notnull ? 0 : 1;
+    xdbc.xdbc_nullable =
+        notnull ? std::make_optional<int16_t>(0) : std::make_optional<int16_t>(1);
     if (sqlite3_column_type(columns->stmt(), 4) != SQLITE_NULL) {
       xdbc.xdbc_column_def = GetColumnText(columns->stmt(), 4);
     }
