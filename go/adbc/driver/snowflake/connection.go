@@ -63,6 +63,41 @@ type connectionImpl struct {
 	useHighPrecision  bool
 }
 
+// SetAutocommit implements driverbase.AutocommitSetter.
+func (c *connectionImpl) SetAutocommit(enabled bool) (err error) {
+	defer func() {
+		// Only update the driver state if there was no error
+		if err == nil {
+			c.ConnectionImplBase.Autocommit = enabled
+		}
+	}()
+
+	if enabled {
+		if c.activeTransaction {
+			_, err = c.cn.ExecContext(context.Background(), "COMMIT", nil)
+			if err != nil {
+				err = errToAdbcErr(adbc.StatusInternal, err)
+				return
+			}
+			c.activeTransaction = false
+		}
+		_, err = c.cn.ExecContext(context.Background(), "ALTER SESSION SET AUTOCOMMIT = true", nil)
+		return
+	}
+
+	if !c.activeTransaction {
+		_, err = c.cn.ExecContext(context.Background(), "BEGIN", nil)
+		if err != nil {
+			err = errToAdbcErr(adbc.StatusInternal, err)
+			return
+		}
+		c.activeTransaction = true
+	}
+	_, err = c.cn.ExecContext(context.Background(), "ALTER SESSION SET AUTOCOMMIT = false", nil)
+	return
+
+}
+
 // Metadata methods
 // Generally these methods return an array.RecordReader that
 // can be consumed to retrieve metadata about the database as Arrow
@@ -802,14 +837,6 @@ func descToField(name, typ, isnull, primary string, comment sql.NullString) (fie
 
 func (c *connectionImpl) GetOption(key string) (string, error) {
 	switch key {
-	case adbc.OptionKeyAutoCommit:
-		if c.activeTransaction {
-			// No autocommit
-			return adbc.OptionValueDisabled, nil
-		} else {
-			// Autocommit
-			return adbc.OptionValueEnabled, nil
-		}
 	case adbc.OptionKeyCurrentCatalog:
 		return c.getStringQuery("SELECT CURRENT_DATABASE()")
 	case adbc.OptionKeyCurrentDbSchema:
@@ -918,13 +945,6 @@ func (c *connectionImpl) GetTableTypes(_ context.Context) (array.RecordReader, e
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
 func (c *connectionImpl) Commit(_ context.Context) error {
-	if !c.activeTransaction {
-		return adbc.Error{
-			Msg:  "no active transaction, cannot commit",
-			Code: adbc.StatusInvalidState,
-		}
-	}
-
 	_, err := c.cn.ExecContext(context.Background(), "COMMIT", nil)
 	if err != nil {
 		return errToAdbcErr(adbc.StatusInternal, err)
@@ -939,13 +959,6 @@ func (c *connectionImpl) Commit(_ context.Context) error {
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
 func (c *connectionImpl) Rollback(_ context.Context) error {
-	if !c.activeTransaction {
-		return adbc.Error{
-			Msg:  "no active transaction, cannot rollback",
-			Code: adbc.StatusInvalidState,
-		}
-	}
-
 	_, err := c.cn.ExecContext(context.Background(), "ROLLBACK", nil)
 	if err != nil {
 		return errToAdbcErr(adbc.StatusInternal, err)
@@ -998,34 +1011,6 @@ func (c *connectionImpl) ReadPartition(ctx context.Context, serializedPartition 
 
 func (c *connectionImpl) SetOption(key, value string) error {
 	switch key {
-	case adbc.OptionKeyAutoCommit:
-		switch value {
-		case adbc.OptionValueEnabled:
-			if c.activeTransaction {
-				_, err := c.cn.ExecContext(context.Background(), "COMMIT", nil)
-				if err != nil {
-					return errToAdbcErr(adbc.StatusInternal, err)
-				}
-				c.activeTransaction = false
-			}
-			_, err := c.cn.ExecContext(context.Background(), "ALTER SESSION SET AUTOCOMMIT = true", nil)
-			return err
-		case adbc.OptionValueDisabled:
-			if !c.activeTransaction {
-				_, err := c.cn.ExecContext(context.Background(), "BEGIN", nil)
-				if err != nil {
-					return errToAdbcErr(adbc.StatusInternal, err)
-				}
-				c.activeTransaction = true
-			}
-			_, err := c.cn.ExecContext(context.Background(), "ALTER SESSION SET AUTOCOMMIT = false", nil)
-			return err
-		default:
-			return adbc.Error{
-				Msg:  "[Snowflake] invalid value for option " + key + ": " + value,
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
 	case adbc.OptionKeyCurrentCatalog:
 		_, err := c.cn.ExecContext(context.Background(), "USE DATABASE ?", []driver.NamedValue{{Value: value}})
 		return err

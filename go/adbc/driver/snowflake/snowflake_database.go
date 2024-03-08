@@ -444,7 +444,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
 
-	return &connectionImpl{
+	conn := &connectionImpl{
 		cn: cn.(snowflakeConn),
 		db: d, ctor: connector,
 		sqldb: sql.OpenDB(connector),
@@ -453,7 +453,9 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		// get Int64/Float64 instead
 		useHighPrecision:   d.useHighPrecision,
 		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
-	}, nil
+	}
+
+	return driverbase.NewConnectionBuilder(conn).WithAutocommitSetter(conn).Connection(), nil
 }
 
 func (d *databaseImpl) Close() error {
