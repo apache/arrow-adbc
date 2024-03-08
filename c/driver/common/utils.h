@@ -119,25 +119,6 @@ AdbcStatusCode BatchToArrayStream(struct ArrowArray* values, struct ArrowSchema*
     if (adbc_status_code != ADBC_STATUS_OK) return adbc_status_code; \
   } while (0)
 
-/// \defgroup adbc-connection-utils Connection Utilities
-/// Utilities for implementing connection-related functions for drivers
-///
-/// @{
-AdbcStatusCode AdbcInitConnectionGetInfoSchema(struct ArrowSchema* schema,
-                                               struct ArrowArray* array,
-                                               struct AdbcError* error);
-AdbcStatusCode AdbcConnectionGetInfoAppendString(struct ArrowArray* array,
-                                                 uint32_t info_code,
-                                                 const char* info_value,
-                                                 struct AdbcError* error);
-AdbcStatusCode AdbcConnectionGetInfoAppendInt(struct ArrowArray* array,
-                                              uint32_t info_code, int64_t info_value,
-                                              struct AdbcError* error);
-
-AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
-                                               struct AdbcError* error);
-/// @}
-
 struct AdbcGetObjectsUsage {
   struct ArrowStringView fk_catalog;
   struct ArrowStringView fk_db_schema;

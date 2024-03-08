@@ -110,7 +110,7 @@ def test_get_objects(sqlite):
     assert metadata[0]["catalog_name"] == "main"
     schemas = metadata[0]["catalog_db_schemas"]
     assert len(schemas) == 1
-    assert schemas[0]["db_schema_name"] is None
+    assert schemas[0]["db_schema_name"] == ""
     tables = schemas[0]["db_schema_tables"]
     assert len(tables) == 1
     assert tables[0]["table_name"] == "temporary"

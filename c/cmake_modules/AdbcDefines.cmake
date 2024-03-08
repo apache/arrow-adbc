@@ -85,6 +85,7 @@ if(MSVC)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # maybe-uninitialized is flaky
   set(ADBC_C_CXX_FLAGS_CHECKIN
       -Wall
       -Wextra
@@ -92,6 +93,10 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
       -Werror
       -Wno-unused-parameter)
   set(ADBC_C_CXX_FLAGS_PRODUCTION -Wall)
+
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    list(APPEND ADBC_C_CXX_FLAGS_CHECKIN -Wno-maybe-uninitialized)
+  endif()
 
   if(NOT CMAKE_C_FLAGS_DEBUG MATCHES "-O")
     string(APPEND CMAKE_C_FLAGS_DEBUG " -Og")
