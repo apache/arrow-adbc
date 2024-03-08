@@ -495,4 +495,17 @@ func (cnxn *connection) Rollback(ctx context.Context) error {
 	return cnxn.ConnectionImpl.Rollback(ctx)
 }
 
+func (cnxn *connection) Close() error {
+	if cnxn.Base().Closed {
+		return cnxn.Base().ErrorHelper.Errorf(adbc.StatusInvalidState, "Trying to close already closed connection")
+	}
+
+	err := cnxn.ConnectionImpl.Close()
+	if err == nil {
+		cnxn.Base().Closed = true
+	}
+
+	return err
+}
+
 var _ ConnectionImpl = (*ConnectionImplBase)(nil)

@@ -35,6 +35,8 @@ func TestDriverInfo(t *testing.T) {
 	// These are the info codes that are set for every driver
 	expectedDefaultInfoCodes := []adbc.InfoCode{
 		adbc.InfoVendorName,
+		adbc.InfoVendorVersion,
+		adbc.InfoVendorArrowVersion,
 		adbc.InfoDriverName,
 		adbc.InfoDriverVersion,
 		adbc.InfoDriverArrowVersion,

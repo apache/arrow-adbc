@@ -74,7 +74,11 @@ func TestDefaultDriver(t *testing.T) {
 
 	cnxn, err := db.Open(ctx)
 	require.NoError(t, err)
-	defer cnxn.Close()
+	defer func() {
+		// Cannot close more than once
+		require.NoError(t, cnxn.Close())
+		require.Error(t, cnxn.Close())
+	}()
 
 	err = cnxn.Commit(ctx)
 	require.Error(t, err)
@@ -93,6 +97,14 @@ func TestDefaultDriver(t *testing.T) {
 		{
 			"info_name": 0,
 			"info_value": [0, "MockDriver"]
+		},
+		{
+			"info_name": 1,
+			"info_value": [0, "(unknown or development build)"]
+		},
+		{
+			"info_name": 2,
+			"info_value": [0, "(unknown or development build)"]
 		},
 		{
 			"info_name": 100,
@@ -185,6 +197,14 @@ func TestCustomizedDriver(t *testing.T) {
 		{
 			"info_name": 0,
 			"info_value": [0, "MockDriver"]
+		},
+		{
+			"info_name": 1,
+			"info_value": [0, "(unknown or development build)"]
+		},
+		{
+			"info_name": 2,
+			"info_value": [0, "(unknown or development build)"]
 		},
 		{
 			"info_name": 100,
