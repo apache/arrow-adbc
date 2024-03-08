@@ -47,14 +47,9 @@ type Database interface {
 	adbc.DatabaseLogging
 }
 
-// DatabaseImplBase is a struct that provides default implementations of some of the
-// methods defined in the DatabaseImpl interface. It is meant to be used as a composite
+// DatabaseImplBase is a struct that provides default implementations of the methods
+// defined in the DatabaseImpl interface. It is meant to be used as a composite
 // struct for a driver's DatabaseImpl implementation.
-//
-// It is up to the driver implementor to understand the semantics of the default
-// behavior provided. For example, in some cases the default implementation may provide
-// a fallback value while in other cases it may provide a partial-result which must be
-// merged with the driver-specific-result, if any.
 type DatabaseImplBase struct {
 	Alloc       memory.Allocator
 	ErrorHelper ErrorHelper

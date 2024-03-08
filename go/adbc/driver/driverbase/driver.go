@@ -38,14 +38,9 @@ type Driver interface {
 	adbc.Driver
 }
 
-// DriverImplBase is a struct that provides default implementations of some of the
-// methods defined in the DriverImpl interface. It is meant to be used as a composite
+// DriverImplBase is a struct that provides default implementations of the methods
+// defined in the DriverImpl interface. It is meant to be used as a composite
 // struct for a driver's DriverImpl implementation.
-//
-// It is up to the driver implementor to understand the semantics of the default
-// behavior provided. For example, in some cases the default implementation may provide
-// a fallback value while in other cases it may provide a partial-result which must be
-// merged with the driver-specific-result, if any.
 type DriverImplBase struct {
 	Alloc       memory.Allocator
 	ErrorHelper ErrorHelper

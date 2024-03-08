@@ -63,6 +63,8 @@ type ConnectionImpl interface {
 	Base() *ConnectionImplBase
 }
 
+// CurrentNamespacer is an interface that drivers may implement to delegate
+// stateful namespacing with DB catalogs and schemas.
 type CurrentNamespacer interface {
 	GetCurrentCatalog() (string, bool)
 	GetCurrentDbSchema() (string, bool)
@@ -70,18 +72,35 @@ type CurrentNamespacer interface {
 	SetCurrentDbSchema(string) error
 }
 
+// DriverInfoPreparer is an interface that drivers may implement to add/update
+// DriverInfo values whenever connection.GetInfo() is called.
 type DriverInfoPreparer interface {
 	PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error
 }
 
+// TableTypeLister is an interface that drivers may implement to simplify the
+// implementation of connection.GetTableTypes() for backends that do not natively
+// send these values as arrow records. The conversion of the result to a RecordReader
+// is handled by the driverbase.
 type TableTypeLister interface {
 	ListTableTypes(ctx context.Context) ([]string, error)
 }
 
+// AutocommitSetter is an interface that drivers may implement to simplify the
+// implementation of autocommit state management. There is no need to implement
+// this for backends that do not support autocommit, as this is already the default
+// behavior. SetAutocommit should only attempt to update the autocommit state in the
+// backend. Local driver state is automatically updated if the result of this call
+// does not produce an error. (Get/Set)Options implementations are provided by
+// the driverbase.
 type AutocommitSetter interface {
 	SetAutocommit(enabled bool) error
 }
 
+// DbObjectsEnumerator is an interface that drivers may implement to simplify the
+// implementation of adbc.Connection.GetObjects. By independently implementing lookup
+// for catalogs, dbSchemas and tables, the driverbase is able to provide the full
+// GetObjects functionality for arbitrary search patterns or lookup depth.
 type DbObjectsEnumerator interface {
 	GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error)
 	GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, metadataRecords []internal.Metadata) (map[string][]string, error)
@@ -89,20 +108,15 @@ type DbObjectsEnumerator interface {
 }
 
 // Connection is the interface satisfied by the result of the NewConnection constructor,
-// given an input is provided satisfying the ConnectionImpl interface.
+// given that an input is provided satisfying the ConnectionImpl interface.
 type Connection interface {
 	adbc.Connection
 	adbc.GetSetOptions
 }
 
-// ConnectionImplBase is a struct that provides default implementations of some of the
-// methods defined in the ConnectionImpl interface. It is meant to be used as a composite
+// ConnectionImplBase is a struct that provides default implementations of the methods
+// defined in the ConnectionImpl interface. It is meant to be used as a composite
 // struct for a driver's ConnectionImpl implementation.
-//
-// It is up to the driver implementor to understand the semantics of the default
-// behavior provided. For example, in some cases the default implementation may provide
-// a fallback value while in other cases it may provide a partial-result which must be
-// merged with the driver-specific-result, if any.
 type ConnectionImplBase struct {
 	Alloc       memory.Allocator
 	ErrorHelper ErrorHelper
