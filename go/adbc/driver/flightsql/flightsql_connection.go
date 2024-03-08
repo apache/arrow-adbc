@@ -285,15 +285,15 @@ func (c *cnxn) GetOption(key string) (string, error) {
 		}
 		return string(encoded), nil
 	}
-	if strings.HasPrefix(key, OptionSessionOptionPrefix) {
+	switch {
+	case strings.HasPrefix(key, OptionSessionOptionPrefix):
 		options, err := c.getSessionOptions(context.Background())
 		if err != nil {
 			return "", err
 		}
 		name := key[len(OptionSessionOptionPrefix):]
 		return getSessionOption(options, name, "", "a string")
-	}
-	if strings.HasPrefix(key, OptionBoolSessionOptionPrefix) {
+	case strings.HasPrefix(key, OptionBoolSessionOptionPrefix):
 		options, err := c.getSessionOptions(context.Background())
 		if err != nil {
 			return "", err
@@ -307,8 +307,7 @@ func (c *cnxn) GetOption(key string) (string, error) {
 			return adbc.OptionValueEnabled, nil
 		}
 		return adbc.OptionValueDisabled, nil
-	}
-	if strings.HasPrefix(key, OptionStringListSessionOptionPrefix) {
+	case strings.HasPrefix(key, OptionStringListSessionOptionPrefix):
 		options, err := c.getSessionOptions(context.Background())
 		if err != nil {
 			return "", err
@@ -475,11 +474,11 @@ func (c *cnxn) SetOption(key, value string) error {
 		return c.setSessionOptions(context.Background(), "schema", value)
 	}
 
-	if strings.HasPrefix(key, OptionSessionOptionPrefix) {
+	switch {
+	case strings.HasPrefix(key, OptionSessionOptionPrefix):
 		name := key[len(OptionSessionOptionPrefix):]
 		return c.setSessionOptions(context.Background(), name, value)
-	}
-	if strings.HasPrefix(key, OptionBoolSessionOptionPrefix) {
+	case strings.HasPrefix(key, OptionBoolSessionOptionPrefix):
 		name := key[len(OptionBoolSessionOptionPrefix):]
 		switch value {
 		case adbc.OptionValueEnabled:
@@ -492,8 +491,7 @@ func (c *cnxn) SetOption(key, value string) error {
 				Code: adbc.StatusNotImplemented,
 			}
 		}
-	}
-	if strings.HasPrefix(key, OptionStringListSessionOptionPrefix) {
+	case strings.HasPrefix(key, OptionStringListSessionOptionPrefix):
 		name := key[len(OptionStringListSessionOptionPrefix):]
 		stringlist := make([]string, 0)
 		if err := json.Unmarshal([]byte(value), &stringlist); err != nil {
@@ -503,8 +501,7 @@ func (c *cnxn) SetOption(key, value string) error {
 			}
 		}
 		return c.setSessionOptions(context.Background(), name, stringlist)
-	}
-	if strings.HasPrefix(key, OptionEraseSessionOptionPrefix) {
+	case strings.HasPrefix(key, OptionEraseSessionOptionPrefix):
 		name := key[len(OptionEraseSessionOptionPrefix):]
 		return c.setSessionOptions(context.Background(), name, nil)
 	}
