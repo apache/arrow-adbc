@@ -140,37 +140,16 @@ func (c *cnxn) getSessionOptions(ctx context.Context) (map[string]interface{}, e
 	return options, nil
 }
 
-type unsetSessionOption struct{}
-
 func (c *cnxn) setSessionOptions(ctx context.Context, key string, val interface{}) error {
 	req := flight.SetSessionOptionsRequest{}
 
-	req.SessionOptions = make(map[string]*flight.SessionOptionValue)
-	switch v := val.(type) {
-	case bool:
-		req.SessionOptions[key] = &flight.SessionOptionValue{
-			OptionValue: &flightproto.SessionOptionValue_BoolValue{BoolValue: v},
+	var err error
+	req.SessionOptions, err = flight.NewSessionOptionValues(map[string]any{key: val})
+	if err != nil {
+		return adbc.Error{
+			Msg:  fmt.Sprintf("[Flight SQL] Invalid session option %s=%#v: %s", key, val, err.Error()),
+			Code: adbc.StatusInvalidArgument,
 		}
-	case float64:
-		req.SessionOptions[key] = &flight.SessionOptionValue{
-			OptionValue: &flightproto.SessionOptionValue_DoubleValue{DoubleValue: v},
-		}
-	case int64:
-		req.SessionOptions[key] = &flight.SessionOptionValue{
-			OptionValue: &flightproto.SessionOptionValue_Int64Value{Int64Value: v},
-		}
-	case string:
-		req.SessionOptions[key] = &flight.SessionOptionValue{
-			OptionValue: &flightproto.SessionOptionValue_StringValue{StringValue: v},
-		}
-	case []string:
-		req.SessionOptions[key] = &flight.SessionOptionValue{
-			OptionValue: &flightproto.SessionOptionValue_StringListValue_{StringListValue: &flightproto.SessionOptionValue_StringListValue{Values: v}},
-		}
-	case unsetSessionOption:
-		req.SessionOptions[key] = &flight.SessionOptionValue{}
-	default:
-		panic("unimplemented case")
 	}
 
 	var header, trailer metadata.MD
@@ -527,7 +506,7 @@ func (c *cnxn) SetOption(key, value string) error {
 	}
 	if strings.HasPrefix(key, OptionEraseSessionOptionPrefix) {
 		name := key[len(OptionEraseSessionOptionPrefix):]
-		return c.setSessionOptions(context.Background(), name, unsetSessionOption{})
+		return c.setSessionOptions(context.Background(), name, nil)
 	}
 
 	return adbc.Error{
