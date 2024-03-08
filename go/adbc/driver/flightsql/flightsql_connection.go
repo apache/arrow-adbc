@@ -57,6 +57,50 @@ type connectionImpl struct {
 	supportInfo support
 }
 
+func (c *connectionImpl) SetAutocommit(enabled bool) (err error) {
+	defer func() {
+		// Only update the driver state if there was no error
+		if err == nil {
+			c.ConnectionImplBase.Autocommit = enabled
+		}
+	}()
+
+	if enabled && c.txn == nil {
+		// no-op don't even error if the server didn't support transactions
+		return
+	}
+
+	if !c.supportInfo.transactions {
+		err = errNoTransactionSupport
+		return
+	}
+
+	ctx := metadata.NewOutgoingContext(context.Background(), c.hdrs)
+
+	if c.txn != nil {
+		if err = c.txn.Commit(ctx, c.timeouts); err != nil {
+			err = adbc.Error{
+				Msg:  "[Flight SQL] failed to update autocommit: " + err.Error(),
+				Code: adbc.StatusIO,
+			}
+			return
+		}
+	}
+
+	if enabled {
+		c.txn = nil
+		return
+	}
+
+	if c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts); err != nil {
+		err = adbc.Error{
+			Msg:  "[Flight SQL] failed to update autocommit: " + err.Error(),
+			Code: adbc.StatusIO,
+		}
+	}
+	return
+}
+
 var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
 	adbc.InfoVendorName:         flightsql.SqlInfoFlightSqlServerName,
 	adbc.InfoVendorVersion:      flightsql.SqlInfoFlightSqlServerVersion,
@@ -229,14 +273,6 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 		return c.timeouts.queryTimeout.String(), nil
 	case OptionTimeoutUpdate:
 		return c.timeouts.updateTimeout.String(), nil
-	case adbc.OptionKeyAutoCommit:
-		if c.txn != nil {
-			// No autocommit
-			return adbc.OptionValueDisabled, nil
-		} else {
-			// Autocommit
-			return adbc.OptionValueEnabled, nil
-		}
 	case adbc.OptionKeyCurrentCatalog:
 		options, err := c.getSessionOptions(context.Background())
 		if err != nil {
@@ -419,52 +455,6 @@ func (c *connectionImpl) SetOption(key, value string) error {
 	switch key {
 	case OptionTimeoutFetch, OptionTimeoutQuery, OptionTimeoutUpdate:
 		return c.timeouts.setTimeoutString(key, value)
-	case adbc.OptionKeyAutoCommit:
-		autocommit := true
-		switch value {
-		case adbc.OptionValueEnabled:
-			// Do nothing
-		case adbc.OptionValueDisabled:
-			autocommit = false
-		default:
-			return adbc.Error{
-				Msg:  "[Flight SQL] invalid value for option " + key + ": " + value,
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-
-		if autocommit && c.txn == nil {
-			// no-op don't even error if the server didn't support transactions
-			return nil
-		}
-
-		if !c.supportInfo.transactions {
-			return errNoTransactionSupport
-		}
-
-		ctx := metadata.NewOutgoingContext(context.Background(), c.hdrs)
-		var err error
-		if c.txn != nil {
-			if err = c.txn.Commit(ctx, c.timeouts); err != nil {
-				return adbc.Error{
-					Msg:  "[Flight SQL] failed to update autocommit: " + err.Error(),
-					Code: adbc.StatusIO,
-				}
-			}
-		}
-
-		if autocommit {
-			c.txn = nil
-			return nil
-		}
-
-		if c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts); err != nil {
-			return adbc.Error{
-				Msg:  "[Flight SQL] failed to update autocommit: " + err.Error(),
-				Code: adbc.StatusIO,
-			}
-		}
-		return nil
 	case adbc.OptionKeyCurrentCatalog:
 		return c.setSessionOptions(context.Background(), "catalog", value)
 	case adbc.OptionKeyCurrentDbSchema:
@@ -536,31 +526,7 @@ func (c *connectionImpl) SetOptionDouble(key string, value float64) error {
 	return c.ConnectionImplBase.SetOptionDouble(key, value)
 }
 
-// GetInfo returns metadata about the database/driver.
-//
-// The result is an Arrow dataset with the following schema:
-//
-//	Field Name									| Field Type
-//	----------------------------|-----------------------------
-//	info_name					   				| uint32 not null
-//	info_value									| INFO_SCHEMA
-//
-// INFO_SCHEMA is a dense union with members:
-//
-//	Field Name (Type Code)			| Field Type
-//	----------------------------|-----------------------------
-//	string_value (0)						| utf8
-//	bool_value (1)							| bool
-//	int64_value (2)							| int64
-//	int32_bitmask (3)						| int32
-//	string_list (4)							| list<utf8>
-//	int32_to_int32_list_map (5)	| map<int32, list<int32>>
-//
-// Each metadatum is identified by an integer code. The recognized
-// codes are defined as constants. Codes [0, 10_000) are reserved
-// for ADBC usage. Drivers/vendors will ignore requests for unrecognized
-// codes (the row will be omitted from the result).
-func (c *connectionImpl) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
+func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
 	driverInfo := c.ConnectionImplBase.DriverInfo
 
 	if len(infoCodes) == 0 {
@@ -576,7 +542,7 @@ func (c *connectionImpl) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode)
 
 	// None of the requested info codes are available on the server, so just return the local info
 	if len(translated) == 0 {
-		return c.ConnectionImplBase.GetInfo(ctx, infoCodes)
+		return nil
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
@@ -585,11 +551,11 @@ func (c *connectionImpl) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode)
 
 	// Just return local driver info if GetSqlInfo hasn't been implemented on the server
 	if grpcstatus.Code(err) == grpccodes.Unimplemented {
-		return c.ConnectionImplBase.GetInfo(ctx, infoCodes)
+		return nil
 	}
 
 	if err != nil {
-		return nil, adbcFromFlightStatus(err, "GetInfo(GetSqlInfo)")
+		return adbcFromFlightStatus(err, "GetInfo(GetSqlInfo)")
 	}
 
 	// No error, go get the SqlInfo from the server
@@ -597,7 +563,7 @@ func (c *connectionImpl) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode)
 		var header, trailer metadata.MD
 		rdr, err := doGet(ctx, c.cl, endpoint, c.clientCache, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 		if err != nil {
-			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
+			return adbcFromFlightStatusWithDetails(err, header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
 		}
 
 		for rdr.Next() {
@@ -622,149 +588,17 @@ func (c *connectionImpl) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode)
 				v := info.Field(info.ChildID(i)).(*array.String).
 					Value(int(info.ValueOffset(i)))
 				if err := driverInfo.RegisterInfoCode(adbcInfoCode, v); err != nil {
-					return nil, err
+					return err
 				}
 			}
 		}
 
 		if err := checkContext(rdr.Err(), ctx); err != nil {
-			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
+			return adbcFromFlightStatusWithDetails(err, header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
 		}
 	}
 
-	return c.ConnectionImplBase.GetInfo(ctx, infoCodes)
-}
-
-// GetObjects gets a hierarchical view of all catalogs, database schemas,
-// tables, and columns.
-//
-// The result is an Arrow Dataset with the following schema:
-//
-//	Field Name									| Field Type
-//	----------------------------|----------------------------
-//	catalog_name								| utf8
-//	catalog_db_schemas					| list<DB_SCHEMA_SCHEMA>
-//
-// DB_SCHEMA_SCHEMA is a Struct with the fields:
-//
-//	Field Name									| Field Type
-//	----------------------------|----------------------------
-//	db_schema_name							| utf8
-//	db_schema_tables						|	list<TABLE_SCHEMA>
-//
-// TABLE_SCHEMA is a Struct with the fields:
-//
-//	Field Name									| Field Type
-//	----------------------------|----------------------------
-//	table_name									| utf8 not null
-//	table_type									|	utf8 not null
-//	table_columns								| list<COLUMN_SCHEMA>
-//	table_constraints						| list<CONSTRAINT_SCHEMA>
-//
-// COLUMN_SCHEMA is a Struct with the fields:
-//
-//		Field Name 									| Field Type					| Comments
-//		----------------------------|---------------------|---------
-//		column_name									| utf8 not null				|
-//		ordinal_position						| int32								| (1)
-//		remarks											| utf8								| (2)
-//		xdbc_data_type							| int16								| (3)
-//		xdbc_type_name							| utf8								| (3)
-//		xdbc_column_size						| int32								| (3)
-//		xdbc_decimal_digits					| int16								| (3)
-//		xdbc_num_prec_radix					| int16								| (3)
-//		xdbc_nullable								| int16								| (3)
-//		xdbc_column_def							| utf8								| (3)
-//		xdbc_sql_data_type					| int16								| (3)
-//		xdbc_datetime_sub						| int16								| (3)
-//		xdbc_char_octet_length			| int32								| (3)
-//		xdbc_is_nullable						| utf8								| (3)
-//		xdbc_scope_catalog					| utf8								| (3)
-//		xdbc_scope_schema						| utf8								| (3)
-//		xdbc_scope_table						| utf8								| (3)
-//		xdbc_is_autoincrement				| bool								| (3)
-//		xdbc_is_generatedcolumn			| bool								| (3)
-//
-//	 1. The column's ordinal position in the table (starting from 1).
-//	 2. Database-specific description of the column.
-//	 3. Optional Value. Should be null if not supported by the driver.
-//	    xdbc_values are meant to provide JDBC/ODBC-compatible metadata
-//	    in an agnostic manner.
-//
-// CONSTRAINT_SCHEMA is a Struct with the fields:
-//
-//	Field Name									| Field Type					| Comments
-//	----------------------------|---------------------|---------
-//	constraint_name							| utf8								|
-//	constraint_type							| utf8 not null				| (1)
-//	constraint_column_names			| list<utf8> not null | (2)
-//	constraint_column_usage			| list<USAGE_SCHEMA>	| (3)
-//
-// 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE'.
-// 2. The columns on the current table that are constrained, in order.
-// 3. For FOREIGN KEY only, the referenced table and columns.
-//
-// USAGE_SCHEMA is a Struct with fields:
-//
-//	Field Name									|	Field Type
-//	----------------------------|----------------------------
-//	fk_catalog									| utf8
-//	fk_db_schema								| utf8
-//	fk_table										| utf8 not null
-//	fk_column_name							| utf8 not null
-//
-// For the parameters: If nil is passed, then that parameter will not
-// be filtered by at all. If an empty string, then only objects without
-// that property (ie: catalog or db schema) will be returned.
-//
-// tableName and columnName must be either nil (do not filter by
-// table name or column name) or non-empty.
-//
-// All non-empty, non-nil strings should be a search pattern (as described
-// earlier).
-func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
-	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
-	if err := g.Init(c.db.Alloc, c.getObjectsDbSchemas, c.getObjectsTables); err != nil {
-		return nil, err
-	}
-	defer g.Release()
-
-	var header, trailer metadata.MD
-	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
-	info, err := c.cl.GetCatalogs(ctx, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
-	if err != nil {
-		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
-	}
-
-	header = metadata.MD{}
-	trailer = metadata.MD{}
-	rdr, err := c.readInfo(ctx, schema_ref.Catalogs, info, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
-	if err != nil {
-		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
-	}
-	defer rdr.Release()
-
-	foundCatalog := false
-	for rdr.Next() {
-		arr := rdr.Record().Column(0).(*array.String)
-		for i := 0; i < arr.Len(); i++ {
-			// XXX: force copy since accessor is unsafe
-			catalogName := string([]byte(arr.Value(i)))
-			g.AppendCatalog(catalogName)
-			foundCatalog = true
-		}
-	}
-
-	// Implementations like Dremio report no catalogs, but still have schemas
-	if !foundCatalog && depth != adbc.ObjectDepthCatalogs {
-		g.AppendCatalog("")
-	}
-
-	if err := checkContext(rdr.Err(), ctx); err != nil {
-		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
-	}
-	return g.Finish()
+	return nil
 }
 
 // Helper function to read and validate a metadata stream
@@ -785,8 +619,48 @@ func (c *connectionImpl) readInfo(ctx context.Context, expectedSchema *arrow.Sch
 	return rdr, nil
 }
 
+func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error) {
+	var (
+		header, trailer metadata.MD
+		numCatalogs     int64
+	)
+	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
+	info, err := c.cl.GetCatalogs(ctx, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
+	if err != nil {
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
+	}
+
+	if info.TotalRecords > 0 {
+		numCatalogs = info.TotalRecords
+	}
+
+	header = metadata.MD{}
+	trailer = metadata.MD{}
+	rdr, err := c.readInfo(ctx, schema_ref.Catalogs, info, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
+	if err != nil {
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
+	}
+	defer rdr.Release()
+
+	catalogs := make([]string, 0, numCatalogs)
+	for rdr.Next() {
+		arr := rdr.Record().Column(0).(*array.String)
+		for i := 0; i < arr.Len(); i++ {
+			// XXX: force copy since accessor is unsafe
+			catalogName := string([]byte(arr.Value(i)))
+			catalogs = append(catalogs, catalogName)
+		}
+	}
+
+	if err := checkContext(rdr.Err(), ctx); err != nil {
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
+	}
+
+	return catalogs, nil
+}
+
 // Helper function to build up a map of catalogs to DB schemas
-func (c *connectionImpl) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, metadataRecords []internal.Metadata) (result map[string][]string, err error) {
+func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, metadataRecords []internal.Metadata) (result map[string][]string, err error) {
 	if depth == adbc.ObjectDepthCatalogs {
 		return
 	}
@@ -827,7 +701,7 @@ func (c *connectionImpl) getObjectsDbSchemas(ctx context.Context, depth adbc.Obj
 	return
 }
 
-func (c *connectionImpl) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (result internal.SchemaToTableInfo, err error) {
+func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (result internal.SchemaToTableInfo, err error) {
 	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
 		return
 	}
@@ -1004,17 +878,6 @@ func (c *connectionImpl) GetTableTypes(ctx context.Context) (array.RecordReader,
 // When not supported, the convention is that it should act as if autocommit
 // is enabled and return INVALID_STATE errors.
 func (c *connectionImpl) Commit(ctx context.Context) error {
-	if c.txn == nil {
-		return adbc.Error{
-			Msg:  "[Flight SQL] Cannot commit when autocommit is enabled",
-			Code: adbc.StatusInvalidState,
-		}
-	}
-
-	if !c.supportInfo.transactions {
-		return errNoTransactionSupport
-	}
-
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	var header, trailer metadata.MD
 	err := c.txn.Commit(ctx, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
@@ -1038,17 +901,6 @@ func (c *connectionImpl) Commit(ctx context.Context) error {
 // When not supported, the convention is that it should act as if autocommit
 // is enabled and return INVALID_STATE errors.
 func (c *connectionImpl) Rollback(ctx context.Context) error {
-	if c.txn == nil {
-		return adbc.Error{
-			Msg:  "[Flight SQL] Cannot rollback when autocommit is enabled",
-			Code: adbc.StatusInvalidState,
-		}
-	}
-
-	if !c.supportInfo.transactions {
-		return errNoTransactionSupport
-	}
-
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	var header, trailer metadata.MD
 	err := c.txn.Rollback(ctx, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
