@@ -72,6 +72,16 @@ endif()
 if(MSVC)
   set(ADBC_C_CXX_FLAGS_CHECKIN /Wall /WX)
   set(ADBC_C_CXX_FLAGS_PRODUCTION /Wall)
+  # Don't warn about strerror_s etc.
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+  # Allow incomplete switch (since MSVC warns even if there's a default case)
+  add_compile_options(/wd4061)
+  add_compile_options(/wd4868)
+  add_compile_options(/wd4710)
+  add_compile_options(/wd4711)
+  # Don't warn about padding added after members
+  add_compile_options(/wd4820)
+  add_compile_options(/wd5045)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

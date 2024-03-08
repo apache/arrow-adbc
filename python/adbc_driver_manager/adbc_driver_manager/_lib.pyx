@@ -168,7 +168,7 @@ INGEST_OPTION_MODE_CREATE_APPEND = ADBC_INGEST_OPTION_MODE_CREATE_APPEND.decode(
 INGEST_OPTION_TARGET_TABLE = ADBC_INGEST_OPTION_TARGET_TABLE.decode("utf-8")
 
 
-cdef object convert_error(CAdbcStatusCode status, CAdbcError* error) except *:
+cdef object convert_error(CAdbcStatusCode status, CAdbcError* error):
     cdef CAdbcErrorDetail c_detail
 
     if status == ADBC_STATUS_OK:

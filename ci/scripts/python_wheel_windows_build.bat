@@ -23,7 +23,8 @@ set build_dir=%2
 echo "=== (%PYTHON_VERSION%) Building ADBC libpq driver ==="
 
 set CMAKE_BUILD_TYPE=release
-set CMAKE_GENERATOR=Visual Studio 15 2017 Win64
+set CMAKE_GENERATOR=Visual Studio 17 2022
+set CMAKE_GENERATOR_PLATFORM=x64
 set CMAKE_UNITY_BUILD=ON
 set VCPKG_FEATURE_FLAGS=-manifests
 set VCPKG_TARGET_TRIPLET=x64-windows-static
@@ -38,6 +39,7 @@ pushd %build_dir%
 
 cmake ^
       -G "%CMAKE_GENERATOR%" ^
+      -A "%CMAKE_GENERATOR_PLATFORM%" ^
       -DADBC_BUILD_SHARED=ON ^
       -DADBC_BUILD_STATIC=OFF ^
       -DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE% ^
