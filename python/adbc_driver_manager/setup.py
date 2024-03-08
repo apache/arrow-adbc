@@ -75,7 +75,7 @@ version = get_version("adbc_driver_manager")
 build_type = os.environ.get("ADBC_BUILD_TYPE", "release")
 
 if sys.platform == "win32":
-    extra_compile_args = ["/std:c++17", "/DADBC_EXPORTING"]
+    extra_compile_args = ["/std:c++17", "/DADBC_EXPORTING", "/D_CRT_SECURE_NO_WARNINGS"]
     if build_type == "debug":
         extra_compile_args.extend(["/DEBUG:FULL"])
 else:
