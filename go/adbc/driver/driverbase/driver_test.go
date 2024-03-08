@@ -400,7 +400,6 @@ type connectionImpl struct {
 }
 
 func (c *connectionImpl) SetAutocommit(enabled bool) error {
-	c.ConnectionImplBase.Autocommit = enabled
 	return nil
 }
 

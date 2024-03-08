@@ -374,12 +374,24 @@ func (cnxn *connection) SetOption(key string, val string) error {
 	switch key {
 	case adbc.OptionKeyAutoCommit:
 		if cnxn.autocommitSetter != nil {
-			if val == adbc.OptionValueEnabled {
-				return cnxn.autocommitSetter.SetAutocommit(true)
+
+			var autocommit bool
+			switch val {
+			case adbc.OptionValueEnabled:
+				autocommit = true
+			case adbc.OptionValueDisabled:
+				autocommit = false
+			default:
+				return cnxn.Base().ErrorHelper.Errorf(adbc.StatusInvalidArgument, "cannot set value %s for key %s", val, key)
 			}
-			if val == adbc.OptionValueDisabled {
-				return cnxn.autocommitSetter.SetAutocommit(false)
+
+			err := cnxn.autocommitSetter.SetAutocommit(autocommit)
+			if err == nil {
+				// Only update the driver state if the action was successful
+				cnxn.Base().Autocommit = autocommit
 			}
+
+			return err
 		}
 	case adbc.OptionKeyCurrentCatalog:
 		if cnxn.currentNamespacer != nil {
@@ -404,22 +416,23 @@ func (cnxn *connection) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) 
 }
 
 func (cnxn *connection) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
-	if cnxn.tableTypeLister != nil {
-		tableTypes, err := cnxn.tableTypeLister.ListTableTypes(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		bldr := array.NewRecordBuilder(cnxn.Base().Alloc, adbc.TableTypesSchema)
-		defer bldr.Release()
-
-		bldr.Field(0).(*array.StringBuilder).AppendValues(tableTypes, nil)
-		final := bldr.NewRecord()
-		defer final.Release()
-		return array.NewRecordReader(adbc.TableTypesSchema, []arrow.Record{final})
+	if cnxn.tableTypeLister == nil {
+		return cnxn.ConnectionImpl.GetTableTypes(ctx)
 	}
 
-	return cnxn.ConnectionImpl.GetTableTypes(ctx)
+	tableTypes, err := cnxn.tableTypeLister.ListTableTypes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	bldr := array.NewRecordBuilder(cnxn.Base().Alloc, adbc.TableTypesSchema)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.StringBuilder).AppendValues(tableTypes, nil)
+	final := bldr.NewRecord()
+	defer final.Release()
+	return array.NewRecordReader(adbc.TableTypesSchema, []arrow.Record{final})
+
 }
 
 func (cnxn *connection) Commit(ctx context.Context) error {

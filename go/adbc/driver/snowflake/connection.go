@@ -99,37 +99,28 @@ func (c *connectionImpl) SetCurrentDbSchema(value string) error {
 }
 
 // SetAutocommit implements driverbase.AutocommitSetter.
-func (c *connectionImpl) SetAutocommit(enabled bool) (err error) {
-	defer func() {
-		// Only update the driver state if there was no error
-		if err == nil {
-			c.ConnectionImplBase.Autocommit = enabled
-		}
-	}()
-
+func (c *connectionImpl) SetAutocommit(enabled bool) error {
 	if enabled {
 		if c.activeTransaction {
-			_, err = c.cn.ExecContext(context.Background(), "COMMIT", nil)
+			_, err := c.cn.ExecContext(context.Background(), "COMMIT", nil)
 			if err != nil {
-				err = errToAdbcErr(adbc.StatusInternal, err)
-				return
+				return errToAdbcErr(adbc.StatusInternal, err)
 			}
 			c.activeTransaction = false
 		}
-		_, err = c.cn.ExecContext(context.Background(), "ALTER SESSION SET AUTOCOMMIT = true", nil)
-		return
+		_, err := c.cn.ExecContext(context.Background(), "ALTER SESSION SET AUTOCOMMIT = true", nil)
+		return err
 	}
 
 	if !c.activeTransaction {
-		_, err = c.cn.ExecContext(context.Background(), "BEGIN", nil)
+		_, err := c.cn.ExecContext(context.Background(), "BEGIN", nil)
 		if err != nil {
-			err = errToAdbcErr(adbc.StatusInternal, err)
-			return
+			return errToAdbcErr(adbc.StatusInternal, err)
 		}
 		c.activeTransaction = true
 	}
-	_, err = c.cn.ExecContext(context.Background(), "ALTER SESSION SET AUTOCOMMIT = false", nil)
-	return
+	_, err := c.cn.ExecContext(context.Background(), "ALTER SESSION SET AUTOCOMMIT = false", nil)
+	return err
 
 }
 

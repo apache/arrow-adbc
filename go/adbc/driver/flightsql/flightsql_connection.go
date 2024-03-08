@@ -57,48 +57,40 @@ type connectionImpl struct {
 	supportInfo support
 }
 
-func (c *connectionImpl) SetAutocommit(enabled bool) (err error) {
-	defer func() {
-		// Only update the driver state if there was no error
-		if err == nil {
-			c.ConnectionImplBase.Autocommit = enabled
-		}
-	}()
-
+func (c *connectionImpl) SetAutocommit(enabled bool) error {
 	if enabled && c.txn == nil {
 		// no-op don't even error if the server didn't support transactions
-		return
+		return nil
 	}
 
 	if !c.supportInfo.transactions {
-		err = errNoTransactionSupport
-		return
+		return errNoTransactionSupport
 	}
 
 	ctx := metadata.NewOutgoingContext(context.Background(), c.hdrs)
-
+	var err error
 	if c.txn != nil {
 		if err = c.txn.Commit(ctx, c.timeouts); err != nil {
-			err = adbc.Error{
+			return adbc.Error{
 				Msg:  "[Flight SQL] failed to update autocommit: " + err.Error(),
 				Code: adbc.StatusIO,
 			}
-			return
 		}
 	}
 
 	if enabled {
 		c.txn = nil
-		return
+		return nil
 	}
 
 	if c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts); err != nil {
-		err = adbc.Error{
+		return adbc.Error{
 			Msg:  "[Flight SQL] failed to update autocommit: " + err.Error(),
 			Code: adbc.StatusIO,
 		}
 	}
-	return
+
+	return nil
 }
 
 var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
