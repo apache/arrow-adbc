@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/apache/arrow/go/v16/arrow/memory"
@@ -42,9 +41,7 @@ const (
 	OptionStatementIngestCompressionLevel  = "adbc.snowflake.statement.ingest_compression_level" // TODO(GH-1473): Implement option
 )
 
-type statementImpl struct {
-	driverbase.StatementImplBase
-
+type statement struct {
 	cnxn                *connectionImpl
 	alloc               memory.Allocator
 	queueSize           int
@@ -64,7 +61,7 @@ type statementImpl struct {
 // and closes it (particularly if it is a prepared statement).
 //
 // A statement instance should not be used after Close is called.
-func (st *statementImpl) Close() error {
+func (st *statement) Close() error {
 	if st.cnxn == nil {
 		return adbc.Error{
 			Msg:  "statement already closed",
@@ -82,16 +79,37 @@ func (st *statementImpl) Close() error {
 	return nil
 }
 
-func (st *statementImpl) GetOptionInt(key string) (int64, error) {
+func (st *statement) GetOption(key string) (string, error) {
+	return "", adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (st *statement) GetOptionBytes(key string) ([]byte, error) {
+	return nil, adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (st *statement) GetOptionInt(key string) (int64, error) {
 	switch key {
 	case OptionStatementQueueSize:
 		return int64(st.queueSize), nil
 	}
-	return st.StatementImplBase.GetOptionInt(key)
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (st *statement) GetOptionDouble(key string) (float64, error) {
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
 }
 
 // SetOption sets a string option on this statement
-func (st *statementImpl) SetOption(key string, val string) error {
+func (st *statement) SetOption(key string, val string) error {
 	switch key {
 	case adbc.OptionKeyIngestTargetTable:
 		st.query = ""
@@ -179,12 +197,22 @@ func (st *statementImpl) SetOption(key string, val string) error {
 			}
 		}
 	default:
-		return st.StatementImplBase.SetOption(key, val)
+		return adbc.Error{
+			Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+			Code: adbc.StatusNotImplemented,
+		}
 	}
 	return nil
 }
 
-func (st *statementImpl) SetOptionInt(key string, value int64) error {
+func (st *statement) SetOptionBytes(key string, value []byte) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (st *statement) SetOptionInt(key string, value int64) error {
 	switch key {
 	case OptionStatementQueueSize:
 		if value <= 0 {
@@ -251,7 +279,17 @@ func (st *statementImpl) SetOptionInt(key string, value int64) error {
 		st.ingestOptions.targetFileSize = uint(value)
 		return nil
 	}
-	return st.StatementImplBase.SetOptionInt(key, value)
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (st *statement) SetOptionDouble(key string, value float64) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
 // SetSqlQuery sets the query string to be executed.
@@ -259,7 +297,7 @@ func (st *statementImpl) SetOptionInt(key string, value int64) error {
 // The query can then be executed with any of the Execute methods.
 // For queries expected to be executed repeatedly, Prepare should be
 // called before execution.
-func (st *statementImpl) SetSqlQuery(query string) error {
+func (st *statement) SetSqlQuery(query string) error {
 	st.query = query
 	st.targetTable = ""
 	return nil
@@ -314,7 +352,7 @@ func toSnowflakeType(dt arrow.DataType) string {
 	return ""
 }
 
-func (st *statementImpl) initIngest(ctx context.Context) error {
+func (st *statement) initIngest(ctx context.Context) error {
 	var (
 		createBldr strings.Builder
 	)
@@ -383,7 +421,7 @@ func (st *statementImpl) initIngest(ctx context.Context) error {
 	return nil
 }
 
-func (st *statementImpl) executeIngest(ctx context.Context) (int64, error) {
+func (st *statement) executeIngest(ctx context.Context) (int64, error) {
 	if st.streamBind == nil && st.bound == nil {
 		return -1, adbc.Error{
 			Msg:  "must call Bind before bulk ingestion",
@@ -408,7 +446,7 @@ func (st *statementImpl) executeIngest(ctx context.Context) (int64, error) {
 // of rows affected if known, otherwise it will be -1.
 //
 // This invalidates any prior result sets on this statement.
-func (st *statementImpl) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
 	if st.targetTable != "" {
 		n, err := st.executeIngest(ctx)
 		return nil, n, err
@@ -443,7 +481,7 @@ func (st *statementImpl) ExecuteQuery(ctx context.Context) (array.RecordReader, 
 
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
-func (st *statementImpl) ExecuteUpdate(ctx context.Context) (int64, error) {
+func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	if st.targetTable != "" {
 		return st.executeIngest(ctx)
 	}
@@ -469,7 +507,7 @@ func (st *statementImpl) ExecuteUpdate(ctx context.Context) (int64, error) {
 }
 
 // ExecuteSchema gets the schema of the result set of a query without executing it.
-func (st *statementImpl) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
+func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
 	if st.targetTable != "" {
 		return nil, adbc.Error{
 			Msg:  "cannot execute schema for ingestion",
@@ -501,7 +539,7 @@ func (st *statementImpl) ExecuteSchema(ctx context.Context) (*arrow.Schema, erro
 
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
-func (st *statementImpl) Prepare(_ context.Context) error {
+func (st *statement) Prepare(_ context.Context) error {
 	if st.query == "" {
 		return adbc.Error{
 			Code: adbc.StatusInvalidState,
@@ -521,7 +559,7 @@ func (st *statementImpl) Prepare(_ context.Context) error {
 // Like SetSqlQuery, after this is called the query can be executed
 // using any of the Execute methods. If the query is expected to be
 // executed repeatedly, Prepare should be called first on the statement.
-func (st *statementImpl) SetSubstraitPlan(plan []byte) error {
+func (st *statement) SetSubstraitPlan(plan []byte) error {
 	return adbc.Error{
 		Msg:  "Snowflake does not support Substrait plans",
 		Code: adbc.StatusNotImplemented,
@@ -534,7 +572,7 @@ func (st *statementImpl) SetSubstraitPlan(plan []byte) error {
 // The driver will call release on the passed in Record when it is done,
 // but it may not do this until the statement is closed or another
 // record is bound.
-func (st *statementImpl) Bind(_ context.Context, values arrow.Record) error {
+func (st *statement) Bind(_ context.Context, values arrow.Record) error {
 	if st.streamBind != nil {
 		st.streamBind.Release()
 		st.streamBind = nil
@@ -555,7 +593,7 @@ func (st *statementImpl) Bind(_ context.Context, values arrow.Record) error {
 //
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
-func (st *statementImpl) BindStream(_ context.Context, stream array.RecordReader) error {
+func (st *statement) BindStream(_ context.Context, stream array.RecordReader) error {
 	if st.streamBind != nil {
 		st.streamBind.Release()
 		st.streamBind = nil
@@ -588,7 +626,7 @@ func (st *statementImpl) BindStream(_ context.Context, stream array.RecordReader
 //
 // This should return an error with StatusNotImplemented if the schema
 // cannot be determined.
-func (st *statementImpl) GetParameterSchema() (*arrow.Schema, error) {
+func (st *statement) GetParameterSchema() (*arrow.Schema, error) {
 	// snowflake's API does not provide any way to determine the schema
 	return nil, adbc.Error{
 		Code: adbc.StatusNotImplemented,
@@ -604,7 +642,7 @@ func (st *statementImpl) GetParameterSchema() (*arrow.Schema, error) {
 //
 // If the driver does not support partitioned results, this will return
 // an error with a StatusNotImplemented code.
-func (st *statementImpl) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
+func (st *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
 	if st.query == "" {
 		return nil, adbc.Partitions{}, -1, adbc.Error{
 			Msg:  "cannot execute without a query",
