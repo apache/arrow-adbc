@@ -19,17 +19,14 @@ package driverbase
 
 import (
 	"fmt"
-	"runtime/debug"
 	"sort"
-
-	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 )
 
 const (
-	unknownVersion               = "(unknown or development build)"
-	defaultInfoDriverADBCVersion = adbc.AdbcVersion1_1_0
+	UnknownVersion               = "(unknown or development build)"
+	DefaultInfoDriverADBCVersion = adbc.AdbcVersion1_1_0
 )
 
 func DefaultDriverInfo(name string) *DriverInfo {
@@ -41,9 +38,11 @@ func DefaultDriverInfo(name string) *DriverInfo {
 		info: map[adbc.InfoCode]any{
 			adbc.InfoVendorName:         defaultInfoVendorName,
 			adbc.InfoDriverName:         defaultInfoDriverName,
-			adbc.InfoDriverVersion:      unknownVersion,
-			adbc.InfoDriverArrowVersion: unknownVersion,
-			adbc.InfoDriverADBCVersion:  defaultInfoDriverADBCVersion,
+			adbc.InfoDriverVersion:      UnknownVersion,
+			adbc.InfoDriverArrowVersion: UnknownVersion,
+			adbc.InfoVendorVersion:      UnknownVersion,
+			adbc.InfoVendorArrowVersion: UnknownVersion,
+			adbc.InfoDriverADBCVersion:  DefaultInfoDriverADBCVersion,
 		},
 	}
 }
@@ -51,28 +50,6 @@ func DefaultDriverInfo(name string) *DriverInfo {
 type DriverInfo struct {
 	name string
 	info map[adbc.InfoCode]any
-}
-
-func (di *DriverInfo) Init(driverPath string) error {
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, dep := range info.Deps {
-			switch {
-			case dep.Path == driverPath:
-				if dep.Version != "" {
-					if err := di.RegisterInfoCode(adbc.InfoDriverVersion, dep.Version); err != nil {
-						return err
-					}
-				}
-			case strings.HasPrefix(dep.Path, "github.com/apache/arrow/go/"):
-				if dep.Version != "" {
-					if err := di.RegisterInfoCode(adbc.InfoDriverArrowVersion, dep.Version); err != nil {
-						return err
-					}
-				}
-			}
-		}
-	}
-	return nil
 }
 
 func (di *DriverInfo) GetName() string { return di.name }

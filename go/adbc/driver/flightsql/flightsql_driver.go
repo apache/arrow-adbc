@@ -33,8 +33,6 @@ package flightsql
 
 import (
 	"net/url"
-	"runtime/debug"
-	"strings"
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -69,27 +67,9 @@ const (
 	infoDriverName                      = "ADBC Flight SQL Driver - Go"
 )
 
-var (
-	infoDriverVersion      string
-	infoDriverArrowVersion string
-)
-
 var errNoTransactionSupport = adbc.Error{
 	Msg:  "[Flight SQL] server does not report transaction support",
 	Code: adbc.StatusNotImplemented,
-}
-
-func init() {
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, dep := range info.Deps {
-			switch {
-			case dep.Path == "github.com/apache/arrow-adbc/go/adbc/driver/flightsql":
-				infoDriverVersion = dep.Version
-			case strings.HasPrefix(dep.Path, "github.com/apache/arrow/go/"):
-				infoDriverArrowVersion = dep.Version
-			}
-		}
-	}
 }
 
 type driverImpl struct {
@@ -99,16 +79,6 @@ type driverImpl struct {
 // NewDriver creates a new Flight SQL driver using the given Arrow allocator.
 func NewDriver(alloc memory.Allocator) adbc.Driver {
 	info := driverbase.DefaultDriverInfo("Flight SQL")
-	if infoDriverVersion != "" {
-		if err := info.RegisterInfoCode(adbc.InfoDriverVersion, infoDriverVersion); err != nil {
-			panic(err)
-		}
-	}
-	if infoDriverArrowVersion != "" {
-		if err := info.RegisterInfoCode(adbc.InfoDriverArrowVersion, infoDriverArrowVersion); err != nil {
-			panic(err)
-		}
-	}
 	return &driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)}
 }
 

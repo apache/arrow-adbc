@@ -51,7 +51,6 @@ func (d *dbDialOpts) rebuild() {
 	d.opts = []grpc.DialOption{
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(d.maxMsgSize),
 			grpc.MaxCallSendMsgSize(d.maxMsgSize)),
-		grpc.WithUserAgent("ADBC Flight SQL Driver " + infoDriverVersion),
 	}
 	if d.block {
 		d.opts = append(d.opts, grpc.WithBlock())
@@ -383,7 +382,12 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 		creds = insecure.NewCredentials()
 		target = "unix:" + uri.Path
 	}
-	dialOpts := append(d.dialOpts.opts, grpc.WithConnectParams(d.timeout.connectParams()), grpc.WithTransportCredentials(creds))
+
+	driverVersion, ok := d.DatabaseImplBase.DriverInfo.GetInfoDriverVersion()
+	if !ok {
+		driverVersion = driverbase.UnknownVersion
+	}
+	dialOpts := append(d.dialOpts.opts, grpc.WithConnectParams(d.timeout.connectParams()), grpc.WithTransportCredentials(creds), grpc.WithUserAgent("ADBC Flight SQL Driver "+driverVersion))
 
 	d.Logger.DebugContext(ctx, "new client", "location", loc)
 	cl, err := flightsql.NewClient(target, nil, middleware, dialOpts...)

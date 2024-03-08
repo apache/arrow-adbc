@@ -20,7 +20,6 @@ package snowflake
 import (
 	"errors"
 	"runtime/debug"
-	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
@@ -116,18 +115,15 @@ const (
 )
 
 var (
-	infoDriverVersion      string
-	infoDriverArrowVersion string
+	infoVendorVersion string
 )
 
 func init() {
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, dep := range info.Deps {
 			switch {
-			case dep.Path == "github.com/apache/arrow-adbc/go/adbc/driver/snowflake":
-				infoDriverVersion = dep.Version
-			case strings.HasPrefix(dep.Path, "github.com/apache/arrow/go/"):
-				infoDriverArrowVersion = dep.Version
+			case dep.Path == "github.com/snowflakedb/gosnowflake":
+				infoVendorVersion = dep.Version
 			}
 		}
 	}
@@ -174,13 +170,8 @@ type driverImpl struct {
 // NewDriver creates a new Snowflake driver using the given Arrow allocator.
 func NewDriver(alloc memory.Allocator) adbc.Driver {
 	info := driverbase.DefaultDriverInfo("Snowflake")
-	if infoDriverVersion != "" {
-		if err := info.RegisterInfoCode(adbc.InfoDriverVersion, infoDriverVersion); err != nil {
-			panic(err)
-		}
-	}
-	if infoDriverArrowVersion != "" {
-		if err := info.RegisterInfoCode(adbc.InfoDriverArrowVersion, infoDriverArrowVersion); err != nil {
+	if infoVendorVersion != "" {
+		if err := info.RegisterInfoCode(adbc.InfoVendorVersion, infoVendorVersion); err != nil {
 			panic(err)
 		}
 	}
