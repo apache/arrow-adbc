@@ -49,7 +49,7 @@ def _driver_path() -> str:
     driver = "adbc_driver_postgresql"
 
     # Wheels bundle the shared library
-    root = importlib.resources.files(__package__)
+    root = importlib.resources.files(driver)
     # The filename is always the same regardless of platform
     entrypoint = root.joinpath(f"lib{driver}.so")
     if entrypoint.is_file():
