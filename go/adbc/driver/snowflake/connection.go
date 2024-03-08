@@ -63,6 +63,41 @@ type connectionImpl struct {
 	useHighPrecision  bool
 }
 
+// ListTableTypes implements driverbase.TableTypeLister.
+func (*connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
+	return []string{"BASE TABLE", "TEMPORARY TABLE", "VIEW"}, nil
+}
+
+// GetCurrentCatalog implements driverbase.CurrentNamespacer.
+func (c *connectionImpl) GetCurrentCatalog() (string, bool) {
+	catalog, err := c.getStringQuery("SELECT CURRENT_DATABASE()")
+	if err != nil {
+		return "", false
+	}
+	return catalog, true
+}
+
+// GetCurrentDbSchema implements driverbase.CurrentNamespacer.
+func (c *connectionImpl) GetCurrentDbSchema() (string, bool) {
+	dbSchema, err := c.getStringQuery("SELECT CURRENT_SCHEMA()")
+	if err != nil {
+		return "", false
+	}
+	return dbSchema, true
+}
+
+// SetCurrentCatalog implements driverbase.CurrentNamespacer.
+func (c *connectionImpl) SetCurrentCatalog(value string) error {
+	_, err := c.cn.ExecContext(context.Background(), "USE DATABASE ?", []driver.NamedValue{{Value: value}})
+	return err
+}
+
+// SetCurrentDbSchema implements driverbase.CurrentNamespacer.
+func (c *connectionImpl) SetCurrentDbSchema(value string) error {
+	_, err := c.cn.ExecContext(context.Background(), "USE SCHEMA ?", []driver.NamedValue{{Value: value}})
+	return err
+}
+
 // SetAutocommit implements driverbase.AutocommitSetter.
 func (c *connectionImpl) SetAutocommit(enabled bool) (err error) {
 	defer func() {
@@ -835,17 +870,6 @@ func descToField(name, typ, isnull, primary string, comment sql.NullString) (fie
 	return
 }
 
-func (c *connectionImpl) GetOption(key string) (string, error) {
-	switch key {
-	case adbc.OptionKeyCurrentCatalog:
-		return c.getStringQuery("SELECT CURRENT_DATABASE()")
-	case adbc.OptionKeyCurrentDbSchema:
-		return c.getStringQuery("SELECT CURRENT_SCHEMA()")
-	}
-
-	return c.ConnectionImplBase.GetOption(key)
-}
-
 func (c *connectionImpl) getStringQuery(query string) (string, error) {
 	result, err := c.cn.QueryContext(context.Background(), query, nil)
 	if err != nil {
@@ -923,23 +947,6 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	return sc, nil
 }
 
-// GetTableTypes returns a list of the table types in the database.
-//
-// The result is an arrow dataset with the following schema:
-//
-//	Field Name			| Field Type
-//	----------------|--------------
-//	table_type			| utf8 not null
-func (c *connectionImpl) GetTableTypes(_ context.Context) (array.RecordReader, error) {
-	bldr := array.NewRecordBuilder(c.db.Alloc, adbc.TableTypesSchema)
-	defer bldr.Release()
-
-	bldr.Field(0).(*array.StringBuilder).AppendValues([]string{"BASE TABLE", "TEMPORARY TABLE", "VIEW"}, nil)
-	final := bldr.NewRecord()
-	defer final.Release()
-	return array.NewRecordReader(adbc.TableTypesSchema, []arrow.Record{final})
-}
-
 // Commit commits any pending transactions on this connection, it should
 // only be used if autocommit is disabled.
 //
@@ -1011,12 +1018,6 @@ func (c *connectionImpl) ReadPartition(ctx context.Context, serializedPartition 
 
 func (c *connectionImpl) SetOption(key, value string) error {
 	switch key {
-	case adbc.OptionKeyCurrentCatalog:
-		_, err := c.cn.ExecContext(context.Background(), "USE DATABASE ?", []driver.NamedValue{{Value: value}})
-		return err
-	case adbc.OptionKeyCurrentDbSchema:
-		_, err := c.cn.ExecContext(context.Background(), "USE SCHEMA ?", []driver.NamedValue{{Value: value}})
-		return err
 	case OptionUseHighPrecision:
 		// statements will inherit the value of the OptionUseHighPrecision
 		// from the connection, but the option can be overridden at the

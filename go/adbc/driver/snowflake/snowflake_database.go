@@ -455,7 +455,11 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 	}
 
-	return driverbase.NewConnectionBuilder(conn).WithAutocommitSetter(conn).Connection(), nil
+	return driverbase.NewConnectionBuilder(conn).
+		WithAutocommitSetter(conn).
+		WithCurrentNamespacer(conn).
+		WithTableTypeLister(conn).
+		Connection(), nil
 }
 
 func (d *databaseImpl) Close() error {
