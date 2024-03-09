@@ -302,30 +302,18 @@ func TestPrepareColumnsSQLNoFilter(t *testing.T) {
 	columnNamePattern := ""
 	tableType := make([]string, 0)
 
-	expected := `SELECT table_type, table_catalog, table_schema, table_name, column_name, ordinal_position, is_nullable::boolean, data_type, numeric_precision,
-				numeric_precision_radix, numeric_scale, is_identity::boolean, identity_generation, identity_increment,
-				character_maximum_length, character_octet_length, datetime_precision, comment, constraint_name, constraint_type FROM (SELECT T.table_type, C.*,
-				TC.constraint_name, TC.constraint_type
-				FROM
-					"DEMO_DB".INFORMATION_SCHEMA.TABLES AS T
-				JOIN
-					"DEMO_DB".INFORMATION_SCHEMA.COLUMNS AS C
-				LEFT JOIN
-					"DEMO_DB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
-				ON
-					T.table_catalog = C.table_catalog
-					AND T.table_schema = C.table_schema
-					AND t.table_name = C.table_name UNION ALL SELECT T.table_type, C.*, TC.constraint_name, TC.constraint_type
-				FROM
-					"DEMOADB".INFORMATION_SCHEMA.TABLES AS T
-				JOIN
-					"DEMOADB".INFORMATION_SCHEMA.COLUMNS AS C
-				LEFT JOIN
-					"DEMOADB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
-				ON
-					T.table_catalog = C.table_catalog
-					AND T.table_schema = C.table_schema
-					AND t.table_name = C.table_name) ORDER BY table_catalog, table_schema, table_name, ordinal_position`
+	expected := `SELECT table_catalog, table_schema, table_name, column_name,
+						ordinal_position, is_nullable::boolean, data_type, numeric_precision,
+						numeric_precision_radix, numeric_scale, is_identity::boolean,
+						identity_generation, identity_increment, character_maximum_length,
+						character_octet_length, datetime_precision, comment
+						FROM
+						(
+							SELECT * FROM "DEMO_DB".INFORMATION_SCHEMA.COLUMNS
+							UNION ALL
+							SELECT * FROM "DEMOADB".INFORMATION_SCHEMA.COLUMNS
+						)
+						ORDER BY table_catalog, table_schema, table_name, ordinal_position`
 	actual, queryArgs := prepareColumnsSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, &columnNamePattern, tableType[:])
 
 	println("Query Args", queryArgs)
@@ -340,35 +328,19 @@ func TestPrepareColumnsSQL(t *testing.T) {
 	columnNamePattern := "creationDate"
 	tableType := [2]string{"BASE TABLE", "VIEW"}
 
-	expected := `SELECT table_type, table_catalog, table_schema, table_name, column_name,
-			ordinal_position, is_nullable::boolean, data_type, numeric_precision,
-			numeric_precision_radix, numeric_scale, is_identity::boolean,
-			identity_generation, identity_increment, character_maximum_length, character_octet_length,
-			datetime_precision, comment, constraint_name, constraint_type
-			FROM
-				(SELECT T.table_type, C.*, TC.constraint_name, TC.constraint_type
-					FROM
-						"DEMO_DB".INFORMATION_SCHEMA.TABLES AS T
-					JOIN
-						"DEMO_DB".INFORMATION_SCHEMA.COLUMNS AS C
-					LEFT JOIN
-						"DEMO_DB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
-					ON
-						T.table_catalog = C.table_catalog
-						AND T.table_schema = C.table_schema
-						AND t.table_name = C.table_name UNION ALL SELECT T.table_type, C.*, TC.constraint_name, TC.constraint_type
-					FROM
-						"DEMOADB".INFORMATION_SCHEMA.TABLES AS T
-					JOIN
-						"DEMOADB".INFORMATION_SCHEMA.COLUMNS AS C
-					LEFT JOIN
-						"DEMOADB".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
-					ON
-						T.table_catalog = C.table_catalog
-						AND T.table_schema = C.table_schema
-						AND t.table_name = C.table_name)
-			WHERE  TABLE_CATALOG ILIKE ?  AND  TABLE_SCHEMA ILIKE ?  AND  TABLE_NAME ILIKE ?  AND  COLUMN_NAME ILIKE ?  AND  TABLE_TYPE IN ('BASE TABLE','VIEW')
-			ORDER BY table_catalog, table_schema, table_name, ordinal_position`
+	expected := `SELECT table_catalog, table_schema, table_name, column_name,
+						ordinal_position, is_nullable::boolean, data_type, numeric_precision,
+						numeric_precision_radix, numeric_scale, is_identity::boolean,
+						identity_generation, identity_increment, character_maximum_length,
+						character_octet_length, datetime_precision, comment
+						FROM
+						(
+							SELECT * FROM "DEMO_DB".INFORMATION_SCHEMA.COLUMNS
+							UNION ALL
+							SELECT * FROM "DEMOADB".INFORMATION_SCHEMA.COLUMNS
+						)
+						WHERE  TABLE_CATALOG ILIKE ?  AND  TABLE_SCHEMA ILIKE ?  AND  TABLE_NAME ILIKE ?  AND  COLUMN_NAME ILIKE ?
+						ORDER BY table_catalog, table_schema, table_name, ordinal_position`
 	actual, queryArgs := prepareColumnsSQL(catalogNames[:], &catalogPattern, &schemaPattern, &tableNamePattern, &columnNamePattern, tableType[:])
 
 	stringqueryArgs := make([]string, len(queryArgs)) // Pre-allocate the right size

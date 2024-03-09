@@ -55,13 +55,12 @@ type TableInfo struct {
 }
 
 type Metadata struct {
-	Created                                                                                                   time.Time
-	ColName, DataType                                                                                         string
-	Dbname, Kind, Schema, TblName, TblType, IdentGen, IdentIncrement, Comment, ConstraintName, ConstraintType sql.NullString
-	OrdinalPos                                                                                                int
-	NumericPrec, NumericPrecRadix, NumericScale, DatetimePrec                                                 sql.NullInt16
-	IsNullable, IsIdent                                                                                       bool
-	CharMaxLength, CharOctetLength                                                                            sql.NullInt32
+	Created                                                                                                                      time.Time
+	ColName, DataType, Dbname, Kind, Schema, TblName, TblType, IdentGen, IdentIncrement, Comment, ConstraintName, ConstraintType sql.NullString
+	OrdinalPos                                                                                                                   int
+	NumericPrec, NumericPrecRadix, NumericScale, DatetimePrec                                                                    sql.NullInt16
+	IsNullable, IsIdent                                                                                                          bool
+	CharMaxLength, CharOctetLength                                                                                               sql.NullInt32
 }
 
 type UsageSchema struct {

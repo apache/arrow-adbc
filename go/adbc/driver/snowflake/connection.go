@@ -521,7 +521,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 		uniqueColumn := make(map[internal.CatalogSchemaTableColumn]bool)
 
 		for _, data := range metadataRecords {
-			if !data.Dbname.Valid || !data.Schema.Valid || !data.TblName.Valid {
+			if !data.Dbname.Valid || !data.Schema.Valid || !data.TblName.Valid || !data.ColName.Valid {
 				continue
 			}
 
@@ -546,11 +546,11 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 				Catalog: data.Dbname.String,
 				Schema:  data.Schema.String,
 				Table:   data.TblName.String,
-				Column:  data.ColName,
+				Column:  data.ColName.String,
 			}
 			if _, exists := uniqueColumn[columnInfo]; !exists {
 				uniqueColumn[columnInfo] = true
-				fieldList = append(fieldList, toField(data.ColName, data.IsNullable, data.DataType, data.NumericPrec, data.NumericPrecRadix, data.NumericScale, data.IsIdent, c.useHighPrecision, data.IdentGen, data.IdentIncrement, data.CharMaxLength, data.CharOctetLength, data.DatetimePrec, data.Comment, data.OrdinalPos))
+				fieldList = append(fieldList, toField(data.ColName.String, data.IsNullable, data.DataType.String, data.NumericPrec, data.NumericPrecRadix, data.NumericScale, data.IsIdent, c.useHighPrecision, data.IdentGen, data.IdentIncrement, data.CharMaxLength, data.CharOctetLength, data.DatetimePrec, data.Comment, data.OrdinalPos))
 			}
 		}
 
@@ -581,10 +581,19 @@ func (c *cnxn) populateMetadata(ctx context.Context, depth adbc.ObjectDepth, cat
 		metadataRecords = catalogMetadataRecords
 	} else if depth == adbc.ObjectDepthDBSchemas {
 		metadataRecords, err = c.getDbSchemasMetadata(ctx, matchingCatalogNames, catalog, dbSchema)
+
 	} else if depth == adbc.ObjectDepthTables {
 		metadataRecords, err = c.getTablesMetadata(ctx, matchingCatalogNames, catalog, dbSchema, tableName, tableType)
 	} else {
-		metadataRecords, err = c.getColumnsMetadata(ctx, matchingCatalogNames, catalog, dbSchema, tableName, columnName, tableType)
+		tableMetadataRecords, tablesErr := c.getTablesMetadata(ctx, matchingCatalogNames, catalog, dbSchema, tableName, tableType)
+		if tablesErr != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, err)
+		}
+		columnsMetadataRecords, columnsErr := c.getColumnsMetadata(ctx, matchingCatalogNames, catalog, dbSchema, tableName, columnName, tableType)
+		if columnsErr != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, err)
+		}
+		metadataRecords = append(tableMetadataRecords, columnsMetadataRecords...)
 	}
 
 	if err != nil {
@@ -856,10 +865,10 @@ func (c *cnxn) getColumnsMetadata(ctx context.Context, matchingCatalogNames []st
 
 	for rows.Next() {
 		// order here matches the order of the columns requested in the query
-		err = rows.Scan(&data.TblType, &data.Dbname, &data.Schema, &data.TblName, &data.ColName,
+		err = rows.Scan(&data.Dbname, &data.Schema, &data.TblName, &data.ColName,
 			&data.OrdinalPos, &data.IsNullable, &data.DataType, &data.NumericPrec,
 			&data.NumericPrecRadix, &data.NumericScale, &data.IsIdent, &data.IdentGen,
-			&data.IdentIncrement, &data.CharMaxLength, &data.CharOctetLength, &data.DatetimePrec, &data.Comment, &data.ConstraintName, &data.ConstraintType)
+			&data.IdentIncrement, &data.CharMaxLength, &data.CharOctetLength, &data.DatetimePrec, &data.Comment)
 		if err != nil {
 			return nil, errToAdbcErr(adbc.StatusIO, err)
 		}
@@ -1018,24 +1027,14 @@ func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema 
 		if prefixQuery != "" {
 			prefixQuery += " UNION ALL "
 		}
-		prefixQuery += `SELECT T.table_type, C.*, TC.constraint_name, TC.constraint_type
-				FROM
-				"` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES AS T
-			JOIN
-				"` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.COLUMNS AS C
-			LEFT JOIN
-				"` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
-			ON
-				T.table_catalog = C.table_catalog
-				AND T.table_schema = C.table_schema
-				AND t.table_name = C.table_name`
+		prefixQuery += `SELECT * FROM "` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.COLUMNS`
 	}
 
-	prefixQuery = `SELECT table_type, table_catalog, table_schema, table_name, column_name,
+	prefixQuery = `SELECT table_catalog, table_schema, table_name, column_name,
 						ordinal_position, is_nullable::boolean, data_type, numeric_precision,
 						numeric_precision_radix, numeric_scale, is_identity::boolean,
 						identity_generation, identity_increment,
-						character_maximum_length, character_octet_length, datetime_precision, comment, constraint_name, constraint_type FROM (` + prefixQuery + `)`
+						character_maximum_length, character_octet_length, datetime_precision, comment FROM (` + prefixQuery + `)`
 	ordering := ` ORDER BY table_catalog, table_schema, table_name, ordinal_position`
 	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthColumns, catalog, dbSchema, tableName, columnName, tableType)
 	query := prefixQuery
@@ -1077,7 +1076,7 @@ func prepareFilterConditions(depth adbc.ObjectDepth, catalog *string, dbSchema *
 	}
 
 	var tblConditions []string
-	if len(tableType) > 0 {
+	if len(tableType) > 0 && depth == adbc.ObjectDepthTables {
 		tblConditions = append(conditions, ` TABLE_TYPE IN ('`+strings.Join(tableType, `','`)+`')`)
 	} else {
 		tblConditions = conditions
