@@ -20,6 +20,7 @@ package flightsql
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -32,6 +33,7 @@ import (
 	"github.com/apache/arrow/go/v16/arrow/flight"
 	"github.com/apache/arrow/go/v16/arrow/flight/flightsql"
 	"github.com/apache/arrow/go/v16/arrow/flight/flightsql/schema_ref"
+	flightproto "github.com/apache/arrow/go/v16/arrow/flight/gen/flight"
 	"github.com/apache/arrow/go/v16/arrow/ipc"
 	"github.com/bluele/gcache"
 	"google.golang.org/grpc"
@@ -95,6 +97,115 @@ func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEnd
 	return nil, err
 }
 
+func (c *cnxn) getSessionOptions(ctx context.Context) (map[string]interface{}, error) {
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
+	var header, trailer metadata.MD
+	rawOptions, err := c.cl.GetSessionOptions(ctx, &flight.GetSessionOptionsRequest{}, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
+	if err != nil {
+		// We're going to make a bit of a concession to backwards compatibility
+		// here and ignore UNIMPLEMENTED or INVALID_ARGUMENT
+		grpcStatus := grpcstatus.Convert(err)
+		if grpcStatus.Code() == grpccodes.InvalidArgument || grpcStatus.Code() == grpccodes.Unimplemented {
+			return map[string]interface{}{}, nil
+		}
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetSessionOptions")
+	}
+
+	options := make(map[string]interface{}, len(rawOptions.SessionOptions))
+	for k, rawValue := range rawOptions.SessionOptions {
+		switch v := rawValue.OptionValue.(type) {
+		case *flightproto.SessionOptionValue_BoolValue:
+			options[k] = v.BoolValue
+		case *flightproto.SessionOptionValue_DoubleValue:
+			options[k] = v.DoubleValue
+		case *flightproto.SessionOptionValue_Int64Value:
+			options[k] = v.Int64Value
+		case *flightproto.SessionOptionValue_StringValue:
+			options[k] = v.StringValue
+		case *flightproto.SessionOptionValue_StringListValue_:
+			if v.StringListValue.Values == nil {
+				options[k] = make([]string, 0)
+			} else {
+				options[k] = v.StringListValue.Values
+			}
+		case nil:
+			options[k] = nil
+		default:
+			return nil, adbc.Error{
+				Code: adbc.StatusNotImplemented,
+				Msg:  fmt.Sprintf("[FlightSQL] Unknown session option type %#v", rawValue),
+			}
+		}
+	}
+	return options, nil
+}
+
+func (c *cnxn) setSessionOptions(ctx context.Context, key string, val interface{}) error {
+	req := flight.SetSessionOptionsRequest{}
+
+	var err error
+	req.SessionOptions, err = flight.NewSessionOptionValues(map[string]any{key: val})
+	if err != nil {
+		return adbc.Error{
+			Msg:  fmt.Sprintf("[Flight SQL] Invalid session option %s=%#v: %s", key, val, err.Error()),
+			Code: adbc.StatusInvalidArgument,
+		}
+	}
+
+	var header, trailer metadata.MD
+	errors, err := c.cl.SetSessionOptions(ctx, &req, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
+	if err != nil {
+		return adbcFromFlightStatusWithDetails(err, header, trailer, "GetSessionOptions")
+	}
+	if len(errors.Errors) > 0 {
+		msg := strings.Builder{}
+		fmt.Fprint(&msg, "[Flight SQL] Could not set option(s) ")
+
+		first := true
+		for k, v := range errors.Errors {
+			if !first {
+				fmt.Fprint(&msg, ", ")
+			}
+			first = false
+
+			errmsg := "unknown error"
+			switch v.Value {
+			case flightproto.SetSessionOptionsResult_INVALID_NAME:
+				errmsg = "invalid name"
+			case flightproto.SetSessionOptionsResult_INVALID_VALUE:
+				errmsg = "invalid value"
+			case flightproto.SetSessionOptionsResult_ERROR:
+				errmsg = "error setting option"
+			}
+			fmt.Fprintf(&msg, "'%s' (%s)", k, errmsg)
+		}
+
+		return adbc.Error{
+			Msg:  msg.String(),
+			Code: adbc.StatusInvalidArgument,
+		}
+	}
+	return nil
+}
+
+func getSessionOption[T any](options map[string]interface{}, key string, defaultVal T, valueType string) (T, error) {
+	rawValue, ok := options[key]
+	if !ok {
+		return defaultVal, adbc.Error{
+			Msg:  fmt.Sprintf("[Flight SQL] unknown session option '%s'", key),
+			Code: adbc.StatusNotFound,
+		}
+	}
+	value, ok := rawValue.(T)
+	if !ok {
+		return defaultVal, adbc.Error{
+			Msg:  fmt.Sprintf("[Flight SQL] session option %s=%#v is not %s value", key, rawValue, valueType),
+			Code: adbc.StatusNotFound,
+		}
+	}
+	return value, nil
+}
+
 func (c *cnxn) GetOption(key string) (string, error) {
 	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
 		name := strings.TrimPrefix(key, OptionRPCCallHeaderPrefix)
@@ -124,16 +235,96 @@ func (c *cnxn) GetOption(key string) (string, error) {
 			return adbc.OptionValueEnabled, nil
 		}
 	case adbc.OptionKeyCurrentCatalog:
+		options, err := c.getSessionOptions(context.Background())
+		if err != nil {
+			return "", err
+		}
+		if catalog, ok := options["catalog"]; ok {
+			if val, ok := catalog.(string); ok {
+				return val, nil
+			}
+			return "", adbc.Error{
+				Msg:  fmt.Sprintf("[FlightSQL] Server returned non-string catalog %#v", catalog),
+				Code: adbc.StatusInternal,
+			}
+		}
 		return "", adbc.Error{
-			Msg:  "[Flight SQL] current catalog not supported",
+			Msg:  "[FlightSQL] current catalog not supported",
 			Code: adbc.StatusNotFound,
 		}
 
 	case adbc.OptionKeyCurrentDbSchema:
+		options, err := c.getSessionOptions(context.Background())
+		if err != nil {
+			return "", err
+		}
+		if schema, ok := options["schema"]; ok {
+			if val, ok := schema.(string); ok {
+				return val, nil
+			}
+			return "", adbc.Error{
+				Msg:  fmt.Sprintf("[FlightSQL] Server returned non-string schema %#v", schema),
+				Code: adbc.StatusInternal,
+			}
+		}
 		return "", adbc.Error{
-			Msg:  "[Flight SQL] current schema not supported",
+			Msg:  "[FlightSQL] current schema not supported",
 			Code: adbc.StatusNotFound,
 		}
+	case OptionSessionOptions:
+		options, err := c.getSessionOptions(context.Background())
+		if err != nil {
+			return "", err
+		}
+		encoded, err := json.Marshal(options)
+		if err != nil {
+			return "", adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] Could not encode option values: %s", err.Error()),
+				Code: adbc.StatusInternal,
+			}
+		}
+		return string(encoded), nil
+	}
+	switch {
+	case strings.HasPrefix(key, OptionSessionOptionPrefix):
+		options, err := c.getSessionOptions(context.Background())
+		if err != nil {
+			return "", err
+		}
+		name := key[len(OptionSessionOptionPrefix):]
+		return getSessionOption(options, name, "", "a string")
+	case strings.HasPrefix(key, OptionBoolSessionOptionPrefix):
+		options, err := c.getSessionOptions(context.Background())
+		if err != nil {
+			return "", err
+		}
+		name := key[len(OptionBoolSessionOptionPrefix):]
+		v, err := getSessionOption(options, name, false, "a boolean")
+		if err != nil {
+			return "", err
+		}
+		if v {
+			return adbc.OptionValueEnabled, nil
+		}
+		return adbc.OptionValueDisabled, nil
+	case strings.HasPrefix(key, OptionStringListSessionOptionPrefix):
+		options, err := c.getSessionOptions(context.Background())
+		if err != nil {
+			return "", err
+		}
+		name := key[len(OptionStringListSessionOptionPrefix):]
+		v, err := getSessionOption[[]string](options, name, nil, "a string list")
+		if err != nil {
+			return "", err
+		}
+		encoded, err := json.Marshal(v)
+		if err != nil {
+			return "", adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] Could not encode option value: %s", err.Error()),
+				Code: adbc.StatusInternal,
+			}
+		}
+		return string(encoded), nil
 	}
 
 	return "", adbc.Error{
@@ -143,6 +334,22 @@ func (c *cnxn) GetOption(key string) (string, error) {
 }
 
 func (c *cnxn) GetOptionBytes(key string) ([]byte, error) {
+	switch key {
+	case OptionSessionOptions:
+		options, err := c.getSessionOptions(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		encoded, err := json.Marshal(options)
+		if err != nil {
+			return nil, adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] Could not encode option values: %s", err.Error()),
+				Code: adbc.StatusInternal,
+			}
+		}
+		return encoded, nil
+	}
+
 	return nil, adbc.Error{
 		Msg:  "[Flight SQL] unknown connection option",
 		Code: adbc.StatusNotFound,
@@ -162,6 +369,14 @@ func (c *cnxn) GetOptionInt(key string) (int64, error) {
 		}
 		return int64(val), nil
 	}
+	if strings.HasPrefix(key, OptionSessionOptionPrefix) {
+		options, err := c.getSessionOptions(context.Background())
+		if err != nil {
+			return 0, err
+		}
+		name := key[len(OptionSessionOptionPrefix):]
+		return getSessionOption(options, name, int64(0), "an integer")
+	}
 
 	return 0, adbc.Error{
 		Msg:  "[Flight SQL] unknown connection option",
@@ -177,6 +392,14 @@ func (c *cnxn) GetOptionDouble(key string) (float64, error) {
 		return c.timeouts.queryTimeout.Seconds(), nil
 	case OptionTimeoutUpdate:
 		return c.timeouts.updateTimeout.Seconds(), nil
+	}
+	if strings.HasPrefix(key, OptionSessionOptionPrefix) {
+		options, err := c.getSessionOptions(context.Background())
+		if err != nil {
+			return 0, err
+		}
+		name := key[len(OptionSessionOptionPrefix):]
+		return getSessionOption(options, name, float64(0.0), "a floating-point")
 	}
 
 	return 0.0, adbc.Error{
@@ -245,12 +468,47 @@ func (c *cnxn) SetOption(key, value string) error {
 			}
 		}
 		return nil
+	case adbc.OptionKeyCurrentCatalog:
+		return c.setSessionOptions(context.Background(), "catalog", value)
+	case adbc.OptionKeyCurrentDbSchema:
+		return c.setSessionOptions(context.Background(), "schema", value)
+	}
 
-	default:
-		return adbc.Error{
-			Msg:  "[Flight SQL] unknown connection option",
-			Code: adbc.StatusNotImplemented,
+	switch {
+	case strings.HasPrefix(key, OptionSessionOptionPrefix):
+		name := key[len(OptionSessionOptionPrefix):]
+		return c.setSessionOptions(context.Background(), name, value)
+	case strings.HasPrefix(key, OptionBoolSessionOptionPrefix):
+		name := key[len(OptionBoolSessionOptionPrefix):]
+		switch value {
+		case adbc.OptionValueEnabled:
+			return c.setSessionOptions(context.Background(), name, true)
+		case adbc.OptionValueDisabled:
+			return c.setSessionOptions(context.Background(), name, false)
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] invalid boolean session option value %s=%s", name, value),
+				Code: adbc.StatusNotImplemented,
+			}
 		}
+	case strings.HasPrefix(key, OptionStringListSessionOptionPrefix):
+		name := key[len(OptionStringListSessionOptionPrefix):]
+		stringlist := make([]string, 0)
+		if err := json.Unmarshal([]byte(value), &stringlist); err != nil {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] invalid string list session option value %s=%s: %s", name, value, err.Error()),
+				Code: adbc.StatusNotImplemented,
+			}
+		}
+		return c.setSessionOptions(context.Background(), name, stringlist)
+	case strings.HasPrefix(key, OptionEraseSessionOptionPrefix):
+		name := key[len(OptionEraseSessionOptionPrefix):]
+		return c.setSessionOptions(context.Background(), name, nil)
+	}
+
+	return adbc.Error{
+		Msg:  "[Flight SQL] unknown connection option",
+		Code: adbc.StatusNotImplemented,
 	}
 }
 
@@ -265,6 +523,10 @@ func (c *cnxn) SetOptionInt(key string, value int64) error {
 	switch key {
 	case OptionTimeoutFetch, OptionTimeoutQuery, OptionTimeoutUpdate:
 		return c.timeouts.setTimeout(key, float64(value))
+	}
+	if strings.HasPrefix(key, OptionSessionOptionPrefix) {
+		name := key[len(OptionSessionOptionPrefix):]
+		return c.setSessionOptions(context.Background(), name, value)
 	}
 
 	return adbc.Error{
@@ -281,6 +543,10 @@ func (c *cnxn) SetOptionDouble(key string, value float64) error {
 		fallthrough
 	case OptionTimeoutUpdate:
 		return c.timeouts.setTimeout(key, value)
+	}
+	if strings.HasPrefix(key, OptionSessionOptionPrefix) {
+		name := key[len(OptionSessionOptionPrefix):]
+		return c.setSessionOptions(context.Background(), name, value)
 	}
 
 	return adbc.Error{
@@ -937,7 +1203,20 @@ func (c *cnxn) Close() error {
 		}
 	}
 
-	err := c.cl.Close()
+	ctx := metadata.NewOutgoingContext(context.Background(), c.hdrs)
+	var header, trailer metadata.MD
+	_, err := c.cl.CloseSession(ctx, &flight.CloseSessionRequest{}, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
+	if err != nil {
+		grpcStatus := grpcstatus.Convert(err)
+		// Ignore unimplemented
+		if grpcStatus.Code() != grpccodes.Unimplemented {
+			// Ignore the error since server may not support it and may not properly return UNIMPLEMENTED
+			// TODO(https://github.com/apache/arrow-adbc/issues/1243): log a proper warning
+			c.db.Logger.Debug("failed to close session", "error", err.Error())
+		}
+	}
+
+	err = c.cl.Close()
 	c.cl = nil
 	return adbcFromFlightStatus(err, "Close")
 }

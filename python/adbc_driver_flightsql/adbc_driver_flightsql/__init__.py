@@ -87,6 +87,18 @@ class ConnectionOptions(enum.Enum):
     #:
     #: Overrides any headers set via the equivalent database option.
     RPC_CALL_HEADER_PREFIX = DatabaseOptions.RPC_CALL_HEADER_PREFIX.value
+    #: Get all session options as a JSON key-value blob.
+    OPTION_SESSION_OPTIONS = "adbc.flight.sql.session.options"
+    #: Get or set a session option.
+    OPTION_SESSION_OPTION_PREFIX = "adbc.flight.sql.session.option."
+    #: Erase a session option (use "" as the value).
+    OPTION_ERASE_SESSION_OPTION_PREFIX = "adbc.flight.sql.session.optionerase."
+    #: Get or set a boolean valued session option.
+    OPTION_BOOL_SESSION_OPTION_PREFIX = "adbc.flight.sql.session.optionbool."
+    #: Get or set a string-list-valued session option as a JSON array.
+    OPTION_STRING_LIST_SESSION_OPTION_PREFIX = (
+        "adbc.flight.sql.session.optionstringlist."
+    )
     #: Set a timeout on calls that fetch data (in floating-point seconds).
     #:
     #: This corresponds to Flight RPC DoGet calls.
