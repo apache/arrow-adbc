@@ -347,6 +347,36 @@
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
 <p>Connection options specific to the Flight SQL driver.</p>
 <dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.ConnectionOptions.OPTION_BOOL_SESSION_OPTION_PREFIX">
+<span class="sig-name descname"><span class="pre">OPTION_BOOL_SESSION_OPTION_PREFIX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.session.optionbool.'</span></em><a class="headerlink" href="#adbc_driver_flightsql.ConnectionOptions.OPTION_BOOL_SESSION_OPTION_PREFIX" title="Permalink to this definition">#</a></dt>
+<dd><p>Get or set a boolean valued session option.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.ConnectionOptions.OPTION_ERASE_SESSION_OPTION_PREFIX">
+<span class="sig-name descname"><span class="pre">OPTION_ERASE_SESSION_OPTION_PREFIX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.session.optionerase.'</span></em><a class="headerlink" href="#adbc_driver_flightsql.ConnectionOptions.OPTION_ERASE_SESSION_OPTION_PREFIX" title="Permalink to this definition">#</a></dt>
+<dd><p>Erase a session option (use “” as the value).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.ConnectionOptions.OPTION_SESSION_OPTIONS">
+<span class="sig-name descname"><span class="pre">OPTION_SESSION_OPTIONS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.session.options'</span></em><a class="headerlink" href="#adbc_driver_flightsql.ConnectionOptions.OPTION_SESSION_OPTIONS" title="Permalink to this definition">#</a></dt>
+<dd><p>Get all session options as a JSON key-value blob.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.ConnectionOptions.OPTION_SESSION_OPTION_PREFIX">
+<span class="sig-name descname"><span class="pre">OPTION_SESSION_OPTION_PREFIX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.session.option.'</span></em><a class="headerlink" href="#adbc_driver_flightsql.ConnectionOptions.OPTION_SESSION_OPTION_PREFIX" title="Permalink to this definition">#</a></dt>
+<dd><p>Get or set a session option.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.ConnectionOptions.OPTION_STRING_LIST_SESSION_OPTION_PREFIX">
+<span class="sig-name descname"><span class="pre">OPTION_STRING_LIST_SESSION_OPTION_PREFIX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.session.optionstringlist.'</span></em><a class="headerlink" href="#adbc_driver_flightsql.ConnectionOptions.OPTION_STRING_LIST_SESSION_OPTION_PREFIX" title="Permalink to this definition">#</a></dt>
+<dd><p>Get or set a string-list-valued session option as a JSON array.</p>
+</dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX">
 <span class="sig-name descname"><span class="pre">RPC_CALL_HEADER_PREFIX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.rpc.call_header.'</span></em><a class="headerlink" href="#adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX" title="Permalink to this definition">#</a></dt>
 <dd><p>Add an arbitrary header to all outgoing requests.</p>
@@ -650,6 +680,11 @@ United States and other countries.
 <li><a class="reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a><ul>
 <li><a class="reference internal" href="#module-adbc_driver_flightsql">Low-Level API</a><ul>
 <li><a class="reference internal" href="#adbc_driver_flightsql.ConnectionOptions"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions</span></code></a><ul>
+<li><a class="reference internal" href="#adbc_driver_flightsql.ConnectionOptions.OPTION_BOOL_SESSION_OPTION_PREFIX"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.OPTION_BOOL_SESSION_OPTION_PREFIX</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.ConnectionOptions.OPTION_ERASE_SESSION_OPTION_PREFIX"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.OPTION_ERASE_SESSION_OPTION_PREFIX</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.ConnectionOptions.OPTION_SESSION_OPTIONS"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.OPTION_SESSION_OPTIONS</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.ConnectionOptions.OPTION_SESSION_OPTION_PREFIX"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.OPTION_SESSION_OPTION_PREFIX</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.ConnectionOptions.OPTION_STRING_LIST_SESSION_OPTION_PREFIX"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.OPTION_STRING_LIST_SESSION_OPTION_PREFIX</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.RPC_CALL_HEADER_PREFIX</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.ConnectionOptions.TIMEOUT_FETCH"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.TIMEOUT_FETCH</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.ConnectionOptions.TIMEOUT_QUERY"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.TIMEOUT_QUERY</span></code></a></li>
