@@ -338,6 +338,13 @@ Be sure to go through on the following checklist:
       # dev/release/post-05-linux.sh ../arrow 10.0.0 0
       dev/release/post-05-linux.sh <arrow-dir> <version> <rc-number>
 
+.. dropdown:: Update R packages
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   This is a manual process.  See the process for the `Arrow R packages
+   <https://arrow.apache.org/docs/dev/developers/release.html#post-release-tasks>`_.
+
 .. dropdown:: Upload Ruby packages to RubyGems
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
