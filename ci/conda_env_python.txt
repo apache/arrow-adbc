@@ -16,6 +16,7 @@
 # under the License.
 
 Cython
+importlib-resources
 pandas
 pyarrow>=8.0.0
 pyright

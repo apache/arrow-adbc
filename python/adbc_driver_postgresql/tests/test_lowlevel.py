@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import collections.abc
+import typing
 
 import pyarrow
 import pytest
@@ -27,7 +27,7 @@ import adbc_driver_postgresql
 @pytest.fixture
 def postgres(
     postgres_uri: str,
-) -> collections.abc.Generator[adbc_driver_manager.AdbcConnection, None, None]:
+) -> typing.Generator[adbc_driver_manager.AdbcConnection, None, None]:
     with adbc_driver_postgresql.connect(postgres_uri) as db:
         with adbc_driver_manager.AdbcConnection(db) as conn:
             yield conn

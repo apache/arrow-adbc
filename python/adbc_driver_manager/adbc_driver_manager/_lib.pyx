@@ -1498,7 +1498,7 @@ cdef extern from "_blocking_impl.h" nogil:
     c_string CClearBlockingCallback"pyadbc_driver_manager::ClearBlockingCallback"()
 
 
-@functools.cache
+@functools.lru_cache
 def _init_blocking_call():
     error = bytes(CInitBlockingCallback()).decode("utf-8")
     if error:
