@@ -2591,10 +2591,18 @@ void StatementTest::TestConcurrentStatements() {
   ASSERT_NO_FATAL_FAILURE(reader1.GetSchema());
 }
 
+struct ADBC_EXPORT AdbcError100 {
+  char* message;
+  int32_t vendor_code;
+  char sqlstate[5];
+  void (*release)(struct AdbcError100* error);
+};
+
 // Test that an ADBC 1.0.0-sized error still works
 void StatementTest::TestErrorCompatibility() {
+  static_assert(sizeof(AdbcError100) == ADBC_ERROR_1_0_0_SIZE, "Wrong size");
   // XXX: sketchy cast
-  auto* error = static_cast<struct AdbcError*>(malloc(ADBC_ERROR_1_0_0_SIZE));
+  auto* error = reinterpret_cast<struct AdbcError*>(malloc(ADBC_ERROR_1_0_0_SIZE));
   std::memset(error, 0, ADBC_ERROR_1_0_0_SIZE);
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, error), IsOkStatus(error));
@@ -2605,7 +2613,8 @@ void StatementTest::TestErrorCompatibility() {
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                         &reader.rows_affected, error),
               ::testing::Not(IsOkStatus(error)));
-  error->release(error);
+  auto* old_error = reinterpret_cast<AdbcError100*>(error);
+  old_error->release(old_error);
   free(error);
 }
 
