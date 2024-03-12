@@ -552,7 +552,7 @@ jobs:
           pushd adbc
           env PYTHON=3.8 docker compose run python-wheel-manylinux-test
 
-      - name: Test wheel 3.8
+      - name: Test wheel 3.9
         env:
           ARCH: ${{ matrix.arch }}
           MANYLINUX: ${{ matrix.manylinux_version }}
@@ -560,7 +560,7 @@ jobs:
           pushd adbc
           env PYTHON=3.9 docker compose run python-wheel-manylinux-test
 
-      - name: Test wheel 3.8
+      - name: Test wheel 3.10
         env:
           ARCH: ${{ matrix.arch }}
           MANYLINUX: ${{ matrix.manylinux_version }}
@@ -568,7 +568,7 @@ jobs:
           pushd adbc
           env PYTHON=3.10 docker compose run python-wheel-manylinux-test
 
-      - name: Test wheel 3.8
+      - name: Test wheel 3.11
         env:
           ARCH: ${{ matrix.arch }}
           MANYLINUX: ${{ matrix.manylinux_version }}
@@ -576,7 +576,7 @@ jobs:
           pushd adbc
           env PYTHON=3.11 docker compose run python-wheel-manylinux-test
 
-      - name: Test wheel 3.8
+      - name: Test wheel 3.12
         env:
           ARCH: ${{ matrix.arch }}
           MANYLINUX: ${{ matrix.manylinux_version }}
