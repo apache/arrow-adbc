@@ -1584,7 +1584,7 @@ AdbcStatusCode SqliteStatementGetParameterSchema(struct AdbcStatement* statement
   ArrowSchemaInit(schema);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(schema, NANOARROW_TYPE_STRUCT), error);
   CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(schema, num_params), error);
-  char buffer[11];
+  char buffer[12];
   for (int i = 0; i < num_params; i++) {
     const char* name = sqlite3_bind_parameter_name(stmt->stmt, i + 1);
     if (name == NULL) {
