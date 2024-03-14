@@ -101,6 +101,34 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        public override Schema GetTableSchema(string catalog, string dbSchema, string tableName) => throw new NotImplementedException();
+        public override Schema GetTableSchema(string catalog, string dbSchema, string tableName)
+        {
+            TGetColumnsReq getColumnsReq = new TGetColumnsReq(this.sessionHandle);
+            getColumnsReq.CatalogName = catalog;
+            getColumnsReq.SchemaName = dbSchema;
+            getColumnsReq.TableName = tableName;
+            getColumnsReq.GetDirectResults = new TSparkGetDirectResults();
+
+            var columnsResponse = this.client.GetColumns(getColumnsReq).Result;
+            if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
+            {
+                throw new Exception(columnsResponse.Status.ErrorMessage);
+            }
+
+            var result = columnsResponse.DirectResults;
+            var resultSchema = result.ResultSetMetadata.ArrowSchema;
+            var columns = result.ResultSet.Results.Columns;
+            var rowCount = columns[4].StringVal.Values.Length;
+
+            Field[] fields = new Field[rowCount];
+            for (int i = 0; i < rowCount; i++)
+            {
+                fields[i] = new Field(columns[4].StringVal.Values.GetString(i),
+                    SchemaParser.GetArrowType((TTypeId) columns[5].I32Val.Values.GetValue(i)),
+                    nullable: true /* ??? */);
+            }
+            return new Schema(fields, null);
+        }
+
     }
 }
