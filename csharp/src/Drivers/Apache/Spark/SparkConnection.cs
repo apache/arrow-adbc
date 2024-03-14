@@ -117,16 +117,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             var result = columnsResponse.DirectResults;
             var resultSchema = result.ResultSetMetadata.ArrowSchema;
-            var rows = result.ResultSet.Results.Rows;
+            var columns = result.ResultSet.Results.Columns;
+            var rowCount = columns[4].StringVal.Values.Length;
 
-            StringArray.Builder columnNameBuilder = new StringArray.Builder();
-            StringArray.Builder TypeNameBuilder = new StringArray.Builder();
-
-            Field[] fields = new Field[rows.Count];
-            for (int i = 0; i < rows.Count; i++)
+            Field[] fields = new Field[rowCount];
+            for (int i = 0; i < rowCount; i++)
             {
-                fields[i] = new Field(rows[i].ColVals[4].StringVal.Value,
-                    SchemaParser.GetArrowType((TTypeId) rows[i].ColVals[5].I32Val.Value),
+                fields[i] = new Field(columns[4].StringVal.Values.GetString(i),
+                    SchemaParser.GetArrowType((TTypeId) columns[5].I32Val.Values.GetValue(i)),
                     nullable: true /* ??? */);
             }
             return new Schema(fields, null);
