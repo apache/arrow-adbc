@@ -61,6 +61,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, List<string> tableTypes, string columnNamePattern)
         {
+            Dictionary<string, Dictionary<string, Dictionary<string, List<string>>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, List<string>>>>();
             if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
             {
                 TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(this.sessionHandle);
@@ -73,7 +74,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Tables)
             {
-                TGetTablesReq getSchemasReq = new TGetTablesReq(this.sessionHandle);
+                TGetTablesReq getTablesReq = new TGetTablesReq(this.sessionHandle);
             }
 
             if (depth == GetObjectsDepth.All)
