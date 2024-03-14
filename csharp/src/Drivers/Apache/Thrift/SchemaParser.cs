@@ -43,7 +43,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             throw new InvalidOperationException();
         }
 
-        static IArrowType GetArrowType(TTypeId thriftType)
+        public static IArrowType GetArrowType(TTypeId thriftType)
         {
             switch (thriftType)
             {
