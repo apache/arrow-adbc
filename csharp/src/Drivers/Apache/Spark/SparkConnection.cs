@@ -421,7 +421,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
 
                 xdbcDataTypeBuilder.AppendNull();
-                xdbcTypeNameBuilder.Append(dataType);
+                xdbcTypeNameBuilder.Append("");
                 xdbcNumPrecRadixBuilder.AppendNull();
                 xdbcNullableBuilder.AppendNull();
                 xdbcColumnDefBuilder.AppendNull();
@@ -604,9 +604,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             return builder.ToString();
         }
-
-        public override Schema GetTableSchema(string catalog, string dbSchema, string tableName) => throw new NotImplementedException();
-
     }
 
     public struct TableInfoPair
