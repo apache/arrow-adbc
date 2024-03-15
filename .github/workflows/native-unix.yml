@@ -167,6 +167,11 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
 
       - name: Build
         shell: bash -l {0}
@@ -269,6 +274,11 @@ jobs:
             'arrow-c-glib>=10.0.1' \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_glib.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
 
       - uses: actions/download-artifact@v3
         with:
@@ -306,6 +316,12 @@ jobs:
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+
       - name: Install staticcheck
         run: go install honnef.co/go/tools/cmd/staticcheck@v0.3.3
       - name: Go Build
@@ -354,6 +370,12 @@ jobs:
           miniforge-version: latest
           use-only-tar-bz2: false
           use-mamba: true
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+
       - name: Install Dependencies
         shell: bash -l {0}
         run: |
@@ -439,6 +461,11 @@ jobs:
             python=${{ matrix.python }} \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
       - uses: actions/setup-go@v5
         with:
           go-version: 1.19.13
@@ -547,6 +574,11 @@ jobs:
             python=${{ matrix.python }} \
             --file ci/conda_env_docs.txt \
             --file ci/conda_env_python.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
       - uses: actions/download-artifact@v3
         with:
           name: driver-manager-${{ matrix.os }}
