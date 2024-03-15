@@ -140,8 +140,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             SparkStatement statement;
             Schema schema;
             ChunkDownloader chunkDownloader;
-            List<TSparkArrowBatch> batches;
-            int index;
             IArrowReader reader;
 
             public CloudFetchReader(SparkStatement statement, Schema schema)
@@ -216,7 +214,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public ChunkDownloader(Dictionary<string, Dictionary<string, string>> links)
         {
-            this.links = links;
+            //this.links = links;
             this.client = new HttpClient();
         }
 
