@@ -26,6 +26,7 @@ import (
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/apache/arrow/go/v16/arrow/memory"
+	"golang.org/x/exp/slog"
 )
 
 const (
@@ -102,6 +103,7 @@ type ConnectionImplBase struct {
 	Alloc       memory.Allocator
 	ErrorHelper ErrorHelper
 	DriverInfo  *DriverInfo
+	Logger      *slog.Logger
 
 	Autocommit bool
 	Closed     bool
@@ -116,6 +118,7 @@ func NewConnectionImplBase(database *DatabaseImplBase) ConnectionImplBase {
 		Alloc:       database.Alloc,
 		ErrorHelper: database.ErrorHelper,
 		DriverInfo:  database.DriverInfo,
+		Logger:      database.Logger,
 		Autocommit:  true,
 		Closed:      false,
 	}
