@@ -78,6 +78,10 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
       - name: Build DuckDB Integration Tests
         shell: bash -l {0}
         env:
@@ -135,6 +139,10 @@ jobs:
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
       - name: Start SQLite server and Dremio
         shell: bash -l {0}
         run: |
@@ -202,6 +210,10 @@ jobs:
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
           pip install pytest-error-for-skips
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
       - name: Build PostgreSQL Driver
         shell: bash -l {0}
         env:
@@ -315,6 +327,10 @@ jobs:
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
       - uses: actions/setup-go@v5
         with:
           go-version: 1.19.13
