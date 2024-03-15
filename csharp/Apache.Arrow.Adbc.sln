@@ -28,10 +28,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Drivers.I
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake", "test\Drivers\Interop\Snowflake\Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake.csproj", "{8BE1EECC-3ACF-41B2-AF7D-1A67196FF6C7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Drivers.Apache", "src\Drivers\Apache\Apache.Arrow.Adbc.Drivers.Apache.csproj", "{6C0D8BE1-4A23-4C2F-88B1-D2FBEA0B1903}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.Apache", "test\Drivers\Apache\Apache.Arrow.Adbc.Tests.Drivers.Apache.csproj", "{714F0BD2-3A92-4D1A-8FAC-D0C0599BE3E3}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -74,14 +70,6 @@ Global
 		{8BE1EECC-3ACF-41B2-AF7D-1A67196FF6C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8BE1EECC-3ACF-41B2-AF7D-1A67196FF6C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8BE1EECC-3ACF-41B2-AF7D-1A67196FF6C7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6C0D8BE1-4A23-4C2F-88B1-D2FBEA0B1903}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6C0D8BE1-4A23-4C2F-88B1-D2FBEA0B1903}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6C0D8BE1-4A23-4C2F-88B1-D2FBEA0B1903}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6C0D8BE1-4A23-4C2F-88B1-D2FBEA0B1903}.Release|Any CPU.Build.0 = Release|Any CPU
-		{714F0BD2-3A92-4D1A-8FAC-D0C0599BE3E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{714F0BD2-3A92-4D1A-8FAC-D0C0599BE3E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{714F0BD2-3A92-4D1A-8FAC-D0C0599BE3E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{714F0BD2-3A92-4D1A-8FAC-D0C0599BE3E3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -96,8 +84,6 @@ Global
 		{EA43BB7C-BC00-4701-BDF4-367880C2495C} = {C7290227-E925-47E7-8B6B-A8B171645D58}
 		{30024B6F-7BC1-4574-BE5A-924FBD6EAF83} = {FEB257A0-4FD3-495E-9A47-9E1649755445}
 		{8BE1EECC-3ACF-41B2-AF7D-1A67196FF6C7} = {C7290227-E925-47E7-8B6B-A8B171645D58}
-		{6C0D8BE1-4A23-4C2F-88B1-D2FBEA0B1903} = {FEB257A0-4FD3-495E-9A47-9E1649755445}
-		{714F0BD2-3A92-4D1A-8FAC-D0C0599BE3E3} = {C7290227-E925-47E7-8B6B-A8B171645D58}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4795CF16-0FDB-4BE0-9768-5CF31564DC03}
