@@ -22,7 +22,7 @@
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.3.0
+    rev: v4.5.0
     hooks:
     - id: check-xml
     - id: check-yaml
@@ -40,7 +40,7 @@ repos:
     - id: trailing-whitespace
       exclude: "^r/.*?/_snaps/.*?.md$"
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: "v14.0.6"
+    rev: "v18.1.1"
     hooks:
       - id: clang-format
         types_or: [c, c++]
@@ -59,7 +59,7 @@ repos:
         - "--linelength=90"
         - "--verbose=2"
   - repo: https://github.com/golangci/golangci-lint
-    rev: v1.49.0
+    rev: v1.56.2
     hooks:
     - id: golangci-lint
       entry: bash -c 'cd go/adbc && golangci-lint run --fix --timeout 5m'
@@ -72,17 +72,17 @@ repos:
       args: [--autofix]
       types_or: [java]
   - repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 24.2.0
     hooks:
     - id: black
       types_or: [pyi, python]
   - repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
+    rev: 7.0.0
     hooks:
     - id: flake8
       types_or: [python]
   - repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
+    rev: 5.13.2
     hooks:
     - id: isort
       types_or: [python]
