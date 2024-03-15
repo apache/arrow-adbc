@@ -57,6 +57,46 @@ type connectionImpl struct {
 	supportInfo support
 }
 
+// GetCurrentCatalog implements driverbase.CurrentNamespacer.
+func (c *connectionImpl) GetCurrentCatalog() (string, error) {
+	options, err := c.getSessionOptions(context.Background())
+	if err != nil {
+		return "", err
+	}
+	if catalog, ok := options["catalog"]; ok {
+		if val, ok := catalog.(string); ok {
+			return val, nil
+		}
+		return "", c.Base().ErrorHelper.Errorf(adbc.StatusInternal, "server returned non-string catalog %#v", catalog)
+	}
+	return "", c.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "current catalog not supported")
+}
+
+// GetCurrentDbSchema implements driverbase.CurrentNamespacer.
+func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
+	options, err := c.getSessionOptions(context.Background())
+	if err != nil {
+		return "", err
+	}
+	if schema, ok := options["schema"]; ok {
+		if val, ok := schema.(string); ok {
+			return val, nil
+		}
+		return "", c.Base().ErrorHelper.Errorf(adbc.StatusInternal, "server returned non-string schema %#v", schema)
+	}
+	return "", c.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "current schema not supported")
+}
+
+// SetCurrentCatalog implements driverbase.CurrentNamespacer.
+func (c *connectionImpl) SetCurrentCatalog(value string) error {
+	return c.setSessionOptions(context.Background(), "catalog", value)
+}
+
+// SetCurrentDbSchema implements driverbase.CurrentNamespacer.
+func (c *connectionImpl) SetCurrentDbSchema(value string) error {
+	return c.setSessionOptions(context.Background(), "schema", value)
+}
+
 func (c *connectionImpl) SetAutocommit(enabled bool) error {
 	if enabled && c.txn == nil {
 		// no-op don't even error if the server didn't support transactions
@@ -265,43 +305,6 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 		return c.timeouts.queryTimeout.String(), nil
 	case OptionTimeoutUpdate:
 		return c.timeouts.updateTimeout.String(), nil
-	case adbc.OptionKeyCurrentCatalog:
-		options, err := c.getSessionOptions(context.Background())
-		if err != nil {
-			return "", err
-		}
-		if catalog, ok := options["catalog"]; ok {
-			if val, ok := catalog.(string); ok {
-				return val, nil
-			}
-			return "", adbc.Error{
-				Msg:  fmt.Sprintf("[FlightSQL] Server returned non-string catalog %#v", catalog),
-				Code: adbc.StatusInternal,
-			}
-		}
-		return "", adbc.Error{
-			Msg:  "[FlightSQL] current catalog not supported",
-			Code: adbc.StatusNotFound,
-		}
-
-	case adbc.OptionKeyCurrentDbSchema:
-		options, err := c.getSessionOptions(context.Background())
-		if err != nil {
-			return "", err
-		}
-		if schema, ok := options["schema"]; ok {
-			if val, ok := schema.(string); ok {
-				return val, nil
-			}
-			return "", adbc.Error{
-				Msg:  fmt.Sprintf("[FlightSQL] Server returned non-string schema %#v", schema),
-				Code: adbc.StatusInternal,
-			}
-		}
-		return "", adbc.Error{
-			Msg:  "[FlightSQL] current schema not supported",
-			Code: adbc.StatusNotFound,
-		}
 	case OptionSessionOptions:
 		options, err := c.getSessionOptions(context.Background())
 		if err != nil {
@@ -447,10 +450,6 @@ func (c *connectionImpl) SetOption(key, value string) error {
 	switch key {
 	case OptionTimeoutFetch, OptionTimeoutQuery, OptionTimeoutUpdate:
 		return c.timeouts.setTimeoutString(key, value)
-	case adbc.OptionKeyCurrentCatalog:
-		return c.setSessionOptions(context.Background(), "catalog", value)
-	case adbc.OptionKeyCurrentDbSchema:
-		return c.setSessionOptions(context.Background(), "schema", value)
 	}
 
 	switch {

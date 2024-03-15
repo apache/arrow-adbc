@@ -19,6 +19,7 @@ package driverbase_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"golang.org/x/exp/slog"
@@ -354,7 +355,7 @@ func TestCustomizedDriver(t *testing.T) {
 	// to a 'not found' error instead of 'not implemented'
 	_, err = cnxn.(adbc.GetSetOptions).GetOption(adbc.OptionKeyCurrentCatalog)
 	require.Error(t, err)
-	require.Equal(t, "Not Found: [MockDriver] The current catalog has not been set", err.Error())
+	require.Equal(t, "Not Found: [MockDriver] failed to get current catalog: current catalog is not set", err.Error())
 
 	err = cnxn.(adbc.GetSetOptions).SetOption(adbc.OptionKeyCurrentCatalog, "test_catalog")
 	require.NoError(t, err)
@@ -365,7 +366,7 @@ func TestCustomizedDriver(t *testing.T) {
 
 	_, err = cnxn.(adbc.GetSetOptions).GetOption(adbc.OptionKeyCurrentDbSchema)
 	require.Error(t, err)
-	require.Equal(t, "Not Found: [MockDriver] The current db schema has not been set", err.Error())
+	require.Equal(t, "Not Found: [MockDriver] failed to get current db schema: current db schema is not set", err.Error())
 
 	err = cnxn.(adbc.GetSetOptions).SetOption(adbc.OptionKeyCurrentDbSchema, "test_schema")
 	require.NoError(t, err)
@@ -475,18 +476,18 @@ func (c *connectionImpl) SetAutocommit(enabled bool) error {
 	return nil
 }
 
-func (c *connectionImpl) GetCurrentCatalog() (string, bool) {
+func (c *connectionImpl) GetCurrentCatalog() (string, error) {
 	if c.currentCatalog == "" {
-		return "", false
+		return "", fmt.Errorf("current catalog is not set")
 	}
-	return c.currentCatalog, true
+	return c.currentCatalog, nil
 }
 
-func (c *connectionImpl) GetCurrentDbSchema() (string, bool) {
+func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
 	if c.currentDbSchema == "" {
-		return "", false
+		return "", fmt.Errorf("current db schema is not set")
 	}
-	return c.currentDbSchema, true
+	return c.currentDbSchema, nil
 }
 
 func (c *connectionImpl) SetCurrentCatalog(val string) error {

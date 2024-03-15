@@ -48,8 +48,8 @@ type ConnectionImpl interface {
 // stateful namespacing with DB catalogs and schemas. The appropriate (Get/Set)Options
 // implementations will be provided using the results of these methods.
 type CurrentNamespacer interface {
-	GetCurrentCatalog() (string, bool)
-	GetCurrentDbSchema() (string, bool)
+	GetCurrentCatalog() (string, error)
+	GetCurrentDbSchema() (string, error)
 	SetCurrentCatalog(string) error
 	SetCurrentDbSchema(string) error
 }
@@ -385,17 +385,17 @@ func (cnxn *connection) GetOption(key string) (string, error) {
 		}
 	case adbc.OptionKeyCurrentCatalog:
 		if cnxn.currentNamespacer != nil {
-			val, ok := cnxn.currentNamespacer.GetCurrentCatalog()
-			if !ok {
-				return "", cnxn.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "The current catalog has not been set")
+			val, err := cnxn.currentNamespacer.GetCurrentCatalog()
+			if err != nil {
+				return "", cnxn.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "failed to get current catalog: %s", err)
 			}
 			return val, nil
 		}
 	case adbc.OptionKeyCurrentDbSchema:
 		if cnxn.currentNamespacer != nil {
-			val, ok := cnxn.currentNamespacer.GetCurrentDbSchema()
-			if !ok {
-				return "", cnxn.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "The current db schema has not been set")
+			val, err := cnxn.currentNamespacer.GetCurrentDbSchema()
+			if err != nil {
+				return "", cnxn.Base().ErrorHelper.Errorf(adbc.StatusNotFound, "failed to get current db schema: %s", err)
 			}
 			return val, nil
 		}

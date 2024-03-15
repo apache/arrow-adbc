@@ -69,21 +69,13 @@ func (*connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
 }
 
 // GetCurrentCatalog implements driverbase.CurrentNamespacer.
-func (c *connectionImpl) GetCurrentCatalog() (string, bool) {
-	catalog, err := c.getStringQuery("SELECT CURRENT_DATABASE()")
-	if err != nil {
-		return "", false
-	}
-	return catalog, true
+func (c *connectionImpl) GetCurrentCatalog() (string, error) {
+	return c.getStringQuery("SELECT CURRENT_DATABASE()")
 }
 
 // GetCurrentDbSchema implements driverbase.CurrentNamespacer.
-func (c *connectionImpl) GetCurrentDbSchema() (string, bool) {
-	dbSchema, err := c.getStringQuery("SELECT CURRENT_SCHEMA()")
-	if err != nil {
-		return "", false
-	}
-	return dbSchema, true
+func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
+	return c.getStringQuery("SELECT CURRENT_SCHEMA()")
 }
 
 // SetCurrentCatalog implements driverbase.CurrentNamespacer.
