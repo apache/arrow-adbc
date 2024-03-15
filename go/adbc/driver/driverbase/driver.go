@@ -74,7 +74,7 @@ func (base *DriverImplBase) NewDatabase(opts map[string]string) (adbc.Database, 
 
 // NewDriverImplBase instantiates DriverImplBase.
 //
-//   - name is the driver's name and is used to construct error messages.
+//   - info contains build and vendor info, as well as the name to construct error messages.
 //   - alloc is an Arrow allocator to use.
 func NewDriverImplBase(info *DriverInfo, alloc memory.Allocator) DriverImplBase {
 	if alloc == nil {
