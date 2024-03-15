@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/stretchr/testify/require"
 )
 

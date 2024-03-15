@@ -36,7 +36,7 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v16/arrow/memory"
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/metadata"
