@@ -175,7 +175,7 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 			panic(err)
 		}
 	}
-	return &driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)}
+	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)})
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
@@ -188,5 +188,5 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 		return nil, err
 	}
 
-	return db, nil
+	return driverbase.NewDatabase(db), nil
 }

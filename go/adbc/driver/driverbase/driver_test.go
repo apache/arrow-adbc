@@ -60,7 +60,7 @@ func NewDriver(alloc memory.Allocator, useHelpers bool) adbc.Driver {
 func TestDefaultDriver(t *testing.T) {
 	ctx := context.TODO()
 	alloc := memory.DefaultAllocator
-	drv := NewDriver(alloc, false)
+	drv := NewDriver(alloc, false) // Do not use helper implementations; only default behavior
 
 	db, err := drv.NewDatabase(nil)
 	require.NoError(t, err)
@@ -162,7 +162,7 @@ func TestDefaultDriver(t *testing.T) {
 func TestCustomizedDriver(t *testing.T) {
 	ctx := context.TODO()
 	alloc := memory.DefaultAllocator
-	drv := NewDriver(alloc, true)
+	drv := NewDriver(alloc, true) // Use helper implementations
 
 	db, err := drv.NewDatabase(nil)
 	require.NoError(t, err)
@@ -326,7 +326,7 @@ func TestCustomizedDriver(t *testing.T) {
 	require.Equal(t, "Not Implemented: [MockDriver] Commit", err.Error())
 
 	// By implementing CurrentNamespacer, we can now get/set the current catalog/dbschema
-	// Default current(catalog|dSchema) is driver-specific, but the stub implementation falls back
+	// Default current(catalog|dbSchema) is driver-specific, but the stub implementation falls back
 	// to a 'not found' error instead of 'not implemented'
 	_, err = cnxn.(adbc.GetSetOptions).GetOption(adbc.OptionKeyCurrentCatalog)
 	require.Error(t, err)

@@ -20,8 +20,6 @@ package driverbase
 import (
 	"context"
 	"fmt"
-	"runtime/debug"
-	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
@@ -36,24 +34,6 @@ const (
 	ConnectionMessageCannotCommit      = "Cannot commit when autocommit is enabled"
 	ConnectionMessageCannotRollback    = "Cannot rollback when autocommit is enabled"
 )
-
-var (
-	infoDriverVersion      string
-	infoDriverArrowVersion string
-)
-
-func init() {
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, dep := range info.Deps {
-			switch {
-			case dep.Path == "github.com/apache/arrow-adbc/go/adbc":
-				infoDriverVersion = dep.Version
-			case strings.HasPrefix(dep.Path, "github.com/apache/arrow/go/"):
-				infoDriverArrowVersion = dep.Version
-			}
-		}
-	}
-}
 
 // ConnectionImpl is an interface that drivers implement to provide
 // vendor-specific functionality.
@@ -132,17 +112,6 @@ type ConnectionImplBase struct {
 //   - database is a DatabaseImplBase containing the common resources from the parent
 //     database, allowing the Arrow allocator, error handler, and logger to be reused.
 func NewConnectionImplBase(database *DatabaseImplBase) ConnectionImplBase {
-	if infoDriverVersion != "" {
-		if err := database.DriverInfo.RegisterInfoCode(adbc.InfoDriverVersion, infoDriverVersion); err != nil {
-			panic(err)
-		}
-	}
-	if infoDriverArrowVersion != "" {
-		if err := database.DriverInfo.RegisterInfoCode(adbc.InfoDriverArrowVersion, infoDriverArrowVersion); err != nil {
-			panic(err)
-		}
-	}
-
 	return ConnectionImplBase{
 		Alloc:       database.Alloc,
 		ErrorHelper: database.ErrorHelper,
@@ -324,26 +293,41 @@ func NewConnectionBuilder(impl ConnectionImpl) *ConnectionBuilder {
 }
 
 func (b *ConnectionBuilder) WithDbObjectsEnumerator(helper DbObjectsEnumerator) *ConnectionBuilder {
+	if b == nil {
+		panic("nil ConnectionBuilder: cannot reuse after calling Connection()")
+	}
 	b.connection.dbObjectsEnumerator = helper
 	return b
 }
 
 func (b *ConnectionBuilder) WithCurrentNamespacer(helper CurrentNamespacer) *ConnectionBuilder {
+	if b == nil {
+		panic("nil ConnectionBuilder: cannot reuse after calling Connection()")
+	}
 	b.connection.currentNamespacer = helper
 	return b
 }
 
 func (b *ConnectionBuilder) WithDriverInfoPreparer(helper DriverInfoPreparer) *ConnectionBuilder {
+	if b == nil {
+		panic("nil ConnectionBuilder: cannot reuse after calling Connection()")
+	}
 	b.connection.driverInfoPreparer = helper
 	return b
 }
 
 func (b *ConnectionBuilder) WithAutocommitSetter(helper AutocommitSetter) *ConnectionBuilder {
+	if b == nil {
+		panic("nil ConnectionBuilder: cannot reuse after calling Connection()")
+	}
 	b.connection.autocommitSetter = helper
 	return b
 }
 
 func (b *ConnectionBuilder) WithTableTypeLister(helper TableTypeLister) *ConnectionBuilder {
+	if b == nil {
+		panic("nil ConnectionBuilder: cannot reuse after calling Connection()")
+	}
 	b.connection.tableTypeLister = helper
 	return b
 }
@@ -478,7 +462,6 @@ func (cnxn *connection) GetTableTypes(ctx context.Context) (array.RecordReader, 
 	final := bldr.NewRecord()
 	defer final.Release()
 	return array.NewRecordReader(adbc.TableTypesSchema, []arrow.Record{final})
-
 }
 
 func (cnxn *connection) Commit(ctx context.Context) error {

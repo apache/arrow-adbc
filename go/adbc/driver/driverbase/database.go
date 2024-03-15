@@ -32,11 +32,9 @@ const (
 // DatabaseImpl is an interface that drivers implement to provide
 // vendor-specific functionality.
 type DatabaseImpl interface {
+	adbc.Database
 	adbc.GetSetOptions
 	Base() *DatabaseImplBase
-	Open(context.Context) (adbc.Connection, error)
-	Close() error
-	SetOptions(map[string]string) error
 }
 
 // Database is the interface satisfied by the result of the NewDatabase constructor,

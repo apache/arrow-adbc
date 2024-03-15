@@ -21,15 +21,36 @@
 package driverbase
 
 import (
+	"runtime/debug"
+	"strings"
+
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v16/arrow/memory"
 )
 
+var (
+	infoDriverVersion      string
+	infoDriverArrowVersion string
+)
+
+func init() {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range info.Deps {
+			switch {
+			case dep.Path == "github.com/apache/arrow-adbc/go/adbc":
+				infoDriverVersion = dep.Version
+			case strings.HasPrefix(dep.Path, "github.com/apache/arrow/go/"):
+				infoDriverArrowVersion = dep.Version
+			}
+		}
+	}
+}
+
 // DriverImpl is an interface that drivers implement to provide
 // vendor-specific functionality.
 type DriverImpl interface {
+	adbc.Driver
 	Base() *DriverImplBase
-	NewDatabase(opts map[string]string) (adbc.Database, error)
 }
 
 // Driver is the interface satisfied by the result of the NewDriver constructor,
@@ -59,6 +80,19 @@ func NewDriverImplBase(info *DriverInfo, alloc memory.Allocator) DriverImplBase 
 	if alloc == nil {
 		alloc = memory.DefaultAllocator
 	}
+
+	if infoDriverVersion != "" {
+		if err := info.RegisterInfoCode(adbc.InfoDriverVersion, infoDriverVersion); err != nil {
+			panic(err)
+		}
+	}
+
+	if infoDriverArrowVersion != "" {
+		if err := info.RegisterInfoCode(adbc.InfoDriverArrowVersion, infoDriverArrowVersion); err != nil {
+			panic(err)
+		}
+	}
+
 	return DriverImplBase{
 		Alloc:       alloc,
 		ErrorHelper: ErrorHelper{DriverName: info.GetName()},
