@@ -135,6 +135,12 @@ jobs:
           miniforge-version: latest
           use-mamba: true
 
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+
       - name: Verify
         if: matrix.os != 'windows-latest'
         env:
