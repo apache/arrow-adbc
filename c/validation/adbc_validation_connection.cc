@@ -151,7 +151,7 @@ void ConnectionTest::TestMetadataCurrentCatalog() {
     ASSERT_THAT(
         AdbcConnectionGetOption(&connection, ADBC_CONNECTION_OPTION_CURRENT_CATALOG,
                                 buffer, &buffer_size, &error),
-        IsStatus(ADBC_STATUS_NOT_FOUND));
+        IsStatus(ADBC_STATUS_NOT_FOUND, &error));
   }
 }
 

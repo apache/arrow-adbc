@@ -27,7 +27,12 @@ package drivermgr
 // #include "adbc.h"
 // #include <stdlib.h>
 //
-// void releaseErr(struct AdbcError* err) { err->release(err); }
+// void releaseErr(struct AdbcError* err) {
+//     if (err->release != NULL) {
+//         err->release(err);
+//         err->release = NULL;
+//     }
+// }
 // struct ArrowArray* allocArr() {
 //     return (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
 // }
@@ -112,7 +117,13 @@ type Database struct {
 }
 
 func toAdbcError(code adbc.Status, e *C.struct_AdbcError) error {
-	err := &adbc.Error{
+	if e == nil || e.release == nil {
+		return adbc.Error{
+			Code: code,
+			Msg:  "[drivermgr] nil error",
+		}
+	}
+	err := adbc.Error{
 		Code:       code,
 		VendorCode: int32(e.vendor_code),
 		Msg:        C.GoString(e.message),

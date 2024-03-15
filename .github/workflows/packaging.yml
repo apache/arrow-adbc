@@ -151,7 +151,7 @@ jobs:
       - name: Build and test
         run: |
           pushd adbc
-          docker-compose run \
+          docker compose run \
             -e SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.VERSION }} \
             docs
           popd
@@ -199,7 +199,7 @@ jobs:
       - name: Build and test
         run: |
           pushd adbc/
-          docker-compose run java-dist
+          docker compose run java-dist
           popd
           cp -a adbc/dist/ ./
 
@@ -383,7 +383,7 @@ jobs:
           ARCH_CONDA_FORGE: ${{ matrix.arch }}
         run: |
           pushd adbc
-          docker-compose run \
+          docker compose run \
             -e HOST_USER_ID=$(id -u) \
             python-conda
           popd
@@ -402,7 +402,7 @@ jobs:
           ARCH_CONDA_FORGE: ${{ matrix.arch }}
         run: |
           pushd adbc
-          docker-compose run \
+          docker compose run \
             python-conda-test
           popd
 
@@ -527,7 +527,7 @@ jobs:
           MANYLINUX: ${{ matrix.manylinux_version }}
         run: |
           pushd adbc
-          docker-compose run \
+          docker compose run \
             -e SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.VERSION }} \
             python-wheel-manylinux
           popd
@@ -544,15 +544,45 @@ jobs:
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
 
-      - name: Test wheel
+      - name: Test wheel 3.8
         env:
           ARCH: ${{ matrix.arch }}
           MANYLINUX: ${{ matrix.manylinux_version }}
         run: |
           pushd adbc
-          env PYTHON=3.9 docker-compose run python-wheel-manylinux-test
-          env PYTHON=3.10 docker-compose run python-wheel-manylinux-test
-          env PYTHON=3.11 docker-compose run python-wheel-manylinux-test
+          env PYTHON=3.8 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.9
+        env:
+          ARCH: ${{ matrix.arch }}
+          MANYLINUX: ${{ matrix.manylinux_version }}
+        run: |
+          pushd adbc
+          env PYTHON=3.9 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.10
+        env:
+          ARCH: ${{ matrix.arch }}
+          MANYLINUX: ${{ matrix.manylinux_version }}
+        run: |
+          pushd adbc
+          env PYTHON=3.10 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.11
+        env:
+          ARCH: ${{ matrix.arch }}
+          MANYLINUX: ${{ matrix.manylinux_version }}
+        run: |
+          pushd adbc
+          env PYTHON=3.11 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.12
+        env:
+          ARCH: ${{ matrix.arch }}
+          MANYLINUX: ${{ matrix.manylinux_version }}
+        run: |
+          pushd adbc
+          env PYTHON=3.12 docker compose run python-wheel-manylinux-test
 
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
@@ -618,9 +648,11 @@ jobs:
       - name: Install Python
         run: |
           pushd adbc
+          sudo ci/scripts/install_python.sh macos 3.8
           sudo ci/scripts/install_python.sh macos 3.9
           sudo ci/scripts/install_python.sh macos 3.10
           sudo ci/scripts/install_python.sh macos 3.11
+          sudo ci/scripts/install_python.sh macos 3.12
           popd
 
       - name: Build wheel
@@ -645,7 +677,18 @@ jobs:
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
 
-      - name: Test wheel
+      - name: Test wheel 3.8
+        if: matrix.arch == 'amd64'
+        run: |
+          pushd adbc
+
+          /Library/Frameworks/Python.framework/Versions/3.8/bin/python3.8 -m venv test-env-38
+          source test-env-38/bin/activate
+          export PYTHON_VERSION=3.8
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
+      - name: Test wheel 3.9
         if: matrix.arch == 'amd64'
         run: |
           pushd adbc
@@ -656,11 +699,21 @@ jobs:
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
+      - name: Test wheel 3.10
+        if: matrix.arch == 'amd64'
+        run: |
+          pushd adbc
+
           /Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10 -m venv test-env-310
           source test-env-310/bin/activate
           export PYTHON_VERSION=3.10
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
+
+      - name: Test wheel 3.11
+        if: matrix.arch == 'amd64'
+        run: |
+          pushd adbc
 
           /Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11 -m venv test-env-311
           source test-env-311/bin/activate
@@ -668,7 +721,16 @@ jobs:
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
-          popd
+      - name: Test wheel 3.12
+        if: matrix.arch == 'amd64'
+        run: |
+          pushd adbc
+
+          /Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12 -m venv test-env-312
+          source test-env-312/bin/activate
+          export PYTHON_VERSION=3.12
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
 
   python-windows:
     name: "Python ${{ matrix.python_version }} Windows"
@@ -807,7 +869,7 @@ jobs:
       - name: Build sdist
         run: |
           pushd adbc
-          docker-compose run  \
+          docker compose run  \
             -e SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.VERSION }} \
             python-sdist
           popd
@@ -827,7 +889,7 @@ jobs:
       - name: Test sdist
         run: |
           pushd adbc
-          docker-compose run python-sdist-test
+          docker compose run python-sdist-test
           popd
 
   release:

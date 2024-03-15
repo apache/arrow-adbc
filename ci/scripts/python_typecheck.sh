@@ -30,25 +30,39 @@ set -e
 main() {
     local -r source_dir="${1}"
 
+    local status=0
+
     if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
-        pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_flightsql"
+        if ! pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_flightsql"; then
+            status=1
+        fi
     fi
 
     if [[ "${BUILD_DRIVER_MANAGER}" -gt 0 ]]; then
-        pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_manager"
+        if ! pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_manager"; then
+            status=1
+        fi
     fi
 
     if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
-        pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_postgresql"
+        if ! pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_postgresql"; then
+            status=1
+        fi
     fi
 
     if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
-        pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_sqlite"
+        if ! pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_sqlite"; then
+            status=1
+        fi
     fi
 
     if [[ "${BUILD_DRIVER_SNOWFLAKE}" -gt 0 ]]; then
-        pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_snowflake"
+        if ! pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_snowflake"; then
+            status=1
+        fi
     fi
+
+    return $status
 }
 
 main "$@"

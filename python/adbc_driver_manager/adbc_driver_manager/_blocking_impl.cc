@@ -20,11 +20,13 @@
 #if defined(_WIN32)
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
+#define READ _read
 #include <errno.h>
 #include <fcntl.h>
 #include <io.h>
 #include <windows.h>
 #else
+#define READ read
 #include <fcntl.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -147,7 +149,7 @@ void InterruptThread() {
   while (true) {
     char buf = 0;
     // Anytime something is written to the pipe, attempt to call the callback
-    auto bytes_read = read(pipe[0], &buf, 1);
+    auto bytes_read = READ(pipe[0], &buf, 1);
     if (bytes_read < 0) {
       if (errno == EINTR) continue;
 

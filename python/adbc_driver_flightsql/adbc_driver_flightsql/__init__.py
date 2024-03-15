@@ -87,6 +87,18 @@ class ConnectionOptions(enum.Enum):
     #:
     #: Overrides any headers set via the equivalent database option.
     RPC_CALL_HEADER_PREFIX = DatabaseOptions.RPC_CALL_HEADER_PREFIX.value
+    #: Get all session options as a JSON key-value blob.
+    OPTION_SESSION_OPTIONS = "adbc.flight.sql.session.options"
+    #: Get or set a session option.
+    OPTION_SESSION_OPTION_PREFIX = "adbc.flight.sql.session.option."
+    #: Erase a session option (use "" as the value).
+    OPTION_ERASE_SESSION_OPTION_PREFIX = "adbc.flight.sql.session.optionerase."
+    #: Get or set a boolean valued session option.
+    OPTION_BOOL_SESSION_OPTION_PREFIX = "adbc.flight.sql.session.optionbool."
+    #: Get or set a string-list-valued session option as a JSON array.
+    OPTION_STRING_LIST_SESSION_OPTION_PREFIX = (
+        "adbc.flight.sql.session.optionstringlist."
+    )
     #: Set a timeout on calls that fetch data (in floating-point seconds).
     #:
     #: This corresponds to Flight RPC DoGet calls.
@@ -104,6 +116,15 @@ class ConnectionOptions(enum.Enum):
 class StatementOptions(enum.Enum):
     """Statement options specific to the Flight SQL driver."""
 
+    #: The latest FlightInfo value.
+    #:
+    #: Thread-safe.  Mostly useful when using incremental execution, where an
+    #: advanced client may want to inspect the latest FlightInfo from the
+    #: service, but without waiting for execute_partitions to return.  (The
+    #: service may send an updated FlightInfo with progress/app_metadata
+    #: values, but execute_partitions will only return if there are new
+    #: endpoints.)
+    LAST_FLIGHT_INFO = "adbc.flight.sql.statement.exec.last_flight_info"
     #: The number of batches to queue per partition. Defaults to 5.
     #:
     #: This controls how much we read ahead on result sets.
@@ -155,16 +176,17 @@ def connect(
     )
 
 
-@functools.cache
+@functools.lru_cache
 def _driver_path() -> str:
-    import importlib.resources
     import pathlib
     import sys
+
+    import importlib_resources
 
     driver = "adbc_driver_flightsql"
 
     # Wheels bundle the shared library
-    root = importlib.resources.files(__package__)
+    root = importlib_resources.files(driver)
     # The filename is always the same regardless of platform
     entrypoint = root.joinpath(f"lib{driver}.so")
     if entrypoint.is_file():

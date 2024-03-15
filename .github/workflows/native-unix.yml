@@ -572,18 +572,16 @@ jobs:
           retention-days: 2
           path: |
             docs/build/html
+      - name: Configure Integration Env Vars
+        shell: bash -l {0}
+        run: |
+          cat .env | grep -v -e '^#' | awk NF | tee -a $GITHUB_ENV
       - name: Test Recipes (C++)
         shell: bash -l {0}
         run: |
           ./ci/scripts/cpp_recipe.sh $(pwd) ~/local build/recipe
       - name: Test Recipes (Python)
         shell: bash -l {0}
-        env:
-          ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
-          ADBC_DREMIO_FLIGHTSQL_URI: "grpc+tcp://localhost:32010"
-          ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
-          ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
-          ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
         run: |
           docker compose up --detach --wait dremio dremio-init flightsql-sqlite-test postgres-test
           pytest -vvs docs/source/tests/
