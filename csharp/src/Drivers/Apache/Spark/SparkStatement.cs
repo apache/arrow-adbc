@@ -204,6 +204,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 var currentChunk = new Chunk(i, links[i].FileLink);
                 this.chunks.Add(i, currentChunk);
             }
+            this.client = new HttpClient();
         }
 
         public ChunkDownloader(Dictionary<string, Dictionary<string, string>> links)
