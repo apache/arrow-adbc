@@ -42,7 +42,7 @@ main() {
   base_names+=(Apache.Arrow.Adbc.Drivers.BigQuery.${version})
   base_names+=(Apache.Arrow.Adbc.Drivers.FlightSql.${version})
   base_names+=(Apache.Arrow.Adbc.Drivers.Interop.Snowflake.${version})
-  for base_name in ${base_names[@]}; do
+  for base_name in "${base_names[@]}"; do
     dotnet nuget push \
       ${base_name}.nupkg \
       -k ${NUGET_API_KEY} \
