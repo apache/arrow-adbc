@@ -55,7 +55,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             Schema schema = GetSchema();
 
-            return new QueryResult(-1, new SparkReader(this, schema));
+            return new QueryResult(-1, new CloudFetchReader(this, schema));
+        }
+
+        public List<TDBSqlCloudResultFile> getChunkLinks()
+        {
+            TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
+            return this.connection.client.GetResultSetMetadata(request).Result.ResultFiles;
         }
 
         public override UpdateResult ExecuteUpdate()
@@ -127,14 +133,86 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             {
             }
         }
+
+
+        sealed class CloudFetchReader : IArrowArrayStream
+        {
+            SparkStatement statement;
+            Schema schema;
+            ChunkDownloader chunkDownloader;
+            List<TSparkArrowBatch> batches;
+            int index;
+            IArrowReader reader;
+
+            public CloudFetchReader(SparkStatement statement, Schema schema)
+            {
+                this.statement = statement;
+                this.schema = schema;
+                TFetchResultsReq request = new TFetchResultsReq(this.statement.operationHandle, TFetchOrientation.FETCH_NEXT, 500000);
+                TFetchResultsResp response = this.statement.connection.client.FetchResults(request, cancellationToken: default).Result;
+                this.chunkDownloader = new ChunkDownloader(response.Results.ResultLinks);
+            }
+
+            public Schema Schema { get { return schema; } }
+
+            public async ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            {
+                while (true)
+                {
+                    if (this.reader != null)
+                    {
+                        RecordBatch next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+                        if (next != null)
+                        {
+                            return next;
+                        }
+                        this.reader = null;
+                        if (this.chunkDownloader.chunks[this.chunkDownloader.currentChunkIndex] == null)
+                        {
+                            this.statement = null;
+                        }
+                    }
+
+                    if (this.statement == null)
+                    {
+                        return null;
+                    }
+
+                    if (this.reader == null)
+                    {
+                        var currentChunk = this.chunkDownloader.chunks[this.chunkDownloader.currentChunkIndex];
+                        while (!currentChunk.isDownloaded)
+                        {
+                            Thread.Sleep(500);
+                        }
+                        this.chunkDownloader.currentChunkIndex++;
+                        this.reader = currentChunk.reader;
+                    }
+                }
+            }
+
+            public void Dispose()
+            {
+            }
+        }
     }
 
     internal class ChunkDownloader
     {
-        private Dictionary<int, Chunk> chunks;
+        public Dictionary<int, Chunk> chunks;
 
-        int currentChunk = 0;
+        public int currentChunkIndex = 0;
         HttpClient client;
+
+        public ChunkDownloader(List<TSparkArrowResultLink> links)
+        {
+            this.chunks = new Dictionary<int, Chunk>();
+            for (int i = 0; i < links.Count; i++)
+            {
+                var currentChunk = new Chunk(i, links[i].FileLink);
+                this.chunks.Add(i, currentChunk);
+            }
+        }
 
         public ChunkDownloader(Dictionary<string, Dictionary<string, string>> links)
         {
@@ -177,6 +255,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public bool isDownloaded = false;
         public bool isFailed = false;
         public IArrowReader reader;
+
+        public Chunk(int chunkId, string chunkUrl) : this(chunkId, chunkUrl, new Dictionary<string, string>())
+        {
+            
+        }
 
         public Chunk(int chunkId, string chunkUrl, Dictionary<string, string> headers)
         {
