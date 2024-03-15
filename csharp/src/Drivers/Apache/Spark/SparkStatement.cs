@@ -58,12 +58,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return new QueryResult(-1, new CloudFetchReader(this, schema));
         }
 
-        public List<TDBSqlCloudResultFile> getChunkLinks()
-        {
-            TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
-            return this.connection.client.GetResultSetMetadata(request).Result.ResultFiles;
-        }
-
         public override UpdateResult ExecuteUpdate()
         {
             throw new NotImplementedException();
