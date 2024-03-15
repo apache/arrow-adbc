@@ -303,46 +303,59 @@ func (g *GetObjects) appendTableInfo(tableInfo TableInfo, catalogAndSchema Catal
 	g.tableTypeBuilder.Append(tableInfo.TableType)
 	g.dbSchemaTablesItems.Append(true)
 
-	if len(g.ConstraintLookup) != 0 {
-		g.tableConstraintsBuilder.Append(true)
+	g.appendTableConstraints(tableInfo, catalogAndSchema)
+	g.appendColumnsInfo(tableInfo)
+}
 
-		catalogSchemaTable := CatalogSchemaTable{Catalog: catalogAndSchema.Catalog, Schema: catalogAndSchema.Schema, Table: tableInfo.Name}
-		constraintSchemaData, exists := g.ConstraintLookup[catalogSchemaTable]
-
-		if exists {
-			for _, data := range constraintSchemaData {
-				g.constraintNameBuilder.Append(data.ConstraintName)
-				g.constraintTypeBuilder.Append(data.ConstraintType)
-
-				if len(data.ConstraintColumnNames) == 0 {
-					g.constraintColumnNameBuilder.AppendNull()
-				} else {
-					g.constraintColumnNameBuilder.Append(true)
-					for _, columnName := range data.ConstraintColumnNames {
-						g.constraintColumnNameItems.Append(columnName)
-					}
-				}
-
-				if len(data.ConstraintColumnUsages) == 0 {
-					g.constraintColumnUsageBuilder.AppendNull()
-				} else {
-					g.constraintColumnUsageBuilder.Append(true)
-					for _, columnUsages := range data.ConstraintColumnUsages {
-						g.columnUsageCatalogBuilder.Append(columnUsages.ForeignKeyCatalog)
-						g.columnUsageSchemaBuilder.Append(columnUsages.ForeignKeyDbSchema)
-						g.columnUsageTableBuilder.Append(columnUsages.ForeignKeyTable)
-						g.columnUsageColumnBuilder.Append(columnUsages.ForeignKeyColName)
-						g.constraintColumnUsageItems.Append(true)
-					}
-				}
-
-				g.tableConstraintsItems.Append(true)
-			}
-		}
-	} else {
+func (g *GetObjects) appendTableConstraints(tableInfo TableInfo, catalogAndSchema CatalogAndSchema) {
+	if len(g.ConstraintLookup) == 0 {
 		g.tableConstraintsBuilder.AppendNull()
+		return
 	}
 
+	g.tableConstraintsBuilder.Append(true)
+
+	catalogSchemaTable := CatalogSchemaTable{Catalog: catalogAndSchema.Catalog, Schema: catalogAndSchema.Schema, Table: tableInfo.Name}
+	constraintSchemaData, exists := g.ConstraintLookup[catalogSchemaTable]
+
+	if exists {
+		for _, data := range constraintSchemaData {
+			g.constraintNameBuilder.Append(data.ConstraintName)
+			g.constraintTypeBuilder.Append(data.ConstraintType)
+			g.appendConstraintColumns(data)
+			g.appendConstraintColumnUsages(data)
+			g.tableConstraintsItems.Append(true)
+		}
+	}
+}
+
+func (g *GetObjects) appendConstraintColumns(constraintSchema ConstraintSchema) {
+	if len(constraintSchema.ConstraintColumnNames) == 0 {
+		g.constraintColumnNameBuilder.AppendNull()
+	} else {
+		g.constraintColumnNameBuilder.Append(true)
+		for _, columnName := range constraintSchema.ConstraintColumnNames {
+			g.constraintColumnNameItems.Append(columnName)
+		}
+	}
+}
+
+func (g *GetObjects) appendConstraintColumnUsages(constraintSchema ConstraintSchema) {
+	if len(constraintSchema.ConstraintColumnUsages) == 0 {
+		g.constraintColumnUsageBuilder.AppendNull()
+	} else {
+		g.constraintColumnUsageBuilder.Append(true)
+		for _, columnUsages := range constraintSchema.ConstraintColumnUsages {
+			g.columnUsageCatalogBuilder.Append(columnUsages.ForeignKeyCatalog)
+			g.columnUsageSchemaBuilder.Append(columnUsages.ForeignKeyDbSchema)
+			g.columnUsageTableBuilder.Append(columnUsages.ForeignKeyTable)
+			g.columnUsageColumnBuilder.Append(columnUsages.ForeignKeyColName)
+			g.constraintColumnUsageItems.Append(true)
+		}
+	}
+}
+
+func (g *GetObjects) appendColumnsInfo(tableInfo TableInfo) {
 	if g.Depth == adbc.ObjectDepthTables {
 		g.tableColumnsBuilder.AppendNull()
 		return

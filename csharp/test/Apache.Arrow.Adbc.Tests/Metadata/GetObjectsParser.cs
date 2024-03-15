@@ -161,8 +161,8 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
 
             StringArray name = (StringArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndex(f => f.Name == "constraint_name")]; // constraint_name | utf8
             StringArray type = (StringArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndex(f => f.Name == "constraint_type")]; //	constraint_type | utf8 not null
-            ListArray column_names = (ListArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndex(f => f.Name == "constraint_column_names")]; //	constraint_column_names | list<utf8> not null
-            ListArray column_usage = (ListArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndex(f => f.Name == "constraint_column_usage")]; //	constraint_column_usage | list<USAGE_SCHEMA>
+            ListArray columnNames = (ListArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndex(f => f.Name == "constraint_column_names")]; //	constraint_column_names | list<utf8> not null
+            ListArray columnUsages = (ListArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndex(f => f.Name == "constraint_column_usage")]; //	constraint_column_usage | list<USAGE_SCHEMA>
 
             for (int i = 0; i < constraintsArray.Length; i++)
             {
@@ -170,8 +170,8 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
                 c.Name = name.GetString(i);
                 c.Type = type.GetString(i);
 
-                StringArray colNames = column_names.GetSlicedValues(i) as StringArray;
-                StructArray usage = column_usage.GetSlicedValues(i) as StructArray;
+                StringArray colNames = columnNames.GetSlicedValues(i) as StringArray;
+                StructArray usages = columnUsages.GetSlicedValues(i) as StructArray;
 
                 if (colNames != null)
                 {
@@ -181,14 +181,14 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
                     }
                 }
 
-                if (usage != null)
+                if (usages != null)
                 {
-                    for (int j = 0; j < usage.Length; j++)
+                    for (int j = 0; j < usages.Length; j++)
                     {
-                        StringArray fkCatalog = (StringArray)usage.Fields[StandardSchemas.UsageSchema.FindIndex(f => f.Name == "fk_catalog")]; // fk_catalog	| utf8
-                        StringArray fkDbSchema = (StringArray)usage.Fields[StandardSchemas.UsageSchema.FindIndex(f => f.Name == "fk_db_schema")]; //fk_db_schema | utf8
-                        StringArray fkTable = (StringArray)usage.Fields[StandardSchemas.UsageSchema.FindIndex(f => f.Name == "fk_table")]; //	fk_table | utf8 not null
-                        StringArray fkColumnName = (StringArray)usage.Fields[StandardSchemas.UsageSchema.FindIndex(f => f.Name == "fk_column_name")]; // fk_column_name | utf8 not null
+                        StringArray fkCatalog = (StringArray)usages.Fields[StandardSchemas.UsageSchema.FindIndex(f => f.Name == "fk_catalog")]; // fk_catalog	| utf8
+                        StringArray fkDbSchema = (StringArray)usages.Fields[StandardSchemas.UsageSchema.FindIndex(f => f.Name == "fk_db_schema")]; //fk_db_schema | utf8
+                        StringArray fkTable = (StringArray)usages.Fields[StandardSchemas.UsageSchema.FindIndex(f => f.Name == "fk_table")]; //	fk_table | utf8 not null
+                        StringArray fkColumnName = (StringArray)usages.Fields[StandardSchemas.UsageSchema.FindIndex(f => f.Name == "fk_column_name")]; // fk_column_name | utf8 not null
 
                         AdbcUsageSchema adbcUsageSchema = new AdbcUsageSchema();
                         adbcUsageSchema.FkCatalog = fkCatalog.GetString(j);
