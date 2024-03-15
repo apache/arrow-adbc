@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
@@ -34,6 +35,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
         {
+            
             statement.CanReadArrowResult = true;
             statement.CanDownloadResult = true;
             statement.ConfOverlay = SparkConnection.timestampConfig;
@@ -124,6 +126,77 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             public void Dispose()
             {
             }
+        }
+    }
+
+    internal class ChunkDownloader
+    {
+        private Dictionary<int, Chunk> chunks;
+
+        int currentChunk = 0;
+        HttpClient client;
+
+        public ChunkDownloader(Dictionary<string, Dictionary<string, string>> links)
+        {
+            this.links = links;
+            this.client = new HttpClient();
+        }
+
+        void initialize()
+        {
+            int workerThreads, completionPortThreads;
+            ThreadPool.GetMinThreads(out workerThreads, out completionPortThreads);
+            ThreadPool.SetMinThreads(5, completionPortThreads);
+            ThreadPool.SetMaxThreads(10, completionPortThreads);
+            foreach (KeyValuePair<int, Chunk> chunk in chunks)
+            {
+                ThreadPool.QueueUserWorkItem(async _ =>
+                {
+                    try
+                    {
+                        await chunk.Value.downloadData(this.client);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
+                });
+                
+            }
+
+        }
+
+
+    }
+
+    public class Chunk
+    {
+        int chunkId;
+        string chunkUrl;
+        Dictionary<string, string> headers;
+        public bool isDownloaded = false;
+        public bool isFailed = false;
+        public IArrowReader reader;
+
+        public Chunk(int chunkId, string chunkUrl, Dictionary<string, string> headers)
+        {
+            this.chunkId = chunkId;
+            this.chunkUrl = chunkUrl;
+            this.headers = headers;
+            this.reader = null;
+        }
+
+        public async Task downloadData(HttpClient client)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, chunkUrl);
+            foreach (KeyValuePair<string, string> pair in headers)
+            {
+                request.Headers.Add(pair.Key, pair.Value);
+            }
+            HttpResponseMessage response = await client.SendAsync(request);
+            this.reader = new ArrowStreamReader(response.Content.ReadAsStream());
+            isDownloaded = true;
+            
         }
     }
 }
