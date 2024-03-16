@@ -55,7 +55,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             Schema schema = GetSchema();
 
-            return new QueryResult(-1, new CloudFetchReader(this, schema));
+            return new QueryResult(-1, new SparkReader(this, schema));
+            //return new QueryResult(-1, new CloudFetchReader(this, schema));
         }
 
         public override UpdateResult ExecuteUpdate()
@@ -65,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override object GetValue(IArrowArray arrowArray, int index)
         {
-            throw new NotSupportedException();
+            return base.GetValue(arrowArray, index);
         }
 
         sealed class SparkReader : IArrowArrayStream
@@ -270,7 +271,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 request.Headers.Add(pair.Key, pair.Value);
             }
             HttpResponseMessage response = await client.SendAsync(request);
-            this.reader = new ArrowStreamReader(response.Content.ReadAsStream());
+            this.reader = new ArrowStreamReader(response.Content.ReadAsStreamAsync().Result);
             isDownloaded = true;
             
         }
