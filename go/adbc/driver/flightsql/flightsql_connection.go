@@ -578,7 +578,7 @@ func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc
 				// we know we're only doing string fields here right now
 				v := info.Field(info.ChildID(i)).(*array.String).
 					Value(int(info.ValueOffset(i)))
-				if err := driverInfo.RegisterInfoCode(adbcInfoCode, v); err != nil {
+				if err := driverInfo.RegisterInfoCode(adbcInfoCode, strings.Clone(v)); err != nil {
 					return err
 				}
 			}
