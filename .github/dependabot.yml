@@ -23,6 +23,18 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore: "
+  - package-ecosystem: "gomod"
+    directory: "/go/adbc/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(go/adbc): "
+  - package-ecosystem: "maven"
+    directory: "/java/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(java): "
   - package-ecosystem: "nuget"
     directory: "/csharp/"
     schedule:
