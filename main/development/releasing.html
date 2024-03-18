@@ -722,7 +722,7 @@ Remove old artifacts<div class="sd-summary-down docutils">
 <svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
 </summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Remove RC artifacts on <a class="reference external" href="https://dist.apache.org/repos/dist/dev/arrow/">https://dist.apache.org/repos/dist/dev/arrow/</a> and old release artifacts on <a class="reference external" href="https://dist.apache.org/repos/dist/release/arrow">https://dist.apache.org/repos/dist/release/arrow</a> to follow <a class="reference external" href="https://infra.apache.org/release-download-pages.html#current-and-older-releases">the ASF policy</a>:</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span>dev/release/post-07-remove-old-artifacts.sh
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span>dev/release/post-08-remove-old-artifacts.sh
 </pre></div>
 </div>
 </div>
@@ -735,8 +735,8 @@ Bump versions<div class="sd-summary-down docutils">
 </summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">This will bump version numbers embedded in files and filenames.</p>
 <p class="sd-card-text">It will also update the changelog to the newly released changelog.</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-08-bump-versions.sh ../arrow 0.1.0 0.2.0</span>
-dev/release/post-08-bump-versions.sh<span class="w"> </span>&lt;arrow-dir&gt;<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;next_version&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-09-bump-versions.sh ../arrow 0.1.0 0.2.0</span>
+dev/release/post-09-bump-versions.sh<span class="w"> </span>&lt;arrow-dir&gt;<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;next_version&gt;
 </pre></div>
 </div>
 </div>
@@ -749,8 +749,8 @@ Publish release blog post<div class="sd-summary-down docutils">
 </summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Run the script to generate the blog post outline, then fill out the
 outline and create a PR on <a class="reference external" href="https://github.com/apache/arrow-site">apache/arrow-site</a>.</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-09-website.sh ../arrow-site 0.0.0 0.1.0</span>
-dev/release/post-09-website.sh<span class="w"> </span>&lt;arrow-site-dir&gt;<span class="w"> </span>&lt;prev_version&gt;<span class="w"> </span>&lt;version&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-10-website.sh ../arrow-site 0.0.0 0.1.0</span>
+dev/release/post-10-website.sh<span class="w"> </span>&lt;arrow-site-dir&gt;<span class="w"> </span>&lt;prev_version&gt;<span class="w"> </span>&lt;version&gt;
 </pre></div>
 </div>
 </div>
