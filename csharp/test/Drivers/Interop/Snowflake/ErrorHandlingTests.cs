@@ -94,7 +94,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string driverFilename = Guid.NewGuid().ToString();
             testConfiguration.DriverPath = Path.Combine(Environment.CurrentDirectory, driverFilename + ".dll");
             Exception actualException = Assert.Throws<ArgumentException>(() => SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters));
-            AssertContainsAll(["file does not exist (Parameter 'file')"], actualException.Message);
+            SnowflakeTestingUtils.AssertContainsAll(new[] { "file does not exist (Parameter 'file')" }, actualException.Message);
         }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string entryPoint = Guid.NewGuid().ToString();
             testConfiguration.DriverEntryPoint = entryPoint;
             Exception actualException = Assert.Throws<EntryPointNotFoundException>(() => SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters));
-            AssertContainsAll(["Unable to find an entry point named", entryPoint], actualException.Message);
+            SnowflakeTestingUtils.AssertContainsAll(new[] { "Unable to find an entry point named", entryPoint }, actualException.Message);
         }
 
         /// <summary>
@@ -125,7 +125,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 out Dictionary<string, string> parameters);
             AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
             Exception actualException = Assert.Throws(test.ExceptionType, () => adbcDatabase.Connect(options));
-            AssertContainsAll(test.ExceptionMessageComponents, actualException.Message);
+            SnowflakeTestingUtils.AssertContainsAll(test.ExceptionMessageComponents, actualException.Message);
         }
 
         /// <summary>
@@ -144,19 +144,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
             testConfiguration.Authentication.Default.User = property;
-            yield return new object[] { new SnowflakeTestConfigurationTest(testConfiguration, typeof(AdbcException), ["[Snowflake] 390100 (08004)", "Incorrect username or password was specified"]) };
+            yield return new object[] { new SnowflakeTestConfigurationTest(testConfiguration, typeof(AdbcException), new[] { "[Snowflake] 390100 (08004)", "Incorrect username or password was specified" }) };
 
             testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
             testConfiguration.Authentication.Default.Password = property;
-            yield return new object[] { new SnowflakeTestConfigurationTest(testConfiguration, typeof(AdbcException), ["[Snowflake] 390100 (08004)", "Incorrect username or password was specified"]) };
+            yield return new object[] { new SnowflakeTestConfigurationTest(testConfiguration, typeof(AdbcException), new[] { "[Snowflake] 390100 (08004)", "Incorrect username or password was specified" }) };
 
             testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
             testConfiguration.Database = property;
-            yield return new object[] { new SnowflakeTestConfigurationTest(testConfiguration, typeof(AdbcException), ["[Snowflake] 390201 (08004)", "The requested database does not exist or not authorized."]) };
+            yield return new object[] { new SnowflakeTestConfigurationTest(testConfiguration, typeof(AdbcException), new[] { "[Snowflake] 390201 (08004)", "The requested database does not exist or not authorized." }) };
 
             testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
             testConfiguration.Warehouse = property;
-            yield return new object[] { new SnowflakeTestConfigurationTest(testConfiguration, typeof(AdbcException), ["[Snowflake] 390201 (08004)", "The requested warehouse does not exist or not authorized."]) };
+            yield return new object[] { new SnowflakeTestConfigurationTest(testConfiguration, typeof(AdbcException), new[] { "[Snowflake] 390201 (08004)", "The requested warehouse does not exist or not authorized." }) };
         }
 
         /// <summary>
@@ -191,7 +191,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string[] expectedExceptionTextContains = null)
         {
             Exception actualException = Assert.Throws(expectedExceptionType, () => PerformQuery(table, projection));
-            AssertContainsAll(expectedExceptionTextContains, actualException.Message);
+            SnowflakeTestingUtils.AssertContainsAll(expectedExceptionTextContains, actualException.Message);
         }
 
         private QueryResult PerformQuery(string table, string projection)
@@ -203,15 +203,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             _output.WriteLine(selectStatement);
             _statement.SqlQuery = selectStatement;
             return _statement.ExecuteQuery();
-        }
-
-        private static void AssertContainsAll(string[] expectedTexts, string actualText)
-        {
-            if (expectedTexts == null) { return; };
-            foreach (string text in expectedTexts)
-            {
-                Assert.Contains(text, actualText);
-            }
         }
 
         private void InsertSingleValue(string table, string columnName, string value)
