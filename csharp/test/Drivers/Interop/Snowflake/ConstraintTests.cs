@@ -148,6 +148,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public readonly string _tableName2;
         private bool _disposed = false;
 
+        private const string SNOWFLAKE_CONSTRAINTS_DATA_RESOURCE = "Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake.Resources.SnowflakeConstraints.sql";
+
 
         public ConstraintTestsFixutre()
         {
@@ -167,7 +169,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
         private void CreateTables()
         {
-            string[] queries = SnowflakeTestingUtils.GetQueries(_snowflakeTestConfiguration, "Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake.Resources.SnowflakeConstraints.sql");
+            string[] queries = SnowflakeTestingUtils.GetQueries(_snowflakeTestConfiguration, SNOWFLAKE_CONSTRAINTS_DATA_RESOURCE);
 
             Dictionary<string, string> placeholderValues = new Dictionary<string, string>() {
                 {"{ADBC_CONSTRANT_TABLE_1}", _tableName1 },

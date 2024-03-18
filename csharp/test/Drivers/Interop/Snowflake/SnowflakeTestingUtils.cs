@@ -47,6 +47,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         private static readonly Assembly CurrentAssembly;
 
         internal const string SNOWFLAKE_TEST_CONFIG_VARIABLE = "SNOWFLAKE_TEST_CONFIG_FILE";
+        private const string SNOWFLAKE_DATA_RESOURCE = "Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake.Resources.SnowflakeData.sql";
 
         static SnowflakeTestingUtils()
         {
@@ -137,22 +138,36 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Parses the queries from resources/SnowflakeData.sql
         /// </summary>
         /// <param name="testConfiguration"><see cref="SnowflakeTestConfiguration"/></param>
-        internal static string[] GetQueries(SnowflakeTestConfiguration testConfiguration, string resourceName = "Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake.Resources.SnowflakeData.sql")
+        internal static string[] GetQueries(SnowflakeTestConfiguration testConfiguration, string resourceName = SNOWFLAKE_DATA_RESOURCE)
         {
             StringBuilder content = new StringBuilder();
 
             string[] sql = null;
 
-            using (Stream stream = CurrentAssembly.GetManifestResourceStream(resourceName))
+            try
             {
-                if (stream != null)
+                using (Stream stream = CurrentAssembly.GetManifestResourceStream(resourceName))
                 {
-                    using (StreamReader sr = new StreamReader(stream))
+                    if (stream != null)
                     {
-                        sql = sr.ReadToEnd().Split(new[] {Environment.NewLine }, StringSplitOptions.None);
+                        using (StreamReader sr = new StreamReader(stream))
+                        {
+                            sql = sr.ReadToEnd().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+                        }
+                    }
+                    else
+                    {
+                        throw new FileNotFoundException("Embedded resource not found", resourceName);
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occured while reading the resouce: {resourceName}");
+                Console.WriteLine(ex.Message);
+                throw;
+            }
+
 
             if (sql == null)
             {
