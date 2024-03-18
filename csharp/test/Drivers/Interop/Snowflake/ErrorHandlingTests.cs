@@ -45,7 +45,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
             _snowflakeTestConfiguration = SnowflakeTestingUtils.TestConfiguration;
-            Dictionary<string, string> options = [];
+            Dictionary<string, string> options = new();
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_snowflakeTestConfiguration, out Dictionary<string, string> parameters);
             AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
             _connection = adbcDatabase.Connect(options);
@@ -89,7 +89,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact]
         public void TestDriverLoadInvalidPath()
         {
-            Dictionary<string, string> parameters = [];
+            Dictionary<string, string> parameters = new();
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
             string driverFilename = Guid.NewGuid().ToString();
             testConfiguration.DriverPath = Path.Combine(Environment.CurrentDirectory, driverFilename + ".dll");
@@ -103,7 +103,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact]
         public void TestDriverLoadInvalidEntryPoint()
         {
-            Dictionary<string, string> parameters = [];
+            Dictionary<string, string> parameters = new();
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
             string entryPoint = Guid.NewGuid().ToString();
             testConfiguration.DriverEntryPoint = entryPoint;
@@ -119,7 +119,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [MemberData(nameof(GenerateTestConfigurationData))]
         public void TestDriverConnectionInvalidConnection(SnowflakeTestConfigurationTest test)
         {
-            Dictionary<string, string> options = [];
+            Dictionary<string, string> options = new();
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(
                 test.TestConfiguration as SnowflakeTestConfiguration,
                 out Dictionary<string, string> parameters);
