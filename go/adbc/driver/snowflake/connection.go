@@ -408,7 +408,6 @@ func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadi
 }
 
 func toXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
-	xdbcType = internal.XdbcDataType_XDBC_UNKNOWN_TYPE
 	switch dt.ID() {
 	case arrow.EXTENSION:
 		return toXdbcDataType(dt.(arrow.ExtensionType).StorageType())
