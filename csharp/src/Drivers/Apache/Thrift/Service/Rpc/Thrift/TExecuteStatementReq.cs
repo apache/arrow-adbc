@@ -54,6 +54,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private string _requestValidation;
     private int _resultPersistenceMode;
     private bool _trimArrowBatchesToLimit;
+    private bool _enforceResultPersistenceMode;
 
     public global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle SessionHandle { get; set; }
 
@@ -82,6 +83,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         __isset.runAsync = true;
         this._runAsync = value;
+      }
+    }
+
+
+    public bool EnforceResultPersistenceMode
+    {
+      get
+      {
+        return _enforceResultPersistenceMode;
+      }
+      set
+      {
+        __isset.enforceResultPersistenceMode = true;
+        this._enforceResultPersistenceMode = value;
       }
     }
 
@@ -315,6 +330,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public bool requestValidation;
       public bool resultPersistenceMode;
       public bool trimArrowBatchesToLimit;
+      public bool enforceResultPersistenceMode;
     }
 
     public TExecuteStatementReq()
@@ -432,6 +448,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
         tmp357.TrimArrowBatchesToLimit = this.TrimArrowBatchesToLimit;
       }
       tmp357.__isset.trimArrowBatchesToLimit = this.__isset.trimArrowBatchesToLimit;
+      if(__isset.enforceResultPersistenceMode)
+      {
+        tmp357.EnforceResultPersistenceMode = this.EnforceResultPersistenceMode;
+      }
+      tmp357.__isset.enforceResultPersistenceMode = this.__isset.enforceResultPersistenceMode;
       return tmp357;
     }
 
@@ -673,6 +694,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
+            case 3344:
+              if (field.Type == TType.Bool)
+              {
+                EnforceResultPersistenceMode = await iprot.ReadBoolAsync(cancellationToken);
+              }
+              else
+              {
+                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+              }
+              break;
             default: 
               await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               break;
@@ -891,6 +922,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(TrimArrowBatchesToLimit, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
+        if(__isset.enforceResultPersistenceMode)
+        {
+          tmp363.Name = "enforceResultPersistenceMode";
+          tmp363.Type = TType.Bool;
+          tmp363.ID = 3344;
+          await oprot.WriteFieldBeginAsync(tmp363, cancellationToken);
+          await oprot.WriteBoolAsync(EnforceResultPersistenceMode, cancellationToken);
+          await oprot.WriteFieldEndAsync(cancellationToken);
+        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -923,7 +963,8 @@ namespace Apache.Hive.Service.Rpc.Thrift
         && ((__isset.executionVersion == other.__isset.executionVersion) && ((!__isset.executionVersion) || (global::System.Object.Equals(ExecutionVersion, other.ExecutionVersion))))
         && ((__isset.requestValidation == other.__isset.requestValidation) && ((!__isset.requestValidation) || (global::System.Object.Equals(RequestValidation, other.RequestValidation))))
         && ((__isset.resultPersistenceMode == other.__isset.resultPersistenceMode) && ((!__isset.resultPersistenceMode) || (global::System.Object.Equals(ResultPersistenceMode, other.ResultPersistenceMode))))
-        && ((__isset.trimArrowBatchesToLimit == other.__isset.trimArrowBatchesToLimit) && ((!__isset.trimArrowBatchesToLimit) || (global::System.Object.Equals(TrimArrowBatchesToLimit, other.TrimArrowBatchesToLimit))));
+        && ((__isset.trimArrowBatchesToLimit == other.__isset.trimArrowBatchesToLimit) && ((!__isset.trimArrowBatchesToLimit) || (global::System.Object.Equals(TrimArrowBatchesToLimit, other.TrimArrowBatchesToLimit))))
+        && ((__isset.enforceResultPersistenceMode == other.__isset.enforceResultPersistenceMode) && ((!__isset.enforceResultPersistenceMode) || (global::System.Object.Equals(EnforceResultPersistenceMode, other.EnforceResultPersistenceMode))));
     }
 
     public override int GetHashCode() {
@@ -996,6 +1037,10 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if(__isset.executionVersion)
         {
           hashcode = (hashcode * 397) + ExecutionVersion.GetHashCode();
+        }
+        if(__isset.enforceResultPersistenceMode)
+        {
+          hashcode = (hashcode * 397) + EnforceResultPersistenceMode.GetHashCode();
         }
         if((RequestValidation != null) && __isset.requestValidation)
         {
@@ -1090,6 +1135,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp365.Append(", RejectHighCostQueries: ");
         RejectHighCostQueries.ToString(tmp365);
+      }
+      if(__isset.enforceResultPersistenceMode)
+      {
+        tmp365.Append(", EnforceResultPersistenceMode: ");
+        EnforceResultPersistenceMode.ToString(tmp365);
       }
       if(__isset.estimatedCost)
       {

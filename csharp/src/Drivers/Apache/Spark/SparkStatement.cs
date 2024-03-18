@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
@@ -34,6 +35,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
         {
+            statement.EnforceResultPersistenceMode = true;
+            statement.ResultPersistenceMode = 2;
+
             statement.CanReadArrowResult = true;
             statement.CanDownloadResult = true;
             statement.ConfOverlay = SparkConnection.timestampConfig;
@@ -50,10 +54,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             ExecuteStatement();
             PollForResponse();
-
             Schema schema = GetSchema();
 
             return new QueryResult(-1, new SparkReader(this, schema));
+            //return new QueryResult(-1, new CloudFetchReader(this, schema));
         }
 
         public override UpdateResult ExecuteUpdate()
@@ -63,7 +67,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override object GetValue(IArrowArray arrowArray, int index)
         {
-            throw new NotSupportedException();
+            return base.GetValue(arrowArray, index);
         }
 
         sealed class SparkReader : IArrowArrayStream
@@ -124,6 +128,154 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             public void Dispose()
             {
             }
+        }
+
+
+        sealed class CloudFetchReader : IArrowArrayStream
+        {
+            SparkStatement statement;
+            Schema schema;
+            ChunkDownloader chunkDownloader;
+            IArrowReader reader;
+
+            public CloudFetchReader(SparkStatement statement, Schema schema)
+            {
+                this.statement = statement;
+                this.schema = schema;
+                TFetchResultsReq request = new TFetchResultsReq(this.statement.operationHandle, TFetchOrientation.FETCH_NEXT, 500000);
+                TFetchResultsResp response = this.statement.connection.client.FetchResults(request, cancellationToken: default).Result;
+                this.chunkDownloader = new ChunkDownloader(response.Results.ResultLinks);
+            }
+
+            public Schema Schema { get { return schema; } }
+
+            public async ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            {
+                while (true)
+                {
+                    if (this.reader != null)
+                    {
+                        RecordBatch next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+                        if (next != null)
+                        {
+                            return next;
+                        }
+                        this.reader = null;
+                        if (this.chunkDownloader.currentChunkIndex >= this.chunkDownloader.chunks.Count)
+                        {
+                            this.statement = null;
+                        }
+                    }
+
+                    if (this.statement == null)
+                    {
+                        return null;
+                    }
+
+                    if (this.reader == null)
+                    {
+                        var currentChunk = this.chunkDownloader.chunks[this.chunkDownloader.currentChunkIndex];
+                        while (!currentChunk.isDownloaded)
+                        {
+                            Thread.Sleep(500);
+                        }
+                        this.chunkDownloader.currentChunkIndex++;
+                        this.reader = currentChunk.reader;
+                    }
+                }
+            }
+
+            public void Dispose()
+            {
+            }
+        }
+    }
+
+    internal class ChunkDownloader
+    {
+        public Dictionary<int, Chunk> chunks;
+
+        public int currentChunkIndex = 0;
+        HttpClient client;
+
+        public ChunkDownloader(List<TSparkArrowResultLink> links)
+        {
+            this.chunks = new Dictionary<int, Chunk>();
+            for (int i = 0; i < links.Count; i++)
+            {
+                var currentChunk = new Chunk(i, links[i].FileLink);
+                this.chunks.Add(i, currentChunk);
+            }
+            this.client = new HttpClient();
+            initialize();
+        }
+
+        public ChunkDownloader(Dictionary<string, Dictionary<string, string>> links)
+        {
+            //this.links = links;
+            this.client = new HttpClient();
+        }
+
+        void initialize()
+        {
+            int workerThreads, completionPortThreads;
+            ThreadPool.GetMinThreads(out workerThreads, out completionPortThreads);
+            ThreadPool.SetMinThreads(5, completionPortThreads);
+            ThreadPool.SetMaxThreads(10, completionPortThreads);
+            foreach (KeyValuePair<int, Chunk> chunk in chunks)
+            {
+                ThreadPool.QueueUserWorkItem(async _ =>
+                {
+                    try
+                    {
+                        await chunk.Value.downloadData(this.client);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
+                });
+                
+            }
+
+        }
+
+
+    }
+
+    public class Chunk
+    {
+        int chunkId;
+        string chunkUrl;
+        Dictionary<string, string> headers;
+        public bool isDownloaded = false;
+        public bool isFailed = false;
+        public IArrowReader reader;
+
+        public Chunk(int chunkId, string chunkUrl) : this(chunkId, chunkUrl, new Dictionary<string, string>())
+        {
+            
+        }
+
+        public Chunk(int chunkId, string chunkUrl, Dictionary<string, string> headers)
+        {
+            this.chunkId = chunkId;
+            this.chunkUrl = chunkUrl;
+            this.headers = headers;
+            this.reader = null;
+        }
+
+        public async Task downloadData(HttpClient client)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, chunkUrl);
+            foreach (KeyValuePair<string, string> pair in headers)
+            {
+                request.Headers.Add(pair.Key, pair.Value);
+            }
+            HttpResponseMessage response = await client.SendAsync(request);
+            this.reader = new ArrowStreamReader(response.Content.ReadAsStreamAsync().Result);
+            isDownloaded = true;
+            
         }
     }
 }
