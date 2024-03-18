@@ -168,12 +168,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 throw;
             }
 
-
-            if (sql == null)
-            {
-                return System.Array.Empty<string>();
-            }
-
             Dictionary<string, string> placeholderValues = new Dictionary<string, string>() {
                 {"{ADBC_CATALOG}", testConfiguration.Metadata.Catalog },
                 {"{ADBC_SCHEMA}", testConfiguration.Metadata.Schema },
