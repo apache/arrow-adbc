@@ -35,7 +35,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
         {
-            
+            statement.EnforceResultPersistenceMode = true;
+            statement.ResultPersistenceMode = 2;
+
             statement.CanReadArrowResult = true;
             statement.CanDownloadResult = true;
             statement.ConfOverlay = SparkConnection.timestampConfig;
@@ -52,7 +54,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             ExecuteStatement();
             PollForResponse();
-
             Schema schema = GetSchema();
 
             return new QueryResult(-1, new SparkReader(this, schema));
@@ -160,7 +161,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                             return next;
                         }
                         this.reader = null;
-                        if (this.chunkDownloader.chunks[this.chunkDownloader.currentChunkIndex] == null)
+                        if (this.chunkDownloader.currentChunkIndex >= this.chunkDownloader.chunks.Count)
                         {
                             this.statement = null;
                         }
@@ -206,6 +207,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 this.chunks.Add(i, currentChunk);
             }
             this.client = new HttpClient();
+            initialize();
         }
 
         public ChunkDownloader(Dictionary<string, Dictionary<string, string>> links)
