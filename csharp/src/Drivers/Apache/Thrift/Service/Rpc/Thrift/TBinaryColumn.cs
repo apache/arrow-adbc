@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using Apache.Arrow;
 using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using Apache.Arrow.Types;
 using Thrift.Collections;
 using Thrift.Protocol;
@@ -87,7 +88,8 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
                   for(int _i197 = 0; _i197 < length; ++_i197)
                   {
-                    typedMemory.Span[_i197] = offset;
+                    //typedMemory.Span[_i197] = offset;
+                    StreamExtensions.WriteInt32LittleEndian(offset, memory.Span, _i197 * 4);
                     var size = await iprot.ReadI32Async(cancellationToken);
                     offset += size;
 
@@ -107,6 +109,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
                     values.Append(tmp.AsMemory(0, size).Span);
                   }
                   typedMemory.Span[length] = offset;
+                  StreamExtensions.WriteInt32LittleEndian(offset, memory.Span, length * 4);
 
                   await iprot.ReadListEndAsync(cancellationToken);
                 }
