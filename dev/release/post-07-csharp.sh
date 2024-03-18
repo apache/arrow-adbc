@@ -30,11 +30,25 @@ main() {
   fi
 
   local -r version="$1"
+  local -r tag="apache-arrow-adbc-${version}"
 
   if [ -z "${NUGET_API_KEY}" ]; then
     echo "NUGET_API_KEY is empty"
     exit 1
   fi
+
+  : ${REPOSITORY:="apache/arrow-adbc"}
+
+  local -r tmp=$(mktemp -d -t "arrow-post-csharp.XXXXX")
+
+  header "Downloading C# packages for ${version}"
+
+  gh release download \
+     --repo "${REPOSITORY}" \
+     "${tag}" \
+     --dir "${tmp}" \
+     --pattern "*.nupkg" \
+     --pattern "*.snupkg"
 
   local base_names=()
   base_names+=(Apache.Arrow.Adbc.${version})
@@ -44,14 +58,21 @@ main() {
   base_names+=(Apache.Arrow.Adbc.Drivers.Interop.Snowflake.${version})
   for base_name in "${base_names[@]}"; do
     dotnet nuget push \
-      ${base_name}.nupkg \
+      "${tmp}/${base_name}.nupkg" \
       -k ${NUGET_API_KEY} \
       -s https://api.nuget.org/v3/index.json
-    rm -f ${base_name}.{nupkg,snupkg}
   done
+
+  rm -rf "${tmp}"
 
   echo "Success! The released NuGet package is available here:"
   echo "  https://www.nuget.org/packages/Apache.Arrow.Adbc/${version}"
+}
+
+header() {
+    echo "============================================================"
+    echo "${1}"
+    echo "============================================================"
 }
 
 main "$@"

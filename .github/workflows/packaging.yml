@@ -938,6 +938,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     needs:
+      - csharp
       - docs
       - source
       - java
@@ -961,6 +962,8 @@ jobs:
             '(' \
               -name docs.tgz -or \
               -name '*.jar' -or \
+              -name '*.nupkg' -or \
+              -name '*.snupkg' -or \
               -name '*.pom' -or \
               -name '*.whl' -or \
               -name 'adbc_*.tar.gz' -or \

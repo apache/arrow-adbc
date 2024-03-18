@@ -52,7 +52,7 @@ update_versions() {
   git add meta.yaml
   popd
 
-  sed -i.bak -E "s/version = \".+\"/version = \"${version}\"/" "${ADBC_DIR}/csharp/Directory.Build.props"
+  sed -i.bak -E "s/<version>.+</version>/<version>${version}</version>/" "${ADBC_DIR}/csharp/Directory.Build.props"
   rm "${ADBC_DIR}/csharp/Directory.Build.props.bak"
   git add "${ADBC_DIR}/csharp/Directory.Build.props"
 
