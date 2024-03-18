@@ -1747,7 +1747,7 @@ TEST_P(PostgresDecimalTest, SelectValue) {
   ArrowSchemaInit(&schema.value);
   ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
   ASSERT_EQ(
-      AdbcNsArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
+      PrivateArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
       0);
   ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
 

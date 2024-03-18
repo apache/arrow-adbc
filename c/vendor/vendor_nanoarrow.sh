@@ -39,7 +39,9 @@ main() {
     # resulting bundle is perfectly synchronized with the commit we've pulled.
     pushd "$SCRATCH"
     mkdir build && cd build
-    cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=AdbcNs
+    # Do not use "adbc" in the namespace name since our scripts expose all
+    # such symbols
+    cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=Private
     cmake --build .
     cmake --install . --prefix=../dist-adbc
     popd

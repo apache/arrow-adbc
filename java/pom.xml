@@ -151,7 +151,7 @@
       <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
-        <version>5.8.2</version>
+        <version>5.10.2</version>
         <scope>import</scope>
         <type>pom</type>
       </dependency>
@@ -164,7 +164,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.0.0-M7</version>
+          <version>3.2.5</version>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -314,7 +314,7 @@
                 <path>
                   <groupId>com.uber.nullaway</groupId>
                   <artifactId>nullaway</artifactId>
-                  <version>0.10.10</version>
+                  <version>0.10.24</version>
                 </path>
                 <path>
                   <groupId>org.checkerframework</groupId>

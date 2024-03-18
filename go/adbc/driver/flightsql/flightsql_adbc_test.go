@@ -35,6 +35,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -1005,6 +1006,12 @@ func (suite *DomainSocketTests) SetupSuite() {
 
 	suite.ctx = context.Background()
 	suite.Driver = driver.NewDriver(suite.alloc)
+
+	if runtime.GOOS == "windows" {
+		// Remove drive letter and reverse slash directions in path
+		listenSocket = strings.ReplaceAll(listenSocket[2:], "\\", "/")
+	}
+
 	suite.DB, err = suite.Driver.NewDatabase(map[string]string{
 		adbc.OptionKeyURI: "grpc+unix://" + listenSocket,
 	})
