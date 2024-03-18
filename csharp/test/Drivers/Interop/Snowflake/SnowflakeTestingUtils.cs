@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using Apache.Arrow.Adbc.Drivers.Interop.Snowflake;
 
@@ -43,6 +44,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     internal class SnowflakeTestingUtils
     {
         internal static readonly SnowflakeTestConfiguration TestConfiguration;
+        private static readonly Assembly CurrentAssembly;
 
         internal const string SNOWFLAKE_TEST_CONFIG_VARIABLE = "SNOWFLAKE_TEST_CONFIG_FILE";
 
@@ -56,6 +58,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             {
                 Console.WriteLine(ex.Message);
             }
+
+            CurrentAssembly = Assembly.GetExecutingAssembly();
         }
 
         /// <summary>
@@ -133,11 +137,27 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Parses the queries from resources/SnowflakeData.sql
         /// </summary>
         /// <param name="testConfiguration"><see cref="SnowflakeTestConfiguration"/></param>
-        internal static string[] GetQueries(SnowflakeTestConfiguration testConfiguration, string sqlFilePath = "resources/SnowflakeData.sql")
+        internal static string[] GetQueries(SnowflakeTestConfiguration testConfiguration, string resourceName = "Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake.Resources.SnowflakeData.sql")
         {
             StringBuilder content = new StringBuilder();
 
-            string[] sql = File.ReadAllLines(sqlFilePath);
+            string[] sql = null;
+
+            using (Stream stream = CurrentAssembly.GetManifestResourceStream(resourceName))
+            {
+                if (stream != null)
+                {
+                    using (StreamReader sr = new StreamReader(stream))
+                    {
+                        sql = sr.ReadToEnd().Split(new[] {Environment.NewLine }, StringSplitOptions.None);
+                    }
+                }
+            }
+
+            if (sql == null)
+            {
+                return System.Array.Empty<string>();
+            }
 
             Dictionary<string, string> placeholderValues = new Dictionary<string, string>() {
                 {"{ADBC_CATALOG}", testConfiguration.Metadata.Catalog },

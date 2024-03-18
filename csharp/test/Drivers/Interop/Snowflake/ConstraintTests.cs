@@ -167,7 +167,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
         private void CreateTables()
         {
-            string[] queries = SnowflakeTestingUtils.GetQueries(_snowflakeTestConfiguration, "resources/SnowflakeConstraints.sql");
+            string[] queries = SnowflakeTestingUtils.GetQueries(_snowflakeTestConfiguration, "Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake.Resources.SnowflakeConstraints.sql");
 
             Dictionary<string, string> placeholderValues = new Dictionary<string, string>() {
                 {"{ADBC_CONSTRANT_TABLE_1}", _tableName1 },
