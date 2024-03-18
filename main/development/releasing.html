@@ -695,6 +695,25 @@ dev/release/post-06-ruby.sh<span class="w"> </span>&lt;version&gt;
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
+Upload C#/.NET packages to NuGet<div class="sd-summary-down docutils">
+<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
+<div class="sd-summary-up docutils">
+<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
+</summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">You must be one of owners of the package.  If you aren’t an owner yet, an
+existing owner can add you at <a class="reference external" href="https://nuget.org">https://nuget.org</a>.</p>
+<p class="sd-card-text">You will need to [create an API
+key](<a class="reference external" href="https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package#create-an-api-key">https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package#create-an-api-key</a>).</p>
+<p class="sd-card-text">An owner can upload:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">NUGET_API_KEY</span><span class="o">=</span>&lt;your<span class="w"> </span>API<span class="w"> </span>key<span class="w"> </span>here&gt;
+
+<span class="c1"># dev/release/post-07-csharp.sh 1.0.0</span>
+dev/release/post-07-csharp.sh<span class="w"> </span>&lt;version&gt;
+</pre></div>
+</div>
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
+<summary class="sd-summary-title sd-card-header sd-fs-5">
 Update conda-forge packages<div class="sd-summary-down docutils">
 <svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
 <div class="sd-summary-up docutils">

@@ -364,6 +364,25 @@ Be sure to go through on the following checklist:
       # dev/release/post-06-ruby.sh 1.0.0
       dev/release/post-06-ruby.sh <version>
 
+.. dropdown:: Upload C#/.NET packages to NuGet
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   You must be one of owners of the package.  If you aren't an owner yet, an
+   existing owner can add you at https://nuget.org.
+
+   You will need to [create an API
+   key](https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package#create-an-api-key).
+
+   An owner can upload:
+
+   .. code-block:: bash
+
+      export NUGET_API_KEY=<your API key here>
+
+      # dev/release/post-07-csharp.sh 1.0.0
+      dev/release/post-07-csharp.sh <version>
+
 .. dropdown:: Update conda-forge packages
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
