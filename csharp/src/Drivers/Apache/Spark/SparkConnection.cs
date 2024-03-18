@@ -81,7 +81,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             string hostName = properties["hostname"];
             string path = properties["path"];
-            string token = properties["token"];
+            string token;
+
+            if (properties.ContainsKey("token"))
+                token = properties["token"];
+            else
+                token = properties["password"];
 
             string uri = "https://" + hostName + "/" + path;
 
