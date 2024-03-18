@@ -148,6 +148,15 @@ for details.
 [cmake-prefix-path]: https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
 [gtest]: https://github.com/google/googletest/
 
+### C#/.NET
+
+Make sure [.NET Core is installed](https://dotnet.microsoft.com/en-us/download).
+
+```shell
+$ cd csharp
+$ dotnet build
+```
+
 ### Documentation
 
 The documentation uses the [Sphinx][sphinx] documentation generator.
