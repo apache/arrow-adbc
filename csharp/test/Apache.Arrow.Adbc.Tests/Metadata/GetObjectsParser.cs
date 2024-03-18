@@ -206,10 +206,26 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         }
     }
 
+    /// <summary>
+    /// Extension methods for List<Field> type
+    /// </summary>
+    ///
     public static class FieldExtensions
     {
+        /// <summary>
+        /// Finds the index of the first field with the provided name in the list or throws an exception
+        /// </summary>
+        /// <param name="fields">The list of fields</param>
+        /// <param name="name">The field name to look for</param>
+        /// <returns>The index of the first field with the provided name</returns>
+        /// <exception cref="ArgumentNullException">Thrown if fields argument is null</exception>
+        /// <exception cref="InvalidOperationException">Thrown if no matching field is found with the provided name</exception>
         public static int FindIndexOrThrow(this List<Field> fields, string name)
         {
+            if (fields == null)
+            {
+                throw new ArgumentNullException(nameof(fields));
+            }
             int index = fields.FindIndex(f => f.Name == name);
             if (index == -1)
             {
