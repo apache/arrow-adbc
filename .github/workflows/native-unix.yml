@@ -103,7 +103,7 @@ jobs:
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.21
+          go-version: 1.21.8
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -117,7 +117,7 @@ jobs:
           export ADBC_BUILD_TESTS=OFF
           export ADBC_USE_ASAN=OFF
           export ADBC_USE_UBSAN=OFF
-          export PATH=$RUNNER_TOOL_CACHE/go/1.21/${{ matrix.goarch }}/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/${{ matrix.goarch }}/bin:$PATH
           export ADBC_CMAKE_ARGS="-DCMAKE_UNITY_BUILD=ON"
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Go Build
@@ -125,7 +125,7 @@ jobs:
         env:
           CGO_ENABLED: "1"
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.21/${{ matrix.goarch }}/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
       - uses: actions/upload-artifact@v3
@@ -399,7 +399,7 @@ jobs:
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.21
+          go-version: 1.21.8
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -416,7 +416,7 @@ jobs:
       - name: Go Build
         shell: bash -l {0}
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.21/${{ matrix.goarch }}/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Run Staticcheck
         if: matrix.os == 'ubuntu-latest'
@@ -430,7 +430,7 @@ jobs:
         env:
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.21/${{ matrix.goarch }}/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
   # ------------------------------------------------------------
@@ -484,7 +484,7 @@ jobs:
           sudo sysctl vm.mmap_rnd_bits=28
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.21
+          go-version: 1.21.8
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
