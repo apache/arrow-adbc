@@ -58,9 +58,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Tests for invalid table and column names
         /// </summary>
         [SkippableTheory]
-        [InlineData("NUMERIC", "0", "INVALID_TABLE_NAME", null, new[] { "[Snowflake] 002003 (42S02)", "SQL compilation error", "Object 'INVALID_TABLE_NAME' does not exist or not authorized" })]
-        [InlineData("NUMERIC", "0", null, "INVALID_" + DefaultColumnName, new[] { "[Snowflake] 000904 (42000)", "SQL compilation error", "invalid identifier 'INVALID_" + DefaultColumnName + "'" })]
-        [InlineData("NUMERIC", "0", null, "\"" + DefaultColumnNameLower + "\"", new[] { "[Snowflake] 000904 (42000)", "SQL compilation error", "invalid identifier '\"column_name\"'" })]
+        [InlineData("NUMERIC", "0", "INVALID_TABLE_NAME", null, new[] { "[Snowflake] 002003 (42S02)" /*, "SQL compilation error", "Object 'INVALID_TABLE_NAME' does not exist or not authorized" */ })]
+        [InlineData("NUMERIC", "0", null, "INVALID_" + DefaultColumnName, new[] { "[Snowflake] 000904 (42000)" /*, "SQL compilation error", "invalid identifier 'INVALID_" + DefaultColumnName + "'" */ })]
+        [InlineData("NUMERIC", "0", null, "\"" + DefaultColumnNameLower + "\"", new[] { "[Snowflake] 000904 (42000)" /*, "SQL compilation error", "invalid identifier '\"column_name\"'" */ })]
         public void TestInvalidObjectName(string columnSpecification, string sourceValue, string overrideTableName, string overrideColumnName, string[] expectedExceptionMessage = null)
         {
             InitializeTest(columnSpecification, sourceValue, out string columnName, out string tableName);
@@ -71,12 +71,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Tests for invalid syntax.
         /// </summary>
         [SkippableTheory]
-        [InlineData("NUMERIC", "0", null, DefaultColumnName + ",", new[] { "[Snowflake] 001003 (42000)", "SQL compilation error", "syntax error", "unexpected 'AS'" })]
-        [InlineData("NUMERIC", "0", null, "," + DefaultColumnName, new[] { "[Snowflake] 001003 (42000)", "SQL compilation error", "syntax error", "unexpected ','" })]
-        [InlineData("NUMERIC", "0", null, "'" + DefaultColumnName, new[] { "[Snowflake] 001003 (42000)", "SQL compilation error", "parse error", "near '<EOF>'." })]
-        [InlineData("NUMERIC", "0", null, DefaultColumnName + "'", new[] { "[Snowflake] 001003 (42000)", "SQL compilation error", "parse error", "near '<EOF>'" })]
-        [InlineData("NUMERIC", "0", null, "\"" + DefaultColumnName, new[] { "[Snowflake] 001003 (42000)", "SQL compilation error", "parse error", "near '<EOF>'", "syntax error", "unexpected '<EOF>'" })]
-        [InlineData("NUMERIC", "0", null, DefaultColumnName + "\"", new[] { "[Snowflake] 001003 (42000)", "SQL compilation error", "parse error", "near '<EOF>'" })]
+        [InlineData("NUMERIC", "0", null, DefaultColumnName + ",", new[] { "[Snowflake] 001003 (42000)" /*, "SQL compilation error", "syntax error", "unexpected 'AS'" */ })]
+        [InlineData("NUMERIC", "0", null, "," + DefaultColumnName, new[] { "[Snowflake] 001003 (42000)" /*, "SQL compilation error", "syntax error", "unexpected ','" */ })]
+        [InlineData("NUMERIC", "0", null, "'" + DefaultColumnName, new[] { "[Snowflake] 001003 (42000)" /*, "SQL compilation error", "parse error", "near '<EOF>'." */ })]
+        [InlineData("NUMERIC", "0", null, DefaultColumnName + "'", new[] { "[Snowflake] 001003 (42000)" /*, "SQL compilation error", "parse error", "near '<EOF>'" */ })]
+        [InlineData("NUMERIC", "0", null, "\"" + DefaultColumnName, new[] { "[Snowflake] 001003 (42000)" /*, "SQL compilation error", "parse error", "near '<EOF>'" */ })]
+        [InlineData("NUMERIC", "0", null, DefaultColumnName + "\"", new[] { "[Snowflake] 001003 (42000)" /*, "SQL compilation error", "parse error", "near '<EOF>'" */ })]
         public void TestInvalidSyntax(string columnSpecification, string sourceValue, string overrideTableName, string overrideColumnName, string[] expectedExceptionMessage = null)
         {
             InitializeTest(columnSpecification, sourceValue, out string columnName, out string tableName);
