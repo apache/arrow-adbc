@@ -254,7 +254,7 @@ install_go() {
     return 0
   fi
 
-  local version=1.21
+  local version=1.21.8
   show_info "Installing go version ${version}..."
 
   local arch="$(uname -m)"
@@ -271,7 +271,7 @@ install_go() {
   fi
 
   local archive="go${version}.${os}-${arch}.tar.gz"
-  curl -sLO https://dl.google.com/go/$archive
+  curl -sLO https://go.dev/dl/$archive
 
   local prefix=${ARROW_TMPDIR}/go
   mkdir -p $prefix
