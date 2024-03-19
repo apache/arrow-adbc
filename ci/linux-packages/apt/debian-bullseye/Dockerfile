@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-ARG FROM=debian:bullseye
+ARG FROM=golang:1.21-bullseye
 FROM ${FROM}
 
 RUN \
@@ -59,7 +59,6 @@ RUN \
     pkg-config \
     tzdata \
     valac && \
-  apt install -y -V -t $(lsb_release --codename --short)-backports ${quiet} \
-    golang \
+  apt install -y -V -t $(lsb_release --codename --short)-backports ${quiet} \    
     meson && \
   apt clean

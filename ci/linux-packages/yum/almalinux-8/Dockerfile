@@ -30,7 +30,7 @@ RUN \
     cmake \
     gcc-c++ \
     gobject-introspection-devel \
-    golang \
+    golang-1.21 \
     libpq-devel \
     make \
     ninja-build \
