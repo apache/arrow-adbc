@@ -58,7 +58,6 @@ RUN \
     ninja-build \
     pkg-config \
     tzdata \
-    valac && \
-  apt install -y -V -t $(lsb_release --codename --short)-backports ${quiet} \    
+    valac \  
     meson && \
   apt clean
