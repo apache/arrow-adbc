@@ -29,8 +29,7 @@ RUN \
     ccache \
     cmake \
     gcc-c++ \
-    gobject-introspection-devel \
-    golang-1.21 \
+    gobject-introspection-devel \    
     libpq-devel \
     make \
     ninja-build \
@@ -42,3 +41,7 @@ RUN \
     tar \
     vala && \
   yum clean ${quiet} all
+
+RUN wget --no-verbose https://go.dev/dl/go1.21.8.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go1.21.8.linux-amd64.tar.gz
+ENV PATH="${PATH}:/usr/local/go/bin"
