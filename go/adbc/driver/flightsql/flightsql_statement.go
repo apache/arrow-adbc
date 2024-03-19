@@ -72,7 +72,7 @@ func (s *sqlOrSubstrait) setSubstraitPlan(plan []byte) {
 	s.substraitPlan = plan
 }
 
-func (s *sqlOrSubstrait) execute(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
+func (s *sqlOrSubstrait) execute(ctx context.Context, cnxn *connectionImpl, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
 	if s.sqlQuery != "" {
 		return cnxn.execute(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
@@ -85,7 +85,7 @@ func (s *sqlOrSubstrait) execute(ctx context.Context, cnxn *cnxn, opts ...grpc.C
 	}
 }
 
-func (s *sqlOrSubstrait) executeSchema(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*arrow.Schema, error) {
+func (s *sqlOrSubstrait) executeSchema(ctx context.Context, cnxn *connectionImpl, opts ...grpc.CallOption) (*arrow.Schema, error) {
 	var (
 		res *flight.SchemaResult
 		err error
@@ -108,7 +108,7 @@ func (s *sqlOrSubstrait) executeSchema(ctx context.Context, cnxn *cnxn, opts ...
 	return flight.DeserializeSchema(res.Schema, cnxn.cl.Alloc)
 }
 
-func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (int64, error) {
+func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cnxn *connectionImpl, opts ...grpc.CallOption) (int64, error) {
 	if s.sqlQuery != "" {
 		return cnxn.executeUpdate(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
@@ -121,7 +121,7 @@ func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cnxn *cnxn, opts ...
 	}
 }
 
-func (s *sqlOrSubstrait) poll(ctx context.Context, cnxn *cnxn, retryDescriptor *flight.FlightDescriptor, opts ...grpc.CallOption) (*flight.PollInfo, error) {
+func (s *sqlOrSubstrait) poll(ctx context.Context, cnxn *connectionImpl, retryDescriptor *flight.FlightDescriptor, opts ...grpc.CallOption) (*flight.PollInfo, error) {
 	if s.sqlQuery != "" {
 		return cnxn.poll(ctx, s.sqlQuery, retryDescriptor, opts...)
 	} else if s.substraitPlan != nil {
@@ -134,7 +134,7 @@ func (s *sqlOrSubstrait) poll(ctx context.Context, cnxn *cnxn, retryDescriptor *
 	}
 }
 
-func (s *sqlOrSubstrait) prepare(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
+func (s *sqlOrSubstrait) prepare(ctx context.Context, cnxn *connectionImpl, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
 	if s.sqlQuery != "" {
 		return cnxn.prepare(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
@@ -156,7 +156,7 @@ type incrementalState struct {
 
 type statement struct {
 	alloc       memory.Allocator
-	cnxn        *cnxn
+	cnxn        *connectionImpl
 	clientCache gcache.Cache
 
 	hdrs             metadata.MD

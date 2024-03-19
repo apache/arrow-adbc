@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/apache/arrow/go/v16/arrow/flight"
 	"github.com/apache/arrow/go/v16/arrow/flight/flightsql"
@@ -51,7 +51,6 @@ func (d *dbDialOpts) rebuild() {
 	d.opts = []grpc.DialOption{
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(d.maxMsgSize),
 			grpc.MaxCallSendMsgSize(d.maxMsgSize)),
-		grpc.WithUserAgent("ADBC Flight SQL Driver " + infoDriverVersion),
 	}
 	if d.block {
 		d.opts = append(d.opts, grpc.WithBlock())
@@ -383,7 +382,12 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 		creds = insecure.NewCredentials()
 		target = "unix:" + uri.Path
 	}
-	dialOpts := append(d.dialOpts.opts, grpc.WithConnectParams(d.timeout.connectParams()), grpc.WithTransportCredentials(creds))
+
+	driverVersion, ok := d.DatabaseImplBase.DriverInfo.GetInfoDriverVersion()
+	if !ok {
+		driverVersion = driverbase.UnknownVersion
+	}
+	dialOpts := append(d.dialOpts.opts, grpc.WithConnectParams(d.timeout.connectParams()), grpc.WithTransportCredentials(creds), grpc.WithUserAgent("ADBC Flight SQL Driver "+driverVersion))
 
 	d.Logger.DebugContext(ctx, "new client", "location", loc)
 	cl, err := flightsql.NewClient(target, nil, middleware, dialOpts...)
@@ -503,9 +507,18 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		}
 	}
 
-	return &cnxn{cl: cl, db: d, clientCache: cache,
-		hdrs: make(metadata.MD), timeouts: d.timeout,
-		supportInfo: cnxnSupport}, nil
+	conn := &connectionImpl{
+		cl: cl, db: d, clientCache: cache,
+		hdrs: make(metadata.MD), timeouts: d.timeout, supportInfo: cnxnSupport,
+		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+	}
+
+	return driverbase.NewConnectionBuilder(conn).
+		WithDriverInfoPreparer(conn).
+		WithAutocommitSetter(conn).
+		WithDbObjectsEnumerator(conn).
+		WithCurrentNamespacer(conn).
+		Connection(), nil
 }
 
 type bearerAuthMiddleware struct {
