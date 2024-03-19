@@ -27,6 +27,6 @@ ARG ARCH
 
 RUN yum install -y docker
 # arm64v8 -> arm64
-RUN wget --no-verbose https://go.dev/dl/go1.19.13.linux-${ARCH/v8/}.tar.gz
-RUN tar -C /usr/local -xzf go1.19.13.linux-${ARCH/v8/}.tar.gz
+RUN wget --no-verbose https://go.dev/dl/go1.21.8.linux-${ARCH/v8/}.tar.gz
+RUN tar -C /usr/local -xzf go1.21.8.linux-${ARCH/v8/}.tar.gz
 ENV PATH="${PATH}:/usr/local/go/bin"
