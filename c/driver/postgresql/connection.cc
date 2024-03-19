@@ -643,8 +643,7 @@ AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
 AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
     const uint32_t* info_codes, size_t info_codes_length, struct ArrowSchema* schema,
     struct ArrowArray* array, struct AdbcError* error) {
-  RAISE_ADBC(AdbcInitConnectionGetInfoSchema(info_codes, info_codes_length, schema, array,
-                                             error));
+  RAISE_ADBC(AdbcInitConnectionGetInfoSchema(schema, array, error));
 
   for (size_t i = 0; i < info_codes_length; i++) {
     switch (info_codes[i]) {
@@ -1131,8 +1130,6 @@ AdbcStatusCode PostgresConnection::GetStatisticNames(struct ArrowArrayStream* ou
     return status;
   }
   return BatchToArrayStream(&array, &schema, out, error);
-
-  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,

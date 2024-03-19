@@ -26,7 +26,7 @@ import os
 import typing
 import sys
 import warnings
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 cimport cpython
 import cython
@@ -168,7 +168,7 @@ INGEST_OPTION_MODE_CREATE_APPEND = ADBC_INGEST_OPTION_MODE_CREATE_APPEND.decode(
 INGEST_OPTION_TARGET_TABLE = ADBC_INGEST_OPTION_TARGET_TABLE.decode("utf-8")
 
 
-cdef object convert_error(CAdbcStatusCode status, CAdbcError* error) except *:
+cdef object convert_error(CAdbcStatusCode status, CAdbcError* error):
     cdef CAdbcErrorDetail c_detail
 
     if status == ADBC_STATUS_OK:
@@ -1195,7 +1195,7 @@ cdef class AdbcStatement(_AdbcHandle):
         check_error(status, &c_error)
         return (stream, rows_affected)
 
-    def execute_partitions(self) -> Tuple[List[bytes], ArrowSchemaHandle, int]:
+    def execute_partitions(self) -> Tuple[List[bytes], Optional[ArrowSchemaHandle], int]:
         """
         Execute the query and get the partitions of the result set.
 
@@ -1205,8 +1205,9 @@ cdef class AdbcStatement(_AdbcHandle):
         -------
         list of byte
             The partitions of the distributed result set.
-        ArrowSchemaHandle
-            The schema of the result set.
+        ArrowSchemaHandle or None
+            The schema of the result set.  May be None if incremental
+            execution is enabled and the server does not return a schema.
         int
             The number of rows if known, else -1.
         """
@@ -1232,7 +1233,9 @@ cdef class AdbcStatement(_AdbcHandle):
             partitions.append(PyBytes_FromStringAndSize(data, length))
         c_partitions.release(&c_partitions)
 
-        return (partitions, schema, rows_affected)
+        if schema.schema.release == NULL:
+            return partitions, None, rows_affected
+        return partitions, schema, rows_affected
 
     def execute_schema(self) -> ArrowSchemaHandle:
         """
@@ -1495,7 +1498,7 @@ cdef extern from "_blocking_impl.h" nogil:
     c_string CClearBlockingCallback"pyadbc_driver_manager::ClearBlockingCallback"()
 
 
-@functools.cache
+@functools.lru_cache
 def _init_blocking_call():
     error = bytes(CInitBlockingCallback()).decode("utf-8")
     if error:

@@ -42,7 +42,7 @@ const (
 )
 
 type statement struct {
-	cnxn                *cnxn
+	cnxn                *connectionImpl
 	alloc               memory.Allocator
 	queueSize           int
 	prefetchConcurrency int
@@ -361,7 +361,7 @@ func (st *statement) initIngest(ctx context.Context) error {
 	if st.ingestMode == adbc.OptionValueIngestModeCreateAppend {
 		createBldr.WriteString(" IF NOT EXISTS ")
 	}
-	createBldr.WriteString(st.targetTable)
+	createBldr.WriteString(strconv.Quote(st.targetTable))
 	createBldr.WriteString(" (")
 
 	var schema *arrow.Schema
@@ -398,7 +398,7 @@ func (st *statement) initIngest(ctx context.Context) error {
 	case adbc.OptionValueIngestModeAppend:
 		// Do nothing
 	case adbc.OptionValueIngestModeReplace:
-		replaceQuery := "DROP TABLE IF EXISTS " + st.targetTable
+		replaceQuery := "DROP TABLE IF EXISTS " + strconv.Quote(st.targetTable)
 		_, err := st.cnxn.cn.ExecContext(ctx, replaceQuery, nil)
 		if err != nil {
 			return errToAdbcErr(adbc.StatusInternal, err)

@@ -43,7 +43,7 @@
 
 namespace adbc {
 
-namespace r {
+namespace common {
 
 class Error {
  public:
@@ -63,6 +63,10 @@ class Error {
   }
 
   void ToAdbc(AdbcError* adbc_error, AdbcDriver* driver = nullptr) {
+    if (adbc_error == nullptr) {
+      return;
+    }
+
     if (adbc_error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
       auto error_owned_by_adbc_error =
           new Error(std::move(message_), std::move(details_));
@@ -95,7 +99,7 @@ class Error {
   AdbcErrorDetail CDetail(int index) const {
     const auto& detail = details_[index];
     return {detail.first.c_str(), reinterpret_cast<const uint8_t*>(detail.second.data()),
-            detail.second.size()};
+            detail.second.size() + 1};
   }
 
   static void CRelease(AdbcError* error) {
@@ -308,7 +312,7 @@ class ObjectBase {
     std::stringstream msg_builder;
     msg_builder << "Option not found for key '" << key << "'";
     Error cpperror(msg_builder.str());
-    cpperror.AddDetail("adbc.r.option_key", key);
+    cpperror.AddDetail("adbc.driver_base.option_key", key);
     cpperror.ToAdbc(error, driver());
   }
 
@@ -316,7 +320,7 @@ class ObjectBase {
     std::stringstream msg_builder;
     msg_builder << "Wrong type requested for option key '" << key << "'";
     Error cpperror(msg_builder.str());
-    cpperror.AddDetail("adbc.r.option_key", key);
+    cpperror.AddDetail("adbc.driver_base.option_key", key);
     cpperror.ToAdbc(error, driver());
   }
 };
@@ -761,6 +765,6 @@ class Driver {
   }
 };
 
-}  // namespace r
+}  // namespace common
 
 }  // namespace adbc

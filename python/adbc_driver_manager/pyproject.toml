@@ -21,7 +21,7 @@ description = "A generic entrypoint for ADBC drivers."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 dynamic = ["version"]
 dependencies = ["typing-extensions"]
 
@@ -43,6 +43,7 @@ markers = [
     "panicdummy: tests that require the testing-only panicdummy driver",
     "sqlite: tests that require the SQLite driver",
 ]
+xfail_strict = true
 
 [tool.setuptools]
 license-files = ["LICENSE.txt", "NOTICE.txt"]

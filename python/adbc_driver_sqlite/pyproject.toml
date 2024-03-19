@@ -21,10 +21,11 @@ description = "An ADBC driver for working with SQLite."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 dynamic = ["version"]
 dependencies = [
     "adbc-driver-manager",
+    "importlib-resources >=1.3",
 ]
 
 [project.optional-dependencies]
@@ -44,3 +45,6 @@ include-package-data = true
 license-files = ["LICENSE.txt", "NOTICE.txt"]
 packages = ["adbc_driver_sqlite"]
 py-modules = ["adbc_driver_sqlite"]
+
+[tool.pytest.ini_options]
+xfail_strict = true

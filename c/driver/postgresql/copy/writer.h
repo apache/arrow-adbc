@@ -361,19 +361,21 @@ class PostgresCopyDurationFieldWriter : public PostgresCopyFieldWriter {
     NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
 
     int64_t raw_value = ArrowArrayViewGetIntUnsafe(array_view_, index);
-    int64_t value;
+    int64_t value = 0;
 
     bool overflow_safe = true;
     switch (TU) {
       case NANOARROW_TIME_UNIT_SECOND:
-        if ((overflow_safe = raw_value <= kMaxSafeSecondsToMicros &&
-                             raw_value >= kMinSafeSecondsToMicros)) {
+        overflow_safe =
+            raw_value <= kMaxSafeSecondsToMicros && raw_value >= kMinSafeSecondsToMicros;
+        if (overflow_safe) {
           value = raw_value * 1000000;
         }
         break;
       case NANOARROW_TIME_UNIT_MILLI:
-        if ((overflow_safe = raw_value <= kMaxSafeMillisToMicros &&
-                             raw_value >= kMinSafeMillisToMicros)) {
+        overflow_safe =
+            raw_value <= kMaxSafeMillisToMicros && raw_value >= kMinSafeMillisToMicros;
+        if (overflow_safe) {
           value = raw_value * 1000;
         }
         break;
@@ -443,19 +445,21 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
     NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
 
     int64_t raw_value = ArrowArrayViewGetIntUnsafe(array_view_, index);
-    int64_t value;
+    int64_t value = 0;
 
     bool overflow_safe = true;
     switch (TU) {
       case NANOARROW_TIME_UNIT_SECOND:
-        if ((overflow_safe = raw_value <= kMaxSafeSecondsToMicros &&
-                             raw_value >= kMinSafeSecondsToMicros)) {
+        overflow_safe =
+            raw_value <= kMaxSafeSecondsToMicros && raw_value >= kMinSafeSecondsToMicros;
+        if (overflow_safe) {
           value = raw_value * 1000000;
         }
         break;
       case NANOARROW_TIME_UNIT_MILLI:
-        if ((overflow_safe = raw_value <= kMaxSafeMillisToMicros &&
-                             raw_value >= kMinSafeMillisToMicros)) {
+        overflow_safe =
+            raw_value <= kMaxSafeMillisToMicros && raw_value >= kMinSafeMillisToMicros;
+        if (overflow_safe) {
           value = raw_value * 1000;
         }
         break;

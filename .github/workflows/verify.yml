@@ -57,6 +57,7 @@ jobs:
       - name: Verify
         shell: bash
         env:
+          CI: "false"
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"
           TEST_BINARIES: "1"
@@ -76,6 +77,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+          submodules: recursive
       - uses: conda-incubator/setup-miniconda@v3
         # The Unix script will set up conda itself
         if: matrix.os == 'windows-latest'
@@ -83,9 +85,15 @@ jobs:
           miniforge-variant: Mambaforge
           miniforge-version: latest
           use-mamba: true
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
       - name: Verify
         if: matrix.os != 'windows-latest'
         env:
+          CI: "false"
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"
           TEST_SOURCE: "1"
@@ -97,6 +105,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         env:
+          CI: "false"
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"
           TEST_SOURCE: "1"

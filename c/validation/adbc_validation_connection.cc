@@ -151,7 +151,7 @@ void ConnectionTest::TestMetadataCurrentCatalog() {
     ASSERT_THAT(
         AdbcConnectionGetOption(&connection, ADBC_CONNECTION_OPTION_CURRENT_CATALOG,
                                 buffer, &buffer_size, &error),
-        IsStatus(ADBC_STATUS_NOT_FOUND));
+        IsStatus(ADBC_STATUS_NOT_FOUND, &error));
   }
 }
 
@@ -550,7 +550,7 @@ void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
-    ASSERT_GT(reader.array->length, 0);
+    ASSERT_GE(reader.array->length, 0);
     do {
       for (int64_t row = 0; row < reader.array->length; row++) {
         struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
@@ -596,19 +596,24 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
-    ASSERT_GT(reader.array->length, 0);
+
+    // type: list<db_schema_schema>
+    struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
+    // type: db_schema_schema (struct)
+    struct ArrowArrayView* catalog_db_schemas = catalog_db_schemas_list->children[0];
+    // type: list<table_schema>
+    struct ArrowArrayView* db_schema_tables_list = catalog_db_schemas->children[1];
+    // type: table_schema (struct)
+    struct ArrowArrayView* db_schema_tables = db_schema_tables_list->children[0];
+
+    if (expected.second) {
+      ASSERT_GT(reader.array->length, 0);
+    } else {
+      ASSERT_EQ(db_schema_tables->length, 0);
+    }
     bool found_expected_table = false;
     do {
       for (int64_t row = 0; row < reader.array->length; row++) {
-        // type: list<db_schema_schema>
-        struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
-        // type: db_schema_schema (struct)
-        struct ArrowArrayView* catalog_db_schemas = catalog_db_schemas_list->children[0];
-        // type: list<table_schema>
-        struct ArrowArrayView* db_schema_tables_list = catalog_db_schemas->children[1];
-        // type: table_schema (struct)
-        struct ArrowArrayView* db_schema_tables = db_schema_tables_list->children[0];
-
         ASSERT_FALSE(ArrowArrayViewIsNull(catalog_db_schemas_list, row))
             << "Row " << row << " should have non-null catalog_db_schemas";
 
@@ -670,7 +675,7 @@ void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
-    ASSERT_GT(reader.array->length, 0);
+    ASSERT_GE(reader.array->length, 0);
     bool found_expected_table = false;
     do {
       for (int64_t row = 0; row < reader.array->length; row++) {

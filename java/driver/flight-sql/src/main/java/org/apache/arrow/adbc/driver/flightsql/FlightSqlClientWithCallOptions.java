@@ -38,6 +38,7 @@ import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.flight.sql.impl.FlightSql;
 import org.apache.arrow.flight.sql.util.TableRef;
 import org.apache.arrow.util.AutoCloseables;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** A wrapper around FlightSqlClient which automatically adds CallOptions to each RPC call. */
 public class FlightSqlClientWithCallOptions implements AutoCloseable {
@@ -103,11 +104,11 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
   }
 
   public FlightInfo getCatalogs(CallOption... options) {
-    return client.getCatalogs(options);
+    return client.getCatalogs(combine(options));
   }
 
   public SchemaResult getCatalogsSchema(CallOption... options) {
-    return client.getCatalogsSchema(options);
+    return client.getCatalogsSchema(combine(options));
   }
 
   public FlightInfo getSchemas(
@@ -116,7 +117,7 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
   }
 
   public SchemaResult getSchemasSchema(CallOption... options) {
-    return client.getSchemasSchema(options);
+    return client.getSchemasSchema(combine(options));
   }
 
   public SchemaResult getSchema(FlightDescriptor descriptor, CallOption... options) {
@@ -128,7 +129,7 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
   }
 
   public FlightInfo getSqlInfo(FlightSql.SqlInfo... info) {
-    return client.getSqlInfo(info);
+    return client.getSqlInfo(info, combine());
   }
 
   public FlightInfo getSqlInfo(FlightSql.SqlInfo[] info, CallOption... options) {
@@ -144,7 +145,7 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
   }
 
   public SchemaResult getSqlInfoSchema(CallOption... options) {
-    return client.getSqlInfoSchema(options);
+    return client.getSqlInfoSchema(combine(options));
   }
 
   public FlightInfo getXdbcTypeInfo(int dataType, CallOption... options) {
@@ -152,18 +153,20 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
   }
 
   public FlightInfo getXdbcTypeInfo(CallOption... options) {
-    return client.getXdbcTypeInfo(options);
+    return client.getXdbcTypeInfo(combine(options));
   }
 
   public SchemaResult getXdbcTypeInfoSchema(CallOption... options) {
-    return client.getXdbcTypeInfoSchema(options);
+    return client.getXdbcTypeInfoSchema(combine(options));
   }
 
+  @SuppressWarnings("argument")
+  // FlightSqlClient.getTableTyoes() allows for null tableTypes but isn't annotated correctly.
   public FlightInfo getTables(
       String catalog,
       String dbSchemaFilterPattern,
       String tableFilterPattern,
-      List<String> tableTypes,
+      @Nullable List<String> tableTypes,
       boolean includeSchema,
       CallOption... options) {
     return client.getTables(
@@ -184,7 +187,7 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
   }
 
   public SchemaResult getPrimaryKeysSchema(CallOption... options) {
-    return client.getPrimaryKeysSchema(options);
+    return client.getPrimaryKeysSchema(combine(options));
   }
 
   public FlightInfo getExportedKeys(TableRef tableRef, CallOption... options) {
@@ -192,7 +195,7 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
   }
 
   public SchemaResult getExportedKeysSchema(CallOption... options) {
-    return client.getExportedKeysSchema(options);
+    return client.getExportedKeysSchema(combine(options));
   }
 
   public FlightInfo getImportedKeys(TableRef tableRef, CallOption... options) {
@@ -200,7 +203,7 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
   }
 
   public SchemaResult getImportedKeysSchema(CallOption... options) {
-    return client.getImportedKeysSchema(options);
+    return client.getImportedKeysSchema(combine(options));
   }
 
   public FlightInfo getCrossReference(
@@ -209,15 +212,15 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
   }
 
   public SchemaResult getCrossReferenceSchema(CallOption... options) {
-    return client.getCrossReferenceSchema(options);
+    return client.getCrossReferenceSchema(combine(options));
   }
 
   public FlightInfo getTableTypes(CallOption... options) {
-    return client.getTableTypes(options);
+    return client.getTableTypes(combine(options));
   }
 
   public SchemaResult getTableTypesSchema(CallOption... options) {
-    return client.getTableTypesSchema(options);
+    return client.getTableTypesSchema(combine(options));
   }
 
   public PreparedStatement prepare(String query, CallOption... options) {
@@ -239,7 +242,7 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
   }
 
   public Transaction beginTransaction(CallOption... options) {
-    return client.beginTransaction(options);
+    return client.beginTransaction(combine(options));
   }
 
   public Savepoint beginSavepoint(Transaction transaction, String name, CallOption... options) {
@@ -276,6 +279,7 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
     return client.renewFlightEndpoint(request, combine(options));
   }
 
+  @Override
   public void close() throws Exception {
     AutoCloseables.close(client);
   }

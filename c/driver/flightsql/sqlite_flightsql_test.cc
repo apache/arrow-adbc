@@ -311,7 +311,13 @@ TEST_F(SqliteFlightSqlStatementTest, CancelError) {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
               IsOkStatus(&error));
 
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value, "SELECT 1", &error),
+  // Use a query that generates a lot of rows so that it won't complete before we cancel
+  // Can't insert newlines since the server stuffs the query into a header without
+  // sanitizing
+  auto query =
+      "WITH RECURSIVE c(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM c WHERE x<5000) "
+      "SELECT c1.x, c2.x FROM c c1, c c2";
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value, query, &error),
               IsOkStatus(&error));
 
   adbc_validation::StreamReader reader;

@@ -21,10 +21,11 @@ description = "A libpq-based ADBC driver for working with PostgreSQL."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 dynamic = ["version"]
 dependencies = [
     "adbc-driver-manager",
+    "importlib-resources >=1.3",
 ]
 
 [project.optional-dependencies]
@@ -43,6 +44,7 @@ build-backend = "setuptools.build_meta"
 markers = [
     "polars: integration tests with polars",
 ]
+xfail_strict = true
 
 [tool.setuptools]
 include-package-data = true

@@ -57,16 +57,9 @@ jobs:
       - name: Start test services
         shell: bash -l {0}
         run: |
-          docker compose up -d --wait flightsql-sqlite-test mssql-test postgres-test
+          docker compose up --detach --wait flightsql-sqlite-test mssql-test postgres-test
+          cat .env | grep -v -e '^#' | awk NF | tee -a $GITHUB_ENV
       - name: Build/Test
-        env:
-          ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
-          ADBC_JDBC_MSSQL_URL: "localhost:1433"
-          ADBC_JDBC_MSSQL_USER: "SA"
-          ADBC_JDBC_MSSQL_PASSWORD: "Password1!"
-          ADBC_JDBC_POSTGRESQL_URL: "localhost:5432/postgres"
-          ADBC_JDBC_POSTGRESQL_USER: "postgres"
-          ADBC_JDBC_POSTGRESQL_PASSWORD: "password"
         run: |
           cd java
           mvn install
@@ -104,4 +97,5 @@ jobs:
           --add-opens jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED
           --add-opens jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED
           HERE
-          mvn -P errorprone install
+          # Our linters are compile-time, no point re-running tests
+          mvn -P errorprone install -DskipTests

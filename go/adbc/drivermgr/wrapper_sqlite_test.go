@@ -453,7 +453,7 @@ func (dm *DriverMgrSuite) TestSqlExecuteInvalid() {
 	_, _, err = st.ExecuteQuery(dm.ctx)
 	dm.Require().Error(err)
 
-	var adbcErr *adbc.Error
+	var adbcErr adbc.Error
 	dm.ErrorAs(err, &adbcErr)
 	dm.ErrorContains(adbcErr, "[SQLite] Failed to prepare query:")
 	dm.ErrorContains(adbcErr, "syntax error")
@@ -610,7 +610,7 @@ func TestDriverMgrCustomInitFunc(t *testing.T) {
 		"entrypoint": "ThisSymbolDoesNotExist",
 	})
 	assert.Nil(t, db)
-	var exp *adbc.Error
+	var exp adbc.Error
 	assert.ErrorAs(t, err, &exp)
 	assert.Equal(t, adbc.StatusInternal, exp.Code)
 	if runtime.GOOS == "windows" {
