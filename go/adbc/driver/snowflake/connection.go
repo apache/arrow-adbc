@@ -81,7 +81,8 @@ type TableConstraint struct {
 	skipComment                                                      sql.NullString
 	skipCreatedOn                                                    time.Time
 	skipRely                                                         bool
-=======
+}
+
 // ListTableTypes implements driverbase.TableTypeLister.
 func (*connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
 	return []string{"BASE TABLE", "TEMPORARY TABLE", "VIEW"}, nil
