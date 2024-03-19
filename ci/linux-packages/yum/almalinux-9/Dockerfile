@@ -29,7 +29,7 @@ RUN \
     ccache \
     cmake \
     gcc-c++ \
-    gobject-introspection-devel \    
+    gobject-introspection-devel \
     libpq-devel \
     make \
     ninja-build \

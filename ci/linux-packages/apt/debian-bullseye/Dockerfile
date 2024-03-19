@@ -58,6 +58,6 @@ RUN \
     ninja-build \
     pkg-config \
     tzdata \
-    valac \  
+    valac \
     meson && \
   apt clean

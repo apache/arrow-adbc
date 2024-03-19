@@ -29,7 +29,7 @@ RUN \
     ccache \
     cmake \
     gcc-c++ \
-    gobject-introspection-devel \    
+    gobject-introspection-devel \
     libpq-devel \
     make \
     ninja-build \
@@ -39,6 +39,7 @@ RUN \
     rpmdevtools \
     sqlite-devel \
     tar \
+    wget \
     vala && \
   yum clean ${quiet} all
 

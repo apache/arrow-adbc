@@ -48,7 +48,7 @@ RUN \
     cmake \
     debhelper \
     devscripts \
-    gobject-introspection \  
+    gobject-introspection \
     libarrow-glib-dev \
     libgirepository1.0-dev \
     libpq-dev \
