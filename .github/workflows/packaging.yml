@@ -627,13 +627,18 @@ jobs:
 
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     needs:
       - source
     strategy:
       fail-fast: false
       matrix:
-        arch: ["amd64", "arm64v8"]
+        os: ["macos-latest", "macos-14"]
+        include:
+          - os: macos-latest
+            arch: amd64
+          - os: macos-14
+            arch: arm64v8
     env:
       MACOSX_DEPLOYMENT_TARGET: "10.15"
       PYTHON: "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10"
@@ -686,11 +691,17 @@ jobs:
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum
 
-      - name: Install Python
+      - name: Install Python (AMD64 only)
+        if: matrix.arch == 'amd64'
         run: |
           pushd adbc
           sudo ci/scripts/install_python.sh macos 3.8
           sudo ci/scripts/install_python.sh macos 3.9
+          popd
+
+      - name: Install Python (AMD64 only)
+        run: |
+          pushd adbc
           sudo ci/scripts/install_python.sh macos 3.10
           sudo ci/scripts/install_python.sh macos 3.11
           sudo ci/scripts/install_python.sh macos 3.12
@@ -741,7 +752,6 @@ jobs:
           deactivate
 
       - name: Test wheel 3.10
-        if: matrix.arch == 'amd64'
         run: |
           pushd adbc
 
@@ -752,7 +762,6 @@ jobs:
           deactivate
 
       - name: Test wheel 3.11
-        if: matrix.arch == 'amd64'
         run: |
           pushd adbc
 
@@ -763,7 +772,6 @@ jobs:
           deactivate
 
       - name: Test wheel 3.12
-        if: matrix.arch == 'amd64'
         run: |
           pushd adbc
 
