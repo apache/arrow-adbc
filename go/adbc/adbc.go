@@ -355,6 +355,17 @@ const (
 	InfoDriverADBCVersion InfoCode = 103 // DriverADBCVersion
 )
 
+type InfoValueTypeCode = arrow.UnionTypeCode
+
+const (
+	InfoValueStringType              InfoValueTypeCode = 0
+	InfoValueBooleanType             InfoValueTypeCode = 1
+	InfoValueInt64Type               InfoValueTypeCode = 2
+	InfoValueInt32BitmaskType        InfoValueTypeCode = 3
+	InfoValueStringListType          InfoValueTypeCode = 4
+	InfoValueInt32ToInt32ListMapType InfoValueTypeCode = 5
+)
+
 type ObjectDepth int
 
 const (
