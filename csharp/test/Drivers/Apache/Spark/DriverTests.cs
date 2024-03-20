@@ -57,7 +57,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 -1, // DROP   TABLE
                 -1, // CREATE TABLE
                 1,  // INSERT
-                1   // INSERT
+                1,  // INSERT
+                1,  // INSERT
+                1,  // DELETE
             };
 
             for (int i = 0; i < queries.Length; i++)

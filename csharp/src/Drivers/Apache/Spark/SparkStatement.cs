@@ -28,9 +28,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     public class SparkStatement : HiveServer2Statement
     {
-        private const string NumberOfAffectedRowsColumnName = "num_affected_rows";
-        private const string NumberOfInsertedRowsColumnName = "num_inserted_rows";
-
         internal SparkStatement(SparkConnection connection)
             : base(connection)
         {
@@ -65,51 +62,33 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override UpdateResult ExecuteUpdate()
         {
+            const string NumberOfAffectedRowsColumnName = "num_affected_rows";
 
             QueryResult queryResult = ExecuteQuery();
             using IArrowArrayStream stream = queryResult.Stream;
 
-            // Check if the affected/inserted rows columns are returned in the result.
-            List<string> columnsToCheck = new();
+            // Check if the affected rows columns are returned in the result.
             Field affectedRowsField = stream.Schema.GetFieldByName(NumberOfAffectedRowsColumnName);
-            if (affectedRowsField != null)
+            if (affectedRowsField != null && affectedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
             {
-                if (affectedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
-                {
-                    throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
-                }
-                columnsToCheck.Add(NumberOfAffectedRowsColumnName);
+                throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
             }
 
-            Field insertedRowsField = stream.Schema.GetFieldByName(NumberOfInsertedRowsColumnName);
-            if (insertedRowsField != null)
-            {
-                if (insertedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
-                {
-                    throw new AdbcException($"Unexpected data type for column: '{NumberOfInsertedRowsColumnName}'", new ArgumentException(NumberOfInsertedRowsColumnName));
-                }
-                columnsToCheck.Add(NumberOfInsertedRowsColumnName);
-            }
-
-            // If no altered rows, i.e. DDC statements, then -1 is the default.
-            long affectedRows = -1;
+            long affectedRows = 0;
             while (true)
             {
                 using RecordBatch nextBatch = stream.ReadNextRecordBatchAsync().Result;
                 if (nextBatch == null) { break; }
-                foreach (var columnName in columnsToCheck)
+                Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(NumberOfAffectedRowsColumnName);
+                // Note: should only have one item, but iterate for completeness
+                for (int i = 0; i < numOfModifiedArray.Length; i++)
                 {
-                    Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(columnName);
-                    // Note: should only have one item, but iterate for completeness
-                    for (int i = 0; i < numOfModifiedArray.Length; i++)
-                    {
-                        affectedRows += numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
-                    }
-
+                    affectedRows += numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
                 }
             }
 
-            return new UpdateResult(affectedRows);
+            // If no altered rows, i.e. DDC statements, then -1 is the default.
+            return new UpdateResult(affectedRows == 0 ? -1 : affectedRows);
         }
 
         public override object GetValue(IArrowArray arrowArray, int index)

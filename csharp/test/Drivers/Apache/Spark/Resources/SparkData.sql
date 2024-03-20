@@ -70,3 +70,25 @@ VALUES (
     ARRAY(4, 5, 6),
     STRUCT('Jane Doe', 40)
 );
+
+INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
+    id, number, decimal,
+    is_active,
+    name, data,
+    date, timestamp, timestamp_local,
+    numbers,
+    person
+)
+VALUES (
+    3, -1.7976931348623157e+308, -9.99999999999999999999999999999999E+28BD,
+    FALSE,
+    'Jack Doe',
+    -- hex-encoded `def456`
+    X'646566343536',
+    '1556-01-02', '1970-01-01 00:00:00', '9999-12-31 23:59:59+00:00',
+    ARRAY(7, 8, 9),
+    STRUCT('Jack Doe', 50)
+);
+
+DELETE FROM {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}
+    WHERE id = 3;
