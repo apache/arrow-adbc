@@ -59,6 +59,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 1,  // INSERT
                 1,  // INSERT
                 1,  // INSERT
+                1,  // UPDATE
                 1,  // DELETE
             };
 

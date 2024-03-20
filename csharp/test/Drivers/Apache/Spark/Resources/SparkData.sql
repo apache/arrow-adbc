@@ -18,6 +18,10 @@ DROP TABLE IF EXISTS {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE};
 
 CREATE TABLE IF NOT EXISTS {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
   id LONG,
+  byte BYTE,
+  short SHORT,
+  integer INT,
+  float FLOAT,
   number DOUBLE,
   decimal NUMERIC(38, 9),
   is_active BOOLEAN,
@@ -34,7 +38,8 @@ CREATE TABLE IF NOT EXISTS {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
 );
 
 INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
-    id, number, decimal,
+    id,
+    byte, short, integer, float, number, decimal,
     is_active,
     name, data,
     date, timestamp, timestamp_local,
@@ -42,7 +47,8 @@ INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
     person
 )
 VALUES (
-    1, 1.23, 4.56,
+    1,
+    2, 3, 4, 7.89, 1.23, 4.56,
     TRUE,
     'John Doe',
     -- hex-encoded value `abc123`
@@ -53,7 +59,8 @@ VALUES (
 );
 
 INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
-    id, number, decimal,
+    id,
+    byte, short, integer, float, number, decimal,
     is_active,
     name, data,
     date, timestamp, timestamp_local,
@@ -61,7 +68,8 @@ INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
     person
 )
 VALUES (
-    2, 1.7976931348623157e+308, 9.99999999999999999999999999999999E+28BD,
+    2,
+    127, 32767, 2147483647, 3.4028234663852886e+38, 1.7976931348623157e+308, 9.99999999999999999999999999999999E+28BD,
     FALSE,
     'Jane Doe',
     -- hex-encoded `def456`
@@ -72,7 +80,8 @@ VALUES (
 );
 
 INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
-    id, number, decimal,
+    id,
+    byte, short, integer, float, number, decimal,
     is_active,
     name, data,
     date, timestamp, timestamp_local,
@@ -80,7 +89,8 @@ INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
     person
 )
 VALUES (
-    3, -1.7976931348623157e+308, -9.99999999999999999999999999999999E+28BD,
+    3,
+    -128, -32768, -2147483648, -3.4028234663852886e+38, -1.7976931348623157e+308, -9.99999999999999999999999999999999E+28BD,
     FALSE,
     'Jack Doe',
     -- hex-encoded `def456`
@@ -89,6 +99,10 @@ VALUES (
     ARRAY(7, 8, 9),
     STRUCT('Jack Doe', 50)
 );
+
+UPDATE {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}
+    SET short = 0
+    WHERE id = 3;
 
 DELETE FROM {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}
     WHERE id = 3;
