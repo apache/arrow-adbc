@@ -17,6 +17,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
@@ -47,7 +50,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// </summary>
         /// <param name="testConfiguration"><see cref="SparkTestConfiguration"/></param>
         /// <returns></returns>
-        internal static Dictionary<string,string> GetSparkParameters(SparkTestConfiguration testConfiguration)
+        internal static Dictionary<string, string> GetSparkParameters(SparkTestConfiguration testConfiguration)
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -71,39 +74,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             return parameters;
         }
 
-        ///// <summary>
-        ///// Parses the queries from resources/SparkData.sql
-        ///// </summary>
-        ///// <param name="testConfiguration"><see cref="SparkTestConfiguration"/></param>
-        //internal static string[] GetQueries(SparkTestConfiguration testConfiguration)
-        //{
-        //    // get past the license header
-        //    StringBuilder content = new StringBuilder();
+        /// <summary>
+        /// Parses the queries from resources/SparkData.sql
+        /// </summary>
+        /// <param name="testConfiguration"><see cref="SparkTestConfiguration"/></param>
+        internal static string[] GetQueries(SparkTestConfiguration testConfiguration)
+        {
+            const string placeholder = "{ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}";
+            string[] sql = File.ReadAllLines("Spark/Resources/SparkData.sql");
 
-        //    string placeholder = "{ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}";
+            StringBuilder content = new StringBuilder();
+            foreach (string line in sql)
+            {
+                if (line.TrimStart().StartsWith("--")) { continue; }
+                if (line.Contains(placeholder))
+                {
+                    // TODO: Try 3-level name
+                    string modifiedLine = line.Replace(placeholder, $"{testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{testConfiguration.Metadata.Table}");
+                    content.AppendLine(modifiedLine);
+                }
+                else
+                {
+                    content.AppendLine(line);
+                }
+            }
 
-        //    string[] sql = File.ReadAllLines("resources/SparkData.sql");
+            string[] queries = content.ToString().Split(";".ToCharArray()).Where(x => x.Trim().Length > 0).ToArray();
 
-        //    foreach (string line in sql)
-        //    {
-        //        if (!line.TrimStart().StartsWith("--"))
-        //        {
-        //            if (line.Contains(placeholder))
-        //            {
-        //                string modifiedLine = line.Replace(placeholder, $"{testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{testConfiguration.Metadata.Table}");
-
-        //                content.AppendLine(modifiedLine);
-        //            }
-        //            else
-        //            {
-        //                content.AppendLine(line);
-        //            }
-        //        }
-        //    }
-
-        //    string[] queries = content.ToString().Split(";".ToCharArray()).Where(x => x.Trim().Length > 0).ToArray();
-
-        //    return queries;
-        //}
+            return queries;
+        }
     }
 }

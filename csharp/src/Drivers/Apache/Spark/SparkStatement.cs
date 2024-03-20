@@ -28,6 +28,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     public class SparkStatement : HiveServer2Statement
     {
+        private const string NumberOfAffectedRowsColumnName = "num_affected_rows";
+        private const string NumberOfInsertedRowsColumnName = "num_inserted_rows";
+
         internal SparkStatement(SparkConnection connection)
             : base(connection)
         {
@@ -35,7 +38,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
         {
-            statement.EnforceResultPersistenceMode = true;
+            statement.EnforceResultPersistenceMode = false;
             statement.ResultPersistenceMode = 2;
 
             statement.CanReadArrowResult = true;
@@ -62,7 +65,51 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override UpdateResult ExecuteUpdate()
         {
-            throw new NotImplementedException();
+
+            QueryResult queryResult = ExecuteQuery();
+            using IArrowArrayStream stream = queryResult.Stream;
+
+            // Check if the affected/inserted rows columns are returned in the result.
+            List<string> columnsToCheck = new();
+            Field affectedRowsField = stream.Schema.GetFieldByName(NumberOfAffectedRowsColumnName);
+            if (affectedRowsField != null)
+            {
+                if (affectedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
+                {
+                    throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
+                }
+                columnsToCheck.Add(NumberOfAffectedRowsColumnName);
+            }
+
+            Field insertedRowsField = stream.Schema.GetFieldByName(NumberOfInsertedRowsColumnName);
+            if (insertedRowsField != null)
+            {
+                if (insertedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
+                {
+                    throw new AdbcException($"Unexpected data type for column: '{NumberOfInsertedRowsColumnName}'", new ArgumentException(NumberOfInsertedRowsColumnName));
+                }
+                columnsToCheck.Add(NumberOfInsertedRowsColumnName);
+            }
+
+            // If no altered rows, i.e. DDC statements, then -1 is the default.
+            long affectedRows = -1;
+            while (true)
+            {
+                using RecordBatch nextBatch = stream.ReadNextRecordBatchAsync().Result;
+                if (nextBatch == null) { break; }
+                foreach (var columnName in columnsToCheck)
+                {
+                    Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(columnName);
+                    // Note: should only have one item, but iterate for completeness
+                    for (int i = 0; i < numOfModifiedArray.Length; i++)
+                    {
+                        affectedRows += numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
+                    }
+
+                }
+            }
+
+            return new UpdateResult(affectedRows);
         }
 
         public override object GetValue(IArrowArray arrowArray, int index)
@@ -235,7 +282,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         Console.WriteLine(e);
                     }
                 });
-                
+
             }
 
         }
@@ -254,7 +301,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public Chunk(int chunkId, string chunkUrl) : this(chunkId, chunkUrl, new Dictionary<string, string>())
         {
-            
+
         }
 
         public Chunk(int chunkId, string chunkUrl, Dictionary<string, string> headers)
@@ -275,7 +322,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             HttpResponseMessage response = await client.SendAsync(request);
             this.reader = new ArrowStreamReader(response.Content.ReadAsStreamAsync().Result);
             isDownloaded = true;
-            
         }
     }
 }

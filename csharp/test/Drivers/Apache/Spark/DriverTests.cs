@@ -44,29 +44,32 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         /// <summary>
-        /// Validates if the driver can connect to a live server and
-        /// parse the results.
+        /// Validates if the driver can execute update statements.
         /// </summary>
         [SkippableFact, Order(1)]
         public void CanExecuteUpdate()
         {
+            AdbcConnection adbcConnection = SparkTestingUtils.GetSparkAdbcConnection(_testConfiguration);
 
-            //AdbcConnection adbcConnection = SparkTestingUtils.GetSparkAdbcConnection(_testConfiguration);
+            string[] queries = SparkTestingUtils.GetQueries(_testConfiguration);
 
-            //string[] queries = SparkTestingUtils.GetQueries(_testConfiguration);
+            List<int> expectedResults = new() {
+                -1, // DROP   TABLE
+                -1, // CREATE TABLE
+                1,  // INSERT
+                1   // INSERT
+            };
 
-            //List<int> expectedResults = new List<int>() { -1, 1, 1 };
+            for (int i = 0; i < queries.Length; i++)
+            {
+                string query = queries[i];
+                AdbcStatement statement = adbcConnection.CreateStatement();
+                statement.SqlQuery = query;
 
-            //for (int i = 0; i < queries.Length; i++)
-            //{
-            //    string query = queries[i];
-            //    AdbcStatement statement = adbcConnection.CreateStatement();
-            //    statement.SqlQuery = query;
+                UpdateResult updateResult = statement.ExecuteUpdate();
 
-            //    UpdateResult updateResult = statement.ExecuteUpdate();
-
-            //    Assert.Equal(expectedResults[i], updateResult.AffectedRows);
-            //}
+                Assert.Equal(expectedResults[i], updateResult.AffectedRows);
+            }
         }
 
         /// <summary>

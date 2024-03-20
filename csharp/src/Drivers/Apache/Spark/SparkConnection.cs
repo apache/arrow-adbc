@@ -365,7 +365,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     string catalog = catalogList[i];
                     string schemaDb = schemaList[i];
-                    catalogMap.GetValueOrDefault(catalog).Add(schemaDb, new Dictionary<string, TableInfoPair>());
+                    // It seems Spark sometimes returns empty string for catalog on some schema (temporary tables).
+                    catalogMap.GetValueOrDefault(catalog)?.Add(schemaDb, new Dictionary<string, TableInfoPair>());
                 }
             }
 
