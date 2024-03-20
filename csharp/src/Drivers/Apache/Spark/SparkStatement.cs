@@ -261,12 +261,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         Console.WriteLine(e);
                     }
                 });
-
             }
-
         }
-
-
     }
 
     public class Chunk
@@ -280,7 +276,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public Chunk(int chunkId, string chunkUrl) : this(chunkId, chunkUrl, new Dictionary<string, string>())
         {
-
         }
 
         public Chunk(int chunkId, string chunkUrl, Dictionary<string, string> headers)
