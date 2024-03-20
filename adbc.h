@@ -459,6 +459,28 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_VENDOR_ARROW_VERSION 2
+/// \brief Whether the driver connection is read only (type: bool).
+///
+/// \see AdbcConnectionGetInfo
+#define ADBC_INFO_VENDOR_READ_ONLY 3
+/// \brief Indicates whether SQL queries are supported (type: bool).
+///
+/// \see AdbcConnectionGetInfo
+#define ADBC_INFO_VENDOR_SQL 4
+/// \brief Indicates whether Substrait queries are supported (type: bool).
+///
+/// \see AdbcConnectionGetInfo
+#define ADBC_INFO_VENDOR_SUBSTRAIT 5
+/// \brief The minimum supported Substrait version, or null if
+///   Substrait is not supported (type: utf8).
+///
+/// \see AdbcConnectionGetInfo
+#define ADBC_INFO_VENDOR_SUBSTRAIT_MIN_VERSION 6
+/// \brief The maximum supported Substrait version, or null if
+///   Substrait is not supported (type: utf8).
+///
+/// \see AdbcConnectionGetInfo
+#define ADBC_INFO_VENDOR_SUBSTRAIT_MAX_VERSION 7
 
 /// \brief The driver name (type: utf8).
 ///
