@@ -33,12 +33,10 @@ package flightsql
 
 import (
 	"net/url"
-	"runtime/debug"
-	"strings"
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v16/arrow/memory"
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/metadata"
@@ -69,46 +67,9 @@ const (
 	infoDriverName                      = "ADBC Flight SQL Driver - Go"
 )
 
-var (
-	infoDriverVersion      string
-	infoDriverArrowVersion string
-	infoSupportedCodes     []adbc.InfoCode
-)
-
 var errNoTransactionSupport = adbc.Error{
 	Msg:  "[Flight SQL] server does not report transaction support",
 	Code: adbc.StatusNotImplemented,
-}
-
-func init() {
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, dep := range info.Deps {
-			switch {
-			case dep.Path == "github.com/apache/arrow-adbc/go/adbc/driver/flightsql":
-				infoDriverVersion = dep.Version
-			case strings.HasPrefix(dep.Path, "github.com/apache/arrow/go/"):
-				infoDriverArrowVersion = dep.Version
-			}
-		}
-	}
-	// XXX: Deps not populated in tests
-	// https://github.com/golang/go/issues/33976
-	if infoDriverVersion == "" {
-		infoDriverVersion = "(unknown or development build)"
-	}
-	if infoDriverArrowVersion == "" {
-		infoDriverArrowVersion = "(unknown or development build)"
-	}
-
-	infoSupportedCodes = []adbc.InfoCode{
-		adbc.InfoDriverName,
-		adbc.InfoDriverVersion,
-		adbc.InfoDriverArrowVersion,
-		adbc.InfoDriverADBCVersion,
-		adbc.InfoVendorName,
-		adbc.InfoVendorVersion,
-		adbc.InfoVendorArrowVersion,
-	}
 }
 
 type driverImpl struct {
@@ -117,8 +78,8 @@ type driverImpl struct {
 
 // NewDriver creates a new Flight SQL driver using the given Arrow allocator.
 func NewDriver(alloc memory.Allocator) adbc.Driver {
-	impl := driverImpl{DriverImplBase: driverbase.NewDriverImplBase("Flight SQL", alloc)}
-	return driverbase.NewDriver(&impl)
+	info := driverbase.DefaultDriverInfo("Flight SQL")
+	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)})
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {

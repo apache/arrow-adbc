@@ -42,7 +42,7 @@ const (
 )
 
 type statement struct {
-	cnxn                *cnxn
+	cnxn                *connectionImpl
 	alloc               memory.Allocator
 	queueSize           int
 	prefetchConcurrency int
