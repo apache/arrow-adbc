@@ -63,7 +63,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         }
 
-        internal SparkConnection(IReadOnlyDictionary<string, string>? properties)
+        internal SparkConnection(IReadOnlyDictionary<string, string> properties)
             : base(properties)
         {
         }
