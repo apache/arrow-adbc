@@ -35,6 +35,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
         {
+            // TODO: Ensure this is set dynamically depending on server capabilities.
             statement.EnforceResultPersistenceMode = false;
             statement.ResultPersistenceMode = 2;
 
@@ -56,6 +57,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             PollForResponse();
             Schema schema = GetSchema();
 
+            // TODO: Ensure this is set dynamically based on server capabilities
             return new QueryResult(-1, new SparkReader(this, schema));
             //return new QueryResult(-1, new CloudFetchReader(this, schema));
         }
@@ -159,54 +161,54 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         sealed class CloudFetchReader : IArrowArrayStream
         {
-            SparkStatement statement;
-            Schema schema;
-            ChunkDownloader chunkDownloader;
-            IArrowReader reader;
+            SparkStatement _statement;
+            Schema _schema;
+            ChunkDownloader _chunkDownloader;
+            IArrowReader _reader;
 
             public CloudFetchReader(SparkStatement statement, Schema schema)
             {
-                this.statement = statement;
-                this.schema = schema;
-                TFetchResultsReq request = new TFetchResultsReq(this.statement.operationHandle, TFetchOrientation.FETCH_NEXT, 500000);
-                TFetchResultsResp response = this.statement.connection.client.FetchResults(request, cancellationToken: default).Result;
-                this.chunkDownloader = new ChunkDownloader(response.Results.ResultLinks);
+                _statement = statement;
+                _schema = schema;
+                TFetchResultsReq request = new TFetchResultsReq(_statement.operationHandle, TFetchOrientation.FETCH_NEXT, 500000);
+                TFetchResultsResp response = this._statement.connection.client.FetchResults(request, cancellationToken: default).Result;
+                _chunkDownloader = new ChunkDownloader(response.Results.ResultLinks);
             }
 
-            public Schema Schema { get { return schema; } }
+            public Schema Schema { get { return _schema; } }
 
             public async ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
             {
                 while (true)
                 {
-                    if (this.reader != null)
+                    if (_reader != null)
                     {
-                        RecordBatch next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+                        RecordBatch next = await _reader.ReadNextRecordBatchAsync(cancellationToken);
                         if (next != null)
                         {
                             return next;
                         }
-                        this.reader = null;
-                        if (this.chunkDownloader.currentChunkIndex >= this.chunkDownloader.chunks.Count)
+                        _reader = null;
+                        if (_chunkDownloader.currentChunkIndex >= _chunkDownloader.chunks.Count)
                         {
-                            this.statement = null;
+                            _statement = null;
                         }
                     }
 
-                    if (this.statement == null)
+                    if (_statement == null)
                     {
                         return null;
                     }
 
-                    if (this.reader == null)
+                    if (_reader == null)
                     {
-                        var currentChunk = this.chunkDownloader.chunks[this.chunkDownloader.currentChunkIndex];
+                        var currentChunk = _chunkDownloader.chunks[_chunkDownloader.currentChunkIndex];
                         while (!currentChunk.isDownloaded)
                         {
-                            Thread.Sleep(500);
+                            await Task.Delay(500, cancellationToken);
                         }
-                        this.chunkDownloader.currentChunkIndex++;
-                        this.reader = currentChunk.reader;
+                        _chunkDownloader.currentChunkIndex++;
+                        _reader = currentChunk.reader;
                     }
                 }
             }
