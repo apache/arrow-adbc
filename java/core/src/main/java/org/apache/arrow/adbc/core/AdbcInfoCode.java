@@ -29,6 +29,16 @@ public enum AdbcInfoCode {
   VENDOR_VERSION(1),
   /** The database vendor/product Arrow library version (type: utf8). */
   VENDOR_ARROW_VERSION(2),
+  /** Indicates whether the driver connection is read only (type: bool). */
+  VENDOR_READ_ONLY(3),
+  /** Indicates whether SQL queries are supported (type: bool). */
+  VENDOR_SQL(4),
+  /** Indicates whether Substrait queries are supported (type: bool). */
+  VENDOR_SUBSTRAIT(5),
+  /** The minimum supported Substrait version, or null if Substrait is not supported (type: utf8). */
+  VENDOR_SUBSTRAIT_MIN_VERSION(6),
+  /** The maximum supported Substrait version, or null if Substrait is not supported (type: utf8). */
+  VENDOR_SUBSTRAIT_MAX_VERSION(7),
 
   /** The driver name (type: utf8). */
   DRIVER_NAME(100),
