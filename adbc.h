@@ -459,7 +459,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_VENDOR_ARROW_VERSION 2
-/// \brief Whether the driver connection is read only (type: bool).
+/// \brief Indicates whether the driver connection is read only (type: bool).
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_VENDOR_READ_ONLY 3
