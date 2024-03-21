@@ -225,6 +225,8 @@ func (s *SnowflakeQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 		return adbc.AdbcVersion1_1_0
 	case adbc.InfoVendorName:
 		return "Snowflake"
+	case adbc.InfoVendorReadOnly:
+		return false
 	}
 
 	return nil
@@ -1792,6 +1794,39 @@ func (suite *SnowflakeTests) TestDescribeOnly() {
 	suite.Equal(1, len(schema.Fields()))
 	suite.Equal("RESULT", schema.Field(0).Name)
 	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 6, Scale: 2}, schema.Field(0).Type), "expected decimal(6, 2), got %s", schema.Field(0).Type)
+}
+
+func (suite *SnowflakeTests) TestAdditionalDriverInfo() {
+	rdr, err := suite.cnxn.GetInfo(
+		suite.ctx,
+		[]adbc.InfoCode{
+			adbc.InfoVendorSql,
+			adbc.InfoVendorSubstrait,
+		},
+	)
+	suite.Require().NoError(err)
+
+	var totalRows int64
+	for rdr.Next() {
+		rec := rdr.Record()
+		totalRows += rec.NumRows()
+		code := rec.Column(0).(*array.Uint32)
+		info := rec.Column(1).(*array.DenseUnion)
+
+		for i := 0; i < int(rec.NumRows()); i++ {
+			if code.Value(i) == uint32(adbc.InfoVendorSql) {
+				arr, ok := info.Field(info.ChildID(i)).(*array.Boolean)
+				suite.Require().True(ok)
+				suite.Require().Equal(true, arr.Value(i))
+			}
+			if code.Value(i) == uint32(adbc.InfoVendorSubstrait) {
+				arr, ok := info.Field(info.ChildID(i)).(*array.Boolean)
+				suite.Require().True(ok)
+				suite.Require().Equal(false, arr.Value(i))
+			}
+		}
+	}
+	suite.Require().Equal(int64(2), totalRows)
 }
 
 func TestJwtAuthenticationUnencryptedValue(t *testing.T) {
