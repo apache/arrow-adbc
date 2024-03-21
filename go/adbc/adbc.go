@@ -344,7 +344,16 @@ const (
 	InfoVendorVersion InfoCode = 1 // VendorVersion
 	// The database vendor/product Arrow library version (type: utf8)
 	InfoVendorArrowVersion InfoCode = 2 // VendorArrowVersion
-
+	// Indicates whether the driver connection is read only (type: bool).
+	InfoVendorReadOnly InfoCode = 3
+	// Indicates whether SQL queries are supported (type: bool).
+	InfoVendorSql InfoCode = 4
+	// Indicates whether Substrait queries are supported (type: bool).
+	InfoVendorSubstrait InfoCode = 5
+	// The minimum supported Substrait version, or null if Substrait is not supported (type: utf8).
+	InfoVendorSubstraitMinVersion InfoCode = 6
+	// The maximum supported Substrait version, or null if Substrait is not supported (type: utf8).
+	InfoVendorSubstraitMaxVersion InfoCode = 7
 	// The driver name (type: utf8)
 	InfoDriverName InfoCode = 100 // DriverName
 	// The driver version (type: utf8)
