@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -30,12 +29,10 @@ using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
-using Thrift.Transport.Client;
 
 using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using System.Diagnostics;
 
-#nullable enable
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     public class SparkConnection : HiveServer2Connection

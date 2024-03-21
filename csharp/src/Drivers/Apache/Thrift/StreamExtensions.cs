@@ -22,7 +22,6 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Runtime.InteropServices;
 
-#nullable enable
 namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
 {
     public static class StreamExtensions
