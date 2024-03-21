@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -30,7 +29,6 @@ using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
-using Thrift.Transport.Client;
 
 using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using System.Diagnostics;
@@ -365,7 +363,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     string catalog = catalogList[i];
                     string schemaDb = schemaList[i];
-                    catalogMap.GetValueOrDefault(catalog).Add(schemaDb, new Dictionary<string, TableInfoPair>());
+                    // It seems Spark sometimes returns empty string for catalog on some schema (temporary tables).
+                    catalogMap.GetValueOrDefault(catalog)?.Add(schemaDb, new Dictionary<string, TableInfoPair>());
                 }
             }
 

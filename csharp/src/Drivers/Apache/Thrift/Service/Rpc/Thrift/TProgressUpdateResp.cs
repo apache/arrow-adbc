@@ -44,7 +44,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public double ProgressedPercentage { get; set; }
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TJobExecutionStatus"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TJobExecutionStatus Status { get; set; }
@@ -207,7 +207,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            default: 
+            default:
               await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               break;
           }
