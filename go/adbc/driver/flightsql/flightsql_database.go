@@ -383,10 +383,8 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 		target = "unix:" + uri.Path
 	}
 
-	driverVersion, ok := d.DatabaseImplBase.DriverInfo.GetInfoDriverVersion()
-	if !ok {
-		driverVersion = driverbase.UnknownVersion
-	}
+	dv, _ := d.DatabaseImplBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
+	driverVersion := dv.(string)
 	dialOpts := append(d.dialOpts.opts, grpc.WithConnectParams(d.timeout.connectParams()), grpc.WithTransportCredentials(creds), grpc.WithUserAgent("ADBC Flight SQL Driver "+driverVersion))
 
 	d.Logger.DebugContext(ctx, "new client", "location", loc)

@@ -300,6 +300,7 @@ func (c *ConnectionTests) TestMetadataGetInfo() {
 		adbc.InfoVendorName,
 		adbc.InfoVendorVersion,
 		adbc.InfoVendorArrowVersion,
+		adbc.InfoVendorReadOnly,
 	}
 
 	rdr, err := cnxn.GetInfo(ctx, info)
@@ -329,6 +330,9 @@ func (c *ConnectionTests) TestMetadataGetInfo() {
 				case 0:
 					// String
 					actual = child.(*array.String).Value(offset)
+				case 1:
+					// bool
+					actual = child.(*array.Boolean).Value(offset)
 				case 2:
 					// int64
 					actual = child.(*array.Int64).Value(offset)

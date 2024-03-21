@@ -150,65 +150,43 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 	infoValueBldr := bldr.Field(1).(*array.DenseUnionBuilder)
 	strInfoBldr := infoValueBldr.Child(int(adbc.InfoValueStringType)).(*array.StringBuilder)
 	intInfoBldr := infoValueBldr.Child(int(adbc.InfoValueInt64Type)).(*array.Int64Builder)
+	boolInfoBldr := infoValueBldr.Child(int(adbc.InfoValueBooleanType)).(*array.BooleanBuilder)
 
 	for _, code := range infoCodes {
-		switch code {
-		case adbc.InfoDriverName:
-			name, ok := base.DriverInfo.GetInfoDriverName()
-			if !ok {
-				continue
-			}
+		infoNameBldr.Append(uint32(code))
+		value, ok := base.DriverInfo.GetInfoForInfoCode(code)
 
-			infoNameBldr.Append(uint32(code))
+		// We want to return a null value if the info_code requested is set to nil.
+		// The null value needs a type so we arbitrarily choose string (info_code: 0)
+		if value == nil {
+			value = ""
+			ok = false
+		}
+
+		switch v := value.(type) {
+		case string:
 			infoValueBldr.Append(adbc.InfoValueStringType)
-			strInfoBldr.Append(name)
-		case adbc.InfoDriverVersion:
-			version, ok := base.DriverInfo.GetInfoDriverVersion()
-			if !ok {
-				continue
+			if ok {
+				strInfoBldr.Append(v)
+			} else {
+				strInfoBldr.AppendNull()
 			}
-
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.Append(adbc.InfoValueStringType)
-			strInfoBldr.Append(version)
-		case adbc.InfoDriverArrowVersion:
-			arrowVersion, ok := base.DriverInfo.GetInfoDriverArrowVersion()
-			if !ok {
-				continue
-			}
-
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.Append(adbc.InfoValueStringType)
-			strInfoBldr.Append(arrowVersion)
-		case adbc.InfoDriverADBCVersion:
-			adbcVersion, ok := base.DriverInfo.GetInfoDriverADBCVersion()
-			if !ok {
-				continue
-			}
-
-			infoNameBldr.Append(uint32(code))
+		case int64:
 			infoValueBldr.Append(adbc.InfoValueInt64Type)
-			intInfoBldr.Append(adbcVersion)
-		case adbc.InfoVendorName:
-			name, ok := base.DriverInfo.GetInfoVendorName()
-			if !ok {
-				continue
+			if ok {
+				intInfoBldr.Append(v)
+			} else {
+				intInfoBldr.AppendNull()
 			}
-
-			infoNameBldr.Append(uint32(code))
-			infoValueBldr.Append(adbc.InfoValueStringType)
-			strInfoBldr.Append(name)
+		case bool:
+			infoValueBldr.Append(adbc.InfoValueBooleanType)
+			if ok {
+				boolInfoBldr.Append(v)
+			} else {
+				boolInfoBldr.AppendNull()
+			}
 		default:
-			infoNameBldr.Append(uint32(code))
-			value, ok := base.DriverInfo.GetInfoForInfoCode(code)
-			if !ok {
-				infoValueBldr.AppendNull()
-				continue
-			}
-
-			// TODO: Handle other custom info types
-			infoValueBldr.Append(adbc.InfoValueStringType)
-			strInfoBldr.Append(fmt.Sprint(value))
+			return nil, fmt.Errorf("no defined type code for info_value of type %T", v)
 		}
 	}
 

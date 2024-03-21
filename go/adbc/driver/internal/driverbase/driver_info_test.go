@@ -18,7 +18,6 @@
 package driverbase_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -45,11 +44,11 @@ func TestDriverInfo(t *testing.T) {
 	require.ElementsMatch(t, expectedDefaultInfoCodes, driverInfo.InfoSupportedCodes())
 
 	// We get some formatted default values out of the box
-	vendorName, ok := driverInfo.GetInfoVendorName()
+	vendorName, ok := driverInfo.GetInfoForInfoCode(adbc.InfoVendorName)
 	require.True(t, ok)
 	require.Equal(t, "test", vendorName)
 
-	driverName, ok := driverInfo.GetInfoDriverName()
+	driverName, ok := driverInfo.GetInfoForInfoCode(adbc.InfoDriverName)
 	require.True(t, ok)
 	require.Equal(t, "ADBC test Driver - Go", driverName)
 
@@ -65,16 +64,11 @@ func TestDriverInfo(t *testing.T) {
 	require.NoError(t, driverInfo.RegisterInfoCode(adbc.InfoCode(10_001), "string_value"))
 	require.NoError(t, driverInfo.RegisterInfoCode(adbc.InfoCode(10_001), 123))
 
-	// Retrieving known info codes is type-safe
-	driverVersion, ok := driverInfo.GetInfoDriverName()
-	require.True(t, ok)
-	require.NotEmpty(t, strings.Clone(driverVersion)) // do string stuff
+	// Once an info code has been registered, it is considered "supported" by the driver.
+	// This means that it will be returned if GetInfo is called with no parameters.
+	require.Contains(t, driverInfo.InfoSupportedCodes(), adbc.InfoCode(10_001))
 
-	adbcVersion, ok := driverInfo.GetInfoDriverADBCVersion()
-	require.True(t, ok)
-	require.NotEmpty(t, adbcVersion+int64(123)) // do int64 stuff
-
-	// We can also retrieve arbitrary info codes, but the result's type must be asserted
+	// We can retrieve arbitrary info codes, but the result's type must be asserted
 	arrowVersion, ok := driverInfo.GetInfoForInfoCode(adbc.InfoDriverArrowVersion)
 	require.True(t, ok)
 	_, ok = arrowVersion.(string)
