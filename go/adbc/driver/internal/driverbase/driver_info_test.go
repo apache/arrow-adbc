@@ -58,7 +58,7 @@ func TestDriverInfo(t *testing.T) {
 	// We cannot register a non-string value to that same info code
 	err := driverInfo.RegisterInfoCode(adbc.InfoDriverVersion, 123)
 	require.Error(t, err)
-	require.Equal(t, "info_code 101: expected info_value 123 to be of type string but found int", err.Error())
+	require.Equal(t, "DriverVersion: expected info_value 123 to be of type string but found int", err.Error())
 
 	// We can also set vendor-specific info codes but they won't get type checked
 	require.NoError(t, driverInfo.RegisterInfoCode(adbc.InfoCode(10_001), "string_value"))
