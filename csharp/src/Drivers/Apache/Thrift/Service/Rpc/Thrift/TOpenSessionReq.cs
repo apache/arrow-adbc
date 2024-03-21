@@ -47,7 +47,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier _sessionId;
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion Client_protocol { get; set; }
@@ -401,7 +401,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            default: 
+            default:
               await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               break;
           }

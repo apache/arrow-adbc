@@ -87,7 +87,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            default: 
+            default:
               await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               break;
           }
