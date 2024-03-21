@@ -35,6 +35,7 @@ using Thrift.Transport.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using System.Diagnostics;
 
+#nullable enable
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     public class SparkConnection : HiveServer2Connection
@@ -65,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         }
 
-        internal SparkConnection(IReadOnlyDictionary<string, string> properties)
+        internal SparkConnection(IReadOnlyDictionary<string, string>? properties)
             : base(properties)
         {
         }
