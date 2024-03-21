@@ -99,15 +99,15 @@ func (di *DriverInfo) RegisterInfoCode(code adbc.InfoCode, value any) error {
 	switch infoValueTypeCode {
 	case adbc.InfoValueStringType:
 		if val, ok := value.(string); !ok {
-			err = fmt.Errorf("info_code %d: expected info_value %v to be of type %T but found %T", code, value, val, value)
+			err = fmt.Errorf("%s: expected info_value %v to be of type %T but found %T", code, value, val, value)
 		}
 	case adbc.InfoValueInt64Type:
 		if val, ok := value.(int64); !ok {
-			err = fmt.Errorf("info_code %d: expected info_value %v to be of type %T but found %T", code, value, val, value)
+			err = fmt.Errorf("%s: expected info_value %v to be of type %T but found %T", code, value, val, value)
 		}
 	case adbc.InfoValueBooleanType:
 		if val, ok := value.(bool); !ok {
-			err = fmt.Errorf("info_code %d: expected info_value %v to be of type %T but found %T", code, value, val, value)
+			err = fmt.Errorf("%s: expected info_value %v to be of type %T but found %T", code, value, val, value)
 		}
 	}
 
