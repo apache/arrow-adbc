@@ -460,6 +460,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		WithAutocommitSetter(conn).
 		WithCurrentNamespacer(conn).
 		WithTableTypeLister(conn).
+		WithDriverInfoPreparer(conn).
 		Connection(), nil
 }
 

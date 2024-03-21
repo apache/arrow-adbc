@@ -157,7 +157,7 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 		value, ok := base.DriverInfo.GetInfoForInfoCode(code)
 
 		// We want to return a null value if the info_code requested is set to nil.
-		// The null value needs a type so we arbitrarily choose string (info_code: 0)
+		// The null value needs a type so we arbitrarily choose string (type_code: 0)
 		if value == nil {
 			value = ""
 			ok = false
