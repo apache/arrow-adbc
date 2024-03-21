@@ -39,7 +39,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private global::Apache.Hive.Service.Rpc.Thrift.TTypeQualifiers _typeQualifiers;
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TTypeId"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TTypeId Type { get; set; }
@@ -125,7 +125,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            default: 
+            default:
               await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               break;
           }
