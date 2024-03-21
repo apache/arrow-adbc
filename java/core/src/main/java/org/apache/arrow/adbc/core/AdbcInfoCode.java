@@ -35,9 +35,13 @@ public enum AdbcInfoCode {
   VENDOR_SQL(4),
   /** Indicates whether Substrait queries are supported (type: bool). */
   VENDOR_SUBSTRAIT(5),
-  /** The minimum supported Substrait version, or null if Substrait is not supported (type: utf8). */
+  /**
+   * The minimum supported Substrait version, or null if Substrait is not supported (type: utf8).
+   */
   VENDOR_SUBSTRAIT_MIN_VERSION(6),
-  /** The maximum supported Substrait version, or null if Substrait is not supported (type: utf8). */
+  /**
+   * The maximum supported Substrait version, or null if Substrait is not supported (type: utf8).
+   */
   VENDOR_SUBSTRAIT_MAX_VERSION(7),
 
   /** The driver name (type: utf8). */
