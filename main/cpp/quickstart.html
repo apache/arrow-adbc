@@ -429,11 +429,10 @@ have to explicitly link to the driver this way.</p>
 </section>
 <section id="creating-a-connection">
 <h3>Creating a Connection<a class="headerlink" href="#creating-a-connection" title="Permalink to this heading">#</a></h3>
-<p>ADBC distinguishes between “databases”, “connections”, and
-“statements”.  A “database” holds shared state across multiple
-connections.  For example, in the SQLite driver, it holds the
-actual instance of SQLite.  A “connection” is one connection to
-the database.</p>
+<p>ADBC distinguishes between “<a class="reference internal" href="../glossary.html#term-database"><span class="xref std std-term">databases</span></a>”,
+“<a class="reference internal" href="../glossary.html#term-connection"><span class="xref std std-term">connections</span></a>”, and “<a class="reference internal" href="../glossary.html#term-statement"><span class="xref std std-term">statements</span></a>”.  A “database” holds shared state across multiple
+connections.  For example, in the SQLite driver, it holds the actual
+instance of SQLite.  A “connection” is one connection to the database.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">125</span><span class="w">  </span><span class="n">AdbcConnection</span><span class="w"> </span><span class="n">connection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
 <span class="linenos">126</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcConnectionNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 <span class="linenos">127</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcConnectionInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>

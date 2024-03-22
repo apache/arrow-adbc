@@ -346,6 +346,12 @@ See the <a class="reference external" href="https://arrow.apache.org/docs/format
 abstract over the underlying <a class="reference internal" href="#term-wire-protocol"><span class="xref std std-term">wire protocol</span></a> and other details.
 For example, ADBC, JDBC, ODBC.</p>
 </dd>
+<dt id="term-connection">connection<a class="headerlink" href="#term-connection" title="Permalink to this term">#</a></dt><dd><p>In ADBC, the connection object/struct represents a single connection to a
+database.  Multiple connections may be created from one <a class="reference internal" href="#term-database"><span class="xref std std-term">database</span></a>.</p>
+</dd>
+<dt id="term-database">database<a class="headerlink" href="#term-database" title="Permalink to this term">#</a></dt><dd><p>In ADBC, the database object/struct holds state that is shared across
+connections.</p>
+</dd>
 <dt id="term-driver">driver<a class="headerlink" href="#term-driver" title="Permalink to this term">#</a></dt><dd><p>Loosely speaking, a library that implements a <a class="reference internal" href="#term-client-API"><span class="xref std std-term">client API</span></a> using a
 <a class="reference internal" href="#term-wire-protocol"><span class="xref std std-term">wire protocol</span></a>.  For example, the ADBC PostgreSQL driver exposes
 the ADBC client API and interacts with a PostgreSQL database via the
@@ -360,6 +366,11 @@ dynamically load drivers so that applications do not have to directly
 link to them.  (Since all drivers expose the same API, their symbols
 would collide otherwise.)  In Python, it loads drivers and provides
 Python bindings on top.</p>
+</dd>
+<dt id="term-statement">statement<a class="headerlink" href="#term-statement" title="Permalink to this term">#</a></dt><dd><p>In ADBC, the statement object/struct holds state for executing a single
+query.  The query itself, bind parameters, result sets, and so on are all
+tied to the statement.  Multiple statements may be created from one
+<a class="reference internal" href="#term-connection"><span class="xref std std-term">connection</span></a> (though not all drivers will support this).</p>
 </dd>
 <dt id="term-Substrait">Substrait<a class="headerlink" href="#term-Substrait" title="Permalink to this term">#</a></dt><dd><p><a class="reference external" href="https://substrait.io/">Substrait</a> describes itself as a “cross-language serialization for
 relational algebra”.  It operates in a similar space as SQL, but is
