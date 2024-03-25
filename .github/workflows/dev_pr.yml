@@ -44,3 +44,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./.github/workflows/dev_pr/milestone.sh "${GITHUB_REPOSITORY}" ${{github.event.number}}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: pr_checkout
+          persist-credentials: false
+          ref: "${{ github.event.pull_request.merge_commit_sha }}"
+
+      - name: Check PR title for conventional commit format
+        run: |
+          python .github/workflows/dev_pr/title_check.py $(pwd)/pr_checkout "${{ github.event.pull_request.title }}"

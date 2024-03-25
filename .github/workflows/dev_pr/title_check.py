@@ -63,25 +63,26 @@ def matches_commit_format(root: Path, title: str) -> typing.List[str]:
         reasons.append(f"Invalid commit type: {commit_type}")
 
     components = m.group(2)
-    if not components.strip():
-        reasons.append("Invalid components: must not be empty")
-
-    components = components.split(",")
-    for component in components:
-        if component != component.strip():
-            reasons.append(
-                f"Invalid component: must have no trailing space: {component}"
-            )
-        elif not valid_component.match(component):
-            reasons.append(
-                "Invalid component: must be alphanumeric with "
-                f"dashes, slashes, and underscores: {component}"
-            )
-        elif component != "format" and not Path(component).exists():
-            reasons.append(
-                "Invalid component: must reference a file "
-                f"or directory in the repo: {component}"
-            )
+    if components is not None:
+        if not components.strip():
+            reasons.append("Invalid components: must not be empty")
+        else:
+            components = components.split(",")
+            for component in components:
+                if component != component.strip():
+                    reasons.append(
+                        f"Invalid component: must have no trailing space: {component}"
+                    )
+                elif not valid_component.match(component):
+                    reasons.append(
+                        "Invalid component: must be alphanumeric with "
+                        f"dashes, slashes, and underscores: {component}"
+                    )
+                elif component != "format" and not Path(component).exists():
+                    reasons.append(
+                        "Invalid component: must reference a file "
+                        f"or directory in the repo: {component}"
+                    )
 
     subject = m.group(3)
     if subject.strip() != subject:
