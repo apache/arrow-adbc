@@ -19,9 +19,10 @@
 How Drivers and the Driver Manager Work Together
 ================================================
 
-.. note:: This document focuses on drivers/applications using the C API
-          definitions in adbc.h.  That means C/C++/Python/Ruby, and possibly
-          C#/Go.
+.. note:: This document focuses on drivers/applications that implement or
+          consume the C API definitions in adbc.h.  That includes C/C++,
+          Python, and Ruby; and possibly C#, Go, and Rust (when implementing
+          or consuming drivers via FFI).
 
 When an application calls a function like
 :cpp:func:`AdbcStatementExecuteQuery`, how does it "know" what function in
@@ -70,10 +71,12 @@ same application:
 In More Detail
 ==============
 
-The adbc.h header ties everything together.  It is the abstract API
+The `adbc.h`_ header ties everything together.  It is the abstract API
 definition, akin to interface/trait/protocol definitions in other languages.
 C being C, however, all it consists of is a bunch of function prototypes and
 struct definitions without any implementation.
+
+.. _adbc.h: https://github.com/apache/arrow/blob/main/format/adbc.h
 
 A driver, at its core, is just a library that implements those function
 prototypes in adbc.h.  Those functions may be implemented in C, or they can be
