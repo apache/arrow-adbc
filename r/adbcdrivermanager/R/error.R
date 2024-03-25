@@ -55,7 +55,11 @@ stop_for_error <- function(status, error) {
     error <- .Call(RAdbcErrorProxy, error)
     error$status <- status
     error$status_code_message <- .Call(RAdbcStatusCodeMessage, status)
-    msg <- if (!is.null(error$message)) error$message else error$status_code_message
+    if (!is.null(error$message)) {
+      msg <- paste(error$status_code_message, error$message, sep=": ")
+    } else {
+      msg <- error$status_code_message
+    }
 
     # Gives an error class like "adbc_status_invalid_state", "adbc_status",
     # "simpleError", ...
