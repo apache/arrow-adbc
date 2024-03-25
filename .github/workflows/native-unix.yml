@@ -501,10 +501,12 @@ jobs:
           ADBC_USE_ASAN: "0"
           ADBC_USE_UBSAN: "0"
         run: |
+          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/x64/bin:$PATH
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Build Panic Dummy
         shell: bash -l {0}
         run: |
+          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/x64/bin:$PATH
           if [[ $(uname) = "Darwin" ]]; then
             make -C ./go/adbc/pkg libadbc_driver_panicdummy.dylib
           else
@@ -518,10 +520,12 @@ jobs:
           else
             export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.so
           fi
+          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/x64/bin:$PATH
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver Flight SQL
         shell: bash -l {0}
         run: |
+          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/x64/bin:$PATH
           # Can't use Docker on macOS
           pushd $(pwd)/go/adbc
           go build -o testserver ./driver/flightsql/cmd/testserver
