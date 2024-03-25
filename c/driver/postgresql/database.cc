@@ -27,7 +27,7 @@
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.h>
 
-#include "common/utils.h"
+#include "driver/common/utils.h"
 
 namespace adbcpq {
 

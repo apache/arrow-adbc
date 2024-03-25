@@ -17,7 +17,7 @@
 
 #include "result_helper.h"
 
-#include "common/utils.h"
+#include "driver/common/utils.h"
 #include "error.h"
 
 namespace adbcpq {

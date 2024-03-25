@@ -1,6 +1,7 @@
 *.json
 *.Rproj
 *.Rd
+c/vendor/fmt/*
 c/vendor/sqlite3/sqlite3.c
 c/vendor/sqlite3/sqlite3.h
 c/vendor/portable-snippets/safe-math.h

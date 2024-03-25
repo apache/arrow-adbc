@@ -78,4 +78,8 @@ override_dh_auto_test:
 override_dh_dwz:
 	# libadbc_driver_flightsql.so.* has compressed DWARF.
 	# We can't use dwz for compressed DWARF.
-	dh_dwz --exclude=libadbc_driver_flightsql --exclude=libadbc_driver_snowflake
+	dh_dwz \
+		--exclude=libadbc_driver_flightsql \
+		--exclude=libadbc_driver_postgresql \
+		--exclude=libadbc_driver_snowflake \
+		--exclude=libadbc_driver_sqlite
