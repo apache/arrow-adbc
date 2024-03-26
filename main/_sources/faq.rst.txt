@@ -146,6 +146,17 @@ JDBC driver in a bespoke Arrow-based API.
 .. _arrow-jdbc: https://central.sonatype.com/artifact/org.apache.arrow/arrow-jdbc/11.0.0
 .. _Turbodbc: https://turbodbc.readthedocs.io/en/latest/
 
+What is the ADBC driver manager?
+================================
+
+The driver manager (in C/C++) is a library that implements the driver API but
+dynamically loads and manages multiple drivers behind the scenes.  It allows
+applications to link to a single library but use more than one driver at a
+time.  This avoids symbol conflicts between multiple drivers that would
+otherwise all provide the same ADBC APIs under the same names.
+
+For an in-depth look, see :doc:`format/how_manager`.
+
 What is the ADBC SQL dialect?
 =============================
 

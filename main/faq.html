@@ -288,6 +288,7 @@
 <li class="toctree-l1"><a class="reference internal" href="format/specification.html">ADBC API Standard</a></li>
 <li class="toctree-l1"><a class="reference internal" href="format/versioning.html">Versioning and Compatibility</a></li>
 <li class="toctree-l1"><a class="reference internal" href="format/comparison.html">Comparison with Other APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="format/how_manager.html">How Drivers and the Driver Manager Work Together</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Development</span></p>
 <ul>
@@ -445,6 +446,15 @@ conversions yourself.</p>
 ODBC driver in Python’s DBAPI (PEP 249), and <a class="reference external" href="https://central.sonatype.com/artifact/org.apache.arrow/arrow-jdbc/11.0.0">arrow-jdbc</a> wraps any
 JDBC driver in a bespoke Arrow-based API.</p>
 </section>
+<section id="what-is-the-adbc-driver-manager">
+<h2>What is the ADBC driver manager?<a class="headerlink" href="#what-is-the-adbc-driver-manager" title="Permalink to this heading">#</a></h2>
+<p>The driver manager (in C/C++) is a library that implements the driver API but
+dynamically loads and manages multiple drivers behind the scenes.  It allows
+applications to link to a single library but use more than one driver at a
+time.  This avoids symbol conflicts between multiple drivers that would
+otherwise all provide the same ADBC APIs under the same names.</p>
+<p>For an in-depth look, see <a class="reference internal" href="format/how_manager.html"><span class="doc">How Drivers and the Driver Manager Work Together</span></a>.</p>
+</section>
 <section id="what-is-the-adbc-sql-dialect">
 <h2>What is the ADBC SQL dialect?<a class="headerlink" href="#what-is-the-adbc-sql-dialect" title="Permalink to this heading">#</a></h2>
 <p>Trick question!  ADBC is not a SQL dialect.  All an ADBC driver is
@@ -537,6 +547,7 @@ United States and other countries.
 <li><a class="reference internal" href="#then-do-we-even-need-arrow-flight-sql">Then do we even need Arrow Flight SQL?</a></li>
 <li><a class="reference internal" href="#so-what-is-the-adbc-flight-sql-driver-then">So what is the “ADBC Flight SQL driver” then?</a></li>
 <li><a class="reference internal" href="#and-then-what-is-the-adbc-jdbc-driver">And then what is the “ADBC JDBC driver”?</a></li>
+<li><a class="reference internal" href="#what-is-the-adbc-driver-manager">What is the ADBC driver manager?</a></li>
 <li><a class="reference internal" href="#what-is-the-adbc-sql-dialect">What is the ADBC SQL dialect?</a></li>
 <li><a class="reference internal" href="#when-is-the-next-release">When is the next release?</a></li>
 <li><a class="reference internal" href="#when-where-is-1-0-is-this-project-ready">When/where is 1.0? Is this project ready?</a></li>
