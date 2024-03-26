@@ -445,7 +445,7 @@ test_cpp() {
 test_java() {
   show_header "Build and test Java libraries"
 
-  # Build and test Java (Requires newer Maven -- I used 3.3.9)
+  # Build and test Java (Requires Maven >= 3.6.3)
   maybe_setup_conda maven || exit 1
 
   "${ADBC_DIR}/ci/scripts/java_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/java"
