@@ -69,7 +69,7 @@ struct GetObjectsBuilder {
         table_types(table_types),
         schema(schema),
         array(array) {
-    na_error = {0};
+    std::memset(&na_error, 0, sizeof(na_error));
   }
 
   Status Build() {
