@@ -18,6 +18,13 @@
 name: Verification (Nightly)
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/nightly-verify.yml'
+      - 'dev/release/verify-release-candidate.sh'
+      - 'dev/release/verify-release-candidate.ps1'
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch: {}
