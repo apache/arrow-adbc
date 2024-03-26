@@ -129,7 +129,7 @@ class Status {
   template <typename DatabaseT, typename ConnectionT, typename StatementT>
   friend class Driver;
 
-  int CDetailCount() const { return impl_ ? impl_->details.size() : 0; }
+  int CDetailCount() const { return impl_ ? static_cast<int>(impl_->details.size()) : 0; }
 
   AdbcErrorDetail CDetail(int index) const {
     if (!impl_ || index < 0 || static_cast<size_t>(index) >= impl_->details.size()) {

@@ -79,6 +79,7 @@ if(MSVC)
   add_compile_options(/wd4100)
   # Nanoarrow emits a lot of conversion warnings
   add_compile_options(/wd4365)
+  add_compile_options(/wd4242)
   add_compile_options(/wd4458)
   add_compile_options(/wd4514)
   add_compile_options(/wd4582)

@@ -25,7 +25,7 @@ function build_drivers {
     local -r source_dir="$1"
     local -r build_dir="$2/${VCPKG_ARCH}"
 
-    : ${CMAKE_BUILD_TYPE:=release}
+    : ${CMAKE_BUILD_TYPE:=RelWithDebInfo}
     : ${CMAKE_UNITY_BUILD:=ON}
     : ${CMAKE_GENERATOR:=Ninja}
     : ${VCPKG_ROOT:=/opt/vcpkg}

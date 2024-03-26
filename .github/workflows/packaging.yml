@@ -876,6 +876,7 @@ jobs:
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
+            adbc/build/**/*.pdb
 
       - name: Test wheel
         shell: cmd
@@ -965,6 +966,8 @@ jobs:
           RELEASE_TAG=${GITHUB_REF#refs/*/}
 
           # Deduplicate wheels built in different jobs with same tag
+          # Include .pdb files since those are debug symbols for Windows
+          # wheels
           mkdir -p upload-staging
           find ./release-artifacts/ \
             '(' \
@@ -972,6 +975,7 @@ jobs:
               -name '*.jar' -or \
               -name '*.nupkg' -or \
               -name '*.snupkg' -or \
+              -name '*.pdb' -or \
               -name '*.pom' -or \
               -name '*.whl' -or \
               -name 'adbc_*.tar.gz' -or \
