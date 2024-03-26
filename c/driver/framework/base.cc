@@ -147,7 +147,7 @@ AdbcStatusCode Option::CGet(double* out, AdbcError* error) const {
       [&](auto&& value) -> AdbcStatusCode {
         using T = std::decay_t<decltype(value)>;
         if constexpr (std::is_same_v<T, double> || std::is_same_v<T, int64_t>) {
-          *out = value;
+          *out = static_cast<double>(value);
           return ADBC_STATUS_OK;
         } else if constexpr (std::is_same_v<T, Unset>) {
           return status::NotFound("Unknown option").ToAdbc(error);

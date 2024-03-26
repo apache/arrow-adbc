@@ -77,6 +77,11 @@ if(MSVC)
   # Allow incomplete switch (since MSVC warns even if there's a default case)
   add_compile_options(/wd4061)
   add_compile_options(/wd4100)
+  # Nanoarrow emits a lot of conversion warnings
+  add_compile_options(/wd4365)
+  add_compile_options(/wd4458)
+  add_compile_options(/wd4514)
+  add_compile_options(/wd4582)
   add_compile_options(/wd4623)
   add_compile_options(/wd4625)
   add_compile_options(/wd4626)
@@ -85,6 +90,7 @@ if(MSVC)
   add_compile_options(/wd4711)
   # Don't warn about padding added after members
   add_compile_options(/wd4820)
+  add_compile_options(/wd5027)
   add_compile_options(/wd5045)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
