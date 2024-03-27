@@ -47,4 +47,4 @@ ARG GO_VERSION
 RUN wget --no-verbose https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
     rm go${GO_VERSION}.linux-amd64.tar.gz
-ENV PATH="${PATH}:/usr/local/go/bin"
+ENV PATH="/usr/local/go/bin:${PATH}"
