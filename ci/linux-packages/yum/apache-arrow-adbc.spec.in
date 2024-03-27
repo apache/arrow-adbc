@@ -44,7 +44,6 @@ BuildRequires:	arrow-glib-devel
 BuildRequires:	cmake
 BuildRequires:	gcc-c++
 BuildRequires:	gobject-introspection-devel
-BuildRequires:	golang
 BuildRequires:	libpq-devel
 BuildRequires:	ninja-build
 BuildRequires:	pkgconfig
