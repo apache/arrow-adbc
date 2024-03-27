@@ -15,9 +15,8 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text.Unicode;
 
 namespace Apache.Arrow.Adbc.Tests.Metadata
 {
@@ -104,25 +103,25 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
 
             List<AdbcColumn> columns = new List<AdbcColumn>();
 
-            StringArray column_name = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "column_name")]; // column_name | utf8 not null
-            Int32Array ordinal_position = (Int32Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "ordinal_position")]; //	ordinal_position | int32
-            StringArray remarks = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "remarks")]; //	remarks | utf8
-            Int16Array xdbc_data_type = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_data_type")]; // xdbc_data_type | int16
-            StringArray xdbc_type_name = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_type_name")]; // xdbc_type_name | utf8
-            Int32Array xdbc_column_size = (Int32Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_column_size")]; // xdbc_column_size | int32
-            Int16Array xdbc_decimal_digits = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_decimal_digits")]; //		xdbc_decimal_digits	| int16
-            Int16Array xdbc_num_prec_radix = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_num_prec_radix")];//		xdbc_num_prec_radix	| int16
-            Int16Array xdbc_nullable = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_nullable")];//		xdbc_nullable	| int16
-            StringArray xdbc_column_def = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_column_def")]; //		xdbc_column_def	| utf8
-            Int16Array xdbc_sql_data_type = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_sql_data_type")];//		xdbc_sql_data_type	| int16
-            Int16Array xdbc_datetime_sub = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_datetime_sub")]; //		xdbc_datetime_sub   | int16
-            Int32Array xdbc_char_octet_length = (Int32Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_char_octet_length")];  //		xdbc_char_octet_length	| int32
-            StringArray xdbc_is_nullable = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_is_nullable")]; //		xdbc_is_nullable | utf8
-            StringArray xdbc_scope_catalog = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_scope_catalog")];//		xdbc_scope_catalog | utf8
-            StringArray xdbc_scope_schema = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_scope_schema")]; //		xdbc_scope_schema | utf8
-            StringArray xdbc_scope_table = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_scope_table")]; //		xdbc_scope_table | utf8
-            BooleanArray xdbc_is_autoincrement = (BooleanArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_is_autoincrement")]; //		xdbc_is_autoincrement | bool
-            BooleanArray xdbc_is_generatedcolumn = (BooleanArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_is_generatedcolumn")]; //		xdbc_is_generatedcolumn | bool
+            StringArray column_name = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("column_name")]; // column_name | utf8 not null
+            Int32Array ordinal_position = (Int32Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("ordinal_position")]; //	ordinal_position | int32
+            StringArray remarks = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("remarks")]; //	remarks | utf8
+            Int16Array xdbc_data_type = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_data_type")]; // xdbc_data_type | int16
+            StringArray xdbc_type_name = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_type_name")]; // xdbc_type_name | utf8
+            Int32Array xdbc_column_size = (Int32Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_column_size")]; // xdbc_column_size | int32
+            Int16Array xdbc_decimal_digits = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_decimal_digits")]; //		xdbc_decimal_digits	| int16
+            Int16Array xdbc_num_prec_radix = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_num_prec_radix")];//		xdbc_num_prec_radix	| int16
+            Int16Array xdbc_nullable = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_nullable")];//		xdbc_nullable	| int16
+            StringArray xdbc_column_def = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_column_def")]; //		xdbc_column_def	| utf8
+            Int16Array xdbc_sql_data_type = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_sql_data_type")];//		xdbc_sql_data_type	| int16
+            Int16Array xdbc_datetime_sub = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_datetime_sub")]; //		xdbc_datetime_sub   | int16
+            Int32Array xdbc_char_octet_length = (Int32Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_char_octet_length")];  //		xdbc_char_octet_length	| int32
+            StringArray xdbc_is_nullable = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_is_nullable")]; //		xdbc_is_nullable | utf8
+            StringArray xdbc_scope_catalog = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_scope_catalog")];//		xdbc_scope_catalog | utf8
+            StringArray xdbc_scope_schema = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_scope_schema")]; //		xdbc_scope_schema | utf8
+            StringArray xdbc_scope_table = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_scope_table")]; //		xdbc_scope_table | utf8
+            BooleanArray xdbc_is_autoincrement = (BooleanArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_is_autoincrement")]; //		xdbc_is_autoincrement | bool
+            BooleanArray xdbc_is_generatedcolumn = (BooleanArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndexOrThrow("xdbc_is_generatedcolumn")]; //		xdbc_is_generatedcolumn | bool
 
             for (int i = 0; i < columnsArray.Length; i++)
             {
@@ -159,10 +158,10 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
 
             List<AdbcConstraint> constraints = new List<AdbcConstraint>();
 
-            StringArray name = (StringArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndex(f => f.Name == "constraint_name")]; // constraint_name | utf8
-            StringArray type = (StringArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndex(f => f.Name == "constraint_type")]; //	constraint_type | utf8 not null
-            ListArray column_names = (ListArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndex(f => f.Name == "constraint_column_names")]; //	constraint_column_names | list<utf8> not null
-            ListArray column_usage = (ListArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndex(f => f.Name == "constraint_column_usage")]; //	constraint_column_usage | list<USAGE_SCHEMA>
+            StringArray name = (StringArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndexOrThrow("constraint_name")]; // constraint_name | utf8
+            StringArray type = (StringArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndexOrThrow("constraint_type")]; //	constraint_type | utf8 not null
+            ListArray columnNames = (ListArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndexOrThrow("constraint_column_names")]; //	constraint_column_names | list<utf8> not null
+            ListArray columnUsages = (ListArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndexOrThrow("constraint_column_usage")]; //	constraint_column_usage | list<USAGE_SCHEMA>
 
             for (int i = 0; i < constraintsArray.Length; i++)
             {
@@ -170,17 +169,26 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
                 c.Name = name.GetString(i);
                 c.Type = type.GetString(i);
 
-                StringArray col_names = column_names.GetSlicedValues(i) as StringArray;
-                StructArray usage = column_usage.GetSlicedValues(i) as StructArray;
+                StringArray colNames = columnNames.GetSlicedValues(i) as StringArray;
+                StructArray usages = columnUsages.GetSlicedValues(i) as StructArray;
 
-                if (usage != null)
+                if (colNames != null)
                 {
-                    for (int j = 0; j < usage.Length; j++)
+                    for (int j = 0; j < colNames.Length; j++)
                     {
-                        StringArray fkCatalog = (StringArray)usage.Fields[StandardSchemas.UsageSchema.FindIndex(f => f.Name == "fk_catalog")]; // fk_catalog	| utf8
-                        StringArray fkDbSchema = (StringArray)usage.Fields[StandardSchemas.UsageSchema.FindIndex(f => f.Name == "fk_db_schema")]; //fk_db_schema | utf8
-                        StringArray fkTable = (StringArray)usage.Fields[StandardSchemas.UsageSchema.FindIndex(f => f.Name == "fk_table")]; //	fk_table | utf8 not null
-                        StringArray fkColumnName = (StringArray)usage.Fields[StandardSchemas.UsageSchema.FindIndex(f => f.Name == "fk_column_name")]; // fk_column_name | utf8 not null
+                        c.ColumnNames.Add(colNames.GetString(j));
+                    }
+                }
+
+                if (usages != null)
+                {
+                    StringArray fkCatalog = (StringArray)usages.Fields[StandardSchemas.UsageSchema.FindIndexOrThrow("fk_catalog")]; // fk_catalog	| utf8
+                    StringArray fkDbSchema = (StringArray)usages.Fields[StandardSchemas.UsageSchema.FindIndexOrThrow("fk_db_schema")]; //fk_db_schema | utf8
+                    StringArray fkTable = (StringArray)usages.Fields[StandardSchemas.UsageSchema.FindIndexOrThrow("fk_table")]; //	fk_table | utf8 not null
+                    StringArray fkColumnName = (StringArray)usages.Fields[StandardSchemas.UsageSchema.FindIndexOrThrow("fk_column_name")]; // fk_column_name | utf8 not null
+
+                    for (int j = 0; j < usages.Length; j++)
+                    {
 
                         AdbcUsageSchema adbcUsageSchema = new AdbcUsageSchema();
                         adbcUsageSchema.FkCatalog = fkCatalog.GetString(j);
@@ -195,6 +203,35 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             }
 
             return constraints;
+        }
+    }
+
+    /// <summary>
+    /// Extension methods for List<Field> type
+    /// </summary>
+    ///
+    public static class FieldExtensions
+    {
+        /// <summary>
+        /// Finds the index of the first field with the provided name in the list or throws an exception
+        /// </summary>
+        /// <param name="fields">The list of fields</param>
+        /// <param name="name">The field name to look for</param>
+        /// <returns>The index of the first field with the provided name</returns>
+        /// <exception cref="ArgumentNullException">Thrown if fields argument is null</exception>
+        /// <exception cref="InvalidOperationException">Thrown if no matching field is found with the provided name</exception>
+        public static int FindIndexOrThrow(this List<Field> fields, string name)
+        {
+            if (fields == null)
+            {
+                throw new ArgumentNullException(nameof(fields));
+            }
+            int index = fields.FindIndex(f => f.Name == name);
+            if (index == -1)
+            {
+                throw new InvalidOperationException($"No matching field found with name: {name}");
+            }
+            return index;
         }
     }
 }
