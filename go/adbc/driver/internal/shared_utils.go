@@ -308,12 +308,16 @@ func (g *GetObjects) appendTableInfo(tableInfo TableInfo, catalogAndSchema Catal
 }
 
 func (g *GetObjects) appendTableConstraints(tableInfo TableInfo, catalogAndSchema CatalogAndSchema) {
-	if len(g.ConstraintLookup) == 0 {
+	if g.Depth == adbc.ObjectDepthTables {
 		g.tableConstraintsBuilder.AppendNull()
 		return
 	}
 
 	g.tableConstraintsBuilder.Append(true)
+	if len(g.ConstraintLookup) == 0 {
+		// Empty list
+		return
+	}
 
 	catalogSchemaTable := CatalogSchemaTable{Catalog: catalogAndSchema.Catalog, Schema: catalogAndSchema.Schema, Table: tableInfo.Name}
 	constraintSchemaData, exists := g.ConstraintLookup[catalogSchemaTable]
