@@ -52,30 +52,63 @@
 //!
 //! # Using C API drivers
 //!
-//! 🚧 TODO
+//! The [driver_manager] module allows loading drivers, either from an initialization
+//! function or by dynamically finding such a function in a dynamic library.
+//!
+//! ```
+//! use arrow::datatypes::Int64Type;
+//! use arrow::array::as_primitive_array;
+//! use arrow::record_batch::RecordBatchReader;
+//!
+//! use arrow_adbc::driver_manager::AdbcDriver;
+//! use arrow_adbc::ADBC_VERSION_1_0_0;
+//! use arrow_adbc::{AdbcStatement, AdbcConnection};
+//!
+//! # fn main() -> arrow_adbc::driver_manager::Result<()> {
+//! let sqlite_driver = AdbcDriver::load("adbc_driver_sqlite", None, ADBC_VERSION_1_0_0)?;
+//! let sqlite_database = sqlite_driver.new_database()?.init()?;
+//! let sqlite_conn = sqlite_database.new_connection()?.init()?;
+//! let mut sqlite_statement = sqlite_conn.new_statement()?;
+//!
+//! sqlite_statement.set_sql_query("SELECT 1");
+//! let mut results: Box<dyn RecordBatchReader> = sqlite_statement.execute()?
+//!     .result.expect("Query did not have a result");
+//!
+//! let batch = results.next().expect("Result did not have at least one batch")?;
+//! let result = as_primitive_array::<Int64Type>(batch.column(0));
+//!
+//! assert_eq!(result.value(0), 1);
+//! # Ok(())
+//! # }
+//! ```
 //!
 //! # Creating C API drivers
 //!
-//! 🚧 TODO
+//! To implement an ADBC driver with a C interface, use the [implement] module. The macro
+//! [adbc_init_func] will generate adapters from the safe Rust traits you implement
+//! to the FFI interface recognized by ADBC.
 //!
+pub mod driver_manager;
 pub mod error;
+pub mod ffi;
+pub mod implement;
 pub mod info;
 pub mod objects;
+pub(crate) mod utils;
+
+pub const ADBC_VERSION_1_0_0: i32 = 1000000;
 
 use std::collections::HashMap;
 
-use arrow_array::{RecordBatch, RecordBatchReader};
+use arrow_array::{RecordBatchReader, StructArray};
 use arrow_schema::Schema;
-use async_trait::async_trait;
-use info::InfoCode;
 
 use crate::error::AdbcError;
-use crate::info::InfoData;
+use crate::info::{InfoCode, InfoData};
 
 /// Databases hold state shared by multiple connections. This typically means
 /// configuration and caches. For in-memory databases, it provides a place to
 /// hold ownership of the in-memory database.
-#[async_trait]
 pub trait AdbcDatabase {
     type ConnectionType: AdbcConnection;
 
@@ -88,7 +121,7 @@ pub trait AdbcDatabase {
     ///
     /// `options` provided will configure the connection, including the isolation
     /// level. See standard options in [options].
-    async fn connect<K, V>(
+    fn connect<K, V>(
         &self,
         options: impl IntoIterator<Item = (K, V)>,
     ) -> Result<Self::ConnectionType, AdbcError>
@@ -107,7 +140,6 @@ pub trait AdbcDatabase {
 /// setting [options::AdbcOptionKey::AutoCommit] to `"false"` (using
 /// [AdbcConnection::set_option]). Turning off autocommit allows customizing
 /// the isolation level. Read more in [adbc.h](https://github.com/apache/arrow-adbc/blob/main/adbc.h).
-#[async_trait]
 pub trait AdbcConnection {
     type StatementType: AdbcStatement;
     type ObjectCollectionType: objects::DatabaseCatalogCollection;
@@ -131,19 +163,18 @@ pub trait AdbcConnection {
     /// for ADBC usage.  Drivers/vendors will ignore requests for
     /// unrecognized codes (the row will be omitted from the result).
     /// Known codes are provided in [info::InfoCode].
-    async fn get_info(
+    fn get_info(
         &self,
         info_codes: Option<&[InfoCode]>,
-    ) -> Result<HashMap<u32, InfoData>, AdbcError>;
+    ) -> Result<HashMap<InfoCode, InfoData>, AdbcError>;
 
     /// Get a single data base metadata. See [AdbcConnection::get_info()].
     ///
     /// Will return `None` if the code is not recognized.
-    async fn get_single_info(&self, info_code: InfoCode) -> Result<Option<InfoData>, AdbcError> {
+    fn get_single_info(&self, info_code: InfoCode) -> Result<Option<InfoData>, AdbcError> {
         let info_codes = &[info_code];
         Ok(self
-            .get_info(Some(info_codes.as_slice()))
-            .await?
+            .get_info(Some(info_codes.as_slice()))?
             .into_iter()
             .next()
             .map(|(_, val)| val))
@@ -178,7 +209,7 @@ pub trait AdbcConnection {
     /// or more characters, or `"_"` to match exactly one character.  (See
     /// the documentation of DatabaseMetaData in JDBC or "Pattern Value
     /// Arguments" in the ODBC documentation.)
-    async fn get_objects(
+    fn get_objects(
         &self,
         depth: AdbcObjectDepth,
         catalog: Option<&str>,
@@ -191,7 +222,7 @@ pub trait AdbcConnection {
     /// Get the Arrow schema of a table.
     ///
     /// `catalog` or `db_schema` may be `None` when not applicable.
-    async fn get_table_schema(
+    fn get_table_schema(
         &self,
         catalog: Option<&str>,
         db_schema: Option<&str>,
@@ -205,23 +236,23 @@ pub trait AdbcConnection {
     /// Field Name       | Field Type
     /// -----------------|--------------
     /// `table_type`     | `utf8 not null`
-    async fn get_table_types(&self) -> Result<Vec<String>, AdbcError>;
+    fn get_table_types(&self) -> Result<Vec<String>, AdbcError>;
 
     /// Read part of a partitioned result set.
-    async fn read_partition(
+    fn read_partition(
         &self,
         partition: &[u8],
-    ) -> Result<Box<dyn RecordBatchReader>, AdbcError>;
+    ) -> Result<Box<dyn RecordBatchReader + Send>, AdbcError>;
 
     /// Commit any pending transactions. Only used if autocommit is disabled.
-    async fn commit(&self) -> Result<(), AdbcError>;
+    fn commit(&self) -> Result<(), AdbcError>;
 
     /// Roll back any pending transactions. Only used if autocommit is disabled.
-    async fn rollback(&self) -> Result<(), AdbcError>;
+    fn rollback(&self) -> Result<(), AdbcError>;
 }
 
 /// Depth parameter for GetObjects method.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(i32)]
 pub enum AdbcObjectDepth {
     /// Metadata on catalogs, schemas, tables, and columns.
@@ -247,12 +278,11 @@ pub enum AdbcObjectDepth {
 /// Multiple statements may be created from a single connection.
 /// However, the driver may block or error if they are used
 /// concurrently (whether from a single thread or multiple threads).
-#[async_trait]
 pub trait AdbcStatement {
     /// Turn this statement into a prepared statement to be executed multiple time.
     ///
     /// This should return an error if called before [AdbcStatement::set_sql_query].
-    async fn prepare(&mut self) -> Result<(), AdbcError>;
+    fn prepare(&mut self) -> Result<(), AdbcError>;
 
     /// Set a string option on a statement.
     fn set_option(&mut self, key: impl AsRef<str>, value: impl AsRef<str>)
@@ -260,6 +290,9 @@ pub trait AdbcStatement {
 
     /// Set the SQL query to execute.
     fn set_sql_query(&mut self, query: &str) -> Result<(), AdbcError>;
+
+    /// Set the Substrait plan to execute.
+    fn set_substrait_plan(&mut self, plan: &[u8]) -> Result<(), AdbcError>;
 
     /// Get the schema for bound parameters.
     ///
@@ -274,24 +307,24 @@ pub trait AdbcStatement {
     /// the corresponding field will be NA (NullType).
     ///
     /// This should return an error if this was called before [AdbcStatement::prepare].
-    async fn get_param_schema(&self) -> Result<Schema, AdbcError>;
+    fn get_param_schema(&mut self) -> Result<Schema, AdbcError>;
 
     /// Bind Arrow data, either for bulk inserts or prepared statements.
-    fn bind_data(&mut self, batch: RecordBatch) -> Result<(), AdbcError>;
+    fn bind_data(&mut self, array: &StructArray) -> Result<(), AdbcError>;
 
     /// Bind Arrow data, either for bulk inserts or prepared statements.
-    fn bind_stream(&mut self, stream: Box<dyn RecordBatchReader>) -> Result<(), AdbcError>;
+    fn bind_stream(&mut self, stream: Box<dyn RecordBatchReader + Send>) -> Result<(), AdbcError>;
 
     /// Execute a statement and get the results.
     ///
     /// See [StatementResult].
-    async fn execute(&mut self) -> Result<StatementResult, AdbcError>;
+    fn execute(&mut self) -> Result<StatementResult, AdbcError>;
 
     /// Execute a query that doesn't have a result set.
     ///
     /// Will return the number of rows affected. If the affected row count is
     /// unknown or unsupported by the database, will return `Ok(-1)`.
-    async fn execute_update(&mut self) -> Result<i64, AdbcError>;
+    fn execute_update(&mut self) -> Result<i64, AdbcError>;
 
     /// Execute a statement with a partitioned result set.
     ///
@@ -300,7 +333,7 @@ pub trait AdbcStatement {
     /// to support threaded or distributed clients.
     ///
     /// See [PartitionedStatementResult].
-    async fn execute_partitioned(&mut self) -> Result<PartitionedStatementResult, AdbcError>;
+    fn execute_partitioned(&mut self) -> Result<PartitionedStatementResult, AdbcError>;
 }
 
 #[cfg(substrait)]
@@ -314,7 +347,7 @@ pub trait AdbcStatementSubstrait: AdbcStatement {
 /// `result` may be None if there is no meaningful result.
 /// `row_affected` may be -1 if not applicable or if it is not supported.
 pub struct StatementResult {
-    pub result: Option<Box<dyn RecordBatchReader>>,
+    pub result: Option<Box<dyn RecordBatchReader + Send>>,
     pub rows_affected: i64,
 }
 
