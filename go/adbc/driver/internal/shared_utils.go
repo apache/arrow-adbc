@@ -48,6 +48,7 @@ type Metadata struct {
 	NumericPrec, NumericPrecRadix, NumericScale, DatetimePrec                 sql.NullInt16
 	IsNullable, IsIdent                                                       bool
 	CharMaxLength, CharOctetLength                                            sql.NullInt32
+	ConstraintName, ConstraintType                                            sql.NullString
 }
 
 type GetObjDBSchemasFn func(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, metadataRecords []Metadata) (map[string][]string, error)
