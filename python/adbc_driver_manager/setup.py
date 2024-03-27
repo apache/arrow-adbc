@@ -34,6 +34,7 @@ sources = [
     "adbc.h",
     "c/driver_manager/adbc_driver_manager.cc",
     "c/driver_manager/adbc_driver_manager.h",
+    "c/vendor/backward/backward.hpp",
 ]
 
 for source in sources:
@@ -89,6 +90,15 @@ else:
 
 setup(
     ext_modules=[
+        Extension(
+            name="adbc_driver_manager._backward",
+            extra_compile_args=extra_compile_args,
+            include_dirs=[str(source_root.joinpath("adbc_driver_manager").resolve())],
+            language="c++",
+            sources=[
+                "adbc_driver_manager/_backward.pyx",
+            ],
+        ),
         Extension(
             name="adbc_driver_manager._lib",
             extra_compile_args=extra_compile_args,

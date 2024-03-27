@@ -22,6 +22,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Apache.Arrow.Adbc.Drivers.Interop.Snowflake;
+using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
@@ -193,6 +194,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string[] queries = content.ToString().Split(";".ToCharArray()).Where(x => x.Trim().Length > 0).ToArray();
 
             return queries;
+        }
+
+        /// <summary>
+        /// Assert that all expected texts in collection appear in the value.
+        /// </summary>
+        /// <param name="expectedTexts"></param>
+        /// <param name="value"></param>
+        internal static void AssertContainsAll(string[] expectedTexts, string value)
+        {
+            if (expectedTexts == null) { return; };
+            foreach (string text in expectedTexts)
+            {
+                Assert.Contains(text, value);
+            }
         }
     }
 }

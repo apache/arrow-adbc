@@ -18,6 +18,9 @@
 # Generate Mermaid diagrams statically.  Sphinx has a mermaid
 # extension, but this causes issues with the page shifting during
 # load.
+# First: npm install -g @mermaid-js/mermaid-cli
+# (if you are using Conda, this will not be "global" but rather install to
+# your Conda prefix)
 # Use as: make -f mermaid.makefile -j all
 
 MERMAID := $(shell find source/ -type f -name '*.mmd')
@@ -27,7 +30,10 @@ define LICENSE
 endef
 
 %.mmd.svg : %.mmd
-	mmdc --input $< --output $@
+# XXX: mermaid doesn't properly handle comments in all layouts (the parser is
+# written entirely from scratch each time, it looks like), so strip them
+# manually
+	grep -E -v "^%" $< | mmdc --input - --output $@
 # Prepend the license header
 	mv $@ $@.tmp
 	echo "<!--" >> $@

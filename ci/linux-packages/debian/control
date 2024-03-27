@@ -23,7 +23,7 @@ Build-Depends:
   cmake,
   debhelper-compat (= 12),
   gobject-introspection,
-  golang | golang-1.20,
+  golang | golang-1.21,
   libarrow-glib-dev,
   libgirepository1.0-dev,
   libpq-dev,

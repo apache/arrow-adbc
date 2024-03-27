@@ -116,11 +116,11 @@ int main() {
   /// Creating a Connection
   /// ---------------------
   ///
-  /// ADBC distinguishes between "databases", "connections", and
-  /// "statements".  A "database" holds shared state across multiple
-  /// connections.  For example, in the SQLite driver, it holds the
-  /// actual instance of SQLite.  A "connection" is one connection to
-  /// the database.
+  /// ADBC distinguishes between ":term:`databases <database>`",
+  /// ":term:`connections <connection>`", and ":term:`statements
+  /// <statement>`".  A "database" holds shared state across multiple
+  /// connections.  For example, in the SQLite driver, it holds the actual
+  /// instance of SQLite.  A "connection" is one connection to the database.
 
   AdbcConnection connection = {};
   CHECK_ADBC(AdbcConnectionNew(&connection, &error));

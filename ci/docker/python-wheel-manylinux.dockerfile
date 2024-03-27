@@ -24,9 +24,11 @@ ARG VCPKG
 FROM ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}
 
 ARG ARCH
+ARG GO
 
 RUN yum install -y docker
 # arm64v8 -> arm64
-RUN wget --no-verbose https://go.dev/dl/go1.19.13.linux-${ARCH/v8/}.tar.gz
-RUN tar -C /usr/local -xzf go1.19.13.linux-${ARCH/v8/}.tar.gz
-ENV PATH="${PATH}:/usr/local/go/bin"
+RUN wget --no-verbose https://go.dev/dl/go${GO}.linux-${ARCH/v8/}.tar.gz && \
+    tar -C /usr/local -xzf go${GO}.linux-${ARCH/v8/}.tar.gz && \
+    rm go${GO}.linux-${ARCH/v8/}.tar.gz
+ENV PATH="/usr/local/go/bin:${PATH}"

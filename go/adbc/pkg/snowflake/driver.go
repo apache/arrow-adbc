@@ -52,6 +52,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"runtime"
 	"runtime/cgo"
@@ -65,7 +66,6 @@ import (
 	"github.com/apache/arrow/go/v16/arrow/cdata"
 	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/apache/arrow/go/v16/arrow/memory/mallocator"
-	"golang.org/x/exp/slog"
 )
 
 // Must use malloc() to respect CGO rules
@@ -73,8 +73,7 @@ var drv = snowflake.NewDriver(mallocator.NewMallocator())
 
 // Flag set if any method panic()ed - afterwards all calls to driver will fail
 // since internal state of driver is unknown
-// (Can't use atomic.Bool since that's Go 1.19)
-var globalPoison int32 = 0
+var globalPoison atomic.Bool
 
 const errPrefix = "[Snowflake] "
 const logLevelEnvVar = "ADBC_DRIVER_SNOWFLAKE_LOG_LEVEL"
@@ -159,7 +158,7 @@ func errToAdbcErr(adbcerr *C.struct_AdbcError, err error) adbc.Status {
 
 // We panicked; make all API functions error and dump stack traces
 func poison(err *C.struct_AdbcError, fname string, e interface{}) C.AdbcStatusCode {
-	if atomic.SwapInt32(&globalPoison, 1) == 0 {
+	if !globalPoison.Swap(true) {
 		// Only print stack traces on the first occurrence
 		buf := make([]byte, 1<<20)
 		length := runtime.Stack(buf, true)
@@ -265,7 +264,7 @@ func (c *cancellableContext) cancelContext() {
 }
 
 func checkDBAlloc(db *C.struct_AdbcDatabase, err *C.struct_AdbcError, fname string) bool {
-	if atomic.LoadInt32(&globalPoison) != 0 {
+	if globalPoison.Load() {
 		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
 		return false
 	}
@@ -567,7 +566,7 @@ func SnowflakeDatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (c
 			code = poison(err, "AdbcDatabaseNew", e)
 		}
 	}()
-	if atomic.LoadInt32(&globalPoison) != 0 {
+	if globalPoison.Load() {
 		setErr(err, "AdbcDatabaseNew: Go panicked, driver is in unknown state")
 		return C.ADBC_STATUS_INTERNAL
 	}
@@ -712,7 +711,7 @@ type cConn struct {
 }
 
 func checkConnAlloc(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError, fname string) bool {
-	if atomic.LoadInt32(&globalPoison) != 0 {
+	if globalPoison.Load() {
 		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
 		return false
 	}
@@ -843,7 +842,7 @@ func SnowflakeConnectionNew(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcErr
 			code = poison(err, "AdbcConnectionNew", e)
 		}
 	}()
-	if atomic.LoadInt32(&globalPoison) != 0 {
+	if globalPoison.Load() {
 		setErr(err, "AdbcConnectionNew: Go panicked, driver is in unknown state")
 		return C.ADBC_STATUS_INTERNAL
 	}
@@ -1288,7 +1287,7 @@ type cStmt struct {
 }
 
 func checkStmtAlloc(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError, fname string) bool {
-	if atomic.LoadInt32(&globalPoison) != 0 {
+	if globalPoison.Load() {
 		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
 		return false
 	}
@@ -1418,7 +1417,7 @@ func SnowflakeStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcSta
 			code = poison(err, "AdbcStatementNew", e)
 		}
 	}()
-	if atomic.LoadInt32(&globalPoison) != 0 {
+	if globalPoison.Load() {
 		setErr(err, "AdbcStatementNew: Go panicked, driver is in unknown state")
 		return C.ADBC_STATUS_INTERNAL
 	}
@@ -1449,7 +1448,7 @@ func SnowflakeStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcE
 			code = poison(err, "AdbcStatementRelease", e)
 		}
 	}()
-	if atomic.LoadInt32(&globalPoison) != 0 {
+	if globalPoison.Load() {
 		setErr(err, "AdbcStatementRelease: Go panicked, driver is in unknown state")
 		return C.ADBC_STATUS_INTERNAL
 	}

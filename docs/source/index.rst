@@ -244,6 +244,7 @@ Why ADBC?
    format/specification
    format/versioning
    format/comparison
+   format/how_manager
 
 .. toctree::
    :maxdepth: 1

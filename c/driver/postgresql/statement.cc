@@ -35,10 +35,10 @@
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.hpp>
 
-#include "common/options.h"
-#include "common/utils.h"
 #include "connection.h"
 #include "copy/writer.h"
+#include "driver/common/options.h"
+#include "driver/common/utils.h"
 #include "error.h"
 #include "postgres_type.h"
 #include "postgres_util.h"

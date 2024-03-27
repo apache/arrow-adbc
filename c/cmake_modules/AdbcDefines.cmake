@@ -76,15 +76,27 @@ if(MSVC)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
   # Allow incomplete switch (since MSVC warns even if there's a default case)
   add_compile_options(/wd4061)
+  add_compile_options(/wd4100)
+  # Nanoarrow emits a lot of conversion warnings
+  add_compile_options(/wd4365)
+  add_compile_options(/wd4242)
+  add_compile_options(/wd4458)
+  add_compile_options(/wd4514)
+  add_compile_options(/wd4582)
+  add_compile_options(/wd4623)
+  add_compile_options(/wd4625)
+  add_compile_options(/wd4626)
   add_compile_options(/wd4868)
   add_compile_options(/wd4710)
   add_compile_options(/wd4711)
   # Don't warn about padding added after members
   add_compile_options(/wd4820)
+  add_compile_options(/wd5027)
   add_compile_options(/wd5045)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # maybe-uninitialized is flaky
   set(ADBC_C_CXX_FLAGS_CHECKIN
       -Wall
       -Wextra
@@ -92,6 +104,10 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
       -Werror
       -Wno-unused-parameter)
   set(ADBC_C_CXX_FLAGS_PRODUCTION -Wall)
+
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    list(APPEND ADBC_C_CXX_FLAGS_CHECKIN -Wno-maybe-uninitialized)
+  endif()
 
   if(NOT CMAKE_C_FLAGS_DEBUG MATCHES "-O")
     string(APPEND CMAKE_C_FLAGS_DEBUG " -Og")

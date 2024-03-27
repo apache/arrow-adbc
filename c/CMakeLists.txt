@@ -28,8 +28,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(CTest)
 
+add_subdirectory(vendor/fmt EXCLUDE_FROM_ALL)
+set_target_properties(fmt PROPERTIES POSITION_INDEPENDENT_CODE ON)
 add_subdirectory(vendor/nanoarrow)
 add_subdirectory(driver/common)
+add_subdirectory(driver/framework)
 
 if(ADBC_BUILD_TESTS)
   add_subdirectory(validation)

@@ -198,6 +198,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        shell: bash
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
@@ -223,7 +227,7 @@ jobs:
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.20.8
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -238,7 +242,7 @@ jobs:
         env:
           CGO_ENABLED: "1"
         run: |
-          $env:PATH="$($env:RUNNER_TOOL_CACHE)\go\1.20.8\x64\bin;" + $env:PATH
+          $env:PATH="${env:RUNNER_TOOL_CACHE}\go\${env:GO_VERSION}\x64\bin;${env:PATH}"
           .\ci\scripts\go_build.ps1 $pwd $pwd\build
       # TODO(apache/arrow#358): enable these tests on Windows
       # - name: Go Test
@@ -246,7 +250,7 @@ jobs:
       #   env:
       #     CGO_ENABLED: "1"
       #   run: |
-      #     $env:PATH="$($env:RUNNER_TOOL_CACHE)\go\1.20.8\x64\bin;" + $env:PATH
+      #     $env:PATH="${env:RUNNER_TOOL_CACHE}\go\${env:GO_VERSION}\x64\bin;${env:PATH}"
       #     .\ci\scripts\go_test.ps1 $pwd $pwd\build
 
   # ------------------------------------------------------------

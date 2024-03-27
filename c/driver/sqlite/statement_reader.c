@@ -28,7 +28,7 @@
 #include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 
-#include "common/utils.h"
+#include "driver/common/utils.h"
 
 AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
                                    struct AdbcError* error) {
@@ -608,15 +608,14 @@ int StatementReaderGetOneValue(struct StatementReader* reader, int col,
       return ArrowArrayAppendBytes(out, value);
     }
 
-    default: {
-      snprintf(reader->error.message, sizeof(reader->error.message),
-               "[SQLite] Internal error: unknown inferred column type %d",
-               reader->types[col]);
-      return ENOTSUP;
-    }
+    default:
+      break;
   }
 
-  return 0;
+  snprintf(reader->error.message, sizeof(reader->error.message),
+           "[SQLite] Internal error: unknown inferred column type %d",
+           reader->types[col]);
+  return ENOTSUP;
 }
 
 int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out) {

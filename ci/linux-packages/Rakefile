@@ -104,10 +104,19 @@ class ADBCPackageTask < PackageTask
     end
   end
 
+  def detect_go_version
+    dot_env = File.join(__dir__, "..", "..", ".env")
+    File.readlines(dot_env, chomp: true).grep(/\AGO=/)[0].split("=", 2)[1]
+  end
+
+  def docker_build_options(os, architecture)
+    [
+      "--build-arg", "GO_VERSION=#{detect_go_version}",
+    ]
+  end
+
   def apt_targets_default
     [
-      "debian-bullseye",
-      # "debian-bullseye-arm64",
       "debian-bookworm",
       # "debian-bookworm-arm64",
       "ubuntu-jammy",

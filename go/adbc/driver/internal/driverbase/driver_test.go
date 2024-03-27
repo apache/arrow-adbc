@@ -20,9 +20,8 @@ package driverbase_test
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"testing"
-
-	"golang.org/x/exp/slog"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"

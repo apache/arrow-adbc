@@ -276,16 +276,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string[] expectedExceptionTextContains = null)
         {
             Exception actualException = Assert.Throws(expectedExceptionType, () => PerformQuery(table, castFunction, castExpression));
-            AssertContainsAll(expectedExceptionTextContains, actualException.Message);
-        }
-
-        private static void AssertContainsAll(string[] expectedTexts, string actualText)
-        {
-            if (expectedTexts == null) { return; };
-            foreach (string text in expectedTexts)
-            {
-                Assert.Contains(text, actualText);
-            }
+            SnowflakeTestingUtils.AssertContainsAll(expectedExceptionTextContains, actualException.Message);
         }
 
         private QueryResult PerformQuery(string table, string castFunction, string castExpression)

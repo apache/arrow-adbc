@@ -23,7 +23,7 @@
 # - Maven >= 3.3.9
 # - JDK >=7
 # - gcc >= 4.8
-# - Go >= 1.20
+# - Go >= 1.21
 # - Docker
 #
 # To reuse build artifacts between runs set ARROW_TMPDIR environment variable to
@@ -168,8 +168,7 @@ test_apt() {
   if [ "${TEST_STAGING:-0}" -gt 0 ]; then
     verify_type=staging-${verify_type}
   fi
-  for target in "debian:bullseye" \
-                "debian:bookworm" \
+  for target in "debian:bookworm" \
                 "ubuntu:jammy"; do \
     show_info "Verifying ${target}..."
     if ! docker run \
@@ -254,7 +253,7 @@ install_go() {
     return 0
   fi
 
-  local version=1.19.13
+  local version=1.21.8
   show_info "Installing go version ${version}..."
 
   local arch="$(uname -m)"
@@ -271,7 +270,7 @@ install_go() {
   fi
 
   local archive="go${version}.${os}-${arch}.tar.gz"
-  curl -sLO https://dl.google.com/go/$archive
+  curl -sLO https://go.dev/dl/$archive
 
   local prefix=${ARROW_TMPDIR}/go
   mkdir -p $prefix
@@ -413,7 +412,7 @@ test_cpp() {
   maybe_setup_conda \
     --file ci/conda_env_cpp.txt \
     compilers \
-    go=1.20 || exit 1
+    go=1.21 || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     export CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
@@ -445,7 +444,7 @@ test_cpp() {
 test_java() {
   show_header "Build and test Java libraries"
 
-  # Build and test Java (Requires newer Maven -- I used 3.3.9)
+  # Build and test Java (Requires Maven >= 3.6.3)
   maybe_setup_conda maven || exit 1
 
   "${ADBC_DIR}/ci/scripts/java_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/java"
@@ -564,7 +563,7 @@ test_go() {
   # apache/arrow-adbc#517: `go build` calls git. Don't assume system
   # has git; even if it's there, go_build.sh sets DYLD_LIBRARY_PATH
   # which can interfere with system git.
-  maybe_setup_conda compilers git go=1.20 || exit 1
+  maybe_setup_conda compilers git go=1.21 || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     # The CMake setup forces RPATH to be the Conda prefix

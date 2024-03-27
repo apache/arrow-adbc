@@ -19,10 +19,10 @@ package driverbase
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v16/arrow/memory"
-	"golang.org/x/exp/slog"
 )
 
 const (

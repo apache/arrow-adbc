@@ -88,6 +88,9 @@ check_visibility $ADBC_SNOWFLAKE_LIBRARY
 # Get the latest pip so we have in-tree-build by default
 python -m pip install --upgrade pip auditwheel cibuildwheel delocate setuptools wheel
 
+# Build with Cython debug info
+export ADBC_BUILD_TYPE="debug"
+
 for component in $COMPONENTS; do
     pushd ${source_dir}/python/$component
 
