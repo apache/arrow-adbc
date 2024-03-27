@@ -18,9 +18,8 @@
 package driverbase
 
 import (
+	"log/slog"
 	"os"
-
-	"golang.org/x/exp/slog"
 )
 
 func nilLogger() *slog.Logger {

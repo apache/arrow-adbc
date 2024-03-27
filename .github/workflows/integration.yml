@@ -110,6 +110,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
@@ -135,7 +138,7 @@ jobs:
           pip install pytest-error-for-skips
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.19.13
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -305,6 +308,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
@@ -333,7 +339,7 @@ jobs:
           sudo sysctl vm.mmap_rnd_bits=28
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.19.13
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum

@@ -265,7 +265,6 @@ jobs:
           - almalinux-8
           - almalinux-9
           - debian-bookworm
-          - debian-bullseye
           - ubuntu-jammy
     steps:
       - uses: actions/download-artifact@v3
@@ -686,7 +685,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.19.13
+          go-version: 1.21.8
           check-latest: true
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum
@@ -812,6 +811,8 @@ jobs:
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
 
+          (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
+
       - name: Show inputs
         shell: pwsh
         run: |
@@ -841,11 +842,9 @@ jobs:
           .\bootstrap-vcpkg.bat -disableMetrics
           popd
 
-      # Windows needs newer Go than 1.19
-      # https://github.com/golang/go/issues/51007
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.20.8
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum

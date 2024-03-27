@@ -71,7 +71,6 @@ main() {
 
     export DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
     export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
-    export GODEBUG=cgocheck=2
 
     test_project "${build_dir}"
 }

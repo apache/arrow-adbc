@@ -30,7 +30,7 @@ main() {
 
     export DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
     export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
-    export GODEBUG=cgocheck=2
+    export GOEXPERIMENT=cgocheck2
 
     mkdir -p "${build_dir}"
     pushd "${build_dir}"

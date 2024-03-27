@@ -18,7 +18,7 @@
 package adbc
 
 import (
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 // DatabaseLogging is a Database that also supports logging information to an

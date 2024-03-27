@@ -59,5 +59,5 @@ RUN \
     tzdata \
     valac && \
   apt install -y -V -t $(lsb_release --codename --short)-backports ${quiet} \
-    golang-1.20 && \
+    golang-1.21 && \
   apt clean

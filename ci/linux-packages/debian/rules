@@ -32,7 +32,7 @@ CMAKE_BUILD_TYPE = RelWithDebInfo
 
 override_dh_auto_configure:
 	env						\
-	  PATH=/usr/lib/go-1.20/bin:$${PATH}		\
+	  PATH=/usr/lib/go-1.21/bin:$${PATH}		\
 	  dh_auto_configure				\
 	    --sourcedirectory=c/			\
 	    --builddirectory=c.build			\

@@ -41,9 +41,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.20'
+          go-version: "${{ env.GO_VERSION }}"
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: release
