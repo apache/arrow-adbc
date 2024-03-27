@@ -83,6 +83,7 @@ services:
       dockerfile: ci/docker/python-wheel-manylinux.dockerfile
       args:
         ARCH: ${ARCH}
+        GO: ${GO}
         MANYLINUX: ${MANYLINUX}
         PYTHON: ${PYTHON}
         REPO: ${REPO}

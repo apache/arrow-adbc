@@ -80,6 +80,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
@@ -103,7 +106,7 @@ jobs:
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.21.8
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -117,7 +120,7 @@ jobs:
           export ADBC_BUILD_TESTS=OFF
           export ADBC_USE_ASAN=OFF
           export ADBC_USE_UBSAN=OFF
-          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/${{ matrix.goarch }}/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           export ADBC_CMAKE_ARGS="-DCMAKE_UNITY_BUILD=ON"
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Go Build
@@ -125,7 +128,7 @@ jobs:
         env:
           CGO_ENABLED: "1"
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/${{ matrix.goarch }}/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
       - uses: actions/upload-artifact@v3
@@ -370,6 +373,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
@@ -399,7 +405,7 @@ jobs:
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.21.8
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -416,7 +422,7 @@ jobs:
       - name: Go Build
         shell: bash -l {0}
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/${{ matrix.goarch }}/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Run Staticcheck
         if: matrix.os == 'ubuntu-latest'
@@ -430,7 +436,7 @@ jobs:
         env:
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/${{ matrix.goarch }}/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
   # ------------------------------------------------------------
@@ -454,6 +460,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
@@ -484,7 +493,7 @@ jobs:
           sudo sysctl vm.mmap_rnd_bits=28
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.21.8
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -501,12 +510,12 @@ jobs:
           ADBC_USE_ASAN: "0"
           ADBC_USE_UBSAN: "0"
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Build Panic Dummy
         shell: bash -l {0}
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           if [[ $(uname) = "Darwin" ]]; then
             make -C ./go/adbc/pkg libadbc_driver_panicdummy.dylib
           else
@@ -520,12 +529,12 @@ jobs:
           else
             export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.so
           fi
-          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver Flight SQL
         shell: bash -l {0}
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.21.8/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           # Can't use Docker on macOS
           pushd $(pwd)/go/adbc
           go build -o testserver ./driver/flightsql/cmd/testserver

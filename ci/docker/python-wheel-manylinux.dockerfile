@@ -16,6 +16,7 @@
 # under the License.
 
 ARG ARCH
+ARG GO
 ARG MANYLINUX
 ARG PYTHON
 ARG REPO
@@ -27,6 +28,7 @@ ARG ARCH
 
 RUN yum install -y docker
 # arm64v8 -> arm64
-RUN wget --no-verbose https://go.dev/dl/go1.21.8.linux-${ARCH/v8/}.tar.gz
-RUN tar -C /usr/local -xzf go1.21.8.linux-${ARCH/v8/}.tar.gz
+RUN wget --no-verbose https://go.dev/dl/go${GO}.linux-${ARCH/v8/}.tar.gz && \
+    tar -C /usr/local -xzf go${GO}.linux-${ARCH/v8/}.tar.gz && \
+    rm go${GO}.linux-${ARCH/v8/}.tar.gz
 ENV PATH="${PATH}:/usr/local/go/bin"
