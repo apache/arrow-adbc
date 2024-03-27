@@ -12,3 +12,5 @@
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^compile_commands\.json$
+^\.cache$
