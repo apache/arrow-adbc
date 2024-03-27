@@ -53,5 +53,7 @@ jobs:
           ref: "${{ github.event.pull_request.merge_commit_sha }}"
 
       - name: Check PR title for conventional commit format
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          python .github/workflows/dev_pr/title_check.py $(pwd)/pr_checkout "${{ github.event.pull_request.title }}"
+          python .github/workflows/dev_pr/title_check.py $(pwd)/pr_checkout "$PR_TITLE"
