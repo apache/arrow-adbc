@@ -106,8 +106,6 @@ class ADBCPackageTask < PackageTask
 
   def apt_targets_default
     [
-      "debian-bullseye",
-      # "debian-bullseye-arm64",
       "debian-bookworm",
       # "debian-bookworm-arm64",
       "ubuntu-jammy",
