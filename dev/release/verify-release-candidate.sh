@@ -168,8 +168,7 @@ test_apt() {
   if [ "${TEST_STAGING:-0}" -gt 0 ]; then
     verify_type=staging-${verify_type}
   fi
-  for target in "debian:bullseye" \
-                "debian:bookworm" \
+  for target in "debian:bookworm" \
                 "ubuntu:jammy"; do \
     show_info "Verifying ${target}..."
     if ! docker run \

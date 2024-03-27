@@ -265,7 +265,6 @@ jobs:
           - almalinux-8
           - almalinux-9
           - debian-bookworm
-          - debian-bullseye
           - ubuntu-jammy
     steps:
       - uses: actions/download-artifact@v3
