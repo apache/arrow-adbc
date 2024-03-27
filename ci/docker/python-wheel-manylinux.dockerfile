@@ -16,7 +16,6 @@
 # under the License.
 
 ARG ARCH
-ARG GO
 ARG MANYLINUX
 ARG PYTHON
 ARG REPO
@@ -25,6 +24,7 @@ ARG VCPKG
 FROM ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}
 
 ARG ARCH
+ARG GO
 
 RUN yum install -y docker
 # arm64v8 -> arm64
