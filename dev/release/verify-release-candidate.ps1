@@ -92,6 +92,8 @@ if ($SourceKind -eq "local") {
 } else {
     $ArrowSourceDir = Join-Path $ArrowTempDir $DistName
     New-Item -ItemType Directory -Path $ArrowSourceDir -Force
+    # Convert to an absolute now that it should exist
+    $ArrowSourceDir = $ArrowSourceDir | Resolve-Path | % { $_.Path }
 
     Download-Dist-File "$($DistName).tar.gz"
     Download-Dist-File "$($DistName).tar.gz.sha512"
@@ -107,8 +109,6 @@ if ($SourceKind -eq "local") {
 
     tar -C $ArrowSourceDir --strip-components 1 -xf $DistPath
 }
-
-$ArrowSourceDir = $ArrowSourceDir | Resolve-Path
 
 echo "Using $($ArrowSourceDir)"
 
@@ -130,11 +130,11 @@ conda activate $(Join-Path $ArrowTempDir conda-env)
 conda remove -y --force gtest
 
 # Activating doesn't appear to set GOROOT
-$env:GOROOT = $(Join-Path $ArrowTempDir conda-env go) | Resolve-Path
+$env:GOROOT = $(Join-Path $ArrowTempDir conda-env go)
 
 Show-Header "Verify C/C++ Sources"
 
-$CppBuildDir = $(Join-Path $ArrowTempDir cpp-build) | Resolve-Path
+$CppBuildDir = Join-Path $ArrowTempDir cpp-build
 New-Item -ItemType Directory -Force -Path $CppBuildDir | Out-Null
 
 # XXX(apache/arrow-adbc#634): not working on Windows due to it picking
