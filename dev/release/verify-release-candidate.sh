@@ -456,7 +456,7 @@ test_python() {
   show_header "Build and test Python libraries"
 
   # Build and test Python
-  maybe_setup_virtualenv cython duckdb pandas protobuf pyarrow pytest setuptools_scm setuptools || exit 1
+  maybe_setup_virtualenv cython duckdb pandas protobuf pyarrow pytest setuptools_scm setuptools importlib_resources || exit 1
   maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_python.txt" || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
