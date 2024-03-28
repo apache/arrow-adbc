@@ -511,10 +511,29 @@ Roughly, this means:</p>
 <ul class="simple">
 <li><p>C and C++ compilers (or the equivalent of <code class="docutils literal notranslate"><span class="pre">build-essential</span></code> for your platform)</p></li>
 <li><p>Python 3</p></li>
-<li><p>Ruby with headers</p></li>
+<li><dl class="simple">
+<dt>Ruby with headers</dt><dd><ul>
+<li><p>meson is required</p></li>
+</ul>
+</dd>
+</dl>
+</li>
 <li><p>bundler, rake, red-arrow, and test-unit Ruby gems</p></li>
-<li><p>GLib and gobject-introspection with headers</p></li>
-<li><p>Java JRE and JDK (Java 8+)</p></li>
+<li><dl class="simple">
+<dt>GLib and gobject-introspection with headers</dt><dd><ul>
+<li><p>pkg-config or cmake must be able to find libarrow-glib.so</p></li>
+<li><p>GI_TYPELIB_PATH should be set to the path to the girepository-1.0 directory</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Java JRE and JDK (Java 8+)</dt><dd><ul>
+<li><p>the javadoc command must also be accessible</p></li>
+</ul>
+</dd>
+</dl>
+</li>
 <li><p>Go</p></li>
 <li><p>CMake, ninja-build, libpq (with headers), SQLite (with headers)</p></li>
 </ul>
