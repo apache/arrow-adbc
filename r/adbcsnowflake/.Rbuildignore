@@ -9,5 +9,6 @@
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^cran-comments\.md$
 ^src/\.go-cache$
 ^src/\.go-path$

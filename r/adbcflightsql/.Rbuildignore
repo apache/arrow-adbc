@@ -4,7 +4,6 @@
 ^bootstrap\.R$
 ^README\.Rmd$
 ^src/Makevars$
-^configure\.win$
 ^\.vscode$
 ^src/go/tmp$
 ^_pkgdown\.yml$
