@@ -117,7 +117,8 @@ Show-Header "Create Conda Environment"
 mamba create -c conda-forge -f -y -p $(Join-Path $ArrowTempDir conda-env) `
   --file $(Join-Path $ArrowSourceDir ci\conda_env_cpp.txt) `
   --file $(Join-Path $ArrowSourceDir ci\conda_env_python.txt) `
-  go
+  go `
+  m2w64-gcc
 
 Invoke-Expression $(conda shell.powershell hook | Out-String)
 conda activate $(Join-Path $ArrowTempDir conda-env)
