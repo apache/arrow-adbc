@@ -213,9 +213,13 @@ How to Verify Release Candidates
    - C and C++ compilers (or the equivalent of ``build-essential`` for your platform)
    - Python 3
    - Ruby with headers
+      - meson is required
    - bundler, rake, red-arrow, and test-unit Ruby gems
    - GLib and gobject-introspection with headers
+      - pkg-config or cmake must be able to find libarrow-glib.so
+      - GI_TYPELIB_PATH should be set to the path to the girepository-1.0 directory
    - Java JRE and JDK (Java 8+)
+      - the javadoc command must also be accessible
    - Go
    - CMake, ninja-build, libpq (with headers), SQLite (with headers)
 
