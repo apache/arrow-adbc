@@ -15,9 +15,20 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# See configure for a description of this process.
-# This is only for development: this file and bootstrap.R will be removed
-# prior to packaging
-if [ -f bootstrap.R ]; then
-  $R_HOME/bin/Rscript bootstrap.R
-fi
+PKG_CPPFLAGS=-I$(CURDIR) -DADBC_EXPORT=""
+PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_flightsql
+
+CGO_CC = `"${R_HOME}/bin${R_ARCH_BIN}/R.exe" CMD config CC`
+CGO_CXX = `"${R_HOME}/bin${R_ARCH_BIN}/R.exe" CMD config CXX`
+CGO_CFLAGS = $(ALL_CPPFLAGS)
+GO_BIN = $(CURDIR)/go/tmp/go/bin/go.exe
+
+.PHONY: all gostatic gobin
+all: $(SHLIB)
+$(SHLIB): gostatic
+
+gostatic: gobin
+		(cd "$(CURDIR)/go/adbc"; CC="$(CGO_CC)" CXX="$(CGO_CXX)" CGO_CFLAGS="$(CGO_CFLAGS)" "$(GO_BIN)" build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_flightsql.a -buildmode=c-archive "./pkg/flightsql")
+
+gobin:
+		(cd ..; "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" "tools/download-go.R")
