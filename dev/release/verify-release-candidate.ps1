@@ -108,6 +108,8 @@ if ($SourceKind -eq "local") {
     tar -C $ArrowSourceDir --strip-components 1 -xf $DistPath
 }
 
+$ArrowSourceDir = $ArrowSourceDir | Resolve-Path
+
 echo "Using $($ArrowSourceDir)"
 
 Show-Header "Create Conda Environment"
@@ -127,11 +129,11 @@ conda activate $(Join-Path $ArrowTempDir conda-env)
 conda remove -y --force gtest
 
 # Activating doesn't appear to set GOROOT
-$env:GOROOT = $(Join-Path $ArrowTempDir conda-env go)
+$env:GOROOT = $(Join-Path $ArrowTempDir conda-env go) | Resolve-Path
 
 Show-Header "Verify C/C++ Sources"
 
-$CppBuildDir = Join-Path $ArrowTempDir cpp-build
+$CppBuildDir = $(Join-Path $ArrowTempDir cpp-build) | Resolve-Path
 New-Item -ItemType Directory -Force -Path $CppBuildDir | Out-Null
 
 # XXX(apache/arrow-adbc#634): not working on Windows due to it picking
