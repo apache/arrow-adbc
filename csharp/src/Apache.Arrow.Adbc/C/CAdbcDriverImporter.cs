@@ -17,14 +17,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
-using static Apache.Arrow.Adbc.C.CAdbcDriverExporter;
-
 
 #if NETSTANDARD
 using Apache.Arrow.Adbc.Extensions;
