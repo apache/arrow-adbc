@@ -23,6 +23,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
+using static Apache.Arrow.Adbc.C.CAdbcDriverExporter;
+
 
 #if NETSTANDARD
 using Apache.Arrow.Adbc.Extensions;
@@ -697,31 +699,32 @@ namespace Apache.Arrow.Adbc.C
             }
 
 #if NET5_0_OR_GREATER
-            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, byte*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection connection, List<int> infoCodes, CArrowArrayStream* stream)
-#else
-            public unsafe void Call(IntPtr ptr, ref CAdbcConnection connection, List<int> infoCodes, CArrowArrayStream* stream)
-#endif
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, int*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection connection, List<int> infoCodes, CArrowArrayStream* stream)
             {
-                int numInts = infoCodes.Count;
-
-                // Calculate the total number of bytes needed
-                int totalBytes = numInts * sizeof(int);
-
-                IntPtr bytePtr = Marshal.AllocHGlobal(totalBytes);
-
-                int[] intArray = infoCodes.ToArray();
-                Marshal.Copy(intArray, 0, bytePtr, numInts);
-
                 fixed (CAdbcConnection* cn = &connection)
                 fixed (CAdbcError* e = &_error)
                 {
-#if NET5_0_OR_GREATER
-                    TranslateCode(fn(cn, (byte*)bytePtr, infoCodes.Count, stream, e));
-#else
-                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetInfo>(ptr)(cn, (byte*)bytePtr, infoCodes.Count, stream, e));
-#endif
+                    Span<int> span = CollectionsMarshal.AsSpan(infoCodes);
+                    fixed (int* spanPtr = span)
+                    {
+                        TranslateCode(fn(cn, spanPtr, infoCodes.Count, stream, e));
+                    }
                 }
             }
+#else
+            public unsafe void Call(IntPtr ptr, ref CAdbcConnection connection, List<int> infoCodes, CArrowArrayStream* stream)
+            {
+                fixed (CAdbcConnection* cn = &connection)
+                fixed (CAdbcError* e = &_error)
+                {
+                    Span<int> span = infoCodes.ToArray().AsSpan();
+                    fixed (int* spanPtr = span)
+                    {
+                        TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetInfo>(ptr)(cn, spanPtr, infoCodes.Count, stream, e));
+                    }
+                }
+            }
+#endif
 
 #if NET5_0_OR_GREATER
             public unsafe void Call(delegate* unmanaged<CAdbcConnection*, int, byte*, byte*, byte*, byte**, byte*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection connection, int depth, string catalog, string db_schema, string table_name, List<string> table_types, string column_name, CArrowArrayStream* stream)
@@ -737,9 +740,8 @@ namespace Apache.Arrow.Adbc.C
                 }
 
                 // need to terminate with a null entry per https://github.com/apache/arrow-adbc/blob/b97e22c4d6524b60bf261e1970155500645be510/adbc.h#L909-L911
-                table_types.Add(null);
-
-                byte** bTable_type = (byte**)Marshal.AllocHGlobal(IntPtr.Size * table_types.Count);
+                byte** bTable_type = (byte**)Marshal.AllocHGlobal(IntPtr.Size * (table_types.Count + 1));
+                bTable_type[table_types.Count] = null;
 
                 for (int i = 0; i < table_types.Count; i++)
                 {
@@ -751,25 +753,36 @@ namespace Apache.Arrow.Adbc.C
 #endif
                 }
 
-                using (Utf8Helper catalogHelper = new Utf8Helper(catalog))
-                using (Utf8Helper schemaHelper = new Utf8Helper(db_schema))
-                using (Utf8Helper tableNameHelper = new Utf8Helper(table_name))
-                using (Utf8Helper columnNameHelper = new Utf8Helper(column_name))
+                try
                 {
-                    bcatalog = (byte*)(IntPtr)(catalogHelper);
-                    bDb_schema = (byte*)(IntPtr)(schemaHelper);
-                    bTable_name = (byte*)(IntPtr)(tableNameHelper);
-                    bColumn_Name = (byte*)(IntPtr)(columnNameHelper);
-
-                    fixed (CAdbcConnection* cn = &connection)
-                    fixed (CAdbcError* e = &_error)
+                    using (Utf8Helper catalogHelper = new Utf8Helper(catalog))
+                    using (Utf8Helper schemaHelper = new Utf8Helper(db_schema))
+                    using (Utf8Helper tableNameHelper = new Utf8Helper(table_name))
+                    using (Utf8Helper columnNameHelper = new Utf8Helper(column_name))
                     {
+                        bcatalog = (byte*)(IntPtr)(catalogHelper);
+                        bDb_schema = (byte*)(IntPtr)(schemaHelper);
+                        bTable_name = (byte*)(IntPtr)(tableNameHelper);
+                        bColumn_Name = (byte*)(IntPtr)(columnNameHelper);
+
+                        fixed (CAdbcConnection* cn = &connection)
+                        fixed (CAdbcError* e = &_error)
+                        {
 #if NET5_0_OR_GREATER
-                        TranslateCode(fn(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
+                            TranslateCode(fn(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
 #else
-                        TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetObjects>(fn)(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
+                            TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetObjects>(fn)(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
 #endif
+                        }
                     }
+                }
+                finally
+                {
+                    for (int i = 0; i < table_types.Count; i++)
+                    {
+                        Marshal.FreeCoTaskMem((IntPtr)bTable_type[i]);
+                    }
+                    Marshal.FreeHGlobal((IntPtr)bTable_type);
                 }
             }
 
