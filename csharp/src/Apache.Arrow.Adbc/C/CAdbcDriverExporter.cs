@@ -51,7 +51,7 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionRollbackPtr => &RollbackConnection;
         private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionCommitPtr => &CommitConnection;
         private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionReleasePtr => &ReleaseConnection;
-        private static unsafe delegate* unmanaged<CAdbcConnection*, byte*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetInfoPtr => &GetConnectionInfo;
+        private static unsafe delegate* unmanaged<CAdbcConnection*, int*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetInfoPtr => &GetConnectionInfo;
         private static unsafe delegate* unmanaged<CAdbcConnection*, byte*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionReadPartitionPtr => &ReadConnectionPartition;
         private static unsafe delegate* unmanaged<CAdbcConnection*, byte*, byte*, CAdbcError*, AdbcStatusCode> ConnectionSetOptionPtr => &SetConnectionOption;
 
@@ -93,7 +93,7 @@ namespace Apache.Arrow.Adbc.C
         private static IntPtr ConnectionCommitPtr => s_connectionCommit.Pointer;
         private static unsafe readonly NativeDelegate<ConnectionFn> s_connectionRelease = new NativeDelegate<ConnectionFn>(ReleaseConnection);
         private static IntPtr ConnectionReleasePtr => s_connectionRelease.Pointer;
-        internal unsafe delegate AdbcStatusCode ConnectionGetInfo(CAdbcConnection* connection, byte* info_codes, int info_codes_length, CArrowArrayStream* stream, CAdbcError* error);
+        internal unsafe delegate AdbcStatusCode ConnectionGetInfo(CAdbcConnection* connection, int* info_codes, int info_codes_length, CArrowArrayStream* stream, CAdbcError* error);
         private static unsafe readonly NativeDelegate<ConnectionGetInfo> s_connectionGetInfo = new NativeDelegate<ConnectionGetInfo>(GetConnectionInfo);
         private static IntPtr ConnectionGetInfoPtr => s_connectionGetInfo.Pointer;
         private unsafe delegate AdbcStatusCode ConnectionReadPartition(CAdbcConnection* connection, byte* serialized_partition, int serialized_length, CArrowArrayStream* stream, CAdbcError* error);
@@ -452,7 +452,7 @@ namespace Apache.Arrow.Adbc.C
 #if NET5_0_OR_GREATER
         [UnmanagedCallersOnly]
 #endif
-        private unsafe static AdbcStatusCode GetConnectionInfo(CAdbcConnection* nativeConnection, byte* info_codes, int info_codes_length, CArrowArrayStream* stream, CAdbcError* error)
+        private unsafe static AdbcStatusCode GetConnectionInfo(CAdbcConnection* nativeConnection, int* info_codes, int info_codes_length, CArrowArrayStream* stream, CAdbcError* error)
         {
             GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
             ConnectionStub stub = (ConnectionStub)gch.Target;
@@ -732,6 +732,7 @@ namespace Apache.Arrow.Adbc.C
                 columnNamePattern = Marshal.PtrToStringUTF8((IntPtr)column_name);
 #endif
 
+                // TODO (GH-1694): Marshaling is incorrect
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)table_type);
                 List<string> tableTypes = (List<string>)gch.Target;
 
@@ -791,6 +792,7 @@ namespace Apache.Arrow.Adbc.C
                     return AdbcStatusCode.UnknownError;
                 }
 
+                // TODO (GH-1694): Marshaling is incorrect
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)serializedPartition);
                 PartitionDescriptor descriptor = (PartitionDescriptor)gch.Target;
 
@@ -799,13 +801,14 @@ namespace Apache.Arrow.Adbc.C
                 return AdbcStatusCode.Success;
             }
 
-            public unsafe AdbcStatusCode GetInfo(ref CAdbcConnection nativeConnection, byte* info_codes, int info_codes_length, CArrowArrayStream* stream, ref CAdbcError error)
+            public unsafe AdbcStatusCode GetInfo(ref CAdbcConnection nativeConnection, int* info_codes, int info_codes_length, CArrowArrayStream* stream, ref CAdbcError error)
             {
                 if (nativeConnection.private_data == null)
                 {
                     return AdbcStatusCode.UnknownError;
                 }
 
+                // TODO (GH-1694): Marshaling is incorrect
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)info_codes);
                 List<int> codes = (List<int>)gch.Target;
 
