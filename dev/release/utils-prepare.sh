@@ -120,11 +120,16 @@ update_versions() {
     local -r base_major_version=$(echo ${base_version} | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
     local -r next_major_version=$(echo ${next_version} | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
     if [ "${base_major_version}" != "${next_major_version}" ]; then
-      for target in debian*/libadbc-glib${base_major_version}.install; do
+      for target in debian*/libadbc-*glib${base_major_version}.install; do
         git mv \
           ${target} \
           $(echo ${target} | sed -e "s/${base_major_version}/${next_major_version}/")
       done
+      sed -i.bak -E \
+        -e "s/(libadbc[-a-z]*-glib)${base_major_version}/\\1${next_major_version}/g" \
+        debian*/control*
+      rm -f debian*/control*.bak
+      git add debian*/control*
     fi
     popd
   fi

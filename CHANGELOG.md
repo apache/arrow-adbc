@@ -483,3 +483,31 @@
 - **dev/release**: remove gtest without prompting on Windows (#1439)
 - **dev/release,glib**: set library path to run example (#1436)
 - **dev/release,go**: ensure temporary directory removable (#1438)
+
+## ADBC Libraries 0.11.0 (2024-03-28)
+
+### Feat
+
+- **go/adbc/driver/snowflake**: added table constraints implementation for GetObjects API (#1593)
+- **dev/release**: add C# post-release script (#1595)
+- **go/adbc/driver/flightsql**: support session options (#1597)
+- **go/adbc/driver/flightsql**: support reuse-connection location (#1594)
+- **go/adbc/driver/flightsql**: expose FlightInfo during polling (#1582)
+- **go/adbc/driver/flightsql**: reflect gRPC status in vendor code (#1577)
+- **python**: react to SIGINT in more places (#1579)
+- **c/driver/common**: Add minimal C++ driver framework (#1539)
+
+### Fix
+
+- **ci**: Sanitize PR title (#1677)
+- **go/adbc/driver/snowflake**: fix precision/scale in table schema (#1656)
+- **python**: correct typechecking error (#1604)
+- **go/adbc/drivermgr**: don't call potentially nil pointer (#1586)
+- **csharp/src/Client/SchemaConverter**: add check for keys on precision and scale (#1566)
+- **csharp/src/Drivers/BigQuery**: return null on GetValue exception (#1562)
+
+### Refactor
+
+- **c/driver_manager**: differentiate errors from driver manager (#1662)
+- **c/driver/sqlite**: port to driver base (#1603)
+- **go/adbc/driver**: driverbase implementation for connection (#1590)
