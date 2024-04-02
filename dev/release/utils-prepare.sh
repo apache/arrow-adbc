@@ -125,6 +125,11 @@ update_versions() {
           ${target} \
           $(echo ${target} | sed -e "s/${base_major_version}/${next_major_version}/")
       done
+      sed -i.bak -E \
+        -e "s/(libadbc-glib)${base_major_version}/\\1${next_major_version}/g" \
+        debian*/control*
+      rm -f debian*/control*.bak
+      git add debian*/control*
     fi
     popd
   fi
