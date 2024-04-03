@@ -58,11 +58,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             { "spark.thriftserver.arrowBasedRowSet.timestampAsString", "false" }
         };
 
-        private static Dictionary<ColumnTypeId, IArrowType> s_ColumnTypeToArrowTypeMap;
-
-        static SparkConnection()
-        {
-            s_ColumnTypeToArrowTypeMap = new() {
+        private static readonly IReadOnlyDictionary<ColumnTypeId, IArrowType> s_columnTypeToArrowTypeMap = new Dictionary<ColumnTypeId, IArrowType>() {
                 { ColumnTypeId.BOOLEAN_TYPE, BooleanType.Default },
                 { ColumnTypeId.TINYINT_TYPE, Int8Type.Default },
                 { ColumnTypeId.SMALLINT_TYPE, Int16Type.Default },
@@ -80,9 +76,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 { ColumnTypeId.DATE_TYPE, Date32Type.Default },
                 { ColumnTypeId.CHAR_TYPE, StringType.Default },
             };
-        }
 
-        public enum ColumnTypeId
+        private enum ColumnTypeId
         {
             BOOLEAN_TYPE = 16,
             TINYINT_TYPE = -6,
@@ -516,7 +511,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         private static IArrowType GetArrowType(ColumnTypeId columnTypeId)
         {
-            if (!s_ColumnTypeToArrowTypeMap.TryGetValue(columnTypeId, out IArrowType arrowType))
+            if (!s_columnTypeToArrowTypeMap.TryGetValue(columnTypeId, out IArrowType arrowType))
             {
                 throw new NotImplementedException($"Unsupported column type id: {columnTypeId}");
             }
