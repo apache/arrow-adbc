@@ -62,34 +62,21 @@ library(adbcdrivermanager)
 
 # Get a reference to a database using a driver. The adbcdrivermanager package
 # contains a few drivers useful for illustration and testing.
-db <- adbc_database_init(adbc_driver_monkey())
+db <- adbc_database_init(adbcsqlite::adbcsqlite())
 
 # Open a new connection to a database
 con <- adbc_connection_init(db)
 
-# Initialize a new statement from a connection
-stmt <- adbc_statement_init(con)
+# Write a table
+nycflights13::flights |> write_adbc(con, "flights")
 
-# The monkey driver allows you to specify the data for a query
-# in advance for testing purposes
-adbc_statement_bind_stream(stmt, nycflights13::flights)
-
-# Set the query
-adbc_statement_set_sql_query(stmt, "SELECT * FROM flights")
-
-# Start executing the query. Results in ADBC are ArrowArrayStream objects,
-# which can be materialized using as.data.frame(), as_tibble(),
-# or converted to an arrow::RecordBatchReader using
-# arrow::as_record_batch_reader()
-stream <- nanoarrow::nanoarrow_allocate_array_stream()
-adbc_statement_execute_query(stmt, stream)
-#> [1] -1
-
-# Materialize the whole query as a tibble
-tibble::as_tibble(stream)
+# Issue a query
+con |>
+  read_adbc("SELECT * from flights") |>
+  tibble::as_tibble()
 #> # A tibble: 336,776 × 19
 #>     year month   day dep_time sched_dep_time dep_delay arr_time sched_arr_time
-#>    <int> <int> <int>    <int>          <int>     <dbl>    <int>          <int>
+#>    <dbl> <dbl> <dbl>    <dbl>          <dbl>     <dbl>    <dbl>          <dbl>
 #>  1  2013     1     1      517            515         2      830            819
 #>  2  2013     1     1      533            529         4      850            830
 #>  3  2013     1     1      542            540         2      923            850
@@ -101,12 +88,15 @@ tibble::as_tibble(stream)
 #>  9  2013     1     1      557            600        -3      838            846
 #> 10  2013     1     1      558            600        -2      753            745
 #> # ℹ 336,766 more rows
-#> # ℹ 11 more variables: arr_delay <dbl>, carrier <chr>, flight <int>,
+#> # ℹ 11 more variables: arr_delay <dbl>, carrier <chr>, flight <dbl>,
 #> #   tailnum <chr>, origin <chr>, dest <chr>, air_time <dbl>, distance <dbl>,
-#> #   hour <dbl>, minute <dbl>, time_hour <dttm>
+#> #   hour <dbl>, minute <dbl>, time_hour <chr>
 
 # Clean up!
-adbc_statement_release(stmt)
 adbc_connection_release(con)
 adbc_database_release(db)
 ```
+
+One can also interact with the driver manager at a lower level using
+`adbc_connection_*()` and `adbc_statement_*()` functions (see reference
+documentation for details).
