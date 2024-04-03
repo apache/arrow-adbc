@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-CXXSTD = CXX17
+CXX_STD = CXX17
 PKG_CPPFLAGS=-I../src/ -I../src/c/ -I../src/c/vendor/ -I../src/c/vendor/fmt/include/ @cppflags@ -DADBC_EXPORT="" -DFMT_HEADER_ONLY=1 -D_LIBCPP_DISABLE_AVAILABILITY
 PKG_LIBS=@libs@
 

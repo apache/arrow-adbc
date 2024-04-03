@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+CXX_STD = CXX17
 PKG_CPPFLAGS = -I../src -I../src/c/ -I../src/c/vendor/ -I../src/c/vendor/fmt/include/ -DADBC_EXPORT="" -D__USE_MINGW_ANSI_STDIO -DFMT_HEADER_ONLY=1
 
 PKG_LIBS = -lpq -lpgcommon -lpgport -lssl -lcrypto -lz -lsecur32 -lws2_32 -lwldap32 -lcrypt32
