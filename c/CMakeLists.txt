@@ -68,6 +68,10 @@ if(ADBC_DRIVER_SNOWFLAKE)
   add_subdirectory(driver/snowflake)
 endif()
 
+if(BUILD_DRIVER_BIGQUERY)
+  add_subdirectory(driver/bigquery)
+endif()
+
 if(ADBC_INTEGRATION_DUCKDB)
   add_subdirectory(integration/duckdb)
 endif()
@@ -117,6 +121,10 @@ LIBRARY=$<TARGET_FILE:adbc_driver_${TARGET}_shared>" ${Python3_EXECUTABLE} -m pi
 
   if(ADBC_DRIVER_SNOWFLAKE)
     adbc_install_python_package(snowflake)
+  endif()
+
+  if(ADBC_DRIVER_BIGQUERY)
+    adbc_install_python_package(bigquery)
   endif()
 endif()
 
