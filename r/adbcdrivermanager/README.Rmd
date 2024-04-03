@@ -70,33 +70,22 @@ library(adbcdrivermanager)
 
 # Get a reference to a database using a driver. The adbcdrivermanager package
 # contains a few drivers useful for illustration and testing.
-db <- adbc_database_init(adbc_driver_monkey())
+db <- adbc_database_init(adbcsqlite::adbcsqlite())
 
 # Open a new connection to a database
 con <- adbc_connection_init(db)
 
-# Initialize a new statement from a connection
-stmt <- adbc_statement_init(con)
+# Write a table
+nycflights13::flights |> write_adbc(con, "flights")
 
-# The monkey driver allows you to specify the data for a query
-# in advance for testing purposes
-adbc_statement_bind_stream(stmt, nycflights13::flights)
-
-# Set the query
-adbc_statement_set_sql_query(stmt, "SELECT * FROM flights")
-
-# Start executing the query. Results in ADBC are ArrowArrayStream objects,
-# which can be materialized using as.data.frame(), as_tibble(),
-# or converted to an arrow::RecordBatchReader using
-# arrow::as_record_batch_reader()
-stream <- nanoarrow::nanoarrow_allocate_array_stream()
-adbc_statement_execute_query(stmt, stream)
-
-# Materialize the whole query as a tibble
-tibble::as_tibble(stream)
+# Issue a query
+con |>
+  read_adbc("SELECT * from flights") |>
+  tibble::as_tibble()
 
 # Clean up!
-adbc_statement_release(stmt)
 adbc_connection_release(con)
 adbc_database_release(db)
 ```
+
+One can also interact with the driver manager at a lower level using `adbc_connection_*()` and `adbc_statement_*()` functions (see reference documentation for details).
