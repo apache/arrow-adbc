@@ -58,6 +58,50 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             { "spark.thriftserver.arrowBasedRowSet.timestampAsString", "false" }
         };
 
+        private static Dictionary<ColumnTypeId, IArrowType> s_ColumnTypeToArrowTypeMap;
+
+        static SparkConnection()
+        {
+            s_ColumnTypeToArrowTypeMap = new() {
+                { ColumnTypeId.BOOLEAN_TYPE, BooleanType.Default },
+                { ColumnTypeId.TINYINT_TYPE, Int8Type.Default },
+                { ColumnTypeId.SMALLINT_TYPE, Int16Type.Default },
+                { ColumnTypeId.INT_TYPE, Int32Type.Default },
+                { ColumnTypeId.BIGINT_TYPE, Int64Type.Default },
+                { ColumnTypeId.FLOAT_TYPE, FloatType.Default },
+                { ColumnTypeId.DOUBLE_TYPE, DoubleType.Default },
+                { ColumnTypeId.STRING_TYPE, StringType.Default },
+                { ColumnTypeId.TIMESTAMP_TYPE, new TimestampType(TimeUnit.Microsecond, (string)null) },
+                { ColumnTypeId.BINARY_TYPE, BinaryType.Default },
+                { ColumnTypeId.ARRAY_TYPE, StringType.Default },
+                { ColumnTypeId.MAP_TYPE, StringType.Default },
+                { ColumnTypeId.STRUCT_TYPE, StringType.Default },
+                { ColumnTypeId.DECIMAL_TYPE, StringType.Default },
+                { ColumnTypeId.DATE_TYPE, Date32Type.Default },
+                { ColumnTypeId.CHAR_TYPE, StringType.Default },
+            };
+        }
+
+        public enum ColumnTypeId
+        {
+            BOOLEAN_TYPE = 16,
+            TINYINT_TYPE = -6,
+            SMALLINT_TYPE = 5,
+            INT_TYPE = 4,
+            BIGINT_TYPE = -5,
+            FLOAT_TYPE = 6,
+            DOUBLE_TYPE = 8,
+            STRING_TYPE = 12,
+            TIMESTAMP_TYPE = 93,
+            BINARY_TYPE = -2,
+            ARRAY_TYPE = 2003,
+            MAP_TYPE = 2000,
+            STRUCT_TYPE = 2002,
+            DECIMAL_TYPE = 3,
+            DATE_TYPE = 91,
+            CHAR_TYPE = 1,
+        }
+
         public SparkConnection() : this(null)
         {
 
@@ -72,7 +116,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             Trace.TraceError($"create protocol with {properties.Count} properties.");
 
-            foreach(var property in properties.Keys)
+            foreach (var property in properties.Keys)
             {
                 Trace.TraceError($"key = {property} value = {properties[property]}");
             }
@@ -289,8 +333,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Field[] fields = new Field[rowCount];
             for (int i = 0; i < rowCount; i++)
             {
-                fields[i] = new Field(columns[3].StringVal.Values.GetString(i),
-                    SchemaParser.GetArrowType((TTypeId)columns[4].I32Val.Values.GetValue(i)),
+                string columnName = columns[3].StringVal.Values.GetString(i);
+                int? columnType = columns[4].I32Val.Values.GetValue(i);
+                fields[i] = new Field(columnName,
+                    SparkConnection.GetArrowType((ColumnTypeId)columnType),
                     nullable: true /* ??? */);
             }
             return new Schema(fields, null);
@@ -466,6 +512,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 CreateNestedListArray(catalogDbSchemasValues, new StructType(StandardSchemas.DbSchemaSchema)),
             };
             return new SparkInfoArrowStream(StandardSchemas.GetObjectsSchema, dataArrays);
+        }
+
+        private static IArrowType GetArrowType(ColumnTypeId columnTypeId)
+        {
+            if (!s_ColumnTypeToArrowTypeMap.TryGetValue(columnTypeId, out IArrowType arrowType))
+            {
+                throw new NotImplementedException($"Unsupported column type id: {columnTypeId}");
+            }
+            return arrowType;
         }
 
         private StructArray GetDbSchemas(
