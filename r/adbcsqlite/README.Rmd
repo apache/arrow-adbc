@@ -67,27 +67,23 @@ This is a basic example which shows you how to solve a common problem:
 ```{r example}
 library(adbcdrivermanager)
 
-# Use the driver manager to connect to a database
-db <- adbc_database_init(adbcsqlite::adbcsqlite(), uri = ":memory:")
+# Open a new connection to a database
+db <- adbc_database_init(
+  adbcsqlite::adbcsqlite(),
+  uri = ":memory:"
+)
+
 con <- adbc_connection_init(db)
 
 # Write a table
-flights <- nycflights13::flights
-# (timestamp not supported yet)
-flights$time_hour <- NULL
-flights |>
-  write_adbc(con, "flights")
+nycflights13::flights |> write_adbc(con, "flights")
 
-# Query it
+# Issue a query
 con |>
   read_adbc("SELECT * from flights") |>
   tibble::as_tibble()
-```
 
-```{r}
-# Clean up
-con |>
-  execute_adbc("DROP TABLE flights")
+# Clean up!
 adbc_connection_release(con)
 adbc_database_release(db)
 ```
