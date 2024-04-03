@@ -101,34 +101,21 @@
 <span></span>
 <span><span class="co"># Get a reference to a database using a driver. The adbcdrivermanager package</span></span>
 <span><span class="co"># contains a few drivers useful for illustration and testing.</span></span>
-<span><span class="va">db</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/adbc_database_init.html">adbc_database_init</a></span><span class="op">(</span><span class="fu"><a href="reference/adbc_driver_monkey.html">adbc_driver_monkey</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">db</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/adbc_database_init.html">adbc_database_init</a></span><span class="op">(</span><span class="fu">adbcsqlite</span><span class="fu">::</span><span class="fu"><a href="https://arrow.apache.org/adbc/current/r/adbcsqlite/reference/adbcsqlite.html" class="external-link">adbcsqlite</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Open a new connection to a database</span></span>
 <span><span class="va">con</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/adbc_connection_init.html">adbc_connection_init</a></span><span class="op">(</span><span class="va">db</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Initialize a new statement from a connection</span></span>
-<span><span class="va">stmt</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/adbc_statement_init.html">adbc_statement_init</a></span><span class="op">(</span><span class="va">con</span><span class="op">)</span></span>
+<span><span class="co"># Write a table</span></span>
+<span><span class="fu">nycflights13</span><span class="fu">::</span><span class="va">flights</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/read_adbc.html">write_adbc</a></span><span class="op">(</span><span class="va">con</span>, <span class="st">"flights"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># The monkey driver allows you to specify the data for a query</span></span>
-<span><span class="co"># in advance for testing purposes</span></span>
-<span><span class="fu"><a href="reference/adbc_statement_set_sql_query.html">adbc_statement_bind_stream</a></span><span class="op">(</span><span class="va">stmt</span>, <span class="fu">nycflights13</span><span class="fu">::</span><span class="va">flights</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Set the query</span></span>
-<span><span class="fu"><a href="reference/adbc_statement_set_sql_query.html">adbc_statement_set_sql_query</a></span><span class="op">(</span><span class="va">stmt</span>, <span class="st">"SELECT * FROM flights"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Start executing the query. Results in ADBC are ArrowArrayStream objects,</span></span>
-<span><span class="co"># which can be materialized using as.data.frame(), as_tibble(),</span></span>
-<span><span class="co"># or converted to an arrow::RecordBatchReader using</span></span>
-<span><span class="co"># arrow::as_record_batch_reader()</span></span>
-<span><span class="va">stream</span> <span class="op">&lt;-</span> <span class="fu">nanoarrow</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/nanoarrow/man/nanoarrow_pointer_is_valid.html" class="external-link">nanoarrow_allocate_array_stream</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/adbc_statement_set_sql_query.html">adbc_statement_execute_query</a></span><span class="op">(</span><span class="va">stmt</span>, <span class="va">stream</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] -1</span></span>
-<span></span>
-<span><span class="co"># Materialize the whole query as a tibble</span></span>
-<span><span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/as_tibble.html" class="external-link">as_tibble</a></span><span class="op">(</span><span class="va">stream</span><span class="op">)</span></span>
+<span><span class="co"># Issue a query</span></span>
+<span><span class="va">con</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/read_adbc.html">read_adbc</a></span><span class="op">(</span><span class="st">"SELECT * from flights"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/as_tibble.html" class="external-link">as_tibble</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # A tibble: 336,776 × 19</span></span>
 <span><span class="co">#&gt;     year month   day dep_time sched_dep_time dep_delay arr_time sched_arr_time</span></span>
-<span><span class="co">#&gt;    &lt;int&gt; &lt;int&gt; &lt;int&gt;    &lt;int&gt;          &lt;int&gt;     &lt;dbl&gt;    &lt;int&gt;          &lt;int&gt;</span></span>
+<span><span class="co">#&gt;    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;          &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;          &lt;dbl&gt;</span></span>
 <span><span class="co">#&gt;  1  2013     1     1      517            515         2      830            819</span></span>
 <span><span class="co">#&gt;  2  2013     1     1      533            529         4      850            830</span></span>
 <span><span class="co">#&gt;  3  2013     1     1      542            540         2      923            850</span></span>
@@ -140,14 +127,14 @@
 <span><span class="co">#&gt;  9  2013     1     1      557            600        -3      838            846</span></span>
 <span><span class="co">#&gt; 10  2013     1     1      558            600        -2      753            745</span></span>
 <span><span class="co">#&gt; # ℹ 336,766 more rows</span></span>
-<span><span class="co">#&gt; # ℹ 11 more variables: arr_delay &lt;dbl&gt;, carrier &lt;chr&gt;, flight &lt;int&gt;,</span></span>
+<span><span class="co">#&gt; # ℹ 11 more variables: arr_delay &lt;dbl&gt;, carrier &lt;chr&gt;, flight &lt;dbl&gt;,</span></span>
 <span><span class="co">#&gt; #   tailnum &lt;chr&gt;, origin &lt;chr&gt;, dest &lt;chr&gt;, air_time &lt;dbl&gt;, distance &lt;dbl&gt;,</span></span>
-<span><span class="co">#&gt; #   hour &lt;dbl&gt;, minute &lt;dbl&gt;, time_hour &lt;dttm&gt;</span></span>
+<span><span class="co">#&gt; #   hour &lt;dbl&gt;, minute &lt;dbl&gt;, time_hour &lt;chr&gt;</span></span>
 <span></span>
 <span><span class="co"># Clean up!</span></span>
-<span><span class="fu"><a href="reference/adbc_statement_init.html">adbc_statement_release</a></span><span class="op">(</span><span class="va">stmt</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/adbc_connection_init.html">adbc_connection_release</a></span><span class="op">(</span><span class="va">con</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/adbc_database_init.html">adbc_database_release</a></span><span class="op">(</span><span class="va">db</span><span class="op">)</span></span></code></pre></div>
+<p>One can also interact with the driver manager at a lower level using <code>adbc_connection_*()</code> and <code>adbc_statement_*()</code> functions (see reference documentation for details).</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
