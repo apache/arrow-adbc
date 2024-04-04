@@ -627,7 +627,7 @@ class Driver {
 /// \brief Formatter for Option values.
 template <>
 struct fmt::formatter<adbc::driver::Option> : fmt::nested_formatter<std::string_view> {
-  auto format(const adbc::driver::Option& option, fmt::format_context& ctx) {
+  auto format(const adbc::driver::Option& option, fmt::format_context& ctx) const {
     return write_padded(ctx, [=](auto out) {
       return std::visit(
           [&](auto&& value) {

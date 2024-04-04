@@ -42,6 +42,7 @@ source_files <- c(
   "c/driver/postgresql/statement.cc",
   "c/driver/postgresql/statement.h",
   "c/vendor/fmt/include/fmt/args.h",
+  "c/vendor/fmt/include/fmt/base.h",
   "c/vendor/fmt/include/fmt/chrono.h",
   "c/vendor/fmt/include/fmt/color.h",
   "c/vendor/fmt/include/fmt/compile.h",
