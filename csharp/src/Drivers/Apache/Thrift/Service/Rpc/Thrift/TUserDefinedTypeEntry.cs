@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TUserDefinedTypeEntry DeepCopy()
     {
       var tmp50 = new TUserDefinedTypeEntry();
-      if((TypeClassName != null))
+      if ((TypeClassName != null))
       {
         tmp50.TypeClassName = this.TypeClassName;
       }
@@ -115,7 +115,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp51 = new TStruct("TUserDefinedTypeEntry");
         await oprot.WriteStructBeginAsync(tmp51, cancellationToken);
         var tmp52 = new TField();
-        if((TypeClassName != null))
+        if ((TypeClassName != null))
         {
           tmp52.Name = "typeClassName";
           tmp52.Type = TType.String;
@@ -143,7 +143,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((TypeClassName != null))
+        if ((TypeClassName != null))
         {
           hashcode = (hashcode * 397) + TypeClassName.GetHashCode();
         }
@@ -154,7 +154,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp53 = new StringBuilder("TUserDefinedTypeEntry(");
-      if((TypeClassName != null))
+      if ((TypeClassName != null))
       {
         tmp53.Append(", TypeClassName: ");
         TypeClassName.ToString(tmp53);

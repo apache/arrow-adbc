@@ -117,26 +117,26 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TGetTableTypesReq DeepCopy()
     {
       var tmp489 = new TGetTableTypesReq();
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp489.SessionHandle = (global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle)this.SessionHandle.DeepCopy();
       }
-      if((GetDirectResults != null) && __isset.getDirectResults)
+      if ((GetDirectResults != null) && __isset.getDirectResults)
       {
         tmp489.GetDirectResults = (global::Apache.Hive.Service.Rpc.Thrift.TSparkGetDirectResults)this.GetDirectResults.DeepCopy();
       }
       tmp489.__isset.getDirectResults = this.__isset.getDirectResults;
-      if(__isset.runAsync)
+      if (__isset.runAsync)
       {
         tmp489.RunAsync = this.RunAsync;
       }
       tmp489.__isset.runAsync = this.__isset.runAsync;
-      if((OperationId != null) && __isset.operationId)
+      if ((OperationId != null) && __isset.operationId)
       {
         tmp489.OperationId = (global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier)this.OperationId.DeepCopy();
       }
       tmp489.__isset.operationId = this.__isset.operationId;
-      if((SessionConf != null) && __isset.sessionConf)
+      if ((SessionConf != null) && __isset.sessionConf)
       {
         tmp489.SessionConf = (global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf)this.SessionConf.DeepCopy();
       }
@@ -245,7 +245,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp490 = new TStruct("TGetTableTypesReq");
         await oprot.WriteStructBeginAsync(tmp490, cancellationToken);
         var tmp491 = new TField();
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           tmp491.Name = "sessionHandle";
           tmp491.Type = TType.Struct;
@@ -254,7 +254,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await SessionHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((GetDirectResults != null) && __isset.getDirectResults)
+        if ((GetDirectResults != null) && __isset.getDirectResults)
         {
           tmp491.Name = "getDirectResults";
           tmp491.Type = TType.Struct;
@@ -263,7 +263,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await GetDirectResults.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.runAsync)
+        if (__isset.runAsync)
         {
           tmp491.Name = "runAsync";
           tmp491.Type = TType.Bool;
@@ -272,7 +272,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(RunAsync, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((OperationId != null) && __isset.operationId)
+        if ((OperationId != null) && __isset.operationId)
         {
           tmp491.Name = "operationId";
           tmp491.Type = TType.Struct;
@@ -281,7 +281,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await OperationId.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((SessionConf != null) && __isset.sessionConf)
+        if ((SessionConf != null) && __isset.sessionConf)
         {
           tmp491.Name = "sessionConf";
           tmp491.Type = TType.Struct;
@@ -313,23 +313,23 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           hashcode = (hashcode * 397) + SessionHandle.GetHashCode();
         }
-        if((GetDirectResults != null) && __isset.getDirectResults)
+        if ((GetDirectResults != null) && __isset.getDirectResults)
         {
           hashcode = (hashcode * 397) + GetDirectResults.GetHashCode();
         }
-        if(__isset.runAsync)
+        if (__isset.runAsync)
         {
           hashcode = (hashcode * 397) + RunAsync.GetHashCode();
         }
-        if((OperationId != null) && __isset.operationId)
+        if ((OperationId != null) && __isset.operationId)
         {
           hashcode = (hashcode * 397) + OperationId.GetHashCode();
         }
-        if((SessionConf != null) && __isset.sessionConf)
+        if ((SessionConf != null) && __isset.sessionConf)
         {
           hashcode = (hashcode * 397) + SessionConf.GetHashCode();
         }
@@ -340,27 +340,27 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp492 = new StringBuilder("TGetTableTypesReq(");
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp492.Append(", SessionHandle: ");
         SessionHandle.ToString(tmp492);
       }
-      if((GetDirectResults != null) && __isset.getDirectResults)
+      if ((GetDirectResults != null) && __isset.getDirectResults)
       {
         tmp492.Append(", GetDirectResults: ");
         GetDirectResults.ToString(tmp492);
       }
-      if(__isset.runAsync)
+      if (__isset.runAsync)
       {
         tmp492.Append(", RunAsync: ");
         RunAsync.ToString(tmp492);
       }
-      if((OperationId != null) && __isset.operationId)
+      if ((OperationId != null) && __isset.operationId)
       {
         tmp492.Append(", OperationId: ");
         OperationId.ToString(tmp492);
       }
-      if((SessionConf != null) && __isset.sessionConf)
+      if ((SessionConf != null) && __isset.sessionConf)
       {
         tmp492.Append(", SessionConf: ");
         SessionConf.ToString(tmp492);

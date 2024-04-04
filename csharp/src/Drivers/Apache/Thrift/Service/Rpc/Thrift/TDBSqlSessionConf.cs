@@ -155,37 +155,37 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TDBSqlSessionConf DeepCopy()
     {
       var tmp367 = new TDBSqlSessionConf();
-      if((Confs != null) && __isset.confs)
+      if ((Confs != null) && __isset.confs)
       {
         tmp367.Confs = this.Confs.DeepCopy();
       }
       tmp367.__isset.confs = this.__isset.confs;
-      if((TempViews != null) && __isset.tempViews)
+      if ((TempViews != null) && __isset.tempViews)
       {
         tmp367.TempViews = this.TempViews.DeepCopy();
       }
       tmp367.__isset.tempViews = this.__isset.tempViews;
-      if((CurrentDatabase != null) && __isset.currentDatabase)
+      if ((CurrentDatabase != null) && __isset.currentDatabase)
       {
         tmp367.CurrentDatabase = this.CurrentDatabase;
       }
       tmp367.__isset.currentDatabase = this.__isset.currentDatabase;
-      if((CurrentCatalog != null) && __isset.currentCatalog)
+      if ((CurrentCatalog != null) && __isset.currentCatalog)
       {
         tmp367.CurrentCatalog = this.CurrentCatalog;
       }
       tmp367.__isset.currentCatalog = this.__isset.currentCatalog;
-      if((SessionCapabilities != null) && __isset.sessionCapabilities)
+      if ((SessionCapabilities != null) && __isset.sessionCapabilities)
       {
         tmp367.SessionCapabilities = (global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionCapabilities)this.SessionCapabilities.DeepCopy();
       }
       tmp367.__isset.sessionCapabilities = this.__isset.sessionCapabilities;
-      if((ExpressionsInfos != null) && __isset.expressionsInfos)
+      if ((ExpressionsInfos != null) && __isset.expressionsInfos)
       {
         tmp367.ExpressionsInfos = this.ExpressionsInfos.DeepCopy();
       }
       tmp367.__isset.expressionsInfos = this.__isset.expressionsInfos;
-      if((InternalConfs != null) && __isset.internalConfs)
+      if ((InternalConfs != null) && __isset.internalConfs)
       {
         tmp367.InternalConfs = this.InternalConfs.DeepCopy();
       }
@@ -352,7 +352,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp382 = new TStruct("TDBSqlSessionConf");
         await oprot.WriteStructBeginAsync(tmp382, cancellationToken);
         var tmp383 = new TField();
-        if((Confs != null) && __isset.confs)
+        if ((Confs != null) && __isset.confs)
         {
           tmp383.Name = "confs";
           tmp383.Type = TType.Map;
@@ -367,7 +367,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteMapEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((TempViews != null) && __isset.tempViews)
+        if ((TempViews != null) && __isset.tempViews)
         {
           tmp383.Name = "tempViews";
           tmp383.Type = TType.List;
@@ -381,7 +381,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteListEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((CurrentDatabase != null) && __isset.currentDatabase)
+        if ((CurrentDatabase != null) && __isset.currentDatabase)
         {
           tmp383.Name = "currentDatabase";
           tmp383.Type = TType.String;
@@ -390,7 +390,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(CurrentDatabase, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((CurrentCatalog != null) && __isset.currentCatalog)
+        if ((CurrentCatalog != null) && __isset.currentCatalog)
         {
           tmp383.Name = "currentCatalog";
           tmp383.Type = TType.String;
@@ -399,7 +399,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(CurrentCatalog, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((SessionCapabilities != null) && __isset.sessionCapabilities)
+        if ((SessionCapabilities != null) && __isset.sessionCapabilities)
         {
           tmp383.Name = "sessionCapabilities";
           tmp383.Type = TType.Struct;
@@ -408,7 +408,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await SessionCapabilities.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ExpressionsInfos != null) && __isset.expressionsInfos)
+        if ((ExpressionsInfos != null) && __isset.expressionsInfos)
         {
           tmp383.Name = "expressionsInfos";
           tmp383.Type = TType.List;
@@ -422,7 +422,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteListEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((InternalConfs != null) && __isset.internalConfs)
+        if ((InternalConfs != null) && __isset.internalConfs)
         {
           tmp383.Name = "internalConfs";
           tmp383.Type = TType.Map;
@@ -462,31 +462,31 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Confs != null) && __isset.confs)
+        if ((Confs != null) && __isset.confs)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(Confs);
         }
-        if((TempViews != null) && __isset.tempViews)
+        if ((TempViews != null) && __isset.tempViews)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(TempViews);
         }
-        if((CurrentDatabase != null) && __isset.currentDatabase)
+        if ((CurrentDatabase != null) && __isset.currentDatabase)
         {
           hashcode = (hashcode * 397) + CurrentDatabase.GetHashCode();
         }
-        if((CurrentCatalog != null) && __isset.currentCatalog)
+        if ((CurrentCatalog != null) && __isset.currentCatalog)
         {
           hashcode = (hashcode * 397) + CurrentCatalog.GetHashCode();
         }
-        if((SessionCapabilities != null) && __isset.sessionCapabilities)
+        if ((SessionCapabilities != null) && __isset.sessionCapabilities)
         {
           hashcode = (hashcode * 397) + SessionCapabilities.GetHashCode();
         }
-        if((ExpressionsInfos != null) && __isset.expressionsInfos)
+        if ((ExpressionsInfos != null) && __isset.expressionsInfos)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(ExpressionsInfos);
         }
-        if((InternalConfs != null) && __isset.internalConfs)
+        if ((InternalConfs != null) && __isset.internalConfs)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(InternalConfs);
         }
@@ -498,45 +498,45 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp388 = new StringBuilder("TDBSqlSessionConf(");
       int tmp389 = 0;
-      if((Confs != null) && __isset.confs)
+      if ((Confs != null) && __isset.confs)
       {
-        if(0 < tmp389++) { tmp388.Append(", "); }
+        if (0 < tmp389++) { tmp388.Append(", "); }
         tmp388.Append("Confs: ");
         Confs.ToString(tmp388);
       }
-      if((TempViews != null) && __isset.tempViews)
+      if ((TempViews != null) && __isset.tempViews)
       {
-        if(0 < tmp389++) { tmp388.Append(", "); }
+        if (0 < tmp389++) { tmp388.Append(", "); }
         tmp388.Append("TempViews: ");
         TempViews.ToString(tmp388);
       }
-      if((CurrentDatabase != null) && __isset.currentDatabase)
+      if ((CurrentDatabase != null) && __isset.currentDatabase)
       {
-        if(0 < tmp389++) { tmp388.Append(", "); }
+        if (0 < tmp389++) { tmp388.Append(", "); }
         tmp388.Append("CurrentDatabase: ");
         CurrentDatabase.ToString(tmp388);
       }
-      if((CurrentCatalog != null) && __isset.currentCatalog)
+      if ((CurrentCatalog != null) && __isset.currentCatalog)
       {
-        if(0 < tmp389++) { tmp388.Append(", "); }
+        if (0 < tmp389++) { tmp388.Append(", "); }
         tmp388.Append("CurrentCatalog: ");
         CurrentCatalog.ToString(tmp388);
       }
-      if((SessionCapabilities != null) && __isset.sessionCapabilities)
+      if ((SessionCapabilities != null) && __isset.sessionCapabilities)
       {
-        if(0 < tmp389++) { tmp388.Append(", "); }
+        if (0 < tmp389++) { tmp388.Append(", "); }
         tmp388.Append("SessionCapabilities: ");
         SessionCapabilities.ToString(tmp388);
       }
-      if((ExpressionsInfos != null) && __isset.expressionsInfos)
+      if ((ExpressionsInfos != null) && __isset.expressionsInfos)
       {
-        if(0 < tmp389++) { tmp388.Append(", "); }
+        if (0 < tmp389++) { tmp388.Append(", "); }
         tmp388.Append("ExpressionsInfos: ");
         ExpressionsInfos.ToString(tmp388);
       }
-      if((InternalConfs != null) && __isset.internalConfs)
+      if ((InternalConfs != null) && __isset.internalConfs)
       {
-        if(0 < tmp389++) { tmp388.Append(", "); }
+        if (0 < tmp389++) { tmp388.Append(", "); }
         tmp388.Append("InternalConfs: ");
         InternalConfs.ToString(tmp388);
       }

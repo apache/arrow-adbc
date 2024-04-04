@@ -140,32 +140,32 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TTypeEntry DeepCopy()
     {
       var tmp55 = new TTypeEntry();
-      if((PrimitiveEntry != null) && __isset.primitiveEntry)
+      if ((PrimitiveEntry != null) && __isset.primitiveEntry)
       {
         tmp55.PrimitiveEntry = (global::Apache.Hive.Service.Rpc.Thrift.TPrimitiveTypeEntry)this.PrimitiveEntry.DeepCopy();
       }
       tmp55.__isset.primitiveEntry = this.__isset.primitiveEntry;
-      if((ArrayEntry != null) && __isset.arrayEntry)
+      if ((ArrayEntry != null) && __isset.arrayEntry)
       {
         tmp55.ArrayEntry = (global::Apache.Hive.Service.Rpc.Thrift.TArrayTypeEntry)this.ArrayEntry.DeepCopy();
       }
       tmp55.__isset.arrayEntry = this.__isset.arrayEntry;
-      if((MapEntry != null) && __isset.mapEntry)
+      if ((MapEntry != null) && __isset.mapEntry)
       {
         tmp55.MapEntry = (global::Apache.Hive.Service.Rpc.Thrift.TMapTypeEntry)this.MapEntry.DeepCopy();
       }
       tmp55.__isset.mapEntry = this.__isset.mapEntry;
-      if((StructEntry != null) && __isset.structEntry)
+      if ((StructEntry != null) && __isset.structEntry)
       {
         tmp55.StructEntry = (global::Apache.Hive.Service.Rpc.Thrift.TStructTypeEntry)this.StructEntry.DeepCopy();
       }
       tmp55.__isset.structEntry = this.__isset.structEntry;
-      if((UnionEntry != null) && __isset.unionEntry)
+      if ((UnionEntry != null) && __isset.unionEntry)
       {
         tmp55.UnionEntry = (global::Apache.Hive.Service.Rpc.Thrift.TUnionTypeEntry)this.UnionEntry.DeepCopy();
       }
       tmp55.__isset.unionEntry = this.__isset.unionEntry;
-      if((UserDefinedTypeEntry != null) && __isset.userDefinedTypeEntry)
+      if ((UserDefinedTypeEntry != null) && __isset.userDefinedTypeEntry)
       {
         tmp55.UserDefinedTypeEntry = (global::Apache.Hive.Service.Rpc.Thrift.TUserDefinedTypeEntry)this.UserDefinedTypeEntry.DeepCopy();
       }
@@ -280,7 +280,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp56 = new TStruct("TTypeEntry");
         await oprot.WriteStructBeginAsync(tmp56, cancellationToken);
         var tmp57 = new TField();
-        if((PrimitiveEntry != null) && __isset.primitiveEntry)
+        if ((PrimitiveEntry != null) && __isset.primitiveEntry)
         {
           tmp57.Name = "primitiveEntry";
           tmp57.Type = TType.Struct;
@@ -289,7 +289,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await PrimitiveEntry.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ArrayEntry != null) && __isset.arrayEntry)
+        if ((ArrayEntry != null) && __isset.arrayEntry)
         {
           tmp57.Name = "arrayEntry";
           tmp57.Type = TType.Struct;
@@ -298,7 +298,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await ArrayEntry.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((MapEntry != null) && __isset.mapEntry)
+        if ((MapEntry != null) && __isset.mapEntry)
         {
           tmp57.Name = "mapEntry";
           tmp57.Type = TType.Struct;
@@ -307,7 +307,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await MapEntry.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((StructEntry != null) && __isset.structEntry)
+        if ((StructEntry != null) && __isset.structEntry)
         {
           tmp57.Name = "structEntry";
           tmp57.Type = TType.Struct;
@@ -316,7 +316,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await StructEntry.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((UnionEntry != null) && __isset.unionEntry)
+        if ((UnionEntry != null) && __isset.unionEntry)
         {
           tmp57.Name = "unionEntry";
           tmp57.Type = TType.Struct;
@@ -325,7 +325,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await UnionEntry.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((UserDefinedTypeEntry != null) && __isset.userDefinedTypeEntry)
+        if ((UserDefinedTypeEntry != null) && __isset.userDefinedTypeEntry)
         {
           tmp57.Name = "userDefinedTypeEntry";
           tmp57.Type = TType.Struct;
@@ -358,27 +358,27 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((PrimitiveEntry != null) && __isset.primitiveEntry)
+        if ((PrimitiveEntry != null) && __isset.primitiveEntry)
         {
           hashcode = (hashcode * 397) + PrimitiveEntry.GetHashCode();
         }
-        if((ArrayEntry != null) && __isset.arrayEntry)
+        if ((ArrayEntry != null) && __isset.arrayEntry)
         {
           hashcode = (hashcode * 397) + ArrayEntry.GetHashCode();
         }
-        if((MapEntry != null) && __isset.mapEntry)
+        if ((MapEntry != null) && __isset.mapEntry)
         {
           hashcode = (hashcode * 397) + MapEntry.GetHashCode();
         }
-        if((StructEntry != null) && __isset.structEntry)
+        if ((StructEntry != null) && __isset.structEntry)
         {
           hashcode = (hashcode * 397) + StructEntry.GetHashCode();
         }
-        if((UnionEntry != null) && __isset.unionEntry)
+        if ((UnionEntry != null) && __isset.unionEntry)
         {
           hashcode = (hashcode * 397) + UnionEntry.GetHashCode();
         }
-        if((UserDefinedTypeEntry != null) && __isset.userDefinedTypeEntry)
+        if ((UserDefinedTypeEntry != null) && __isset.userDefinedTypeEntry)
         {
           hashcode = (hashcode * 397) + UserDefinedTypeEntry.GetHashCode();
         }
@@ -390,39 +390,39 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp58 = new StringBuilder("TTypeEntry(");
       int tmp59 = 0;
-      if((PrimitiveEntry != null) && __isset.primitiveEntry)
+      if ((PrimitiveEntry != null) && __isset.primitiveEntry)
       {
-        if(0 < tmp59++) { tmp58.Append(", "); }
+        if (0 < tmp59++) { tmp58.Append(", "); }
         tmp58.Append("PrimitiveEntry: ");
         PrimitiveEntry.ToString(tmp58);
       }
-      if((ArrayEntry != null) && __isset.arrayEntry)
+      if ((ArrayEntry != null) && __isset.arrayEntry)
       {
-        if(0 < tmp59++) { tmp58.Append(", "); }
+        if (0 < tmp59++) { tmp58.Append(", "); }
         tmp58.Append("ArrayEntry: ");
         ArrayEntry.ToString(tmp58);
       }
-      if((MapEntry != null) && __isset.mapEntry)
+      if ((MapEntry != null) && __isset.mapEntry)
       {
-        if(0 < tmp59++) { tmp58.Append(", "); }
+        if (0 < tmp59++) { tmp58.Append(", "); }
         tmp58.Append("MapEntry: ");
         MapEntry.ToString(tmp58);
       }
-      if((StructEntry != null) && __isset.structEntry)
+      if ((StructEntry != null) && __isset.structEntry)
       {
-        if(0 < tmp59++) { tmp58.Append(", "); }
+        if (0 < tmp59++) { tmp58.Append(", "); }
         tmp58.Append("StructEntry: ");
         StructEntry.ToString(tmp58);
       }
-      if((UnionEntry != null) && __isset.unionEntry)
+      if ((UnionEntry != null) && __isset.unionEntry)
       {
-        if(0 < tmp59++) { tmp58.Append(", "); }
+        if (0 < tmp59++) { tmp58.Append(", "); }
         tmp58.Append("UnionEntry: ");
         UnionEntry.ToString(tmp58);
       }
-      if((UserDefinedTypeEntry != null) && __isset.userDefinedTypeEntry)
+      if ((UserDefinedTypeEntry != null) && __isset.userDefinedTypeEntry)
       {
-        if(0 < tmp59++) { tmp58.Append(", "); }
+        if (0 < tmp59++) { tmp58.Append(", "); }
         tmp58.Append("UserDefinedTypeEntry: ");
         UserDefinedTypeEntry.ToString(tmp58);
       }

@@ -82,13 +82,13 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TOperationHandle DeepCopy()
     {
       var tmp274 = new TOperationHandle();
-      if((OperationId != null))
+      if ((OperationId != null))
       {
         tmp274.OperationId = (global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier)this.OperationId.DeepCopy();
       }
       tmp274.OperationType = this.OperationType;
       tmp274.HasResultSet = this.HasResultSet;
-      if(__isset.modifiedRowCount)
+      if (__isset.modifiedRowCount)
       {
         tmp274.ModifiedRowCount = this.ModifiedRowCount;
       }
@@ -196,7 +196,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp275 = new TStruct("TOperationHandle");
         await oprot.WriteStructBeginAsync(tmp275, cancellationToken);
         var tmp276 = new TField();
-        if((OperationId != null))
+        if ((OperationId != null))
         {
           tmp276.Name = "operationId";
           tmp276.Type = TType.Struct;
@@ -217,7 +217,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         await oprot.WriteFieldBeginAsync(tmp276, cancellationToken);
         await oprot.WriteBoolAsync(HasResultSet, cancellationToken);
         await oprot.WriteFieldEndAsync(cancellationToken);
-        if(__isset.modifiedRowCount)
+        if (__isset.modifiedRowCount)
         {
           tmp276.Name = "modifiedRowCount";
           tmp276.Type = TType.Double;
@@ -248,13 +248,13 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((OperationId != null))
+        if ((OperationId != null))
         {
           hashcode = (hashcode * 397) + OperationId.GetHashCode();
         }
         hashcode = (hashcode * 397) + OperationType.GetHashCode();
         hashcode = (hashcode * 397) + HasResultSet.GetHashCode();
-        if(__isset.modifiedRowCount)
+        if (__isset.modifiedRowCount)
         {
           hashcode = (hashcode * 397) + ModifiedRowCount.GetHashCode();
         }
@@ -265,7 +265,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp277 = new StringBuilder("TOperationHandle(");
-      if((OperationId != null))
+      if ((OperationId != null))
       {
         tmp277.Append(", OperationId: ");
         OperationId.ToString(tmp277);
@@ -274,7 +274,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       OperationType.ToString(tmp277);
       tmp277.Append(", HasResultSet: ");
       HasResultSet.ToString(tmp277);
-      if(__isset.modifiedRowCount)
+      if (__isset.modifiedRowCount)
       {
         tmp277.Append(", ModifiedRowCount: ");
         ModifiedRowCount.ToString(tmp277);

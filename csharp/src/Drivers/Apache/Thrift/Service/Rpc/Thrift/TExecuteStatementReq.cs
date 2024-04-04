@@ -350,105 +350,105 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TExecuteStatementReq DeepCopy()
     {
       var tmp357 = new TExecuteStatementReq();
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp357.SessionHandle = (global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle)this.SessionHandle.DeepCopy();
       }
-      if((Statement != null))
+      if ((Statement != null))
       {
         tmp357.Statement = this.Statement;
       }
-      if((ConfOverlay != null) && __isset.confOverlay)
+      if ((ConfOverlay != null) && __isset.confOverlay)
       {
         tmp357.ConfOverlay = this.ConfOverlay.DeepCopy();
       }
       tmp357.__isset.confOverlay = this.__isset.confOverlay;
-      if(__isset.runAsync)
+      if (__isset.runAsync)
       {
         tmp357.RunAsync = this.RunAsync;
       }
       tmp357.__isset.runAsync = this.__isset.runAsync;
-      if(__isset.queryTimeout)
+      if (__isset.queryTimeout)
       {
         tmp357.QueryTimeout = this.QueryTimeout;
       }
       tmp357.__isset.queryTimeout = this.__isset.queryTimeout;
-      if((GetDirectResults != null) && __isset.getDirectResults)
+      if ((GetDirectResults != null) && __isset.getDirectResults)
       {
         tmp357.GetDirectResults = (global::Apache.Hive.Service.Rpc.Thrift.TSparkGetDirectResults)this.GetDirectResults.DeepCopy();
       }
       tmp357.__isset.getDirectResults = this.__isset.getDirectResults;
-      if(__isset.canReadArrowResult)
+      if (__isset.canReadArrowResult)
       {
         tmp357.CanReadArrowResult = this.CanReadArrowResult;
       }
       tmp357.__isset.canReadArrowResult = this.__isset.canReadArrowResult;
-      if(__isset.canDownloadResult)
+      if (__isset.canDownloadResult)
       {
         tmp357.CanDownloadResult = this.CanDownloadResult;
       }
       tmp357.__isset.canDownloadResult = this.__isset.canDownloadResult;
-      if(__isset.canDecompressLZ4Result)
+      if (__isset.canDecompressLZ4Result)
       {
         tmp357.CanDecompressLZ4Result = this.CanDecompressLZ4Result;
       }
       tmp357.__isset.canDecompressLZ4Result = this.__isset.canDecompressLZ4Result;
-      if(__isset.maxBytesPerFile)
+      if (__isset.maxBytesPerFile)
       {
         tmp357.MaxBytesPerFile = this.MaxBytesPerFile;
       }
       tmp357.__isset.maxBytesPerFile = this.__isset.maxBytesPerFile;
-      if((UseArrowNativeTypes != null) && __isset.useArrowNativeTypes)
+      if ((UseArrowNativeTypes != null) && __isset.useArrowNativeTypes)
       {
         tmp357.UseArrowNativeTypes = (global::Apache.Hive.Service.Rpc.Thrift.TSparkArrowTypes)this.UseArrowNativeTypes.DeepCopy();
       }
       tmp357.__isset.useArrowNativeTypes = this.__isset.useArrowNativeTypes;
-      if(__isset.resultRowLimit)
+      if (__isset.resultRowLimit)
       {
         tmp357.ResultRowLimit = this.ResultRowLimit;
       }
       tmp357.__isset.resultRowLimit = this.__isset.resultRowLimit;
-      if((OperationId != null) && __isset.operationId)
+      if ((OperationId != null) && __isset.operationId)
       {
         tmp357.OperationId = (global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier)this.OperationId.DeepCopy();
       }
       tmp357.__isset.operationId = this.__isset.operationId;
-      if((SessionConf != null) && __isset.sessionConf)
+      if ((SessionConf != null) && __isset.sessionConf)
       {
         tmp357.SessionConf = (global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf)this.SessionConf.DeepCopy();
       }
       tmp357.__isset.sessionConf = this.__isset.sessionConf;
-      if(__isset.rejectHighCostQueries)
+      if (__isset.rejectHighCostQueries)
       {
         tmp357.RejectHighCostQueries = this.RejectHighCostQueries;
       }
       tmp357.__isset.rejectHighCostQueries = this.__isset.rejectHighCostQueries;
-      if(__isset.estimatedCost)
+      if (__isset.estimatedCost)
       {
         tmp357.EstimatedCost = this.EstimatedCost;
       }
       tmp357.__isset.estimatedCost = this.__isset.estimatedCost;
-      if(__isset.executionVersion)
+      if (__isset.executionVersion)
       {
         tmp357.ExecutionVersion = this.ExecutionVersion;
       }
       tmp357.__isset.executionVersion = this.__isset.executionVersion;
-      if((RequestValidation != null) && __isset.requestValidation)
+      if ((RequestValidation != null) && __isset.requestValidation)
       {
         tmp357.RequestValidation = this.RequestValidation;
       }
       tmp357.__isset.requestValidation = this.__isset.requestValidation;
-      if(__isset.resultPersistenceMode)
+      if (__isset.resultPersistenceMode)
       {
         tmp357.ResultPersistenceMode = this.ResultPersistenceMode;
       }
       tmp357.__isset.resultPersistenceMode = this.__isset.resultPersistenceMode;
-      if(__isset.trimArrowBatchesToLimit)
+      if (__isset.trimArrowBatchesToLimit)
       {
         tmp357.TrimArrowBatchesToLimit = this.TrimArrowBatchesToLimit;
       }
       tmp357.__isset.trimArrowBatchesToLimit = this.__isset.trimArrowBatchesToLimit;
-      if(__isset.enforceResultPersistenceMode)
+      if (__isset.enforceResultPersistenceMode)
       {
         tmp357.EnforceResultPersistenceMode = this.EnforceResultPersistenceMode;
       }
@@ -736,7 +736,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp362 = new TStruct("TExecuteStatementReq");
         await oprot.WriteStructBeginAsync(tmp362, cancellationToken);
         var tmp363 = new TField();
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           tmp363.Name = "sessionHandle";
           tmp363.Type = TType.Struct;
@@ -745,7 +745,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await SessionHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Statement != null))
+        if ((Statement != null))
         {
           tmp363.Name = "statement";
           tmp363.Type = TType.String;
@@ -754,7 +754,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Statement, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ConfOverlay != null) && __isset.confOverlay)
+        if ((ConfOverlay != null) && __isset.confOverlay)
         {
           tmp363.Name = "confOverlay";
           tmp363.Type = TType.Map;
@@ -769,7 +769,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteMapEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.runAsync)
+        if (__isset.runAsync)
         {
           tmp363.Name = "runAsync";
           tmp363.Type = TType.Bool;
@@ -778,7 +778,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(RunAsync, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.queryTimeout)
+        if (__isset.queryTimeout)
         {
           tmp363.Name = "queryTimeout";
           tmp363.Type = TType.I64;
@@ -787,7 +787,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI64Async(QueryTimeout, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((GetDirectResults != null) && __isset.getDirectResults)
+        if ((GetDirectResults != null) && __isset.getDirectResults)
         {
           tmp363.Name = "getDirectResults";
           tmp363.Type = TType.Struct;
@@ -796,7 +796,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await GetDirectResults.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.canReadArrowResult)
+        if (__isset.canReadArrowResult)
         {
           tmp363.Name = "canReadArrowResult";
           tmp363.Type = TType.Bool;
@@ -805,7 +805,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(CanReadArrowResult, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.canDownloadResult)
+        if (__isset.canDownloadResult)
         {
           tmp363.Name = "canDownloadResult";
           tmp363.Type = TType.Bool;
@@ -814,7 +814,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(CanDownloadResult, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.canDecompressLZ4Result)
+        if (__isset.canDecompressLZ4Result)
         {
           tmp363.Name = "canDecompressLZ4Result";
           tmp363.Type = TType.Bool;
@@ -823,7 +823,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(CanDecompressLZ4Result, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.maxBytesPerFile)
+        if (__isset.maxBytesPerFile)
         {
           tmp363.Name = "maxBytesPerFile";
           tmp363.Type = TType.I64;
@@ -832,7 +832,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI64Async(MaxBytesPerFile, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((UseArrowNativeTypes != null) && __isset.useArrowNativeTypes)
+        if ((UseArrowNativeTypes != null) && __isset.useArrowNativeTypes)
         {
           tmp363.Name = "useArrowNativeTypes";
           tmp363.Type = TType.Struct;
@@ -841,7 +841,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await UseArrowNativeTypes.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.resultRowLimit)
+        if (__isset.resultRowLimit)
         {
           tmp363.Name = "resultRowLimit";
           tmp363.Type = TType.I64;
@@ -850,7 +850,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI64Async(ResultRowLimit, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((OperationId != null) && __isset.operationId)
+        if ((OperationId != null) && __isset.operationId)
         {
           tmp363.Name = "operationId";
           tmp363.Type = TType.Struct;
@@ -859,7 +859,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await OperationId.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((SessionConf != null) && __isset.sessionConf)
+        if ((SessionConf != null) && __isset.sessionConf)
         {
           tmp363.Name = "sessionConf";
           tmp363.Type = TType.Struct;
@@ -868,7 +868,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await SessionConf.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.rejectHighCostQueries)
+        if (__isset.rejectHighCostQueries)
         {
           tmp363.Name = "rejectHighCostQueries";
           tmp363.Type = TType.Bool;
@@ -877,7 +877,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(RejectHighCostQueries, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.estimatedCost)
+        if (__isset.estimatedCost)
         {
           tmp363.Name = "estimatedCost";
           tmp363.Type = TType.Double;
@@ -886,7 +886,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteDoubleAsync(EstimatedCost, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.executionVersion)
+        if (__isset.executionVersion)
         {
           tmp363.Name = "executionVersion";
           tmp363.Type = TType.I16;
@@ -895,7 +895,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI16Async(ExecutionVersion, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((RequestValidation != null) && __isset.requestValidation)
+        if ((RequestValidation != null) && __isset.requestValidation)
         {
           tmp363.Name = "requestValidation";
           tmp363.Type = TType.String;
@@ -904,7 +904,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(RequestValidation, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.resultPersistenceMode)
+        if (__isset.resultPersistenceMode)
         {
           tmp363.Name = "resultPersistenceMode";
           tmp363.Type = TType.I32;
@@ -913,7 +913,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async(ResultPersistenceMode, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.trimArrowBatchesToLimit)
+        if (__isset.trimArrowBatchesToLimit)
         {
           tmp363.Name = "trimArrowBatchesToLimit";
           tmp363.Type = TType.Bool;
@@ -922,7 +922,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(TrimArrowBatchesToLimit, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.enforceResultPersistenceMode)
+        if (__isset.enforceResultPersistenceMode)
         {
           tmp363.Name = "enforceResultPersistenceMode";
           tmp363.Type = TType.Bool;
@@ -970,87 +970,87 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           hashcode = (hashcode * 397) + SessionHandle.GetHashCode();
         }
-        if((Statement != null))
+        if ((Statement != null))
         {
           hashcode = (hashcode * 397) + Statement.GetHashCode();
         }
-        if((ConfOverlay != null) && __isset.confOverlay)
+        if ((ConfOverlay != null) && __isset.confOverlay)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(ConfOverlay);
         }
-        if(__isset.runAsync)
+        if (__isset.runAsync)
         {
           hashcode = (hashcode * 397) + RunAsync.GetHashCode();
         }
-        if(__isset.queryTimeout)
+        if (__isset.queryTimeout)
         {
           hashcode = (hashcode * 397) + QueryTimeout.GetHashCode();
         }
-        if((GetDirectResults != null) && __isset.getDirectResults)
+        if ((GetDirectResults != null) && __isset.getDirectResults)
         {
           hashcode = (hashcode * 397) + GetDirectResults.GetHashCode();
         }
-        if(__isset.canReadArrowResult)
+        if (__isset.canReadArrowResult)
         {
           hashcode = (hashcode * 397) + CanReadArrowResult.GetHashCode();
         }
-        if(__isset.canDownloadResult)
+        if (__isset.canDownloadResult)
         {
           hashcode = (hashcode * 397) + CanDownloadResult.GetHashCode();
         }
-        if(__isset.canDecompressLZ4Result)
+        if (__isset.canDecompressLZ4Result)
         {
           hashcode = (hashcode * 397) + CanDecompressLZ4Result.GetHashCode();
         }
-        if(__isset.maxBytesPerFile)
+        if (__isset.maxBytesPerFile)
         {
           hashcode = (hashcode * 397) + MaxBytesPerFile.GetHashCode();
         }
-        if((UseArrowNativeTypes != null) && __isset.useArrowNativeTypes)
+        if ((UseArrowNativeTypes != null) && __isset.useArrowNativeTypes)
         {
           hashcode = (hashcode * 397) + UseArrowNativeTypes.GetHashCode();
         }
-        if(__isset.resultRowLimit)
+        if (__isset.resultRowLimit)
         {
           hashcode = (hashcode * 397) + ResultRowLimit.GetHashCode();
         }
-        if((OperationId != null) && __isset.operationId)
+        if ((OperationId != null) && __isset.operationId)
         {
           hashcode = (hashcode * 397) + OperationId.GetHashCode();
         }
-        if((SessionConf != null) && __isset.sessionConf)
+        if ((SessionConf != null) && __isset.sessionConf)
         {
           hashcode = (hashcode * 397) + SessionConf.GetHashCode();
         }
-        if(__isset.rejectHighCostQueries)
+        if (__isset.rejectHighCostQueries)
         {
           hashcode = (hashcode * 397) + RejectHighCostQueries.GetHashCode();
         }
-        if(__isset.estimatedCost)
+        if (__isset.estimatedCost)
         {
           hashcode = (hashcode * 397) + EstimatedCost.GetHashCode();
         }
-        if(__isset.executionVersion)
+        if (__isset.executionVersion)
         {
           hashcode = (hashcode * 397) + ExecutionVersion.GetHashCode();
         }
-        if(__isset.enforceResultPersistenceMode)
+        if (__isset.enforceResultPersistenceMode)
         {
           hashcode = (hashcode * 397) + EnforceResultPersistenceMode.GetHashCode();
         }
-        if((RequestValidation != null) && __isset.requestValidation)
+        if ((RequestValidation != null) && __isset.requestValidation)
         {
           hashcode = (hashcode * 397) + RequestValidation.GetHashCode();
         }
-        if(__isset.resultPersistenceMode)
+        if (__isset.resultPersistenceMode)
         {
           hashcode = (hashcode * 397) + ResultPersistenceMode.GetHashCode();
         }
-        if(__isset.trimArrowBatchesToLimit)
+        if (__isset.trimArrowBatchesToLimit)
         {
           hashcode = (hashcode * 397) + TrimArrowBatchesToLimit.GetHashCode();
         }
@@ -1061,107 +1061,107 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp365 = new StringBuilder("TExecuteStatementReq(");
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp365.Append(", SessionHandle: ");
         SessionHandle.ToString(tmp365);
       }
-      if((Statement != null))
+      if ((Statement != null))
       {
         tmp365.Append(", Statement: ");
         Statement.ToString(tmp365);
       }
-      if((ConfOverlay != null) && __isset.confOverlay)
+      if ((ConfOverlay != null) && __isset.confOverlay)
       {
         tmp365.Append(", ConfOverlay: ");
         ConfOverlay.ToString(tmp365);
       }
-      if(__isset.runAsync)
+      if (__isset.runAsync)
       {
         tmp365.Append(", RunAsync: ");
         RunAsync.ToString(tmp365);
       }
-      if(__isset.queryTimeout)
+      if (__isset.queryTimeout)
       {
         tmp365.Append(", QueryTimeout: ");
         QueryTimeout.ToString(tmp365);
       }
-      if((GetDirectResults != null) && __isset.getDirectResults)
+      if ((GetDirectResults != null) && __isset.getDirectResults)
       {
         tmp365.Append(", GetDirectResults: ");
         GetDirectResults.ToString(tmp365);
       }
-      if(__isset.canReadArrowResult)
+      if (__isset.canReadArrowResult)
       {
         tmp365.Append(", CanReadArrowResult: ");
         CanReadArrowResult.ToString(tmp365);
       }
-      if(__isset.canDownloadResult)
+      if (__isset.canDownloadResult)
       {
         tmp365.Append(", CanDownloadResult: ");
         CanDownloadResult.ToString(tmp365);
       }
-      if(__isset.canDecompressLZ4Result)
+      if (__isset.canDecompressLZ4Result)
       {
         tmp365.Append(", CanDecompressLZ4Result: ");
         CanDecompressLZ4Result.ToString(tmp365);
       }
-      if(__isset.maxBytesPerFile)
+      if (__isset.maxBytesPerFile)
       {
         tmp365.Append(", MaxBytesPerFile: ");
         MaxBytesPerFile.ToString(tmp365);
       }
-      if((UseArrowNativeTypes != null) && __isset.useArrowNativeTypes)
+      if ((UseArrowNativeTypes != null) && __isset.useArrowNativeTypes)
       {
         tmp365.Append(", UseArrowNativeTypes: ");
         UseArrowNativeTypes.ToString(tmp365);
       }
-      if(__isset.resultRowLimit)
+      if (__isset.resultRowLimit)
       {
         tmp365.Append(", ResultRowLimit: ");
         ResultRowLimit.ToString(tmp365);
       }
-      if((OperationId != null) && __isset.operationId)
+      if ((OperationId != null) && __isset.operationId)
       {
         tmp365.Append(", OperationId: ");
         OperationId.ToString(tmp365);
       }
-      if((SessionConf != null) && __isset.sessionConf)
+      if ((SessionConf != null) && __isset.sessionConf)
       {
         tmp365.Append(", SessionConf: ");
         SessionConf.ToString(tmp365);
       }
-      if(__isset.rejectHighCostQueries)
+      if (__isset.rejectHighCostQueries)
       {
         tmp365.Append(", RejectHighCostQueries: ");
         RejectHighCostQueries.ToString(tmp365);
       }
-      if(__isset.enforceResultPersistenceMode)
+      if (__isset.enforceResultPersistenceMode)
       {
         tmp365.Append(", EnforceResultPersistenceMode: ");
         EnforceResultPersistenceMode.ToString(tmp365);
       }
-      if(__isset.estimatedCost)
+      if (__isset.estimatedCost)
       {
         tmp365.Append(", EstimatedCost: ");
         EstimatedCost.ToString(tmp365);
       }
-      if(__isset.executionVersion)
+      if (__isset.executionVersion)
       {
         tmp365.Append(", ExecutionVersion: ");
         ExecutionVersion.ToString(tmp365);
       }
-      if((RequestValidation != null) && __isset.requestValidation)
+      if ((RequestValidation != null) && __isset.requestValidation)
       {
         tmp365.Append(", RequestValidation: ");
         RequestValidation.ToString(tmp365);
       }
-      if(__isset.resultPersistenceMode)
+      if (__isset.resultPersistenceMode)
       {
         tmp365.Append(", ResultPersistenceMode: ");
         ResultPersistenceMode.ToString(tmp365);
       }
-      if(__isset.trimArrowBatchesToLimit)
+      if (__isset.trimArrowBatchesToLimit)
       {
         tmp365.Append(", TrimArrowBatchesToLimit: ");
         TrimArrowBatchesToLimit.ToString(tmp365);

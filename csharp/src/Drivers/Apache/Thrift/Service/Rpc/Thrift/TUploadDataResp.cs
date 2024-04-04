@@ -54,11 +54,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TUploadDataResp DeepCopy()
     {
       var tmp435 = new TUploadDataResp();
-      if((Status != null))
+      if ((Status != null))
       {
         tmp435.Status = (global::Apache.Hive.Service.Rpc.Thrift.TStatus)this.Status.DeepCopy();
       }
-      if((OperationHandle != null))
+      if ((OperationHandle != null))
       {
         tmp435.OperationHandle = (global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle)this.OperationHandle.DeepCopy();
       }
@@ -140,7 +140,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp436 = new TStruct("TUploadDataResp");
         await oprot.WriteStructBeginAsync(tmp436, cancellationToken);
         var tmp437 = new TField();
-        if((Status != null))
+        if ((Status != null))
         {
           tmp437.Name = "status";
           tmp437.Type = TType.Struct;
@@ -149,7 +149,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await Status.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((OperationHandle != null))
+        if ((OperationHandle != null))
         {
           tmp437.Name = "operationHandle";
           tmp437.Type = TType.Struct;
@@ -178,11 +178,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Status != null))
+        if ((Status != null))
         {
           hashcode = (hashcode * 397) + Status.GetHashCode();
         }
-        if((OperationHandle != null))
+        if ((OperationHandle != null))
         {
           hashcode = (hashcode * 397) + OperationHandle.GetHashCode();
         }
@@ -193,12 +193,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp438 = new StringBuilder("TUploadDataResp(");
-      if((Status != null))
+      if ((Status != null))
       {
         tmp438.Append(", Status: ");
         Status.ToString(tmp438);
       }
-      if((OperationHandle != null))
+      if ((OperationHandle != null))
       {
         tmp438.Append(", OperationHandle: ");
         OperationHandle.ToString(tmp438);

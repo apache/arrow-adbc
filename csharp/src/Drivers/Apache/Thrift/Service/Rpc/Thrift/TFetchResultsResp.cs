@@ -117,26 +117,26 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TFetchResultsResp DeepCopy()
     {
       var tmp593 = new TFetchResultsResp();
-      if((Status != null))
+      if ((Status != null))
       {
         tmp593.Status = (global::Apache.Hive.Service.Rpc.Thrift.TStatus)this.Status.DeepCopy();
       }
-      if(__isset.hasMoreRows)
+      if (__isset.hasMoreRows)
       {
         tmp593.HasMoreRows = this.HasMoreRows;
       }
       tmp593.__isset.hasMoreRows = this.__isset.hasMoreRows;
-      if((Results != null) && __isset.results)
+      if ((Results != null) && __isset.results)
       {
         tmp593.Results = (global::Apache.Hive.Service.Rpc.Thrift.TRowSet)this.Results.DeepCopy();
       }
       tmp593.__isset.results = this.__isset.results;
-      if((ResultSetMetadata != null) && __isset.resultSetMetadata)
+      if ((ResultSetMetadata != null) && __isset.resultSetMetadata)
       {
         tmp593.ResultSetMetadata = (global::Apache.Hive.Service.Rpc.Thrift.TGetResultSetMetadataResp)this.ResultSetMetadata.DeepCopy();
       }
       tmp593.__isset.resultSetMetadata = this.__isset.resultSetMetadata;
-      if((ResponseValidation != null) && __isset.responseValidation)
+      if ((ResponseValidation != null) && __isset.responseValidation)
       {
         tmp593.ResponseValidation = this.ResponseValidation;
       }
@@ -244,7 +244,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp594 = new TStruct("TFetchResultsResp");
         await oprot.WriteStructBeginAsync(tmp594, cancellationToken);
         var tmp595 = new TField();
-        if((Status != null))
+        if ((Status != null))
         {
           tmp595.Name = "status";
           tmp595.Type = TType.Struct;
@@ -253,7 +253,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await Status.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.hasMoreRows)
+        if (__isset.hasMoreRows)
         {
           tmp595.Name = "hasMoreRows";
           tmp595.Type = TType.Bool;
@@ -262,7 +262,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(HasMoreRows, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Results != null) && __isset.results)
+        if ((Results != null) && __isset.results)
         {
           tmp595.Name = "results";
           tmp595.Type = TType.Struct;
@@ -271,7 +271,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await Results.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ResultSetMetadata != null) && __isset.resultSetMetadata)
+        if ((ResultSetMetadata != null) && __isset.resultSetMetadata)
         {
           tmp595.Name = "resultSetMetadata";
           tmp595.Type = TType.Struct;
@@ -280,7 +280,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await ResultSetMetadata.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ResponseValidation != null) && __isset.responseValidation)
+        if ((ResponseValidation != null) && __isset.responseValidation)
         {
           tmp595.Name = "responseValidation";
           tmp595.Type = TType.String;
@@ -312,23 +312,23 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Status != null))
+        if ((Status != null))
         {
           hashcode = (hashcode * 397) + Status.GetHashCode();
         }
-        if(__isset.hasMoreRows)
+        if (__isset.hasMoreRows)
         {
           hashcode = (hashcode * 397) + HasMoreRows.GetHashCode();
         }
-        if((Results != null) && __isset.results)
+        if ((Results != null) && __isset.results)
         {
           hashcode = (hashcode * 397) + Results.GetHashCode();
         }
-        if((ResultSetMetadata != null) && __isset.resultSetMetadata)
+        if ((ResultSetMetadata != null) && __isset.resultSetMetadata)
         {
           hashcode = (hashcode * 397) + ResultSetMetadata.GetHashCode();
         }
-        if((ResponseValidation != null) && __isset.responseValidation)
+        if ((ResponseValidation != null) && __isset.responseValidation)
         {
           hashcode = (hashcode * 397) + ResponseValidation.GetHashCode();
         }
@@ -339,27 +339,27 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp596 = new StringBuilder("TFetchResultsResp(");
-      if((Status != null))
+      if ((Status != null))
       {
         tmp596.Append(", Status: ");
         Status.ToString(tmp596);
       }
-      if(__isset.hasMoreRows)
+      if (__isset.hasMoreRows)
       {
         tmp596.Append(", HasMoreRows: ");
         HasMoreRows.ToString(tmp596);
       }
-      if((Results != null) && __isset.results)
+      if ((Results != null) && __isset.results)
       {
         tmp596.Append(", Results: ");
         Results.ToString(tmp596);
       }
-      if((ResultSetMetadata != null) && __isset.resultSetMetadata)
+      if ((ResultSetMetadata != null) && __isset.resultSetMetadata)
       {
         tmp596.Append(", ResultSetMetadata: ");
         ResultSetMetadata.ToString(tmp596);
       }
-      if((ResponseValidation != null) && __isset.responseValidation)
+      if ((ResponseValidation != null) && __isset.responseValidation)
       {
         tmp596.Append(", ResponseValidation: ");
         ResponseValidation.ToString(tmp596);

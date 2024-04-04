@@ -54,11 +54,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public THandleIdentifier DeepCopy()
     {
       var tmp264 = new THandleIdentifier();
-      if((Guid != null))
+      if ((Guid != null))
       {
         tmp264.Guid = this.Guid.ToArray();
       }
-      if((Secret != null))
+      if ((Secret != null))
       {
         tmp264.Secret = this.Secret.ToArray();
       }
@@ -138,7 +138,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp265 = new TStruct("THandleIdentifier");
         await oprot.WriteStructBeginAsync(tmp265, cancellationToken);
         var tmp266 = new TField();
-        if((Guid != null))
+        if ((Guid != null))
         {
           tmp266.Name = "guid";
           tmp266.Type = TType.String;
@@ -147,7 +147,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBinaryAsync(Guid, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Secret != null))
+        if ((Secret != null))
         {
           tmp266.Name = "secret";
           tmp266.Type = TType.String;
@@ -176,11 +176,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Guid != null))
+        if ((Guid != null))
         {
           hashcode = (hashcode * 397) + Guid.GetHashCode();
         }
-        if((Secret != null))
+        if ((Secret != null))
         {
           hashcode = (hashcode * 397) + Secret.GetHashCode();
         }
@@ -191,12 +191,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp267 = new StringBuilder("THandleIdentifier(");
-      if((Guid != null))
+      if ((Guid != null))
       {
         tmp267.Append(", Guid: ");
         Guid.ToString(tmp267);
       }
-      if((Secret != null))
+      if ((Secret != null))
       {
         tmp267.Append(", Secret: ");
         Secret.ToString(tmp267);

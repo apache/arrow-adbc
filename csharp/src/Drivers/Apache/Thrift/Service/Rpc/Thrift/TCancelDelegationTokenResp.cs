@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TCancelDelegationTokenResp DeepCopy()
     {
       var tmp613 = new TCancelDelegationTokenResp();
-      if((Status != null))
+      if ((Status != null))
       {
         tmp613.Status = (global::Apache.Hive.Service.Rpc.Thrift.TStatus)this.Status.DeepCopy();
       }
@@ -116,7 +116,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp614 = new TStruct("TCancelDelegationTokenResp");
         await oprot.WriteStructBeginAsync(tmp614, cancellationToken);
         var tmp615 = new TField();
-        if((Status != null))
+        if ((Status != null))
         {
           tmp615.Name = "status";
           tmp615.Type = TType.Struct;
@@ -144,7 +144,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Status != null))
+        if ((Status != null))
         {
           hashcode = (hashcode * 397) + Status.GetHashCode();
         }
@@ -155,7 +155,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp616 = new StringBuilder("TCancelDelegationTokenResp(");
-      if((Status != null))
+      if ((Status != null))
       {
         tmp616.Append(", Status: ");
         Status.ToString(tmp616);

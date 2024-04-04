@@ -63,7 +63,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TDBSqlCloudResultFile DeepCopy()
     {
       var tmp583 = new TDBSqlCloudResultFile();
-      if((FilePath != null))
+      if ((FilePath != null))
       {
         tmp583.FilePath = this.FilePath;
       }
@@ -195,7 +195,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp584 = new TStruct("TDBSqlCloudResultFile");
         await oprot.WriteStructBeginAsync(tmp584, cancellationToken);
         var tmp585 = new TField();
-        if((FilePath != null))
+        if ((FilePath != null))
         {
           tmp585.Name = "filePath";
           tmp585.Type = TType.String;
@@ -251,7 +251,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((FilePath != null))
+        if ((FilePath != null))
         {
           hashcode = (hashcode * 397) + FilePath.GetHashCode();
         }
@@ -266,7 +266,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp586 = new StringBuilder("TDBSqlCloudResultFile(");
-      if((FilePath != null))
+      if ((FilePath != null))
       {
         tmp586.Append(", FilePath: ");
         FilePath.ToString(tmp586);

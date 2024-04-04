@@ -136,31 +136,31 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp209 = new TRowSet();
       tmp209.StartRowOffset = this.StartRowOffset;
-      if((Rows != null))
+      if ((Rows != null))
       {
         tmp209.Rows = this.Rows.DeepCopy();
       }
-      if((Columns != null) && __isset.columns)
+      if ((Columns != null) && __isset.columns)
       {
         tmp209.Columns = this.Columns.DeepCopy();
       }
       tmp209.__isset.columns = this.__isset.columns;
-      if((BinaryColumns != null) && __isset.binaryColumns)
+      if ((BinaryColumns != null) && __isset.binaryColumns)
       {
         tmp209.BinaryColumns = this.BinaryColumns.ToArray();
       }
       tmp209.__isset.binaryColumns = this.__isset.binaryColumns;
-      if(__isset.columnCount)
+      if (__isset.columnCount)
       {
         tmp209.ColumnCount = this.ColumnCount;
       }
       tmp209.__isset.columnCount = this.__isset.columnCount;
-      if((ArrowBatches != null) && __isset.arrowBatches)
+      if ((ArrowBatches != null) && __isset.arrowBatches)
       {
         tmp209.ArrowBatches = this.ArrowBatches.DeepCopy();
       }
       tmp209.__isset.arrowBatches = this.__isset.arrowBatches;
-      if((ResultLinks != null) && __isset.resultLinks)
+      if ((ResultLinks != null) && __isset.resultLinks)
       {
         tmp209.ResultLinks = this.ResultLinks.DeepCopy();
       }
@@ -341,7 +341,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         await oprot.WriteFieldBeginAsync(tmp223, cancellationToken);
         await oprot.WriteI64Async(StartRowOffset, cancellationToken);
         await oprot.WriteFieldEndAsync(cancellationToken);
-        if((Rows != null))
+        if ((Rows != null))
         {
           tmp223.Name = "rows";
           tmp223.Type = TType.List;
@@ -355,7 +355,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteListEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Columns != null) && __isset.columns)
+        if ((Columns != null) && __isset.columns)
         {
           tmp223.Name = "columns";
           tmp223.Type = TType.List;
@@ -369,7 +369,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteListEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((BinaryColumns != null) && __isset.binaryColumns)
+        if ((BinaryColumns != null) && __isset.binaryColumns)
         {
           tmp223.Name = "binaryColumns";
           tmp223.Type = TType.String;
@@ -378,7 +378,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBinaryAsync(BinaryColumns, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.columnCount)
+        if (__isset.columnCount)
         {
           tmp223.Name = "columnCount";
           tmp223.Type = TType.I32;
@@ -387,7 +387,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async(ColumnCount, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ArrowBatches != null) && __isset.arrowBatches)
+        if ((ArrowBatches != null) && __isset.arrowBatches)
         {
           tmp223.Name = "arrowBatches";
           tmp223.Type = TType.List;
@@ -401,7 +401,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteListEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ResultLinks != null) && __isset.resultLinks)
+        if ((ResultLinks != null) && __isset.resultLinks)
         {
           tmp223.Name = "resultLinks";
           tmp223.Type = TType.List;
@@ -441,27 +441,27 @@ namespace Apache.Hive.Service.Rpc.Thrift
       int hashcode = 157;
       unchecked {
         hashcode = (hashcode * 397) + StartRowOffset.GetHashCode();
-        if((Rows != null))
+        if ((Rows != null))
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(Rows);
         }
-        if((Columns != null) && __isset.columns)
+        if ((Columns != null) && __isset.columns)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(Columns);
         }
-        if((BinaryColumns != null) && __isset.binaryColumns)
+        if ((BinaryColumns != null) && __isset.binaryColumns)
         {
           hashcode = (hashcode * 397) + BinaryColumns.GetHashCode();
         }
-        if(__isset.columnCount)
+        if (__isset.columnCount)
         {
           hashcode = (hashcode * 397) + ColumnCount.GetHashCode();
         }
-        if((ArrowBatches != null) && __isset.arrowBatches)
+        if ((ArrowBatches != null) && __isset.arrowBatches)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(ArrowBatches);
         }
-        if((ResultLinks != null) && __isset.resultLinks)
+        if ((ResultLinks != null) && __isset.resultLinks)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(ResultLinks);
         }
@@ -474,32 +474,32 @@ namespace Apache.Hive.Service.Rpc.Thrift
       var tmp228 = new StringBuilder("TRowSet(");
       tmp228.Append(", StartRowOffset: ");
       StartRowOffset.ToString(tmp228);
-      if((Rows != null))
+      if ((Rows != null))
       {
         tmp228.Append(", Rows: ");
         Rows.ToString(tmp228);
       }
-      if((Columns != null) && __isset.columns)
+      if ((Columns != null) && __isset.columns)
       {
         tmp228.Append(", Columns: ");
         Columns.ToString(tmp228);
       }
-      if((BinaryColumns != null) && __isset.binaryColumns)
+      if ((BinaryColumns != null) && __isset.binaryColumns)
       {
         tmp228.Append(", BinaryColumns: ");
         BinaryColumns.ToString(tmp228);
       }
-      if(__isset.columnCount)
+      if (__isset.columnCount)
       {
         tmp228.Append(", ColumnCount: ");
         ColumnCount.ToString(tmp228);
       }
-      if((ArrowBatches != null) && __isset.arrowBatches)
+      if ((ArrowBatches != null) && __isset.arrowBatches)
       {
         tmp228.Append(", ArrowBatches: ");
         ArrowBatches.ToString(tmp228);
       }
-      if((ResultLinks != null) && __isset.resultLinks)
+      if ((ResultLinks != null) && __isset.resultLinks)
       {
         tmp228.Append(", ResultLinks: ");
         ResultLinks.ToString(tmp228);

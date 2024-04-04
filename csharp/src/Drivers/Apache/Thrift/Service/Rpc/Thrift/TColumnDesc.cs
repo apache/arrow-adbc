@@ -78,16 +78,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TColumnDesc DeepCopy()
     {
       var tmp69 = new TColumnDesc();
-      if((ColumnName != null))
+      if ((ColumnName != null))
       {
         tmp69.ColumnName = this.ColumnName;
       }
-      if((TypeDesc != null))
+      if ((TypeDesc != null))
       {
         tmp69.TypeDesc = (global::Apache.Hive.Service.Rpc.Thrift.TTypeDesc)this.TypeDesc.DeepCopy();
       }
       tmp69.Position = this.Position;
-      if((Comment != null) && __isset.comment)
+      if ((Comment != null) && __isset.comment)
       {
         tmp69.Comment = this.Comment;
       }
@@ -195,7 +195,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp70 = new TStruct("TColumnDesc");
         await oprot.WriteStructBeginAsync(tmp70, cancellationToken);
         var tmp71 = new TField();
-        if((ColumnName != null))
+        if ((ColumnName != null))
         {
           tmp71.Name = "columnName";
           tmp71.Type = TType.String;
@@ -204,7 +204,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(ColumnName, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((TypeDesc != null))
+        if ((TypeDesc != null))
         {
           tmp71.Name = "typeDesc";
           tmp71.Type = TType.Struct;
@@ -219,7 +219,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         await oprot.WriteFieldBeginAsync(tmp71, cancellationToken);
         await oprot.WriteI32Async(Position, cancellationToken);
         await oprot.WriteFieldEndAsync(cancellationToken);
-        if((Comment != null) && __isset.comment)
+        if ((Comment != null) && __isset.comment)
         {
           tmp71.Name = "comment";
           tmp71.Type = TType.String;
@@ -250,16 +250,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((ColumnName != null))
+        if ((ColumnName != null))
         {
           hashcode = (hashcode * 397) + ColumnName.GetHashCode();
         }
-        if((TypeDesc != null))
+        if ((TypeDesc != null))
         {
           hashcode = (hashcode * 397) + TypeDesc.GetHashCode();
         }
         hashcode = (hashcode * 397) + Position.GetHashCode();
-        if((Comment != null) && __isset.comment)
+        if ((Comment != null) && __isset.comment)
         {
           hashcode = (hashcode * 397) + Comment.GetHashCode();
         }
@@ -270,19 +270,19 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp72 = new StringBuilder("TColumnDesc(");
-      if((ColumnName != null))
+      if ((ColumnName != null))
       {
         tmp72.Append(", ColumnName: ");
         ColumnName.ToString(tmp72);
       }
-      if((TypeDesc != null))
+      if ((TypeDesc != null))
       {
         tmp72.Append(", TypeDesc: ");
         TypeDesc.ToString(tmp72);
       }
       tmp72.Append(", Position: ");
       Position.ToString(tmp72);
-      if((Comment != null) && __isset.comment)
+      if ((Comment != null) && __isset.comment)
       {
         tmp72.Append(", Comment: ");
         Comment.ToString(tmp72);

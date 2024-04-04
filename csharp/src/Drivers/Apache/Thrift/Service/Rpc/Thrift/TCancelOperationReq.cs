@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TCancelOperationReq DeepCopy()
     {
       var tmp549 = new TCancelOperationReq();
-      if((OperationHandle != null))
+      if ((OperationHandle != null))
       {
         tmp549.OperationHandle = (global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle)this.OperationHandle.DeepCopy();
       }
@@ -116,7 +116,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp550 = new TStruct("TCancelOperationReq");
         await oprot.WriteStructBeginAsync(tmp550, cancellationToken);
         var tmp551 = new TField();
-        if((OperationHandle != null))
+        if ((OperationHandle != null))
         {
           tmp551.Name = "operationHandle";
           tmp551.Type = TType.Struct;
@@ -144,7 +144,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((OperationHandle != null))
+        if ((OperationHandle != null))
         {
           hashcode = (hashcode * 397) + OperationHandle.GetHashCode();
         }
@@ -155,7 +155,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp552 = new StringBuilder("TCancelOperationReq(");
-      if((OperationHandle != null))
+      if ((OperationHandle != null))
       {
         tmp552.Append(", OperationHandle: ");
         OperationHandle.ToString(tmp552);

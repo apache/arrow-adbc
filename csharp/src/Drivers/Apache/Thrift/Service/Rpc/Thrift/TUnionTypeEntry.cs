@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TUnionTypeEntry DeepCopy()
     {
       var tmp40 = new TUnionTypeEntry();
-      if((NameToTypePtr != null))
+      if ((NameToTypePtr != null))
       {
         tmp40.NameToTypePtr = this.NameToTypePtr.DeepCopy();
       }
@@ -127,7 +127,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp45 = new TStruct("TUnionTypeEntry");
         await oprot.WriteStructBeginAsync(tmp45, cancellationToken);
         var tmp46 = new TField();
-        if((NameToTypePtr != null))
+        if ((NameToTypePtr != null))
         {
           tmp46.Name = "nameToTypePtr";
           tmp46.Type = TType.Map;
@@ -161,7 +161,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((NameToTypePtr != null))
+        if ((NameToTypePtr != null))
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(NameToTypePtr);
         }
@@ -172,7 +172,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp48 = new StringBuilder("TUnionTypeEntry(");
-      if((NameToTypePtr != null))
+      if ((NameToTypePtr != null))
       {
         tmp48.Append(", NameToTypePtr: ");
         NameToTypePtr.ToString(tmp48);

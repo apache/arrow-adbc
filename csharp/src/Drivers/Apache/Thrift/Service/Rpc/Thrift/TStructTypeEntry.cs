@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TStructTypeEntry DeepCopy()
     {
       var tmp30 = new TStructTypeEntry();
-      if((NameToTypePtr != null))
+      if ((NameToTypePtr != null))
       {
         tmp30.NameToTypePtr = this.NameToTypePtr.DeepCopy();
       }
@@ -127,7 +127,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp35 = new TStruct("TStructTypeEntry");
         await oprot.WriteStructBeginAsync(tmp35, cancellationToken);
         var tmp36 = new TField();
-        if((NameToTypePtr != null))
+        if ((NameToTypePtr != null))
         {
           tmp36.Name = "nameToTypePtr";
           tmp36.Type = TType.Map;
@@ -161,7 +161,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((NameToTypePtr != null))
+        if ((NameToTypePtr != null))
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(NameToTypePtr);
         }
@@ -172,7 +172,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp38 = new StringBuilder("TStructTypeEntry(");
-      if((NameToTypePtr != null))
+      if ((NameToTypePtr != null))
       {
         tmp38.Append(", NameToTypePtr: ");
         NameToTypePtr.ToString(tmp38);

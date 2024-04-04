@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TRow DeepCopy()
     {
       var tmp123 = new TRow();
-      if((ColVals != null))
+      if ((ColVals != null))
       {
         tmp123.ColVals = this.ColVals.DeepCopy();
       }
@@ -126,7 +126,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp127 = new TStruct("TRow");
         await oprot.WriteStructBeginAsync(tmp127, cancellationToken);
         var tmp128 = new TField();
-        if((ColVals != null))
+        if ((ColVals != null))
         {
           tmp128.Name = "colVals";
           tmp128.Type = TType.List;
@@ -159,7 +159,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((ColVals != null))
+        if ((ColVals != null))
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(ColVals);
         }
@@ -170,7 +170,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp130 = new StringBuilder("TRow(");
-      if((ColVals != null))
+      if ((ColVals != null))
       {
         tmp130.Append(", ColVals: ");
         ColVals.ToString(tmp130);

@@ -87,16 +87,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TGetCatalogsResp DeepCopy()
     {
       var tmp460 = new TGetCatalogsResp();
-      if((Status != null))
+      if ((Status != null))
       {
         tmp460.Status = (global::Apache.Hive.Service.Rpc.Thrift.TStatus)this.Status.DeepCopy();
       }
-      if((OperationHandle != null) && __isset.operationHandle)
+      if ((OperationHandle != null) && __isset.operationHandle)
       {
         tmp460.OperationHandle = (global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle)this.OperationHandle.DeepCopy();
       }
       tmp460.__isset.operationHandle = this.__isset.operationHandle;
-      if((DirectResults != null) && __isset.directResults)
+      if ((DirectResults != null) && __isset.directResults)
       {
         tmp460.DirectResults = (global::Apache.Hive.Service.Rpc.Thrift.TSparkDirectResults)this.DirectResults.DeepCopy();
       }
@@ -184,7 +184,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp461 = new TStruct("TGetCatalogsResp");
         await oprot.WriteStructBeginAsync(tmp461, cancellationToken);
         var tmp462 = new TField();
-        if((Status != null))
+        if ((Status != null))
         {
           tmp462.Name = "status";
           tmp462.Type = TType.Struct;
@@ -193,7 +193,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await Status.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((OperationHandle != null) && __isset.operationHandle)
+        if ((OperationHandle != null) && __isset.operationHandle)
         {
           tmp462.Name = "operationHandle";
           tmp462.Type = TType.Struct;
@@ -202,7 +202,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await OperationHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((DirectResults != null) && __isset.directResults)
+        if ((DirectResults != null) && __isset.directResults)
         {
           tmp462.Name = "directResults";
           tmp462.Type = TType.Struct;
@@ -232,15 +232,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Status != null))
+        if ((Status != null))
         {
           hashcode = (hashcode * 397) + Status.GetHashCode();
         }
-        if((OperationHandle != null) && __isset.operationHandle)
+        if ((OperationHandle != null) && __isset.operationHandle)
         {
           hashcode = (hashcode * 397) + OperationHandle.GetHashCode();
         }
-        if((DirectResults != null) && __isset.directResults)
+        if ((DirectResults != null) && __isset.directResults)
         {
           hashcode = (hashcode * 397) + DirectResults.GetHashCode();
         }
@@ -251,17 +251,17 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp463 = new StringBuilder("TGetCatalogsResp(");
-      if((Status != null))
+      if ((Status != null))
       {
         tmp463.Append(", Status: ");
         Status.ToString(tmp463);
       }
-      if((OperationHandle != null) && __isset.operationHandle)
+      if ((OperationHandle != null) && __isset.operationHandle)
       {
         tmp463.Append(", OperationHandle: ");
         OperationHandle.ToString(tmp463);
       }
-      if((DirectResults != null) && __isset.directResults)
+      if ((DirectResults != null) && __isset.directResults)
       {
         tmp463.Append(", DirectResults: ");
         DirectResults.ToString(tmp463);

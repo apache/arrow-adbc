@@ -65,7 +65,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TDBSqlSessionCapabilities DeepCopy()
     {
       var tmp400 = new TDBSqlSessionCapabilities();
-      if(__isset.supportsMultipleCatalogs)
+      if (__isset.supportsMultipleCatalogs)
       {
         tmp400.SupportsMultipleCatalogs = this.SupportsMultipleCatalogs;
       }
@@ -124,7 +124,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp401 = new TStruct("TDBSqlSessionCapabilities");
         await oprot.WriteStructBeginAsync(tmp401, cancellationToken);
         var tmp402 = new TField();
-        if(__isset.supportsMultipleCatalogs)
+        if (__isset.supportsMultipleCatalogs)
         {
           tmp402.Name = "supportsMultipleCatalogs";
           tmp402.Type = TType.Bool;
@@ -152,7 +152,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if(__isset.supportsMultipleCatalogs)
+        if (__isset.supportsMultipleCatalogs)
         {
           hashcode = (hashcode * 397) + SupportsMultipleCatalogs.GetHashCode();
         }
@@ -164,9 +164,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp403 = new StringBuilder("TDBSqlSessionCapabilities(");
       int tmp404 = 0;
-      if(__isset.supportsMultipleCatalogs)
+      if (__isset.supportsMultipleCatalogs)
       {
-        if(0 < tmp404++) { tmp403.Append(", "); }
+        if (0 < tmp404++) { tmp403.Append(", "); }
         tmp403.Append("SupportsMultipleCatalogs: ");
         SupportsMultipleCatalogs.ToString(tmp403);
       }

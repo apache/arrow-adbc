@@ -230,62 +230,62 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TExpressionInfo DeepCopy()
     {
       var tmp410 = new TExpressionInfo();
-      if((ClassName != null) && __isset.className)
+      if ((ClassName != null) && __isset.className)
       {
         tmp410.ClassName = this.ClassName;
       }
       tmp410.__isset.className = this.__isset.className;
-      if((Usage != null) && __isset.usage)
+      if ((Usage != null) && __isset.usage)
       {
         tmp410.Usage = this.Usage;
       }
       tmp410.__isset.usage = this.__isset.usage;
-      if((Name != null) && __isset.name)
+      if ((Name != null) && __isset.name)
       {
         tmp410.Name = this.Name;
       }
       tmp410.__isset.name = this.__isset.name;
-      if((Extended != null) && __isset.extended)
+      if ((Extended != null) && __isset.extended)
       {
         tmp410.Extended = this.Extended;
       }
       tmp410.__isset.extended = this.__isset.extended;
-      if((Db != null) && __isset.db)
+      if ((Db != null) && __isset.db)
       {
         tmp410.Db = this.Db;
       }
       tmp410.__isset.db = this.__isset.db;
-      if((Arguments != null) && __isset.arguments)
+      if ((Arguments != null) && __isset.arguments)
       {
         tmp410.Arguments = this.Arguments;
       }
       tmp410.__isset.arguments = this.__isset.arguments;
-      if((Examples != null) && __isset.examples)
+      if ((Examples != null) && __isset.examples)
       {
         tmp410.Examples = this.Examples;
       }
       tmp410.__isset.examples = this.__isset.examples;
-      if((Note != null) && __isset.note)
+      if ((Note != null) && __isset.note)
       {
         tmp410.Note = this.Note;
       }
       tmp410.__isset.note = this.__isset.note;
-      if((Group != null) && __isset.@group)
+      if ((Group != null) && __isset.@group)
       {
         tmp410.Group = this.Group;
       }
       tmp410.__isset.@group = this.__isset.@group;
-      if((Since != null) && __isset.since)
+      if ((Since != null) && __isset.since)
       {
         tmp410.Since = this.Since;
       }
       tmp410.__isset.since = this.__isset.since;
-      if((Deprecated != null) && __isset.deprecated)
+      if ((Deprecated != null) && __isset.deprecated)
       {
         tmp410.Deprecated = this.Deprecated;
       }
       tmp410.__isset.deprecated = this.__isset.deprecated;
-      if((Source != null) && __isset.source)
+      if ((Source != null) && __isset.source)
       {
         tmp410.Source = this.Source;
       }
@@ -454,7 +454,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp411 = new TStruct("TExpressionInfo");
         await oprot.WriteStructBeginAsync(tmp411, cancellationToken);
         var tmp412 = new TField();
-        if((ClassName != null) && __isset.className)
+        if ((ClassName != null) && __isset.className)
         {
           tmp412.Name = "className";
           tmp412.Type = TType.String;
@@ -463,7 +463,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(ClassName, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Usage != null) && __isset.usage)
+        if ((Usage != null) && __isset.usage)
         {
           tmp412.Name = "usage";
           tmp412.Type = TType.String;
@@ -472,7 +472,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Usage, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Name != null) && __isset.name)
+        if ((Name != null) && __isset.name)
         {
           tmp412.Name = "name";
           tmp412.Type = TType.String;
@@ -481,7 +481,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Name, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Extended != null) && __isset.extended)
+        if ((Extended != null) && __isset.extended)
         {
           tmp412.Name = "extended";
           tmp412.Type = TType.String;
@@ -490,7 +490,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Extended, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Db != null) && __isset.db)
+        if ((Db != null) && __isset.db)
         {
           tmp412.Name = "db";
           tmp412.Type = TType.String;
@@ -499,7 +499,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Db, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Arguments != null) && __isset.arguments)
+        if ((Arguments != null) && __isset.arguments)
         {
           tmp412.Name = "arguments";
           tmp412.Type = TType.String;
@@ -508,7 +508,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Arguments, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Examples != null) && __isset.examples)
+        if ((Examples != null) && __isset.examples)
         {
           tmp412.Name = "examples";
           tmp412.Type = TType.String;
@@ -517,7 +517,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Examples, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Note != null) && __isset.note)
+        if ((Note != null) && __isset.note)
         {
           tmp412.Name = "note";
           tmp412.Type = TType.String;
@@ -526,7 +526,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Note, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Group != null) && __isset.@group)
+        if ((Group != null) && __isset.@group)
         {
           tmp412.Name = "group";
           tmp412.Type = TType.String;
@@ -535,7 +535,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Group, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Since != null) && __isset.since)
+        if ((Since != null) && __isset.since)
         {
           tmp412.Name = "since";
           tmp412.Type = TType.String;
@@ -544,7 +544,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Since, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Deprecated != null) && __isset.deprecated)
+        if ((Deprecated != null) && __isset.deprecated)
         {
           tmp412.Name = "deprecated";
           tmp412.Type = TType.String;
@@ -553,7 +553,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Deprecated, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Source != null) && __isset.source)
+        if ((Source != null) && __isset.source)
         {
           tmp412.Name = "source";
           tmp412.Type = TType.String;
@@ -592,51 +592,51 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((ClassName != null) && __isset.className)
+        if ((ClassName != null) && __isset.className)
         {
           hashcode = (hashcode * 397) + ClassName.GetHashCode();
         }
-        if((Usage != null) && __isset.usage)
+        if ((Usage != null) && __isset.usage)
         {
           hashcode = (hashcode * 397) + Usage.GetHashCode();
         }
-        if((Name != null) && __isset.name)
+        if ((Name != null) && __isset.name)
         {
           hashcode = (hashcode * 397) + Name.GetHashCode();
         }
-        if((Extended != null) && __isset.extended)
+        if ((Extended != null) && __isset.extended)
         {
           hashcode = (hashcode * 397) + Extended.GetHashCode();
         }
-        if((Db != null) && __isset.db)
+        if ((Db != null) && __isset.db)
         {
           hashcode = (hashcode * 397) + Db.GetHashCode();
         }
-        if((Arguments != null) && __isset.arguments)
+        if ((Arguments != null) && __isset.arguments)
         {
           hashcode = (hashcode * 397) + Arguments.GetHashCode();
         }
-        if((Examples != null) && __isset.examples)
+        if ((Examples != null) && __isset.examples)
         {
           hashcode = (hashcode * 397) + Examples.GetHashCode();
         }
-        if((Note != null) && __isset.note)
+        if ((Note != null) && __isset.note)
         {
           hashcode = (hashcode * 397) + Note.GetHashCode();
         }
-        if((Group != null) && __isset.@group)
+        if ((Group != null) && __isset.@group)
         {
           hashcode = (hashcode * 397) + Group.GetHashCode();
         }
-        if((Since != null) && __isset.since)
+        if ((Since != null) && __isset.since)
         {
           hashcode = (hashcode * 397) + Since.GetHashCode();
         }
-        if((Deprecated != null) && __isset.deprecated)
+        if ((Deprecated != null) && __isset.deprecated)
         {
           hashcode = (hashcode * 397) + Deprecated.GetHashCode();
         }
-        if((Source != null) && __isset.source)
+        if ((Source != null) && __isset.source)
         {
           hashcode = (hashcode * 397) + Source.GetHashCode();
         }
@@ -648,75 +648,75 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp413 = new StringBuilder("TExpressionInfo(");
       int tmp414 = 0;
-      if((ClassName != null) && __isset.className)
+      if ((ClassName != null) && __isset.className)
       {
-        if(0 < tmp414++) { tmp413.Append(", "); }
+        if (0 < tmp414++) { tmp413.Append(", "); }
         tmp413.Append("ClassName: ");
         ClassName.ToString(tmp413);
       }
-      if((Usage != null) && __isset.usage)
+      if ((Usage != null) && __isset.usage)
       {
-        if(0 < tmp414++) { tmp413.Append(", "); }
+        if (0 < tmp414++) { tmp413.Append(", "); }
         tmp413.Append("Usage: ");
         Usage.ToString(tmp413);
       }
-      if((Name != null) && __isset.name)
+      if ((Name != null) && __isset.name)
       {
-        if(0 < tmp414++) { tmp413.Append(", "); }
+        if (0 < tmp414++) { tmp413.Append(", "); }
         tmp413.Append("Name: ");
         Name.ToString(tmp413);
       }
-      if((Extended != null) && __isset.extended)
+      if ((Extended != null) && __isset.extended)
       {
-        if(0 < tmp414++) { tmp413.Append(", "); }
+        if (0 < tmp414++) { tmp413.Append(", "); }
         tmp413.Append("Extended: ");
         Extended.ToString(tmp413);
       }
-      if((Db != null) && __isset.db)
+      if ((Db != null) && __isset.db)
       {
-        if(0 < tmp414++) { tmp413.Append(", "); }
+        if (0 < tmp414++) { tmp413.Append(", "); }
         tmp413.Append("Db: ");
         Db.ToString(tmp413);
       }
-      if((Arguments != null) && __isset.arguments)
+      if ((Arguments != null) && __isset.arguments)
       {
-        if(0 < tmp414++) { tmp413.Append(", "); }
+        if (0 < tmp414++) { tmp413.Append(", "); }
         tmp413.Append("Arguments: ");
         Arguments.ToString(tmp413);
       }
-      if((Examples != null) && __isset.examples)
+      if ((Examples != null) && __isset.examples)
       {
-        if(0 < tmp414++) { tmp413.Append(", "); }
+        if (0 < tmp414++) { tmp413.Append(", "); }
         tmp413.Append("Examples: ");
         Examples.ToString(tmp413);
       }
-      if((Note != null) && __isset.note)
+      if ((Note != null) && __isset.note)
       {
-        if(0 < tmp414++) { tmp413.Append(", "); }
+        if (0 < tmp414++) { tmp413.Append(", "); }
         tmp413.Append("Note: ");
         Note.ToString(tmp413);
       }
-      if((Group != null) && __isset.@group)
+      if ((Group != null) && __isset.@group)
       {
-        if(0 < tmp414++) { tmp413.Append(", "); }
+        if (0 < tmp414++) { tmp413.Append(", "); }
         tmp413.Append("Group: ");
         Group.ToString(tmp413);
       }
-      if((Since != null) && __isset.since)
+      if ((Since != null) && __isset.since)
       {
-        if(0 < tmp414++) { tmp413.Append(", "); }
+        if (0 < tmp414++) { tmp413.Append(", "); }
         tmp413.Append("Since: ");
         Since.ToString(tmp413);
       }
-      if((Deprecated != null) && __isset.deprecated)
+      if ((Deprecated != null) && __isset.deprecated)
       {
-        if(0 < tmp414++) { tmp413.Append(", "); }
+        if (0 < tmp414++) { tmp413.Append(", "); }
         tmp413.Append("Deprecated: ");
         Deprecated.ToString(tmp413);
       }
-      if((Source != null) && __isset.source)
+      if ((Source != null) && __isset.source)
       {
-        if(0 < tmp414++) { tmp413.Append(", "); }
+        if (0 < tmp414++) { tmp413.Append(", "); }
         tmp413.Append("Source: ");
         Source.ToString(tmp413);
       }

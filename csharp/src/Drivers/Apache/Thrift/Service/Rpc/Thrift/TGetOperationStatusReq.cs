@@ -72,11 +72,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TGetOperationStatusReq DeepCopy()
     {
       var tmp539 = new TGetOperationStatusReq();
-      if((OperationHandle != null))
+      if ((OperationHandle != null))
       {
         tmp539.OperationHandle = (global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle)this.OperationHandle.DeepCopy();
       }
-      if(__isset.getProgressUpdate)
+      if (__isset.getProgressUpdate)
       {
         tmp539.GetProgressUpdate = this.GetProgressUpdate;
       }
@@ -152,7 +152,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp540 = new TStruct("TGetOperationStatusReq");
         await oprot.WriteStructBeginAsync(tmp540, cancellationToken);
         var tmp541 = new TField();
-        if((OperationHandle != null))
+        if ((OperationHandle != null))
         {
           tmp541.Name = "operationHandle";
           tmp541.Type = TType.Struct;
@@ -161,7 +161,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await OperationHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.getProgressUpdate)
+        if (__isset.getProgressUpdate)
         {
           tmp541.Name = "getProgressUpdate";
           tmp541.Type = TType.Bool;
@@ -190,11 +190,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((OperationHandle != null))
+        if ((OperationHandle != null))
         {
           hashcode = (hashcode * 397) + OperationHandle.GetHashCode();
         }
-        if(__isset.getProgressUpdate)
+        if (__isset.getProgressUpdate)
         {
           hashcode = (hashcode * 397) + GetProgressUpdate.GetHashCode();
         }
@@ -205,12 +205,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp542 = new StringBuilder("TGetOperationStatusReq(");
-      if((OperationHandle != null))
+      if ((OperationHandle != null))
       {
         tmp542.Append(", OperationHandle: ");
         OperationHandle.ToString(tmp542);
       }
-      if(__isset.getProgressUpdate)
+      if (__isset.getProgressUpdate)
       {
         tmp542.Append(", GetProgressUpdate: ");
         GetProgressUpdate.ToString(tmp542);

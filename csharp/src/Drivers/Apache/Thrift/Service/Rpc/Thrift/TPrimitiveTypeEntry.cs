@@ -77,7 +77,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp15 = new TPrimitiveTypeEntry();
       tmp15.Type = this.Type;
-      if((TypeQualifiers != null) && __isset.typeQualifiers)
+      if ((TypeQualifiers != null) && __isset.typeQualifiers)
       {
         tmp15.TypeQualifiers = (global::Apache.Hive.Service.Rpc.Thrift.TTypeQualifiers)this.TypeQualifiers.DeepCopy();
       }
@@ -159,7 +159,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         await oprot.WriteFieldBeginAsync(tmp17, cancellationToken);
         await oprot.WriteI32Async((int)Type, cancellationToken);
         await oprot.WriteFieldEndAsync(cancellationToken);
-        if((TypeQualifiers != null) && __isset.typeQualifiers)
+        if ((TypeQualifiers != null) && __isset.typeQualifiers)
         {
           tmp17.Name = "typeQualifiers";
           tmp17.Type = TType.Struct;
@@ -189,7 +189,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       int hashcode = 157;
       unchecked {
         hashcode = (hashcode * 397) + Type.GetHashCode();
-        if((TypeQualifiers != null) && __isset.typeQualifiers)
+        if ((TypeQualifiers != null) && __isset.typeQualifiers)
         {
           hashcode = (hashcode * 397) + TypeQualifiers.GetHashCode();
         }
@@ -202,7 +202,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       var tmp18 = new StringBuilder("TPrimitiveTypeEntry(");
       tmp18.Append(", Type: ");
       Type.ToString(tmp18);
-      if((TypeQualifiers != null) && __isset.typeQualifiers)
+      if ((TypeQualifiers != null) && __isset.typeQualifiers)
       {
         tmp18.Append(", TypeQualifiers: ");
         TypeQualifiers.ToString(tmp18);

@@ -117,26 +117,26 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TDownloadDataReq DeepCopy()
     {
       var tmp440 = new TDownloadDataReq();
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp440.SessionHandle = (global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle)this.SessionHandle.DeepCopy();
       }
-      if((TableName != null) && __isset.tableName)
+      if ((TableName != null) && __isset.tableName)
       {
         tmp440.TableName = this.TableName;
       }
       tmp440.__isset.tableName = this.__isset.tableName;
-      if((Query != null) && __isset.query)
+      if ((Query != null) && __isset.query)
       {
         tmp440.Query = this.Query;
       }
       tmp440.__isset.query = this.__isset.query;
-      if((Format != null) && __isset.format)
+      if ((Format != null) && __isset.format)
       {
         tmp440.Format = this.Format;
       }
       tmp440.__isset.format = this.__isset.format;
-      if((DownloadOptions != null) && __isset.downloadOptions)
+      if ((DownloadOptions != null) && __isset.downloadOptions)
       {
         tmp440.DownloadOptions = this.DownloadOptions.DeepCopy();
       }
@@ -254,7 +254,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp445 = new TStruct("TDownloadDataReq");
         await oprot.WriteStructBeginAsync(tmp445, cancellationToken);
         var tmp446 = new TField();
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           tmp446.Name = "sessionHandle";
           tmp446.Type = TType.Struct;
@@ -263,7 +263,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await SessionHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((TableName != null) && __isset.tableName)
+        if ((TableName != null) && __isset.tableName)
         {
           tmp446.Name = "tableName";
           tmp446.Type = TType.String;
@@ -272,7 +272,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(TableName, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Query != null) && __isset.query)
+        if ((Query != null) && __isset.query)
         {
           tmp446.Name = "query";
           tmp446.Type = TType.String;
@@ -281,7 +281,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Query, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Format != null) && __isset.format)
+        if ((Format != null) && __isset.format)
         {
           tmp446.Name = "format";
           tmp446.Type = TType.String;
@@ -290,7 +290,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Format, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((DownloadOptions != null) && __isset.downloadOptions)
+        if ((DownloadOptions != null) && __isset.downloadOptions)
         {
           tmp446.Name = "downloadOptions";
           tmp446.Type = TType.Map;
@@ -328,23 +328,23 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           hashcode = (hashcode * 397) + SessionHandle.GetHashCode();
         }
-        if((TableName != null) && __isset.tableName)
+        if ((TableName != null) && __isset.tableName)
         {
           hashcode = (hashcode * 397) + TableName.GetHashCode();
         }
-        if((Query != null) && __isset.query)
+        if ((Query != null) && __isset.query)
         {
           hashcode = (hashcode * 397) + Query.GetHashCode();
         }
-        if((Format != null) && __isset.format)
+        if ((Format != null) && __isset.format)
         {
           hashcode = (hashcode * 397) + Format.GetHashCode();
         }
-        if((DownloadOptions != null) && __isset.downloadOptions)
+        if ((DownloadOptions != null) && __isset.downloadOptions)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(DownloadOptions);
         }
@@ -355,27 +355,27 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp448 = new StringBuilder("TDownloadDataReq(");
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp448.Append(", SessionHandle: ");
         SessionHandle.ToString(tmp448);
       }
-      if((TableName != null) && __isset.tableName)
+      if ((TableName != null) && __isset.tableName)
       {
         tmp448.Append(", TableName: ");
         TableName.ToString(tmp448);
       }
-      if((Query != null) && __isset.query)
+      if ((Query != null) && __isset.query)
       {
         tmp448.Append(", Query: ");
         Query.ToString(tmp448);
       }
-      if((Format != null) && __isset.format)
+      if ((Format != null) && __isset.format)
       {
         tmp448.Append(", Format: ");
         Format.ToString(tmp448);
       }
-      if((DownloadOptions != null) && __isset.downloadOptions)
+      if ((DownloadOptions != null) && __isset.downloadOptions)
       {
         tmp448.Append(", DownloadOptions: ");
         DownloadOptions.ToString(tmp448);

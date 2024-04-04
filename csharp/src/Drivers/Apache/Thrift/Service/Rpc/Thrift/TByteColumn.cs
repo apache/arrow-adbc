@@ -136,7 +136,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp145 = new TStruct("TByteColumn");
         await oprot.WriteStructBeginAsync(tmp145, cancellationToken);
         var tmp146 = new TField();
-        if((Values != null))
+        if ((Values != null))
         {
           tmp146.Name = "values";
           tmp146.Type = TType.List;
@@ -184,7 +184,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp148 = new StringBuilder("TByteColumn(");
-      if((Values != null))
+      if ((Values != null))
       {
         tmp148.Append(", Values: ");
         Values.ToString(tmp148);

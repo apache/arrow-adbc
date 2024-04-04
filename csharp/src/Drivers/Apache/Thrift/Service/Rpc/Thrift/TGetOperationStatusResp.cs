@@ -301,86 +301,86 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TGetOperationStatusResp DeepCopy()
     {
       var tmp544 = new TGetOperationStatusResp();
-      if((Status != null))
+      if ((Status != null))
       {
         tmp544.Status = (global::Apache.Hive.Service.Rpc.Thrift.TStatus)this.Status.DeepCopy();
       }
-      if(__isset.operationState)
+      if (__isset.operationState)
       {
         tmp544.OperationState = this.OperationState;
       }
       tmp544.__isset.operationState = this.__isset.operationState;
-      if((SqlState != null) && __isset.sqlState)
+      if ((SqlState != null) && __isset.sqlState)
       {
         tmp544.SqlState = this.SqlState;
       }
       tmp544.__isset.sqlState = this.__isset.sqlState;
-      if(__isset.errorCode)
+      if (__isset.errorCode)
       {
         tmp544.ErrorCode = this.ErrorCode;
       }
       tmp544.__isset.errorCode = this.__isset.errorCode;
-      if((ErrorMessage != null) && __isset.errorMessage)
+      if ((ErrorMessage != null) && __isset.errorMessage)
       {
         tmp544.ErrorMessage = this.ErrorMessage;
       }
       tmp544.__isset.errorMessage = this.__isset.errorMessage;
-      if((TaskStatus != null) && __isset.taskStatus)
+      if ((TaskStatus != null) && __isset.taskStatus)
       {
         tmp544.TaskStatus = this.TaskStatus;
       }
       tmp544.__isset.taskStatus = this.__isset.taskStatus;
-      if(__isset.operationStarted)
+      if (__isset.operationStarted)
       {
         tmp544.OperationStarted = this.OperationStarted;
       }
       tmp544.__isset.operationStarted = this.__isset.operationStarted;
-      if(__isset.operationCompleted)
+      if (__isset.operationCompleted)
       {
         tmp544.OperationCompleted = this.OperationCompleted;
       }
       tmp544.__isset.operationCompleted = this.__isset.operationCompleted;
-      if(__isset.hasResultSet)
+      if (__isset.hasResultSet)
       {
         tmp544.HasResultSet = this.HasResultSet;
       }
       tmp544.__isset.hasResultSet = this.__isset.hasResultSet;
-      if((ProgressUpdateResponse != null) && __isset.progressUpdateResponse)
+      if ((ProgressUpdateResponse != null) && __isset.progressUpdateResponse)
       {
         tmp544.ProgressUpdateResponse = (global::Apache.Hive.Service.Rpc.Thrift.TProgressUpdateResp)this.ProgressUpdateResponse.DeepCopy();
       }
       tmp544.__isset.progressUpdateResponse = this.__isset.progressUpdateResponse;
-      if(__isset.numModifiedRows)
+      if (__isset.numModifiedRows)
       {
         tmp544.NumModifiedRows = this.NumModifiedRows;
       }
       tmp544.__isset.numModifiedRows = this.__isset.numModifiedRows;
-      if((DisplayMessage != null) && __isset.displayMessage)
+      if ((DisplayMessage != null) && __isset.displayMessage)
       {
         tmp544.DisplayMessage = this.DisplayMessage;
       }
       tmp544.__isset.displayMessage = this.__isset.displayMessage;
-      if((DiagnosticInfo != null) && __isset.diagnosticInfo)
+      if ((DiagnosticInfo != null) && __isset.diagnosticInfo)
       {
         tmp544.DiagnosticInfo = this.DiagnosticInfo;
       }
       tmp544.__isset.diagnosticInfo = this.__isset.diagnosticInfo;
-      if((ResponseValidation != null) && __isset.responseValidation)
+      if ((ResponseValidation != null) && __isset.responseValidation)
       {
         tmp544.ResponseValidation = this.ResponseValidation;
       }
       tmp544.__isset.responseValidation = this.__isset.responseValidation;
-      if(__isset.idempotencyType)
+      if (__isset.idempotencyType)
       {
         tmp544.IdempotencyType = this.IdempotencyType;
       }
       tmp544.__isset.idempotencyType = this.__isset.idempotencyType;
-      if(__isset.statementTimeout)
+      if (__isset.statementTimeout)
       {
         tmp544.StatementTimeout = this.StatementTimeout;
       }
       tmp544.__isset.statementTimeout = this.__isset.statementTimeout;
-      if(__isset.statementTimeoutLevel)
+      if (__isset.statementTimeoutLevel)
       {
         tmp544.StatementTimeoutLevel = this.StatementTimeoutLevel;
       }
@@ -607,7 +607,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp545 = new TStruct("TGetOperationStatusResp");
         await oprot.WriteStructBeginAsync(tmp545, cancellationToken);
         var tmp546 = new TField();
-        if((Status != null))
+        if ((Status != null))
         {
           tmp546.Name = "status";
           tmp546.Type = TType.Struct;
@@ -616,7 +616,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await Status.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.operationState)
+        if (__isset.operationState)
         {
           tmp546.Name = "operationState";
           tmp546.Type = TType.I32;
@@ -625,7 +625,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async((int)OperationState, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((SqlState != null) && __isset.sqlState)
+        if ((SqlState != null) && __isset.sqlState)
         {
           tmp546.Name = "sqlState";
           tmp546.Type = TType.String;
@@ -634,7 +634,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(SqlState, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.errorCode)
+        if (__isset.errorCode)
         {
           tmp546.Name = "errorCode";
           tmp546.Type = TType.I32;
@@ -643,7 +643,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async(ErrorCode, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ErrorMessage != null) && __isset.errorMessage)
+        if ((ErrorMessage != null) && __isset.errorMessage)
         {
           tmp546.Name = "errorMessage";
           tmp546.Type = TType.String;
@@ -652,7 +652,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(ErrorMessage, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((TaskStatus != null) && __isset.taskStatus)
+        if ((TaskStatus != null) && __isset.taskStatus)
         {
           tmp546.Name = "taskStatus";
           tmp546.Type = TType.String;
@@ -661,7 +661,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(TaskStatus, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.operationStarted)
+        if (__isset.operationStarted)
         {
           tmp546.Name = "operationStarted";
           tmp546.Type = TType.I64;
@@ -670,7 +670,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI64Async(OperationStarted, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.operationCompleted)
+        if (__isset.operationCompleted)
         {
           tmp546.Name = "operationCompleted";
           tmp546.Type = TType.I64;
@@ -679,7 +679,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI64Async(OperationCompleted, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.hasResultSet)
+        if (__isset.hasResultSet)
         {
           tmp546.Name = "hasResultSet";
           tmp546.Type = TType.Bool;
@@ -688,7 +688,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(HasResultSet, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ProgressUpdateResponse != null) && __isset.progressUpdateResponse)
+        if ((ProgressUpdateResponse != null) && __isset.progressUpdateResponse)
         {
           tmp546.Name = "progressUpdateResponse";
           tmp546.Type = TType.Struct;
@@ -697,7 +697,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await ProgressUpdateResponse.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.numModifiedRows)
+        if (__isset.numModifiedRows)
         {
           tmp546.Name = "numModifiedRows";
           tmp546.Type = TType.I64;
@@ -706,7 +706,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI64Async(NumModifiedRows, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((DisplayMessage != null) && __isset.displayMessage)
+        if ((DisplayMessage != null) && __isset.displayMessage)
         {
           tmp546.Name = "displayMessage";
           tmp546.Type = TType.String;
@@ -715,7 +715,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(DisplayMessage, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((DiagnosticInfo != null) && __isset.diagnosticInfo)
+        if ((DiagnosticInfo != null) && __isset.diagnosticInfo)
         {
           tmp546.Name = "diagnosticInfo";
           tmp546.Type = TType.String;
@@ -724,7 +724,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(DiagnosticInfo, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ResponseValidation != null) && __isset.responseValidation)
+        if ((ResponseValidation != null) && __isset.responseValidation)
         {
           tmp546.Name = "responseValidation";
           tmp546.Type = TType.String;
@@ -733,7 +733,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(ResponseValidation, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.idempotencyType)
+        if (__isset.idempotencyType)
         {
           tmp546.Name = "idempotencyType";
           tmp546.Type = TType.I32;
@@ -742,7 +742,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async(IdempotencyType, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.statementTimeout)
+        if (__isset.statementTimeout)
         {
           tmp546.Name = "statementTimeout";
           tmp546.Type = TType.I64;
@@ -751,7 +751,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI64Async(StatementTimeout, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.statementTimeoutLevel)
+        if (__isset.statementTimeoutLevel)
         {
           tmp546.Name = "statementTimeoutLevel";
           tmp546.Type = TType.I32;
@@ -795,71 +795,71 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Status != null))
+        if ((Status != null))
         {
           hashcode = (hashcode * 397) + Status.GetHashCode();
         }
-        if(__isset.operationState)
+        if (__isset.operationState)
         {
           hashcode = (hashcode * 397) + OperationState.GetHashCode();
         }
-        if((SqlState != null) && __isset.sqlState)
+        if ((SqlState != null) && __isset.sqlState)
         {
           hashcode = (hashcode * 397) + SqlState.GetHashCode();
         }
-        if(__isset.errorCode)
+        if (__isset.errorCode)
         {
           hashcode = (hashcode * 397) + ErrorCode.GetHashCode();
         }
-        if((ErrorMessage != null) && __isset.errorMessage)
+        if ((ErrorMessage != null) && __isset.errorMessage)
         {
           hashcode = (hashcode * 397) + ErrorMessage.GetHashCode();
         }
-        if((TaskStatus != null) && __isset.taskStatus)
+        if ((TaskStatus != null) && __isset.taskStatus)
         {
           hashcode = (hashcode * 397) + TaskStatus.GetHashCode();
         }
-        if(__isset.operationStarted)
+        if (__isset.operationStarted)
         {
           hashcode = (hashcode * 397) + OperationStarted.GetHashCode();
         }
-        if(__isset.operationCompleted)
+        if (__isset.operationCompleted)
         {
           hashcode = (hashcode * 397) + OperationCompleted.GetHashCode();
         }
-        if(__isset.hasResultSet)
+        if (__isset.hasResultSet)
         {
           hashcode = (hashcode * 397) + HasResultSet.GetHashCode();
         }
-        if((ProgressUpdateResponse != null) && __isset.progressUpdateResponse)
+        if ((ProgressUpdateResponse != null) && __isset.progressUpdateResponse)
         {
           hashcode = (hashcode * 397) + ProgressUpdateResponse.GetHashCode();
         }
-        if(__isset.numModifiedRows)
+        if (__isset.numModifiedRows)
         {
           hashcode = (hashcode * 397) + NumModifiedRows.GetHashCode();
         }
-        if((DisplayMessage != null) && __isset.displayMessage)
+        if ((DisplayMessage != null) && __isset.displayMessage)
         {
           hashcode = (hashcode * 397) + DisplayMessage.GetHashCode();
         }
-        if((DiagnosticInfo != null) && __isset.diagnosticInfo)
+        if ((DiagnosticInfo != null) && __isset.diagnosticInfo)
         {
           hashcode = (hashcode * 397) + DiagnosticInfo.GetHashCode();
         }
-        if((ResponseValidation != null) && __isset.responseValidation)
+        if ((ResponseValidation != null) && __isset.responseValidation)
         {
           hashcode = (hashcode * 397) + ResponseValidation.GetHashCode();
         }
-        if(__isset.idempotencyType)
+        if (__isset.idempotencyType)
         {
           hashcode = (hashcode * 397) + IdempotencyType.GetHashCode();
         }
-        if(__isset.statementTimeout)
+        if (__isset.statementTimeout)
         {
           hashcode = (hashcode * 397) + StatementTimeout.GetHashCode();
         }
-        if(__isset.statementTimeoutLevel)
+        if (__isset.statementTimeoutLevel)
         {
           hashcode = (hashcode * 397) + StatementTimeoutLevel.GetHashCode();
         }
@@ -870,87 +870,87 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp547 = new StringBuilder("TGetOperationStatusResp(");
-      if((Status != null))
+      if ((Status != null))
       {
         tmp547.Append(", Status: ");
         Status.ToString(tmp547);
       }
-      if(__isset.operationState)
+      if (__isset.operationState)
       {
         tmp547.Append(", OperationState: ");
         OperationState.ToString(tmp547);
       }
-      if((SqlState != null) && __isset.sqlState)
+      if ((SqlState != null) && __isset.sqlState)
       {
         tmp547.Append(", SqlState: ");
         SqlState.ToString(tmp547);
       }
-      if(__isset.errorCode)
+      if (__isset.errorCode)
       {
         tmp547.Append(", ErrorCode: ");
         ErrorCode.ToString(tmp547);
       }
-      if((ErrorMessage != null) && __isset.errorMessage)
+      if ((ErrorMessage != null) && __isset.errorMessage)
       {
         tmp547.Append(", ErrorMessage: ");
         ErrorMessage.ToString(tmp547);
       }
-      if((TaskStatus != null) && __isset.taskStatus)
+      if ((TaskStatus != null) && __isset.taskStatus)
       {
         tmp547.Append(", TaskStatus: ");
         TaskStatus.ToString(tmp547);
       }
-      if(__isset.operationStarted)
+      if (__isset.operationStarted)
       {
         tmp547.Append(", OperationStarted: ");
         OperationStarted.ToString(tmp547);
       }
-      if(__isset.operationCompleted)
+      if (__isset.operationCompleted)
       {
         tmp547.Append(", OperationCompleted: ");
         OperationCompleted.ToString(tmp547);
       }
-      if(__isset.hasResultSet)
+      if (__isset.hasResultSet)
       {
         tmp547.Append(", HasResultSet: ");
         HasResultSet.ToString(tmp547);
       }
-      if((ProgressUpdateResponse != null) && __isset.progressUpdateResponse)
+      if ((ProgressUpdateResponse != null) && __isset.progressUpdateResponse)
       {
         tmp547.Append(", ProgressUpdateResponse: ");
         ProgressUpdateResponse.ToString(tmp547);
       }
-      if(__isset.numModifiedRows)
+      if (__isset.numModifiedRows)
       {
         tmp547.Append(", NumModifiedRows: ");
         NumModifiedRows.ToString(tmp547);
       }
-      if((DisplayMessage != null) && __isset.displayMessage)
+      if ((DisplayMessage != null) && __isset.displayMessage)
       {
         tmp547.Append(", DisplayMessage: ");
         DisplayMessage.ToString(tmp547);
       }
-      if((DiagnosticInfo != null) && __isset.diagnosticInfo)
+      if ((DiagnosticInfo != null) && __isset.diagnosticInfo)
       {
         tmp547.Append(", DiagnosticInfo: ");
         DiagnosticInfo.ToString(tmp547);
       }
-      if((ResponseValidation != null) && __isset.responseValidation)
+      if ((ResponseValidation != null) && __isset.responseValidation)
       {
         tmp547.Append(", ResponseValidation: ");
         ResponseValidation.ToString(tmp547);
       }
-      if(__isset.idempotencyType)
+      if (__isset.idempotencyType)
       {
         tmp547.Append(", IdempotencyType: ");
         IdempotencyType.ToString(tmp547);
       }
-      if(__isset.statementTimeout)
+      if (__isset.statementTimeout)
       {
         tmp547.Append(", StatementTimeout: ");
         StatementTimeout.ToString(tmp547);
       }
-      if(__isset.statementTimeoutLevel)
+      if (__isset.statementTimeoutLevel)
       {
         tmp547.Append(", StatementTimeoutLevel: ");
         StatementTimeoutLevel.ToString(tmp547);

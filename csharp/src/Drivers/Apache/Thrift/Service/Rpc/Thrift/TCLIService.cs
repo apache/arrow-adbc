@@ -1196,7 +1196,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp757)
         {
           var tmp758 = $"Error occurred in {GetType().FullName}: {tmp757.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp757, tmp758);
           else
             Console.Error.WriteLine(tmp758);
@@ -1227,7 +1227,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp762)
         {
           var tmp763 = $"Error occurred in {GetType().FullName}: {tmp762.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp762, tmp763);
           else
             Console.Error.WriteLine(tmp763);
@@ -1258,7 +1258,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp767)
         {
           var tmp768 = $"Error occurred in {GetType().FullName}: {tmp767.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp767, tmp768);
           else
             Console.Error.WriteLine(tmp768);
@@ -1289,7 +1289,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp772)
         {
           var tmp773 = $"Error occurred in {GetType().FullName}: {tmp772.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp772, tmp773);
           else
             Console.Error.WriteLine(tmp773);
@@ -1320,7 +1320,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp777)
         {
           var tmp778 = $"Error occurred in {GetType().FullName}: {tmp777.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp777, tmp778);
           else
             Console.Error.WriteLine(tmp778);
@@ -1351,7 +1351,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp782)
         {
           var tmp783 = $"Error occurred in {GetType().FullName}: {tmp782.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp782, tmp783);
           else
             Console.Error.WriteLine(tmp783);
@@ -1382,7 +1382,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp787)
         {
           var tmp788 = $"Error occurred in {GetType().FullName}: {tmp787.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp787, tmp788);
           else
             Console.Error.WriteLine(tmp788);
@@ -1413,7 +1413,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp792)
         {
           var tmp793 = $"Error occurred in {GetType().FullName}: {tmp792.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp792, tmp793);
           else
             Console.Error.WriteLine(tmp793);
@@ -1444,7 +1444,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp797)
         {
           var tmp798 = $"Error occurred in {GetType().FullName}: {tmp797.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp797, tmp798);
           else
             Console.Error.WriteLine(tmp798);
@@ -1475,7 +1475,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp802)
         {
           var tmp803 = $"Error occurred in {GetType().FullName}: {tmp802.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp802, tmp803);
           else
             Console.Error.WriteLine(tmp803);
@@ -1506,7 +1506,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp807)
         {
           var tmp808 = $"Error occurred in {GetType().FullName}: {tmp807.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp807, tmp808);
           else
             Console.Error.WriteLine(tmp808);
@@ -1537,7 +1537,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp812)
         {
           var tmp813 = $"Error occurred in {GetType().FullName}: {tmp812.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp812, tmp813);
           else
             Console.Error.WriteLine(tmp813);
@@ -1568,7 +1568,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp817)
         {
           var tmp818 = $"Error occurred in {GetType().FullName}: {tmp817.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp817, tmp818);
           else
             Console.Error.WriteLine(tmp818);
@@ -1599,7 +1599,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp822)
         {
           var tmp823 = $"Error occurred in {GetType().FullName}: {tmp822.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp822, tmp823);
           else
             Console.Error.WriteLine(tmp823);
@@ -1630,7 +1630,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp827)
         {
           var tmp828 = $"Error occurred in {GetType().FullName}: {tmp827.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp827, tmp828);
           else
             Console.Error.WriteLine(tmp828);
@@ -1661,7 +1661,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp832)
         {
           var tmp833 = $"Error occurred in {GetType().FullName}: {tmp832.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp832, tmp833);
           else
             Console.Error.WriteLine(tmp833);
@@ -1692,7 +1692,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp837)
         {
           var tmp838 = $"Error occurred in {GetType().FullName}: {tmp837.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp837, tmp838);
           else
             Console.Error.WriteLine(tmp838);
@@ -1723,7 +1723,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp842)
         {
           var tmp843 = $"Error occurred in {GetType().FullName}: {tmp842.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp842, tmp843);
           else
             Console.Error.WriteLine(tmp843);
@@ -1754,7 +1754,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp847)
         {
           var tmp848 = $"Error occurred in {GetType().FullName}: {tmp847.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp847, tmp848);
           else
             Console.Error.WriteLine(tmp848);
@@ -1785,7 +1785,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp852)
         {
           var tmp853 = $"Error occurred in {GetType().FullName}: {tmp852.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp852, tmp853);
           else
             Console.Error.WriteLine(tmp853);
@@ -1816,7 +1816,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp857)
         {
           var tmp858 = $"Error occurred in {GetType().FullName}: {tmp857.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp857, tmp858);
           else
             Console.Error.WriteLine(tmp858);
@@ -1847,7 +1847,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp862)
         {
           var tmp863 = $"Error occurred in {GetType().FullName}: {tmp862.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp862, tmp863);
           else
             Console.Error.WriteLine(tmp863);
@@ -1878,7 +1878,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp867)
         {
           var tmp868 = $"Error occurred in {GetType().FullName}: {tmp867.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp867, tmp868);
           else
             Console.Error.WriteLine(tmp868);
@@ -1909,7 +1909,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp872)
         {
           var tmp873 = $"Error occurred in {GetType().FullName}: {tmp872.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp872, tmp873);
           else
             Console.Error.WriteLine(tmp873);
@@ -1940,7 +1940,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         catch (Exception tmp877)
         {
           var tmp878 = $"Error occurred in {GetType().FullName}: {tmp877.Message}";
-          if(_logger != null)
+          if (_logger != null)
             _logger.LogError("{Exception}, {Message}", tmp877, tmp878);
           else
             Console.Error.WriteLine(tmp878);
@@ -1988,7 +1988,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public OpenSession_args DeepCopy()
         {
           var tmp880 = new OpenSession_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp880.Req = (global::Apache.Hive.Service.Rpc.Thrift.TOpenSessionReq)this.Req.DeepCopy();
           }
@@ -2048,7 +2048,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp881 = new TStruct("OpenSession_args");
             await oprot.WriteStructBeginAsync(tmp881, cancellationToken);
             var tmp882 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp882.Name = "req";
               tmp882.Type = TType.Struct;
@@ -2076,7 +2076,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -2088,9 +2088,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp883 = new StringBuilder("OpenSession_args(");
           int tmp884 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp884++) { tmp883.Append(", "); }
+            if (0 < tmp884++) { tmp883.Append(", "); }
             tmp883.Append("Req: ");
             Req.ToString(tmp883);
           }
@@ -2131,7 +2131,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public OpenSession_result DeepCopy()
         {
           var tmp885 = new OpenSession_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp885.Success = (global::Apache.Hive.Service.Rpc.Thrift.TOpenSessionResp)this.Success.DeepCopy();
           }
@@ -2192,7 +2192,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp886, cancellationToken);
             var tmp887 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -2223,7 +2223,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -2235,9 +2235,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp888 = new StringBuilder("OpenSession_result(");
           int tmp889 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp889++) { tmp888.Append(", "); }
+            if (0 < tmp889++) { tmp888.Append(", "); }
             tmp888.Append("Success: ");
             Success.ToString(tmp888);
           }
@@ -2278,7 +2278,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public CloseSession_args DeepCopy()
         {
           var tmp890 = new CloseSession_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp890.Req = (global::Apache.Hive.Service.Rpc.Thrift.TCloseSessionReq)this.Req.DeepCopy();
           }
@@ -2338,7 +2338,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp891 = new TStruct("CloseSession_args");
             await oprot.WriteStructBeginAsync(tmp891, cancellationToken);
             var tmp892 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp892.Name = "req";
               tmp892.Type = TType.Struct;
@@ -2366,7 +2366,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -2378,9 +2378,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp893 = new StringBuilder("CloseSession_args(");
           int tmp894 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp894++) { tmp893.Append(", "); }
+            if (0 < tmp894++) { tmp893.Append(", "); }
             tmp893.Append("Req: ");
             Req.ToString(tmp893);
           }
@@ -2421,7 +2421,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public CloseSession_result DeepCopy()
         {
           var tmp895 = new CloseSession_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp895.Success = (global::Apache.Hive.Service.Rpc.Thrift.TCloseSessionResp)this.Success.DeepCopy();
           }
@@ -2482,7 +2482,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp896, cancellationToken);
             var tmp897 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -2513,7 +2513,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -2525,9 +2525,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp898 = new StringBuilder("CloseSession_result(");
           int tmp899 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp899++) { tmp898.Append(", "); }
+            if (0 < tmp899++) { tmp898.Append(", "); }
             tmp898.Append("Success: ");
             Success.ToString(tmp898);
           }
@@ -2568,7 +2568,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetInfo_args DeepCopy()
         {
           var tmp900 = new GetInfo_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp900.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetInfoReq)this.Req.DeepCopy();
           }
@@ -2628,7 +2628,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp901 = new TStruct("GetInfo_args");
             await oprot.WriteStructBeginAsync(tmp901, cancellationToken);
             var tmp902 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp902.Name = "req";
               tmp902.Type = TType.Struct;
@@ -2656,7 +2656,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -2668,9 +2668,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp903 = new StringBuilder("GetInfo_args(");
           int tmp904 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp904++) { tmp903.Append(", "); }
+            if (0 < tmp904++) { tmp903.Append(", "); }
             tmp903.Append("Req: ");
             Req.ToString(tmp903);
           }
@@ -2711,7 +2711,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetInfo_result DeepCopy()
         {
           var tmp905 = new GetInfo_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp905.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetInfoResp)this.Success.DeepCopy();
           }
@@ -2772,7 +2772,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp906, cancellationToken);
             var tmp907 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -2803,7 +2803,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -2815,9 +2815,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp908 = new StringBuilder("GetInfo_result(");
           int tmp909 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp909++) { tmp908.Append(", "); }
+            if (0 < tmp909++) { tmp908.Append(", "); }
             tmp908.Append("Success: ");
             Success.ToString(tmp908);
           }
@@ -2858,7 +2858,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public ExecuteStatement_args DeepCopy()
         {
           var tmp910 = new ExecuteStatement_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp910.Req = (global::Apache.Hive.Service.Rpc.Thrift.TExecuteStatementReq)this.Req.DeepCopy();
           }
@@ -2918,7 +2918,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp911 = new TStruct("ExecuteStatement_args");
             await oprot.WriteStructBeginAsync(tmp911, cancellationToken);
             var tmp912 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp912.Name = "req";
               tmp912.Type = TType.Struct;
@@ -2946,7 +2946,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -2958,9 +2958,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp913 = new StringBuilder("ExecuteStatement_args(");
           int tmp914 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp914++) { tmp913.Append(", "); }
+            if (0 < tmp914++) { tmp913.Append(", "); }
             tmp913.Append("Req: ");
             Req.ToString(tmp913);
           }
@@ -3001,7 +3001,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public ExecuteStatement_result DeepCopy()
         {
           var tmp915 = new ExecuteStatement_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp915.Success = (global::Apache.Hive.Service.Rpc.Thrift.TExecuteStatementResp)this.Success.DeepCopy();
           }
@@ -3062,7 +3062,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp916, cancellationToken);
             var tmp917 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -3093,7 +3093,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -3105,9 +3105,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp918 = new StringBuilder("ExecuteStatement_result(");
           int tmp919 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp919++) { tmp918.Append(", "); }
+            if (0 < tmp919++) { tmp918.Append(", "); }
             tmp918.Append("Success: ");
             Success.ToString(tmp918);
           }
@@ -3148,7 +3148,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetTypeInfo_args DeepCopy()
         {
           var tmp920 = new GetTypeInfo_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp920.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetTypeInfoReq)this.Req.DeepCopy();
           }
@@ -3208,7 +3208,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp921 = new TStruct("GetTypeInfo_args");
             await oprot.WriteStructBeginAsync(tmp921, cancellationToken);
             var tmp922 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp922.Name = "req";
               tmp922.Type = TType.Struct;
@@ -3236,7 +3236,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -3248,9 +3248,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp923 = new StringBuilder("GetTypeInfo_args(");
           int tmp924 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp924++) { tmp923.Append(", "); }
+            if (0 < tmp924++) { tmp923.Append(", "); }
             tmp923.Append("Req: ");
             Req.ToString(tmp923);
           }
@@ -3291,7 +3291,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetTypeInfo_result DeepCopy()
         {
           var tmp925 = new GetTypeInfo_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp925.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetTypeInfoResp)this.Success.DeepCopy();
           }
@@ -3352,7 +3352,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp926, cancellationToken);
             var tmp927 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -3383,7 +3383,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -3395,9 +3395,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp928 = new StringBuilder("GetTypeInfo_result(");
           int tmp929 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp929++) { tmp928.Append(", "); }
+            if (0 < tmp929++) { tmp928.Append(", "); }
             tmp928.Append("Success: ");
             Success.ToString(tmp928);
           }
@@ -3438,7 +3438,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetCatalogs_args DeepCopy()
         {
           var tmp930 = new GetCatalogs_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp930.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetCatalogsReq)this.Req.DeepCopy();
           }
@@ -3498,7 +3498,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp931 = new TStruct("GetCatalogs_args");
             await oprot.WriteStructBeginAsync(tmp931, cancellationToken);
             var tmp932 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp932.Name = "req";
               tmp932.Type = TType.Struct;
@@ -3526,7 +3526,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -3538,9 +3538,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp933 = new StringBuilder("GetCatalogs_args(");
           int tmp934 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp934++) { tmp933.Append(", "); }
+            if (0 < tmp934++) { tmp933.Append(", "); }
             tmp933.Append("Req: ");
             Req.ToString(tmp933);
           }
@@ -3581,7 +3581,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetCatalogs_result DeepCopy()
         {
           var tmp935 = new GetCatalogs_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp935.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetCatalogsResp)this.Success.DeepCopy();
           }
@@ -3642,7 +3642,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp936, cancellationToken);
             var tmp937 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -3673,7 +3673,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -3685,9 +3685,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp938 = new StringBuilder("GetCatalogs_result(");
           int tmp939 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp939++) { tmp938.Append(", "); }
+            if (0 < tmp939++) { tmp938.Append(", "); }
             tmp938.Append("Success: ");
             Success.ToString(tmp938);
           }
@@ -3728,7 +3728,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetSchemas_args DeepCopy()
         {
           var tmp940 = new GetSchemas_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp940.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetSchemasReq)this.Req.DeepCopy();
           }
@@ -3788,7 +3788,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp941 = new TStruct("GetSchemas_args");
             await oprot.WriteStructBeginAsync(tmp941, cancellationToken);
             var tmp942 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp942.Name = "req";
               tmp942.Type = TType.Struct;
@@ -3816,7 +3816,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -3828,9 +3828,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp943 = new StringBuilder("GetSchemas_args(");
           int tmp944 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp944++) { tmp943.Append(", "); }
+            if (0 < tmp944++) { tmp943.Append(", "); }
             tmp943.Append("Req: ");
             Req.ToString(tmp943);
           }
@@ -3871,7 +3871,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetSchemas_result DeepCopy()
         {
           var tmp945 = new GetSchemas_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp945.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetSchemasResp)this.Success.DeepCopy();
           }
@@ -3932,7 +3932,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp946, cancellationToken);
             var tmp947 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -3963,7 +3963,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -3975,9 +3975,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp948 = new StringBuilder("GetSchemas_result(");
           int tmp949 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp949++) { tmp948.Append(", "); }
+            if (0 < tmp949++) { tmp948.Append(", "); }
             tmp948.Append("Success: ");
             Success.ToString(tmp948);
           }
@@ -4018,7 +4018,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetTables_args DeepCopy()
         {
           var tmp950 = new GetTables_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp950.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetTablesReq)this.Req.DeepCopy();
           }
@@ -4078,7 +4078,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp951 = new TStruct("GetTables_args");
             await oprot.WriteStructBeginAsync(tmp951, cancellationToken);
             var tmp952 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp952.Name = "req";
               tmp952.Type = TType.Struct;
@@ -4106,7 +4106,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -4118,9 +4118,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp953 = new StringBuilder("GetTables_args(");
           int tmp954 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp954++) { tmp953.Append(", "); }
+            if (0 < tmp954++) { tmp953.Append(", "); }
             tmp953.Append("Req: ");
             Req.ToString(tmp953);
           }
@@ -4161,7 +4161,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetTables_result DeepCopy()
         {
           var tmp955 = new GetTables_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp955.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetTablesResp)this.Success.DeepCopy();
           }
@@ -4222,7 +4222,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp956, cancellationToken);
             var tmp957 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -4253,7 +4253,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -4265,9 +4265,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp958 = new StringBuilder("GetTables_result(");
           int tmp959 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp959++) { tmp958.Append(", "); }
+            if (0 < tmp959++) { tmp958.Append(", "); }
             tmp958.Append("Success: ");
             Success.ToString(tmp958);
           }
@@ -4308,7 +4308,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetTableTypes_args DeepCopy()
         {
           var tmp960 = new GetTableTypes_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp960.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetTableTypesReq)this.Req.DeepCopy();
           }
@@ -4368,7 +4368,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp961 = new TStruct("GetTableTypes_args");
             await oprot.WriteStructBeginAsync(tmp961, cancellationToken);
             var tmp962 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp962.Name = "req";
               tmp962.Type = TType.Struct;
@@ -4396,7 +4396,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -4408,9 +4408,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp963 = new StringBuilder("GetTableTypes_args(");
           int tmp964 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp964++) { tmp963.Append(", "); }
+            if (0 < tmp964++) { tmp963.Append(", "); }
             tmp963.Append("Req: ");
             Req.ToString(tmp963);
           }
@@ -4451,7 +4451,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetTableTypes_result DeepCopy()
         {
           var tmp965 = new GetTableTypes_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp965.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetTableTypesResp)this.Success.DeepCopy();
           }
@@ -4512,7 +4512,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp966, cancellationToken);
             var tmp967 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -4543,7 +4543,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -4555,9 +4555,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp968 = new StringBuilder("GetTableTypes_result(");
           int tmp969 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp969++) { tmp968.Append(", "); }
+            if (0 < tmp969++) { tmp968.Append(", "); }
             tmp968.Append("Success: ");
             Success.ToString(tmp968);
           }
@@ -4598,7 +4598,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetColumns_args DeepCopy()
         {
           var tmp970 = new GetColumns_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp970.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetColumnsReq)this.Req.DeepCopy();
           }
@@ -4658,7 +4658,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp971 = new TStruct("GetColumns_args");
             await oprot.WriteStructBeginAsync(tmp971, cancellationToken);
             var tmp972 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp972.Name = "req";
               tmp972.Type = TType.Struct;
@@ -4686,7 +4686,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -4698,9 +4698,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp973 = new StringBuilder("GetColumns_args(");
           int tmp974 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp974++) { tmp973.Append(", "); }
+            if (0 < tmp974++) { tmp973.Append(", "); }
             tmp973.Append("Req: ");
             Req.ToString(tmp973);
           }
@@ -4741,7 +4741,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetColumns_result DeepCopy()
         {
           var tmp975 = new GetColumns_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp975.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetColumnsResp)this.Success.DeepCopy();
           }
@@ -4802,7 +4802,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp976, cancellationToken);
             var tmp977 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -4833,7 +4833,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -4845,9 +4845,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp978 = new StringBuilder("GetColumns_result(");
           int tmp979 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp979++) { tmp978.Append(", "); }
+            if (0 < tmp979++) { tmp978.Append(", "); }
             tmp978.Append("Success: ");
             Success.ToString(tmp978);
           }
@@ -4888,7 +4888,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetFunctions_args DeepCopy()
         {
           var tmp980 = new GetFunctions_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp980.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetFunctionsReq)this.Req.DeepCopy();
           }
@@ -4948,7 +4948,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp981 = new TStruct("GetFunctions_args");
             await oprot.WriteStructBeginAsync(tmp981, cancellationToken);
             var tmp982 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp982.Name = "req";
               tmp982.Type = TType.Struct;
@@ -4976,7 +4976,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -4988,9 +4988,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp983 = new StringBuilder("GetFunctions_args(");
           int tmp984 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp984++) { tmp983.Append(", "); }
+            if (0 < tmp984++) { tmp983.Append(", "); }
             tmp983.Append("Req: ");
             Req.ToString(tmp983);
           }
@@ -5031,7 +5031,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetFunctions_result DeepCopy()
         {
           var tmp985 = new GetFunctions_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp985.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetFunctionsResp)this.Success.DeepCopy();
           }
@@ -5092,7 +5092,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp986, cancellationToken);
             var tmp987 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -5123,7 +5123,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -5135,9 +5135,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp988 = new StringBuilder("GetFunctions_result(");
           int tmp989 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp989++) { tmp988.Append(", "); }
+            if (0 < tmp989++) { tmp988.Append(", "); }
             tmp988.Append("Success: ");
             Success.ToString(tmp988);
           }
@@ -5178,7 +5178,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetPrimaryKeys_args DeepCopy()
         {
           var tmp990 = new GetPrimaryKeys_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp990.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetPrimaryKeysReq)this.Req.DeepCopy();
           }
@@ -5238,7 +5238,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp991 = new TStruct("GetPrimaryKeys_args");
             await oprot.WriteStructBeginAsync(tmp991, cancellationToken);
             var tmp992 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp992.Name = "req";
               tmp992.Type = TType.Struct;
@@ -5266,7 +5266,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -5278,9 +5278,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp993 = new StringBuilder("GetPrimaryKeys_args(");
           int tmp994 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp994++) { tmp993.Append(", "); }
+            if (0 < tmp994++) { tmp993.Append(", "); }
             tmp993.Append("Req: ");
             Req.ToString(tmp993);
           }
@@ -5321,7 +5321,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetPrimaryKeys_result DeepCopy()
         {
           var tmp995 = new GetPrimaryKeys_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp995.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetPrimaryKeysResp)this.Success.DeepCopy();
           }
@@ -5382,7 +5382,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp996, cancellationToken);
             var tmp997 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -5413,7 +5413,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -5425,9 +5425,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp998 = new StringBuilder("GetPrimaryKeys_result(");
           int tmp999 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp999++) { tmp998.Append(", "); }
+            if (0 < tmp999++) { tmp998.Append(", "); }
             tmp998.Append("Success: ");
             Success.ToString(tmp998);
           }
@@ -5468,7 +5468,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetCrossReference_args DeepCopy()
         {
           var tmp1000 = new GetCrossReference_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1000.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetCrossReferenceReq)this.Req.DeepCopy();
           }
@@ -5528,7 +5528,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1001 = new TStruct("GetCrossReference_args");
             await oprot.WriteStructBeginAsync(tmp1001, cancellationToken);
             var tmp1002 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1002.Name = "req";
               tmp1002.Type = TType.Struct;
@@ -5556,7 +5556,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -5568,9 +5568,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1003 = new StringBuilder("GetCrossReference_args(");
           int tmp1004 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1004++) { tmp1003.Append(", "); }
+            if (0 < tmp1004++) { tmp1003.Append(", "); }
             tmp1003.Append("Req: ");
             Req.ToString(tmp1003);
           }
@@ -5611,7 +5611,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetCrossReference_result DeepCopy()
         {
           var tmp1005 = new GetCrossReference_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1005.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetCrossReferenceResp)this.Success.DeepCopy();
           }
@@ -5672,7 +5672,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1006, cancellationToken);
             var tmp1007 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -5703,7 +5703,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -5715,9 +5715,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1008 = new StringBuilder("GetCrossReference_result(");
           int tmp1009 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1009++) { tmp1008.Append(", "); }
+            if (0 < tmp1009++) { tmp1008.Append(", "); }
             tmp1008.Append("Success: ");
             Success.ToString(tmp1008);
           }
@@ -5758,7 +5758,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetOperationStatus_args DeepCopy()
         {
           var tmp1010 = new GetOperationStatus_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1010.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetOperationStatusReq)this.Req.DeepCopy();
           }
@@ -5818,7 +5818,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1011 = new TStruct("GetOperationStatus_args");
             await oprot.WriteStructBeginAsync(tmp1011, cancellationToken);
             var tmp1012 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1012.Name = "req";
               tmp1012.Type = TType.Struct;
@@ -5846,7 +5846,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -5858,9 +5858,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1013 = new StringBuilder("GetOperationStatus_args(");
           int tmp1014 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1014++) { tmp1013.Append(", "); }
+            if (0 < tmp1014++) { tmp1013.Append(", "); }
             tmp1013.Append("Req: ");
             Req.ToString(tmp1013);
           }
@@ -5901,7 +5901,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetOperationStatus_result DeepCopy()
         {
           var tmp1015 = new GetOperationStatus_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1015.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetOperationStatusResp)this.Success.DeepCopy();
           }
@@ -5962,7 +5962,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1016, cancellationToken);
             var tmp1017 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -5993,7 +5993,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -6005,9 +6005,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1018 = new StringBuilder("GetOperationStatus_result(");
           int tmp1019 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1019++) { tmp1018.Append(", "); }
+            if (0 < tmp1019++) { tmp1018.Append(", "); }
             tmp1018.Append("Success: ");
             Success.ToString(tmp1018);
           }
@@ -6048,7 +6048,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public CancelOperation_args DeepCopy()
         {
           var tmp1020 = new CancelOperation_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1020.Req = (global::Apache.Hive.Service.Rpc.Thrift.TCancelOperationReq)this.Req.DeepCopy();
           }
@@ -6108,7 +6108,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1021 = new TStruct("CancelOperation_args");
             await oprot.WriteStructBeginAsync(tmp1021, cancellationToken);
             var tmp1022 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1022.Name = "req";
               tmp1022.Type = TType.Struct;
@@ -6136,7 +6136,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -6148,9 +6148,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1023 = new StringBuilder("CancelOperation_args(");
           int tmp1024 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1024++) { tmp1023.Append(", "); }
+            if (0 < tmp1024++) { tmp1023.Append(", "); }
             tmp1023.Append("Req: ");
             Req.ToString(tmp1023);
           }
@@ -6191,7 +6191,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public CancelOperation_result DeepCopy()
         {
           var tmp1025 = new CancelOperation_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1025.Success = (global::Apache.Hive.Service.Rpc.Thrift.TCancelOperationResp)this.Success.DeepCopy();
           }
@@ -6252,7 +6252,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1026, cancellationToken);
             var tmp1027 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -6283,7 +6283,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -6295,9 +6295,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1028 = new StringBuilder("CancelOperation_result(");
           int tmp1029 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1029++) { tmp1028.Append(", "); }
+            if (0 < tmp1029++) { tmp1028.Append(", "); }
             tmp1028.Append("Success: ");
             Success.ToString(tmp1028);
           }
@@ -6338,7 +6338,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public CloseOperation_args DeepCopy()
         {
           var tmp1030 = new CloseOperation_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1030.Req = (global::Apache.Hive.Service.Rpc.Thrift.TCloseOperationReq)this.Req.DeepCopy();
           }
@@ -6398,7 +6398,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1031 = new TStruct("CloseOperation_args");
             await oprot.WriteStructBeginAsync(tmp1031, cancellationToken);
             var tmp1032 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1032.Name = "req";
               tmp1032.Type = TType.Struct;
@@ -6426,7 +6426,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -6438,9 +6438,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1033 = new StringBuilder("CloseOperation_args(");
           int tmp1034 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1034++) { tmp1033.Append(", "); }
+            if (0 < tmp1034++) { tmp1033.Append(", "); }
             tmp1033.Append("Req: ");
             Req.ToString(tmp1033);
           }
@@ -6481,7 +6481,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public CloseOperation_result DeepCopy()
         {
           var tmp1035 = new CloseOperation_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1035.Success = (global::Apache.Hive.Service.Rpc.Thrift.TCloseOperationResp)this.Success.DeepCopy();
           }
@@ -6542,7 +6542,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1036, cancellationToken);
             var tmp1037 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -6573,7 +6573,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -6585,9 +6585,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1038 = new StringBuilder("CloseOperation_result(");
           int tmp1039 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1039++) { tmp1038.Append(", "); }
+            if (0 < tmp1039++) { tmp1038.Append(", "); }
             tmp1038.Append("Success: ");
             Success.ToString(tmp1038);
           }
@@ -6628,7 +6628,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetResultSetMetadata_args DeepCopy()
         {
           var tmp1040 = new GetResultSetMetadata_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1040.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetResultSetMetadataReq)this.Req.DeepCopy();
           }
@@ -6688,7 +6688,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1041 = new TStruct("GetResultSetMetadata_args");
             await oprot.WriteStructBeginAsync(tmp1041, cancellationToken);
             var tmp1042 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1042.Name = "req";
               tmp1042.Type = TType.Struct;
@@ -6716,7 +6716,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -6728,9 +6728,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1043 = new StringBuilder("GetResultSetMetadata_args(");
           int tmp1044 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1044++) { tmp1043.Append(", "); }
+            if (0 < tmp1044++) { tmp1043.Append(", "); }
             tmp1043.Append("Req: ");
             Req.ToString(tmp1043);
           }
@@ -6771,7 +6771,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetResultSetMetadata_result DeepCopy()
         {
           var tmp1045 = new GetResultSetMetadata_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1045.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetResultSetMetadataResp)this.Success.DeepCopy();
           }
@@ -6832,7 +6832,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1046, cancellationToken);
             var tmp1047 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -6863,7 +6863,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -6875,9 +6875,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1048 = new StringBuilder("GetResultSetMetadata_result(");
           int tmp1049 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1049++) { tmp1048.Append(", "); }
+            if (0 < tmp1049++) { tmp1048.Append(", "); }
             tmp1048.Append("Success: ");
             Success.ToString(tmp1048);
           }
@@ -6918,7 +6918,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public FetchResults_args DeepCopy()
         {
           var tmp1050 = new FetchResults_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1050.Req = (global::Apache.Hive.Service.Rpc.Thrift.TFetchResultsReq)this.Req.DeepCopy();
           }
@@ -6978,7 +6978,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1051 = new TStruct("FetchResults_args");
             await oprot.WriteStructBeginAsync(tmp1051, cancellationToken);
             var tmp1052 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1052.Name = "req";
               tmp1052.Type = TType.Struct;
@@ -7006,7 +7006,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -7018,9 +7018,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1053 = new StringBuilder("FetchResults_args(");
           int tmp1054 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1054++) { tmp1053.Append(", "); }
+            if (0 < tmp1054++) { tmp1053.Append(", "); }
             tmp1053.Append("Req: ");
             Req.ToString(tmp1053);
           }
@@ -7061,7 +7061,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public FetchResults_result DeepCopy()
         {
           var tmp1055 = new FetchResults_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1055.Success = (global::Apache.Hive.Service.Rpc.Thrift.TFetchResultsResp)this.Success.DeepCopy();
           }
@@ -7122,7 +7122,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1056, cancellationToken);
             var tmp1057 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -7153,7 +7153,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -7165,9 +7165,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1058 = new StringBuilder("FetchResults_result(");
           int tmp1059 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1059++) { tmp1058.Append(", "); }
+            if (0 < tmp1059++) { tmp1058.Append(", "); }
             tmp1058.Append("Success: ");
             Success.ToString(tmp1058);
           }
@@ -7208,7 +7208,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetDelegationToken_args DeepCopy()
         {
           var tmp1060 = new GetDelegationToken_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1060.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetDelegationTokenReq)this.Req.DeepCopy();
           }
@@ -7268,7 +7268,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1061 = new TStruct("GetDelegationToken_args");
             await oprot.WriteStructBeginAsync(tmp1061, cancellationToken);
             var tmp1062 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1062.Name = "req";
               tmp1062.Type = TType.Struct;
@@ -7296,7 +7296,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -7308,9 +7308,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1063 = new StringBuilder("GetDelegationToken_args(");
           int tmp1064 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1064++) { tmp1063.Append(", "); }
+            if (0 < tmp1064++) { tmp1063.Append(", "); }
             tmp1063.Append("Req: ");
             Req.ToString(tmp1063);
           }
@@ -7351,7 +7351,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetDelegationToken_result DeepCopy()
         {
           var tmp1065 = new GetDelegationToken_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1065.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetDelegationTokenResp)this.Success.DeepCopy();
           }
@@ -7412,7 +7412,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1066, cancellationToken);
             var tmp1067 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -7443,7 +7443,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -7455,9 +7455,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1068 = new StringBuilder("GetDelegationToken_result(");
           int tmp1069 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1069++) { tmp1068.Append(", "); }
+            if (0 < tmp1069++) { tmp1068.Append(", "); }
             tmp1068.Append("Success: ");
             Success.ToString(tmp1068);
           }
@@ -7498,7 +7498,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public CancelDelegationToken_args DeepCopy()
         {
           var tmp1070 = new CancelDelegationToken_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1070.Req = (global::Apache.Hive.Service.Rpc.Thrift.TCancelDelegationTokenReq)this.Req.DeepCopy();
           }
@@ -7558,7 +7558,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1071 = new TStruct("CancelDelegationToken_args");
             await oprot.WriteStructBeginAsync(tmp1071, cancellationToken);
             var tmp1072 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1072.Name = "req";
               tmp1072.Type = TType.Struct;
@@ -7586,7 +7586,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -7598,9 +7598,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1073 = new StringBuilder("CancelDelegationToken_args(");
           int tmp1074 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1074++) { tmp1073.Append(", "); }
+            if (0 < tmp1074++) { tmp1073.Append(", "); }
             tmp1073.Append("Req: ");
             Req.ToString(tmp1073);
           }
@@ -7641,7 +7641,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public CancelDelegationToken_result DeepCopy()
         {
           var tmp1075 = new CancelDelegationToken_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1075.Success = (global::Apache.Hive.Service.Rpc.Thrift.TCancelDelegationTokenResp)this.Success.DeepCopy();
           }
@@ -7702,7 +7702,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1076, cancellationToken);
             var tmp1077 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -7733,7 +7733,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -7745,9 +7745,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1078 = new StringBuilder("CancelDelegationToken_result(");
           int tmp1079 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1079++) { tmp1078.Append(", "); }
+            if (0 < tmp1079++) { tmp1078.Append(", "); }
             tmp1078.Append("Success: ");
             Success.ToString(tmp1078);
           }
@@ -7788,7 +7788,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public RenewDelegationToken_args DeepCopy()
         {
           var tmp1080 = new RenewDelegationToken_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1080.Req = (global::Apache.Hive.Service.Rpc.Thrift.TRenewDelegationTokenReq)this.Req.DeepCopy();
           }
@@ -7848,7 +7848,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1081 = new TStruct("RenewDelegationToken_args");
             await oprot.WriteStructBeginAsync(tmp1081, cancellationToken);
             var tmp1082 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1082.Name = "req";
               tmp1082.Type = TType.Struct;
@@ -7876,7 +7876,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -7888,9 +7888,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1083 = new StringBuilder("RenewDelegationToken_args(");
           int tmp1084 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1084++) { tmp1083.Append(", "); }
+            if (0 < tmp1084++) { tmp1083.Append(", "); }
             tmp1083.Append("Req: ");
             Req.ToString(tmp1083);
           }
@@ -7931,7 +7931,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public RenewDelegationToken_result DeepCopy()
         {
           var tmp1085 = new RenewDelegationToken_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1085.Success = (global::Apache.Hive.Service.Rpc.Thrift.TRenewDelegationTokenResp)this.Success.DeepCopy();
           }
@@ -7992,7 +7992,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1086, cancellationToken);
             var tmp1087 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -8023,7 +8023,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -8035,9 +8035,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1088 = new StringBuilder("RenewDelegationToken_result(");
           int tmp1089 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1089++) { tmp1088.Append(", "); }
+            if (0 < tmp1089++) { tmp1088.Append(", "); }
             tmp1088.Append("Success: ");
             Success.ToString(tmp1088);
           }
@@ -8078,7 +8078,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetQueryId_args DeepCopy()
         {
           var tmp1090 = new GetQueryId_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1090.Req = (global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdReq)this.Req.DeepCopy();
           }
@@ -8138,7 +8138,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1091 = new TStruct("GetQueryId_args");
             await oprot.WriteStructBeginAsync(tmp1091, cancellationToken);
             var tmp1092 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1092.Name = "req";
               tmp1092.Type = TType.Struct;
@@ -8166,7 +8166,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -8178,9 +8178,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1093 = new StringBuilder("GetQueryId_args(");
           int tmp1094 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1094++) { tmp1093.Append(", "); }
+            if (0 < tmp1094++) { tmp1093.Append(", "); }
             tmp1093.Append("Req: ");
             Req.ToString(tmp1093);
           }
@@ -8221,7 +8221,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public GetQueryId_result DeepCopy()
         {
           var tmp1095 = new GetQueryId_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1095.Success = (global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdResp)this.Success.DeepCopy();
           }
@@ -8282,7 +8282,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1096, cancellationToken);
             var tmp1097 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -8313,7 +8313,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -8325,9 +8325,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1098 = new StringBuilder("GetQueryId_result(");
           int tmp1099 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1099++) { tmp1098.Append(", "); }
+            if (0 < tmp1099++) { tmp1098.Append(", "); }
             tmp1098.Append("Success: ");
             Success.ToString(tmp1098);
           }
@@ -8368,7 +8368,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public SetClientInfo_args DeepCopy()
         {
           var tmp1100 = new SetClientInfo_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1100.Req = (global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoReq)this.Req.DeepCopy();
           }
@@ -8428,7 +8428,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1101 = new TStruct("SetClientInfo_args");
             await oprot.WriteStructBeginAsync(tmp1101, cancellationToken);
             var tmp1102 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1102.Name = "req";
               tmp1102.Type = TType.Struct;
@@ -8456,7 +8456,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -8468,9 +8468,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1103 = new StringBuilder("SetClientInfo_args(");
           int tmp1104 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1104++) { tmp1103.Append(", "); }
+            if (0 < tmp1104++) { tmp1103.Append(", "); }
             tmp1103.Append("Req: ");
             Req.ToString(tmp1103);
           }
@@ -8511,7 +8511,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public SetClientInfo_result DeepCopy()
         {
           var tmp1105 = new SetClientInfo_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1105.Success = (global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoResp)this.Success.DeepCopy();
           }
@@ -8572,7 +8572,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1106, cancellationToken);
             var tmp1107 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -8603,7 +8603,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -8615,9 +8615,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1108 = new StringBuilder("SetClientInfo_result(");
           int tmp1109 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1109++) { tmp1108.Append(", "); }
+            if (0 < tmp1109++) { tmp1108.Append(", "); }
             tmp1108.Append("Success: ");
             Success.ToString(tmp1108);
           }
@@ -8658,7 +8658,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public UploadData_args DeepCopy()
         {
           var tmp1110 = new UploadData_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1110.Req = (global::Apache.Hive.Service.Rpc.Thrift.TUploadDataReq)this.Req.DeepCopy();
           }
@@ -8718,7 +8718,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1111 = new TStruct("UploadData_args");
             await oprot.WriteStructBeginAsync(tmp1111, cancellationToken);
             var tmp1112 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1112.Name = "req";
               tmp1112.Type = TType.Struct;
@@ -8746,7 +8746,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -8758,9 +8758,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1113 = new StringBuilder("UploadData_args(");
           int tmp1114 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1114++) { tmp1113.Append(", "); }
+            if (0 < tmp1114++) { tmp1113.Append(", "); }
             tmp1113.Append("Req: ");
             Req.ToString(tmp1113);
           }
@@ -8801,7 +8801,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public UploadData_result DeepCopy()
         {
           var tmp1115 = new UploadData_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1115.Success = (global::Apache.Hive.Service.Rpc.Thrift.TUploadDataResp)this.Success.DeepCopy();
           }
@@ -8862,7 +8862,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1116, cancellationToken);
             var tmp1117 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -8893,7 +8893,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -8905,9 +8905,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1118 = new StringBuilder("UploadData_result(");
           int tmp1119 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1119++) { tmp1118.Append(", "); }
+            if (0 < tmp1119++) { tmp1118.Append(", "); }
             tmp1118.Append("Success: ");
             Success.ToString(tmp1118);
           }
@@ -8948,7 +8948,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public DownloadData_args DeepCopy()
         {
           var tmp1120 = new DownloadData_args();
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
             tmp1120.Req = (global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataReq)this.Req.DeepCopy();
           }
@@ -9008,7 +9008,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             var tmp1121 = new TStruct("DownloadData_args");
             await oprot.WriteStructBeginAsync(tmp1121, cancellationToken);
             var tmp1122 = new TField();
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               tmp1122.Name = "req";
               tmp1122.Type = TType.Struct;
@@ -9036,7 +9036,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Req != null) && __isset.req)
+            if ((Req != null) && __isset.req)
             {
               hashcode = (hashcode * 397) + Req.GetHashCode();
             }
@@ -9048,9 +9048,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1123 = new StringBuilder("DownloadData_args(");
           int tmp1124 = 0;
-          if((Req != null) && __isset.req)
+          if ((Req != null) && __isset.req)
           {
-            if(0 < tmp1124++) { tmp1123.Append(", "); }
+            if (0 < tmp1124++) { tmp1123.Append(", "); }
             tmp1123.Append("Req: ");
             Req.ToString(tmp1123);
           }
@@ -9091,7 +9091,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public DownloadData_result DeepCopy()
         {
           var tmp1125 = new DownloadData_result();
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
             tmp1125.Success = (global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataResp)this.Success.DeepCopy();
           }
@@ -9152,7 +9152,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
             await oprot.WriteStructBeginAsync(tmp1126, cancellationToken);
             var tmp1127 = new TField();
 
-            if(this.__isset.success)
+            if (this.__isset.success)
             {
               if (Success != null)
               {
@@ -9183,7 +9183,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         public override int GetHashCode() {
           int hashcode = 157;
           unchecked {
-            if((Success != null) && __isset.success)
+            if ((Success != null) && __isset.success)
             {
               hashcode = (hashcode * 397) + Success.GetHashCode();
             }
@@ -9195,9 +9195,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           var tmp1128 = new StringBuilder("DownloadData_result(");
           int tmp1129 = 0;
-          if((Success != null) && __isset.success)
+          if ((Success != null) && __isset.success)
           {
-            if(0 < tmp1129++) { tmp1128.Append(", "); }
+            if (0 < tmp1129++) { tmp1128.Append(", "); }
             tmp1128.Append("Success: ");
             Success.ToString(tmp1128);
           }

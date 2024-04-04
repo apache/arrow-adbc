@@ -110,22 +110,22 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TSparkArrowTypes DeepCopy()
     {
       var tmp250 = new TSparkArrowTypes();
-      if(__isset.timestampAsArrow)
+      if (__isset.timestampAsArrow)
       {
         tmp250.TimestampAsArrow = this.TimestampAsArrow;
       }
       tmp250.__isset.timestampAsArrow = this.__isset.timestampAsArrow;
-      if(__isset.decimalAsArrow)
+      if (__isset.decimalAsArrow)
       {
         tmp250.DecimalAsArrow = this.DecimalAsArrow;
       }
       tmp250.__isset.decimalAsArrow = this.__isset.decimalAsArrow;
-      if(__isset.complexTypesAsArrow)
+      if (__isset.complexTypesAsArrow)
       {
         tmp250.ComplexTypesAsArrow = this.ComplexTypesAsArrow;
       }
       tmp250.__isset.complexTypesAsArrow = this.__isset.complexTypesAsArrow;
-      if(__isset.intervalTypesAsArrow)
+      if (__isset.intervalTypesAsArrow)
       {
         tmp250.IntervalTypesAsArrow = this.IntervalTypesAsArrow;
       }
@@ -214,7 +214,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp251 = new TStruct("TSparkArrowTypes");
         await oprot.WriteStructBeginAsync(tmp251, cancellationToken);
         var tmp252 = new TField();
-        if(__isset.timestampAsArrow)
+        if (__isset.timestampAsArrow)
         {
           tmp252.Name = "timestampAsArrow";
           tmp252.Type = TType.Bool;
@@ -223,7 +223,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(TimestampAsArrow, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.decimalAsArrow)
+        if (__isset.decimalAsArrow)
         {
           tmp252.Name = "decimalAsArrow";
           tmp252.Type = TType.Bool;
@@ -232,7 +232,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(DecimalAsArrow, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.complexTypesAsArrow)
+        if (__isset.complexTypesAsArrow)
         {
           tmp252.Name = "complexTypesAsArrow";
           tmp252.Type = TType.Bool;
@@ -241,7 +241,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(ComplexTypesAsArrow, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.intervalTypesAsArrow)
+        if (__isset.intervalTypesAsArrow)
         {
           tmp252.Name = "intervalTypesAsArrow";
           tmp252.Type = TType.Bool;
@@ -272,19 +272,19 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if(__isset.timestampAsArrow)
+        if (__isset.timestampAsArrow)
         {
           hashcode = (hashcode * 397) + TimestampAsArrow.GetHashCode();
         }
-        if(__isset.decimalAsArrow)
+        if (__isset.decimalAsArrow)
         {
           hashcode = (hashcode * 397) + DecimalAsArrow.GetHashCode();
         }
-        if(__isset.complexTypesAsArrow)
+        if (__isset.complexTypesAsArrow)
         {
           hashcode = (hashcode * 397) + ComplexTypesAsArrow.GetHashCode();
         }
-        if(__isset.intervalTypesAsArrow)
+        if (__isset.intervalTypesAsArrow)
         {
           hashcode = (hashcode * 397) + IntervalTypesAsArrow.GetHashCode();
         }
@@ -296,27 +296,27 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp253 = new StringBuilder("TSparkArrowTypes(");
       int tmp254 = 0;
-      if(__isset.timestampAsArrow)
+      if (__isset.timestampAsArrow)
       {
-        if(0 < tmp254++) { tmp253.Append(", "); }
+        if (0 < tmp254++) { tmp253.Append(", "); }
         tmp253.Append("TimestampAsArrow: ");
         TimestampAsArrow.ToString(tmp253);
       }
-      if(__isset.decimalAsArrow)
+      if (__isset.decimalAsArrow)
       {
-        if(0 < tmp254++) { tmp253.Append(", "); }
+        if (0 < tmp254++) { tmp253.Append(", "); }
         tmp253.Append("DecimalAsArrow: ");
         DecimalAsArrow.ToString(tmp253);
       }
-      if(__isset.complexTypesAsArrow)
+      if (__isset.complexTypesAsArrow)
       {
-        if(0 < tmp254++) { tmp253.Append(", "); }
+        if (0 < tmp254++) { tmp253.Append(", "); }
         tmp253.Append("ComplexTypesAsArrow: ");
         ComplexTypesAsArrow.ToString(tmp253);
       }
-      if(__isset.intervalTypesAsArrow)
+      if (__isset.intervalTypesAsArrow)
       {
-        if(0 < tmp254++) { tmp253.Append(", "); }
+        if (0 < tmp254++) { tmp253.Append(", "); }
         tmp253.Append("IntervalTypesAsArrow: ");
         IntervalTypesAsArrow.ToString(tmp253);
       }

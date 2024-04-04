@@ -140,32 +140,32 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TGetInfoValue DeepCopy()
     {
       var tmp342 = new TGetInfoValue();
-      if((StringValue != null) && __isset.stringValue)
+      if ((StringValue != null) && __isset.stringValue)
       {
         tmp342.StringValue = this.StringValue;
       }
       tmp342.__isset.stringValue = this.__isset.stringValue;
-      if(__isset.smallIntValue)
+      if (__isset.smallIntValue)
       {
         tmp342.SmallIntValue = this.SmallIntValue;
       }
       tmp342.__isset.smallIntValue = this.__isset.smallIntValue;
-      if(__isset.integerBitmask)
+      if (__isset.integerBitmask)
       {
         tmp342.IntegerBitmask = this.IntegerBitmask;
       }
       tmp342.__isset.integerBitmask = this.__isset.integerBitmask;
-      if(__isset.integerFlag)
+      if (__isset.integerFlag)
       {
         tmp342.IntegerFlag = this.IntegerFlag;
       }
       tmp342.__isset.integerFlag = this.__isset.integerFlag;
-      if(__isset.binaryValue)
+      if (__isset.binaryValue)
       {
         tmp342.BinaryValue = this.BinaryValue;
       }
       tmp342.__isset.binaryValue = this.__isset.binaryValue;
-      if(__isset.lenValue)
+      if (__isset.lenValue)
       {
         tmp342.LenValue = this.LenValue;
       }
@@ -274,7 +274,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp343 = new TStruct("TGetInfoValue");
         await oprot.WriteStructBeginAsync(tmp343, cancellationToken);
         var tmp344 = new TField();
-        if((StringValue != null) && __isset.stringValue)
+        if ((StringValue != null) && __isset.stringValue)
         {
           tmp344.Name = "stringValue";
           tmp344.Type = TType.String;
@@ -283,7 +283,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(StringValue, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.smallIntValue)
+        if (__isset.smallIntValue)
         {
           tmp344.Name = "smallIntValue";
           tmp344.Type = TType.I16;
@@ -292,7 +292,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI16Async(SmallIntValue, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.integerBitmask)
+        if (__isset.integerBitmask)
         {
           tmp344.Name = "integerBitmask";
           tmp344.Type = TType.I32;
@@ -301,7 +301,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async(IntegerBitmask, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.integerFlag)
+        if (__isset.integerFlag)
         {
           tmp344.Name = "integerFlag";
           tmp344.Type = TType.I32;
@@ -310,7 +310,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async(IntegerFlag, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.binaryValue)
+        if (__isset.binaryValue)
         {
           tmp344.Name = "binaryValue";
           tmp344.Type = TType.I32;
@@ -319,7 +319,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async(BinaryValue, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.lenValue)
+        if (__isset.lenValue)
         {
           tmp344.Name = "lenValue";
           tmp344.Type = TType.I64;
@@ -352,27 +352,27 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((StringValue != null) && __isset.stringValue)
+        if ((StringValue != null) && __isset.stringValue)
         {
           hashcode = (hashcode * 397) + StringValue.GetHashCode();
         }
-        if(__isset.smallIntValue)
+        if (__isset.smallIntValue)
         {
           hashcode = (hashcode * 397) + SmallIntValue.GetHashCode();
         }
-        if(__isset.integerBitmask)
+        if (__isset.integerBitmask)
         {
           hashcode = (hashcode * 397) + IntegerBitmask.GetHashCode();
         }
-        if(__isset.integerFlag)
+        if (__isset.integerFlag)
         {
           hashcode = (hashcode * 397) + IntegerFlag.GetHashCode();
         }
-        if(__isset.binaryValue)
+        if (__isset.binaryValue)
         {
           hashcode = (hashcode * 397) + BinaryValue.GetHashCode();
         }
-        if(__isset.lenValue)
+        if (__isset.lenValue)
         {
           hashcode = (hashcode * 397) + LenValue.GetHashCode();
         }
@@ -384,39 +384,39 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp345 = new StringBuilder("TGetInfoValue(");
       int tmp346 = 0;
-      if((StringValue != null) && __isset.stringValue)
+      if ((StringValue != null) && __isset.stringValue)
       {
-        if(0 < tmp346++) { tmp345.Append(", "); }
+        if (0 < tmp346++) { tmp345.Append(", "); }
         tmp345.Append("StringValue: ");
         StringValue.ToString(tmp345);
       }
-      if(__isset.smallIntValue)
+      if (__isset.smallIntValue)
       {
-        if(0 < tmp346++) { tmp345.Append(", "); }
+        if (0 < tmp346++) { tmp345.Append(", "); }
         tmp345.Append("SmallIntValue: ");
         SmallIntValue.ToString(tmp345);
       }
-      if(__isset.integerBitmask)
+      if (__isset.integerBitmask)
       {
-        if(0 < tmp346++) { tmp345.Append(", "); }
+        if (0 < tmp346++) { tmp345.Append(", "); }
         tmp345.Append("IntegerBitmask: ");
         IntegerBitmask.ToString(tmp345);
       }
-      if(__isset.integerFlag)
+      if (__isset.integerFlag)
       {
-        if(0 < tmp346++) { tmp345.Append(", "); }
+        if (0 < tmp346++) { tmp345.Append(", "); }
         tmp345.Append("IntegerFlag: ");
         IntegerFlag.ToString(tmp345);
       }
-      if(__isset.binaryValue)
+      if (__isset.binaryValue)
       {
-        if(0 < tmp346++) { tmp345.Append(", "); }
+        if (0 < tmp346++) { tmp345.Append(", "); }
         tmp345.Append("BinaryValue: ");
         BinaryValue.ToString(tmp345);
       }
-      if(__isset.lenValue)
+      if (__isset.lenValue)
       {
-        if(0 < tmp346++) { tmp345.Append(", "); }
+        if (0 < tmp346++) { tmp345.Append(", "); }
         tmp345.Append("LenValue: ");
         LenValue.ToString(tmp345);
       }

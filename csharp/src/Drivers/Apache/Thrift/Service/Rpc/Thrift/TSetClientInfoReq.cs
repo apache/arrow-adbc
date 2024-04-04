@@ -72,11 +72,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TSetClientInfoReq DeepCopy()
     {
       var tmp317 = new TSetClientInfoReq();
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp317.SessionHandle = (global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle)this.SessionHandle.DeepCopy();
       }
-      if((Configuration != null) && __isset.configuration)
+      if ((Configuration != null) && __isset.configuration)
       {
         tmp317.Configuration = this.Configuration.DeepCopy();
       }
@@ -164,7 +164,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp322 = new TStruct("TSetClientInfoReq");
         await oprot.WriteStructBeginAsync(tmp322, cancellationToken);
         var tmp323 = new TField();
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           tmp323.Name = "sessionHandle";
           tmp323.Type = TType.Struct;
@@ -173,7 +173,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await SessionHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Configuration != null) && __isset.configuration)
+        if ((Configuration != null) && __isset.configuration)
         {
           tmp323.Name = "configuration";
           tmp323.Type = TType.Map;
@@ -208,11 +208,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           hashcode = (hashcode * 397) + SessionHandle.GetHashCode();
         }
-        if((Configuration != null) && __isset.configuration)
+        if ((Configuration != null) && __isset.configuration)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(Configuration);
         }
@@ -223,12 +223,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp325 = new StringBuilder("TSetClientInfoReq(");
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp325.Append(", SessionHandle: ");
         SessionHandle.ToString(tmp325);
       }
-      if((Configuration != null) && __isset.configuration)
+      if ((Configuration != null) && __isset.configuration)
       {
         tmp325.Append(", Configuration: ");
         Configuration.ToString(tmp325);

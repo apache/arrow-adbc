@@ -80,12 +80,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TTypeQualifierValue DeepCopy()
     {
       var tmp0 = new TTypeQualifierValue();
-      if(__isset.i32Value)
+      if (__isset.i32Value)
       {
         tmp0.I32Value = this.I32Value;
       }
       tmp0.__isset.i32Value = this.__isset.i32Value;
-      if((StringValue != null) && __isset.stringValue)
+      if ((StringValue != null) && __isset.stringValue)
       {
         tmp0.StringValue = this.StringValue;
       }
@@ -154,7 +154,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp1 = new TStruct("TTypeQualifierValue");
         await oprot.WriteStructBeginAsync(tmp1, cancellationToken);
         var tmp2 = new TField();
-        if(__isset.i32Value)
+        if (__isset.i32Value)
         {
           tmp2.Name = "i32Value";
           tmp2.Type = TType.I32;
@@ -163,7 +163,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async(I32Value, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((StringValue != null) && __isset.stringValue)
+        if ((StringValue != null) && __isset.stringValue)
         {
           tmp2.Name = "stringValue";
           tmp2.Type = TType.String;
@@ -192,11 +192,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if(__isset.i32Value)
+        if (__isset.i32Value)
         {
           hashcode = (hashcode * 397) + I32Value.GetHashCode();
         }
-        if((StringValue != null) && __isset.stringValue)
+        if ((StringValue != null) && __isset.stringValue)
         {
           hashcode = (hashcode * 397) + StringValue.GetHashCode();
         }
@@ -208,15 +208,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp3 = new StringBuilder("TTypeQualifierValue(");
       int tmp4 = 0;
-      if(__isset.i32Value)
+      if (__isset.i32Value)
       {
-        if(0 < tmp4++) { tmp3.Append(", "); }
+        if (0 < tmp4++) { tmp3.Append(", "); }
         tmp3.Append("I32Value: ");
         I32Value.ToString(tmp3);
       }
-      if((StringValue != null) && __isset.stringValue)
+      if ((StringValue != null) && __isset.stringValue)
       {
-        if(0 < tmp4++) { tmp3.Append(", "); }
+        if (0 < tmp4++) { tmp3.Append(", "); }
         tmp3.Append("StringValue: ");
         StringValue.ToString(tmp3);
       }

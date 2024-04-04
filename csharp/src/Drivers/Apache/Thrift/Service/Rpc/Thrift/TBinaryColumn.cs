@@ -165,7 +165,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp199 = new TStruct("TBinaryColumn");
         await oprot.WriteStructBeginAsync(tmp199, cancellationToken);
         var tmp200 = new TField();
-        if((Values != null))
+        if ((Values != null))
         {
           tmp200.Name = "values";
           tmp200.Type = TType.List;
@@ -210,7 +210,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Values != null))
+        if ((Values != null))
         {
           for (int i = 0; i < Values.Length; i++)
           {
@@ -224,7 +224,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp202 = new StringBuilder("TBinaryColumn(");
-      if((Values != null))
+      if ((Values != null))
       {
         tmp202.Append(", Values: ");
         Values.ToString(tmp202);

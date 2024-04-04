@@ -54,7 +54,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TSparkArrowBatch DeepCopy()
     {
       var tmp230 = new TSparkArrowBatch();
-      if((Batch != null))
+      if ((Batch != null))
       {
         tmp230.Batch = this.Batch.ToArray();
       }
@@ -135,7 +135,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp231 = new TStruct("TSparkArrowBatch");
         await oprot.WriteStructBeginAsync(tmp231, cancellationToken);
         var tmp232 = new TField();
-        if((Batch != null))
+        if ((Batch != null))
         {
           tmp232.Name = "batch";
           tmp232.Type = TType.String;
@@ -170,7 +170,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Batch != null))
+        if ((Batch != null))
         {
           hashcode = (hashcode * 397) + Batch.GetHashCode();
         }
@@ -182,7 +182,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp233 = new StringBuilder("TSparkArrowBatch(");
-      if((Batch != null))
+      if ((Batch != null))
       {
         tmp233.Append(", Batch: ");
         Batch.ToString(tmp233);

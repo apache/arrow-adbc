@@ -72,11 +72,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TGetResultSetMetadataReq DeepCopy()
     {
       var tmp569 = new TGetResultSetMetadataReq();
-      if((OperationHandle != null))
+      if ((OperationHandle != null))
       {
         tmp569.OperationHandle = (global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle)this.OperationHandle.DeepCopy();
       }
-      if(__isset.includeCloudResultFiles)
+      if (__isset.includeCloudResultFiles)
       {
         tmp569.IncludeCloudResultFiles = this.IncludeCloudResultFiles;
       }
@@ -152,7 +152,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp570 = new TStruct("TGetResultSetMetadataReq");
         await oprot.WriteStructBeginAsync(tmp570, cancellationToken);
         var tmp571 = new TField();
-        if((OperationHandle != null))
+        if ((OperationHandle != null))
         {
           tmp571.Name = "operationHandle";
           tmp571.Type = TType.Struct;
@@ -161,7 +161,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await OperationHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.includeCloudResultFiles)
+        if (__isset.includeCloudResultFiles)
         {
           tmp571.Name = "includeCloudResultFiles";
           tmp571.Type = TType.Bool;
@@ -190,11 +190,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((OperationHandle != null))
+        if ((OperationHandle != null))
         {
           hashcode = (hashcode * 397) + OperationHandle.GetHashCode();
         }
-        if(__isset.includeCloudResultFiles)
+        if (__isset.includeCloudResultFiles)
         {
           hashcode = (hashcode * 397) + IncludeCloudResultFiles.GetHashCode();
         }
@@ -205,12 +205,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp572 = new StringBuilder("TGetResultSetMetadataReq(");
-      if((OperationHandle != null))
+      if ((OperationHandle != null))
       {
         tmp572.Append(", OperationHandle: ");
         OperationHandle.ToString(tmp572);
       }
-      if(__isset.includeCloudResultFiles)
+      if (__isset.includeCloudResultFiles)
       {
         tmp572.Append(", IncludeCloudResultFiles: ");
         IncludeCloudResultFiles.ToString(tmp572);

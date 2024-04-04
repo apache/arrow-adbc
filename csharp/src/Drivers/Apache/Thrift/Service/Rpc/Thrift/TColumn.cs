@@ -170,42 +170,42 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TColumn DeepCopy()
     {
       var tmp204 = new TColumn();
-      if((BoolVal != null) && __isset.boolVal)
+      if ((BoolVal != null) && __isset.boolVal)
       {
         tmp204.BoolVal = (global::Apache.Hive.Service.Rpc.Thrift.TBoolColumn)this.BoolVal.DeepCopy();
       }
       tmp204.__isset.boolVal = this.__isset.boolVal;
-      if((ByteVal != null) && __isset.byteVal)
+      if ((ByteVal != null) && __isset.byteVal)
       {
         tmp204.ByteVal = (global::Apache.Hive.Service.Rpc.Thrift.TByteColumn)this.ByteVal.DeepCopy();
       }
       tmp204.__isset.byteVal = this.__isset.byteVal;
-      if((I16Val != null) && __isset.i16Val)
+      if ((I16Val != null) && __isset.i16Val)
       {
         tmp204.I16Val = (global::Apache.Hive.Service.Rpc.Thrift.TI16Column)this.I16Val.DeepCopy();
       }
       tmp204.__isset.i16Val = this.__isset.i16Val;
-      if((I32Val != null) && __isset.i32Val)
+      if ((I32Val != null) && __isset.i32Val)
       {
         tmp204.I32Val = (global::Apache.Hive.Service.Rpc.Thrift.TI32Column)this.I32Val.DeepCopy();
       }
       tmp204.__isset.i32Val = this.__isset.i32Val;
-      if((I64Val != null) && __isset.i64Val)
+      if ((I64Val != null) && __isset.i64Val)
       {
         tmp204.I64Val = (global::Apache.Hive.Service.Rpc.Thrift.TI64Column)this.I64Val.DeepCopy();
       }
       tmp204.__isset.i64Val = this.__isset.i64Val;
-      if((DoubleVal != null) && __isset.doubleVal)
+      if ((DoubleVal != null) && __isset.doubleVal)
       {
         tmp204.DoubleVal = (global::Apache.Hive.Service.Rpc.Thrift.TDoubleColumn)this.DoubleVal.DeepCopy();
       }
       tmp204.__isset.doubleVal = this.__isset.doubleVal;
-      if((StringVal != null) && __isset.stringVal)
+      if ((StringVal != null) && __isset.stringVal)
       {
         tmp204.StringVal = (global::Apache.Hive.Service.Rpc.Thrift.TStringColumn)this.StringVal.DeepCopy();
       }
       tmp204.__isset.stringVal = this.__isset.stringVal;
-      if((BinaryVal != null) && __isset.binaryVal)
+      if ((BinaryVal != null) && __isset.binaryVal)
       {
         tmp204.BinaryVal = (global::Apache.Hive.Service.Rpc.Thrift.TBinaryColumn)this.BinaryVal.DeepCopy();
       }
@@ -342,7 +342,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp205 = new TStruct("TColumn");
         await oprot.WriteStructBeginAsync(tmp205, cancellationToken);
         var tmp206 = new TField();
-        if((BoolVal != null) && __isset.boolVal)
+        if ((BoolVal != null) && __isset.boolVal)
         {
           tmp206.Name = "boolVal";
           tmp206.Type = TType.Struct;
@@ -351,7 +351,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await BoolVal.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ByteVal != null) && __isset.byteVal)
+        if ((ByteVal != null) && __isset.byteVal)
         {
           tmp206.Name = "byteVal";
           tmp206.Type = TType.Struct;
@@ -360,7 +360,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await ByteVal.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((I16Val != null) && __isset.i16Val)
+        if ((I16Val != null) && __isset.i16Val)
         {
           tmp206.Name = "i16Val";
           tmp206.Type = TType.Struct;
@@ -369,7 +369,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await I16Val.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((I32Val != null) && __isset.i32Val)
+        if ((I32Val != null) && __isset.i32Val)
         {
           tmp206.Name = "i32Val";
           tmp206.Type = TType.Struct;
@@ -378,7 +378,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await I32Val.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((I64Val != null) && __isset.i64Val)
+        if ((I64Val != null) && __isset.i64Val)
         {
           tmp206.Name = "i64Val";
           tmp206.Type = TType.Struct;
@@ -387,7 +387,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await I64Val.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((DoubleVal != null) && __isset.doubleVal)
+        if ((DoubleVal != null) && __isset.doubleVal)
         {
           tmp206.Name = "doubleVal";
           tmp206.Type = TType.Struct;
@@ -396,7 +396,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await DoubleVal.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((StringVal != null) && __isset.stringVal)
+        if ((StringVal != null) && __isset.stringVal)
         {
           tmp206.Name = "stringVal";
           tmp206.Type = TType.Struct;
@@ -405,7 +405,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await StringVal.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((BinaryVal != null) && __isset.binaryVal)
+        if ((BinaryVal != null) && __isset.binaryVal)
         {
           tmp206.Name = "binaryVal";
           tmp206.Type = TType.Struct;
@@ -440,35 +440,35 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((BoolVal != null) && __isset.boolVal)
+        if ((BoolVal != null) && __isset.boolVal)
         {
           hashcode = (hashcode * 397) + BoolVal.GetHashCode();
         }
-        if((ByteVal != null) && __isset.byteVal)
+        if ((ByteVal != null) && __isset.byteVal)
         {
           hashcode = (hashcode * 397) + ByteVal.GetHashCode();
         }
-        if((I16Val != null) && __isset.i16Val)
+        if ((I16Val != null) && __isset.i16Val)
         {
           hashcode = (hashcode * 397) + I16Val.GetHashCode();
         }
-        if((I32Val != null) && __isset.i32Val)
+        if ((I32Val != null) && __isset.i32Val)
         {
           hashcode = (hashcode * 397) + I32Val.GetHashCode();
         }
-        if((I64Val != null) && __isset.i64Val)
+        if ((I64Val != null) && __isset.i64Val)
         {
           hashcode = (hashcode * 397) + I64Val.GetHashCode();
         }
-        if((DoubleVal != null) && __isset.doubleVal)
+        if ((DoubleVal != null) && __isset.doubleVal)
         {
           hashcode = (hashcode * 397) + DoubleVal.GetHashCode();
         }
-        if((StringVal != null) && __isset.stringVal)
+        if ((StringVal != null) && __isset.stringVal)
         {
           hashcode = (hashcode * 397) + StringVal.GetHashCode();
         }
-        if((BinaryVal != null) && __isset.binaryVal)
+        if ((BinaryVal != null) && __isset.binaryVal)
         {
           hashcode = (hashcode * 397) + BinaryVal.GetHashCode();
         }
@@ -480,51 +480,51 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp207 = new StringBuilder("TColumn(");
       int tmp208 = 0;
-      if((BoolVal != null) && __isset.boolVal)
+      if ((BoolVal != null) && __isset.boolVal)
       {
-        if(0 < tmp208++) { tmp207.Append(", "); }
+        if (0 < tmp208++) { tmp207.Append(", "); }
         tmp207.Append("BoolVal: ");
         BoolVal.ToString(tmp207);
       }
-      if((ByteVal != null) && __isset.byteVal)
+      if ((ByteVal != null) && __isset.byteVal)
       {
-        if(0 < tmp208++) { tmp207.Append(", "); }
+        if (0 < tmp208++) { tmp207.Append(", "); }
         tmp207.Append("ByteVal: ");
         ByteVal.ToString(tmp207);
       }
-      if((I16Val != null) && __isset.i16Val)
+      if ((I16Val != null) && __isset.i16Val)
       {
-        if(0 < tmp208++) { tmp207.Append(", "); }
+        if (0 < tmp208++) { tmp207.Append(", "); }
         tmp207.Append("I16Val: ");
         I16Val.ToString(tmp207);
       }
-      if((I32Val != null) && __isset.i32Val)
+      if ((I32Val != null) && __isset.i32Val)
       {
-        if(0 < tmp208++) { tmp207.Append(", "); }
+        if (0 < tmp208++) { tmp207.Append(", "); }
         tmp207.Append("I32Val: ");
         I32Val.ToString(tmp207);
       }
-      if((I64Val != null) && __isset.i64Val)
+      if ((I64Val != null) && __isset.i64Val)
       {
-        if(0 < tmp208++) { tmp207.Append(", "); }
+        if (0 < tmp208++) { tmp207.Append(", "); }
         tmp207.Append("I64Val: ");
         I64Val.ToString(tmp207);
       }
-      if((DoubleVal != null) && __isset.doubleVal)
+      if ((DoubleVal != null) && __isset.doubleVal)
       {
-        if(0 < tmp208++) { tmp207.Append(", "); }
+        if (0 < tmp208++) { tmp207.Append(", "); }
         tmp207.Append("DoubleVal: ");
         DoubleVal.ToString(tmp207);
       }
-      if((StringVal != null) && __isset.stringVal)
+      if ((StringVal != null) && __isset.stringVal)
       {
-        if(0 < tmp208++) { tmp207.Append(", "); }
+        if (0 < tmp208++) { tmp207.Append(", "); }
         tmp207.Append("StringVal: ");
         StringVal.ToString(tmp207);
       }
-      if((BinaryVal != null) && __isset.binaryVal)
+      if ((BinaryVal != null) && __isset.binaryVal)
       {
-        if(0 < tmp208++) { tmp207.Append(", "); }
+        if (0 < tmp208++) { tmp207.Append(", "); }
         tmp207.Append("BinaryVal: ");
         BinaryVal.ToString(tmp207);
       }

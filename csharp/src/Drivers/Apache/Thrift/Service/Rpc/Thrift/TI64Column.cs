@@ -140,7 +140,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp172 = new TStruct("TI64Column");
         await oprot.WriteStructBeginAsync(tmp172, cancellationToken);
         var tmp173 = new TField();
-        if((Values != null))
+        if ((Values != null))
         {
           tmp173.Name = "values";
           tmp173.Type = TType.List;
@@ -188,7 +188,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp175 = new StringBuilder("TI64Column(");
-      if((Values != null))
+      if ((Values != null))
       {
         tmp175.Append(", Values: ");
         Values.ToString(tmp175);

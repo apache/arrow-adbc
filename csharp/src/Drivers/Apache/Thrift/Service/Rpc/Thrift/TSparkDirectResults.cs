@@ -110,22 +110,22 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TSparkDirectResults DeepCopy()
     {
       var tmp245 = new TSparkDirectResults();
-      if((OperationStatus != null) && __isset.operationStatus)
+      if ((OperationStatus != null) && __isset.operationStatus)
       {
         tmp245.OperationStatus = (global::Apache.Hive.Service.Rpc.Thrift.TGetOperationStatusResp)this.OperationStatus.DeepCopy();
       }
       tmp245.__isset.operationStatus = this.__isset.operationStatus;
-      if((ResultSetMetadata != null) && __isset.resultSetMetadata)
+      if ((ResultSetMetadata != null) && __isset.resultSetMetadata)
       {
         tmp245.ResultSetMetadata = (global::Apache.Hive.Service.Rpc.Thrift.TGetResultSetMetadataResp)this.ResultSetMetadata.DeepCopy();
       }
       tmp245.__isset.resultSetMetadata = this.__isset.resultSetMetadata;
-      if((ResultSet != null) && __isset.resultSet)
+      if ((ResultSet != null) && __isset.resultSet)
       {
         tmp245.ResultSet = (global::Apache.Hive.Service.Rpc.Thrift.TFetchResultsResp)this.ResultSet.DeepCopy();
       }
       tmp245.__isset.resultSet = this.__isset.resultSet;
-      if((CloseOperation != null) && __isset.closeOperation)
+      if ((CloseOperation != null) && __isset.closeOperation)
       {
         tmp245.CloseOperation = (global::Apache.Hive.Service.Rpc.Thrift.TCloseOperationResp)this.CloseOperation.DeepCopy();
       }
@@ -218,7 +218,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp246 = new TStruct("TSparkDirectResults");
         await oprot.WriteStructBeginAsync(tmp246, cancellationToken);
         var tmp247 = new TField();
-        if((OperationStatus != null) && __isset.operationStatus)
+        if ((OperationStatus != null) && __isset.operationStatus)
         {
           tmp247.Name = "operationStatus";
           tmp247.Type = TType.Struct;
@@ -227,7 +227,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await OperationStatus.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ResultSetMetadata != null) && __isset.resultSetMetadata)
+        if ((ResultSetMetadata != null) && __isset.resultSetMetadata)
         {
           tmp247.Name = "resultSetMetadata";
           tmp247.Type = TType.Struct;
@@ -236,7 +236,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await ResultSetMetadata.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ResultSet != null) && __isset.resultSet)
+        if ((ResultSet != null) && __isset.resultSet)
         {
           tmp247.Name = "resultSet";
           tmp247.Type = TType.Struct;
@@ -245,7 +245,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await ResultSet.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((CloseOperation != null) && __isset.closeOperation)
+        if ((CloseOperation != null) && __isset.closeOperation)
         {
           tmp247.Name = "closeOperation";
           tmp247.Type = TType.Struct;
@@ -276,19 +276,19 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((OperationStatus != null) && __isset.operationStatus)
+        if ((OperationStatus != null) && __isset.operationStatus)
         {
           hashcode = (hashcode * 397) + OperationStatus.GetHashCode();
         }
-        if((ResultSetMetadata != null) && __isset.resultSetMetadata)
+        if ((ResultSetMetadata != null) && __isset.resultSetMetadata)
         {
           hashcode = (hashcode * 397) + ResultSetMetadata.GetHashCode();
         }
-        if((ResultSet != null) && __isset.resultSet)
+        if ((ResultSet != null) && __isset.resultSet)
         {
           hashcode = (hashcode * 397) + ResultSet.GetHashCode();
         }
-        if((CloseOperation != null) && __isset.closeOperation)
+        if ((CloseOperation != null) && __isset.closeOperation)
         {
           hashcode = (hashcode * 397) + CloseOperation.GetHashCode();
         }
@@ -300,27 +300,27 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp248 = new StringBuilder("TSparkDirectResults(");
       int tmp249 = 0;
-      if((OperationStatus != null) && __isset.operationStatus)
+      if ((OperationStatus != null) && __isset.operationStatus)
       {
-        if(0 < tmp249++) { tmp248.Append(", "); }
+        if (0 < tmp249++) { tmp248.Append(", "); }
         tmp248.Append("OperationStatus: ");
         OperationStatus.ToString(tmp248);
       }
-      if((ResultSetMetadata != null) && __isset.resultSetMetadata)
+      if ((ResultSetMetadata != null) && __isset.resultSetMetadata)
       {
-        if(0 < tmp249++) { tmp248.Append(", "); }
+        if (0 < tmp249++) { tmp248.Append(", "); }
         tmp248.Append("ResultSetMetadata: ");
         ResultSetMetadata.ToString(tmp248);
       }
-      if((ResultSet != null) && __isset.resultSet)
+      if ((ResultSet != null) && __isset.resultSet)
       {
-        if(0 < tmp249++) { tmp248.Append(", "); }
+        if (0 < tmp249++) { tmp248.Append(", "); }
         tmp248.Append("ResultSet: ");
         ResultSet.ToString(tmp248);
       }
-      if((CloseOperation != null) && __isset.closeOperation)
+      if ((CloseOperation != null) && __isset.closeOperation)
       {
-        if(0 < tmp249++) { tmp248.Append(", "); }
+        if (0 < tmp249++) { tmp248.Append(", "); }
         tmp248.Append("CloseOperation: ");
         CloseOperation.ToString(tmp248);
       }

@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TTableSchema DeepCopy()
     {
       var tmp74 = new TTableSchema();
-      if((Columns != null))
+      if ((Columns != null))
       {
         tmp74.Columns = this.Columns.DeepCopy();
       }
@@ -126,7 +126,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp78 = new TStruct("TTableSchema");
         await oprot.WriteStructBeginAsync(tmp78, cancellationToken);
         var tmp79 = new TField();
-        if((Columns != null))
+        if ((Columns != null))
         {
           tmp79.Name = "columns";
           tmp79.Type = TType.List;
@@ -159,7 +159,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Columns != null))
+        if ((Columns != null))
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(Columns);
         }
@@ -170,7 +170,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp81 = new StringBuilder("TTableSchema(");
-      if((Columns != null))
+      if ((Columns != null))
       {
         tmp81.Append(", Columns: ");
         Columns.ToString(tmp81);

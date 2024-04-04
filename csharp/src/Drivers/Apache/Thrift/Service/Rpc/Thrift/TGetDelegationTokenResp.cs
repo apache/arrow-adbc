@@ -72,11 +72,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TGetDelegationTokenResp DeepCopy()
     {
       var tmp603 = new TGetDelegationTokenResp();
-      if((Status != null))
+      if ((Status != null))
       {
         tmp603.Status = (global::Apache.Hive.Service.Rpc.Thrift.TStatus)this.Status.DeepCopy();
       }
-      if((DelegationToken != null) && __isset.delegationToken)
+      if ((DelegationToken != null) && __isset.delegationToken)
       {
         tmp603.DelegationToken = this.DelegationToken;
       }
@@ -152,7 +152,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp604 = new TStruct("TGetDelegationTokenResp");
         await oprot.WriteStructBeginAsync(tmp604, cancellationToken);
         var tmp605 = new TField();
-        if((Status != null))
+        if ((Status != null))
         {
           tmp605.Name = "status";
           tmp605.Type = TType.Struct;
@@ -161,7 +161,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await Status.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((DelegationToken != null) && __isset.delegationToken)
+        if ((DelegationToken != null) && __isset.delegationToken)
         {
           tmp605.Name = "delegationToken";
           tmp605.Type = TType.String;
@@ -190,11 +190,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Status != null))
+        if ((Status != null))
         {
           hashcode = (hashcode * 397) + Status.GetHashCode();
         }
-        if((DelegationToken != null) && __isset.delegationToken)
+        if ((DelegationToken != null) && __isset.delegationToken)
         {
           hashcode = (hashcode * 397) + DelegationToken.GetHashCode();
         }
@@ -205,12 +205,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp606 = new StringBuilder("TGetDelegationTokenResp(");
-      if((Status != null))
+      if ((Status != null))
       {
         tmp606.Append(", Status: ");
         Status.ToString(tmp606);
       }
-      if((DelegationToken != null) && __isset.delegationToken)
+      if ((DelegationToken != null) && __isset.delegationToken)
       {
         tmp606.Append(", DelegationToken: ");
         DelegationToken.ToString(tmp606);

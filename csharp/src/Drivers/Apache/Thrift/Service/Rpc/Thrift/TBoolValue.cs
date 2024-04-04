@@ -65,7 +65,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TBoolValue DeepCopy()
     {
       var tmp83 = new TBoolValue();
-      if(__isset.@value)
+      if (__isset.@value)
       {
         tmp83.Value = this.Value;
       }
@@ -124,7 +124,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp84 = new TStruct("TBoolValue");
         await oprot.WriteStructBeginAsync(tmp84, cancellationToken);
         var tmp85 = new TField();
-        if(__isset.@value)
+        if (__isset.@value)
         {
           tmp85.Name = "value";
           tmp85.Type = TType.Bool;
@@ -152,7 +152,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if(__isset.@value)
+        if (__isset.@value)
         {
           hashcode = (hashcode * 397) + Value.GetHashCode();
         }
@@ -164,9 +164,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp86 = new StringBuilder("TBoolValue(");
       int tmp87 = 0;
-      if(__isset.@value)
+      if (__isset.@value)
       {
-        if(0 < tmp87++) { tmp86.Append(", "); }
+        if (0 < tmp87++) { tmp86.Append(", "); }
         tmp86.Append("Value: ");
         Value.ToString(tmp86);
       }

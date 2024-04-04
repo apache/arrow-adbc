@@ -57,15 +57,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TGetDelegationTokenReq DeepCopy()
     {
       var tmp598 = new TGetDelegationTokenReq();
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp598.SessionHandle = (global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle)this.SessionHandle.DeepCopy();
       }
-      if((Owner != null))
+      if ((Owner != null))
       {
         tmp598.Owner = this.Owner;
       }
-      if((Renewer != null))
+      if ((Renewer != null))
       {
         tmp598.Renewer = this.Renewer;
       }
@@ -162,7 +162,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp599 = new TStruct("TGetDelegationTokenReq");
         await oprot.WriteStructBeginAsync(tmp599, cancellationToken);
         var tmp600 = new TField();
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           tmp600.Name = "sessionHandle";
           tmp600.Type = TType.Struct;
@@ -171,7 +171,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await SessionHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Owner != null))
+        if ((Owner != null))
         {
           tmp600.Name = "owner";
           tmp600.Type = TType.String;
@@ -180,7 +180,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Owner, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Renewer != null))
+        if ((Renewer != null))
         {
           tmp600.Name = "renewer";
           tmp600.Type = TType.String;
@@ -210,15 +210,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           hashcode = (hashcode * 397) + SessionHandle.GetHashCode();
         }
-        if((Owner != null))
+        if ((Owner != null))
         {
           hashcode = (hashcode * 397) + Owner.GetHashCode();
         }
-        if((Renewer != null))
+        if ((Renewer != null))
         {
           hashcode = (hashcode * 397) + Renewer.GetHashCode();
         }
@@ -229,17 +229,17 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp601 = new StringBuilder("TGetDelegationTokenReq(");
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp601.Append(", SessionHandle: ");
         SessionHandle.ToString(tmp601);
       }
-      if((Owner != null))
+      if ((Owner != null))
       {
         tmp601.Append(", Owner: ");
         Owner.ToString(tmp601);
       }
-      if((Renewer != null))
+      if ((Renewer != null))
       {
         tmp601.Append(", Renewer: ");
         Renewer.ToString(tmp601);

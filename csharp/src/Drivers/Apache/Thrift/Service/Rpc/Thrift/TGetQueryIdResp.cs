@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TGetQueryIdResp DeepCopy()
     {
       var tmp650 = new TGetQueryIdResp();
-      if((QueryId != null))
+      if ((QueryId != null))
       {
         tmp650.QueryId = this.QueryId;
       }
@@ -115,7 +115,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp651 = new TStruct("TGetQueryIdResp");
         await oprot.WriteStructBeginAsync(tmp651, cancellationToken);
         var tmp652 = new TField();
-        if((QueryId != null))
+        if ((QueryId != null))
         {
           tmp652.Name = "queryId";
           tmp652.Type = TType.String;
@@ -143,7 +143,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((QueryId != null))
+        if ((QueryId != null))
         {
           hashcode = (hashcode * 397) + QueryId.GetHashCode();
         }
@@ -154,7 +154,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp653 = new StringBuilder("TGetQueryIdResp(");
-      if((QueryId != null))
+      if ((QueryId != null))
       {
         tmp653.Append(", QueryId: ");
         QueryId.ToString(tmp653);

@@ -80,12 +80,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TNamespace DeepCopy()
     {
       var tmp298 = new TNamespace();
-      if((CatalogName != null) && __isset.catalogName)
+      if ((CatalogName != null) && __isset.catalogName)
       {
         tmp298.CatalogName = this.CatalogName;
       }
       tmp298.__isset.catalogName = this.__isset.catalogName;
-      if((SchemaName != null) && __isset.schemaName)
+      if ((SchemaName != null) && __isset.schemaName)
       {
         tmp298.SchemaName = this.SchemaName;
       }
@@ -154,7 +154,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp299 = new TStruct("TNamespace");
         await oprot.WriteStructBeginAsync(tmp299, cancellationToken);
         var tmp300 = new TField();
-        if((CatalogName != null) && __isset.catalogName)
+        if ((CatalogName != null) && __isset.catalogName)
         {
           tmp300.Name = "catalogName";
           tmp300.Type = TType.String;
@@ -163,7 +163,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(CatalogName, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((SchemaName != null) && __isset.schemaName)
+        if ((SchemaName != null) && __isset.schemaName)
         {
           tmp300.Name = "schemaName";
           tmp300.Type = TType.String;
@@ -192,11 +192,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((CatalogName != null) && __isset.catalogName)
+        if ((CatalogName != null) && __isset.catalogName)
         {
           hashcode = (hashcode * 397) + CatalogName.GetHashCode();
         }
-        if((SchemaName != null) && __isset.schemaName)
+        if ((SchemaName != null) && __isset.schemaName)
         {
           hashcode = (hashcode * 397) + SchemaName.GetHashCode();
         }
@@ -208,15 +208,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp301 = new StringBuilder("TNamespace(");
       int tmp302 = 0;
-      if((CatalogName != null) && __isset.catalogName)
+      if ((CatalogName != null) && __isset.catalogName)
       {
-        if(0 < tmp302++) { tmp301.Append(", "); }
+        if (0 < tmp302++) { tmp301.Append(", "); }
         tmp301.Append("CatalogName: ");
         CatalogName.ToString(tmp301);
       }
-      if((SchemaName != null) && __isset.schemaName)
+      if ((SchemaName != null) && __isset.schemaName)
       {
-        if(0 < tmp302++) { tmp301.Append(", "); }
+        if (0 < tmp302++) { tmp301.Append(", "); }
         tmp301.Append("SchemaName: ");
         SchemaName.ToString(tmp301);
       }

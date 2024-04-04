@@ -90,21 +90,21 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TUploadDataReq DeepCopy()
     {
       var tmp430 = new TUploadDataReq();
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp430.SessionHandle = (global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle)this.SessionHandle.DeepCopy();
       }
-      if((TableName != null) && __isset.tableName)
+      if ((TableName != null) && __isset.tableName)
       {
         tmp430.TableName = this.TableName;
       }
       tmp430.__isset.tableName = this.__isset.tableName;
-      if((Path != null) && __isset.path)
+      if ((Path != null) && __isset.path)
       {
         tmp430.Path = this.Path;
       }
       tmp430.__isset.path = this.__isset.path;
-      if((Values != null))
+      if ((Values != null))
       {
         tmp430.Values = this.Values.ToArray();
       }
@@ -205,7 +205,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp431 = new TStruct("TUploadDataReq");
         await oprot.WriteStructBeginAsync(tmp431, cancellationToken);
         var tmp432 = new TField();
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           tmp432.Name = "sessionHandle";
           tmp432.Type = TType.Struct;
@@ -214,7 +214,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await SessionHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((TableName != null) && __isset.tableName)
+        if ((TableName != null) && __isset.tableName)
         {
           tmp432.Name = "tableName";
           tmp432.Type = TType.String;
@@ -223,7 +223,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(TableName, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Path != null) && __isset.path)
+        if ((Path != null) && __isset.path)
         {
           tmp432.Name = "path";
           tmp432.Type = TType.String;
@@ -232,7 +232,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Path, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Values != null))
+        if ((Values != null))
         {
           tmp432.Name = "values";
           tmp432.Type = TType.String;
@@ -263,19 +263,19 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           hashcode = (hashcode * 397) + SessionHandle.GetHashCode();
         }
-        if((TableName != null) && __isset.tableName)
+        if ((TableName != null) && __isset.tableName)
         {
           hashcode = (hashcode * 397) + TableName.GetHashCode();
         }
-        if((Path != null) && __isset.path)
+        if ((Path != null) && __isset.path)
         {
           hashcode = (hashcode * 397) + Path.GetHashCode();
         }
-        if((Values != null))
+        if ((Values != null))
         {
           hashcode = (hashcode * 397) + Values.GetHashCode();
         }
@@ -286,22 +286,22 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp433 = new StringBuilder("TUploadDataReq(");
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp433.Append(", SessionHandle: ");
         SessionHandle.ToString(tmp433);
       }
-      if((TableName != null) && __isset.tableName)
+      if ((TableName != null) && __isset.tableName)
       {
         tmp433.Append(", TableName: ");
         TableName.ToString(tmp433);
       }
-      if((Path != null) && __isset.path)
+      if ((Path != null) && __isset.path)
       {
         tmp433.Append(", Path: ");
         Path.ToString(tmp433);
       }
-      if((Values != null))
+      if ((Values != null))
       {
         tmp433.Append(", Values: ");
         Values.ToString(tmp433);

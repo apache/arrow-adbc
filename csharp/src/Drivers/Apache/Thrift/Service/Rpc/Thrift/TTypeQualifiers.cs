@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TTypeQualifiers DeepCopy()
     {
       var tmp5 = new TTypeQualifiers();
-      if((Qualifiers != null))
+      if ((Qualifiers != null))
       {
         tmp5.Qualifiers = this.Qualifiers.DeepCopy();
       }
@@ -128,7 +128,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp10 = new TStruct("TTypeQualifiers");
         await oprot.WriteStructBeginAsync(tmp10, cancellationToken);
         var tmp11 = new TField();
-        if((Qualifiers != null))
+        if ((Qualifiers != null))
         {
           tmp11.Name = "qualifiers";
           tmp11.Type = TType.Map;
@@ -162,7 +162,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Qualifiers != null))
+        if ((Qualifiers != null))
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(Qualifiers);
         }
@@ -173,7 +173,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp13 = new StringBuilder("TTypeQualifiers(");
-      if((Qualifiers != null))
+      if ((Qualifiers != null))
       {
         tmp13.Append(", Qualifiers: ");
         Qualifiers.ToString(tmp13);

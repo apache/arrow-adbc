@@ -73,7 +73,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp240 = new TSparkGetDirectResults();
       tmp240.MaxRows = this.MaxRows;
-      if(__isset.maxBytes)
+      if (__isset.maxBytes)
       {
         tmp240.MaxBytes = this.MaxBytes;
       }
@@ -154,7 +154,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         await oprot.WriteFieldBeginAsync(tmp242, cancellationToken);
         await oprot.WriteI64Async(MaxRows, cancellationToken);
         await oprot.WriteFieldEndAsync(cancellationToken);
-        if(__isset.maxBytes)
+        if (__isset.maxBytes)
         {
           tmp242.Name = "maxBytes";
           tmp242.Type = TType.I64;
@@ -184,7 +184,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       int hashcode = 157;
       unchecked {
         hashcode = (hashcode * 397) + MaxRows.GetHashCode();
-        if(__isset.maxBytes)
+        if (__isset.maxBytes)
         {
           hashcode = (hashcode * 397) + MaxBytes.GetHashCode();
         }
@@ -197,7 +197,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       var tmp243 = new StringBuilder("TSparkGetDirectResults(");
       tmp243.Append(", MaxRows: ");
       MaxRows.ToString(tmp243);
-      if(__isset.maxBytes)
+      if (__isset.maxBytes)
       {
         tmp243.Append(", MaxBytes: ");
         MaxBytes.ToString(tmp243);

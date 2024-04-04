@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TCloseOperationResp DeepCopy()
     {
       var tmp564 = new TCloseOperationResp();
-      if((Status != null))
+      if ((Status != null))
       {
         tmp564.Status = (global::Apache.Hive.Service.Rpc.Thrift.TStatus)this.Status.DeepCopy();
       }
@@ -116,7 +116,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp565 = new TStruct("TCloseOperationResp");
         await oprot.WriteStructBeginAsync(tmp565, cancellationToken);
         var tmp566 = new TField();
-        if((Status != null))
+        if ((Status != null))
         {
           tmp566.Name = "status";
           tmp566.Type = TType.Struct;
@@ -144,7 +144,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Status != null))
+        if ((Status != null))
         {
           hashcode = (hashcode * 397) + Status.GetHashCode();
         }
@@ -155,7 +155,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp567 = new StringBuilder("TCloseOperationResp(");
-      if((Status != null))
+      if ((Status != null))
       {
         tmp567.Append(", Status: ");
         Status.ToString(tmp567);

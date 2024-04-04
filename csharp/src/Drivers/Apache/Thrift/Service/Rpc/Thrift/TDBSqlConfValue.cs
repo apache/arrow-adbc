@@ -65,7 +65,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TDBSqlConfValue DeepCopy()
     {
       var tmp405 = new TDBSqlConfValue();
-      if((Value != null) && __isset.@value)
+      if ((Value != null) && __isset.@value)
       {
         tmp405.Value = this.Value;
       }
@@ -124,7 +124,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp406 = new TStruct("TDBSqlConfValue");
         await oprot.WriteStructBeginAsync(tmp406, cancellationToken);
         var tmp407 = new TField();
-        if((Value != null) && __isset.@value)
+        if ((Value != null) && __isset.@value)
         {
           tmp407.Name = "value";
           tmp407.Type = TType.String;
@@ -152,7 +152,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Value != null) && __isset.@value)
+        if ((Value != null) && __isset.@value)
         {
           hashcode = (hashcode * 397) + Value.GetHashCode();
         }
@@ -164,9 +164,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp408 = new StringBuilder("TDBSqlConfValue(");
       int tmp409 = 0;
-      if((Value != null) && __isset.@value)
+      if ((Value != null) && __isset.@value)
       {
-        if(0 < tmp409++) { tmp408.Append(", "); }
+        if (0 < tmp409++) { tmp408.Append(", "); }
         tmp408.Append("Value: ");
         Value.ToString(tmp408);
       }

@@ -58,7 +58,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TGetInfoReq DeepCopy()
     {
       var tmp347 = new TGetInfoReq();
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp347.SessionHandle = (global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle)this.SessionHandle.DeepCopy();
       }
@@ -140,7 +140,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp348 = new TStruct("TGetInfoReq");
         await oprot.WriteStructBeginAsync(tmp348, cancellationToken);
         var tmp349 = new TField();
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           tmp349.Name = "sessionHandle";
           tmp349.Type = TType.Struct;
@@ -175,7 +175,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           hashcode = (hashcode * 397) + SessionHandle.GetHashCode();
         }
@@ -187,7 +187,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp350 = new StringBuilder("TGetInfoReq(");
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp350.Append(", SessionHandle: ");
         SessionHandle.ToString(tmp350);

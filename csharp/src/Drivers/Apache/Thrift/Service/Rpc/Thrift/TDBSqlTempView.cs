@@ -110,22 +110,22 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TDBSqlTempView DeepCopy()
     {
       var tmp390 = new TDBSqlTempView();
-      if((Name != null) && __isset.name)
+      if ((Name != null) && __isset.name)
       {
         tmp390.Name = this.Name;
       }
       tmp390.__isset.name = this.__isset.name;
-      if((SqlStatement != null) && __isset.sqlStatement)
+      if ((SqlStatement != null) && __isset.sqlStatement)
       {
         tmp390.SqlStatement = this.SqlStatement;
       }
       tmp390.__isset.sqlStatement = this.__isset.sqlStatement;
-      if((Properties != null) && __isset.properties)
+      if ((Properties != null) && __isset.properties)
       {
         tmp390.Properties = this.Properties.DeepCopy();
       }
       tmp390.__isset.properties = this.__isset.properties;
-      if((ViewSchema != null) && __isset.viewSchema)
+      if ((ViewSchema != null) && __isset.viewSchema)
       {
         tmp390.ViewSchema = this.ViewSchema;
       }
@@ -226,7 +226,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp395 = new TStruct("TDBSqlTempView");
         await oprot.WriteStructBeginAsync(tmp395, cancellationToken);
         var tmp396 = new TField();
-        if((Name != null) && __isset.name)
+        if ((Name != null) && __isset.name)
         {
           tmp396.Name = "name";
           tmp396.Type = TType.String;
@@ -235,7 +235,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Name, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((SqlStatement != null) && __isset.sqlStatement)
+        if ((SqlStatement != null) && __isset.sqlStatement)
         {
           tmp396.Name = "sqlStatement";
           tmp396.Type = TType.String;
@@ -244,7 +244,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(SqlStatement, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Properties != null) && __isset.properties)
+        if ((Properties != null) && __isset.properties)
         {
           tmp396.Name = "properties";
           tmp396.Type = TType.Map;
@@ -259,7 +259,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteMapEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ViewSchema != null) && __isset.viewSchema)
+        if ((ViewSchema != null) && __isset.viewSchema)
         {
           tmp396.Name = "viewSchema";
           tmp396.Type = TType.String;
@@ -290,19 +290,19 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Name != null) && __isset.name)
+        if ((Name != null) && __isset.name)
         {
           hashcode = (hashcode * 397) + Name.GetHashCode();
         }
-        if((SqlStatement != null) && __isset.sqlStatement)
+        if ((SqlStatement != null) && __isset.sqlStatement)
         {
           hashcode = (hashcode * 397) + SqlStatement.GetHashCode();
         }
-        if((Properties != null) && __isset.properties)
+        if ((Properties != null) && __isset.properties)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(Properties);
         }
-        if((ViewSchema != null) && __isset.viewSchema)
+        if ((ViewSchema != null) && __isset.viewSchema)
         {
           hashcode = (hashcode * 397) + ViewSchema.GetHashCode();
         }
@@ -314,27 +314,27 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp398 = new StringBuilder("TDBSqlTempView(");
       int tmp399 = 0;
-      if((Name != null) && __isset.name)
+      if ((Name != null) && __isset.name)
       {
-        if(0 < tmp399++) { tmp398.Append(", "); }
+        if (0 < tmp399++) { tmp398.Append(", "); }
         tmp398.Append("Name: ");
         Name.ToString(tmp398);
       }
-      if((SqlStatement != null) && __isset.sqlStatement)
+      if ((SqlStatement != null) && __isset.sqlStatement)
       {
-        if(0 < tmp399++) { tmp398.Append(", "); }
+        if (0 < tmp399++) { tmp398.Append(", "); }
         tmp398.Append("SqlStatement: ");
         SqlStatement.ToString(tmp398);
       }
-      if((Properties != null) && __isset.properties)
+      if ((Properties != null) && __isset.properties)
       {
-        if(0 < tmp399++) { tmp398.Append(", "); }
+        if (0 < tmp399++) { tmp398.Append(", "); }
         tmp398.Append("Properties: ");
         Properties.ToString(tmp398);
       }
-      if((ViewSchema != null) && __isset.viewSchema)
+      if ((ViewSchema != null) && __isset.viewSchema)
       {
-        if(0 < tmp399++) { tmp398.Append(", "); }
+        if (0 < tmp399++) { tmp398.Append(", "); }
         tmp398.Append("ViewSchema: ");
         ViewSchema.ToString(tmp398);
       }

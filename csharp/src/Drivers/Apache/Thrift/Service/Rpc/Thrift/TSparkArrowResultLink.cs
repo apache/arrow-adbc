@@ -63,7 +63,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TSparkArrowResultLink DeepCopy()
     {
       var tmp235 = new TSparkArrowResultLink();
-      if((FileLink != null))
+      if ((FileLink != null))
       {
         tmp235.FileLink = this.FileLink;
       }
@@ -195,7 +195,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp236 = new TStruct("TSparkArrowResultLink");
         await oprot.WriteStructBeginAsync(tmp236, cancellationToken);
         var tmp237 = new TField();
-        if((FileLink != null))
+        if ((FileLink != null))
         {
           tmp237.Name = "fileLink";
           tmp237.Type = TType.String;
@@ -251,7 +251,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((FileLink != null))
+        if ((FileLink != null))
         {
           hashcode = (hashcode * 397) + FileLink.GetHashCode();
         }
@@ -266,7 +266,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp238 = new StringBuilder("TSparkArrowResultLink(");
-      if((FileLink != null))
+      if ((FileLink != null))
       {
         tmp238.Append(", FileLink: ");
         FileLink.ToString(tmp238);

@@ -70,17 +70,17 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TProgressUpdateResp DeepCopy()
     {
       var tmp628 = new TProgressUpdateResp();
-      if((HeaderNames != null))
+      if ((HeaderNames != null))
       {
         tmp628.HeaderNames = this.HeaderNames.DeepCopy();
       }
-      if((Rows != null))
+      if ((Rows != null))
       {
         tmp628.Rows = this.Rows.DeepCopy();
       }
       tmp628.ProgressedPercentage = this.ProgressedPercentage;
       tmp628.Status = this.Status;
-      if((FooterSummary != null))
+      if ((FooterSummary != null))
       {
         tmp628.FooterSummary = this.FooterSummary;
       }
@@ -255,7 +255,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp638 = new TStruct("TProgressUpdateResp");
         await oprot.WriteStructBeginAsync(tmp638, cancellationToken);
         var tmp639 = new TField();
-        if((HeaderNames != null))
+        if ((HeaderNames != null))
         {
           tmp639.Name = "headerNames";
           tmp639.Type = TType.List;
@@ -269,7 +269,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteListEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Rows != null))
+        if ((Rows != null))
         {
           tmp639.Name = "rows";
           tmp639.Type = TType.List;
@@ -300,7 +300,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         await oprot.WriteFieldBeginAsync(tmp639, cancellationToken);
         await oprot.WriteI32Async((int)Status, cancellationToken);
         await oprot.WriteFieldEndAsync(cancellationToken);
-        if((FooterSummary != null))
+        if ((FooterSummary != null))
         {
           tmp639.Name = "footerSummary";
           tmp639.Type = TType.String;
@@ -339,17 +339,17 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((HeaderNames != null))
+        if ((HeaderNames != null))
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(HeaderNames);
         }
-        if((Rows != null))
+        if ((Rows != null))
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(Rows);
         }
         hashcode = (hashcode * 397) + ProgressedPercentage.GetHashCode();
         hashcode = (hashcode * 397) + Status.GetHashCode();
-        if((FooterSummary != null))
+        if ((FooterSummary != null))
         {
           hashcode = (hashcode * 397) + FooterSummary.GetHashCode();
         }
@@ -361,12 +361,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp643 = new StringBuilder("TProgressUpdateResp(");
-      if((HeaderNames != null))
+      if ((HeaderNames != null))
       {
         tmp643.Append(", HeaderNames: ");
         HeaderNames.ToString(tmp643);
       }
-      if((Rows != null))
+      if ((Rows != null))
       {
         tmp643.Append(", Rows: ");
         Rows.ToString(tmp643);
@@ -375,7 +375,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       ProgressedPercentage.ToString(tmp643);
       tmp643.Append(", Status: ");
       Status.ToString(tmp643);
-      if((FooterSummary != null))
+      if ((FooterSummary != null))
       {
         tmp643.Append(", FooterSummary: ");
         FooterSummary.ToString(tmp643);

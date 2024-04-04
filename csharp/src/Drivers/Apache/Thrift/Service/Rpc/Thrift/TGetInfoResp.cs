@@ -54,11 +54,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TGetInfoResp DeepCopy()
     {
       var tmp352 = new TGetInfoResp();
-      if((Status != null))
+      if ((Status != null))
       {
         tmp352.Status = (global::Apache.Hive.Service.Rpc.Thrift.TStatus)this.Status.DeepCopy();
       }
-      if((InfoValue != null))
+      if ((InfoValue != null))
       {
         tmp352.InfoValue = (global::Apache.Hive.Service.Rpc.Thrift.TGetInfoValue)this.InfoValue.DeepCopy();
       }
@@ -140,7 +140,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp353 = new TStruct("TGetInfoResp");
         await oprot.WriteStructBeginAsync(tmp353, cancellationToken);
         var tmp354 = new TField();
-        if((Status != null))
+        if ((Status != null))
         {
           tmp354.Name = "status";
           tmp354.Type = TType.Struct;
@@ -149,7 +149,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await Status.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((InfoValue != null))
+        if ((InfoValue != null))
         {
           tmp354.Name = "infoValue";
           tmp354.Type = TType.Struct;
@@ -178,11 +178,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Status != null))
+        if ((Status != null))
         {
           hashcode = (hashcode * 397) + Status.GetHashCode();
         }
-        if((InfoValue != null))
+        if ((InfoValue != null))
         {
           hashcode = (hashcode * 397) + InfoValue.GetHashCode();
         }
@@ -193,12 +193,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp355 = new StringBuilder("TGetInfoResp(");
-      if((Status != null))
+      if ((Status != null))
       {
         tmp355.Append(", Status: ");
         Status.ToString(tmp355);
       }
-      if((InfoValue != null))
+      if ((InfoValue != null))
       {
         tmp355.Append(", InfoValue: ");
         InfoValue.ToString(tmp355);

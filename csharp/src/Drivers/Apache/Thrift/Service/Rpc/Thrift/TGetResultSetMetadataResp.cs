@@ -237,66 +237,66 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TGetResultSetMetadataResp DeepCopy()
     {
       var tmp574 = new TGetResultSetMetadataResp();
-      if((Status != null))
+      if ((Status != null))
       {
         tmp574.Status = (global::Apache.Hive.Service.Rpc.Thrift.TStatus)this.Status.DeepCopy();
       }
-      if((Schema != null) && __isset.schema)
+      if ((Schema != null) && __isset.schema)
       {
         tmp574.Schema = (global::Apache.Hive.Service.Rpc.Thrift.TTableSchema)this.Schema.DeepCopy();
       }
       tmp574.__isset.schema = this.__isset.schema;
-      if(__isset.resultFormat)
+      if (__isset.resultFormat)
       {
         tmp574.ResultFormat = this.ResultFormat;
       }
       tmp574.__isset.resultFormat = this.__isset.resultFormat;
-      if(__isset.lz4Compressed)
+      if (__isset.lz4Compressed)
       {
         tmp574.Lz4Compressed = this.Lz4Compressed;
       }
       tmp574.__isset.lz4Compressed = this.__isset.lz4Compressed;
-      if((ArrowSchema != null) && __isset.arrowSchema)
+      if ((ArrowSchema != null) && __isset.arrowSchema)
       {
         tmp574.ArrowSchema = this.ArrowSchema;
       }
       tmp574.__isset.arrowSchema = this.__isset.arrowSchema;
-      if(__isset.cacheLookupResult)
+      if (__isset.cacheLookupResult)
       {
         tmp574.CacheLookupResult = this.CacheLookupResult;
       }
       tmp574.__isset.cacheLookupResult = this.__isset.cacheLookupResult;
-      if(__isset.uncompressedBytes)
+      if (__isset.uncompressedBytes)
       {
         tmp574.UncompressedBytes = this.UncompressedBytes;
       }
       tmp574.__isset.uncompressedBytes = this.__isset.uncompressedBytes;
-      if(__isset.compressedBytes)
+      if (__isset.compressedBytes)
       {
         tmp574.CompressedBytes = this.CompressedBytes;
       }
       tmp574.__isset.compressedBytes = this.__isset.compressedBytes;
-      if(__isset.isStagingOperation)
+      if (__isset.isStagingOperation)
       {
         tmp574.IsStagingOperation = this.IsStagingOperation;
       }
       tmp574.__isset.isStagingOperation = this.__isset.isStagingOperation;
-      if(__isset.reasonForNoCloudFetch)
+      if (__isset.reasonForNoCloudFetch)
       {
         tmp574.ReasonForNoCloudFetch = this.ReasonForNoCloudFetch;
       }
       tmp574.__isset.reasonForNoCloudFetch = this.__isset.reasonForNoCloudFetch;
-      if((ResultFiles != null) && __isset.resultFiles)
+      if ((ResultFiles != null) && __isset.resultFiles)
       {
         tmp574.ResultFiles = this.ResultFiles.DeepCopy();
       }
       tmp574.__isset.resultFiles = this.__isset.resultFiles;
-      if((ManifestFile != null) && __isset.manifestFile)
+      if ((ManifestFile != null) && __isset.manifestFile)
       {
         tmp574.ManifestFile = this.ManifestFile;
       }
       tmp574.__isset.manifestFile = this.__isset.manifestFile;
-      if((ManifestFileFormat != null) && __isset.manifestFileFormat)
+      if ((ManifestFileFormat != null) && __isset.manifestFileFormat)
       {
         tmp574.ManifestFileFormat = this.ManifestFileFormat;
       }
@@ -494,7 +494,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp578 = new TStruct("TGetResultSetMetadataResp");
         await oprot.WriteStructBeginAsync(tmp578, cancellationToken);
         var tmp579 = new TField();
-        if((Status != null))
+        if ((Status != null))
         {
           tmp579.Name = "status";
           tmp579.Type = TType.Struct;
@@ -503,7 +503,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await Status.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Schema != null) && __isset.schema)
+        if ((Schema != null) && __isset.schema)
         {
           tmp579.Name = "schema";
           tmp579.Type = TType.Struct;
@@ -512,7 +512,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await Schema.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.resultFormat)
+        if (__isset.resultFormat)
         {
           tmp579.Name = "resultFormat";
           tmp579.Type = TType.I32;
@@ -521,7 +521,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async(ResultFormat, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.lz4Compressed)
+        if (__isset.lz4Compressed)
         {
           tmp579.Name = "lz4Compressed";
           tmp579.Type = TType.Bool;
@@ -530,7 +530,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(Lz4Compressed, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ArrowSchema != null) && __isset.arrowSchema)
+        if ((ArrowSchema != null) && __isset.arrowSchema)
         {
           tmp579.Name = "arrowSchema";
           tmp579.Type = TType.String;
@@ -539,7 +539,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(ArrowSchema, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.cacheLookupResult)
+        if (__isset.cacheLookupResult)
         {
           tmp579.Name = "cacheLookupResult";
           tmp579.Type = TType.I32;
@@ -548,7 +548,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async(CacheLookupResult, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.uncompressedBytes)
+        if (__isset.uncompressedBytes)
         {
           tmp579.Name = "uncompressedBytes";
           tmp579.Type = TType.I64;
@@ -557,7 +557,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI64Async(UncompressedBytes, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.compressedBytes)
+        if (__isset.compressedBytes)
         {
           tmp579.Name = "compressedBytes";
           tmp579.Type = TType.I64;
@@ -566,7 +566,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI64Async(CompressedBytes, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.isStagingOperation)
+        if (__isset.isStagingOperation)
         {
           tmp579.Name = "isStagingOperation";
           tmp579.Type = TType.Bool;
@@ -575,7 +575,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(IsStagingOperation, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.reasonForNoCloudFetch)
+        if (__isset.reasonForNoCloudFetch)
         {
           tmp579.Name = "reasonForNoCloudFetch";
           tmp579.Type = TType.I32;
@@ -584,7 +584,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async(ReasonForNoCloudFetch, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ResultFiles != null) && __isset.resultFiles)
+        if ((ResultFiles != null) && __isset.resultFiles)
         {
           tmp579.Name = "resultFiles";
           tmp579.Type = TType.List;
@@ -598,7 +598,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteListEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ManifestFile != null) && __isset.manifestFile)
+        if ((ManifestFile != null) && __isset.manifestFile)
         {
           tmp579.Name = "manifestFile";
           tmp579.Type = TType.String;
@@ -607,7 +607,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(ManifestFile, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ManifestFileFormat != null) && __isset.manifestFileFormat)
+        if ((ManifestFileFormat != null) && __isset.manifestFileFormat)
         {
           tmp579.Name = "manifestFileFormat";
           tmp579.Type = TType.String;
@@ -647,55 +647,55 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Status != null))
+        if ((Status != null))
         {
           hashcode = (hashcode * 397) + Status.GetHashCode();
         }
-        if((Schema != null) && __isset.schema)
+        if ((Schema != null) && __isset.schema)
         {
           hashcode = (hashcode * 397) + Schema.GetHashCode();
         }
-        if(__isset.resultFormat)
+        if (__isset.resultFormat)
         {
           hashcode = (hashcode * 397) + ResultFormat.GetHashCode();
         }
-        if(__isset.lz4Compressed)
+        if (__isset.lz4Compressed)
         {
           hashcode = (hashcode * 397) + Lz4Compressed.GetHashCode();
         }
-        if((ArrowSchema != null) && __isset.arrowSchema)
+        if ((ArrowSchema != null) && __isset.arrowSchema)
         {
           hashcode = (hashcode * 397) + ArrowSchema.GetHashCode();
         }
-        if(__isset.cacheLookupResult)
+        if (__isset.cacheLookupResult)
         {
           hashcode = (hashcode * 397) + CacheLookupResult.GetHashCode();
         }
-        if(__isset.uncompressedBytes)
+        if (__isset.uncompressedBytes)
         {
           hashcode = (hashcode * 397) + UncompressedBytes.GetHashCode();
         }
-        if(__isset.compressedBytes)
+        if (__isset.compressedBytes)
         {
           hashcode = (hashcode * 397) + CompressedBytes.GetHashCode();
         }
-        if(__isset.isStagingOperation)
+        if (__isset.isStagingOperation)
         {
           hashcode = (hashcode * 397) + IsStagingOperation.GetHashCode();
         }
-        if(__isset.reasonForNoCloudFetch)
+        if (__isset.reasonForNoCloudFetch)
         {
           hashcode = (hashcode * 397) + ReasonForNoCloudFetch.GetHashCode();
         }
-        if((ResultFiles != null) && __isset.resultFiles)
+        if ((ResultFiles != null) && __isset.resultFiles)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(ResultFiles);
         }
-        if((ManifestFile != null) && __isset.manifestFile)
+        if ((ManifestFile != null) && __isset.manifestFile)
         {
           hashcode = (hashcode * 397) + ManifestFile.GetHashCode();
         }
-        if((ManifestFileFormat != null) && __isset.manifestFileFormat)
+        if ((ManifestFileFormat != null) && __isset.manifestFileFormat)
         {
           hashcode = (hashcode * 397) + ManifestFileFormat.GetHashCode();
         }
@@ -706,67 +706,67 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp581 = new StringBuilder("TGetResultSetMetadataResp(");
-      if((Status != null))
+      if ((Status != null))
       {
         tmp581.Append(", Status: ");
         Status.ToString(tmp581);
       }
-      if((Schema != null) && __isset.schema)
+      if ((Schema != null) && __isset.schema)
       {
         tmp581.Append(", Schema: ");
         Schema.ToString(tmp581);
       }
-      if(__isset.resultFormat)
+      if (__isset.resultFormat)
       {
         tmp581.Append(", ResultFormat: ");
         ResultFormat.ToString(tmp581);
       }
-      if(__isset.lz4Compressed)
+      if (__isset.lz4Compressed)
       {
         tmp581.Append(", Lz4Compressed: ");
         Lz4Compressed.ToString(tmp581);
       }
-      if((ArrowSchema != null) && __isset.arrowSchema)
+      if ((ArrowSchema != null) && __isset.arrowSchema)
       {
         tmp581.Append(", ArrowSchema: ");
         ArrowSchema.ToString(tmp581);
       }
-      if(__isset.cacheLookupResult)
+      if (__isset.cacheLookupResult)
       {
         tmp581.Append(", CacheLookupResult: ");
         CacheLookupResult.ToString(tmp581);
       }
-      if(__isset.uncompressedBytes)
+      if (__isset.uncompressedBytes)
       {
         tmp581.Append(", UncompressedBytes: ");
         UncompressedBytes.ToString(tmp581);
       }
-      if(__isset.compressedBytes)
+      if (__isset.compressedBytes)
       {
         tmp581.Append(", CompressedBytes: ");
         CompressedBytes.ToString(tmp581);
       }
-      if(__isset.isStagingOperation)
+      if (__isset.isStagingOperation)
       {
         tmp581.Append(", IsStagingOperation: ");
         IsStagingOperation.ToString(tmp581);
       }
-      if(__isset.reasonForNoCloudFetch)
+      if (__isset.reasonForNoCloudFetch)
       {
         tmp581.Append(", ReasonForNoCloudFetch: ");
         ReasonForNoCloudFetch.ToString(tmp581);
       }
-      if((ResultFiles != null) && __isset.resultFiles)
+      if ((ResultFiles != null) && __isset.resultFiles)
       {
         tmp581.Append(", ResultFiles: ");
         ResultFiles.ToString(tmp581);
       }
-      if((ManifestFile != null) && __isset.manifestFile)
+      if ((ManifestFile != null) && __isset.manifestFile)
       {
         tmp581.Append(", ManifestFile: ");
         ManifestFile.ToString(tmp581);
       }
-      if((ManifestFileFormat != null) && __isset.manifestFileFormat)
+      if ((ManifestFileFormat != null) && __isset.manifestFileFormat)
       {
         tmp581.Append(", ManifestFileFormat: ");
         ManifestFileFormat.ToString(tmp581);

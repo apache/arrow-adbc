@@ -177,46 +177,46 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TExecuteStatementResp DeepCopy()
     {
       var tmp415 = new TExecuteStatementResp();
-      if((Status != null))
+      if ((Status != null))
       {
         tmp415.Status = (global::Apache.Hive.Service.Rpc.Thrift.TStatus)this.Status.DeepCopy();
       }
-      if((OperationHandle != null) && __isset.operationHandle)
+      if ((OperationHandle != null) && __isset.operationHandle)
       {
         tmp415.OperationHandle = (global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle)this.OperationHandle.DeepCopy();
       }
       tmp415.__isset.operationHandle = this.__isset.operationHandle;
-      if((DirectResults != null) && __isset.directResults)
+      if ((DirectResults != null) && __isset.directResults)
       {
         tmp415.DirectResults = (global::Apache.Hive.Service.Rpc.Thrift.TSparkDirectResults)this.DirectResults.DeepCopy();
       }
       tmp415.__isset.directResults = this.__isset.directResults;
-      if(__isset.executionRejected)
+      if (__isset.executionRejected)
       {
         tmp415.ExecutionRejected = this.ExecutionRejected;
       }
       tmp415.__isset.executionRejected = this.__isset.executionRejected;
-      if(__isset.maxClusterCapacity)
+      if (__isset.maxClusterCapacity)
       {
         tmp415.MaxClusterCapacity = this.MaxClusterCapacity;
       }
       tmp415.__isset.maxClusterCapacity = this.__isset.maxClusterCapacity;
-      if(__isset.queryCost)
+      if (__isset.queryCost)
       {
         tmp415.QueryCost = this.QueryCost;
       }
       tmp415.__isset.queryCost = this.__isset.queryCost;
-      if((SessionConf != null) && __isset.sessionConf)
+      if ((SessionConf != null) && __isset.sessionConf)
       {
         tmp415.SessionConf = (global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf)this.SessionConf.DeepCopy();
       }
       tmp415.__isset.sessionConf = this.__isset.sessionConf;
-      if(__isset.currentClusterLoad)
+      if (__isset.currentClusterLoad)
       {
         tmp415.CurrentClusterLoad = this.CurrentClusterLoad;
       }
       tmp415.__isset.currentClusterLoad = this.__isset.currentClusterLoad;
-      if(__isset.idempotencyType)
+      if (__isset.idempotencyType)
       {
         tmp415.IdempotencyType = this.IdempotencyType;
       }
@@ -365,7 +365,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp416 = new TStruct("TExecuteStatementResp");
         await oprot.WriteStructBeginAsync(tmp416, cancellationToken);
         var tmp417 = new TField();
-        if((Status != null))
+        if ((Status != null))
         {
           tmp417.Name = "status";
           tmp417.Type = TType.Struct;
@@ -374,7 +374,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await Status.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((OperationHandle != null) && __isset.operationHandle)
+        if ((OperationHandle != null) && __isset.operationHandle)
         {
           tmp417.Name = "operationHandle";
           tmp417.Type = TType.Struct;
@@ -383,7 +383,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await OperationHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((DirectResults != null) && __isset.directResults)
+        if ((DirectResults != null) && __isset.directResults)
         {
           tmp417.Name = "directResults";
           tmp417.Type = TType.Struct;
@@ -392,7 +392,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await DirectResults.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.executionRejected)
+        if (__isset.executionRejected)
         {
           tmp417.Name = "executionRejected";
           tmp417.Type = TType.Bool;
@@ -401,7 +401,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(ExecutionRejected, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.maxClusterCapacity)
+        if (__isset.maxClusterCapacity)
         {
           tmp417.Name = "maxClusterCapacity";
           tmp417.Type = TType.Double;
@@ -410,7 +410,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteDoubleAsync(MaxClusterCapacity, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.queryCost)
+        if (__isset.queryCost)
         {
           tmp417.Name = "queryCost";
           tmp417.Type = TType.Double;
@@ -419,7 +419,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteDoubleAsync(QueryCost, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((SessionConf != null) && __isset.sessionConf)
+        if ((SessionConf != null) && __isset.sessionConf)
         {
           tmp417.Name = "sessionConf";
           tmp417.Type = TType.Struct;
@@ -428,7 +428,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await SessionConf.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.currentClusterLoad)
+        if (__isset.currentClusterLoad)
         {
           tmp417.Name = "currentClusterLoad";
           tmp417.Type = TType.Double;
@@ -437,7 +437,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteDoubleAsync(CurrentClusterLoad, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.idempotencyType)
+        if (__isset.idempotencyType)
         {
           tmp417.Name = "idempotencyType";
           tmp417.Type = TType.I32;
@@ -473,39 +473,39 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Status != null))
+        if ((Status != null))
         {
           hashcode = (hashcode * 397) + Status.GetHashCode();
         }
-        if((OperationHandle != null) && __isset.operationHandle)
+        if ((OperationHandle != null) && __isset.operationHandle)
         {
           hashcode = (hashcode * 397) + OperationHandle.GetHashCode();
         }
-        if((DirectResults != null) && __isset.directResults)
+        if ((DirectResults != null) && __isset.directResults)
         {
           hashcode = (hashcode * 397) + DirectResults.GetHashCode();
         }
-        if(__isset.executionRejected)
+        if (__isset.executionRejected)
         {
           hashcode = (hashcode * 397) + ExecutionRejected.GetHashCode();
         }
-        if(__isset.maxClusterCapacity)
+        if (__isset.maxClusterCapacity)
         {
           hashcode = (hashcode * 397) + MaxClusterCapacity.GetHashCode();
         }
-        if(__isset.queryCost)
+        if (__isset.queryCost)
         {
           hashcode = (hashcode * 397) + QueryCost.GetHashCode();
         }
-        if((SessionConf != null) && __isset.sessionConf)
+        if ((SessionConf != null) && __isset.sessionConf)
         {
           hashcode = (hashcode * 397) + SessionConf.GetHashCode();
         }
-        if(__isset.currentClusterLoad)
+        if (__isset.currentClusterLoad)
         {
           hashcode = (hashcode * 397) + CurrentClusterLoad.GetHashCode();
         }
-        if(__isset.idempotencyType)
+        if (__isset.idempotencyType)
         {
           hashcode = (hashcode * 397) + IdempotencyType.GetHashCode();
         }
@@ -516,47 +516,47 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp418 = new StringBuilder("TExecuteStatementResp(");
-      if((Status != null))
+      if ((Status != null))
       {
         tmp418.Append(", Status: ");
         Status.ToString(tmp418);
       }
-      if((OperationHandle != null) && __isset.operationHandle)
+      if ((OperationHandle != null) && __isset.operationHandle)
       {
         tmp418.Append(", OperationHandle: ");
         OperationHandle.ToString(tmp418);
       }
-      if((DirectResults != null) && __isset.directResults)
+      if ((DirectResults != null) && __isset.directResults)
       {
         tmp418.Append(", DirectResults: ");
         DirectResults.ToString(tmp418);
       }
-      if(__isset.executionRejected)
+      if (__isset.executionRejected)
       {
         tmp418.Append(", ExecutionRejected: ");
         ExecutionRejected.ToString(tmp418);
       }
-      if(__isset.maxClusterCapacity)
+      if (__isset.maxClusterCapacity)
       {
         tmp418.Append(", MaxClusterCapacity: ");
         MaxClusterCapacity.ToString(tmp418);
       }
-      if(__isset.queryCost)
+      if (__isset.queryCost)
       {
         tmp418.Append(", QueryCost: ");
         QueryCost.ToString(tmp418);
       }
-      if((SessionConf != null) && __isset.sessionConf)
+      if ((SessionConf != null) && __isset.sessionConf)
       {
         tmp418.Append(", SessionConf: ");
         SessionConf.ToString(tmp418);
       }
-      if(__isset.currentClusterLoad)
+      if (__isset.currentClusterLoad)
       {
         tmp418.Append(", CurrentClusterLoad: ");
         CurrentClusterLoad.ToString(tmp418);
       }
-      if(__isset.idempotencyType)
+      if (__isset.idempotencyType)
       {
         tmp418.Append(", IdempotencyType: ");
         IdempotencyType.ToString(tmp418);

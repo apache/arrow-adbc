@@ -65,7 +65,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TI16Value DeepCopy()
     {
       var tmp93 = new TI16Value();
-      if(__isset.@value)
+      if (__isset.@value)
       {
         tmp93.Value = this.Value;
       }
@@ -124,7 +124,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp94 = new TStruct("TI16Value");
         await oprot.WriteStructBeginAsync(tmp94, cancellationToken);
         var tmp95 = new TField();
-        if(__isset.@value)
+        if (__isset.@value)
         {
           tmp95.Name = "value";
           tmp95.Type = TType.I16;
@@ -152,7 +152,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if(__isset.@value)
+        if (__isset.@value)
         {
           hashcode = (hashcode * 397) + Value.GetHashCode();
         }
@@ -164,9 +164,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp96 = new StringBuilder("TI16Value(");
       int tmp97 = 0;
-      if(__isset.@value)
+      if (__isset.@value)
       {
-        if(0 < tmp97++) { tmp96.Append(", "); }
+        if (0 < tmp97++) { tmp96.Append(", "); }
         tmp96.Append("Value: ");
         Value.ToString(tmp96);
       }

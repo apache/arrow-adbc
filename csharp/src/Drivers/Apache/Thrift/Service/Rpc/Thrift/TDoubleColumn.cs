@@ -139,7 +139,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp181 = new TStruct("TDoubleColumn");
         await oprot.WriteStructBeginAsync(tmp181, cancellationToken);
         var tmp182 = new TField();
-        if((Values != null))
+        if ((Values != null))
         {
           tmp182.Name = "values";
           tmp182.Type = TType.List;
@@ -187,7 +187,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp184 = new StringBuilder("TDoubleColumn(");
-      if((Values != null))
+      if ((Values != null))
       {
         tmp184.Append(", Values: ");
         Values.ToString(tmp184);

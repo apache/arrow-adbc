@@ -54,11 +54,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TCancelDelegationTokenReq DeepCopy()
     {
       var tmp608 = new TCancelDelegationTokenReq();
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp608.SessionHandle = (global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle)this.SessionHandle.DeepCopy();
       }
-      if((DelegationToken != null))
+      if ((DelegationToken != null))
       {
         tmp608.DelegationToken = this.DelegationToken;
       }
@@ -139,7 +139,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp609 = new TStruct("TCancelDelegationTokenReq");
         await oprot.WriteStructBeginAsync(tmp609, cancellationToken);
         var tmp610 = new TField();
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           tmp610.Name = "sessionHandle";
           tmp610.Type = TType.Struct;
@@ -148,7 +148,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await SessionHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((DelegationToken != null))
+        if ((DelegationToken != null))
         {
           tmp610.Name = "delegationToken";
           tmp610.Type = TType.String;
@@ -177,11 +177,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((SessionHandle != null))
+        if ((SessionHandle != null))
         {
           hashcode = (hashcode * 397) + SessionHandle.GetHashCode();
         }
-        if((DelegationToken != null))
+        if ((DelegationToken != null))
         {
           hashcode = (hashcode * 397) + DelegationToken.GetHashCode();
         }
@@ -192,12 +192,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp611 = new StringBuilder("TCancelDelegationTokenReq(");
-      if((SessionHandle != null))
+      if ((SessionHandle != null))
       {
         tmp611.Append(", SessionHandle: ");
         SessionHandle.ToString(tmp611);
       }
-      if((DelegationToken != null))
+      if ((DelegationToken != null))
       {
         tmp611.Append(", DelegationToken: ");
         DelegationToken.ToString(tmp611);

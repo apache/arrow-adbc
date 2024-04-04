@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TTypeDesc DeepCopy()
     {
       var tmp60 = new TTypeDesc();
-      if((Types != null))
+      if ((Types != null))
       {
         tmp60.Types = this.Types.DeepCopy();
       }
@@ -126,7 +126,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp64 = new TStruct("TTypeDesc");
         await oprot.WriteStructBeginAsync(tmp64, cancellationToken);
         var tmp65 = new TField();
-        if((Types != null))
+        if ((Types != null))
         {
           tmp65.Name = "types";
           tmp65.Type = TType.List;
@@ -159,7 +159,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((Types != null))
+        if ((Types != null))
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(Types);
         }
@@ -170,7 +170,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp67 = new StringBuilder("TTypeDesc(");
-      if((Types != null))
+      if ((Types != null))
       {
         tmp67.Append(", Types: ");
         Types.ToString(tmp67);

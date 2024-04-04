@@ -122,22 +122,22 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp255 = new TStatus();
       tmp255.StatusCode = this.StatusCode;
-      if((InfoMessages != null) && __isset.infoMessages)
+      if ((InfoMessages != null) && __isset.infoMessages)
       {
         tmp255.InfoMessages = this.InfoMessages.DeepCopy();
       }
       tmp255.__isset.infoMessages = this.__isset.infoMessages;
-      if((SqlState != null) && __isset.sqlState)
+      if ((SqlState != null) && __isset.sqlState)
       {
         tmp255.SqlState = this.SqlState;
       }
       tmp255.__isset.sqlState = this.__isset.sqlState;
-      if(__isset.errorCode)
+      if (__isset.errorCode)
       {
         tmp255.ErrorCode = this.ErrorCode;
       }
       tmp255.__isset.errorCode = this.__isset.errorCode;
-      if((ErrorMessage != null) && __isset.errorMessage)
+      if ((ErrorMessage != null) && __isset.errorMessage)
       {
         tmp255.ErrorMessage = this.ErrorMessage;
       }
@@ -258,7 +258,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         await oprot.WriteFieldBeginAsync(tmp260, cancellationToken);
         await oprot.WriteI32Async((int)StatusCode, cancellationToken);
         await oprot.WriteFieldEndAsync(cancellationToken);
-        if((InfoMessages != null) && __isset.infoMessages)
+        if ((InfoMessages != null) && __isset.infoMessages)
         {
           tmp260.Name = "infoMessages";
           tmp260.Type = TType.List;
@@ -272,7 +272,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteListEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((SqlState != null) && __isset.sqlState)
+        if ((SqlState != null) && __isset.sqlState)
         {
           tmp260.Name = "sqlState";
           tmp260.Type = TType.String;
@@ -281,7 +281,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(SqlState, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.errorCode)
+        if (__isset.errorCode)
         {
           tmp260.Name = "errorCode";
           tmp260.Type = TType.I32;
@@ -290,7 +290,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async(ErrorCode, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ErrorMessage != null) && __isset.errorMessage)
+        if ((ErrorMessage != null) && __isset.errorMessage)
         {
           tmp260.Name = "errorMessage";
           tmp260.Type = TType.String;
@@ -323,19 +323,19 @@ namespace Apache.Hive.Service.Rpc.Thrift
       int hashcode = 157;
       unchecked {
         hashcode = (hashcode * 397) + StatusCode.GetHashCode();
-        if((InfoMessages != null) && __isset.infoMessages)
+        if ((InfoMessages != null) && __isset.infoMessages)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(InfoMessages);
         }
-        if((SqlState != null) && __isset.sqlState)
+        if ((SqlState != null) && __isset.sqlState)
         {
           hashcode = (hashcode * 397) + SqlState.GetHashCode();
         }
-        if(__isset.errorCode)
+        if (__isset.errorCode)
         {
           hashcode = (hashcode * 397) + ErrorCode.GetHashCode();
         }
-        if((ErrorMessage != null) && __isset.errorMessage)
+        if ((ErrorMessage != null) && __isset.errorMessage)
         {
           hashcode = (hashcode * 397) + ErrorMessage.GetHashCode();
         }
@@ -348,22 +348,22 @@ namespace Apache.Hive.Service.Rpc.Thrift
       var tmp262 = new StringBuilder("TStatus(");
       tmp262.Append(", StatusCode: ");
       StatusCode.ToString(tmp262);
-      if((InfoMessages != null) && __isset.infoMessages)
+      if ((InfoMessages != null) && __isset.infoMessages)
       {
         tmp262.Append(", InfoMessages: ");
         InfoMessages.ToString(tmp262);
       }
-      if((SqlState != null) && __isset.sqlState)
+      if ((SqlState != null) && __isset.sqlState)
       {
         tmp262.Append(", SqlState: ");
         SqlState.ToString(tmp262);
       }
-      if(__isset.errorCode)
+      if (__isset.errorCode)
       {
         tmp262.Append(", ErrorCode: ");
         ErrorCode.ToString(tmp262);
       }
-      if((ErrorMessage != null) && __isset.errorMessage)
+      if ((ErrorMessage != null) && __isset.errorMessage)
       {
         tmp262.Append(", ErrorMessage: ");
         ErrorMessage.ToString(tmp262);

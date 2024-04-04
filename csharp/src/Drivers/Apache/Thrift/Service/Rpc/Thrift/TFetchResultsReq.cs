@@ -130,28 +130,28 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public TFetchResultsReq DeepCopy()
     {
       var tmp588 = new TFetchResultsReq();
-      if((OperationHandle != null))
+      if ((OperationHandle != null))
       {
         tmp588.OperationHandle = (global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle)this.OperationHandle.DeepCopy();
       }
       tmp588.Orientation = this.Orientation;
       tmp588.MaxRows = this.MaxRows;
-      if(__isset.fetchType)
+      if (__isset.fetchType)
       {
         tmp588.FetchType = this.FetchType;
       }
       tmp588.__isset.fetchType = this.__isset.fetchType;
-      if(__isset.maxBytes)
+      if (__isset.maxBytes)
       {
         tmp588.MaxBytes = this.MaxBytes;
       }
       tmp588.__isset.maxBytes = this.__isset.maxBytes;
-      if(__isset.startRowOffset)
+      if (__isset.startRowOffset)
       {
         tmp588.StartRowOffset = this.StartRowOffset;
       }
       tmp588.__isset.startRowOffset = this.__isset.startRowOffset;
-      if(__isset.includeResultSetMetadata)
+      if (__isset.includeResultSetMetadata)
       {
         tmp588.IncludeResultSetMetadata = this.IncludeResultSetMetadata;
       }
@@ -289,7 +289,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         var tmp589 = new TStruct("TFetchResultsReq");
         await oprot.WriteStructBeginAsync(tmp589, cancellationToken);
         var tmp590 = new TField();
-        if((OperationHandle != null))
+        if ((OperationHandle != null))
         {
           tmp590.Name = "operationHandle";
           tmp590.Type = TType.Struct;
@@ -310,7 +310,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         await oprot.WriteFieldBeginAsync(tmp590, cancellationToken);
         await oprot.WriteI64Async(MaxRows, cancellationToken);
         await oprot.WriteFieldEndAsync(cancellationToken);
-        if(__isset.fetchType)
+        if (__isset.fetchType)
         {
           tmp590.Name = "fetchType";
           tmp590.Type = TType.I16;
@@ -319,7 +319,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI16Async(FetchType, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.maxBytes)
+        if (__isset.maxBytes)
         {
           tmp590.Name = "maxBytes";
           tmp590.Type = TType.I64;
@@ -328,7 +328,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI64Async(MaxBytes, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.startRowOffset)
+        if (__isset.startRowOffset)
         {
           tmp590.Name = "startRowOffset";
           tmp590.Type = TType.I64;
@@ -337,7 +337,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI64Async(StartRowOffset, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.includeResultSetMetadata)
+        if (__isset.includeResultSetMetadata)
         {
           tmp590.Name = "includeResultSetMetadata";
           tmp590.Type = TType.Bool;
@@ -371,25 +371,25 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override int GetHashCode() {
       int hashcode = 157;
       unchecked {
-        if((OperationHandle != null))
+        if ((OperationHandle != null))
         {
           hashcode = (hashcode * 397) + OperationHandle.GetHashCode();
         }
         hashcode = (hashcode * 397) + Orientation.GetHashCode();
         hashcode = (hashcode * 397) + MaxRows.GetHashCode();
-        if(__isset.fetchType)
+        if (__isset.fetchType)
         {
           hashcode = (hashcode * 397) + FetchType.GetHashCode();
         }
-        if(__isset.maxBytes)
+        if (__isset.maxBytes)
         {
           hashcode = (hashcode * 397) + MaxBytes.GetHashCode();
         }
-        if(__isset.startRowOffset)
+        if (__isset.startRowOffset)
         {
           hashcode = (hashcode * 397) + StartRowOffset.GetHashCode();
         }
-        if(__isset.includeResultSetMetadata)
+        if (__isset.includeResultSetMetadata)
         {
           hashcode = (hashcode * 397) + IncludeResultSetMetadata.GetHashCode();
         }
@@ -400,7 +400,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public override string ToString()
     {
       var tmp591 = new StringBuilder("TFetchResultsReq(");
-      if((OperationHandle != null))
+      if ((OperationHandle != null))
       {
         tmp591.Append(", OperationHandle: ");
         OperationHandle.ToString(tmp591);
@@ -409,22 +409,22 @@ namespace Apache.Hive.Service.Rpc.Thrift
       Orientation.ToString(tmp591);
       tmp591.Append(", MaxRows: ");
       MaxRows.ToString(tmp591);
-      if(__isset.fetchType)
+      if (__isset.fetchType)
       {
         tmp591.Append(", FetchType: ");
         FetchType.ToString(tmp591);
       }
-      if(__isset.maxBytes)
+      if (__isset.maxBytes)
       {
         tmp591.Append(", MaxBytes: ");
         MaxBytes.ToString(tmp591);
       }
-      if(__isset.startRowOffset)
+      if (__isset.startRowOffset)
       {
         tmp591.Append(", StartRowOffset: ");
         StartRowOffset.ToString(tmp591);
       }
-      if(__isset.includeResultSetMetadata)
+      if (__isset.includeResultSetMetadata)
       {
         tmp591.Append(", IncludeResultSetMetadata: ");
         IncludeResultSetMetadata.ToString(tmp591);

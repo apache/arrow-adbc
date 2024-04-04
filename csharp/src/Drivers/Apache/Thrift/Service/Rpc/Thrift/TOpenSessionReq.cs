@@ -198,47 +198,47 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       var tmp279 = new TOpenSessionReq();
       tmp279.Client_protocol = this.Client_protocol;
-      if((Username != null) && __isset.username)
+      if ((Username != null) && __isset.username)
       {
         tmp279.Username = this.Username;
       }
       tmp279.__isset.username = this.__isset.username;
-      if((Password != null) && __isset.password)
+      if ((Password != null) && __isset.password)
       {
         tmp279.Password = this.Password;
       }
       tmp279.__isset.password = this.__isset.password;
-      if((Configuration != null) && __isset.configuration)
+      if ((Configuration != null) && __isset.configuration)
       {
         tmp279.Configuration = this.Configuration.DeepCopy();
       }
       tmp279.__isset.configuration = this.__isset.configuration;
-      if((GetInfos != null) && __isset.getInfos)
+      if ((GetInfos != null) && __isset.getInfos)
       {
         tmp279.GetInfos = this.GetInfos.DeepCopy();
       }
       tmp279.__isset.getInfos = this.__isset.getInfos;
-      if(__isset.client_protocol_i64)
+      if (__isset.client_protocol_i64)
       {
         tmp279.Client_protocol_i64 = this.Client_protocol_i64;
       }
       tmp279.__isset.client_protocol_i64 = this.__isset.client_protocol_i64;
-      if((ConnectionProperties != null) && __isset.connectionProperties)
+      if ((ConnectionProperties != null) && __isset.connectionProperties)
       {
         tmp279.ConnectionProperties = this.ConnectionProperties.DeepCopy();
       }
       tmp279.__isset.connectionProperties = this.__isset.connectionProperties;
-      if((InitialNamespace != null) && __isset.initialNamespace)
+      if ((InitialNamespace != null) && __isset.initialNamespace)
       {
         tmp279.InitialNamespace = (global::Apache.Hive.Service.Rpc.Thrift.TNamespace)this.InitialNamespace.DeepCopy();
       }
       tmp279.__isset.initialNamespace = this.__isset.initialNamespace;
-      if(__isset.canUseMultipleCatalogs)
+      if (__isset.canUseMultipleCatalogs)
       {
         tmp279.CanUseMultipleCatalogs = this.CanUseMultipleCatalogs;
       }
       tmp279.__isset.canUseMultipleCatalogs = this.__isset.canUseMultipleCatalogs;
-      if((SessionId != null) && __isset.sessionId)
+      if ((SessionId != null) && __isset.sessionId)
       {
         tmp279.SessionId = (global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier)this.SessionId.DeepCopy();
       }
@@ -435,7 +435,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         await oprot.WriteFieldBeginAsync(tmp292, cancellationToken);
         await oprot.WriteI32Async((int)Client_protocol, cancellationToken);
         await oprot.WriteFieldEndAsync(cancellationToken);
-        if((Username != null) && __isset.username)
+        if ((Username != null) && __isset.username)
         {
           tmp292.Name = "username";
           tmp292.Type = TType.String;
@@ -444,7 +444,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Username, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Password != null) && __isset.password)
+        if ((Password != null) && __isset.password)
         {
           tmp292.Name = "password";
           tmp292.Type = TType.String;
@@ -453,7 +453,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Password, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((Configuration != null) && __isset.configuration)
+        if ((Configuration != null) && __isset.configuration)
         {
           tmp292.Name = "configuration";
           tmp292.Type = TType.Map;
@@ -468,7 +468,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteMapEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((GetInfos != null) && __isset.getInfos)
+        if ((GetInfos != null) && __isset.getInfos)
         {
           tmp292.Name = "getInfos";
           tmp292.Type = TType.List;
@@ -482,7 +482,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteListEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.client_protocol_i64)
+        if (__isset.client_protocol_i64)
         {
           tmp292.Name = "client_protocol_i64";
           tmp292.Type = TType.I64;
@@ -491,7 +491,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI64Async(Client_protocol_i64, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ConnectionProperties != null) && __isset.connectionProperties)
+        if ((ConnectionProperties != null) && __isset.connectionProperties)
         {
           tmp292.Name = "connectionProperties";
           tmp292.Type = TType.Map;
@@ -506,7 +506,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteMapEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((InitialNamespace != null) && __isset.initialNamespace)
+        if ((InitialNamespace != null) && __isset.initialNamespace)
         {
           tmp292.Name = "initialNamespace";
           tmp292.Type = TType.Struct;
@@ -515,7 +515,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await InitialNamespace.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.canUseMultipleCatalogs)
+        if (__isset.canUseMultipleCatalogs)
         {
           tmp292.Name = "canUseMultipleCatalogs";
           tmp292.Type = TType.Bool;
@@ -524,7 +524,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(CanUseMultipleCatalogs, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((SessionId != null) && __isset.sessionId)
+        if ((SessionId != null) && __isset.sessionId)
         {
           tmp292.Name = "sessionId";
           tmp292.Type = TType.Struct;
@@ -562,39 +562,39 @@ namespace Apache.Hive.Service.Rpc.Thrift
       int hashcode = 157;
       unchecked {
         hashcode = (hashcode * 397) + Client_protocol.GetHashCode();
-        if((Username != null) && __isset.username)
+        if ((Username != null) && __isset.username)
         {
           hashcode = (hashcode * 397) + Username.GetHashCode();
         }
-        if((Password != null) && __isset.password)
+        if ((Password != null) && __isset.password)
         {
           hashcode = (hashcode * 397) + Password.GetHashCode();
         }
-        if((Configuration != null) && __isset.configuration)
+        if ((Configuration != null) && __isset.configuration)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(Configuration);
         }
-        if((GetInfos != null) && __isset.getInfos)
+        if ((GetInfos != null) && __isset.getInfos)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(GetInfos);
         }
-        if(__isset.client_protocol_i64)
+        if (__isset.client_protocol_i64)
         {
           hashcode = (hashcode * 397) + Client_protocol_i64.GetHashCode();
         }
-        if((ConnectionProperties != null) && __isset.connectionProperties)
+        if ((ConnectionProperties != null) && __isset.connectionProperties)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(ConnectionProperties);
         }
-        if((InitialNamespace != null) && __isset.initialNamespace)
+        if ((InitialNamespace != null) && __isset.initialNamespace)
         {
           hashcode = (hashcode * 397) + InitialNamespace.GetHashCode();
         }
-        if(__isset.canUseMultipleCatalogs)
+        if (__isset.canUseMultipleCatalogs)
         {
           hashcode = (hashcode * 397) + CanUseMultipleCatalogs.GetHashCode();
         }
-        if((SessionId != null) && __isset.sessionId)
+        if ((SessionId != null) && __isset.sessionId)
         {
           hashcode = (hashcode * 397) + SessionId.GetHashCode();
         }
@@ -607,47 +607,47 @@ namespace Apache.Hive.Service.Rpc.Thrift
       var tmp296 = new StringBuilder("TOpenSessionReq(");
       tmp296.Append(", Client_protocol: ");
       Client_protocol.ToString(tmp296);
-      if((Username != null) && __isset.username)
+      if ((Username != null) && __isset.username)
       {
         tmp296.Append(", Username: ");
         Username.ToString(tmp296);
       }
-      if((Password != null) && __isset.password)
+      if ((Password != null) && __isset.password)
       {
         tmp296.Append(", Password: ");
         Password.ToString(tmp296);
       }
-      if((Configuration != null) && __isset.configuration)
+      if ((Configuration != null) && __isset.configuration)
       {
         tmp296.Append(", Configuration: ");
         Configuration.ToString(tmp296);
       }
-      if((GetInfos != null) && __isset.getInfos)
+      if ((GetInfos != null) && __isset.getInfos)
       {
         tmp296.Append(", GetInfos: ");
         GetInfos.ToString(tmp296);
       }
-      if(__isset.client_protocol_i64)
+      if (__isset.client_protocol_i64)
       {
         tmp296.Append(", Client_protocol_i64: ");
         Client_protocol_i64.ToString(tmp296);
       }
-      if((ConnectionProperties != null) && __isset.connectionProperties)
+      if ((ConnectionProperties != null) && __isset.connectionProperties)
       {
         tmp296.Append(", ConnectionProperties: ");
         ConnectionProperties.ToString(tmp296);
       }
-      if((InitialNamespace != null) && __isset.initialNamespace)
+      if ((InitialNamespace != null) && __isset.initialNamespace)
       {
         tmp296.Append(", InitialNamespace: ");
         InitialNamespace.ToString(tmp296);
       }
-      if(__isset.canUseMultipleCatalogs)
+      if (__isset.canUseMultipleCatalogs)
       {
         tmp296.Append(", CanUseMultipleCatalogs: ");
         CanUseMultipleCatalogs.ToString(tmp296);
       }
-      if((SessionId != null) && __isset.sessionId)
+      if ((SessionId != null) && __isset.sessionId)
       {
         tmp296.Append(", SessionId: ");
         SessionId.ToString(tmp296);
