@@ -19,17 +19,4 @@
 *.so
 *.dll
 adbc.h
-connection.cc
-connection.h
-database.h
-database.cc
-error.h
-error.cc
-postgresql.cc
-statement.h
-statement.cc
-postgres_type.h
-postgres_util.h
-result_helper.h
-result_helper.cc
 Makevars

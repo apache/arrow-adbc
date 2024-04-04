@@ -58,22 +58,22 @@ This is a basic example which shows you how to solve a common problem:
 ``` r
 library(adbcdrivermanager)
 
-# Use the driver manager to connect to a database
-db <- adbc_database_init(adbcsqlite::adbcsqlite(), uri = ":memory:")
+# Open a new connection to a database
+db <- adbc_database_init(
+  adbcsqlite::adbcsqlite(),
+  uri = ":memory:"
+)
+
 con <- adbc_connection_init(db)
 
 # Write a table
-flights <- nycflights13::flights
-# (timestamp not supported yet)
-flights$time_hour <- NULL
-flights |>
-  write_adbc(con, "flights")
+nycflights13::flights |> write_adbc(con, "flights")
 
-# Query it
+# Issue a query
 con |>
   read_adbc("SELECT * from flights") |>
   tibble::as_tibble()
-#> # A tibble: 336,776 × 18
+#> # A tibble: 336,776 × 19
 #>     year month   day dep_time sched_dep_time dep_delay arr_time sched_arr_time
 #>    <dbl> <dbl> <dbl>    <dbl>          <dbl>     <dbl>    <dbl>          <dbl>
 #>  1  2013     1     1      517            515         2      830            819
@@ -87,15 +87,11 @@ con |>
 #>  9  2013     1     1      557            600        -3      838            846
 #> 10  2013     1     1      558            600        -2      753            745
 #> # ℹ 336,766 more rows
-#> # ℹ 10 more variables: arr_delay <dbl>, carrier <chr>, flight <dbl>,
+#> # ℹ 11 more variables: arr_delay <dbl>, carrier <chr>, flight <dbl>,
 #> #   tailnum <chr>, origin <chr>, dest <chr>, air_time <dbl>, distance <dbl>,
-#> #   hour <dbl>, minute <dbl>
-```
+#> #   hour <dbl>, minute <dbl>, time_hour <chr>
 
-``` r
-# Clean up
-con |>
-  execute_adbc("DROP TABLE flights")
+# Clean up!
 adbc_connection_release(con)
 adbc_database_release(db)
 ```

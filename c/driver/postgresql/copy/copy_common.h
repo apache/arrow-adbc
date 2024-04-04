@@ -18,7 +18,9 @@
 #pragma once
 
 // Windows
+#if !defined(NOMINMAX)
 #define NOMINMAX
+#endif
 
 #include <cstdint>
 

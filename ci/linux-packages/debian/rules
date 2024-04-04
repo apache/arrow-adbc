@@ -32,7 +32,7 @@ CMAKE_BUILD_TYPE = RelWithDebInfo
 
 override_dh_auto_configure:
 	env						\
-	  PATH=/usr/lib/go-1.20/bin:$${PATH}		\
+	  PATH=/usr/lib/go-1.21/bin:$${PATH}		\
 	  dh_auto_configure				\
 	    --sourcedirectory=c/			\
 	    --builddirectory=c.build			\
@@ -78,4 +78,8 @@ override_dh_auto_test:
 override_dh_dwz:
 	# libadbc_driver_flightsql.so.* has compressed DWARF.
 	# We can't use dwz for compressed DWARF.
-	dh_dwz --exclude=libadbc_driver_flightsql --exclude=libadbc_driver_snowflake
+	dh_dwz \
+		--exclude=libadbc_driver_flightsql \
+		--exclude=libadbc_driver_postgresql \
+		--exclude=libadbc_driver_snowflake \
+		--exclude=libadbc_driver_sqlite

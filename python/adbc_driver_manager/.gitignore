@@ -19,6 +19,7 @@ adbc_driver_manager/*.c
 adbc_driver_manager/*.cc
 adbc_driver_manager/*.cpp
 adbc_driver_manager/*.h
+adbc_driver_manager/*.hpp
 build/
 dist/
 repaired_wheels/

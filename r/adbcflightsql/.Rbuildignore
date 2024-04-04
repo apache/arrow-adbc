@@ -4,7 +4,6 @@
 ^bootstrap\.R$
 ^README\.Rmd$
 ^src/Makevars$
-^configure\.win$
 ^\.vscode$
 ^src/go/tmp$
 ^_pkgdown\.yml$
@@ -13,3 +12,4 @@
 ^cran-comments\.md$
 ^src/\.go-cache$
 ^src/\.go-path$
+^configure\.win$

@@ -17,6 +17,8 @@
 
 Cython
 importlib-resources
+# nodejs is required by pyright
+nodejs >=13.0.0
 pandas
 pyarrow>=8.0.0
 pyright

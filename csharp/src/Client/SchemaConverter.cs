@@ -70,16 +70,16 @@ namespace Apache.Arrow.Adbc.Client
                     f.HasMetadata
                 )
                 {
-                    if (f.Metadata.TryGetValue("precision", out string precisionKey))
+                    if (f.Metadata.TryGetValue("precision", out string precisionValue))
                     {
-                        if(!string.IsNullOrEmpty(precisionKey))
-                            row[SchemaTableColumn.NumericPrecision] = Convert.ToInt32(f.Metadata[precisionKey]);
+                        if(!string.IsNullOrEmpty(precisionValue))
+                            row[SchemaTableColumn.NumericPrecision] = Convert.ToInt32(precisionValue);
                     }
 
-                    if(f.Metadata.TryGetValue("scale", out string scaleKey))
+                    if(f.Metadata.TryGetValue("scale", out string scaleValue))
                     {
-                        if(!string.IsNullOrEmpty(scaleKey))
-                            row[SchemaTableColumn.NumericScale] = Convert.ToInt32(f.Metadata[scaleKey]);
+                        if(!string.IsNullOrEmpty(scaleValue))
+                            row[SchemaTableColumn.NumericScale] = Convert.ToInt32(scaleValue);
                     }
                 }
                 else if (f.DataType is Decimal128Type decimal128Type)

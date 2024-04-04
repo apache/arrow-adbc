@@ -30,3 +30,4 @@ package pkg
 
 //go:generate go run ./gen -prefix "FlightSQL" -driver ../driver/flightsql -o flightsql
 //go:generate go run ./gen -prefix "Snowflake" -driver ../driver/snowflake -o snowflake
+//go:generate go run ./gen -prefix "PanicDummy" -driver ../driver/panicdummy -o panicdummy

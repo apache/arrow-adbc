@@ -26,8 +26,8 @@
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.h>
 
-#include "common/utils.h"
 #include "copy/reader.h"
+#include "driver/common/utils.h"
 #include "postgres_type.h"
 
 #define ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES \

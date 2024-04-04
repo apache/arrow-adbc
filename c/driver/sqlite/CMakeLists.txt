@@ -27,7 +27,7 @@ endif()
 
 add_arrow_lib(adbc_driver_sqlite
               SOURCES
-              sqlite.c
+              sqlite.cc
               statement_reader.c
               OUTPUTS
               ADBC_LIBRARIES
@@ -40,10 +40,12 @@ add_arrow_lib(adbc_driver_sqlite
               SHARED_LINK_LIBS
               ${SQLite3_LINK_LIBRARIES}
               adbc_driver_common
+              adbc_driver_framework
               nanoarrow
               STATIC_LINK_LIBS
               ${SQLite3_LINK_LIBRARIES}
               adbc_driver_common
+              adbc_driver_framework
               nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
 

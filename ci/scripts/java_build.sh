@@ -34,7 +34,7 @@ main() {
 
     echo "=== Build ==="
     pushd ${source_dir}/java
-    mvn clean \
+    mvn -B clean \
         install \
         assembly:single \
         source:jar \

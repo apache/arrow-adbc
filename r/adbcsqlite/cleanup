@@ -15,4 +15,5 @@
 # specific language governing permissions and limitations
 # under the License.
 
-rm src/*.o src/nanoarrow/*.o src/common/*.o || true
+find src -name "*.o" -delete || true
+find src -name "*.so" -delete || true

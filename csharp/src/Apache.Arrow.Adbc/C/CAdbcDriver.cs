@@ -148,7 +148,7 @@ namespace Apache.Arrow.Adbc.C
         /// unrecognized codes (the row will be omitted from the result).
         /// </summary>
 #if NET5_0_OR_GREATER
-        internal delegate* unmanaged<CAdbcConnection*, byte*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetInfo;
+        internal delegate* unmanaged<CAdbcConnection*, int*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetInfo;
 #else
         internal IntPtr ConnectionGetInfo;
 #endif

@@ -415,7 +415,9 @@ $ cd go/adbc && go-licenses report ./... \
   --ignore github.com/apache/arrow/go/v11 \
   --ignore github.com/apache/arrow/go/v12 \
   --ignore github.com/apache/arrow/go/v13 \
+  --ignore github.com/apache/arrow/go/v14 \
   --ignore github.com/apache/arrow/go/v15 \
+  --ignore github.com/apache/arrow/go/v16 \
   --template ../../license.tpl > ../../LICENSE.txt 2> /dev/null
 ```
 

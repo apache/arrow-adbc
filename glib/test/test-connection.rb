@@ -149,7 +149,7 @@ class ConnectionTest < Test::Unit::TestCase
                          "main",
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "",
                              "db_schema_tables" => nil,
                            },
                          ],
@@ -166,7 +166,7 @@ class ConnectionTest < Test::Unit::TestCase
                          "main",
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "",
                              "db_schema_tables" => nil,
                            },
                          ],
@@ -190,7 +190,7 @@ class ConnectionTest < Test::Unit::TestCase
                          "main",
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => nil,
@@ -214,7 +214,7 @@ class ConnectionTest < Test::Unit::TestCase
                          "main",
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => nil,
@@ -238,7 +238,7 @@ class ConnectionTest < Test::Unit::TestCase
                          "main",
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "",
                              "db_schema_tables" => [],
                            },
                          ],
@@ -255,7 +255,7 @@ class ConnectionTest < Test::Unit::TestCase
                          "main",
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => nil,
@@ -279,7 +279,7 @@ class ConnectionTest < Test::Unit::TestCase
                          "main",
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => nil,
@@ -303,7 +303,7 @@ class ConnectionTest < Test::Unit::TestCase
                          "main",
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "",
                              "db_schema_tables" => [],
                            },
                          ],
@@ -320,7 +320,7 @@ class ConnectionTest < Test::Unit::TestCase
                          "main",
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => [
@@ -387,7 +387,7 @@ class ConnectionTest < Test::Unit::TestCase
                          "main",
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => [
@@ -433,7 +433,7 @@ class ConnectionTest < Test::Unit::TestCase
                          "main",
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => [],
@@ -492,7 +492,7 @@ class ConnectionTest < Test::Unit::TestCase
       message =
         "[adbc][connection][set-option]" +
         "[NOT_IMPLEMENTED][0] " +
-        "[SQLite] Unknown connection option adbc.connection.readonly=false"
+        "[SQLite] Unknown connection option adbc.connection.readonly='false'"
       assert_raise(ADBC::Error::NotImplemented.new(message)) do
         connection.read_only = false
       end
@@ -506,7 +506,7 @@ class ConnectionTest < Test::Unit::TestCase
         "[NOT_IMPLEMENTED][0] " +
         "[SQLite] Unknown connection option " +
         "adbc.connection.transaction.isolation_level=" +
-        "adbc.connection.transaction.isolation.linearizable"
+        "'adbc.connection.transaction.isolation.linearizable'"
       assert_raise(ADBC::Error::NotImplemented.new(message)) do
         connection.isolation_level = :linearizable
       end

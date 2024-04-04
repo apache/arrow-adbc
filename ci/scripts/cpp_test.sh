@@ -31,12 +31,12 @@ test_project() {
 
     pushd "${build_dir}/"
 
-    local labels="driver-common"
+    local labels=""
     if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
        labels="${labels}|driver-flightsql"
     fi
     if [[ "${BUILD_DRIVER_MANAGER}" -gt 0 ]]; then
-       labels="${labels}|driver-manager"
+       labels="${labels}|driver-common|driver-manager"
     fi
     if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
        labels="${labels}|driver-postgresql"
@@ -50,8 +50,10 @@ test_project() {
     if [[ "${BUILD_INTEGRATION_DUCKDB}" -gt 0 ]]; then
        labels="${labels}|integration-duckdb"
     fi
+    # Remove leading pipe
+    labels="${labels:1}"
 
-    ctest \
+    ctest --progress -VV \
         --output-on-failure \
         --no-tests=error \
         -L "${labels}"
@@ -69,7 +71,6 @@ main() {
 
     export DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
     export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
-    export GODEBUG=cgocheck=2
 
     test_project "${build_dir}"
 }

@@ -468,8 +468,8 @@ func arrFromVal(val any) arrow.Array {
 	case string:
 		dt = arrow.BinaryTypes.String
 		buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
-		var buf = *(*[]byte)(unsafe.Pointer(&v))
-		(*reflect.SliceHeader)(unsafe.Pointer(&buf)).Cap = len(v)
+
+		buf := unsafe.Slice(unsafe.StringData(v), len(v))
 		buffers = append(buffers, memory.NewBufferBytes(buf))
 	default:
 		panic(fmt.Sprintf("unsupported type %T", val))

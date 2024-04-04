@@ -28,4 +28,4 @@ all: $(SHLIB)
 $(SHLIB): gostatic
 
 gostatic:
-		(cd "$(CURDIR)/go/adbc"; GOMAXPROCS=$(GOMAXPROCS) GOPATH="$(CURDIR)/.go-path" GOCACHE="$(CURDIR)/.go-cache" CC="$(CGO_CC)" CXX="$(CGO_CXX)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(PKG_LIBS)" "@gobin@" build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_flightsql.a -buildmode=c-archive "./pkg/flightsql")
+		(cd "$(CURDIR)/go/adbc"; GOMAXPROCS=$(GOMAXPROCS) GOPATH="$(CURDIR)/.go-path" GOCACHE="$(CURDIR)/.go-cache" GOFLAGS=-modcacherw CC="$(CGO_CC)" CXX="$(CGO_CXX)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(PKG_LIBS)" "@gobin@" build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_flightsql.a -buildmode=c-archive "./pkg/flightsql")

@@ -1,6 +1,6 @@
 Package: adbcsnowflake
 Title: Arrow Database Connectivity ('ADBC') 'Snowflake' Driver
-Version: 0.10.0.9000
+Version: 0.11.0.9000
 Authors@R: c(
       person("Dewey", "Dunnington", , "dewey@dunnington.ca", role = c("aut", "cre"),
              comment = c(ORCID = "0000-0002-9415-4582")),
@@ -20,7 +20,7 @@ Suggests:
     nanoarrow,
     openssl,
     testthat (>= 3.0.0)
-SystemRequirements: GNU make, Go (>= 1.19.13)
+SystemRequirements: GNU make, Go (>= 1.21)
 Config/testthat/edition: 3
 Config/build/bootstrap: TRUE
 URL: https://github.com/apache/arrow-adbc, https://arrow.apache.org/adbc/current/r/adbcsnowflake/

@@ -30,6 +30,14 @@ Glossary
      abstract over the underlying :term:`wire protocol` and other details.
      For example, ADBC, JDBC, ODBC.
 
+   connection
+     In ADBC, the connection object/struct represents a single connection to a
+     database.  Multiple connections may be created from one :term:`database`.
+
+   database
+     In ADBC, the database object/struct holds state that is shared across
+     connections.
+
    driver
      Loosely speaking, a library that implements a :term:`client API` using a
      :term:`wire protocol`.  For example, the ADBC PostgreSQL driver exposes
@@ -47,6 +55,12 @@ Glossary
      link to them.  (Since all drivers expose the same API, their symbols
      would collide otherwise.)  In Python, it loads drivers and provides
      Python bindings on top.
+
+   statement
+     In ADBC, the statement object/struct holds state for executing a single
+     query.  The query itself, bind parameters, result sets, and so on are all
+     tied to the statement.  Multiple statements may be created from one
+     :term:`connection` (though not all drivers will support this).
 
    Substrait
      `Substrait`_ describes itself as a "cross-language serialization for

@@ -73,20 +73,16 @@ db <- adbc_database_init(adbcpostgresql::adbcpostgresql(), uri = uri)
 con <- adbc_connection_init(db)
 
 # Write a table
-flights <- head(nycflights13::flights, 100)
-# (timestamp not supported yet)
-flights$time_hour <- NULL
-flights |>
-  write_adbc(con, "flights")
+nycflights13::flights |> write_adbc(con, "flights")
 
-# Query it
+# Issue a query
 con |>
   read_adbc("SELECT * from flights") |>
   tibble::as_tibble()
 ```
 
 ```{r example-clean-up}
-# Clean up
+# Clean up!
 con |>
   execute_adbc("DROP TABLE flights")
 adbc_connection_release(con)
