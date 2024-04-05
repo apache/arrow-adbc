@@ -183,6 +183,10 @@ class SqliteConnectionTest : public ::testing::Test,
 ADBCV_TEST_CONNECTION(SqliteConnectionTest)
 
 TEST_F(SqliteConnectionTest, ExtensionLoading) {
+#if defined(ADBC_SQLITE_WITH_NO_LOAD_EXTENSION)
+  GTEST_SKIP() << "Linking to SQLite without extension loading";
+#endif
+
   ASSERT_THAT(AdbcConnectionNew(&connection, &error),
               adbc_validation::IsOkStatus(&error));
 
