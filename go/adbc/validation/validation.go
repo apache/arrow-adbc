@@ -300,7 +300,6 @@ func (c *ConnectionTests) TestMetadataGetInfo() {
 		adbc.InfoVendorName,
 		adbc.InfoVendorVersion,
 		adbc.InfoVendorArrowVersion,
-		adbc.InfoVendorReadOnly,
 	}
 
 	rdr, err := cnxn.GetInfo(ctx, info)

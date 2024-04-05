@@ -37,7 +37,6 @@ var infoValueTypeCodeForInfoCode = map[adbc.InfoCode]adbc.InfoValueTypeCode{
 	adbc.InfoDriverVersion:             adbc.InfoValueStringType,
 	adbc.InfoDriverArrowVersion:        adbc.InfoValueStringType,
 	adbc.InfoDriverADBCVersion:         adbc.InfoValueInt64Type,
-	adbc.InfoVendorReadOnly:            adbc.InfoValueBooleanType,
 	adbc.InfoVendorSql:                 adbc.InfoValueBooleanType,
 	adbc.InfoVendorSubstrait:           adbc.InfoValueBooleanType,
 	adbc.InfoVendorSubstraitMinVersion: adbc.InfoValueStringType,

@@ -137,7 +137,6 @@ var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
 	adbc.InfoVendorName:                flightsql.SqlInfoFlightSqlServerName,
 	adbc.InfoVendorVersion:             flightsql.SqlInfoFlightSqlServerVersion,
 	adbc.InfoVendorArrowVersion:        flightsql.SqlInfoFlightSqlServerArrowVersion,
-	adbc.InfoVendorReadOnly:            flightsql.SqlInfoFlightSqlServerReadOnly,
 	adbc.InfoVendorSql:                 flightsql.SqlInfoFlightSqlServerSql,
 	adbc.InfoVendorSubstrait:           flightsql.SqlInfoFlightSqlServerSubstrait,
 	adbc.InfoVendorSubstraitMinVersion: flightsql.SqlInfoFlightSqlServerSubstraitMinVersion,

@@ -225,8 +225,6 @@ func (s *SnowflakeQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 		return adbc.AdbcVersion1_1_0
 	case adbc.InfoVendorName:
 		return "Snowflake"
-	case adbc.InfoVendorReadOnly:
-		return false
 	}
 
 	return nil
