@@ -26,7 +26,7 @@
 #include <vector>
 
 #include "driver/common/options.h"
-#include "driver/framework/base.h"
+#include "driver/framework/base_driver.h"
 #include "driver/framework/status.h"
 
 namespace adbc::driver {
