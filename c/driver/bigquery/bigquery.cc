@@ -20,8 +20,8 @@
 #include <cstring>
 #include <memory>
 
-#include <adbc.h>
 #include <absl/log/initialize.h>
+#include <adbc.h>
 
 #include "common/utils.h"
 #include "connection.h"
@@ -835,7 +835,7 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
 extern "C" {
 ADBC_EXPORT
 AdbcStatusCode BigqueryDriverInit(int version, void* raw_driver,
-                                    struct AdbcError* error) {
+                                  struct AdbcError* error) {
   if (version != ADBC_VERSION_1_0_0 && version != ADBC_VERSION_1_1_0) {
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }

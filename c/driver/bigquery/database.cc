@@ -23,8 +23,8 @@
 #include <utility>
 #include <vector>
 
-#include <adbc.h>
 #include <absl/log/initialize.h>
+#include <adbc.h>
 #include <google/cloud/bigquery/storage/v1/bigquery_read_client.h>
 #include <nanoarrow/nanoarrow.h>
 
@@ -32,11 +32,8 @@
 
 namespace adbc_bigquery {
 
-BigqueryDatabase::BigqueryDatabase() {
-  // TODO_BIGQUERY: Initialize the BigQuery client.
-}
 BigqueryDatabase::~BigqueryDatabase() = default;
-  
+
 AdbcStatusCode BigqueryDatabase::GetOption(const char* option, char* value,
                                            size_t* length, struct AdbcError* error) {
   return ADBC_STATUS_NOT_FOUND;
@@ -54,13 +51,9 @@ AdbcStatusCode BigqueryDatabase::GetOptionDouble(const char* option, double* val
   return ADBC_STATUS_NOT_FOUND;
 }
 
-AdbcStatusCode BigqueryDatabase::Init(struct AdbcError* error) {
-  // TODO_BIGQUERY: Initialize the BigQuery client.
-  return ADBC_STATUS_OK;
-}
+AdbcStatusCode BigqueryDatabase::Init(struct AdbcError* error) { return ADBC_STATUS_OK; }
 
 AdbcStatusCode BigqueryDatabase::Release(struct AdbcError* error) {
-  // TODO_BIGQUERY: Release the BigQuery client.
   return ADBC_STATUS_OK;
 }
 

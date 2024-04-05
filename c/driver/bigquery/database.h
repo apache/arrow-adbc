@@ -25,9 +25,11 @@
 #include <google/cloud/bigquery/storage/v1/bigquery_read_client.h>
 
 namespace adbc_bigquery {
+class BigqueryConnection;
+class BigqueryStatement;
 class BigqueryDatabase {
  public:
-  BigqueryDatabase();
+  BigqueryDatabase() : project_name_(""), table_name_(""){};
   ~BigqueryDatabase();
 
   // Public ADBC API
@@ -50,7 +52,10 @@ class BigqueryDatabase {
 
   // Internal implementation
 
- private:
+  friend class BigqueryConnection;
+  friend class BigqueryStatement;
+
+ protected:
   std::string project_name_;
   std::string table_name_;
 };
