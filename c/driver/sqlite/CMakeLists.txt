@@ -26,9 +26,10 @@ else()
 endif()
 
 # Check for sqlite3_load_extension() in sqlite3.h
-if (EXISTS "${SQLite3_INCLUDE_DIRS}/sqlite3.h")
+if(EXISTS "${SQLite3_INCLUDE_DIRS}/sqlite3.h")
   file(READ "${SQLite3_INCLUDE_DIRS}/sqlite3.h" ADBC_SQLITE_H_CONTENT)
-  string(FIND "${ADBC_SQLITE_H_CONTENT}" "sqlite3_load_extension" ADBC_SQLITE_WITH_LOAD_EXTENSION)
+  string(FIND "${ADBC_SQLITE_H_CONTENT}" "sqlite3_load_extension"
+              ADBC_SQLITE_WITH_LOAD_EXTENSION)
 endif()
 
 if(NOT ADBC_SQLITE_WITH_LOAD_EXTENSION)
