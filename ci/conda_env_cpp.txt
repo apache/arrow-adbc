@@ -20,5 +20,6 @@ compilers
 gtest>=1.10.0
 libpq
 libsqlite
+libduckdb
 ninja
 pkg-config
