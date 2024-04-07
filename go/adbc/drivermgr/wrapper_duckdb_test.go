@@ -48,7 +48,7 @@ func (dm *DriverMgrDuckDBSuite) SetupSuite() {
 	dm.drv = drivermgr.Driver{}
 	var err error
 	dm.db, err = dm.drv.NewDatabase(map[string]string{
-		"driver":     "libduckdb.so",
+		"driver":     "libduckdb",
 		"entrypoint": "duckdb_adbc_init",
 	})
 	dm.NoError(err)
