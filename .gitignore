@@ -41,6 +41,7 @@ MANIFEST
 compile_commands.json
 build.ninja
 .clangd
+.cache
 
 # Generated Visual Studio files
 *.vcxproj
