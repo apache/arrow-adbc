@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using System;
 using System.Threading;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -42,9 +41,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             var executeResponse = this.connection.client.ExecuteStatement(executeRequest).Result;
             if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
-                throw new Exception(executeResponse.Status.ErrorMessage);
+                throw new AdbcException(executeResponse.Status.ErrorMessage);
             }
-
             this.operationHandle = executeResponse.OperationHandle;
         }
 

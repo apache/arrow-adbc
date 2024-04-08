@@ -38,14 +38,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
         {
             if (thriftType.PrimitiveEntry != null)
             {
-                return GetArrowType(thriftType.PrimitiveEntry.Type);
+                return GetArrowType(thriftType.PrimitiveEntry);
             }
             throw new InvalidOperationException();
         }
 
-        public static IArrowType GetArrowType(TTypeId thriftType)
+        public static IArrowType GetArrowType(TPrimitiveTypeEntry thriftType)
         {
-            switch (thriftType)
+            switch (thriftType.Type)
             {
                 case TTypeId.BIGINT_TYPE: return Int64Type.Default;
                 case TTypeId.BINARY_TYPE: return BinaryType.Default;
@@ -62,8 +62,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                 case TTypeId.TINYINT_TYPE: return Int8Type.Default;
                 case TTypeId.VARCHAR_TYPE: return StringType.Default;
 
-                // ???
                 case TTypeId.DECIMAL_TYPE:
+                    var precision = thriftType.TypeQualifiers.Qualifiers["precision"].I32Value;
+                    var scale = thriftType.TypeQualifiers.Qualifiers["scale"].I32Value;
+                    return new Decimal128Type(precision, scale);
+
+                // ???
                 case TTypeId.INTERVAL_DAY_TIME_TYPE:
                 case TTypeId.INTERVAL_YEAR_MONTH_TYPE:
                     return StringType.Default;

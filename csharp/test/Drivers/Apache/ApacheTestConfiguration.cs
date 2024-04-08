@@ -19,7 +19,7 @@ using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
 {
-    internal class ApacheTestConfiguration : TestConfiguration
+    public class ApacheTestConfiguration : TestConfiguration
     {
         [JsonPropertyName("hostName")]
         public string HostName { get; set; }

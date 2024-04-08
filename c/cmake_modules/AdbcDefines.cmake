@@ -77,6 +77,7 @@ if(MSVC)
   # Allow incomplete switch (since MSVC warns even if there's a default case)
   add_compile_options(/wd4061)
   add_compile_options(/wd4100)
+  add_compile_options(/wd4127)
   # Nanoarrow emits a lot of conversion warnings
   add_compile_options(/wd4365)
   add_compile_options(/wd4242)

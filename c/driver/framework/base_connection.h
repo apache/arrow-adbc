@@ -30,7 +30,7 @@
 
 #include "driver/common/options.h"
 #include "driver/common/utils.h"
-#include "driver/framework/base.h"
+#include "driver/framework/base_driver.h"
 #include "driver/framework/catalog.h"
 #include "driver/framework/objects.h"
 

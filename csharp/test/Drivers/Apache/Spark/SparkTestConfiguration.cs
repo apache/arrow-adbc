@@ -15,11 +15,9 @@
 * limitations under the License.
 */
 
-using System.Text.Json.Serialization;
-
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
-    internal class SparkTestConfiguration : ApacheTestConfiguration
+    public class SparkTestConfiguration : ApacheTestConfiguration
     {
 
     }

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "driver/framework/base.h"
+#include "driver/framework/base_driver.h"
 
 namespace adbc::driver {
 Result<bool> Option::AsBool() const {
