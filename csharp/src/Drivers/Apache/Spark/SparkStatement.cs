@@ -76,7 +76,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
             }
 
-            long affectedRows = 0;
+            // If no altered rows, i.e. DDC statements, then -1 is the default.
+            long? affectedRows = null;
             while (true)
             {
                 using RecordBatch nextBatch = stream.ReadNextRecordBatchAsync().Result;
@@ -85,12 +86,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 // Note: should only have one item, but iterate for completeness
                 for (int i = 0; i < numOfModifiedArray.Length; i++)
                 {
-                    affectedRows += numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
+                    // Note: handle the case where the affected rows are zero (0).
+                    affectedRows = (affectedRows ?? 0) + numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
                 }
             }
 
-            // If no altered rows, i.e. DDC statements, then -1 is the default.
-            return new UpdateResult(affectedRows == 0 ? -1 : affectedRows);
+            return new UpdateResult(affectedRows ?? -1);
         }
 
         public override object GetValue(IArrowArray arrowArray, int index)

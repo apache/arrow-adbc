@@ -22,6 +22,7 @@ using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
@@ -33,14 +34,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// queries to run.
     /// </remarks>
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
-    public class DriverTests
+    public class DriverTests : SparkTestBase
     {
-        SparkTestConfiguration _testConfiguration;
-
-        public DriverTests()
+        public DriverTests(ITestOutputHelper outputHelper) : base(outputHelper)
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SparkTestingUtils.SPARK_TEST_CONFIG_VARIABLE));
-            _testConfiguration = Utils.LoadTestConfiguration<SparkTestConfiguration>(SparkTestingUtils.SPARK_TEST_CONFIG_VARIABLE);
+            Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));
         }
 
         /// <summary>
@@ -49,9 +47,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [SkippableFact, Order(1)]
         public void CanExecuteUpdate()
         {
-            AdbcConnection adbcConnection = SparkTestingUtils.GetSparkAdbcConnection(_testConfiguration);
+            AdbcConnection adbcConnection = NewConnection();
 
-            string[] queries = SparkTestingUtils.GetQueries(_testConfiguration);
+            string[] queries = GetQueries();
 
             List<int> expectedResults = new() {
                 -1, // DROP   TABLE
@@ -81,7 +79,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [SkippableFact, Order(2)]
         public void CanGetInfo()
         {
-            AdbcConnection adbcConnection = SparkTestingUtils.GetSparkAdbcConnection(_testConfiguration);
+            AdbcConnection adbcConnection = NewConnection();
 
             IArrowArrayStream stream = adbcConnection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
 
@@ -109,12 +107,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public void CanGetObjects()
         {
             // need to add the database
-            string catalogName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
-            string tableName = _testConfiguration.Metadata.Table;
+            string catalogName = TestConfiguration.Metadata.Catalog;
+            string schemaName = TestConfiguration.Metadata.Schema;
+            string tableName = TestConfiguration.Metadata.Table;
             string columnName = null;
 
-            AdbcConnection adbcConnection = SparkTestingUtils.GetSparkAdbcConnection(_testConfiguration);
+            AdbcConnection adbcConnection = NewConnection();
 
             IArrowArrayStream stream = adbcConnection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.All,
@@ -136,7 +134,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 .Select(c => c.Columns)
                 .FirstOrDefault();
 
-            Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
+            Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, columns.Count);
         }
 
         /// <summary>
@@ -145,17 +143,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [SkippableFact, Order(4)]
         public void CanGetTableSchema()
         {
-            AdbcConnection adbcConnection = SparkTestingUtils.GetSparkAdbcConnection(_testConfiguration);
+            AdbcConnection adbcConnection = NewConnection();
 
-            string catalogName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
-            string tableName = _testConfiguration.Metadata.Table;
+            string catalogName = TestConfiguration.Metadata.Catalog;
+            string schemaName = TestConfiguration.Metadata.Schema;
+            string tableName = TestConfiguration.Metadata.Table;
 
             Schema schema = adbcConnection.GetTableSchema(catalogName, schemaName, tableName);
 
             int numberOfFields = schema.FieldsList.Count;
 
-            Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
+            Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
         }
 
         /// <summary>
@@ -164,7 +162,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [SkippableFact, Order(5)]
         public void CanGetTableTypes()
         {
-            AdbcConnection adbcConnection = SparkTestingUtils.GetSparkAdbcConnection(_testConfiguration);
+            AdbcConnection adbcConnection = NewConnection();
 
             IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
 
@@ -199,14 +197,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [SkippableFact, Order(6)]
         public void CanExecuteQuery()
         {
-            AdbcConnection adbcConnection = SparkTestingUtils.GetSparkAdbcConnection(_testConfiguration);
+            AdbcConnection adbcConnection = NewConnection();
 
             AdbcStatement statement = adbcConnection.CreateStatement();
-            statement.SqlQuery = _testConfiguration.Query;
+            statement.SqlQuery = TestConfiguration.Query;
 
             QueryResult queryResult = statement.ExecuteQuery();
 
-            Tests.DriverTests.CanExecuteQuery(queryResult, _testConfiguration.ExpectedResultsCount);
+            Tests.DriverTests.CanExecuteQuery(queryResult, TestConfiguration.ExpectedResultsCount);
         }
     }
 }
