@@ -19,14 +19,8 @@
 
 #include <cinttypes>
 #include <cstring>
-#include <memory>
-#include <utility>
-#include <vector>
 
-#include <absl/log/initialize.h>
 #include <adbc.h>
-#include <google/cloud/bigquery/storage/v1/bigquery_read_client.h>
-#include <nanoarrow/nanoarrow.h>
 
 #include "common/utils.h"
 
@@ -59,33 +53,30 @@ AdbcStatusCode BigqueryDatabase::Release(struct AdbcError* error) {
 
 AdbcStatusCode BigqueryDatabase::SetOption(const char* key, const char* value,
                                            struct AdbcError* error) {
-  if (strcmp(key, "project_name") == 0) {
-    project_name_ = value;
-  } else if (strcmp(key, "table_name") == 0) {
-    table_name_ = value;
-  } else {
-    SetError(error, "%s%s", "[bigquery] Unknown database option ", key);
-    return ADBC_STATUS_NOT_IMPLEMENTED;
+  if (strcmp(key, "project_id") == 0) {
+    project_id_ = value;
+    return ADBC_STATUS_OK;
   }
-  return ADBC_STATUS_OK;
+  SetError(error, "%s%s", "[bigquery] Unknown database option ", key);
+  return ADBC_STATUS_INVALID_ARGUMENT;
 }
 
 AdbcStatusCode BigqueryDatabase::SetOptionBytes(const char* key, const uint8_t* value,
                                                 size_t length, struct AdbcError* error) {
   SetError(error, "%s%s", "[bigquery] Unknown option ", key);
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_INVALID_ARGUMENT;
 }
 
 AdbcStatusCode BigqueryDatabase::SetOptionDouble(const char* key, double value,
                                                  struct AdbcError* error) {
   SetError(error, "%s%s", "[bigquery] Unknown option ", key);
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_INVALID_ARGUMENT;
 }
 
 AdbcStatusCode BigqueryDatabase::SetOptionInt(const char* key, int64_t value,
                                               struct AdbcError* error) {
   SetError(error, "%s%s", "[bigquery] Unknown option ", key);
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_INVALID_ARGUMENT;
 }
 
 }  // namespace adbc_bigquery

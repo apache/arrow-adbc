@@ -25,11 +25,11 @@ endif()
 
 # == Generated checksum ==
 set(BIGQUERY_VERSION_WITH_HASH "2.22.0")
-set(BIGQUERY_HASH_X86_64_APPLE_DARWIN "e67daf06bab384707a9f4189234e870870e2fd305ee00abfbbbb71b815868282")
-set(BIGQUERY_HASH_AARCH64_APPLE_DARWIN "cdbcbfc0783524e95f772b98c20e001249ce495935a39f3d11a90b314f6f92f5")
-set(BIGQUERY_HASH_X86_64_LINUX_GNU "917c85415be560ed02f3a8d359790865d8a8625a14dd036a1baf1f99aaeb90db")
-set(BIGQUERY_HASH_AARCH64_LINUX_GNU "68f29e25ca7f1fe1ae891eba08b9c9c051662cd1808adc89c55bbd4c65c051ca")
-set(BIGQUERY_HASH_X86_64_WINDOWS_MSVC "fb24d944ef458036e494fd9970905e7dbcbea18a5cbcac727fb875b4dc6c3f39")
+set(BIGQUERY_HASH_X86_64_APPLE_DARWIN "a091610c74012c2787c89a8512f216dfc916e3650d9597e0026ede5d39121a66")
+set(BIGQUERY_HASH_AARCH64_APPLE_DARWIN "cf130f7da54258b493645e8d39f98e92ee0d9508b8e16d9c779277fe42c96ea9")
+set(BIGQUERY_HASH_X86_64_LINUX_GNU "9f556f03f3855d0f4aebccf2f1a3784d876c2e94fa295975ddc450ae7492affc")
+set(BIGQUERY_HASH_AARCH64_LINUX_GNU "9fd28d96b55843a8c5cce5ba69795d387c068092fd802dd0082bb0f97e8c4ed7")
+set(BIGQUERY_HASH_X86_64_WINDOWS_MSVC "757a3b1d9b417d312f4812fd5104c3f6b40db6b41921265e2811ee47234bacc9")
 # == Generated checksum ==
 
 if(NOT DEFINED BIGQUERY_VERSION OR "${BIGQUERY_VERSION}" STREQUAL "")
@@ -136,8 +136,11 @@ set(CMAKE_PREFIX_PATH "${BIGQUERY_INSTALL_PREFIX};${BIGQUERY_INSTALL_PREFIX}/ope
 set(BIGQUERY_INCLUDE_DIRS "${BIGQUERY_INSTALL_PREFIX}/include")
 
 find_package(OpenSSL REQUIRED)
+find_package(Arrow REQUIRED)
 find_package(google_cloud_cpp_bigquery REQUIRED PATHS "${BIGQUERY_INSTALL_PREFIX}")
-set(BIGQUERY_LINK_LIBRARIES google-cloud-cpp::bigquery)
+find_package(google_cloud_cpp_bigquery_rest REQUIRED PATHS "${BIGQUERY_INSTALL_PREFIX}")
+
+set(BIGQUERY_LINK_LIBRARIES google-cloud-cpp::bigquery google-cloud-cpp::experimental-bigquery_rest Arrow::arrow_static)
 
 if(NOT DEFINED ADBC_DRIVER_BIGQUERY_ENDIAN)
   if(CMAKE_VERSION VERSION_LESS "3.20.0")
@@ -169,6 +172,7 @@ add_arrow_lib(adbc_driver_bigquery
               connection.cc
               database.cc
               statement.cc
+              readrowsiterator.cc
               OUTPUTS
               ADBC_LIBRARIES
               CMAKE_PACKAGE_NAME
@@ -187,88 +191,13 @@ add_arrow_lib(adbc_driver_bigquery
               nanoarrow
               ${BIGQUERY_LINK_LIBRARIES})
 
-include(FetchContent)
-FetchContent_Declare(
-  flatbuffers
-  GIT_REPOSITORY https://github.com/google/flatbuffers.git
-  GIT_TAG        v24.3.25
-)
-FetchContent_GetProperties(flatbuffers)
-if(NOT flatbuffers_POPULATED)
-  FetchContent_Populate(flatbuffers)
-endif()
-set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "")
-set(FLATBUFFERS_INSTALL OFF CACHE BOOL "")
-set(FLATBUFFERS_BUILD_FLATLIB OFF CACHE BOOL "")
-add_subdirectory(${flatbuffers_SOURCE_DIR} ${flatbuffers_BINARY_DIR})
-
-if(NOT EXISTS ${CMAKE_CURRENT_LIST_DIR}/include/arrow)
-  file(MAKE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/arrow)
-endif()
-
-if(NOT EXISTS ${CMAKE_CURRENT_LIST_DIR}/format)
-  file(MAKE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/format)
-endif()
-
-function(flatc_generate_header_files fbs_filenames fbs_sha256_checksums)
-  set(FLATC_GENERATED_TARGETS "")
-  foreach(fbs checksum IN ZIP_LISTS fbs_filenames fbs_sha256_checksums)
-    set(LOCAL_FBS_FILENAME ${CMAKE_CURRENT_LIST_DIR}/format/${fbs}.fbs)
-    if(NOT EXISTS "${LOCAL_FBS_FILENAME}")
-      set(ARROW_PROTOCOL_FILE_BASE_URL "https://raw.githubusercontent.com/apache/arrow/apache-arrow-15.0.2/format")
-      file(DOWNLOAD
-        "${ARROW_PROTOCOL_FILE_BASE_URL}/${fbs}.fbs"
-        "${LOCAL_FBS_FILENAME}"
-        INACTIVITY_TIMEOUT 300
-        SHOW_PROGRESS
-        EXPECTED_HASH SHA256=${checksum}
-      )
-    endif()
-
-    list(APPEND FLATC_GENERATED_TARGETS "flatc_generate_${fbs}")
-    if(WIN32)
-      set(FLATC_EXECUTABLE ${flatbuffers_BINARY_DIR}/${CMAKE_BUILD_TYPE}/flatc.exe)
-    else()
-      set(FLATC_EXECUTABLE ${flatbuffers_BINARY_DIR}/flatc)
-    endif()
-    add_custom_target(
-      flatc_generate_${fbs} ${FLATC_EXECUTABLE} --no-warnings --cpp --cpp-std c++17 ${CMAKE_CURRENT_LIST_DIR}/format/${fbs}.fbs
-      BYPRODUCTS ${CMAKE_CURRENT_LIST_DIR}/include/arrow/${fbs}_generated.h
-      DEPENDS flatc ${CMAKE_CURRENT_LIST_DIR}/format/${fbs}.fbs
-      WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/arrow
-    )
-  endforeach()
-  set(FLATC_GENERATED_TARGETS ${FLATC_GENERATED_TARGETS} PARENT_SCOPE)
-endfunction(flatc_generate_header_files)
-
-set(FBS_FILES "")
-set(FBS_FILE_SHA256_CHECKSUMS "")
-# Message.fbs
-list(APPEND FBS_FILES Message)
-list(APPEND FBS_FILE_SHA256_CHECKSUMS "32a1464cede1b90d1351faf65726d465d95fbf3a85bd96e2d7222ac979fe20e4")
-# Schema.fbs
-list(APPEND FBS_FILES Schema)
-list(APPEND FBS_FILE_SHA256_CHECKSUMS "34de85517cea535db69c5aeb7e486b331a31bb5a8acf1433099430feab2570df")
-# SparseTensor.fbs
-list(APPEND FBS_FILES SparseTensor)
-list(APPEND FBS_FILE_SHA256_CHECKSUMS "4a340d4ed601fb1c3cb1d60c2bdb139bffa446c0f2c7d7e9fde5a28949075266")
-# Tensor.fbs
-list(APPEND FBS_FILES Tensor)
-list(APPEND FBS_FILE_SHA256_CHECKSUMS "0ea5297a55f8ad00b125a98314f616c2c6249351bdbfea8f429913255b2a07f7")
-flatc_generate_header_files("${FBS_FILES}" "${FBS_FILE_SHA256_CHECKSUMS}")
-
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
-  if(FLATC_GENERATED_TARGETS)
-    add_dependencies(${LIB_TARGET} ${FLATC_GENERATED_TARGETS})
-  endif()
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING "${ADBC_DRIVER_BIGQUERY_ENDIAN_DEF}")
 
   target_include_directories(${LIB_TARGET} SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}
                                      ${REPOSITORY_ROOT}/c/
                                      ${BIGQUERY_INCLUDE_DIRS}
-                                     ${flatbuffers_SOURCE_DIR}/include
-                                     ${CMAKE_CURRENT_LIST_DIR}/include
                                      ${REPOSITORY_ROOT}/c/vendor
                                      ${REPOSITORY_ROOT}/c/driver)
 endforeach()
@@ -297,7 +226,6 @@ if(ADBC_BUILD_TESTS)
                              PRIVATE ${REPOSITORY_ROOT}
                                      ${REPOSITORY_ROOT}/c/
                                      ${BIGQUERY_INCLUDE_DIRS}
-                                     ${flatbuffers_SOURCE_DIR}/include
                                      ${REPOSITORY_ROOT}/c/vendor
                                      ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-driver-bigquery-test)

@@ -334,6 +334,7 @@ AdbcStatusCode BigqueryConnectionInit(struct AdbcConnection* connection,
   if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<BigqueryConnection>*>(connection->private_data);
+
   return (*ptr)->Init(database, error);
 }
 

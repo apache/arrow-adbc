@@ -18,12 +18,16 @@
 #include "connection.h"
 
 #include <adbc.h>
-#include <google/cloud/bigquery/storage/v1/bigquery_read_client.h>
 
 #include "common/utils.h"
 #include "database.h"
 
 namespace adbc_bigquery {
+
+const char* const BigqueryConnection::kInfoDriverName = "ADBC BigQuery Driver";
+const char* const BigqueryConnection::kInfoDriverVersion = "1.0.0";
+const char* const BigqueryConnection::kInfoVendorName = "BigQuery";
+const char* const BigqueryConnection::kInfoDriverArrowVersion = "1.0.0";
 
 AdbcStatusCode BigqueryConnection::Cancel(struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -38,6 +42,17 @@ AdbcStatusCode BigqueryConnection::GetInfo(struct AdbcConnection* connection,
                                            size_t info_codes_length,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error) {
+  // if (info_codes_length == 0) {
+  //   static uint32_t info_codes_static[] = {
+  //     ADBC_INFO_DRIVER_NAME,
+  //     ADBC_INFO_DRIVER_VERSION,
+  //     ADBC_INFO_DRIVER_ARROW_VERSION,
+  //     ADBC_INFO_VENDOR_NAME
+  //   };
+  //   info_codes = info_codes_static;
+  //   info_codes_length = sizeof(info_codes_static) / sizeof(info_codes_static[0]);
+  // }
+
   return ADBC_STATUS_NOT_FOUND;
 }
 
@@ -99,7 +114,7 @@ AdbcStatusCode BigqueryConnection::GetTableTypes(struct AdbcConnection* connecti
 AdbcStatusCode BigqueryConnection::Init(struct AdbcDatabase* database,
                                         struct AdbcError* error) {
   if (!database || !database->private_data) {
-    SetError(error, "%s", "[bigquery] Must provide an initialized AdbcDatabase");
+    SetError(error, "[libpq] Must provide an initialized AdbcDatabase");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
   database_ =
@@ -117,23 +132,27 @@ AdbcStatusCode BigqueryConnection::Rollback(struct AdbcError* error) {
 
 AdbcStatusCode BigqueryConnection::SetOption(const char* key, const char* value,
                                              struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  options_[key] = value;
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode BigqueryConnection::SetOptionBytes(const char* key, const uint8_t* value,
                                                   size_t length,
                                                   struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  SetError(error, "%s%s", "[bigquery] Unknown connection option ", key);
+  return ADBC_STATUS_INVALID_ARGUMENT;
 }
 
 AdbcStatusCode BigqueryConnection::SetOptionDouble(const char* key, double value,
                                                    struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  SetError(error, "%s%s", "[bigquery] Unknown connection option ", key);
+  return ADBC_STATUS_INVALID_ARGUMENT;
 }
 
 AdbcStatusCode BigqueryConnection::SetOptionInt(const char* key, int64_t value,
                                                 struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  SetError(error, "%s%s", "[bigquery] Unknown connection option ", key);
+  return ADBC_STATUS_INVALID_ARGUMENT;
 }
 
 }  // namespace adbc_bigquery

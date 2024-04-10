@@ -22,14 +22,13 @@
 #include <string>
 
 #include <adbc.h>
-#include <google/cloud/bigquery/storage/v1/bigquery_read_client.h>
 
 namespace adbc_bigquery {
 class BigqueryConnection;
-class BigqueryStatement;
+
 class BigqueryDatabase {
  public:
-  BigqueryDatabase() : project_name_(""), table_name_(""){};
+  BigqueryDatabase(){};
   ~BigqueryDatabase();
 
   // Public ADBC API
@@ -50,14 +49,12 @@ class BigqueryDatabase {
   AdbcStatusCode SetOptionDouble(const char* key, double value, struct AdbcError* error);
   AdbcStatusCode SetOptionInt(const char* key, int64_t value, struct AdbcError* error);
 
-  // Internal implementation
+  std::string project_id() const { return project_id_; }
 
   friend class BigqueryConnection;
-  friend class BigqueryStatement;
 
  protected:
-  std::string project_name_;
-  std::string table_name_;
+  std::string project_id_;
 };
 }  // namespace adbc_bigquery
 

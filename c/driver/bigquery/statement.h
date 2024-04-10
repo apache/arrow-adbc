@@ -20,51 +20,22 @@
 #include <cinttypes>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <string>
+#include <unordered_map>
 
 #include <adbc.h>
-#include <google/cloud/bigquery/storage/v1/bigquery_read_client.h>
+#include <absl/types/optional.h>
+#include "connection.h"
 
 #include "common/utils.h"
 
 namespace adbc_bigquery {
 class BigqueryConnection;
-class BigqueryStatement;
-
-class ReadRowsIterator {
- public:
-  using ReadRowsResponse = ::google::cloud::StreamRange<
-      ::google::cloud::bigquery::storage::v1::ReadRowsResponse>;
-  using ReadSession =
-      std::shared_ptr<::google::cloud::bigquery::storage::v1::ReadSession>;
-
-  ReadRowsIterator(const std::string& project_name, const std::string& table_name)
-      : project_name_(project_name), table_name_(table_name) {}
-
-  AdbcStatusCode init(struct AdbcError* error);
-
-  friend class BigqueryStatement;
-
-  static int get_next(struct ArrowArrayStream* stream, struct ArrowArray* error);
-  static int get_schema(struct ArrowArrayStream* stream, struct ArrowSchema* error);
-  static void release(struct ArrowArrayStream* stream);
-
- protected:
-  std::string project_name_;
-  std::string table_name_;
-  decltype(::google::cloud::bigquery_storage_v1::MakeBigQueryReadConnection())
-      connection_;
-  std::shared_ptr<::google::cloud::bigquery_storage_v1::BigQueryReadClient> client_;
-  std::shared_ptr<::google::cloud::bigquery::storage::v1::ReadSession> session_;
-  std::shared_ptr<ReadRowsResponse> response_;
-  ReadRowsResponse::iterator current_;
-
-  struct ArrowSchema* parsed_schema_ = nullptr;
-};
 
 class BigqueryStatement {
  public:
-  BigqueryStatement() : connection_(nullptr) {}
+  BigqueryStatement() {}
 
   // ---------------------------------------------------------------------
   // ADBC API implementation
@@ -93,7 +64,68 @@ class BigqueryStatement {
   AdbcStatusCode SetOptionInt(const char* key, int64_t value, struct AdbcError* error);
   AdbcStatusCode SetSqlQuery(const char* query, struct AdbcError* error);
 
+  template <typename T>
+  void GetAndAssignQueryRequestOption(const char* key, absl::optional<T>& assign_to) {
+    auto value = GetQueryRequestOption<T>(key);
+    if (value) {
+      assign_to = *value;
+    }
+  }
+
+  template <typename T = std::string>
+  auto GetQueryRequestOption(const char* key) -> std::optional<T> {
+    auto iter = options_.find(key);
+    if (iter == options_.end()) {
+      return {};
+    } else {
+      return handleOptionValue<T>(iter->second);
+    }
+  }
+
+  template <typename T>
+  auto GetQueryRequestOption(const char* key, T default_value) -> T {
+    auto iter = options_.find(key);
+    if (iter == options_.end()) {
+      return default_value;
+    } else {
+      return handleOptionValue<T>(iter->second);
+    }
+  }
+
+  template <typename T>
+  auto handleOptionValue(const std::string& value) -> T {
+    return T{};
+  }
+
+  template <>
+  auto handleOptionValue(const std::string& value) -> std::string {
+    return value;
+  }
+
+  template <>
+  auto handleOptionValue<bool>(const std::string& value) -> bool {
+    if (value == "true") {
+      return true;
+    } else if (value == "false") {
+      return false;
+    } else {
+      return false;
+    }
+  }
+
+  template <>
+  auto handleOptionValue<std::uint32_t>(const std::string& value) -> std::uint32_t {
+    return strtoul(value.c_str(), nullptr, 10);
+  }
+
+  template <>
+  auto handleOptionValue<std::int64_t>(const std::string& value) -> std::int64_t {
+    return strtoll(value.c_str(), nullptr, 10);
+  }
+
  private:
   std::shared_ptr<BigqueryConnection> connection_;
+  std::string sql_;
+  std::unordered_map<std::string, std::string> options_;
 };
 }  // namespace adbc_bigquery

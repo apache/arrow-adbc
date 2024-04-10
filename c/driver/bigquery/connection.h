@@ -19,16 +19,19 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 #include <adbc.h>
-#include <google/cloud/bigquery/storage/v1/bigquery_read_client.h>
+
+#include "database.h"
 
 namespace adbc_bigquery {
-class BigqueryDatabase;
 class BigqueryStatement;
+
 class BigqueryConnection {
  public:
-  BigqueryConnection() : database_(nullptr) {}
+  BigqueryConnection() {}
 
   AdbcStatusCode Cancel(struct AdbcError* error);
   AdbcStatusCode Commit(struct AdbcError* error);
@@ -66,9 +69,15 @@ class BigqueryConnection {
   AdbcStatusCode SetOptionDouble(const char* key, double value, struct AdbcError* error);
   AdbcStatusCode SetOptionInt(const char* key, int64_t value, struct AdbcError* error);
 
+  static const char* const kInfoDriverName;
+  static const char* const kInfoDriverVersion;
+  static const char* const kInfoVendorName;
+  static const char* const kInfoDriverArrowVersion;
+
   friend class BigqueryStatement;
 
  protected:
   std::shared_ptr<BigqueryDatabase> database_;
+  std::unordered_map<std::string, std::string> options_;
 };
 }  // namespace adbc_bigquery
