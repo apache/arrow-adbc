@@ -75,17 +75,7 @@ func (dm *DriverMgrDuckDBSuite) SetupSuite() {
 	_, err = stmt.ExecuteUpdate(dm.ctx)
 	dm.NoError(err)
 
-	dm.NoError(stmt.SetSqlQuery("INSERT INTO test_table (id, name) VALUES (1, 'test')"))
-	// Don't check nrows, duckdb currently does not support it
-	_, err = stmt.ExecuteUpdate(dm.ctx)
-	dm.NoError(err)
-
-	dm.NoError(stmt.SetSqlQuery("INSERT INTO test_table (id, name) VALUES (2, 'test')"))
-	// Don't check nrows, duckdb currently does not support it
-	_, err = stmt.ExecuteUpdate(dm.ctx)
-	dm.NoError(err)
-
-	dm.NoError(stmt.SetSqlQuery("INSERT INTO test_table (id, name) VALUES (3, 'tested')"))
+	dm.NoError(stmt.SetSqlQuery("INSERT INTO test_table (id, name) VALUES (1, 'test'), (2, 'test'), (3, 'test')"))
 	// Don't check nrows, duckdb currently does not support it
 	_, err = stmt.ExecuteUpdate(dm.ctx)
 	dm.NoError(err)
