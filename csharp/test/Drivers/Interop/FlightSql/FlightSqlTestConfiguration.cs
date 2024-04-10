@@ -77,5 +77,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         [JsonPropertyName("password")]
         public string Password { get; set; }
+        [JsonPropertyName("datasourceKind")]
+        public string DatasourceKind { get; set; }
     }
 }

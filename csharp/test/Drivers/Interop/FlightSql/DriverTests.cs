@@ -16,7 +16,6 @@
 */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Apache.Arrow.Adbc.Tests.Metadata;
@@ -40,12 +39,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         readonly AdbcDriver _adbcDriver;
         readonly AdbcDatabase _database;
         readonly AdbcConnection _connection;
-        readonly List<string> _tableTypes;
+        readonly List<string> _tableTypes = ["TABLE", "SYSTEM_TABLE", "VIEW"];
 
         public static IEnumerable<object[]> GetPatterns(string name)
         {
-            if (string.IsNullOrEmpty(name)) yield break;
-
             yield return new object[] { name };
             yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name)}%" };
             yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name).ToLower()}%" };
@@ -78,7 +75,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
             _testConfiguration = FlightSqlTestingUtils.TestConfiguration;
 
-            _tableTypes = new List<string> { "BASE TABLE", "VIEW" };
             Dictionary<string, string> parameters = new Dictionary<string, string>();
             Dictionary<string, string> options = new Dictionary<string, string>();
             _adbcDriver = FlightSqlTestingUtils.GetAdbcDriver(_testConfiguration, out parameters);
@@ -98,6 +94,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(1)]
         public void CanExecuteUpdate()
         {
+            // Dremio doesn't have acceptPut implemented by design.
+            Skip.If(_testConfiguration.DatasourceKind.Equals("Dremio"));
+
             string[] queries = FlightSqlTestingUtils.GetQueries(_testConfiguration);
 
             List<int> expectedResults = new List<int>() { -1, 1, 1 };
@@ -106,8 +105,31 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             {
                 string query = queries[i];
                 UpdateResult updateResult = ExecuteUpdateStatement(query);
-
                 Assert.Equal(expectedResults[i], updateResult.AffectedRows);
+            }
+        }
+
+        /// <summary>
+        /// Validates error message returned when acceptPut not implemented by server.
+        /// </summary>
+        /// <remarks>
+        /// Tests are ordered to ensure data is created
+        /// for the other queries to run.
+        /// </remarks>
+        [SkippableFact, Order(1)]
+        public void AcceptPutNotImplemented()
+        {
+            Skip.If(!_testConfiguration.DatasourceKind.Equals("Dremio"));
+
+            string[] queries = FlightSqlTestingUtils.GetQueries(_testConfiguration);
+
+            List<int> expectedResults = new List<int>() { -1, 1, 1 };
+
+            for (int i = 0; i < queries.Length; i++)
+            {
+                string query = queries[i];
+                AdbcException ex = Assert.Throws<AdbcException>(() => ExecuteUpdateStatement(query));
+                Assert.Equal("[FlightSQL] [FlightSQL] acceptPut is not implemented. (Unimplemented; ExecuteQuery)", ex.Message);
             }
         }
 
@@ -142,6 +164,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [MemberData(nameof(CatalogNamePatternData))]
         public void CanGetObjectsCatalogs(string catalogPattern)
         {
+            // Dremio doesn't use catalogs
+            Skip.If(_testConfiguration.DatasourceKind.Equals("Dremio"));
+
             string databaseName = _testConfiguration.Metadata.Catalog;
             string schemaName = _testConfiguration.Metadata.Schema;
 
@@ -227,7 +252,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
             AdbcTable table = tables.Where((table) => string.Equals(table.Name, tableName)).FirstOrDefault();
             Assert.True(table != null, "table should not be null");
-            Assert.Equal("BASE TABLE", table.Type);
+            Assert.Equal("TABLE", table.Type);
         }
 
         /// <summary>
@@ -236,7 +261,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(3)]
         public void CanGetObjectsAll()
         {
-            // need to add the database
             string databaseName = _testConfiguration.Metadata.Catalog;
             string schemaName = _testConfiguration.Metadata.Schema;
             string tableName = _testConfiguration.Metadata.Table;
@@ -253,6 +277,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+
             AdbcTable table = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
@@ -265,7 +290,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
 
             Assert.True(table != null, "table should not be null");
-            Assert.Equal("BASE TABLE", table.Type);
+            Assert.Equal("TABLE", table.Type);
             List<AdbcColumn> columns = table.Columns;
 
             Assert.True(columns != null, "Columns cannot be null");
@@ -292,8 +317,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables with TableName as a Special Character.
         /// </summary>
         [SkippableTheory, Order(3)]
-        [InlineData(@"ADBCDEMO_DB",@"PUBLIC","MyIdentifier")]
-        [InlineData(@"ADBCDEMO'DB", @"PUBLIC'SCHEMA","my.identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "MyIdentifier")]
+        [InlineData(@"ADBCDEMO'DB", @"PUBLIC'SCHEMA", "my.identifier")]
         [InlineData(@"ADBCDEM""DB", @"PUBLIC""SCHEMA", "my.identifier")]
         [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "my identifier")]
         [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "My 'Identifier'")]
@@ -308,6 +333,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "ONE")]
         public void CanGetObjectsTablesWithSpecialCharacter(string databaseName, string schemaName, string tableName)
         {
+            // Dremio doesn't support write operations so temporary table needs to be re-thought
+            Skip.If(_testConfiguration.DatasourceKind.Equals("Dremio"));
+
             CreateDatabaseAndTable(databaseName, schemaName, tableName);
 
             using IArrowArrayStream stream = _connection.GetObjects(
@@ -315,7 +343,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                     catalogPattern: databaseName,
                     dbSchemaPattern: schemaName,
                     tableNamePattern: tableName,
-                    tableTypes: new List<string> { "BASE TABLE", "VIEW" },
+                    tableTypes: _tableTypes,
                     columnNamePattern: null);
 
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
@@ -368,7 +396,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
             List<string> known_types = new List<string>
             {
-                "BASE TABLE", "TEMPORARY TABLE", "VIEW"
+                "TABLE", "SYSTEM_TABLE", "VIEW"
             };
 
             int results = 0;

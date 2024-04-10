@@ -1,6 +1,7 @@
 {
     "driverPath": "",
     "driverEntryPoint": "",
+    "datasourceKind": "",
     "uri": "",
     "sslSkipVerify": "",
     "headers": {
