@@ -191,7 +191,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             SqlDecimal returned = new SqlDecimal(output);
             InsertSingleValue(table.TableName, columnName, value.ToString());
             await SelectAndValidateValues(table.TableName, columnName, returned, 1);
-            DeleteFromTable(table.TableName, string.Format("{0}={1}", columnName, returned), 1);
+            string whereClause = GetDeleteFromWhereClause(columnName, value);
+            DeleteFromTable(table.TableName, whereClause, 1);
         }
 
         /// <summary>
@@ -214,7 +215,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string valueString = ConvertDoubleToString(value);
             InsertSingleValue(table.TableName, columnName, valueString);
             await SelectAndValidateValues(table.TableName, columnName, value, 1);
-            DeleteFromTable(table.TableName, string.Format("{0}={1}", columnName, valueString), 1);
+            string whereClause = GetDeleteFromWhereClause(columnName, value);
+            DeleteFromTable(table.TableName, whereClause, 1);
         }
 
         /// <summary>
@@ -240,7 +242,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string valueString = ConvertFloatToString(value);
             InsertSingleValue(table.TableName, columnName, valueString);
             await SelectAndValidateValues(table.TableName, columnName, value, 1);
-            DeleteFromTable(table.TableName, string.Format("{0}={1}", columnName, valueString), 1);
+            string whereClause = GetDeleteFromWhereClause(columnName, value);
+            DeleteFromTable(table.TableName, whereClause, 1);
         }
     }
 }
