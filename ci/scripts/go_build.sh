@@ -28,8 +28,8 @@ main() {
     fi
 
     if [[ "${CGO_ENABLED}" = 1 ]]; then
-        export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${CONDA_PREFIX}/lib:${install_dir}/lib"
-        export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${CONDA_PREFIX}/lib:${install_dir}/lib"
+        export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
+        export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${install_dir}/lib"
     fi
 
     pushd "${source_dir}/go/adbc"
