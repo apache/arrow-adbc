@@ -22,9 +22,9 @@
 
 #include <adbc.h>
 
-#include "common/utils.h"
 #include "connection.h"
 #include "database.h"
+#include "driver/common/utils.h"
 #include "statement.h"
 
 using adbcpq::PostgresConnection;

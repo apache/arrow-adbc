@@ -29,6 +29,7 @@ if(ADBC_BUILD_TESTS)
                 driver-common
                 SOURCES
                 utils_test.cc
+                driver_test.cc
                 EXTRA_LINK_LIBS
                 adbc_driver_common
                 nanoarrow)

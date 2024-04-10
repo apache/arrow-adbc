@@ -72,7 +72,7 @@ func (s *sqlOrSubstrait) setSubstraitPlan(plan []byte) {
 	s.substraitPlan = plan
 }
 
-func (s *sqlOrSubstrait) execute(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
+func (s *sqlOrSubstrait) execute(ctx context.Context, cnxn *connectionImpl, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
 	if s.sqlQuery != "" {
 		return cnxn.execute(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
@@ -85,7 +85,7 @@ func (s *sqlOrSubstrait) execute(ctx context.Context, cnxn *cnxn, opts ...grpc.C
 	}
 }
 
-func (s *sqlOrSubstrait) executeSchema(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*arrow.Schema, error) {
+func (s *sqlOrSubstrait) executeSchema(ctx context.Context, cnxn *connectionImpl, opts ...grpc.CallOption) (*arrow.Schema, error) {
 	var (
 		res *flight.SchemaResult
 		err error
@@ -108,7 +108,7 @@ func (s *sqlOrSubstrait) executeSchema(ctx context.Context, cnxn *cnxn, opts ...
 	return flight.DeserializeSchema(res.Schema, cnxn.cl.Alloc)
 }
 
-func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (int64, error) {
+func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cnxn *connectionImpl, opts ...grpc.CallOption) (int64, error) {
 	if s.sqlQuery != "" {
 		return cnxn.executeUpdate(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
@@ -121,7 +121,7 @@ func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cnxn *cnxn, opts ...
 	}
 }
 
-func (s *sqlOrSubstrait) poll(ctx context.Context, cnxn *cnxn, retryDescriptor *flight.FlightDescriptor, opts ...grpc.CallOption) (*flight.PollInfo, error) {
+func (s *sqlOrSubstrait) poll(ctx context.Context, cnxn *connectionImpl, retryDescriptor *flight.FlightDescriptor, opts ...grpc.CallOption) (*flight.PollInfo, error) {
 	if s.sqlQuery != "" {
 		return cnxn.poll(ctx, s.sqlQuery, retryDescriptor, opts...)
 	} else if s.substraitPlan != nil {
@@ -134,7 +134,7 @@ func (s *sqlOrSubstrait) poll(ctx context.Context, cnxn *cnxn, retryDescriptor *
 	}
 }
 
-func (s *sqlOrSubstrait) prepare(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
+func (s *sqlOrSubstrait) prepare(ctx context.Context, cnxn *connectionImpl, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
 	if s.sqlQuery != "" {
 		return cnxn.prepare(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
@@ -156,7 +156,7 @@ type incrementalState struct {
 
 type statement struct {
 	alloc       memory.Allocator
-	cnxn        *cnxn
+	cnxn        *connectionImpl
 	clientCache gcache.Cache
 
 	hdrs             metadata.MD
@@ -166,6 +166,8 @@ type statement struct {
 	timeouts         timeoutOption
 	incrementalState *incrementalState
 	progress         float64
+	// may seem redundant, but incrementalState isn't locked
+	lastInfo atomic.Pointer[flight.FlightInfo]
 }
 
 func (s *statement) closePreparedStatement() error {
@@ -184,6 +186,7 @@ func (s *statement) clearIncrementalQuery() error {
 			}
 		}
 		s.incrementalState = &incrementalState{}
+		s.lastInfo.Store(nil)
 	}
 	return nil
 }
@@ -249,6 +252,21 @@ func (s *statement) GetOption(key string) (string, error) {
 	}
 }
 func (s *statement) GetOptionBytes(key string) ([]byte, error) {
+	switch key {
+	case OptionLastFlightInfo:
+		info := s.lastInfo.Load()
+		if info == nil {
+			return []byte{}, nil
+		}
+		serialized, err := proto.Marshal(info)
+		if err != nil {
+			return nil, adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] Could not serialize result for '%s': %s", key, err.Error()),
+				Code: adbc.StatusInternal,
+			}
+		}
+		return serialized, nil
+	}
 	return nil, adbc.Error{
 		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
 		Code: adbc.StatusNotFound,
@@ -594,6 +612,7 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 			// Reset the statement for reuse
 			s.incrementalState = &incrementalState{}
 			atomicStoreFloat64(&s.progress, 0.0)
+			s.lastInfo.Store(nil)
 			return schema, adbc.Partitions{}, totalRecords, nil
 		}
 
@@ -628,6 +647,7 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 			s.incrementalState.previousInfo = poll.GetInfo()
 			s.incrementalState.retryDescriptor = poll.GetFlightDescriptor()
 			atomicStoreFloat64(&s.progress, poll.GetProgress())
+			s.lastInfo.Store(poll.GetInfo())
 
 			if s.incrementalState.retryDescriptor == nil {
 				// Query is finished
@@ -651,6 +671,7 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 		if s.incrementalState.complete && len(info.Endpoint) == 0 {
 			s.incrementalState = &incrementalState{}
 			atomicStoreFloat64(&s.progress, 0.0)
+			s.lastInfo.Store(nil)
 		}
 	} else if s.prepared != nil {
 		info, err = s.prepared.Execute(ctx, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)

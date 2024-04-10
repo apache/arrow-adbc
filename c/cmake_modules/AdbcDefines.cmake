@@ -60,8 +60,8 @@ if(CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
 endif()
 
 # Set common build options
+string(TOLOWER "${CMAKE_BUILD_TYPE}" _lower_build_type)
 if("${ADBC_BUILD_WARNING_LEVEL}" STREQUAL "")
-  string(TOLOWER "${CMAKE_BUILD_TYPE}" _lower_build_type)
   if("${_lower_build_type}" STREQUAL "release")
     set(ADBC_BUILD_WARNING_LEVEL "PRODUCTION")
   else()
@@ -72,9 +72,32 @@ endif()
 if(MSVC)
   set(ADBC_C_CXX_FLAGS_CHECKIN /Wall /WX)
   set(ADBC_C_CXX_FLAGS_PRODUCTION /Wall)
+  # Don't warn about strerror_s etc.
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+  # Allow incomplete switch (since MSVC warns even if there's a default case)
+  add_compile_options(/wd4061)
+  add_compile_options(/wd4100)
+  add_compile_options(/wd4127)
+  # Nanoarrow emits a lot of conversion warnings
+  add_compile_options(/wd4365)
+  add_compile_options(/wd4242)
+  add_compile_options(/wd4458)
+  add_compile_options(/wd4514)
+  add_compile_options(/wd4582)
+  add_compile_options(/wd4623)
+  add_compile_options(/wd4625)
+  add_compile_options(/wd4626)
+  add_compile_options(/wd4868)
+  add_compile_options(/wd4710)
+  add_compile_options(/wd4711)
+  # Don't warn about padding added after members
+  add_compile_options(/wd4820)
+  add_compile_options(/wd5027)
+  add_compile_options(/wd5045)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # maybe-uninitialized is flaky
   set(ADBC_C_CXX_FLAGS_CHECKIN
       -Wall
       -Wextra
@@ -82,6 +105,30 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
       -Werror
       -Wno-unused-parameter)
   set(ADBC_C_CXX_FLAGS_PRODUCTION -Wall)
+
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    list(APPEND ADBC_C_CXX_FLAGS_CHECKIN -Wno-maybe-uninitialized)
+  endif()
+
+  if(NOT CMAKE_C_FLAGS_DEBUG MATCHES "-O")
+    string(APPEND CMAKE_C_FLAGS_DEBUG " -Og")
+  endif()
+  if(NOT CMAKE_CXX_FLAGS_DEBUG MATCHES "-O")
+    string(APPEND CMAKE_CXX_FLAGS_DEBUG " -Og")
+  endif()
+
+  if(NOT CMAKE_C_FLAGS_DEBUG MATCHES "-g")
+    string(APPEND CMAKE_C_FLAGS_DEBUG " -g3")
+  endif()
+  if(NOT CMAKE_CXX_FLAGS_DEBUG MATCHES "-g")
+    string(APPEND CMAKE_CXX_FLAGS_DEBUG " -g3")
+  endif()
+  if(NOT CMAKE_C_FLAGS_RELWITHDEBINFO MATCHES "-g")
+    string(APPEND CMAKE_C_FLAGS_RELWITHDEBINFO " -g3")
+  endif()
+  if(NOT CMAKE_CXX_FLAGS_RELWITHDEBINFO MATCHES "-g")
+    string(APPEND CMAKE_CXX_FLAGS_RELWITHDEBINFO " -g3")
+  endif()
 else()
   message(WARNING "Unknown compiler: ${CMAKE_CXX_COMPILER_ID}")
 endif()

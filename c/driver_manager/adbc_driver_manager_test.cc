@@ -105,7 +105,7 @@ TEST_F(DriverManager, ConnectionOptions) {
               IsOkStatus(&error));
   ASSERT_EQ(ADBC_STATUS_NOT_IMPLEMENTED,
             AdbcConnectionInit(&connection, &database, &error));
-  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown connection option foo=bar"));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown connection option foo='bar'"));
 
   ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
@@ -144,7 +144,7 @@ TEST_F(DriverManager, MultiDriverTest) {
   ASSERT_THAT(AdbcDatabaseSetOption(&sqlite_db.value, "unknown", "foo", &error.value),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error.value));
   ASSERT_THAT(error->message,
-              ::testing::HasSubstr("[SQLite] Unknown database option unknown=foo"));
+              ::testing::HasSubstr("Unknown database option unknown='foo'"));
   error->release(&error.value);
 
   ASSERT_THAT(AdbcConnectionNew(&sqlite_conn.value, &error.value),
@@ -218,6 +218,8 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
         return std::nullopt;
     }
   }
+  bool supports_metadata_current_catalog() const override { return true; }
+  std::string catalog() const override { return "main"; }
 };
 
 class SqliteDatabaseTest : public ::testing::Test, public adbc_validation::DatabaseTest {

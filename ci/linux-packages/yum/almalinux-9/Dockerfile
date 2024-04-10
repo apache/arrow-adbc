@@ -30,7 +30,6 @@ RUN \
     cmake \
     gcc-c++ \
     gobject-introspection-devel \
-    golang \
     libpq-devel \
     make \
     ninja-build \
@@ -40,5 +39,13 @@ RUN \
     rpmdevtools \
     sqlite-devel \
     tar \
+    wget \
     vala && \
   dnf clean ${quiet} all
+
+
+ARG GO_VERSION
+RUN wget --no-verbose https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
+    rm go${GO_VERSION}.linux-amd64.tar.gz
+ENV PATH="/usr/local/go/bin:${PATH}"

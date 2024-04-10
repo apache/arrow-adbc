@@ -25,9 +25,20 @@ else()
   set(SQLite3_INCLUDE_DIRS)
 endif()
 
+# Check for sqlite3_load_extension() in sqlite3.h
+if(EXISTS "${SQLite3_INCLUDE_DIRS}/sqlite3.h")
+  file(READ "${SQLite3_INCLUDE_DIRS}/sqlite3.h" ADBC_SQLITE_H_CONTENT)
+  string(FIND "${ADBC_SQLITE_H_CONTENT}" "sqlite3_load_extension"
+              ADBC_SQLITE_WITH_LOAD_EXTENSION)
+endif()
+
+if(NOT ADBC_SQLITE_WITH_LOAD_EXTENSION)
+  set(ADBC_SQLITE_COMPILE_DEFINES "-DADBC_SQLITE_WITH_NO_LOAD_EXTENSION")
+endif()
+
 add_arrow_lib(adbc_driver_sqlite
               SOURCES
-              sqlite.c
+              sqlite.cc
               statement_reader.c
               OUTPUTS
               ADBC_LIBRARIES
@@ -40,15 +51,18 @@ add_arrow_lib(adbc_driver_sqlite
               SHARED_LINK_LIBS
               ${SQLite3_LINK_LIBRARIES}
               adbc_driver_common
+              adbc_driver_framework
               nanoarrow
               STATIC_LINK_LIBS
               ${SQLite3_LINK_LIBRARIES}
               adbc_driver_common
+              adbc_driver_framework
               nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
 
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
-  target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
+  target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING
+                                                   ${ADBC_SQLITE_COMPILE_DEFINES})
   target_include_directories(${LIB_TARGET} SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}
                                      ${REPOSITORY_ROOT}/c/
@@ -80,6 +94,8 @@ if(ADBC_BUILD_TESTS)
                 adbc_validation
                 nanoarrow
                 ${TEST_LINK_LIBS})
+  target_compile_definitions(adbc-driver-sqlite-test
+                             PRIVATE ${ADBC_SQLITE_COMPILE_DEFINES})
   target_compile_features(adbc-driver-sqlite-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-sqlite-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}

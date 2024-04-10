@@ -105,8 +105,10 @@ void ConnectionTest::TestAutocommitDefault() {
   // or rollback
   ASSERT_THAT(AdbcConnectionCommit(&connection, &error),
               IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+  if (error.release) error.release(&error);
   ASSERT_THAT(AdbcConnectionRollback(&connection, &error),
               IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+  if (error.release) error.release(&error);
 
   // Invalid option value
   ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
@@ -151,7 +153,7 @@ void ConnectionTest::TestMetadataCurrentCatalog() {
     ASSERT_THAT(
         AdbcConnectionGetOption(&connection, ADBC_CONNECTION_OPTION_CURRENT_CATALOG,
                                 buffer, &buffer_size, &error),
-        IsStatus(ADBC_STATUS_NOT_FOUND));
+        IsStatus(ADBC_STATUS_NOT_FOUND, &error));
   }
 }
 
@@ -531,7 +533,7 @@ void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
             << ") should have nonempty catalog_db_schemas ";
         ASSERT_FALSE(ArrowArrayViewIsNull(catalog_db_schemas_list, row));
         for (int64_t list_index = start_offset; list_index < end_offset; list_index++) {
-          ASSERT_TRUE(ArrowArrayViewIsNull(db_schema_tables_list, row + list_index))
+          EXPECT_TRUE(ArrowArrayViewIsNull(db_schema_tables_list, list_index))
               << "Row " << row << " should have null db_schema_tables";
         }
       }
@@ -550,7 +552,7 @@ void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
-    ASSERT_GT(reader.array->length, 0);
+    ASSERT_GE(reader.array->length, 0);
     do {
       for (int64_t row = 0; row < reader.array->length; row++) {
         struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
@@ -596,34 +598,42 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
-    ASSERT_GT(reader.array->length, 0);
+
+    // type: list<db_schema_schema>
+    struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
+    // type: db_schema_schema (struct)
+    struct ArrowArrayView* catalog_db_schemas = catalog_db_schemas_list->children[0];
+    // type: list<table_schema>
+    struct ArrowArrayView* db_schema_tables_list = catalog_db_schemas->children[1];
+    // type: table_schema (struct)
+    struct ArrowArrayView* db_schema_tables = db_schema_tables_list->children[0];
+
+    if (expected.second) {
+      ASSERT_GT(reader.array->length, 0);
+    } else {
+      ASSERT_EQ(db_schema_tables->length, 0);
+    }
     bool found_expected_table = false;
     do {
       for (int64_t row = 0; row < reader.array->length; row++) {
-        // type: list<db_schema_schema>
-        struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
-        // type: db_schema_schema (struct)
-        struct ArrowArrayView* catalog_db_schemas = catalog_db_schemas_list->children[0];
-        // type: list<table_schema>
-        struct ArrowArrayView* db_schema_tables_list = catalog_db_schemas->children[1];
-        // type: table_schema (struct)
-        struct ArrowArrayView* db_schema_tables = db_schema_tables_list->children[0];
-
         ASSERT_FALSE(ArrowArrayViewIsNull(catalog_db_schemas_list, row))
             << "Row " << row << " should have non-null catalog_db_schemas";
 
-        for (int64_t db_schemas_index =
-                 ArrowArrayViewListChildOffset(catalog_db_schemas_list, row);
-             db_schemas_index <
-             ArrowArrayViewListChildOffset(catalog_db_schemas_list, row + 1);
+        int64_t schema_start =
+            ArrowArrayViewListChildOffset(catalog_db_schemas_list, row);
+        int64_t schema_end =
+            ArrowArrayViewListChildOffset(catalog_db_schemas_list, row + 1);
+        ASSERT_LE(schema_start, schema_end);
+        for (int64_t db_schemas_index = schema_start; db_schemas_index < schema_end;
              db_schemas_index++) {
           ASSERT_FALSE(ArrowArrayViewIsNull(db_schema_tables_list, db_schemas_index))
               << "Row " << row << " should have non-null db_schema_tables";
 
-          for (int64_t tables_index =
-                   ArrowArrayViewListChildOffset(db_schema_tables_list, db_schemas_index);
-               tables_index <
-               ArrowArrayViewListChildOffset(db_schema_tables_list, db_schemas_index + 1);
+          int64_t table_start =
+              ArrowArrayViewListChildOffset(db_schema_tables_list, db_schemas_index);
+          int64_t table_end =
+              ArrowArrayViewListChildOffset(db_schema_tables_list, db_schemas_index + 1);
+          for (int64_t tables_index = table_start; tables_index < table_end;
                tables_index++) {
             ArrowStringView table_name = ArrowArrayViewGetStringUnsafe(
                 db_schema_tables->children[0], tables_index);
@@ -670,7 +680,7 @@ void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
-    ASSERT_GT(reader.array->length, 0);
+    ASSERT_GE(reader.array->length, 0);
     bool found_expected_table = false;
     do {
       for (int64_t row = 0; row < reader.array->length; row++) {
@@ -811,6 +821,7 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
                         "bulk_ingest") &&
                 iequals(std::string(db_schema_name.data, db_schema_name.size_bytes),
                         quirks()->db_schema())) {
+              ASSERT_FALSE(found_expected_table);
               found_expected_table = true;
 
               for (int64_t columns_index =

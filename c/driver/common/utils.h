@@ -20,6 +20,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <adbc.h>
 #include "nanoarrow/nanoarrow.h"
@@ -117,27 +118,6 @@ AdbcStatusCode BatchToArrayStream(struct ArrowArray* values, struct ArrowSchema*
     AdbcStatusCode adbc_status_code = (EXPR);                        \
     if (adbc_status_code != ADBC_STATUS_OK) return adbc_status_code; \
   } while (0)
-
-/// \defgroup adbc-connection-utils Connection Utilities
-/// Utilities for implementing connection-related functions for drivers
-///
-/// @{
-AdbcStatusCode AdbcInitConnectionGetInfoSchema(const uint32_t* info_codes,
-                                               size_t info_codes_length,
-                                               struct ArrowSchema* schema,
-                                               struct ArrowArray* array,
-                                               struct AdbcError* error);
-AdbcStatusCode AdbcConnectionGetInfoAppendString(struct ArrowArray* array,
-                                                 uint32_t info_code,
-                                                 const char* info_value,
-                                                 struct AdbcError* error);
-AdbcStatusCode AdbcConnectionGetInfoAppendInt(struct ArrowArray* array,
-                                              uint32_t info_code, int64_t info_value,
-                                              struct AdbcError* error);
-
-AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
-                                               struct AdbcError* error);
-/// @}
 
 struct AdbcGetObjectsUsage {
   struct ArrowStringView fk_catalog;

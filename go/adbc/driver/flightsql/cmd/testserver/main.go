@@ -30,6 +30,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
@@ -45,6 +46,9 @@ import (
 
 type ExampleServer struct {
 	flightsql.BaseServer
+
+	mu            sync.Mutex
+	pollingStatus map[string]int
 }
 
 func StatusWithDetail(code codes.Code, message string, details ...proto.Message) error {
@@ -117,6 +121,120 @@ func (srv *ExampleServer) GetFlightInfoStatement(ctx context.Context, cmd flight
 		FlightDescriptor: desc,
 		TotalRecords:     -1,
 		TotalBytes:       -1,
+	}, nil
+}
+
+func (srv *ExampleServer) PollFlightInfo(ctx context.Context, desc *flight.FlightDescriptor) (*flight.PollInfo, error) {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+
+	var val wrapperspb.StringValue
+	var err error
+	if err = proto.Unmarshal(desc.Cmd, &val); err != nil {
+		return nil, err
+	}
+
+	ticket, err := flightsql.CreateStatementQueryTicket([]byte(val.Value))
+	if err != nil {
+		return nil, err
+	}
+
+	if val.Value == "forever" {
+		srv.pollingStatus[val.Value]++
+		return &flight.PollInfo{
+			Info: &flight.FlightInfo{
+				Schema:           flight.SerializeSchema(arrow.NewSchema([]arrow.Field{{Name: "ints", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil), srv.Alloc),
+				Endpoint:         []*flight.FlightEndpoint{{Ticket: &flight.Ticket{Ticket: ticket}}},
+				FlightDescriptor: desc,
+				TotalRecords:     -1,
+				TotalBytes:       -1,
+				AppMetadata:      []byte("app metadata"),
+			},
+			FlightDescriptor: desc,
+			Progress:         proto.Float64(float64(srv.pollingStatus[val.Value]) / 100.0),
+		}, nil
+	}
+
+	srv.pollingStatus[val.Value]--
+	progress := srv.pollingStatus[val.Value]
+
+	numEndpoints := 5 - progress
+	endpoints := make([]*flight.FlightEndpoint, numEndpoints)
+	for i := range endpoints {
+		endpoints[i] = &flight.FlightEndpoint{Ticket: &flight.Ticket{Ticket: ticket}}
+	}
+
+	var schema []byte
+	if progress < 3 {
+		schema = flight.SerializeSchema(arrow.NewSchema([]arrow.Field{{Name: "ints", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil), srv.Alloc)
+	}
+	if progress == 0 {
+		desc = nil
+	}
+
+	if val.Value == "error_poll_later" && progress == 3 {
+		return nil, StatusWithDetail(codes.Unavailable, "expected error (PollFlightInfo)")
+	}
+
+	return &flight.PollInfo{
+		Info: &flight.FlightInfo{
+			Schema:           schema,
+			Endpoint:         endpoints,
+			FlightDescriptor: desc,
+			TotalRecords:     -1,
+			TotalBytes:       -1,
+		},
+		FlightDescriptor: desc,
+		Progress:         proto.Float64(1.0 - (float64(progress) / 5.0)),
+	}, nil
+}
+
+func (srv *ExampleServer) PollFlightInfoPreparedStatement(ctx context.Context, query flightsql.PreparedStatementQuery, desc *flight.FlightDescriptor) (*flight.PollInfo, error) {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+
+	switch string(query.GetPreparedStatementHandle()) {
+	case "error_poll":
+		detail1 := wrapperspb.String("detail1")
+		detail2 := wrapperspb.String("detail2")
+		return nil, StatusWithDetail(codes.InvalidArgument, "expected error (PollFlightInfo)", detail1, detail2)
+	case "finish_immediately":
+		ticket, err := flightsql.CreateStatementQueryTicket(query.GetPreparedStatementHandle())
+		if err != nil {
+			return nil, err
+		}
+		return &flight.PollInfo{
+			Info: &flight.FlightInfo{
+				Schema:           flight.SerializeSchema(arrow.NewSchema([]arrow.Field{{Name: "ints", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil), srv.Alloc),
+				Endpoint:         []*flight.FlightEndpoint{{Ticket: &flight.Ticket{Ticket: ticket}}},
+				FlightDescriptor: desc,
+				TotalRecords:     -1,
+				TotalBytes:       -1,
+			},
+			FlightDescriptor: nil,
+			Progress:         proto.Float64(1.0),
+		}, nil
+	}
+
+	descriptor, err := proto.Marshal(&wrapperspb.StringValue{Value: string(query.GetPreparedStatementHandle())})
+	if err != nil {
+		return nil, err
+	}
+
+	srv.pollingStatus[string(query.GetPreparedStatementHandle())] = 5
+	return &flight.PollInfo{
+		Info: &flight.FlightInfo{
+			Schema:           nil,
+			Endpoint:         []*flight.FlightEndpoint{},
+			FlightDescriptor: desc,
+			TotalRecords:     -1,
+			TotalBytes:       -1,
+		},
+		FlightDescriptor: &flight.FlightDescriptor{
+			Type: flight.DescriptorCMD,
+			Cmd:  descriptor,
+		},
+		Progress: proto.Float64(0.0),
 	}, nil
 }
 
@@ -226,7 +344,7 @@ func main() {
 
 	flag.Parse()
 
-	srv := &ExampleServer{}
+	srv := &ExampleServer{pollingStatus: make(map[string]int)}
 	srv.Alloc = memory.DefaultAllocator
 
 	server := flight.NewServerWithMiddleware(nil)

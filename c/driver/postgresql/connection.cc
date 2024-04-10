@@ -31,8 +31,9 @@
 #include <adbc.h>
 #include <libpq-fe.h>
 
-#include "common/utils.h"
 #include "database.h"
+#include "driver/common/utils.h"
+#include "driver/framework/catalog.h"
 #include "error.h"
 #include "result_helper.h"
 
@@ -108,7 +109,7 @@ class PqGetObjectsHelper {
 
  private:
   AdbcStatusCode InitArrowArray() {
-    RAISE_ADBC(AdbcInitConnectionObjectsSchema(schema_, error_));
+    RAISE_ADBC(adbc::driver::AdbcInitConnectionObjectsSchema(schema_).ToAdbc(error_));
 
     CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(array_, schema_, &na_error_),
                     &na_error_, error_);
@@ -643,14 +644,14 @@ AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
 AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
     const uint32_t* info_codes, size_t info_codes_length, struct ArrowSchema* schema,
     struct ArrowArray* array, struct AdbcError* error) {
-  RAISE_ADBC(AdbcInitConnectionGetInfoSchema(info_codes, info_codes_length, schema, array,
-                                             error));
+  RAISE_ADBC(adbc::driver::AdbcInitConnectionGetInfoSchema(schema, array).ToAdbc(error));
 
   for (size_t i = 0; i < info_codes_length; i++) {
     switch (info_codes[i]) {
       case ADBC_INFO_VENDOR_NAME:
-        RAISE_ADBC(
-            AdbcConnectionGetInfoAppendString(array, info_codes[i], "PostgreSQL", error));
+        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(array, info_codes[i],
+                                                                   "PostgreSQL")
+                       .ToAdbc(error));
         break;
       case ADBC_INFO_VENDOR_VERSION: {
         const char* stmt = "SHOW server_version_num";
@@ -664,26 +665,31 @@ AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
         }
         const char* server_version_num = (*it)[0].data;
 
-        RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
-                                                     server_version_num, error));
+        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(array, info_codes[i],
+                                                                   server_version_num)
+                       .ToAdbc(error));
         break;
       }
       case ADBC_INFO_DRIVER_NAME:
-        RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
-                                                     "ADBC PostgreSQL Driver", error));
+        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(
+                       array, info_codes[i], "ADBC PostgreSQL Driver")
+                       .ToAdbc(error));
         break;
       case ADBC_INFO_DRIVER_VERSION:
         // TODO(lidavidm): fill in driver version
-        RAISE_ADBC(
-            AdbcConnectionGetInfoAppendString(array, info_codes[i], "(unknown)", error));
+        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(array, info_codes[i],
+                                                                   "(unknown)")
+                       .ToAdbc(error));
         break;
       case ADBC_INFO_DRIVER_ARROW_VERSION:
-        RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
-                                                     NANOARROW_VERSION, error));
+        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(array, info_codes[i],
+                                                                   NANOARROW_VERSION)
+                       .ToAdbc(error));
         break;
       case ADBC_INFO_DRIVER_ADBC_VERSION:
-        RAISE_ADBC(AdbcConnectionGetInfoAppendInt(array, info_codes[i],
-                                                  ADBC_VERSION_1_1_0, error));
+        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendInt(array, info_codes[i],
+                                                                ADBC_VERSION_1_1_0)
+                       .ToAdbc(error));
         break;
       default:
         // Ignore
@@ -1131,8 +1137,6 @@ AdbcStatusCode PostgresConnection::GetStatisticNames(struct ArrowArrayStream* ou
     return status;
   }
   return BatchToArrayStream(&array, &schema, out, error);
-
-  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,

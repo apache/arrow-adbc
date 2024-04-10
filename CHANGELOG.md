@@ -439,3 +439,75 @@
 ### Refactor
 
 - **r/adbcdrivermanager**: Use C++ base driver to implement test drivers (#1269)
+
+## ADBC Libraries 0.10.0 (2024-02-18)
+
+### Feat
+
+- **java/driver/flight-sql**: implement getObjects (#1517)
+- **go/adbc/driver/snowflake**: add '[ADBC]' to snowflake application name (#1525)
+- **python/adbc_driver_manager**: handle KeyboardInterrupt (#1509)
+- **csharp/src/Drivers/BigQuery**: add override for excluding table constraints (#1512)
+- **java/driver/flight-sql**: add basic auth (#1487)
+- **c/driver/postgresql**: Add enum type support (#1485)
+- **go/adbc/driver/flightsql**: propagate cookies to sub-clients (#1497)
+- **go/adbc/driver/snowflake**: improve bulk ingestion speed (#1456)
+- **glib**: Add Apache Arrow GLib integration library (#1459)
+- **go/adbc/driver/flightsql**: enable incremental queries (#1457)
+- **go/adbc**: close database explicitly  (#1460)
+
+### Refactor
+
+- **c/validation**: split up large test file (#1541)
+- **c/driver/postgresql**: update with C++17 conventions (#1540)
+- **c/driver/postgresql**: No naked new in copy/reader.h (#1503)
+- **c/driver/postgresql**: No naked new in copy writer (#1498)
+- **c/driver/postgresql**: start C++17 (#1472)
+- **csharp/test/Drivers/Interop/Snowflake**: Updated the metadata tests to work without the db name (#1352)
+- **c/driver/postgresql**: Split postgres_copy_reader.h into reader/writer headers (#1432)
+
+### Fix
+
+- **python/adbc_driver_manager**: return 'real' reader in fetch_record_batch (#1530)
+- **go/adbc/driver/flightsql**: use atomic for progress (#1520)
+- **c/driver/postgresql**: add postgres type to cols created for numeric (#1516)
+- **csharp/src/Drivers/BigQuery**: fix support for large results (#1507)
+- **c/driver/postgresql**: fix numeric to str (#1502)
+- **go/adbc/driver/snowflake**: Make SHOW WAREHOUSES test less flaky (#1494)
+- **csharp/src/Drivers/BigQuery**: add support for scopes (#1482)
+- **r/adbcpostgresql**: Link -lcrypt32 on Windows (#1471)
+- **csharp/src/Drivers/BigQuery**: improved support for ARRAY columns (#1356)
+- **java/driver/jdbc**: improve error messages thrown from JdbcDataSource connect failures (#1466)
+- **ci**: remove invalid --version=14 clang-format argument (#1462)
+- **r/adbcdrivermanager**: Use std::vector<uint8_t> instead of std::basic_string<uint8_t> (#1453)
+- **dev/release**: remove gtest without prompting on Windows (#1439)
+- **dev/release,glib**: set library path to run example (#1436)
+- **dev/release,go**: ensure temporary directory removable (#1438)
+
+## ADBC Libraries 0.11.0 (2024-03-28)
+
+### Feat
+
+- **go/adbc/driver/snowflake**: added table constraints implementation for GetObjects API (#1593)
+- **dev/release**: add C# post-release script (#1595)
+- **go/adbc/driver/flightsql**: support session options (#1597)
+- **go/adbc/driver/flightsql**: support reuse-connection location (#1594)
+- **go/adbc/driver/flightsql**: expose FlightInfo during polling (#1582)
+- **go/adbc/driver/flightsql**: reflect gRPC status in vendor code (#1577)
+- **python**: react to SIGINT in more places (#1579)
+- **c/driver/common**: Add minimal C++ driver framework (#1539)
+
+### Fix
+
+- **ci**: Sanitize PR title (#1677)
+- **go/adbc/driver/snowflake**: fix precision/scale in table schema (#1656)
+- **python**: correct typechecking error (#1604)
+- **go/adbc/drivermgr**: don't call potentially nil pointer (#1586)
+- **csharp/src/Client/SchemaConverter**: add check for keys on precision and scale (#1566)
+- **csharp/src/Drivers/BigQuery**: return null on GetValue exception (#1562)
+
+### Refactor
+
+- **c/driver_manager**: differentiate errors from driver manager (#1662)
+- **c/driver/sqlite**: port to driver base (#1603)
+- **go/adbc/driver**: driverbase implementation for connection (#1590)

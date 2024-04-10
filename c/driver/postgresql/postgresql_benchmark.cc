@@ -207,8 +207,8 @@ static void BM_PostgresqlDecimalWrite(benchmark::State& state) {
   }
 
   for (size_t i = 0; i < ncols; i++) {
-    if (AdbcNsArrowSchemaSetTypeDecimal(schema.value.children[i], type, precision,
-                                        scale) != NANOARROW_OK) {
+    if (PrivateArrowSchemaSetTypeDecimal(schema.value.children[i], type, precision,
+                                         scale) != NANOARROW_OK) {
       state.SkipWithError("Call to ArrowSchemaSetTypeDecimal failed!");
       error.release(&error);
       return;

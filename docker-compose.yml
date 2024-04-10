@@ -21,6 +21,15 @@ services:
   # These reuse Arrow's images for simplicity. You won't be able to
   # build the image from here.
 
+  ############################### C#/.NET ######################################
+
+  csharp-dist:
+    image: mcr.microsoft.com/dotnet/sdk:7.0
+    volumes:
+      - .:/adbc:delegated
+    command: |
+      /adbc/ci/scripts/csharp_pack.sh /adbc
+
   ############################ Documentation ###################################
 
   docs:
@@ -74,6 +83,7 @@ services:
       dockerfile: ci/docker/python-wheel-manylinux.dockerfile
       args:
         ARCH: ${ARCH}
+        GO: ${GO}
         MANYLINUX: ${MANYLINUX}
         PYTHON: ${PYTHON}
         REPO: ${REPO}
@@ -93,6 +103,7 @@ services:
       dockerfile: ci/docker/python-wheel-manylinux.dockerfile
       args:
         ARCH: ${ARCH}
+        GO: ${GO}
         MANYLINUX: ${MANYLINUX}
         PYTHON: ${PYTHON}
         REPO: ${REPO}

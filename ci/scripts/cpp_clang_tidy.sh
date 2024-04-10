@@ -65,6 +65,7 @@ build_subproject() {
         -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
 
     run-clang-tidy \
+        -extra-arg=-Wno-unknown-warning-option \
         -j $(nproc) \
         -p "${build_dir}" \
         -fix \

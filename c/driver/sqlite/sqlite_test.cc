@@ -132,14 +132,13 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     return ddl;
   }
 
-  bool supports_bulk_ingest(const char* mode) const override {
-    return std::strcmp(mode, ADBC_INGEST_OPTION_MODE_APPEND) == 0 ||
-           std::strcmp(mode, ADBC_INGEST_OPTION_MODE_CREATE) == 0;
-  }
+  bool supports_bulk_ingest(const char* mode) const override { return true; }
   bool supports_bulk_ingest_catalog() const override { return true; }
   bool supports_bulk_ingest_temporary() const override { return true; }
   bool supports_concurrent_statements() const override { return true; }
-  bool supports_get_option() const override { return false; }
+  bool supports_metadata_current_catalog() const override { return true; }
+  bool supports_metadata_current_db_schema() const override { return false; }
+  bool supports_get_option() const override { return true; }
   std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
       uint32_t info_code) const override {
     switch (info_code) {
@@ -184,6 +183,10 @@ class SqliteConnectionTest : public ::testing::Test,
 ADBCV_TEST_CONNECTION(SqliteConnectionTest)
 
 TEST_F(SqliteConnectionTest, ExtensionLoading) {
+#if defined(ADBC_SQLITE_WITH_NO_LOAD_EXTENSION)
+  GTEST_SKIP() << "Linking to SQLite without extension loading";
+#endif
+
   ASSERT_THAT(AdbcConnectionNew(&connection, &error),
               adbc_validation::IsOkStatus(&error));
 

@@ -15,16 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 
-PKG_CPPFLAGS = -I../src -DADBC_EXPORT="" -D__USE_MINGW_ANSI_STDIO
+CXX_STD = CXX17
+PKG_CPPFLAGS = -I../src -I../src/c/ -I../src/c/vendor/ -I../src/c/vendor/fmt/include/ -DADBC_EXPORT="" -D__USE_MINGW_ANSI_STDIO -DFMT_HEADER_ONLY=1
 
 PKG_LIBS = -lpq -lpgcommon -lpgport -lssl -lcrypto -lz -lsecur32 -lws2_32 -lwldap32 -lcrypt32
 
 OBJECTS = init.o \
-    error.o \
-    connection.o \
-    database.o \
-    result_helper.o \
-    statement.o \
-    postgresql.o \
-    common/utils.o \
-    nanoarrow/nanoarrow.o
+    c/driver/common/utils.o \
+    c/driver/framework/catalog.o \
+    c/driver/postgresql/connection.o \
+    c/driver/postgresql/database.o \
+    c/driver/postgresql/error.o \
+    c/driver/postgresql/postgresql.o \
+    c/driver/postgresql/result_helper.o \
+    c/driver/postgresql/statement.o \
+    c/vendor/nanoarrow/nanoarrow.o

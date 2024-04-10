@@ -39,6 +39,12 @@ public final class SqlTestUtil {
     this.quirks = quirks;
   }
 
+  /** Check if we are running in the Arrow CI. */
+  public static boolean isCI() {
+    // Set by GitHub Actions
+    return "true".equals(System.getenv("CI"));
+  }
+
   /** Load a simple table with two columns. */
   public Schema ingestTableIntsStrs(
       BufferAllocator allocator, AdbcConnection connection, String tableName) throws Exception {

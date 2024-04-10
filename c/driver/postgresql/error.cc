@@ -25,7 +25,7 @@
 
 #include <libpq-fe.h>
 
-#include "common/utils.h"
+#include "driver/common/utils.h"
 
 namespace adbcpq {
 

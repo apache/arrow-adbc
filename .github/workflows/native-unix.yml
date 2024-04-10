@@ -63,7 +63,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-latest", "macos-14", "ubuntu-latest"]
+        include:
+          - os: macos-latest
+            goarch: x64
+          - os: macos-14
+            goarch: arm64
+          - os: ubuntu-latest
+            goarch: x64
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -73,6 +80,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
@@ -96,7 +106,7 @@ jobs:
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.19.13
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -110,7 +120,7 @@ jobs:
           export ADBC_BUILD_TESTS=OFF
           export ADBC_USE_ASAN=OFF
           export ADBC_USE_UBSAN=OFF
-          export PATH=$RUNNER_TOOL_CACHE/go/1.19.13/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           export ADBC_CMAKE_ARGS="-DCMAKE_UNITY_BUILD=ON"
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Go Build
@@ -118,7 +128,7 @@ jobs:
         env:
           CGO_ENABLED: "1"
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.19.13/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
       - uses: actions/upload-artifact@v3
@@ -136,7 +146,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-latest", "macos-14", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -167,6 +177,11 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
 
       - name: Build
         shell: bash -l {0}
@@ -236,6 +251,8 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
+        # N.B. no macos-14 here since conda-forge does not package
+        # arrow-c-glib for M1
         os: ["macos-latest", "ubuntu-latest"]
     env:
       # Required for macOS
@@ -269,6 +286,11 @@ jobs:
             'arrow-c-glib>=10.0.1' \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_glib.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
 
       - uses: actions/download-artifact@v3
         with:
@@ -294,7 +316,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest", "windows-latest"]
+        os: ["macos-latest", "macos-14", "ubuntu-latest", "windows-latest"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -306,8 +328,14 @@ jobs:
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+
       - name: Install staticcheck
-        run: go install honnef.co/go/tools/cmd/staticcheck@v0.3.3
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
       - name: Go Build
         run: |
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
@@ -330,7 +358,14 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-latest", "macos-14", "ubuntu-latest"]
+        include:
+          - os: macos-latest
+            goarch: x64
+          - os: macos-14
+            goarch: arm64
+          - os: ubuntu-latest
+            goarch: x64
     env:
       CGO_ENABLED: "1"
     steps:
@@ -338,6 +373,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
@@ -354,6 +392,12 @@ jobs:
           miniforge-version: latest
           use-only-tar-bz2: false
           use-mamba: true
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+
       - name: Install Dependencies
         shell: bash -l {0}
         run: |
@@ -361,14 +405,14 @@ jobs:
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.19.13
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
       - name: Install staticcheck
         shell: bash -l {0}
-        if: ${{ !contains('macos-latest', matrix.os) }}
-        run: go install honnef.co/go/tools/cmd/staticcheck@v0.3.3
+        if: matrix.os == 'ubuntu-latest'
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
 
       - uses: actions/download-artifact@v3
         with:
@@ -378,10 +422,10 @@ jobs:
       - name: Go Build
         shell: bash -l {0}
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.19.13/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Run Staticcheck
-        if: ${{ !contains('macos-latest', matrix.os) }}
+        if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
         run: |
           pushd go/adbc
@@ -392,7 +436,7 @@ jobs:
         env:
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.19.13/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
   # ------------------------------------------------------------
@@ -405,7 +449,7 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-latest", "macos-14", "ubuntu-latest"]
         python: ["3.9", "3.11"]
     env:
       # Required for macOS
@@ -416,6 +460,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
@@ -439,9 +486,14 @@ jobs:
             python=${{ matrix.python }} \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.19.13
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -458,10 +510,12 @@ jobs:
           ADBC_USE_ASAN: "0"
           ADBC_USE_UBSAN: "0"
         run: |
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Build Panic Dummy
         shell: bash -l {0}
         run: |
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           if [[ $(uname) = "Darwin" ]]; then
             make -C ./go/adbc/pkg libadbc_driver_panicdummy.dylib
           else
@@ -475,10 +529,12 @@ jobs:
           else
             export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.so
           fi
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver Flight SQL
         shell: bash -l {0}
         run: |
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           # Can't use Docker on macOS
           pushd $(pwd)/go/adbc
           go build -o testserver ./driver/flightsql/cmd/testserver
@@ -547,6 +603,11 @@ jobs:
             python=${{ matrix.python }} \
             --file ci/conda_env_docs.txt \
             --file ci/conda_env_python.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
       - uses: actions/download-artifact@v3
         with:
           name: driver-manager-${{ matrix.os }}
@@ -572,18 +633,16 @@ jobs:
           retention-days: 2
           path: |
             docs/build/html
+      - name: Configure Integration Env Vars
+        shell: bash -l {0}
+        run: |
+          cat .env | grep -v -e '^#' | awk NF | tee -a $GITHUB_ENV
       - name: Test Recipes (C++)
         shell: bash -l {0}
         run: |
           ./ci/scripts/cpp_recipe.sh $(pwd) ~/local build/recipe
       - name: Test Recipes (Python)
         shell: bash -l {0}
-        env:
-          ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
-          ADBC_DREMIO_FLIGHTSQL_URI: "grpc+tcp://localhost:32010"
-          ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
-          ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
-          ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
         run: |
           docker compose up --detach --wait dremio dremio-init flightsql-sqlite-test postgres-test
           pytest -vvs docs/source/tests/

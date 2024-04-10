@@ -43,7 +43,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          docker-compose run docs
+          docker compose run docs
       - name: Archive docs
         uses: actions/upload-artifact@v3
         with:

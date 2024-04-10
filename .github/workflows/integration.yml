@@ -78,6 +78,10 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
       - name: Build DuckDB Integration Tests
         shell: bash -l {0}
         env:
@@ -106,6 +110,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
@@ -131,59 +138,49 @@ jobs:
           pip install pytest-error-for-skips
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.19.13
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
       - name: Start SQLite server and Dremio
         shell: bash -l {0}
         run: |
-          docker-compose up -d flightsql-test flightsql-sqlite-test dremio dremio-init
+          docker compose up --detach flightsql-test flightsql-sqlite-test dremio dremio-init
+          cat .env | grep -v -e '^#' | awk NF | tee -a $GITHUB_ENV
 
       - name: Build FlightSQL Driver
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_FLIGHTSQL: "1"
+          BUILD_DRIVER_MANAGER: "1"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+          ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
       - name: Test FlightSQL Driver against Dremio and SQLite
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_FLIGHTSQL: "1"
-          ADBC_DREMIO_FLIGHTSQL_URI: "grpc+tcp://localhost:32010"
-          ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
-          ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
-          ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
-          ADBC_TEST_FLIGHTSQL_URI: "grpc+tcp://localhost:41414"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
-      - name: Build Python Flight SQL driver
-        shell: bash -l {0}
-        env:
-          BUILD_ALL: "0"
-          BUILD_DRIVER_FLIGHTSQL: "1"
-          BUILD_DRIVER_MANAGER: "1"
-        run: |
-          ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
       - name: Test Python Flight SQL driver against Dremio
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_FLIGHTSQL: "1"
-          ADBC_DREMIO_FLIGHTSQL_URI: "grpc+tcp://localhost:32010"
-          ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
-          ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
-          ADBC_TEST_FLIGHTSQL_URI: "grpc+tcp://localhost:41414"
           PYTEST_ADDOPTS: "--error-for-skips"
         run: |
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
       - name: Stop SQLite server and Dremio
         shell: bash -l {0}
         run: |
-          docker-compose down
+          docker compose down
 
   postgresql:
     name: "PostgreSQL Integration Tests"
@@ -216,30 +213,31 @@ jobs:
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
           pip install pytest-error-for-skips
-      - name: Build PostgreSQL Driver
+      - name: Work around ASAN issue (GH-1617)
         shell: bash -l {0}
-        env:
-          BUILD_ALL: "0"
-          BUILD_DRIVER_POSTGRESQL: "1"
         run: |
-          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Build Python PostgreSQL Driver
+          sudo sysctl vm.mmap_rnd_bits=28
+      - name: Build PostgreSQL Driver
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_POSTGRESQL: "1"
         run: |
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Configure Integration Env Vars
+        shell: bash -l {0}
+        run: |
+          cat .env | grep -v -e '^#' | awk NF | tee -a $GITHUB_ENV
+          echo "ADBC_USE_ASAN=ON" >> $GITHUB_ENV
+          echo "ADBC_USE_UBSAN=ON" >> $GITHUB_ENV
 
       - name: Test PostgreSQL Driver - postgres 11
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_USE_ASAN: "ON"
-          ADBC_USE_UBSAN: "ON"
-          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
           PYTEST_ADDOPTS: "--error-for-skips"
         run: |
           env POSTGRES_VERSION=11 docker compose up --wait --detach postgres-test
@@ -251,9 +249,6 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_USE_ASAN: "ON"
-          ADBC_USE_UBSAN: "ON"
-          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
           PYTEST_ADDOPTS: "--error-for-skips"
         run: |
           env POSTGRES_VERSION=12 docker compose up --wait --detach postgres-test
@@ -265,9 +260,6 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_USE_ASAN: "ON"
-          ADBC_USE_UBSAN: "ON"
-          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
           PYTEST_ADDOPTS: "--error-for-skips"
         run: |
           env POSTGRES_VERSION=13 docker compose up --wait --detach postgres-test
@@ -279,9 +271,6 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_USE_ASAN: "ON"
-          ADBC_USE_UBSAN: "ON"
-          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
           PYTEST_ADDOPTS: "--error-for-skips"
         run: |
           env POSTGRES_VERSION=14 docker compose up --wait --detach postgres-test
@@ -293,9 +282,6 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_USE_ASAN: "ON"
-          ADBC_USE_UBSAN: "ON"
-          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
           PYTEST_ADDOPTS: "--error-for-skips"
         run: |
           env POSTGRES_VERSION=15 docker compose up --wait --detach postgres-test
@@ -307,9 +293,6 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_USE_ASAN: "ON"
-          ADBC_USE_UBSAN: "ON"
-          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
           PYTEST_ADDOPTS: "--error-for-skips"
         run: |
           env POSTGRES_VERSION=16 docker compose up --wait --detach postgres-test
@@ -325,6 +308,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
@@ -347,9 +333,13 @@ jobs:
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.19.13
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum

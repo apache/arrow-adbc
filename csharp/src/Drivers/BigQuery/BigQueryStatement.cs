@@ -233,6 +233,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private Dictionary<String, object> ParseStructArray(StructArray structArray, int index)
         {
+            if (structArray.IsNull(index))
+                return null;
+
             Dictionary<String, object> jsonDictionary = new Dictionary<String, object>();
             StructType structType = (StructType)structArray.Data.DataType;
             for (int i = 0; i < structArray.Data.Children.Length; i++)

@@ -37,6 +37,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go/adbc/go.mod'

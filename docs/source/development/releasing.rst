@@ -213,9 +213,13 @@ How to Verify Release Candidates
    - C and C++ compilers (or the equivalent of ``build-essential`` for your platform)
    - Python 3
    - Ruby with headers
+      - meson is required
    - bundler, rake, red-arrow, and test-unit Ruby gems
    - GLib and gobject-introspection with headers
+      - pkg-config or cmake must be able to find libarrow-glib.so
+      - GI_TYPELIB_PATH should be set to the path to the girepository-1.0 directory
    - Java JRE and JDK (Java 8+)
+      - the javadoc command must also be accessible
    - Go
    - CMake, ninja-build, libpq (with headers), SQLite (with headers)
 
@@ -338,6 +342,13 @@ Be sure to go through on the following checklist:
       # dev/release/post-05-linux.sh ../arrow 10.0.0 0
       dev/release/post-05-linux.sh <arrow-dir> <version> <rc-number>
 
+.. dropdown:: Update R packages
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   This is a manual process.  See the process for the `Arrow R packages
+   <https://arrow.apache.org/docs/dev/developers/release.html#post-release-tasks>`_.
+
 .. dropdown:: Upload Ruby packages to RubyGems
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
@@ -356,6 +367,25 @@ Be sure to go through on the following checklist:
 
       # dev/release/post-06-ruby.sh 1.0.0
       dev/release/post-06-ruby.sh <version>
+
+.. dropdown:: Upload C#/.NET packages to NuGet
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   You must be one of owners of the package.  If you aren't an owner yet, an
+   existing owner can add you at https://nuget.org.
+
+   You will need to [create an API
+   key](https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package#create-an-api-key).
+
+   An owner can upload:
+
+   .. code-block:: bash
+
+      export NUGET_API_KEY=<your API key here>
+
+      # dev/release/post-07-csharp.sh 1.0.0
+      dev/release/post-07-csharp.sh <version>
 
 .. dropdown:: Update conda-forge packages
    :class-title: sd-fs-5
@@ -382,7 +412,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      dev/release/post-07-remove-old-artifacts.sh
+      dev/release/post-08-remove-old-artifacts.sh
 
 .. dropdown:: Bump versions
    :class-title: sd-fs-5
@@ -394,8 +424,8 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-08-bump-versions.sh ../arrow 0.1.0 0.2.0
-      dev/release/post-08-bump-versions.sh <arrow-dir> <version> <next_version>
+      # dev/release/post-09-bump-versions.sh ../arrow 0.1.0 0.2.0
+      dev/release/post-09-bump-versions.sh <arrow-dir> <version> <next_version>
 
 .. dropdown:: Publish release blog post
    :class-title: sd-fs-5
@@ -407,7 +437,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-09-website.sh ../arrow-site 0.0.0 0.1.0
-      dev/release/post-09-website.sh <arrow-site-dir> <prev_version> <version>
+      # dev/release/post-10-website.sh ../arrow-site 0.0.0 0.1.0
+      dev/release/post-10-website.sh <arrow-site-dir> <prev_version> <version>
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml

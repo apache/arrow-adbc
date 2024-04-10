@@ -34,6 +34,7 @@ sources = [
     "adbc.h",
     "c/driver_manager/adbc_driver_manager.cc",
     "c/driver_manager/adbc_driver_manager.h",
+    "c/vendor/backward/backward.hpp",
 ]
 
 for source in sources:
@@ -75,7 +76,7 @@ version = get_version("adbc_driver_manager")
 build_type = os.environ.get("ADBC_BUILD_TYPE", "release")
 
 if sys.platform == "win32":
-    extra_compile_args = ["/std:c++17", "/DADBC_EXPORTING"]
+    extra_compile_args = ["/std:c++17", "/DADBC_EXPORTING", "/D_CRT_SECURE_NO_WARNINGS"]
     if build_type == "debug":
         extra_compile_args.extend(["/DEBUG:FULL"])
 else:
@@ -89,6 +90,15 @@ else:
 
 setup(
     ext_modules=[
+        Extension(
+            name="adbc_driver_manager._backward",
+            extra_compile_args=extra_compile_args,
+            include_dirs=[str(source_root.joinpath("adbc_driver_manager").resolve())],
+            language="c++",
+            sources=[
+                "adbc_driver_manager/_backward.pyx",
+            ],
+        ),
         Extension(
             name="adbc_driver_manager._lib",
             extra_compile_args=extra_compile_args,

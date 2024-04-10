@@ -70,8 +70,17 @@ namespace Apache.Arrow.Adbc.Client
                     f.HasMetadata
                 )
                 {
-                    row[SchemaTableColumn.NumericPrecision] = Convert.ToInt32(f.Metadata["precision"]);
-                    row[SchemaTableColumn.NumericScale] = Convert.ToInt32(f.Metadata["scale"]);
+                    if (f.Metadata.TryGetValue("precision", out string precisionValue))
+                    {
+                        if(!string.IsNullOrEmpty(precisionValue))
+                            row[SchemaTableColumn.NumericPrecision] = Convert.ToInt32(precisionValue);
+                    }
+
+                    if(f.Metadata.TryGetValue("scale", out string scaleValue))
+                    {
+                        if(!string.IsNullOrEmpty(scaleValue))
+                            row[SchemaTableColumn.NumericScale] = Convert.ToInt32(scaleValue);
+                    }
                 }
                 else if (f.DataType is Decimal128Type decimal128Type)
                 {
