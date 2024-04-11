@@ -545,6 +545,15 @@ namespace Apache.Arrow.Adbc.Tests
             return $"'{value.Replace("'", "''")}'";
         }
 
+        protected static void AssertContainsAll(string[] expectedTexts, string value)
+        {
+            if (expectedTexts == null) { return; };
+            foreach (string text in expectedTexts)
+            {
+                Assert.Contains(text, value);
+            }
+        }
+
         /// <summary>
         /// Represents a temporary table that can create and drop the table automatically.
         /// </summary>
