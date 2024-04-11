@@ -103,7 +103,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
             InsertSingleValue(table.TableName, columnName, formattedValue);
             await SelectAndValidateValues(table.TableName, columnName, paddedValue, 1, formattedValue);
-            string whereClause = GetDeleteFromWhereClause(columnName, paddedValue, formattedValue);
+            string whereClause = GetWhereClause(columnName, formattedValue ?? paddedValue);
             DeleteFromTable(table.TableName, whereClause, 1);
         }
 

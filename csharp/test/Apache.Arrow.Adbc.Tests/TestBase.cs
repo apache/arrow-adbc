@@ -202,7 +202,7 @@ namespace Apache.Arrow.Adbc.Tests
         {
             InsertSingleValue(tableName, columnName, formattedValue ?? value?.ToString());
             await SelectAndValidateValues(selectStatement, value, 1);
-            string whereClause = GetDeleteFromWhereClause(columnName, value, formattedValue);
+            string whereClause = GetWhereClause(columnName, formattedValue ?? value);
             DeleteFromTable(tableName, whereClause, 1);
         }
 
@@ -218,14 +218,8 @@ namespace Apache.Arrow.Adbc.Tests
         {
             InsertSingleValue(tableName, columnName, formattedValue ?? value?.ToString());
             await SelectAndValidateValues(tableName, columnName, value, 1, formattedValue);
-            string whereClause = GetDeleteFromWhereClause(columnName, value, formattedValue);
+            string whereClause = GetWhereClause(columnName, formattedValue ?? value);
             DeleteFromTable(tableName, whereClause, 1);
-        }
-
-        protected virtual string GetDeleteFromWhereClause(string columnName, object value, string formattedValue = null)
-        {
-            string comparison = formattedValue != null ? $"= {formattedValue}" : value == null ? "IS NULL" : $"= {value}";
-            return $"{columnName} {comparison}";
         }
 
         /// <summary>
@@ -330,6 +324,11 @@ namespace Apache.Arrow.Adbc.Tests
                                 actualLength += floatArray.Length;
                                 ValidateValue(value, floatArray.Length, (i) => floatArray.GetValue(i));
                                 break;
+                            case Int64Type:
+                                Int64Array int64Array = (Int64Array)nextBatch.Column(0);
+                                actualLength += int64Array.Length;
+                                ValidateValue(value, int64Array.Length, (i) => int64Array.GetValue(i));
+                                break;
                             case Int32Type:
                                 Int32Array intArray = (Int32Array)nextBatch.Column(0);
                                 actualLength += intArray.Length;
@@ -370,30 +369,10 @@ namespace Apache.Arrow.Adbc.Tests
                                 actualLength += binaryArray.Length;
                                 ValidateValue(value, binaryArray.Length, (i) => binaryArray.GetBytes(i).ToArray());
                                 break;
-                            case MapType:
-                                MapArray mapArray = (MapArray)nextBatch.Column(0);
-                                actualLength += mapArray.Length;
-                                IArrowType valType = mapArray.Values.Data.DataType;
-                                IArrowType keyType = mapArray.Keys.Data.DataType;
-                                ValidateValue(value, mapArray.Length, (i) => ((StructArray)mapArray.GetSlicedValues(i)));
-                                break;
-                            case ListType:
-                                ListArray listArrayArray = (ListArray)nextBatch.Column(0);
-                                actualLength += listArrayArray.Length;
-                                IArrowType elementType = ((ListType)listArrayArray.Data.DataType).ValueDataType;
-                                switch (elementType)
-                                {
-                                    case Int32Type:
-                                        ValidateValue(value, listArrayArray.Length, (i) => ((Int32Array)listArrayArray.GetSlicedValues(i)).Values.ToArray());
-                                        break;
-                                    case Int64Type:
-                                        ValidateValue(value, listArrayArray.Length, (i) => ((Int64Array)listArrayArray.GetSlicedValues(i)).Values.ToArray());
-                                        break;
-                                    default:
-                                        Assert.Fail($"List element type: {elementType} - is not supported.");
-                                        break;
-                                }
-
+                            case NullType:
+                                NullArray nullArray = (NullArray)nextBatch.Column(0);
+                                actualLength += nullArray.Length;
+                                ValidateValue(value == null, nullArray.Length, (i) => nullArray.IsNull(i));
                                 break;
                             default:
                                 Assert.Fail($"Unhandled datatype {field.DataType}");
@@ -428,30 +407,19 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to select and validate.</param>
         /// <returns>The native SQL statement.</returns>
         protected virtual string GetSelectSingleValueStatement(string table, string columnName, object value) =>
-            value == null
-            ? $"SELECT {columnName} FROM {table} WHERE {columnName} IS NULL"
-            : string.Format(
-                "SELECT {0} FROM {1} WHERE {0}={2};",
-                columnName,
-                table,
-                value.GetType() == typeof(float)
-                    ? ConvertFloatToString((float)value)
-                    : value.GetType() == typeof(double)
-                        ? ConvertDoubleToString((double)value)
-                        : value
-            );
+            $"SELECT {columnName} FROM {table} WHERE {GetWhereClause(columnName, value)}";
 
-        protected virtual string GetSelectStatement(
-            string projection,
-            string source,
-            string selection,
-            string aggregation) => string.Format(
-                "SELECT {0} {1} {2} {3};",
-                projection,
-                source,
-                selection,
-                aggregation
-            );
+        protected virtual string GetWhereClause(string columnName, object value) =>
+            value == null
+                ? $"{columnName} IS NULL"
+                : string.Format("{0} = {1}", columnName, MaybeDoubleToString(value));
+
+        private static object MaybeDoubleToString(object value) =>
+            value.GetType() == typeof(float)
+                ? ConvertFloatToString((float)value)
+                : value.GetType() == typeof(double)
+                    ? ConvertDoubleToString((double)value)
+                    : value;
 
         /// <summary>
         /// Converts double values to it's String equivalent.

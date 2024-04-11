@@ -520,22 +520,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case ColumnTypeId.CHAR_TYPE:
                     return StringType.Default;
                 case ColumnTypeId.DECIMAL_TYPE:
-                    // TODO: Parse typeName for precision and scale.
+                    // TODO: Parse typeName for precision and scale, because not available in other metadata.
                     return new Decimal128Type(38, 38);
                 case ColumnTypeId.ARRAY_TYPE:
-                    // TODO: Parse the typeName to get the element type dynamically.
-                    return new ListType(StringType.Default);
                 case ColumnTypeId.MAP_TYPE:
-                    // TODO: Parse the typeName to get the element types dynamically.
-                    return new MapType(StringType.Default, StringType.Default);
                 case ColumnTypeId.STRUCT_TYPE:
-                    // TODO: Parse the typeName to get the element types dynamically.
-                    List<Field> structSchema = new List<Field>()
-                    {
-                        new Field("key", Int32Type.Default, nullable: true),
-                        new Field("value", Int32Type.Default, nullable: true),
-                    };
-                    return new StructType(structSchema);
+                    // TODO: Resolve issue where complex types are not being returned as string.
+                    return StringType.Default;
                 default:
                     throw new NotImplementedException($"Column type id: {columnTypeId} is not supported.");
             }

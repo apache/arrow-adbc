@@ -17,6 +17,7 @@
 
 using System.Data.SqlTypes;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -50,12 +51,25 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if driver can handle the largest / smallest numbers
         /// </summary>
         [SkippableTheory]
-        [InlineData(2147483647)]
-        [InlineData(-2147483648)]
+        [InlineData(int.MaxValue)]
+        [InlineData(int.MinValue)]
         public async Task TestIntegerMinMax(int value)
         {
             string columnName = "INTTYPE";
             using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} INT", columnName));
+            await ValidateInsertSelectDeleteSingleValue(table.TableName, columnName, value);
+        }
+
+        /// <summary>
+        /// Validates if driver can handle the largest / smallest numbers
+        /// </summary>
+        [SkippableTheory]
+        [InlineData(long.MaxValue)]
+        [InlineData(long.MinValue)]
+        public async Task TestLongMinMax(long value)
+        {
+            string columnName = "BIGINTTYPE";
+            using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} BIGINT", columnName));
             await ValidateInsertSelectDeleteSingleValue(table.TableName, columnName, value);
         }
 
@@ -113,7 +127,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "SMALLNUMBER";
             using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} DECIMAL(2,0)", columnName));
-            await Assert.ThrowsAsync<AdbcException>(async () => await ValidateInsertSelectDeleteSingleValue(table.TableName, columnName, new SqlDecimal(value)));
+            await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValue(table.TableName, columnName, new SqlDecimal(value)));
         }
 
         /// <summary>
@@ -144,7 +158,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "LARGESCALENUMBER";
             using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} DECIMAL(38,37)", columnName));
-            await Assert.ThrowsAsync<AdbcException>(async () => await ValidateInsertSelectDeleteSingleValue(table.TableName, columnName, SqlDecimal.Parse(value)));
+            await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValue(table.TableName, columnName, SqlDecimal.Parse(value)));
         }
 
         /// <summary>
@@ -172,7 +186,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "SMALLSCALENUMBER";
             using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} DECIMAL(38,2)", columnName));
-            await Assert.ThrowsAsync<AdbcException>(async () => await ValidateInsertSelectDeleteSingleValue(table.TableName, columnName, SqlDecimal.Parse(value)));
+            await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValue(table.TableName, columnName, SqlDecimal.Parse(value)));
         }
 
 
@@ -191,7 +205,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             SqlDecimal returned = new SqlDecimal(output);
             InsertSingleValue(table.TableName, columnName, value.ToString());
             await SelectAndValidateValues(table.TableName, columnName, returned, 1);
-            string whereClause = GetDeleteFromWhereClause(columnName, value);
+            string whereClause = GetWhereClause(columnName, returned);
             DeleteFromTable(table.TableName, whereClause, 1);
         }
 
@@ -215,7 +229,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string valueString = ConvertDoubleToString(value);
             InsertSingleValue(table.TableName, columnName, valueString);
             await SelectAndValidateValues(table.TableName, columnName, value, 1);
-            string whereClause = GetDeleteFromWhereClause(columnName, value);
+            string whereClause = GetWhereClause(columnName, value);
             DeleteFromTable(table.TableName, whereClause, 1);
         }
 
@@ -242,7 +256,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string valueString = ConvertFloatToString(value);
             InsertSingleValue(table.TableName, columnName, valueString);
             await SelectAndValidateValues(table.TableName, columnName, value, 1);
-            string whereClause = GetDeleteFromWhereClause(columnName, value);
+            string whereClause = GetWhereClause(columnName, value);
             DeleteFromTable(table.TableName, whereClause, 1);
         }
     }

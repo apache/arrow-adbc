@@ -79,5 +79,30 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 value,
                 formattedValue);
         }
+
+        /// <summary>
+        /// Validates if driver can receive specific NULL values correctly.
+        /// </summary>
+        [SkippableTheory]
+        [InlineData("NULL")]
+        [InlineData("CAST(NULL AS INT)")]
+        [InlineData("CAST(NULL AS BIGINT)")]
+        [InlineData("CAST(NULL AS SMALLINT)")]
+        [InlineData("CAST(NULL AS TINYINT)")]
+        [InlineData("CAST(NULL AS FLOAT)")]
+        [InlineData("CAST(NULL AS DOUBLE)")]
+        [InlineData("CAST(NULL AS DECIMAL(38,0))")]
+        [InlineData("CAST(NULL AS STRING)")]
+        [InlineData("CAST(NULL AS VARCHAR(10))")]
+        [InlineData("CAST(NULL AS CHAR(10))")]
+        [InlineData("CAST(NULL AS BOOLEAN)")]
+        // TODO: Returns byte[] [] (i.e., empty array) - expecting null value.
+        //[InlineData("CAST(NULL AS BINARY)", Skip = "Returns empty array - expecting null value.")]
+        public async Task TestNullData(string projectionClause)
+        {
+            string selectStatement = $"SELECT {projectionClause};";
+            // Note: by default, this returns as String type, not NULL type.
+            await SelectAndValidateValues(selectStatement, null, 1);
+        }
     }
 }
