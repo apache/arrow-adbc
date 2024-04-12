@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             {
                 TimestampAsArrow = true,
                 DecimalAsArrow = true,
-                ComplexTypesAsArrow = true,
+                ComplexTypesAsArrow = false,
                 IntervalTypesAsArrow = false,
             };
         }

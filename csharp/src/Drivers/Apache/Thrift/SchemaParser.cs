@@ -62,18 +62,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                 case TTypeId.TINYINT_TYPE: return Int8Type.Default;
                 case TTypeId.VARCHAR_TYPE: return StringType.Default;
                 case TTypeId.DECIMAL_TYPE:
-                    var precision = thriftType.TypeQualifiers.Qualifiers["precision"].I32Value;
-                    var scale = thriftType.TypeQualifiers.Qualifiers["scale"].I32Value;
+                    int precision = thriftType.TypeQualifiers.Qualifiers["precision"].I32Value;
+                    int scale = thriftType.TypeQualifiers.Qualifiers["scale"].I32Value;
                     return new Decimal128Type(precision, scale);
                 case TTypeId.INTERVAL_DAY_TIME_TYPE:
                 case TTypeId.INTERVAL_YEAR_MONTH_TYPE:
-                    return StringType.Default;
                 case TTypeId.ARRAY_TYPE:
                 case TTypeId.MAP_TYPE:
                 case TTypeId.STRUCT_TYPE:
                 case TTypeId.UNION_TYPE:
                 case TTypeId.USER_DEFINED_TYPE:
-                    // TODO: Resolve issue that data returned is natvie and not a string representation.
                     return StringType.Default;
                 default:
                     throw new NotImplementedException();
