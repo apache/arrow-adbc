@@ -233,6 +233,14 @@ func TestCustomizedDriver(t *testing.T) {
 			"info_value": [0, "(unknown or development build)"]
 		},
 		{
+			"info_name": 3,
+			"info_value": [1, true]
+		},
+		{
+			"info_name": 4,
+			"info_value": [1, false]
+		},
+		{
 			"info_name": 100,
 			"info_value": [0, "ADBC MockDriver Driver - Go"]
 		},
@@ -506,6 +514,12 @@ func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
 }
 
 func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
+	if err := c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoVendorSql, true); err != nil {
+		return err
+	}
+	if err := c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoVendorSubstrait, false); err != nil {
+		return err
+	}
 	return c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoCode(10_002), "this was fetched dynamically")
 }
 

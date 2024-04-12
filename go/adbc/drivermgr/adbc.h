@@ -459,6 +459,24 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_VENDOR_ARROW_VERSION 2
+/// \brief Indicates whether SQL queries are supported (type: bool).
+///
+/// \see AdbcConnectionGetInfo
+#define ADBC_INFO_VENDOR_SQL 3
+/// \brief Indicates whether Substrait queries are supported (type: bool).
+///
+/// \see AdbcConnectionGetInfo
+#define ADBC_INFO_VENDOR_SUBSTRAIT 4
+/// \brief The minimum supported Substrait version, or null if
+///   Substrait is not supported (type: utf8).
+///
+/// \see AdbcConnectionGetInfo
+#define ADBC_INFO_VENDOR_SUBSTRAIT_MIN_VERSION 5
+/// \brief The maximum supported Substrait version, or null if
+///   Substrait is not supported (type: utf8).
+///
+/// \see AdbcConnectionGetInfo
+#define ADBC_INFO_VENDOR_SUBSTRAIT_MAX_VERSION 6
 
 /// \brief The driver name (type: utf8).
 ///
@@ -754,6 +772,24 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///   schema of the data to append (ADBC_STATUS_ALREADY_EXISTS).
 /// \since ADBC API revision 1.1.0
 #define ADBC_INGEST_OPTION_MODE_CREATE_APPEND "adbc.ingest.mode.create_append"
+/// \brief The catalog of the table for bulk insert.
+///
+/// The type is char*.
+#define ADBC_INGEST_OPTION_TARGET_CATALOG "adbc.ingest.target_catalog"
+/// \brief The schema of the table for bulk insert.
+///
+/// The type is char*.
+#define ADBC_INGEST_OPTION_TARGET_DB_SCHEMA "adbc.ingest.target_db_schema"
+/// \brief Use a temporary table for ingestion.
+///
+/// The value should be ADBC_OPTION_VALUE_ENABLED or
+/// ADBC_OPTION_VALUE_DISABLED (the default).
+///
+/// This is not supported with ADBC_INGEST_OPTION_TARGET_CATALOG and
+/// ADBC_INGEST_OPTION_TARGET_DB_SCHEMA.
+///
+/// The type is char*.
+#define ADBC_INGEST_OPTION_TEMPORARY "adbc.ingest.temporary"
 
 /// @}
 

@@ -29,6 +29,20 @@ const (
 	DefaultInfoDriverADBCVersion = adbc.AdbcVersion1_1_0
 )
 
+var infoValueTypeCodeForInfoCode = map[adbc.InfoCode]adbc.InfoValueTypeCode{
+	adbc.InfoVendorName:                adbc.InfoValueStringType,
+	adbc.InfoVendorVersion:             adbc.InfoValueStringType,
+	adbc.InfoVendorArrowVersion:        adbc.InfoValueStringType,
+	adbc.InfoDriverName:                adbc.InfoValueStringType,
+	adbc.InfoDriverVersion:             adbc.InfoValueStringType,
+	adbc.InfoDriverArrowVersion:        adbc.InfoValueStringType,
+	adbc.InfoDriverADBCVersion:         adbc.InfoValueInt64Type,
+	adbc.InfoVendorSql:                 adbc.InfoValueBooleanType,
+	adbc.InfoVendorSubstrait:           adbc.InfoValueBooleanType,
+	adbc.InfoVendorSubstraitMinVersion: adbc.InfoValueStringType,
+	adbc.InfoVendorSubstraitMaxVersion: adbc.InfoValueStringType,
+}
+
 func DefaultDriverInfo(name string) *DriverInfo {
 	defaultInfoVendorName := name
 	defaultInfoDriverName := fmt.Sprintf("ADBC %s Driver - Go", name)
@@ -73,104 +87,37 @@ func (di *DriverInfo) InfoSupportedCodes() []adbc.InfoCode {
 }
 
 func (di *DriverInfo) RegisterInfoCode(code adbc.InfoCode, value any) error {
-	switch code {
-	case adbc.InfoVendorName:
-		if err := ensureType[string](value); err != nil {
-			return fmt.Errorf("info_code %d: %w", code, err)
+	infoValueTypeCode, isStandardInfoCode := infoValueTypeCodeForInfoCode[code]
+	if !isStandardInfoCode {
+		di.info[code] = value
+		return nil
+	}
+
+	// If it is a standard InfoCode, we make sure to validate its type on write
+	var err error
+	switch infoValueTypeCode {
+	case adbc.InfoValueStringType:
+		if val, ok := value.(string); !ok {
+			err = fmt.Errorf("%s: expected info_value %v to be of type %T but found %T", code, value, val, value)
 		}
-	case adbc.InfoVendorVersion:
-		if err := ensureType[string](value); err != nil {
-			return fmt.Errorf("info_code %d: %w", code, err)
+	case adbc.InfoValueInt64Type:
+		if val, ok := value.(int64); !ok {
+			err = fmt.Errorf("%s: expected info_value %v to be of type %T but found %T", code, value, val, value)
 		}
-	case adbc.InfoVendorArrowVersion:
-		if err := ensureType[string](value); err != nil {
-			return fmt.Errorf("info_code %d: %w", code, err)
-		}
-	case adbc.InfoDriverName:
-		if err := ensureType[string](value); err != nil {
-			return fmt.Errorf("info_code %d: %w", code, err)
-		}
-	case adbc.InfoDriverVersion:
-		if err := ensureType[string](value); err != nil {
-			return fmt.Errorf("info_code %d: %w", code, err)
-		}
-	case adbc.InfoDriverArrowVersion:
-		if err := ensureType[string](value); err != nil {
-			return fmt.Errorf("info_code %d: %w", code, err)
-		}
-	case adbc.InfoDriverADBCVersion:
-		if err := ensureType[int64](value); err != nil {
-			return fmt.Errorf("info_code %d: %w", code, err)
+	case adbc.InfoValueBooleanType:
+		if val, ok := value.(bool); !ok {
+			err = fmt.Errorf("%s: expected info_value %v to be of type %T but found %T", code, value, val, value)
 		}
 	}
 
-	di.info[code] = value
-	return nil
+	if err == nil {
+		di.info[code] = value
+	}
+
+	return err
 }
 
 func (di *DriverInfo) GetInfoForInfoCode(code adbc.InfoCode) (any, bool) {
 	val, ok := di.info[code]
 	return val, ok
-}
-
-func (di *DriverInfo) GetInfoVendorName() (string, bool) {
-	return di.getStringInfoCode(adbc.InfoVendorName)
-}
-
-func (di *DriverInfo) GetInfoVendorVersion() (string, bool) {
-	return di.getStringInfoCode(adbc.InfoVendorVersion)
-}
-
-func (di *DriverInfo) GetInfoVendorArrowVersion() (string, bool) {
-	return di.getStringInfoCode(adbc.InfoVendorArrowVersion)
-}
-
-func (di *DriverInfo) GetInfoDriverName() (string, bool) {
-	return di.getStringInfoCode(adbc.InfoDriverName)
-}
-
-func (di *DriverInfo) GetInfoDriverVersion() (string, bool) {
-	return di.getStringInfoCode(adbc.InfoDriverVersion)
-}
-
-func (di *DriverInfo) GetInfoDriverArrowVersion() (string, bool) {
-	return di.getStringInfoCode(adbc.InfoDriverArrowVersion)
-}
-
-func (di *DriverInfo) GetInfoDriverADBCVersion() (int64, bool) {
-	return di.getInt64InfoCode(adbc.InfoDriverADBCVersion)
-}
-
-func (di *DriverInfo) getStringInfoCode(code adbc.InfoCode) (string, bool) {
-	val, ok := di.GetInfoForInfoCode(code)
-	if !ok {
-		return "", false
-	}
-
-	if err := ensureType[string](val); err != nil {
-		panic(err)
-	}
-
-	return val.(string), true
-}
-
-func (di *DriverInfo) getInt64InfoCode(code adbc.InfoCode) (int64, bool) {
-	val, ok := di.GetInfoForInfoCode(code)
-	if !ok {
-		return int64(0), false
-	}
-
-	if err := ensureType[int64](val); err != nil {
-		panic(err)
-	}
-
-	return val.(int64), true
-}
-
-func ensureType[T any](value any) error {
-	typedVal, ok := value.(T)
-	if !ok {
-		return fmt.Errorf("expected info_value %v to be of type %T but found %T", value, typedVal, value)
-	}
-	return nil
 }
