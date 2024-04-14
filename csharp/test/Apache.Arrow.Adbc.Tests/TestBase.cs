@@ -192,15 +192,34 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Validates that an insert, select and delete statement works with the given value.
         /// </summary>
+        /// <param name="selectStatement"></param>
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to insert, select and delete.</param>
+        /// <param name="formattedValue">The formated value to insert, select and delete.</param>
         /// <returns></returns>
-        protected async Task ValidateInsertSelectDeleteSingleValue(string tableName, string columnName, object value)
+        protected async Task ValidateInsertSelectDeleteSingleValue(string selectStatement, string tableName, string columnName, object value, string formattedValue = null)
         {
-            InsertSingleValue(tableName, columnName, value.ToString());
-            await SelectAndValidateValues(tableName, columnName, value, 1);
-            DeleteFromTable(tableName, string.Format("{0}={1}", columnName, value), 1);
+            InsertSingleValue(tableName, columnName, formattedValue ?? value?.ToString());
+            await SelectAndValidateValues(selectStatement, value, 1);
+            string whereClause = GetWhereClause(columnName, formattedValue ?? value);
+            DeleteFromTable(tableName, whereClause, 1);
+        }
+
+        /// <summary>
+        /// Validates that an insert, select and delete statement works with the given value.
+        /// </summary>
+        /// <param name="tableName">The name of the table to use.</param>
+        /// <param name="columnName">The name of the column.</param>
+        /// <param name="value">The value to insert, select and delete.</param>
+        /// <param name="formattedValue">The formated value to insert, select and delete.</param>
+        /// <returns></returns>
+        protected async Task ValidateInsertSelectDeleteSingleValue(string tableName, string columnName, object value, string formattedValue = null)
+        {
+            InsertSingleValue(tableName, columnName, formattedValue ?? value?.ToString());
+            await SelectAndValidateValues(tableName, columnName, value, 1, formattedValue);
+            string whereClause = GetWhereClause(columnName, formattedValue ?? value);
+            DeleteFromTable(tableName, whereClause, 1);
         }
 
         /// <summary>
@@ -226,7 +245,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to insert.</param>
         /// <returns></returns>
         protected virtual string GetInsertValueStatement(string tableName, string columnName, string value) =>
-            string.Format("INSERT INTO {0} ({1}) VALUES ({2});", tableName, columnName, value);
+            string.Format("INSERT INTO {0} ({1}) VALUES ({2});", tableName, columnName, value ?? "NULL");
 
         /// <summary>
         /// Deletes a (single) value from a table.
@@ -260,16 +279,29 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to select and validate.</param>
         /// <param name="expectedLength">The number of expected results (rows).</param>
         /// <returns></returns>
-        protected virtual async Task SelectAndValidateValues(string table, string columnName, object value, int expectedLength)
+        protected virtual async Task SelectAndValidateValues(string table, string columnName, object value, int expectedLength, string formattedValue = null)
         {
-            string selectNumberStatement = GetSelectSingleValueStatement(table, columnName, value);
-            OutputHelper.WriteLine(selectNumberStatement);
-            Statement.SqlQuery = selectNumberStatement;
+            string selectNumberStatement = GetSelectSingleValueStatement(table, columnName, formattedValue ?? value);
+            await SelectAndValidateValues(selectNumberStatement, value, expectedLength);
+        }
+
+        /// <summary>
+        /// Selects a single value and validates it equality with expected value and number of results.
+        /// </summary>
+        /// <param name="selectStatement">The SQL statement to execute.</param>
+        /// <param name="value">The value to select and validate.</param>
+        /// <param name="expectedLength">The number of expected results (rows).</param>
+        /// <returns></returns>
+        protected virtual async Task SelectAndValidateValues(string selectStatement, object value, int expectedLength)
+        {
+            Statement.SqlQuery = selectStatement;
+            OutputHelper.WriteLine(selectStatement);
             QueryResult queryResult = Statement.ExecuteQuery();
             int actualLength = 0;
             using (IArrowArrayStream stream = queryResult.Stream)
             {
-                Field field = stream.Schema.GetFieldByName(columnName);
+                // Assume first column
+                Field field = stream.Schema.GetFieldByIndex(0);
                 while (true)
                 {
                     using (RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync())
@@ -292,6 +324,11 @@ namespace Apache.Arrow.Adbc.Tests
                                 actualLength += floatArray.Length;
                                 ValidateValue(value, floatArray.Length, (i) => floatArray.GetValue(i));
                                 break;
+                            case Int64Type:
+                                Int64Array int64Array = (Int64Array)nextBatch.Column(0);
+                                actualLength += int64Array.Length;
+                                ValidateValue(value, int64Array.Length, (i) => int64Array.GetValue(i));
+                                break;
                             case Int32Type:
                                 Int32Array intArray = (Int32Array)nextBatch.Column(0);
                                 actualLength += intArray.Length;
@@ -311,6 +348,31 @@ namespace Apache.Arrow.Adbc.Tests
                                 StringArray stringArray = (StringArray)nextBatch.Column(0);
                                 actualLength += stringArray.Length;
                                 ValidateValue(value, stringArray.Length, (i) => stringArray.GetString(i));
+                                break;
+                            case TimestampType:
+                                TimestampArray timestampArray = (TimestampArray)nextBatch.Column(0);
+                                actualLength += timestampArray.Length;
+                                ValidateValue(value, timestampArray.Length, (i) => timestampArray.GetTimestamp(i));
+                                break;
+                            case Date32Type:
+                                Date32Array date32Array = (Date32Array)nextBatch.Column(0);
+                                actualLength += date32Array.Length;
+                                ValidateValue(value, date32Array.Length, (i) => date32Array.GetDateTimeOffset(i));
+                                break;
+                            case BooleanType:
+                                BooleanArray booleanArray = (BooleanArray)nextBatch.Column(0);
+                                actualLength += booleanArray.Length;
+                                ValidateValue(value, booleanArray.Length, (i) => booleanArray.GetValue(i));
+                                break;
+                            case BinaryType:
+                                BinaryArray binaryArray = (BinaryArray)nextBatch.Column(0);
+                                actualLength += binaryArray.Length;
+                                ValidateValue(value, binaryArray.Length, (i) => binaryArray.GetBytes(i).ToArray());
+                                break;
+                            case NullType:
+                                NullArray nullArray = (NullArray)nextBatch.Column(0);
+                                actualLength += nullArray.Length;
+                                ValidateValue(value == null, nullArray.Length, (i) => nullArray.IsNull(i));
                                 break;
                             default:
                                 Assert.Fail($"Unhandled datatype {field.DataType}");
@@ -344,16 +406,20 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to select and validate.</param>
         /// <returns>The native SQL statement.</returns>
-        protected virtual string GetSelectSingleValueStatement(string table, string columnName, object value) => string.Format(
-                "SELECT {0} FROM {1} WHERE {0}={2};",
-                columnName,
-                table,
-                value.GetType() == typeof(float)
-                    ? ConvertFloatToString((float)value)
-                    : value.GetType() == typeof(double)
-                        ? ConvertDoubleToString((double)value)
-                        : value
-            );
+        protected virtual string GetSelectSingleValueStatement(string table, string columnName, object value) =>
+            $"SELECT {columnName} FROM {table} WHERE {GetWhereClause(columnName, value)}";
+
+        protected virtual string GetWhereClause(string columnName, object value) =>
+            value == null
+                ? $"{columnName} IS NULL"
+                : string.Format("{0} = {1}", columnName, MaybeDoubleToString(value));
+
+        private static object MaybeDoubleToString(object value) =>
+            value.GetType() == typeof(float)
+                ? ConvertFloatToString((float)value)
+                : value.GetType() == typeof(double)
+                    ? ConvertDoubleToString((double)value)
+                    : value;
 
         /// <summary>
         /// Converts double values to it's String equivalent.
@@ -440,6 +506,20 @@ namespace Apache.Arrow.Adbc.Tests
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        protected static string QuoteValue(string value)
+        {
+            return $"'{value.Replace("'", "''")}'";
+        }
+
+        protected static void AssertContainsAll(string[] expectedTexts, string value)
+        {
+            if (expectedTexts == null) { return; };
+            foreach (string text in expectedTexts)
+            {
+                Assert.Contains(text, value);
+            }
         }
 
         /// <summary>

@@ -36,6 +36,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string tableName = NewTableName();
             // Note: Databricks/Spark doesn't support TEMPORARY table.
             string sqlUpdate = string.Format("CREATE TABLE {0} ({1})", tableName, columns);
+            OutputHelper.WriteLine(sqlUpdate);
             return TemporaryTable.NewTemporaryTable(statement, tableName, sqlUpdate);
         }
 

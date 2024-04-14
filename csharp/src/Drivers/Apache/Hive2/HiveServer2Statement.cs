@@ -41,7 +41,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             var executeResponse = this.connection.client.ExecuteStatement(executeRequest).Result;
             if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
-                throw new AdbcException(executeResponse.Status.ErrorMessage);
+                throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)
+                    .SetSqlState(executeResponse.Status.SqlState)
+                    .SetNativeError(executeResponse.Status.ErrorCode);
             }
             this.operationHandle = executeResponse.OperationHandle;
         }

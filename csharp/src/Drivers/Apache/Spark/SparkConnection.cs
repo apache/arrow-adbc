@@ -58,25 +58,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             { "spark.thriftserver.arrowBasedRowSet.timestampAsString", "false" }
         };
 
-        private static readonly IReadOnlyDictionary<ColumnTypeId, IArrowType> s_columnTypeToArrowTypeMap = new Dictionary<ColumnTypeId, IArrowType>() {
-                { ColumnTypeId.BOOLEAN_TYPE, BooleanType.Default },
-                { ColumnTypeId.TINYINT_TYPE, Int8Type.Default },
-                { ColumnTypeId.SMALLINT_TYPE, Int16Type.Default },
-                { ColumnTypeId.INT_TYPE, Int32Type.Default },
-                { ColumnTypeId.BIGINT_TYPE, Int64Type.Default },
-                { ColumnTypeId.FLOAT_TYPE, FloatType.Default },
-                { ColumnTypeId.DOUBLE_TYPE, DoubleType.Default },
-                { ColumnTypeId.STRING_TYPE, StringType.Default },
-                { ColumnTypeId.TIMESTAMP_TYPE, new TimestampType(TimeUnit.Microsecond, (string)null) },
-                { ColumnTypeId.BINARY_TYPE, BinaryType.Default },
-                { ColumnTypeId.ARRAY_TYPE, StringType.Default },
-                { ColumnTypeId.MAP_TYPE, StringType.Default },
-                { ColumnTypeId.STRUCT_TYPE, StringType.Default },
-                { ColumnTypeId.DECIMAL_TYPE, StringType.Default },
-                { ColumnTypeId.DATE_TYPE, Date32Type.Default },
-                { ColumnTypeId.CHAR_TYPE, StringType.Default },
-            };
-
         private enum ColumnTypeId
         {
             BOOLEAN_TYPE = 16,
@@ -330,9 +311,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             {
                 string columnName = columns[3].StringVal.Values.GetString(i);
                 int? columnType = columns[4].I32Val.Values.GetValue(i);
-                fields[i] = new Field(columnName,
-                    SparkConnection.GetArrowType((ColumnTypeId)columnType),
-                    nullable: true /* ??? */);
+                string typeName = columns[5].StringVal.Values.GetString(i);
+                bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
+                IArrowType dataType = SparkConnection.GetArrowType((ColumnTypeId)columnType, typeName);
+                fields[i] = new Field(columnName, dataType, nullable);
             }
             return new Schema(fields, null);
         }
@@ -509,13 +491,45 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return new SparkInfoArrowStream(StandardSchemas.GetObjectsSchema, dataArrays);
         }
 
-        private static IArrowType GetArrowType(ColumnTypeId columnTypeId)
+        private static IArrowType GetArrowType(ColumnTypeId columnTypeId, string typeName)
         {
-            if (!s_columnTypeToArrowTypeMap.TryGetValue(columnTypeId, out IArrowType arrowType))
+            switch (columnTypeId)
             {
-                throw new NotImplementedException($"Unsupported column type id: {columnTypeId}");
+                case ColumnTypeId.BOOLEAN_TYPE:
+                    return BooleanType.Default;
+                case ColumnTypeId.TINYINT_TYPE:
+                    return Int8Type.Default;
+                case ColumnTypeId.SMALLINT_TYPE:
+                    return Int16Type.Default;
+                case ColumnTypeId.INT_TYPE:
+                    return Int32Type.Default;
+                case ColumnTypeId.BIGINT_TYPE:
+                    return Int64Type.Default;
+                case ColumnTypeId.FLOAT_TYPE:
+                    return FloatType.Default;
+                case ColumnTypeId.DOUBLE_TYPE:
+                    return DoubleType.Default;
+                case ColumnTypeId.STRING_TYPE:
+                    return StringType.Default;
+                case ColumnTypeId.TIMESTAMP_TYPE:
+                    return new TimestampType(TimeUnit.Microsecond, timezone: (string)null);
+                case ColumnTypeId.BINARY_TYPE:
+                    return BinaryType.Default;
+                case ColumnTypeId.DATE_TYPE:
+                    return Date32Type.Default;
+                case ColumnTypeId.CHAR_TYPE:
+                    return StringType.Default;
+                case ColumnTypeId.DECIMAL_TYPE:
+                    // TODO: Parse typeName for precision and scale, because not available in other metadata.
+                    return new Decimal128Type(38, 38);
+                case ColumnTypeId.ARRAY_TYPE:
+                case ColumnTypeId.MAP_TYPE:
+                case ColumnTypeId.STRUCT_TYPE:
+                    // TODO: Resolve issue where complex types are not being returned as string.
+                    return StringType.Default;
+                default:
+                    throw new NotImplementedException($"Column type id: {columnTypeId} is not supported.");
             }
-            return arrowType;
         }
 
         private StructArray GetDbSchemas(
