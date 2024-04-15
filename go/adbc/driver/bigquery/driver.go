@@ -29,7 +29,8 @@ import (
 // under the License.
 
 const (
-	OptionStringAuthType = "adbc.bigquery.sql.auth_type"
+	OptionStringAuthType  = "adbc.bigquery.sql.auth_type"
+	OptionStringProjectID = "adbc.bigquery.sql.project_id"
 
 	OptionStringQueryDestinationTable  = "adbc.bigquery.sql.query.destination_table"
 	OptionStringQueryDefaultProjectID  = "adbc.bigquery.sql.query.default_project_id"
@@ -65,6 +66,7 @@ func init() {
 
 type driverImpl struct {
 	driverbase.DriverImplBase
+	alloc memory.Allocator
 }
 
 // NewDriver creates a new BigQuery driver using the given Arrow allocator.
@@ -75,13 +77,17 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 			panic(err)
 		}
 	}
-	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)})
+	return driverbase.NewDriver(&driverImpl{
+		DriverImplBase: driverbase.NewDriverImplBase(info, alloc),
+		alloc:          alloc,
+	})
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	opts = maps.Clone(opts)
 	db := &databaseImpl{
 		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
+		alloc:            d.alloc,
 	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err

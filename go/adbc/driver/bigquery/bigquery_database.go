@@ -22,17 +22,23 @@ import (
 	"fmt"
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 )
 
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
 
-	AuthType string
+	authType  string
+	projectID *string
+
+	alloc memory.Allocator
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	conn := &ConnectionImpl{
 		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+		database:           d,
+		alloc:              d.alloc,
 	}
 
 	return driverbase.NewConnectionBuilder(conn).
@@ -49,7 +55,15 @@ func (d *databaseImpl) Close() error {
 func (d *databaseImpl) GetOption(key string) (string, error) {
 	switch key {
 	case OptionStringAuthType:
-		return d.AuthType, nil
+		return d.authType, nil
+	case OptionStringProjectID:
+		if d.projectID == nil {
+			return "", adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  "ProjectID is not set",
+			}
+		}
+		return *d.projectID, nil
 	default:
 		return "", adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -84,7 +98,9 @@ func (d *databaseImpl) SetOptions(options map[string]string) error {
 		v := v // copy into loop scope
 		switch k {
 		case OptionStringAuthType:
-			d.AuthType = v
+			d.authType = v
+		case OptionStringProjectID:
+			d.projectID = &v
 		default:
 			return adbc.Error{
 				Code: adbc.StatusInvalidArgument,
@@ -98,7 +114,9 @@ func (d *databaseImpl) SetOptions(options map[string]string) error {
 func (d *databaseImpl) SetOption(key string, value string) error {
 	switch key {
 	case OptionStringAuthType:
-		d.AuthType = value
+		d.authType = value
+	case OptionStringProjectID:
+		d.projectID = &value
 	default:
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,

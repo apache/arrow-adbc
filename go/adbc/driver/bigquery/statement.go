@@ -24,6 +24,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"time"
 )
 
@@ -42,6 +43,9 @@ type statement struct {
 	ConnectionImpl *ConnectionImpl
 	query          string
 	queryConfig    bigquery.QueryConfig
+	projectID      *string
+
+	alloc memory.Allocator
 }
 
 // Close releases any relevant resources associated with this statement
@@ -54,6 +58,17 @@ func (st *statement) Close() error {
 
 func (st *statement) GetOption(key string) (string, error) {
 	switch key {
+	case OptionStringProjectID:
+		if st.projectID == nil {
+			val, err := st.ConnectionImpl.GetOption(OptionStringProjectID)
+			if err != nil {
+				return "", err
+			} else {
+				return val, nil
+			}
+		} else {
+			return *st.projectID, nil
+		}
 	case OptionStringQueryDestinationTable:
 		return tableToString(st.queryConfig.Dst), nil
 	case OptionStringQueryDefaultProjectID:
@@ -320,36 +335,24 @@ func (st *statement) SetSqlQuery(query string) error {
 //
 // This invalidates any prior result sets on this statement.
 func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
-	client, err := bigquery.NewClient(ctx, "id")
+	projectID, err := st.GetOption(OptionStringProjectID)
 	if err != nil {
 		return nil, -1, err
 	}
-	defer client.Close()
-	query := client.Query(st.query)
-	query.QueryConfig = st.queryConfig
-
-	job, err := query.Run(ctx)
+	client, err := bigquery.NewClient(ctx, projectID)
 	if err != nil {
 		return nil, -1, err
 	}
-	iter, err := job.Read(ctx)
-	if err != nil {
-		return nil, -1, err
-	}
-	arrowIterator, err := iter.ArrowIterator()
-	if err != nil {
-		return nil, -1, err
-	}
-	// todo: implement array.RecordReader
-	_, err = arrowIterator.Next()
+	err = client.EnableStorageReadClient(ctx)
 	if err != nil {
 		return nil, -1, err
 	}
 
-	return nil, -1, adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "ExecuteQuery not yet implemented for BigQuery driver",
+	reader, err := newRecordReader(ctx, client, projectID, st.query, st.queryConfig, st.alloc)
+	if err != nil {
+		return nil, -1, err
 	}
+	return reader, -1, nil
 }
 
 // ExecuteUpdate executes a statement that does not generate a result

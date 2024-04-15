@@ -24,16 +24,20 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 )
 
 type ConnectionImpl struct {
 	driverbase.ConnectionImplBase
+	database *databaseImpl
+	alloc    memory.Allocator
 }
 
 // NewStatement initializes a new statement object tied to this connection
 func (c *ConnectionImpl) NewStatement() (adbc.Statement, error) {
 	return &statement{
 		ConnectionImpl: c,
+		alloc:          c.alloc,
 	}, nil
 }
 
@@ -45,14 +49,11 @@ func (c *ConnectionImpl) Close() error {
 func (c *ConnectionImpl) GetOption(key string) (string, error) {
 	switch key {
 	default:
-		val, err := c.ConnectionImplBase.GetOption(key)
+		val, err := c.database.GetOption(key)
 		if err == nil {
 			return val, nil
 		}
-		return "", adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("unknown connection string type option `%s`", key),
-		}
+		return "", err
 	}
 }
 
