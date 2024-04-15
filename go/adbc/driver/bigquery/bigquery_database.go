@@ -48,7 +48,7 @@ func (d *databaseImpl) Close() error {
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
 	switch key {
-	case OptionAuthType:
+	case OptionStringAuthType:
 		return d.AuthType, nil
 	default:
 		return "", adbc.Error{
@@ -83,7 +83,7 @@ func (d *databaseImpl) SetOptions(options map[string]string) error {
 	for k, v := range options {
 		v := v // copy into loop scope
 		switch k {
-		case OptionAuthType:
+		case OptionStringAuthType:
 			d.AuthType = v
 		default:
 			return adbc.Error{
@@ -97,7 +97,7 @@ func (d *databaseImpl) SetOptions(options map[string]string) error {
 
 func (d *databaseImpl) SetOption(key string, value string) error {
 	switch key {
-	case OptionAuthType:
+	case OptionStringAuthType:
 		d.AuthType = value
 	default:
 		return adbc.Error{
