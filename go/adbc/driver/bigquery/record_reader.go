@@ -119,10 +119,13 @@ func newRecordReader(ctx context.Context, cl *bigquery.Client, projectID, query 
 				return err
 			}
 
-			rdr, err := ipc.NewReader(bytes.NewReader(append(batch.Schema, batch.Data[:]...)), ipc.WithAllocator(alloc))
+			buf := bytes.NewBuffer(batch.Schema)
+			buf.Write(batch.Data)
+			rdr, err := ipc.NewReader(buf, ipc.WithAllocator(alloc))
 			if err != nil {
 				return err
 			}
+
 			defer rdr.Release()
 			for rdr.Next() && ctx.Err() == nil {
 				rec := rdr.Record()
