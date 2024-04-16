@@ -1,0 +1,14 @@
+[package]
+name = "adbc_dummy"
+description = "A dummy ADBC driver for testing purposes"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+arrow = { workspace = true }
+adbc_core = { workspace = true }
+
+[lib]
+crate-type = ["lib", "cdylib"]
