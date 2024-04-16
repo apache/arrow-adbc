@@ -27,6 +27,7 @@ use crate::{
 ///
 /// Can be created with various implementations of [From].
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum OptionValue {
     String(String),
     Bytes(Vec<u8>),
@@ -84,6 +85,7 @@ impl<const N: usize> From<&[u8; N]> for OptionValue {
 
 /// ADBC revision versions.
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum AdbcVersion {
     /// Version 1.0.0.
     V100,
@@ -102,6 +104,7 @@ impl From<AdbcVersion> for c_int {
 
 /// Info codes for database/driver metadata.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum InfoCode {
     /// The database vendor/product name (type: utf8).
     VendorName,
@@ -160,6 +163,7 @@ impl TryFrom<u32> for InfoCode {
 
 /// Depth parameter for [get_objects][crate::Connection::get_objects] method.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum ObjectDepth {
     /// Catalogs, schemas, tables, and columns.
     All,
@@ -204,6 +208,7 @@ impl TryFrom<c_int> for ObjectDepth {
 
 /// Database option key.
 #[derive(PartialEq, Eq, Hash, Debug)]
+#[non_exhaustive]
 pub enum OptionDatabase {
     /// Canonical option key for URIs.
     ///
@@ -251,6 +256,7 @@ impl From<&str> for OptionDatabase {
 
 /// Connection option key.
 #[derive(PartialEq, Eq, Hash, Debug)]
+#[non_exhaustive]
 pub enum OptionConnection {
     /// Whether autocommit is enabled.
     AutoCommit,
@@ -298,6 +304,7 @@ impl From<&str> for OptionConnection {
 
 /// Statement option key.
 #[derive(PartialEq, Eq, Hash, Debug)]
+#[non_exhaustive]
 pub enum OptionStatement {
     /// The ingest mode for a bulk insert. See [IngestMode].
     IngestMode,
@@ -374,6 +381,7 @@ impl From<&str> for OptionStatement {
 
 /// Isolation level value for key [OptionConnection::IsolationLevel].
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum IsolationLevel {
     /// Use database or driver default isolation level.
     Default,
@@ -449,6 +457,7 @@ impl From<IsolationLevel> for OptionValue {
 
 /// Ingestion mode value for key [OptionStatement::IngestMode].
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum IngestMode {
     /// Create the table and insert data; error if the table exists.
     Create,
