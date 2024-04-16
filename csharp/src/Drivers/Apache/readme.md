@@ -86,10 +86,9 @@ The following table depicts how the Spark ADBC driver converts a Spark type to a
 
 ## Known Limitations
 
-1. API `Connection.GetObjects` is not fully implemented at this time
-   1. Only supports depth of `GetObjectsDepth.All`.
-   1. May not return all catalogs and schema in the server.
-   1. May throw an exception when returning object metadata from multiple catalog and schema.
+1. The API `SparkConnection.GetObjects` is not fully tested at this time
+   1. It may not return all catalogs and schema in the server.
+   1. It may throw an exception when returning object metadata from multiple catalog and schema.
 1. API `Connection.GetTableSchema` does not return correct precision and scale for `NUMERIC`/`DECIMAL` types.
 1. When a `NULL` value is returned for a `BINARY` type it is instead being returned as an empty array instead of the expected `null`.
 1. Result set metadata does not provide information about the nullability of each column. They are marked as `nullable`    by default, which may not be accurate.

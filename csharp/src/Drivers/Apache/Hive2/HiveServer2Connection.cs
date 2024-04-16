@@ -61,48 +61,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, List<string> tableTypes, string columnNamePattern)
         {
-            Dictionary<string, Dictionary<string, Dictionary<string, List<string>>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, List<string>>>>();
-            if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
-            {
-                throw new NotImplementedException($"Unsupported depth: {nameof(GetObjectsDepth.Catalogs)}");
-            }
-
-            if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.DbSchemas)
-            {
-                throw new NotImplementedException($"Unsupported depth: {nameof(GetObjectsDepth.DbSchemas)}");
-            }
-
-            if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Tables)
-            {
-                throw new NotImplementedException($"Unsupported depth: {nameof(GetObjectsDepth.Tables)}");
-            }
-
-            if (depth == GetObjectsDepth.All)
-            {
-                TGetColumnsReq columnsReq = new TGetColumnsReq(this.sessionHandle);
-                columnsReq.CatalogName = catalogPattern;
-                columnsReq.SchemaName = dbSchemaPattern;
-                columnsReq.TableName = tableNamePattern;
-
-                if (!string.IsNullOrEmpty(columnNamePattern))
-                    columnsReq.ColumnName = columnNamePattern;
-
-                var columnsResponse = this.client.GetColumns(columnsReq).Result;
-                if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                {
-                    throw new HiveServer2Exception(columnsResponse.Status.ErrorMessage)
-                        .SetSqlState(columnsResponse.Status.SqlState)
-                        .SetNativeError(columnsResponse.Status.ErrorCode);
-                }
-
-                this.operationHandle = columnsResponse.OperationHandle;
-            }
-
-            PollForResponse();
-
-            Schema schema = GetSchema();
-
-            return new GetObjectsReader(this, schema);
+            throw new NotImplementedException();
         }
 
         public override IArrowArrayStream GetInfo(List<int> codes)
