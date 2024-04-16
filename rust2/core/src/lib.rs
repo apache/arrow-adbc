@@ -442,8 +442,8 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     /// # Result
     ///
     /// Will return the number of rows affected. If the affected row count is
-    /// unknown or unsupported by the database, will return `Ok(-1)`.
-    fn execute_update(&self) -> Result<i64>;
+    /// unknown or unsupported by the database, will return `None`.
+    fn execute_update(&self) -> Result<Option<i64>>;
 
     /// Get the schema of the result set of a query without executing it.
     ///

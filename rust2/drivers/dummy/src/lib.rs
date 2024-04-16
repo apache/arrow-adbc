@@ -867,8 +867,8 @@ impl Statement for DummyStatement {
         Ok(get_table_schema())
     }
 
-    fn execute_update(&self) -> Result<i64> {
-        Ok(0)
+    fn execute_update(&self) -> Result<Option<i64>> {
+        Ok(Some(0))
     }
 
     fn get_parameters_schema(&self) -> Result<Schema> {
