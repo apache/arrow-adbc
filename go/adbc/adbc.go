@@ -244,6 +244,9 @@ const (
 	OptionValueIngestModeAppend       = "adbc.ingest.mode.append"
 	OptionValueIngestModeReplace      = "adbc.ingest.mode.replace"
 	OptionValueIngestModeCreateAppend = "adbc.ingest.mode.create_append"
+	OptionValueIngestTargetCatalog    = "adbc.ingest.target_catalog"
+	OptionValueIngestTargetDBSchema   = "adbc.ingest.target_db_schema"
+	OptionValueIngestTemporary        = "adbc.ingest.temporary"
 	OptionKeyURI                      = "uri"
 	OptionKeyUsername                 = "username"
 	OptionKeyPassword                 = "password"
@@ -344,7 +347,14 @@ const (
 	InfoVendorVersion InfoCode = 1 // VendorVersion
 	// The database vendor/product Arrow library version (type: utf8)
 	InfoVendorArrowVersion InfoCode = 2 // VendorArrowVersion
-
+	// Indicates whether SQL queries are supported (type: bool).
+	InfoVendorSql InfoCode = 3
+	// Indicates whether Substrait queries are supported (type: bool).
+	InfoVendorSubstrait InfoCode = 4
+	// The minimum supported Substrait version, or null if Substrait is not supported (type: utf8).
+	InfoVendorSubstraitMinVersion InfoCode = 5
+	// The maximum supported Substrait version, or null if Substrait is not supported (type: utf8).
+	InfoVendorSubstraitMaxVersion InfoCode = 6
 	// The driver name (type: utf8)
 	InfoDriverName InfoCode = 100 // DriverName
 	// The driver version (type: utf8)

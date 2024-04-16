@@ -83,6 +83,14 @@ type TableConstraint struct {
 	skipRely                                                         bool
 }
 
+// PrepareDriverInfo implements driverbase.DriverInfoPreparer.
+func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
+	if err := c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoVendorSql, true); err != nil {
+		return err
+	}
+	return c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoVendorSubstrait, false)
+}
+
 // ListTableTypes implements driverbase.TableTypeLister.
 func (*connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
 	return []string{"BASE TABLE", "TEMPORARY TABLE", "VIEW"}, nil

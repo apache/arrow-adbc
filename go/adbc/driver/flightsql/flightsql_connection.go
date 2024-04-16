@@ -134,9 +134,13 @@ func (c *connectionImpl) SetAutocommit(enabled bool) error {
 }
 
 var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
-	adbc.InfoVendorName:         flightsql.SqlInfoFlightSqlServerName,
-	adbc.InfoVendorVersion:      flightsql.SqlInfoFlightSqlServerVersion,
-	adbc.InfoVendorArrowVersion: flightsql.SqlInfoFlightSqlServerArrowVersion,
+	adbc.InfoVendorName:                flightsql.SqlInfoFlightSqlServerName,
+	adbc.InfoVendorVersion:             flightsql.SqlInfoFlightSqlServerVersion,
+	adbc.InfoVendorArrowVersion:        flightsql.SqlInfoFlightSqlServerArrowVersion,
+	adbc.InfoVendorSql:                 flightsql.SqlInfoFlightSqlServerSql,
+	adbc.InfoVendorSubstrait:           flightsql.SqlInfoFlightSqlServerSubstrait,
+	adbc.InfoVendorSubstraitMinVersion: flightsql.SqlInfoFlightSqlServerSubstraitMinVersion,
+	adbc.InfoVendorSubstraitMaxVersion: flightsql.SqlInfoFlightSqlServerSubstraitMaxVersion,
 }
 
 func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEndpoint, clientCache gcache.Cache, opts ...grpc.CallOption) (rdr *flight.Reader, err error) {
@@ -564,21 +568,37 @@ func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc
 
 			var adbcInfoCode adbc.InfoCode
 			for i := 0; i < int(rec.NumRows()); i++ {
-				switch flightsql.SqlInfo(field.Value(i)) {
-				case flightsql.SqlInfoFlightSqlServerName:
-					adbcInfoCode = adbc.InfoVendorName
-				case flightsql.SqlInfoFlightSqlServerVersion:
-					adbcInfoCode = adbc.InfoVendorVersion
-				case flightsql.SqlInfoFlightSqlServerArrowVersion:
-					adbcInfoCode = adbc.InfoVendorArrowVersion
-				default:
+
+				var found bool
+				idx := int(info.ValueOffset(i))
+				flightSqlInfoCode := flightsql.SqlInfo(field.Value(i))
+				for infocode := range adbcToFlightSQLInfo {
+					if adbcToFlightSQLInfo[infocode] == flightSqlInfoCode {
+						adbcInfoCode = infocode
+						found = true
+						break
+					}
+				}
+
+				// SqlInfo on the server that does not have an explicit mapping to ADBC is ignored
+				if !found {
 					continue
 				}
 
-				// we know we're only doing string fields here right now
-				v := info.Field(info.ChildID(i)).(*array.String).
-					Value(int(info.ValueOffset(i)))
-				if err := driverInfo.RegisterInfoCode(adbcInfoCode, strings.Clone(v)); err != nil {
+				var v any
+				switch arr := info.Field(info.ChildID(i)).(type) {
+				case *array.String:
+					v = strings.Clone(arr.Value(idx))
+				case *array.Boolean:
+					v = arr.Value(idx)
+				default:
+					return adbc.Error{
+						Msg:  fmt.Sprintf("unsupported field_type %T for info_value", arr),
+						Code: adbc.StatusInvalidArgument,
+					}
+				}
+
+				if err := driverInfo.RegisterInfoCode(adbcInfoCode, v); err != nil {
 					return err
 				}
 			}
