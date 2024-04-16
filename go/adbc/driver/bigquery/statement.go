@@ -25,6 +25,7 @@ import (
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/apache/arrow/go/v16/arrow/memory"
+	"google.golang.org/api/option"
 	"time"
 )
 
@@ -153,7 +154,7 @@ func (st *statement) GetOptionDouble(key string) (float64, error) {
 	}
 }
 
-func (st *statement) setJobConfigurationQuery(key, v string) (bool, error) {
+func (st *statement) setQueryConfig(key, v string) (bool, error) {
 	switch key {
 	case OptionStringQueryDestinationTable:
 		val, err := stringToTable(v)
@@ -236,7 +237,7 @@ func (st *statement) setJobConfigurationQuery(key, v string) (bool, error) {
 	return true, nil
 }
 
-func (st *statement) setJobConfigurationQueryInt(key string, value int64) (bool, error) {
+func (st *statement) setQueryConfigInt(key string, value int64) (bool, error) {
 	switch key {
 	case OptionIntQueryMaxBillingTier:
 		st.queryConfig.MaxBillingTier = int(value)
@@ -253,7 +254,7 @@ func (st *statement) setJobConfigurationQueryInt(key string, value int64) (bool,
 func (st *statement) SetOptions(options map[string]string) error {
 	for k, v := range options {
 		v := v // copy into loop scope
-		handled, err := st.setJobConfigurationQuery(k, v)
+		handled, err := st.setQueryConfig(k, v)
 		if handled {
 			if err != nil {
 				return err
@@ -274,7 +275,7 @@ func (st *statement) SetOptions(options map[string]string) error {
 }
 
 func (st *statement) SetOption(key string, value string) error {
-	handled, err := st.setJobConfigurationQuery(key, value)
+	handled, err := st.setQueryConfig(key, value)
 	if handled {
 		if err != nil {
 			return err
@@ -297,7 +298,7 @@ func (st *statement) SetOptionBytes(key string, value []byte) error {
 }
 
 func (st *statement) SetOptionInt(key string, value int64) error {
-	handled, err := st.setJobConfigurationQueryInt(key, value)
+	handled, err := st.setQueryConfigInt(key, value)
 	if handled {
 		if err != nil {
 			return err
@@ -339,11 +340,15 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 	if err != nil {
 		return nil, -1, err
 	}
-	client, err := bigquery.NewClient(ctx, projectID)
+	authType, err := st.GetOption(OptionStringAuthType)
 	if err != nil {
 		return nil, -1, err
 	}
-	err = client.EnableStorageReadClient(ctx)
+	credentials, err := st.GetOption(OptionStringCredentials)
+	if err != nil {
+		return nil, -1, err
+	}
+	client, err := newClient(ctx, projectID, authType, credentials)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -353,6 +358,31 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 		return nil, -1, err
 	}
 	return reader, -1, nil
+}
+
+func newClient(ctx context.Context, projectID, authType, credentials string) (*bigquery.Client, error) {
+	var client *bigquery.Client
+	switch authType {
+	case OptionValueAuthTypeCredentialsFile:
+		client, err := bigquery.NewClient(ctx, projectID, option.WithCredentialsFile(credentials))
+		if err != nil {
+			return nil, err
+		}
+		err = client.EnableStorageReadClient(ctx, option.WithCredentialsFile(credentials))
+		if err != nil {
+			return nil, err
+		}
+	default:
+		client, err := bigquery.NewClient(ctx, projectID)
+		if err != nil {
+			return nil, err
+		}
+		err = client.EnableStorageReadClient(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return client, nil
 }
 
 // ExecuteUpdate executes a statement that does not generate a result

@@ -66,7 +66,7 @@ func checkContext(maybeErr error, ctx context.Context) error {
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
 func newRecordReader(ctx context.Context, cl *bigquery.Client, projectID, query string, queryConfig bigquery.QueryConfig, alloc memory.Allocator) (rdr array.RecordReader, err error) {
-	q := cl.Query(query)
+	q := cl.Query("")
 	q.QueryConfig = queryConfig
 	q.QueryConfig.Q = query
 	job, err := q.Run(ctx)

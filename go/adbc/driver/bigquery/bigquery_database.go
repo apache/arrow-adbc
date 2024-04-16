@@ -28,8 +28,9 @@ import (
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
 
-	authType  string
-	projectID *string
+	authType    string
+	credentials *string
+	projectID   *string
 
 	alloc memory.Allocator
 }
@@ -56,6 +57,12 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 	switch key {
 	case OptionStringAuthType:
 		return d.authType, nil
+	case OptionStringCredentials:
+		if d.credentials == nil {
+			return "", nil
+		} else {
+			return *d.credentials, nil
+		}
 	case OptionStringProjectID:
 		if d.projectID == nil {
 			return "", adbc.Error{
@@ -98,7 +105,19 @@ func (d *databaseImpl) SetOptions(options map[string]string) error {
 		v := v // copy into loop scope
 		switch k {
 		case OptionStringAuthType:
-			d.authType = v
+			switch v {
+			case OptionValueAuthTypeDefault:
+				d.authType = v
+			case OptionValueAuthTypeCredentialsFile:
+				d.authType = v
+			default:
+				return adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  fmt.Sprintf("unknown database auth type value `%s`", v),
+				}
+			}
+		case OptionStringCredentials:
+			d.credentials = &v
 		case OptionStringProjectID:
 			d.projectID = &v
 		default:
@@ -114,7 +133,19 @@ func (d *databaseImpl) SetOptions(options map[string]string) error {
 func (d *databaseImpl) SetOption(key string, value string) error {
 	switch key {
 	case OptionStringAuthType:
-		d.authType = value
+		switch value {
+		case OptionValueAuthTypeDefault:
+			d.authType = value
+		case OptionValueAuthTypeCredentialsFile:
+			d.authType = value
+		default:
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("unknown database auth type value `%s`", value),
+			}
+		}
+	case OptionStringCredentials:
+		d.credentials = &value
 	case OptionStringProjectID:
 		d.projectID = &value
 	default:

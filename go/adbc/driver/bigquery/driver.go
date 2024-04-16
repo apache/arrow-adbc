@@ -29,8 +29,11 @@ import (
 // under the License.
 
 const (
-	OptionStringAuthType  = "adbc.bigquery.sql.auth_type"
-	OptionStringProjectID = "adbc.bigquery.sql.project_id"
+	OptionStringAuthType               = "adbc.bigquery.sql.auth_type"
+	OptionStringCredentials            = "adbc.bigquery.sql.credentials"
+	OptionStringProjectID              = "adbc.bigquery.sql.project_id"
+	OptionValueAuthTypeDefault         = "default"
+	OptionValueAuthTypeCredentialsFile = "credentials_file"
 
 	OptionStringQueryDestinationTable  = "adbc.bigquery.sql.query.destination_table"
 	OptionStringQueryDefaultProjectID  = "adbc.bigquery.sql.query.default_project_id"
@@ -88,6 +91,7 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 	db := &databaseImpl{
 		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
 		alloc:            d.alloc,
+		authType:         OptionValueAuthTypeDefault,
 	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err
