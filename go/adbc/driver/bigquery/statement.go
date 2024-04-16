@@ -361,7 +361,6 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 }
 
 func newClient(ctx context.Context, projectID, authType, credentials string) (*bigquery.Client, error) {
-	var client *bigquery.Client
 	switch authType {
 	case OptionValueAuthTypeCredentialsFile:
 		client, err := bigquery.NewClient(ctx, projectID, option.WithCredentialsFile(credentials))
@@ -372,6 +371,7 @@ func newClient(ctx context.Context, projectID, authType, credentials string) (*b
 		if err != nil {
 			return nil, err
 		}
+		return client, nil
 	default:
 		client, err := bigquery.NewClient(ctx, projectID)
 		if err != nil {
@@ -381,8 +381,8 @@ func newClient(ctx context.Context, projectID, authType, credentials string) (*b
 		if err != nil {
 			return nil, err
 		}
+		return client, nil
 	}
-	return client, nil
 }
 
 // ExecuteUpdate executes a statement that does not generate a result
