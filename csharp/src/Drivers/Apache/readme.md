@@ -32,7 +32,7 @@ Typically, [Thrift](https://thrift.apache.org/) code is generated from the Thrif
 ```
 arrow-adbc/csharp/src/Drivers/Apache/Thrift/Service/Rpc/Thrift/TBinaryColumn.cs
 arrow-adbc/csharp/src/Drivers/Apache/Thrift/Service/Rpc/Thrift/TBoolColumn.cs
-arrow-adbc/csharp/src/Drivers/Apache/Thrift/Service/Rcase TTypeId.pc/Thrift/TByteColumn.cs
+arrow-adbc/csharp/src/Drivers/Apache/Thrift/Service/Rpc/Thrift/TByteColumn.cs
 arrow-adbc/csharp/src/Drivers/Apache/Thrift/Service/Rpc/Thrift/TDoubleColumn.cs
 arrow-adbc/csharp/src/Drivers/Apache/Thrift/Service/Rpc/Thrift/TI16Column.cs
 arrow-adbc/csharp/src/Drivers/Apache/Thrift/Service/Rpc/Thrift/TI32Column.cs
@@ -55,30 +55,41 @@ The Spark classes are intended for use against native Spark and Spark on Databri
 
 The following table depicts how the Spark ADBC driver converts a Spark type to an Arrow type and a .NET type:
 
-|  Spark Type   |      Arrow Type   | C# Type
-|----------|:-------------:|
-| ARRAY* | String | string
-| BIGINT |    Int64    | long
-| BINARY | Binary | byte[]
-| BOOLEAN |    Boolean   | bool
-| CHAR | String | string
-| DATE | Date32 | DateTime
-| DECIMAL | Decimal128 | SqlDecimal
-| DOUBLE | Double | double
-| FLOAT | Float | float
-| INT | Int32 | int
-| INTERVAL_DAY_TIME+ | String | string
-| INTERVAL_YEAR_MONTH+ | String | string
-| MAP* | String | string
-| NULL | Null | null
-| SMALLINT | Int16 | short
-| STRING | String | string
-| STRUCT* | String | string
-| TIMESTAMP | Timestamp | DateTimeOffset
-| TINYINT | Int8 | sbyte
-| UNION | String | string
-| USER_DEFINED | String | string
-| VARCHAR | String | string
+| Spark Type           | Arrow Type | C# Type |
+| :---                 | :---:      | :---:   |
+| ARRAY*               | String     | string  |
+| BIGINT               | Int64      | long |
+| BINARY               | Binary     | byte[] |
+| BOOLEAN              | Boolean    | bool |
+| CHAR                 | String     | string |
+| DATE                 | Date32     | DateTime |
+| DECIMAL              | Decimal128 | SqlDecimal |
+| DOUBLE               | Double     | double |
+| FLOAT                | Float      | float |
+| INT                  | Int32      | int |
+| INTERVAL_DAY_TIME+   | String     | string |
+| INTERVAL_YEAR_MONTH+ | String     | string |
+| MAP*                 | String     | string |
+| NULL                 | Null       | null |
+| SMALLINT             | Int16      | short |
+| STRING               | String     | string |
+| STRUCT*              | String     | string |
+| TIMESTAMP            | Timestamp  | DateTimeOffset |
+| TINYINT              | Int8       | sbyte |
+| UNION                | String     | string |
+| USER_DEFINED         | String     | string |
+| VARCHAR              | String     | string |
 
-*Complex types are returned as strings<br>
-+Interval types are returned as strings
+\* Complex types are returned as strings<br>
+\+ Interval types are returned as strings
+
+
+## Known Limitations
+
+1. API `Connection.GetObjects` is not fully implemented at this time
+   1. Only supports depth of `GetObjectsDepth.All`.
+   1. May not return all catalogs and schema in the server.
+   1. May throw an exception when returning object metadata from multiple catalog and schema.
+1. API `Connection.GetTableSchema` does not return correct precision and scale for `NUMERIC`/`DECIMAL` types.
+1. When a `NULL` value is returned for a `BINARY` type it is instead being returned as an empty array instead of the expected `null`.
+1. Result set metadata does not provide information about the nullability of each column. They are marked as `nullable`    by default, which may not be accurate.

@@ -29,7 +29,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             for (int i = 0; i < thriftSchema.Columns.Count; i++)
             {
                 TColumnDesc column = thriftSchema.Columns[i];
-                fields[i] = new Field(column.ColumnName, GetArrowType(column.TypeDesc.Types[0]), nullable: true /* ??? */);
+                // Note: no nullable metadata is returned from the Thrift interface.
+                fields[i] = new Field(column.ColumnName, GetArrowType(column.TypeDesc.Types[0]), nullable: true /* assumed */);
             }
             return new Schema(fields, null);
         }

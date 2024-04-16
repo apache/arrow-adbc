@@ -161,7 +161,6 @@ namespace Apache.Arrow.Adbc.Tests
                 if (line.TrimStart().StartsWith("--")) { continue; }
                 if (line.Contains(placeholder))
                 {
-                    // TODO: Try 3-level name
                     string modifiedLine = line.Replace(placeholder, $"{TestConfiguration.Metadata.Catalog}.{TestConfiguration.Metadata.Schema}.{TestConfiguration.Metadata.Table}");
                     content.AppendLine(modifiedLine);
                 }

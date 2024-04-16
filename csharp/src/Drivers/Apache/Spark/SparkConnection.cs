@@ -525,7 +525,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case ColumnTypeId.ARRAY_TYPE:
                 case ColumnTypeId.MAP_TYPE:
                 case ColumnTypeId.STRUCT_TYPE:
-                    // TODO: Resolve issue where complex types are not being returned as string.
                     return StringType.Default;
                 default:
                     throw new NotImplementedException($"Column type id: {columnTypeId} is not supported.");

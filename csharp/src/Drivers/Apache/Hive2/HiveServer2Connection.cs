@@ -64,17 +64,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Dictionary<string, Dictionary<string, Dictionary<string, List<string>>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, List<string>>>>();
             if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
             {
-                TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(this.sessionHandle);
+                throw new NotImplementedException($"Unsupported depth: {nameof(GetObjectsDepth.Catalogs)}");
             }
 
             if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.DbSchemas)
             {
-                TGetSchemasReq getSchemasReq = new TGetSchemasReq(this.sessionHandle);
+                throw new NotImplementedException($"Unsupported depth: {nameof(GetObjectsDepth.DbSchemas)}");
             }
 
             if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Tables)
             {
-                TGetTablesReq getTablesReq = new TGetTablesReq(this.sessionHandle);
+                throw new NotImplementedException($"Unsupported depth: {nameof(GetObjectsDepth.Tables)}");
             }
 
             if (depth == GetObjectsDepth.All)
@@ -90,7 +90,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 var columnsResponse = this.client.GetColumns(columnsReq).Result;
                 if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
-                    throw new Exception(columnsResponse.Status.ErrorMessage);
+                    throw new HiveServer2Exception(columnsResponse.Status.ErrorMessage)
+                        .SetSqlState(columnsResponse.Status.SqlState)
+                        .SetNativeError(columnsResponse.Status.ErrorCode);
                 }
 
                 this.operationHandle = columnsResponse.OperationHandle;
@@ -100,7 +102,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             Schema schema = GetSchema();
 
-            return new GetObjectsReader(this,schema);
+            return new GetObjectsReader(this, schema);
         }
 
         public override IArrowArrayStream GetInfo(List<int> codes)
