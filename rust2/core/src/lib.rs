@@ -326,7 +326,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// - `table_name` - The table name (or `None` if not applicable). May be a search pattern
     /// - `approximate` - If false, request exact values of statistics, else
     /// allow for best-effort, approximate, or cached values. The database may
-    /// return approximate values regardless, as indicated in the result.  
+    /// return approximate values regardless, as indicated in the result.
     /// Requesting exact values may be expensive or unsupported.
     ///
     /// # Result
