@@ -84,7 +84,7 @@ pub struct Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 impl Error {
-    pub fn with_message_and_status(message: &str, status: Status) -> Self {
+    pub fn with_message_and_status(message: impl Into<String>, status: Status) -> Self {
         Self {
             message: message.into(),
             status,

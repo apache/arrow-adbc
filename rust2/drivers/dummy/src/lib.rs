@@ -101,13 +101,13 @@ where
     let value = options.get(&key);
     match value {
         None => Err(Error::with_message_and_status(
-            &format!("Unrecognized {kind} option: {key:?}"),
+            format!("Unrecognized {kind} option: {key:?}"),
             Status::NotFound,
         )),
         Some(value) => match value {
             OptionValue::Bytes(value) => Ok(value.clone()),
             _ => Err(Error::with_message_and_status(
-                &format!("Incorrect value for {kind} option: {key:?}"),
+                format!("Incorrect value for {kind} option: {key:?}"),
                 Status::InvalidData,
             )),
         },
@@ -121,13 +121,13 @@ where
     let value = options.get(&key);
     match value {
         None => Err(Error::with_message_and_status(
-            &format!("Unrecognized {kind} option: {key:?}"),
+            format!("Unrecognized {kind} option: {key:?}"),
             Status::NotFound,
         )),
         Some(value) => match value {
             OptionValue::Double(value) => Ok(*value),
             _ => Err(Error::with_message_and_status(
-                &format!("Incorrect value for {kind} option: {key:?}"),
+                format!("Incorrect value for {kind} option: {key:?}"),
                 Status::InvalidData,
             )),
         },
@@ -141,13 +141,13 @@ where
     let value = options.get(&key);
     match value {
         None => Err(Error::with_message_and_status(
-            &format!("Unrecognized {kind} option: {key:?}"),
+            format!("Unrecognized {kind} option: {key:?}"),
             Status::NotFound,
         )),
         Some(value) => match value {
             OptionValue::Int(value) => Ok(*value),
             _ => Err(Error::with_message_and_status(
-                &format!("Incorrect value for {kind} option: {key:?}"),
+                format!("Incorrect value for {kind} option: {key:?}"),
                 Status::InvalidData,
             )),
         },
@@ -161,13 +161,13 @@ where
     let value = options.get(&key);
     match value {
         None => Err(Error::with_message_and_status(
-            &format!("Unrecognized {kind} option: {key:?}"),
+            format!("Unrecognized {kind} option: {key:?}"),
             Status::NotFound,
         )),
         Some(value) => match value {
             OptionValue::String(value) => Ok(value.clone()),
             _ => Err(Error::with_message_and_status(
-                &format!("Incorrect value for {kind} option: {key:?}"),
+                format!("Incorrect value for {kind} option: {key:?}"),
                 Status::InvalidData,
             )),
         },
@@ -781,7 +781,7 @@ impl Connection for DummyConnection {
             Ok(get_table_schema())
         } else {
             Err(Error::with_message_and_status(
-                &format!("Table {catalog}.{db_schema}.{table_name} does not exist"),
+                format!("Table {catalog}.{db_schema}.{table_name} does not exist"),
                 Status::NotFound,
             ))
         }

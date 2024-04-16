@@ -16,7 +16,6 @@
 // under the License.
 
 //! Various option and configuration types.
-
 use std::os::raw::c_int;
 
 use crate::{
@@ -152,7 +151,7 @@ impl TryFrom<u32> for InfoCode {
             constants::ADBC_INFO_DRIVER_ARROW_VERSION => Ok(InfoCode::DriverArrowVersion),
             constants::ADBC_INFO_DRIVER_ADBC_VERSION => Ok(InfoCode::DriverAdbcVersion),
             v => Err(Error::with_message_and_status(
-                &format!("Unknown info code: {v}"),
+                format!("Unknown info code: {v}"),
                 Status::InvalidData,
             )),
         }
@@ -196,7 +195,7 @@ impl TryFrom<c_int> for ObjectDepth {
             constants::ADBC_OBJECT_DEPTH_DB_SCHEMAS => Ok(ObjectDepth::Schemas),
             constants::ADBC_OBJECT_DEPTH_TABLES => Ok(ObjectDepth::Tables),
             v => Err(Error::with_message_and_status(
-                &format!("Unknown object depth: {v}"),
+                format!("Unknown object depth: {v}"),
                 Status::InvalidData,
             )),
         }
