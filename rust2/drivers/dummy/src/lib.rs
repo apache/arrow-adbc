@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
@@ -301,7 +302,7 @@ impl Connection for DummyConnection {
         Ok(())
     }
 
-    fn get_info(&self, _codes: Option<Vec<InfoCode>>) -> Result<impl RecordBatchReader> {
+    fn get_info(&self, _codes: Option<HashSet<InfoCode>>) -> Result<impl RecordBatchReader> {
         let string_value_array = StringArray::from(vec!["MyVendorName"]);
         let bool_value_array = BooleanArray::from(vec![true]);
         let int64_value_array = Int64Array::from(vec![42]);

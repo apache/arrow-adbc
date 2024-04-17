@@ -103,7 +103,7 @@ impl From<AdbcVersion> for c_int {
 }
 
 /// Info codes for database/driver metadata.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum InfoCode {
     /// The database vendor/product name (type: utf8).

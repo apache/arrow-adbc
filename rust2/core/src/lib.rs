@@ -60,6 +60,8 @@ pub mod ffi;
 pub mod options;
 pub mod schemas;
 
+use std::collections::HashSet;
+
 use arrow::datatypes::Schema;
 use arrow::record_batch::{RecordBatch, RecordBatchReader};
 
@@ -166,7 +168,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// int32_to_int32_list_map (5) | map\<int32, list\<int32\>\>
     fn get_info(
         &self,
-        codes: Option<Vec<options::InfoCode>>,
+        codes: Option<HashSet<options::InfoCode>>,
     ) -> Result<impl RecordBatchReader + Send>;
 
     /// Get a hierarchical view of all catalogs, database schemas, tables, and
