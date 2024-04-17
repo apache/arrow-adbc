@@ -139,7 +139,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     fn new_statement(&mut self) -> Result<Self::StatementType>;
 
     /// Cancel the in-progress operation on a connection.
-    fn cancel(&self) -> Result<()>;
+    fn cancel(&mut self) -> Result<()>;
 
     /// Get metadata about the database/driver.
     ///
@@ -389,12 +389,12 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// Commit any pending transactions. Only used if autocommit is disabled.
     ///
     /// Behavior is undefined if this is mixed with SQL transaction statements.
-    fn commit(&self) -> Result<()>;
+    fn commit(&mut self) -> Result<()>;
 
     /// Roll back any pending transactions. Only used if autocommit is disabled.
     ///
     /// Behavior is undefined if this is mixed with SQL transaction statements.
-    fn rollback(&self) -> Result<()>;
+    fn rollback(&mut self) -> Result<()>;
 
     /// Retrieve a given partition of data.
     ///
@@ -425,13 +425,13 @@ pub trait Connection: Optionable<Option = OptionConnection> {
 pub trait Statement: Optionable<Option = OptionStatement> {
     /// Bind Arrow data. This can be used for bulk inserts or prepared
     /// statements.
-    fn bind(&self, batch: RecordBatch) -> Result<()>;
+    fn bind(&mut self, batch: RecordBatch) -> Result<()>;
 
     /// Bind Arrow data. This can be used for bulk inserts or prepared
     /// statements.
     // TODO(alexandreyc): should we use a generic here instead of a trait object?
     // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567750972
-    fn bind_stream(&self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()>;
+    fn bind_stream(&mut self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()>;
 
     /// Execute a statement and get the results.
     ///
@@ -439,7 +439,7 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     // TODO(alexandreyc): is the Send bound absolutely necessary? same question
     // for all methods that return an impl RecordBatchReader
     // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567748242
-    fn execute(&self) -> Result<impl RecordBatchReader + Send>;
+    fn execute(&mut self) -> Result<impl RecordBatchReader + Send>;
 
     /// Execute a statement that doesn’t have a result set and get the number
     /// of affected rows.
@@ -450,7 +450,7 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     ///
     /// Will return the number of rows affected. If the affected row count is
     /// unknown or unsupported by the database, will return `None`.
-    fn execute_update(&self) -> Result<Option<i64>>;
+    fn execute_update(&mut self) -> Result<Option<i64>>;
 
     /// Get the schema of the result set of a query without executing it.
     ///
@@ -462,10 +462,10 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     /// # Since
     ///
     /// ADBC API revision 1.1.0
-    fn execute_schema(&self) -> Result<Schema>;
+    fn execute_schema(&mut self) -> Result<Schema>;
 
     /// Execute a statement and get the results as a partitioned result set.
-    fn execute_partitions(&self) -> Result<PartitionedResult>;
+    fn execute_partitions(&mut self) -> Result<PartitionedResult>;
 
     /// Get the schema for bound parameters.
     ///
@@ -486,19 +486,19 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     /// times.
     ///
     /// This invalidates any prior result sets.
-    fn prepare(&self) -> Result<()>;
+    fn prepare(&mut self) -> Result<()>;
 
     /// Set the SQL query to execute.
     ///
     /// The query can then be executed with [Statement::execute]. For queries
     /// expected to be executed repeatedly, call [Statement::prepare] first.
-    fn set_sql_query(&self, query: &str) -> Result<()>;
+    fn set_sql_query(&mut self, query: &str) -> Result<()>;
 
     /// Set the Substrait plan to execute.
     ///
     /// The query can then be executed with [Statement::execute]. For queries
     /// expected to be executed repeatedly, call [Statement::prepare] first.
-    fn set_substrait_plan(&self, plan: &[u8]) -> Result<()>;
+    fn set_substrait_plan(&mut self, plan: &[u8]) -> Result<()>;
 
     /// Cancel execution of an in-progress query.
     ///
@@ -508,7 +508,7 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     /// # Since
     ///
     /// ADBC API revision 1.1.0
-    fn cancel(&self) -> Result<()>;
+    fn cancel(&mut self) -> Result<()>;
 }
 
 /// Each data partition is described by an opaque byte array and can be

@@ -287,7 +287,7 @@ impl Connection for DummyConnection {
     }
 
     // This method is used to test that errors round-trip correctly.
-    fn cancel(&self) -> Result<()> {
+    fn cancel(&mut self) -> Result<()> {
         let mut error = Error::with_message_and_status("message", Status::Cancelled);
         error.vendor_code = constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
         error.sqlstate = [1, 2, 3, 4, 5];
@@ -298,7 +298,7 @@ impl Connection for DummyConnection {
         Err(error)
     }
 
-    fn commit(&self) -> Result<()> {
+    fn commit(&mut self) -> Result<()> {
         Ok(())
     }
 
@@ -801,7 +801,7 @@ impl Connection for DummyConnection {
         Ok(reader)
     }
 
-    fn rollback(&self) -> Result<()> {
+    fn rollback(&mut self) -> Result<()> {
         Ok(())
     }
 }
@@ -835,25 +835,25 @@ impl Optionable for DummyStatement {
 }
 
 impl Statement for DummyStatement {
-    fn bind(&self, _batch: RecordBatch) -> Result<()> {
+    fn bind(&mut self, _batch: RecordBatch) -> Result<()> {
         Ok(())
     }
 
-    fn bind_stream(&self, _reader: Box<dyn RecordBatchReader + Send>) -> Result<()> {
+    fn bind_stream(&mut self, _reader: Box<dyn RecordBatchReader + Send>) -> Result<()> {
         Ok(())
     }
 
-    fn cancel(&self) -> Result<()> {
+    fn cancel(&mut self) -> Result<()> {
         Ok(())
     }
 
-    fn execute(&self) -> Result<impl RecordBatchReader> {
+    fn execute(&mut self) -> Result<impl RecordBatchReader> {
         let batch = get_table_data();
         let reader = SingleBatchReader::new(batch);
         Ok(reader)
     }
 
-    fn execute_partitions(&self) -> Result<PartitionedResult> {
+    fn execute_partitions(&mut self) -> Result<PartitionedResult> {
         Ok(PartitionedResult {
             partitions: vec![b"AAA".into(), b"ZZZZZ".into()],
             schema: get_table_schema(),
@@ -861,11 +861,11 @@ impl Statement for DummyStatement {
         })
     }
 
-    fn execute_schema(&self) -> Result<Schema> {
+    fn execute_schema(&mut self) -> Result<Schema> {
         Ok(get_table_schema())
     }
 
-    fn execute_update(&self) -> Result<Option<i64>> {
+    fn execute_update(&mut self) -> Result<Option<i64>> {
         Ok(Some(0))
     }
 
@@ -873,15 +873,15 @@ impl Statement for DummyStatement {
         Ok(get_table_schema())
     }
 
-    fn prepare(&self) -> Result<()> {
+    fn prepare(&mut self) -> Result<()> {
         Ok(())
     }
 
-    fn set_sql_query(&self, _query: &str) -> Result<()> {
+    fn set_sql_query(&mut self, _query: &str) -> Result<()> {
         Ok(())
     }
 
-    fn set_substrait_plan(&self, _plan: &[u8]) -> Result<()> {
+    fn set_substrait_plan(&mut self, _plan: &[u8]) -> Result<()> {
         Ok(())
     }
 }
