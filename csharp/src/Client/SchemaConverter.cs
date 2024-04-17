@@ -72,13 +72,13 @@ namespace Apache.Arrow.Adbc.Client
                 {
                     if (f.Metadata.TryGetValue("precision", out string precisionValue))
                     {
-                        if(!string.IsNullOrEmpty(precisionValue))
+                        if (!string.IsNullOrEmpty(precisionValue))
                             row[SchemaTableColumn.NumericPrecision] = Convert.ToInt32(precisionValue);
                     }
 
-                    if(f.Metadata.TryGetValue("scale", out string scaleValue))
+                    if (f.Metadata.TryGetValue("scale", out string scaleValue))
                     {
-                        if(!string.IsNullOrEmpty(scaleValue))
+                        if (!string.IsNullOrEmpty(scaleValue))
                             row[SchemaTableColumn.NumericScale] = Convert.ToInt32(scaleValue);
                     }
                 }

@@ -65,6 +65,7 @@ python/doc/
 # Egg metadata
 *.egg-info
 
+.vs/
 .vscode
 .idea/
 .pytest_cache/
