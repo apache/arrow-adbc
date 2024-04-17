@@ -17,6 +17,7 @@
 
 //! Error, status and result types.
 
+use std::os::raw::c_char;
 use std::{ffi::NulError, fmt::Display};
 
 use arrow::error::ArrowError;
@@ -76,7 +77,7 @@ pub struct Error {
     pub vendor_code: i32,
     /// A SQLSTATE error code, if provided, as defined by the SQL:2003 standard.
     /// If not set, it should be set to `\0\0\0\0\0`.
-    pub sqlstate: [i8; 5],
+    pub sqlstate: [c_char; 5], // TODO(alexandreyc): should we move to something else than c_char? (see https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567531539)
     /// Additional metadata. Introduced in ADBC 1.1.0.
     pub details: Option<Vec<(String, Vec<u8>)>>,
 }
