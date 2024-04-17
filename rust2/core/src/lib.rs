@@ -429,11 +429,16 @@ pub trait Statement: Optionable<Option = OptionStatement> {
 
     /// Bind Arrow data. This can be used for bulk inserts or prepared
     /// statements.
+    // TODO(alexandreyc): should we use a generic here instead of a trait object?
+    // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567750972
     fn bind_stream(&self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()>;
 
     /// Execute a statement and get the results.
     ///
     /// This invalidates any prior result sets.
+    // TODO(alexandreyc): is the Send bound absolutely necessary? same question
+    // for all methods that return an impl RecordBatchReader
+    // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567748242
     fn execute(&self) -> Result<impl RecordBatchReader + Send>;
 
     /// Execute a statement that doesn’t have a result set and get the number
