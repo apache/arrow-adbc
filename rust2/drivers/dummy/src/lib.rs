@@ -183,12 +183,12 @@ impl Driver for DummyDriver {
     type DatabaseType = DummyDatabase;
 
     fn new_database(&mut self) -> Result<Self::DatabaseType> {
-        self.new_database_with_opts([].into_iter())
+        self.new_database_with_opts([])
     }
 
     fn new_database_with_opts(
         &mut self,
-        opts: impl Iterator<Item = (<Self::DatabaseType as Optionable>::Option, OptionValue)>,
+        opts: impl IntoIterator<Item = (<Self::DatabaseType as Optionable>::Option, OptionValue)>,
     ) -> Result<Self::DatabaseType> {
         let mut database = Self::DatabaseType {
             options: HashMap::new(),
@@ -232,12 +232,12 @@ impl Database for DummyDatabase {
     type ConnectionType = DummyConnection;
 
     fn new_connection(&mut self) -> Result<Self::ConnectionType> {
-        self.new_connection_with_opts([].into_iter())
+        self.new_connection_with_opts([])
     }
 
     fn new_connection_with_opts(
         &mut self,
-        opts: impl Iterator<Item = (<Self::ConnectionType as Optionable>::Option, OptionValue)>,
+        opts: impl IntoIterator<Item = (<Self::ConnectionType as Optionable>::Option, OptionValue)>,
     ) -> Result<Self::ConnectionType> {
         let mut connection = Self::ConnectionType {
             options: HashMap::new(),

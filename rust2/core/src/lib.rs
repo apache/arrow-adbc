@@ -98,7 +98,7 @@ pub trait Driver {
     /// Allocate and initialize a new database with pre-init options.
     fn new_database_with_opts(
         &mut self,
-        opts: impl Iterator<Item = (OptionDatabase, OptionValue)>,
+        opts: impl IntoIterator<Item = (OptionDatabase, OptionValue)>,
     ) -> Result<Self::DatabaseType>;
 }
 
@@ -118,7 +118,7 @@ pub trait Database: Optionable<Option = OptionDatabase> {
     /// Allocate and initialize a new connection with pre-init options.
     fn new_connection_with_opts(
         &mut self,
-        opts: impl Iterator<Item = (options::OptionConnection, OptionValue)>,
+        opts: impl IntoIterator<Item = (options::OptionConnection, OptionValue)>,
     ) -> Result<Self::ConnectionType>;
 }
 
