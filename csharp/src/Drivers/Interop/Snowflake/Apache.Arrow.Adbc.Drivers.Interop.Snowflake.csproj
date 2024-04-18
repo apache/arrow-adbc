@@ -8,8 +8,18 @@
     <Exec Command="powershell -ExecutionPolicy Unrestricted -File $(ProjectDir)Build-SnowflakeDriver.ps1" />
   </Target>
 
+  <!-- use copySnowflakeDriver.sh to move all the platform binaries when used in the pipeline -->
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <Exec Command="bash $(ProjectDir)copySnowflakeDriver.sh" />
+  </Target>
+
   <!-- libadbc_driver_snowflake.dll is listed for each framework because $(TargetFramework) doesn't work here -->
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <Content Include="readme.md">
+      <Pack>true</Pack>
+      <PackagePath>\</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="libadbc_driver_snowflake.dll">
       <Pack>true</Pack>
       <PackagePath>lib\netstandard2.0</PackagePath>
@@ -26,13 +36,67 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-  <ItemGroup>
+
+  <!-- What runs in the pipeline. Assumes the Go builds have happened. -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <Content Include="readme.md">
       <Pack>true</Pack>
       <PackagePath>\</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-  </ItemGroup>
+
+    <!-- Windows/DLLs -->
+    <Content Include="libadbc_driver_snowflake.dll">
+      <Pack>true</Pack>
+      <PackagePath>lib\netstandard2.0</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="libadbc_driver_snowflake.dll">
+      <Pack>true</Pack>
+      <PackagePath>lib\net472</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="libadbc_driver_snowflake.dll">
+      <Pack>true</Pack>
+      <PackagePath>lib\net6.0</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+
+    <!-- Linux/so -->
+    <Content Include="libadbc_driver_snowflake.so">
+      <Pack>true</Pack>
+      <PackagePath>lib\netstandard2.0</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="libadbc_driver_snowflake.so">
+      <Pack>true</Pack>
+      <PackagePath>lib\net472</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="libadbc_driver_snowflake.so">
+      <Pack>true</Pack>
+      <PackagePath>lib\net6.0</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+
+    <!-- Mac/dylib -->
+    <Content Include="libadbc_driver_snowflake.dylib">
+      <Pack>true</Pack>
+      <PackagePath>lib\netstandard2.0</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="libadbc_driver_snowflake.dylib">
+      <Pack>true</Pack>
+      <PackagePath>lib\net472</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="libadbc_driver_snowflake.dylib">
+      <Pack>true</Pack>
+      <PackagePath>lib\net6.0</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
   </ItemGroup>
