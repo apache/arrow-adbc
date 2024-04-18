@@ -120,7 +120,7 @@ jobs:
           path: |
             apache-arrow-adbc-${{ steps.version.outputs.VERSION }}.tar.gz
 
-  go-libraries:
+  go-binaries:
     name: "Go ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     needs:
@@ -174,7 +174,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - source
-      - go-libraries
+      - go-binaries
     steps:
       - uses: actions/download-artifact@v3
         with:
