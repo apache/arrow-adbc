@@ -32,6 +32,8 @@ const (
 	OptionStringAuthType               = "adbc.bigquery.sql.auth_type"
 	OptionStringCredentials            = "adbc.bigquery.sql.credentials"
 	OptionStringProjectID              = "adbc.bigquery.sql.project_id"
+	OptionStringDatasetID              = "adbc.bigquery.sql.dataset_id"
+	OptionStringTableID                = "adbc.bigquery.sql.table_id"
 	OptionValueAuthTypeDefault         = "default"
 	OptionValueAuthTypeCredentialsFile = "credentials_file"
 

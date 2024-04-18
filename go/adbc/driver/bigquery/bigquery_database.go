@@ -18,11 +18,13 @@
 package bigquery
 
 import (
+	"cloud.google.com/go/bigquery"
 	"context"
 	"fmt"
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v16/arrow/memory"
+	"google.golang.org/api/option"
 )
 
 type databaseImpl struct {
@@ -31,6 +33,8 @@ type databaseImpl struct {
 	authType    string
 	credentials *string
 	projectID   *string
+	datasetID   *string
+	tableID     *string
 
 	alloc memory.Allocator
 }
@@ -71,6 +75,22 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 			}
 		}
 		return *d.projectID, nil
+	case OptionStringDatasetID:
+		if d.datasetID == nil {
+			return "", adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  "DatasetID is not set",
+			}
+		}
+		return *d.datasetID, nil
+	case OptionStringTableID:
+		if d.tableID == nil {
+			return "", adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  "TableID is not set",
+			}
+		}
+		return *d.tableID, nil
 	default:
 		return "", adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -102,29 +122,9 @@ func (d *databaseImpl) GetOptionDouble(key string) (float64, error) {
 
 func (d *databaseImpl) SetOptions(options map[string]string) error {
 	for k, v := range options {
-		v := v // copy into loop scope
-		switch k {
-		case OptionStringAuthType:
-			switch v {
-			case OptionValueAuthTypeDefault:
-				d.authType = v
-			case OptionValueAuthTypeCredentialsFile:
-				d.authType = v
-			default:
-				return adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("unknown database auth type value `%s`", v),
-				}
-			}
-		case OptionStringCredentials:
-			d.credentials = &v
-		case OptionStringProjectID:
-			d.projectID = &v
-		default:
-			return adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  fmt.Sprintf("unknown database string type option `%s`", k),
-			}
+		err := d.SetOption(k, v)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -148,6 +148,10 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.credentials = &value
 	case OptionStringProjectID:
 		d.projectID = &value
+	case OptionStringDatasetID:
+		d.datasetID = &value
+	case OptionStringTableID:
+		d.tableID = &value
 	default:
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -175,5 +179,30 @@ func (d *databaseImpl) SetOptionDouble(key string, value float64) error {
 	return adbc.Error{
 		Code: adbc.StatusInvalidArgument,
 		Msg:  fmt.Sprintf("unknown database double type option `%s`", key),
+	}
+}
+
+func newClient(ctx context.Context, projectID, authType, credentials string) (*bigquery.Client, error) {
+	switch authType {
+	case OptionValueAuthTypeCredentialsFile:
+		client, err := bigquery.NewClient(ctx, projectID, option.WithCredentialsFile(credentials))
+		if err != nil {
+			return nil, err
+		}
+		err = client.EnableStorageReadClient(ctx, option.WithCredentialsFile(credentials))
+		if err != nil {
+			return nil, err
+		}
+		return client, nil
+	default:
+		client, err := bigquery.NewClient(ctx, projectID)
+		if err != nil {
+			return nil, err
+		}
+		err = client.EnableStorageReadClient(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return client, nil
 	}
 }

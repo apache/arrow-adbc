@@ -25,12 +25,67 @@ import (
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/apache/arrow/go/v16/arrow/memory"
+	"regexp"
 )
 
 type ConnectionImpl struct {
 	driverbase.ConnectionImplBase
 	database *databaseImpl
 	alloc    memory.Allocator
+	catalog  *string
+	dbSchema *string
+}
+
+// GetCurrentCatalog implements driverbase.CurrentNamespacer.
+func (c *ConnectionImpl) GetCurrentCatalog() (string, error) {
+	if c.catalog == nil {
+		if c.database.projectID == nil {
+			return "", adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  "Catalog not set in connection and project_id not set in database",
+			}
+		} else {
+			return *c.database.projectID, nil
+		}
+	} else {
+		return *c.catalog, nil
+	}
+}
+
+// GetCurrentDbSchema implements driverbase.CurrentNamespacer.
+func (c *ConnectionImpl) GetCurrentDbSchema() (string, error) {
+	if c.dbSchema == nil {
+		if c.database.datasetID == nil {
+			return "", adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  "DbSchema not set in connection and dataset_id not set in database",
+			}
+		} else {
+			return *c.database.datasetID, nil
+		}
+	} else {
+		return *c.dbSchema, nil
+	}
+}
+
+// SetCurrentCatalog implements driverbase.CurrentNamespacer.
+func (c *ConnectionImpl) SetCurrentCatalog(value string) error {
+	sanitizedCatalog, err := sanitize(value)
+	if err != nil {
+		return err
+	}
+	c.catalog = &sanitizedCatalog
+	return nil
+}
+
+// SetCurrentDbSchema implements driverbase.CurrentNamespacer.
+func (c *ConnectionImpl) SetCurrentDbSchema(value string) error {
+	sanitizedDbSchema, err := sanitize(value)
+	if err != nil {
+		return err
+	}
+	c.dbSchema = &sanitizedDbSchema
+	return nil
 }
 
 // NewStatement initializes a new statement object tied to this connection
@@ -99,13 +154,6 @@ func (c *ConnectionImpl) GetOptionDouble(key string) (float64, error) {
 	}
 }
 
-func (c *ConnectionImpl) SetOptions(options map[string]string) error {
-	return adbc.Error{
-		Code: adbc.StatusInvalidArgument,
-		Msg:  "unknown connection string type option",
-	}
-}
-
 func (c *ConnectionImpl) SetOption(key string, value string) error {
 	return adbc.Error{
 		Code: adbc.StatusInvalidArgument,
@@ -150,38 +198,6 @@ func (c *ConnectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
 	return []string{"BASE TABLE", "TEMPORARY TABLE", "VIEW"}, nil
 }
 
-// GetCurrentCatalog implements driverbase.CurrentNamespacer.
-func (c *ConnectionImpl) GetCurrentCatalog() (string, error) {
-	return "", adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "GetCurrentCatalog not yet implemented for BigQuery driver",
-	}
-}
-
-// GetCurrentDbSchema implements driverbase.CurrentNamespacer.
-func (c *ConnectionImpl) GetCurrentDbSchema() (string, error) {
-	return "", adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "GetCurrentDbSchema not yet implemented for BigQuery driver",
-	}
-}
-
-// SetCurrentCatalog implements driverbase.CurrentNamespacer.
-func (c *ConnectionImpl) SetCurrentCatalog(value string) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "SetCurrentCatalog not yet implemented for BigQuery driver",
-	}
-}
-
-// SetCurrentDbSchema implements driverbase.CurrentNamespacer.
-func (c *ConnectionImpl) SetCurrentDbSchema(value string) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "SetCurrentDbSchema not yet implemented for BigQuery driver",
-	}
-}
-
 // SetAutocommit implements driverbase.AutocommitSetter.
 func (c *ConnectionImpl) SetAutocommit(enabled bool) error {
 	return adbc.Error{
@@ -212,50 +228,50 @@ func (c *ConnectionImpl) SetAutocommit(enabled bool) error {
 //
 // The result is an Arrow Dataset with the following schema:
 //
-//	Field Name									| Field Type
+//	Field Name                  | Field Type
 //	----------------------------|----------------------------
-//	catalog_name								| utf8
-//	catalog_db_schemas					| list<DB_SCHEMA_SCHEMA>
+//	catalog_name                | utf8
+//	catalog_db_schemas          | list<DB_SCHEMA_SCHEMA>
 //
 // DB_SCHEMA_SCHEMA is a Struct with the fields:
 //
-//	Field Name									| Field Type
+//	Field Name                  | Field Type
 //	----------------------------|----------------------------
-//	db_schema_name							| utf8
-//	db_schema_tables						|	list<TABLE_SCHEMA>
+//	db_schema_name              | utf8
+//	db_schema_tables            | list<TABLE_SCHEMA>
 //
 // TABLE_SCHEMA is a Struct with the fields:
 //
-//	Field Name									| Field Type
+//	Field Name                  | Field Type
 //	----------------------------|----------------------------
-//	table_name									| utf8 not null
-//	table_type									|	utf8 not null
-//	table_columns								| list<COLUMN_SCHEMA>
-//	table_constraints						| list<CONSTRAINT_SCHEMA>
+//	table_name                  | utf8 not null
+//	table_type                  | utf8 not null
+//	table_columns               | list<COLUMN_SCHEMA>
+//	table_constraints           | list<CONSTRAINT_SCHEMA>
 //
 // COLUMN_SCHEMA is a Struct with the fields:
 //
-//		Field Name 									| Field Type					| Comments
+//		Field Name                  | Field Type          | Comments
 //		----------------------------|---------------------|---------
-//		column_name									| utf8 not null				|
-//		ordinal_position						| int32								| (1)
-//		remarks											| utf8								| (2)
-//		xdbc_data_type							| int16								| (3)
-//		xdbc_type_name							| utf8								| (3)
-//		xdbc_column_size						| int32								| (3)
-//		xdbc_decimal_digits					| int16								| (3)
-//		xdbc_num_prec_radix					| int16								| (3)
-//		xdbc_nullable								| int16								| (3)
-//		xdbc_column_def							| utf8								| (3)
-//		xdbc_sql_data_type					| int16								| (3)
-//		xdbc_datetime_sub						| int16								| (3)
-//		xdbc_char_octet_length			| int32								| (3)
-//		xdbc_is_nullable						| utf8								| (3)
-//		xdbc_scope_catalog					| utf8								| (3)
-//		xdbc_scope_schema						| utf8								| (3)
-//		xdbc_scope_table						| utf8								| (3)
-//		xdbc_is_autoincrement				| bool								| (3)
-//		xdbc_is_generatedcolumn			| bool								| (3)
+//		column_name                 | utf8 not null       |
+//		ordinal_position            | int32               | (1)
+//		remarks                     | utf8                | (2)
+//		xdbc_data_type              | int16               | (3)
+//		xdbc_type_name              | utf8                | (3)
+//		xdbc_column_size            | int32               | (3)
+//		xdbc_decimal_digits         | int16               | (3)
+//		xdbc_num_prec_radix         | int16               | (3)
+//		xdbc_nullable               | int16               | (3)
+//		xdbc_column_def             | utf8                | (3)
+//		xdbc_sql_data_type          | int16               | (3)
+//		xdbc_datetime_sub           | int16               | (3)
+//		xdbc_char_octet_length      | int32               | (3)
+//		xdbc_is_nullable            | utf8                | (3)
+//		xdbc_scope_catalog          | utf8                | (3)
+//		xdbc_scope_schema           | utf8                | (3)
+//		xdbc_scope_table            | utf8                | (3)
+//		xdbc_is_autoincrement       | bool                | (3)
+//		xdbc_is_generatedcolumn     | utf8                | (3)
 //
 //	 1. The column's ordinal position in the table (starting from 1).
 //	 2. Database-specific description of the column.
@@ -265,12 +281,12 @@ func (c *ConnectionImpl) SetAutocommit(enabled bool) error {
 //
 // CONSTRAINT_SCHEMA is a Struct with the fields:
 //
-//	Field Name									| Field Type					| Comments
+//	Field Name                  | Field Type          | Comments
 //	----------------------------|---------------------|---------
-//	constraint_name							| utf8								|
-//	constraint_type							| utf8 not null				| (1)
-//	constraint_column_names			| list<utf8> not null | (2)
-//	constraint_column_usage			| list<USAGE_SCHEMA>	| (3)
+//	constraint_name             | utf8                |
+//	constraint_type             | utf8 not null       | (1)
+//	constraint_column_names     | list<utf8> not null | (2)
+//	constraint_column_usage     | list<USAGE_SCHEMA>  | (3)
 //
 // 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE'.
 // 2. The columns on the current table that are constrained, in order.
@@ -278,12 +294,12 @@ func (c *ConnectionImpl) SetAutocommit(enabled bool) error {
 //
 // USAGE_SCHEMA is a Struct with fields:
 //
-//	Field Name									|	Field Type
+//	Field Name                  | Field Type
 //	----------------------------|----------------------------
-//	fk_catalog									| utf8
-//	fk_db_schema								| utf8
-//	fk_table										| utf8 not null
-//	fk_column_name							| utf8 not null
+//	fk_catalog                  | utf8
+//	fk_db_schema                | utf8
+//	fk_table                    | utf8 not null
+//	fk_column_name              | utf8 not null
 //
 // For the parameters: If nil is passed, then that parameter will not
 // be filtered by at all. If an empty string, then only objects without
@@ -301,7 +317,87 @@ func (c *ConnectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	}
 }
 
+var (
+	sanitizedInputRegex = regexp.MustCompile("^[a-zA-Z0-9_-]+")
+)
+
+func sanitize(value string) (string, error) {
+	if value == "" {
+		return value, nil
+	} else {
+		if sanitizedInputRegex.MatchString(value) {
+			return value, nil
+		} else {
+			return "", adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("invalid characters in value `%s`", value),
+			}
+		}
+	}
+}
+
 func (c *ConnectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
+	if catalog == nil {
+		return nil, adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  "catalog is null",
+		}
+	}
+	sanitizedCatalog, err := sanitize(*catalog)
+	if err != nil {
+		return nil, err
+	}
+
+	if dbSchema == nil {
+		return nil, adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  "dbSchema is null",
+		}
+	}
+	sanitizedDbSchema, err := sanitize(*dbSchema)
+	if err != nil {
+		return nil, err
+	}
+
+	sanitizedTableName, err := sanitize(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	query := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.TABLES WHERE table_name = '%s'", sanitizedCatalog, sanitizedDbSchema, sanitizedTableName)
+	print(query)
+
+	//client, err := newClient(ctx, *c.database.projectID, c.database.authType, credentials)
+	//if err != nil {
+	//	return nil, adbc.Error{
+	//		Code: adbc.StatusInternal,
+	//		Msg:  fmt.Sprintf("Failed to create client for connection driver: %s", err.Error()),
+	//	}
+	//}
+	//
+	//tableIterator := client.Dataset(*c.database.datasetID).Tables()
+	//for {
+	//	table, err := tableIterator.Next()
+	//	if err != nil {
+	//		if errors.Is(err, iterator.Done) {
+	//			break
+	//		}
+	//		return nil, adbc.Error{
+	//			Code: adbc.StatusInternal,
+	//			Msg:  "Cannot fetch datasets",
+	//		}
+	//	}
+	//	md, err := table.Metadata(ctx)
+	//	if err != nil {
+	//		return nil, adbc.Error{
+	//			Code: adbc.StatusInternal,
+	//			Msg:  fmt.Sprintf("Cannot fetch metadata for table `%s`: %s", tableName, err.Error()),
+	//		}
+	//	}
+	//	if md.Name == tableName {
+	//		md.Schema
+	//	}
+	//}
 	return nil, adbc.Error{
 		Code: adbc.StatusNotImplemented,
 		Msg:  "GetTableSchema not yet implemented for BigQuery driver",

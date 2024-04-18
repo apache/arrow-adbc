@@ -25,7 +25,6 @@ import (
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/apache/arrow/go/v16/arrow/memory"
-	"google.golang.org/api/option"
 	"time"
 )
 
@@ -251,29 +250,6 @@ func (st *statement) setQueryConfigInt(key string, value int64) (bool, error) {
 	return true, nil
 }
 
-func (st *statement) SetOptions(options map[string]string) error {
-	for k, v := range options {
-		v := v // copy into loop scope
-		handled, err := st.setQueryConfig(k, v)
-		if handled {
-			if err != nil {
-				return err
-			} else {
-				continue
-			}
-		}
-
-		switch k {
-		default:
-			return adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  fmt.Sprintf("unknown database string type option `%s`", k),
-			}
-		}
-	}
-	return nil
-}
-
 func (st *statement) SetOption(key string, value string) error {
 	handled, err := st.setQueryConfig(key, value)
 	if handled {
@@ -358,31 +334,6 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 		return nil, -1, err
 	}
 	return reader, -1, nil
-}
-
-func newClient(ctx context.Context, projectID, authType, credentials string) (*bigquery.Client, error) {
-	switch authType {
-	case OptionValueAuthTypeCredentialsFile:
-		client, err := bigquery.NewClient(ctx, projectID, option.WithCredentialsFile(credentials))
-		if err != nil {
-			return nil, err
-		}
-		err = client.EnableStorageReadClient(ctx, option.WithCredentialsFile(credentials))
-		if err != nil {
-			return nil, err
-		}
-		return client, nil
-	default:
-		client, err := bigquery.NewClient(ctx, projectID)
-		if err != nil {
-			return nil, err
-		}
-		err = client.EnableStorageReadClient(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return client, nil
-	}
 }
 
 // ExecuteUpdate executes a statement that does not generate a result
