@@ -56,7 +56,7 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     Handle<struct AdbcStatement> statement;
     RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string query = "DROP TABLE IF EXISTS \"" + name + "\"";
+    std::string query = "DROP TABLE IF EXISTS " + name;
     RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
     RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
     return AdbcStatementRelease(&statement.value, error);
@@ -68,7 +68,7 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     Handle<struct AdbcStatement> statement;
     RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string query = "DROP TABLE IF EXISTS \"" + db_schema + "\".\"" + name + "\"";
+    std::string query = "DROP TABLE IF EXISTS \"" + db_schema + "\"." + name;
     RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
     RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
     return AdbcStatementRelease(&statement.value, error);
@@ -79,7 +79,7 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     Handle<struct AdbcStatement> statement;
     RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string query = "DROP TABLE IF EXISTS pg_temp . \"" + name + "\"";
+    std::string query = "DROP TABLE IF EXISTS pg_temp ." + name;
     RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
     RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
     return AdbcStatementRelease(&statement.value, error);
