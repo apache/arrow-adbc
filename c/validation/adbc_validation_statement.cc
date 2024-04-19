@@ -130,7 +130,7 @@ void StatementTest::TestSqlIngestType(ArrowType type,
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", &error),
+                                     "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
               IsOkStatus(&error));
@@ -274,7 +274,7 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
     GTEST_SKIP();
   }
 
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
@@ -293,7 +293,7 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", &error),
+                                     "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
               IsOkStatus(&error));
@@ -406,7 +406,7 @@ void StatementTest::TestSqlIngestInterval() {
     GTEST_SKIP();
   }
 
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
@@ -440,7 +440,7 @@ void StatementTest::TestSqlIngestInterval() {
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", &error),
+                                     "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
               IsOkStatus(&error));
@@ -548,7 +548,7 @@ void StatementTest::TestSqlIngestAppend() {
   }
 
   // Ingest
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
@@ -560,7 +560,7 @@ void StatementTest::TestSqlIngestAppend() {
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", &error),
+                                     "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
               IsOkStatus(&error));
@@ -579,7 +579,7 @@ void StatementTest::TestSqlIngestAppend() {
       IsOkErrno());
 
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", &error),
+                                     "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
                                      ADBC_INGEST_OPTION_MODE_APPEND, &error),
@@ -638,7 +638,7 @@ void StatementTest::TestSqlIngestReplace() {
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", &error),
+                                     "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
                                      ADBC_INGEST_OPTION_MODE_REPLACE, &error),
@@ -685,7 +685,7 @@ void StatementTest::TestSqlIngestReplace() {
               IsOkErrno());
 
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", &error),
+                                     "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
                                      ADBC_INGEST_OPTION_MODE_REPLACE, &error),
@@ -731,7 +731,7 @@ void StatementTest::TestSqlIngestCreateAppend() {
     GTEST_SKIP();
   }
 
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   // Ingest
@@ -745,7 +745,7 @@ void StatementTest::TestSqlIngestCreateAppend() {
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", &error),
+                                     "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
                                      ADBC_INGEST_OPTION_MODE_CREATE_APPEND, &error),
@@ -810,13 +810,13 @@ void StatementTest::TestSqlIngestErrors() {
   // Ingest without bind
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", &error),
+                                     "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsStatus(ADBC_STATUS_INVALID_STATE, &error));
   if (error.release) error.release(&error);
 
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   // Append to nonexistent table
@@ -825,7 +825,7 @@ void StatementTest::TestSqlIngestErrors() {
   struct ArrowError na_error;
 
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", &error),
+                                     "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
                                      ADBC_INGEST_OPTION_MODE_APPEND, &error),
@@ -891,7 +891,7 @@ void StatementTest::TestSqlIngestMultipleConnections() {
     GTEST_SKIP();
   }
 
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
@@ -904,7 +904,7 @@ void StatementTest::TestSqlIngestMultipleConnections() {
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", &error),
+                                     "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
               IsOkStatus(&error));
@@ -961,7 +961,7 @@ void StatementTest::TestSqlIngestSample() {
     GTEST_SKIP();
   }
 
-  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
@@ -1003,7 +1003,7 @@ void StatementTest::TestSqlIngestTargetCatalog() {
   }
 
   std::string catalog = quirks()->catalog();
-  std::string name = "bulk_ingest";
+  std::string name = "\"bulk_ingest\"";
 
   ASSERT_THAT(quirks()->DropTable(&connection, name, &error), IsOkStatus(&error));
   Handle<struct ArrowSchema> schema;
@@ -1037,7 +1037,7 @@ void StatementTest::TestSqlIngestTargetSchema() {
   }
 
   std::string db_schema = quirks()->db_schema();
-  std::string name = "bulk_ingest";
+  std::string name = "\"bulk_ingest\"";
 
   ASSERT_THAT(quirks()->DropTable(&connection, name, &error), IsOkStatus(&error));
   Handle<struct ArrowSchema> schema;
@@ -1074,7 +1074,7 @@ void StatementTest::TestSqlIngestTargetCatalogSchema() {
 
   std::string catalog = quirks()->catalog();
   std::string db_schema = quirks()->db_schema();
-  std::string name = "bulk_ingest";
+  std::string name = "\"bulk_ingest\"";
 
   ASSERT_THAT(quirks()->DropTable(&connection, name, &error), IsOkStatus(&error));
   Handle<struct ArrowSchema> schema;
@@ -1115,7 +1115,7 @@ void StatementTest::TestSqlIngestTemporary() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
               IsOkStatus(&error));
 
-  std::string name = "bulk_ingest";
+  std::string name = "\"bulk_ingest\"";
 
   ASSERT_THAT(quirks()->DropTable(&connection, name, &error), IsOkStatus(&error));
   ASSERT_THAT(quirks()->DropTempTable(&connection, name, &error), IsOkStatus(&error));
@@ -1177,7 +1177,7 @@ void StatementTest::TestSqlIngestTemporaryAppend() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
               IsOkStatus(&error));
 
-  std::string name = "bulk_ingest";
+  std::string name = "\"bulk_ingest\"";
 
   ASSERT_THAT(quirks()->DropTable(&connection, name, &error), IsOkStatus(&error));
   ASSERT_THAT(quirks()->DropTempTable(&connection, name, &error), IsOkStatus(&error));
@@ -1296,7 +1296,7 @@ void StatementTest::TestSqlIngestTemporaryReplace() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
               IsOkStatus(&error));
 
-  std::string name = "bulk_ingest";
+  std::string name = "\"bulk_ingest\"";
 
   ASSERT_THAT(quirks()->DropTable(&connection, name, &error), IsOkStatus(&error));
   ASSERT_THAT(quirks()->DropTempTable(&connection, name, &error), IsOkStatus(&error));
@@ -1463,7 +1463,7 @@ void StatementTest::TestSqlIngestTemporaryExclusive() {
     GTEST_SKIP();
   }
 
-  std::string name = "bulk_ingest";
+  std::string name = "\"bulk_ingest\"";
   ASSERT_THAT(quirks()->DropTempTable(&connection, name, &error), IsOkStatus(&error));
 
   if (quirks()->supports_bulk_ingest_catalog()) {
@@ -1852,7 +1852,7 @@ void StatementTest::TestSqlPrepareUpdate() {
   }
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
@@ -1861,7 +1861,7 @@ void StatementTest::TestSqlPrepareUpdate() {
 
   // Create table
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", &error),
+                                     "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
   ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
@@ -1932,7 +1932,7 @@ void StatementTest::TestSqlPrepareUpdateStream() {
   }
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   struct ArrowError na_error;
 
@@ -1944,7 +1944,7 @@ void StatementTest::TestSqlPrepareUpdateStream() {
     Handle<struct ArrowArray> array;
 
     ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                       "bulk_ingest", &error),
+                                       "\"bulk_ingest\"", &error),
                 IsOkStatus(&error));
     ASSERT_THAT(MakeSchema(&schema.value, fields), IsOkErrno());
     ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {})),
@@ -2373,7 +2373,7 @@ void StatementTest::TestTransactions() {
     GTEST_SKIP();
   }
 
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   if (quirks()->supports_get_option()) {
@@ -2400,7 +2400,7 @@ void StatementTest::TestTransactions() {
   }
 
   // Uncommitted change
-  ASSERT_THAT(quirks()->CreateSampleTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->CreateSampleTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   // Query on first connection should succeed
@@ -2455,7 +2455,7 @@ void StatementTest::TestTransactions() {
               ::testing::Not(IsOkStatus(&error)));
 
   // Commit
-  ASSERT_THAT(quirks()->CreateSampleTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->CreateSampleTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionCommit(&connection, &error), IsOkStatus(&error));
 

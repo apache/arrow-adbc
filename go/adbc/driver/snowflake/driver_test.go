@@ -349,7 +349,7 @@ func (suite *SnowflakeTests) TearDownSuite() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest"))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest\""))
 
 	sessionTimezone := "UTC"
 	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf(`ALTER SESSION SET TIMEZONE = "%s"`, sessionTimezone)))
@@ -382,7 +382,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest\""))
 	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -402,8 +402,8 @@ func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_bind"))
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_bind_stream"))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest_bind\""))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest_bind_stream\""))
 
 	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
 	defer mem.AssertSize(suite.T(), 0)
@@ -488,7 +488,7 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 	defer stream.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_bind"))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest_bind\""))
 	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -511,7 +511,7 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 	suite.NoError(err)
 
 	suite.Require().NoError(suite.stmt.BindStream(suite.ctx, stream))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_bind_stream"))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest_bind_stream\""))
 	n, err = suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -532,7 +532,7 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestRoundtripTypes() {
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_roundtrip"))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest_roundtrip\""))
 
 	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
 	defer mem.AssertSize(suite.T(), 0)
@@ -598,7 +598,7 @@ func (suite *SnowflakeTests) TestSqlIngestRoundtripTypes() {
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_roundtrip"))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest_roundtrip\""))
 	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -618,7 +618,7 @@ func (suite *SnowflakeTests) TestSqlIngestRoundtripTypes() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_timestamps"))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest_timestamps\""))
 
 	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
 	defer mem.AssertSize(suite.T(), 0)
@@ -674,7 +674,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_timestamps"))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest_timestamps\""))
 	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -760,7 +760,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestDate64Type() {
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_date64"))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest_date64\""))
 
 	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
 	defer mem.AssertSize(suite.T(), 0)
@@ -786,7 +786,7 @@ func (suite *SnowflakeTests) TestSqlIngestDate64Type() {
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_date64"))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest_date64\""))
 	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -837,7 +837,7 @@ func (suite *SnowflakeTests) TestSqlIngestDate64Type() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestHighPrecision() {
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_high_precision"))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest_high_precision\""))
 
 	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
 	defer mem.AssertSize(suite.T(), 0)
@@ -879,7 +879,7 @@ func (suite *SnowflakeTests) TestSqlIngestHighPrecision() {
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_high_precision"))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest_high_precision\""))
 	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -948,7 +948,7 @@ func (suite *SnowflakeTests) TestSqlIngestHighPrecision() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestLowPrecision() {
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_high_precision"))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest_high_precision\""))
 
 	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
 	defer mem.AssertSize(suite.T(), 0)
@@ -990,7 +990,7 @@ func (suite *SnowflakeTests) TestSqlIngestLowPrecision() {
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_high_precision"))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest_high_precision\""))
 	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -1056,7 +1056,7 @@ func (suite *SnowflakeTests) TestSqlIngestLowPrecision() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestStructType() {
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_struct"))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest_struct\""))
 
 	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
 	defer mem.AssertSize(suite.T(), 0)
@@ -1108,7 +1108,7 @@ func (suite *SnowflakeTests) TestSqlIngestStructType() {
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_struct"))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest_struct\""))
 	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -1171,7 +1171,7 @@ func (suite *SnowflakeTests) TestSqlIngestStructType() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestMapType() {
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_map"))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest_map\""))
 
 	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
 	defer mem.AssertSize(suite.T(), 0)
@@ -1212,7 +1212,7 @@ func (suite *SnowflakeTests) TestSqlIngestMapType() {
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_map"))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest_map\""))
 	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -1266,7 +1266,7 @@ func (suite *SnowflakeTests) TestSqlIngestMapType() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestListType() {
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_list"))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest_list\""))
 
 	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
 	defer mem.AssertSize(suite.T(), 0)
@@ -1301,7 +1301,7 @@ func (suite *SnowflakeTests) TestSqlIngestListType() {
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_list"))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest_list\""))
 	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -1417,7 +1417,7 @@ outer: // Check that each of the expected field names are in the result schema
 
 func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest"))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest\""))
 
 	mdInts := make(map[string]string)
 	mdInts["TYPE_NAME"] = "NUMERIC"
@@ -1453,7 +1453,7 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 	suite.Require().NoError(err)
 	defer rec.Release()
 
-	suite.Require().NoError(suite.Quirks.CreateSampleTable("bulk_ingest", rec))
+	suite.Require().NoError(suite.Quirks.CreateSampleTable("\"bulk_ingest\"", rec))
 
 	tests := []struct {
 		name             string
