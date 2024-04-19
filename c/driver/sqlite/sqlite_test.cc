@@ -373,10 +373,10 @@ class SqliteStatementTest : public ::testing::Test,
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
 TEST_F(SqliteStatementTest, SqlIngestNameEscaping) {
-  ASSERT_THAT(quirks()->DropTable(&connection, "test-table", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"test-table\"", &error),
               adbc_validation::IsOkStatus(&error));
 
-  std::string table = "test-table";
+  std::string table = "\"test-table\"";
   adbc_validation::Handle<struct ArrowSchema> schema;
   adbc_validation::Handle<struct ArrowArray> array;
   struct ArrowError na_error;

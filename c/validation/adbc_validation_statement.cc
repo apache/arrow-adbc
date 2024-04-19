@@ -86,7 +86,7 @@ void StatementTest::TestSqlIngestType(ArrowType type,
     GTEST_SKIP();
   }
 
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
