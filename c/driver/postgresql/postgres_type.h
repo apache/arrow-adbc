@@ -214,6 +214,10 @@ class PostgresType {
       case PostgresTypeId::kFloat8:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DOUBLE));
         break;
+      case PostgresTypeId::kCash:
+        // PostgreSQL appears to send an int64, without decimal point information
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT64));
+        break;
 
       // ---- Numeric/Decimal-------------------
       case PostgresTypeId::kNumeric:
