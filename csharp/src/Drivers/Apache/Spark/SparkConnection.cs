@@ -24,6 +24,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -257,7 +258,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 new Int64Array.Builder().Build(),
                 new Int32Array.Builder().Build(),
                 new ListArray.Builder(StringType.Default).Build(),
-                CreateNestedListArray(new List<IArrowArray?>(){ entriesDataArray }, entryType)
+                new List<IArrowArray?>(){ entriesDataArray }.CreateNestedListArray(entryType)
             };
 
             DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
@@ -483,12 +484,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             }
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
-            {
-                catalogNameBuilder.Build(),
-                CreateNestedListArray(catalogDbSchemasValues, new StructType(StandardSchemas.DbSchemaSchema)),
-            };
-            return new SparkInfoArrowStream(StandardSchemas.GetObjectsSchema, dataArrays);
+            Schema schema = StandardSchemas.GetObjectsSchema;
+            IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
+                new List<IArrowArray>
+                {
+                    catalogNameBuilder.Build(),
+                    catalogDbSchemasValues.CreateNestedListArray(new StructType(StandardSchemas.DbSchemaSchema)),
+                });
+
+            return new SparkInfoArrowStream(schema, dataArrays);
         }
 
         private static IArrowType GetArrowType(ColumnTypeId columnTypeId, string typeName)
@@ -561,14 +565,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
 
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
-            {
-                dbSchemaNameBuilder.Build(),
-                CreateNestedListArray(dbSchemaTablesValues, new StructType(StandardSchemas.TableSchema)),
-            };
+            List<Field> schema = StandardSchemas.DbSchemaSchema;
+            IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
+                new List<IArrowArray>
+                {
+                    dbSchemaNameBuilder.Build(),
+                    dbSchemaTablesValues.CreateNestedListArray(new StructType(StandardSchemas.TableSchema)),
+                });
 
             return new StructArray(
-                new StructType(StandardSchemas.DbSchemaSchema),
+                new StructType(schema),
                 length,
                 dataArrays,
                 nullBitmapBuffer.Build());
@@ -608,16 +614,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
 
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
-            {
-                tableNameBuilder.Build(),
-                tableTypeBuilder.Build(),
-                CreateNestedListArray(tableColumnsValues, new StructType(StandardSchemas.ColumnSchema)),
-                CreateNestedListArray(tableConstraintsValues, new StructType(StandardSchemas.ConstraintSchema))
-            };
+            List<Field> schema = StandardSchemas.TableSchema;
+            IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
+                new List<IArrowArray>
+                {
+                    tableNameBuilder.Build(),
+                    tableTypeBuilder.Build(),
+                    tableColumnsValues.CreateNestedListArray(new StructType(StandardSchemas.ColumnSchema)),
+                    tableConstraintsValues.CreateNestedListArray( new StructType(StandardSchemas.ConstraintSchema))
+                });
 
             return new StructArray(
-                new StructType(StandardSchemas.TableSchema),
+                new StructType(schema),
                 length,
                 dataArrays,
                 nullBitmapBuffer.Build());
@@ -679,158 +687,36 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 length++;
             }
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
-            {
-                columnNameBuilder.Build(),
-                ordinalPositionBuilder.Build(),
-                remarksBuilder.Build(),
-                xdbcDataTypeBuilder.Build(),
-                xdbcTypeNameBuilder.Build(),
-                xdbcColumnSizeBuilder.Build(),
-                xdbcDecimalDigitsBuilder.Build(),
-                xdbcNumPrecRadixBuilder.Build(),
-                xdbcNullableBuilder.Build(),
-                xdbcColumnDefBuilder.Build(),
-                xdbcSqlDataTypeBuilder.Build(),
-                xdbcDatetimeSubBuilder.Build(),
-                xdbcCharOctetLengthBuilder.Build(),
-                xdbcIsNullableBuilder.Build(),
-                xdbcScopeCatalogBuilder.Build(),
-                xdbcScopeSchemaBuilder.Build(),
-                xdbcScopeTableBuilder.Build(),
-                xdbcIsAutoincrementBuilder.Build(),
-                xdbcIsGeneratedcolumnBuilder.Build()
-            };
+            List<Field> schema = StandardSchemas.ColumnSchema;
+            IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
+                new List<IArrowArray>
+                {
+                    columnNameBuilder.Build(),
+                    ordinalPositionBuilder.Build(),
+                    remarksBuilder.Build(),
+                    xdbcDataTypeBuilder.Build(),
+                    xdbcTypeNameBuilder.Build(),
+                    xdbcColumnSizeBuilder.Build(),
+                    xdbcDecimalDigitsBuilder.Build(),
+                    xdbcNumPrecRadixBuilder.Build(),
+                    xdbcNullableBuilder.Build(),
+                    xdbcColumnDefBuilder.Build(),
+                    xdbcSqlDataTypeBuilder.Build(),
+                    xdbcDatetimeSubBuilder.Build(),
+                    xdbcCharOctetLengthBuilder.Build(),
+                    xdbcIsNullableBuilder.Build(),
+                    xdbcScopeCatalogBuilder.Build(),
+                    xdbcScopeSchemaBuilder.Build(),
+                    xdbcScopeTableBuilder.Build(),
+                    xdbcIsAutoincrementBuilder.Build(),
+                    xdbcIsGeneratedcolumnBuilder.Build()
+                });
 
             return new StructArray(
-                new StructType(StandardSchemas.ColumnSchema),
+                new StructType(schema),
                 length,
                 dataArrays,
                 nullBitmapBuffer.Build());
-        }
-
-        private ListArray CreateNestedListArray(List<IArrowArray?> arrayList, IArrowType dataType)
-        {
-            ArrowBuffer.Builder<int> valueOffsetsBufferBuilder = new ArrowBuffer.Builder<int>();
-            ArrowBuffer.BitmapBuilder validityBufferBuilder = new ArrowBuffer.BitmapBuilder();
-            List<ArrayData> arrayDataList = new List<ArrayData>(arrayList.Count);
-            int length = 0;
-            int nullCount = 0;
-
-            foreach (IArrowArray? array in arrayList)
-            {
-                if (array == null)
-                {
-                    valueOffsetsBufferBuilder.Append(length);
-                    validityBufferBuilder.Append(false);
-                    nullCount++;
-                }
-                else
-                {
-                    valueOffsetsBufferBuilder.Append(length);
-                    validityBufferBuilder.Append(true);
-                    arrayDataList.Add(array.Data);
-                    length += array.Length;
-                }
-            }
-
-            ArrowBuffer validityBuffer = nullCount > 0
-                ? validityBufferBuilder.Build() : ArrowBuffer.Empty;
-
-            ArrayData? data = ArrayDataConcatenator.Concatenate(arrayDataList);
-
-            if (data == null)
-            {
-                EmptyArrayCreationVisitor visitor = new EmptyArrayCreationVisitor();
-                dataType.Accept(visitor);
-                data = visitor.Result;
-            }
-
-            IArrowArray value = ArrowArrayFactory.BuildArray(data);
-
-            valueOffsetsBufferBuilder.Append(length);
-
-            return new ListArray(new ListType(dataType), arrayList.Count,
-                    valueOffsetsBufferBuilder.Build(), value,
-                    validityBuffer, nullCount, 0);
-        }
-
-        private class EmptyArrayCreationVisitor :
-            IArrowTypeVisitor<BooleanType>,
-            IArrowTypeVisitor<FixedWidthType>,
-            IArrowTypeVisitor<BinaryType>,
-            IArrowTypeVisitor<StringType>,
-            IArrowTypeVisitor<ListType>,
-            IArrowTypeVisitor<FixedSizeListType>,
-            IArrowTypeVisitor<StructType>,
-            IArrowTypeVisitor<MapType>
-        {
-            public ArrayData? Result { get; private set; }
-
-            public void Visit(BooleanType type)
-            {
-                Result = new BooleanArray.Builder().Build().Data;
-            }
-
-            public void Visit(FixedWidthType type)
-            {
-                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
-            }
-
-            public void Visit(BinaryType type)
-            {
-                Result = new BinaryArray.Builder().Build().Data;
-            }
-
-            public void Visit(StringType type)
-            {
-                Result = new StringArray.Builder().Build().Data;
-            }
-
-            public void Visit(ListType type)
-            {
-                type.ValueDataType.Accept(this);
-                ArrayData? child = Result;
-
-                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty, MakeInt0Buffer() }, new[] { child });
-            }
-
-            public void Visit(FixedSizeListType type)
-            {
-                type.ValueDataType.Accept(this);
-                ArrayData? child = Result;
-
-                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty }, new[] { child });
-            }
-
-            public void Visit(StructType type)
-            {
-                ArrayData?[] children = new ArrayData[type.Fields.Count];
-                for (int i = 0; i < type.Fields.Count; i++)
-                {
-                    type.Fields[i].DataType.Accept(this);
-                    children[i] = Result;
-                }
-
-                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty }, children);
-            }
-
-            public void Visit(MapType type)
-            {
-                Result = new MapArray.Builder(type).Build().Data;
-            }
-
-            public void Visit(IArrowType type)
-            {
-                throw new NotImplementedException($"EmptyArrayCreationVisitor for {type.Name} is not supported yet.");
-            }
-
-            private static ArrowBuffer MakeInt0Buffer()
-            {
-                ArrowBuffer.Builder<int> builder = new ArrowBuffer.Builder<int>();
-                builder.Append(0);
-                return builder.Build();
-            }
         }
 
         private string PatternToRegEx(string pattern)
@@ -861,7 +747,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private Schema schema;
         private RecordBatch? batch;
 
-        public SparkInfoArrowStream(Schema schema, List<IArrowArray> data)
+        public SparkInfoArrowStream(Schema schema, IReadOnlyList<IArrowArray> data)
         {
             this.schema = schema;
             this.batch = new RecordBatch(schema, data, data[0].Length);

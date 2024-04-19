@@ -128,8 +128,8 @@ namespace Apache.Arrow.Adbc
                 new Field("xdbc_scope_catalog", StringType.Default, true),
                 new Field("xdbc_scope_schema", StringType.Default, true),
                 new Field("xdbc_scope_table", StringType.Default, true),
-                new Field("xdbc_is_autoincrement", StringType.Default, true),
-                new Field("xdbc_is_generatedcolumn", StringType.Default, true)
+                new Field("xdbc_is_autoincrement", BooleanType.Default, true),
+                new Field("xdbc_is_generatedcolumn", BooleanType.Default, true)
             };
 
         public static readonly List<Field> TableSchema = new List<Field>() {
@@ -178,5 +178,4 @@ namespace Apache.Arrow.Adbc
             metadata: null
         );
     }
-
 }

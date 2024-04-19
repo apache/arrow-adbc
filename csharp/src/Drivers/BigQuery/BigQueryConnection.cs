@@ -25,6 +25,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Google.Api.Gax;
@@ -246,7 +247,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 new Int64Array.Builder().Build(),
                 new Int32Array.Builder().Build(),
                 new ListArray.Builder(StringType.Default).Build(),
-                CreateNestedListArray(new List<IArrowArray?>(){ entriesDataArray }, entryType)
+                new List<IArrowArray?>(){ entriesDataArray }.CreateNestedListArray(entryType)
             };
 
             DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
@@ -329,7 +330,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             List<IArrowArray> dataArrays = new List<IArrowArray>
             {
                 catalogNameBuilder.Build(),
-                CreateNestedListArray(catalogDbSchemasValues, new StructType(StandardSchemas.DbSchemaSchema)),
+                catalogDbSchemasValues.CreateNestedListArray(new StructType(StandardSchemas.DbSchemaSchema)),
             };
 
             return dataArrays;
@@ -379,7 +380,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             List<IArrowArray> dataArrays = new List<IArrowArray>
             {
                 dbSchemaNameBuilder.Build(),
-                CreateNestedListArray(dbSchemaTablesValues, new StructType(StandardSchemas.TableSchema)),
+                dbSchemaTablesValues.CreateNestedListArray(new StructType(StandardSchemas.TableSchema)),
             };
 
             return new StructArray(
@@ -469,8 +470,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 tableNameBuilder.Build(),
                 tableTypeBuilder.Build(),
-                CreateNestedListArray(tableColumnsValues, new StructType(StandardSchemas.ColumnSchema)),
-                CreateNestedListArray(tableConstraintsValues, new StructType(StandardSchemas.ConstraintSchema))
+                tableColumnsValues.CreateNestedListArray(new StructType(StandardSchemas.ColumnSchema)),
+                tableConstraintsValues.CreateNestedListArray(new StructType(StandardSchemas.ConstraintSchema))
             };
 
             return new StructArray(
@@ -644,8 +645,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 constraintNameBuilder.Build(),
                 constraintTypeBuilder.Build(),
-                CreateNestedListArray(constraintColumnNamesValues, StringType.Default),
-                CreateNestedListArray(constraintColumnUsageValues, new StructType(StandardSchemas.UsageSchema))
+                constraintColumnNamesValues.CreateNestedListArray(StringType.Default),
+                constraintColumnUsageValues.CreateNestedListArray(new StructType(StandardSchemas.UsageSchema))
             };
 
             return new StructArray(
@@ -968,52 +969,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new BigQueryInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
         }
 
-        private ListArray CreateNestedListArray(List<IArrowArray?> arrayList, IArrowType dataType)
-        {
-            ArrowBuffer.Builder<int> valueOffsetsBufferBuilder = new ArrowBuffer.Builder<int>();
-            ArrowBuffer.BitmapBuilder validityBufferBuilder = new ArrowBuffer.BitmapBuilder();
-            List<ArrayData> arrayDataList = new List<ArrayData>(arrayList.Count);
-            int length = 0;
-            int nullCount = 0;
-
-            foreach (IArrowArray? array in arrayList)
-            {
-                if (array == null)
-                {
-                    valueOffsetsBufferBuilder.Append(length);
-                    validityBufferBuilder.Append(false);
-                    nullCount++;
-                }
-                else
-                {
-                    valueOffsetsBufferBuilder.Append(length);
-                    validityBufferBuilder.Append(true);
-                    arrayDataList.Add(array.Data);
-                    length += array.Length;
-                }
-            }
-
-            ArrowBuffer validityBuffer = nullCount > 0
-                ? validityBufferBuilder.Build() : ArrowBuffer.Empty;
-
-            ArrayData? data = ArrayDataConcatenator.Concatenate(arrayDataList);
-
-            if (data == null)
-            {
-                EmptyArrayCreationVisitor visitor = new EmptyArrayCreationVisitor();
-                dataType.Accept(visitor);
-                data = visitor.Result;
-            }
-
-            IArrowArray value = ArrowArrayFactory.BuildArray(data);
-
-            valueOffsetsBufferBuilder.Append(length);
-
-            return new ListArray(new ListType(dataType), arrayList.Count,
-                    valueOffsetsBufferBuilder.Build(), value,
-                    validityBuffer, nullCount, 0);
-        }
-
         public override AdbcStatement CreateStatement()
         {
             if (this.credential == null)
@@ -1138,84 +1093,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             XdbcDataType_XDBC_BIT = -7,
             XdbcDataType_XDBC_WCHAR = -8,
             XdbcDataType_XDBC_WVARCHAR = -9,
-        }
-
-        private class EmptyArrayCreationVisitor :
-            IArrowTypeVisitor<BooleanType>,
-            IArrowTypeVisitor<FixedWidthType>,
-            IArrowTypeVisitor<BinaryType>,
-            IArrowTypeVisitor<StringType>,
-            IArrowTypeVisitor<ListType>,
-            IArrowTypeVisitor<FixedSizeListType>,
-            IArrowTypeVisitor<StructType>,
-            IArrowTypeVisitor<MapType>
-        {
-            public ArrayData? Result { get; private set; }
-
-            public void Visit(BooleanType type)
-            {
-                Result = new BooleanArray.Builder().Build().Data;
-            }
-
-            public void Visit(FixedWidthType type)
-            {
-                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty, ArrowBuffer.Empty });
-            }
-
-            public void Visit(BinaryType type)
-            {
-                Result = new BinaryArray.Builder().Build().Data;
-            }
-
-            public void Visit(StringType type)
-            {
-                Result = new StringArray.Builder().Build().Data;
-            }
-
-            public void Visit(ListType type)
-            {
-                type.ValueDataType.Accept(this);
-                ArrayData? child = Result;
-
-                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty, MakeInt0Buffer() }, new[] { child });
-            }
-
-            public void Visit(FixedSizeListType type)
-            {
-                type.ValueDataType.Accept(this);
-                ArrayData? child = Result;
-
-                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty }, new[] { child });
-            }
-
-            public void Visit(StructType type)
-            {
-                ArrayData?[] children = new ArrayData[type.Fields.Count];
-                for (int i = 0; i < type.Fields.Count; i++)
-                {
-                    type.Fields[i].DataType.Accept(this);
-                    children[i] = Result;
-                }
-
-                Result = new ArrayData(type, 0, 0, 0, new[] { ArrowBuffer.Empty }, children);
-            }
-
-            public void Visit(MapType type)
-            {
-                Result = new MapArray.Builder(type).Build().Data;
-            }
-
-            public void Visit(IArrowType type)
-            {
-                throw new NotImplementedException($"EmptyArrayCreationVisitor for {type.Name} is not supported yet.");
-            }
-
-            private static ArrowBuffer MakeInt0Buffer()
-            {
-                ArrowBuffer.Builder<int> builder = new ArrowBuffer.Builder<int>();
-                builder.Append(0);
-                return builder.Build();
-            }
         }
     }
 }
