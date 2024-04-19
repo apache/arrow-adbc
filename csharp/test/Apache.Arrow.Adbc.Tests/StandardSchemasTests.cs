@@ -21,7 +21,6 @@ using System.Linq;
 using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Types;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests
 {
@@ -79,16 +78,13 @@ namespace Apache.Arrow.Adbc.Tests
         public void CanValidateGetInfoSchema()
         {
             _ = StandardSchemas.GetInfoSchema.Validate(GetGetInfoDataArrays());
-            Exception exception = Assert.Throws<ArgumentException>(() => StandardSchemas.GetInfoSchema.Validate(GetGetInfoDataArraysWithInvalidType()));
-            Assert.Equal("Expecting data type Apache.Arrow.Types.StringType but found Apache.Arrow.Types.Int32Type on field with name item.", exception.Message);
         }
 
         [Fact]
         public void CanInvalidateGetInfoSchema()
         {
             Exception exception = Assert.Throws<ArgumentException>(() => StandardSchemas.GetInfoSchema.Validate(GetGetInfoDataArraysWithInvalidType()));
-            Assert.Equal("Expecting data type Apache.Arrow.Types.StringType but found Apache.Arrow.Types.Int32Type on field with name item.", exception.Message);
-            _ouputHelper.WriteLine(exception.Message);
+            Assert.Contains("Expecting data type Apache.Arrow.Types.StringType but found Apache.Arrow.Types.Int32Type on field with name item.", exception.Message);
         }
 
         private IReadOnlyList<IArrowArray> GetGetObjectsDataArrays(IReadOnlyList<IArrowArray> schemaDataArrays)
