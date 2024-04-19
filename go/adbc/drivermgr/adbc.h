@@ -546,15 +546,15 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///   (when approximate).
 ///
 /// For example, this is the maximum length of a string for a string column.
-#define ADBC_STATISTIC_MAX_BYTE_WIDTH_NAME "adbc.statistic.byte_width"
+#define ADBC_STATISTIC_MAX_BYTE_WIDTH_NAME "adbc.statistic.max_byte_width"
 /// \brief The dictionary-encoded name of the max value statistic.
 #define ADBC_STATISTIC_MAX_VALUE_KEY 3
 /// \brief The max value statistic.  Value type is column-dependent.
-#define ADBC_STATISTIC_MAX_VALUE_NAME "adbc.statistic.byte_width"
+#define ADBC_STATISTIC_MAX_VALUE_NAME "adbc.statistic.max_value"
 /// \brief The dictionary-encoded name of the min value statistic.
 #define ADBC_STATISTIC_MIN_VALUE_KEY 4
 /// \brief The min value statistic.  Value type is column-dependent.
-#define ADBC_STATISTIC_MIN_VALUE_NAME "adbc.statistic.byte_width"
+#define ADBC_STATISTIC_MIN_VALUE_NAME "adbc.statistic.min_value"
 /// \brief The dictionary-encoded name of the null count statistic.
 #define ADBC_STATISTIC_NULL_COUNT_KEY 5
 /// \brief The null count statistic.  The number of values that are null in
