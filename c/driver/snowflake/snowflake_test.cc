@@ -84,7 +84,7 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
     CHECK_OK(AdbcStatementNew(connection, &statement.value, error));
 
     std::string drop = "DROP TABLE IF EXISTS ";
-    drop += name;    
+    drop += name;
     CHECK_OK(AdbcStatementSetSqlQuery(&statement.value, drop.c_str(), error));
     CHECK_OK(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
 
