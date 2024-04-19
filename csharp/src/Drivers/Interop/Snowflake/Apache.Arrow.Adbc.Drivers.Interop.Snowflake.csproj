@@ -48,54 +48,24 @@
     <!-- Windows/DLLs -->
     <Content Include="libadbc_driver_snowflake.dll">
       <Pack>true</Pack>
-      <PackagePath>lib\netstandard2.0</PackagePath>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="libadbc_driver_snowflake.dll">
-      <Pack>true</Pack>
-      <PackagePath>lib\net472</PackagePath>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="libadbc_driver_snowflake.dll">
-      <Pack>true</Pack>
-      <PackagePath>lib\net6.0</PackagePath>
+      <PackagePath>runtimes\win-x64\native</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
 
     <!-- Linux/so -->
     <Content Include="libadbc_driver_snowflake.so">
       <Pack>true</Pack>
-      <PackagePath>lib\netstandard2.0</PackagePath>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="libadbc_driver_snowflake.so">
-      <Pack>true</Pack>
-      <PackagePath>lib\net472</PackagePath>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="libadbc_driver_snowflake.so">
-      <Pack>true</Pack>
-      <PackagePath>lib\net6.0</PackagePath>
+      <PackagePath>runtimes\linux-x64\native</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
 
     <!-- Mac/dylib -->
     <Content Include="libadbc_driver_snowflake.dylib">
       <Pack>true</Pack>
-      <PackagePath>lib\netstandard2.0</PackagePath>
+      <PackagePath>runtimems\osx-64\runtimes</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="libadbc_driver_snowflake.dylib">
-      <Pack>true</Pack>
-      <PackagePath>lib\net472</PackagePath>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="libadbc_driver_snowflake.dylib">
-      <Pack>true</Pack>
-      <PackagePath>lib\net6.0</PackagePath>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    </ItemGroup>
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />

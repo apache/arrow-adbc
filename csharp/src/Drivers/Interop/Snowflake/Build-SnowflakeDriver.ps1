@@ -32,5 +32,10 @@ if(Test-Path $file)
         exit
     }
 }
+
 make $file
-COPY $file $location
+
+if(Test-Path $file)
+{
+    COPY $file $location
+}
