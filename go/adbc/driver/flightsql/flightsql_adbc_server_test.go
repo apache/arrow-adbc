@@ -1897,7 +1897,7 @@ func (suite *GetObjectsTests) SetupSuite() {
 
 func (suite *GetObjectsTests) TestMetadataGetObjectsColumnsXdbc() {
 
-	suite.Require().NoError(suite.Quirks.DropTable(suite.Cnxn, "\"bulk_ingest\""))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.Cnxn, "bulk_ingest"))
 
 	mdInts := make(map[string]string)
 	mdInts["TYPE_NAME"] = "NUMERIC"
@@ -1933,7 +1933,7 @@ func (suite *GetObjectsTests) TestMetadataGetObjectsColumnsXdbc() {
 	suite.Require().NoError(err)
 	defer rec.Release()
 
-	suite.Require().NoError(suite.Quirks.CreateSampleTable("\"bulk_ingest\"", rec))
+	suite.Require().NoError(suite.Quirks.CreateSampleTable("bulk_ingest", rec))
 
 	tests := []struct {
 		name             string

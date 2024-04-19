@@ -1672,7 +1672,7 @@ class PostgresDecimalTest : public ::testing::TestWithParam<DecimalTestCase> {
     ASSERT_THAT(AdbcStatementNew(&connection_, &statement_, &error_),
                 IsOkStatus(&error_));
 
-    ASSERT_THAT(quirks_.DropTable(&connection_, "\"bulk_ingest\"", &error_),
+    ASSERT_THAT(quirks_.DropTable(&connection_, "bulk_ingest", &error_),
                 IsOkStatus(&error_));
   }
 
@@ -1756,7 +1756,7 @@ TEST_P(PostgresDecimalTest, SelectValue) {
               adbc_validation::IsOkErrno());
 
   ASSERT_THAT(AdbcStatementSetOption(&statement_, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "\"bulk_ingest\"", &error_),
+                                     "bulk_ingest", &error_),
               IsOkStatus(&error_));
   ASSERT_THAT(AdbcStatementBind(&statement_, &array.value, &schema.value, &error_),
               IsOkStatus(&error_));
@@ -1769,7 +1769,7 @@ TEST_P(PostgresDecimalTest, SelectValue) {
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(
                   &statement_,
-                  "SELECT * FROM \"bulk_ingest\" ORDER BY \"col\" ASC NULLS FIRST", &error_),
+                  "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error_),
               IsOkStatus(&error_));
 
   {

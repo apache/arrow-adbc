@@ -584,7 +584,7 @@ class SqliteConnection : public driver::ConnectionBase<SqliteConnection> {
     }
 
     SqliteStringBuilder builder;
-    builder.Append(R"(SELECT * FROM "%w" . "%w")", catalog.value_or("main").data(),
+    builder.Append(R"(SELECT * FROM "%w" . %w)", catalog.value_or("main").data(),
                    table_name.data());
     UNWRAP_RESULT(std::string_view query, builder.GetString());
 

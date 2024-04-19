@@ -349,7 +349,7 @@ func (suite *SnowflakeTests) TearDownSuite() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest\""))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest"))
 
 	sessionTimezone := "UTC"
 	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf(`ALTER SESSION SET TIMEZONE = "%s"`, sessionTimezone)))
@@ -382,7 +382,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest\""))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
 	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -1417,7 +1417,7 @@ outer: // Check that each of the expected field names are in the result schema
 
 func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 
-	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "\"bulk_ingest\""))
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest"))
 
 	mdInts := make(map[string]string)
 	mdInts["TYPE_NAME"] = "NUMERIC"
@@ -1453,7 +1453,7 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 	suite.Require().NoError(err)
 	defer rec.Release()
 
-	suite.Require().NoError(suite.Quirks.CreateSampleTable("\"bulk_ingest\"", rec))
+	suite.Require().NoError(suite.Quirks.CreateSampleTable("bulk_ingest", rec))
 
 	tests := []struct {
 		name             string
