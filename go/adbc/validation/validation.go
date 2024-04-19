@@ -417,7 +417,7 @@ func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 	cnxn, _ := c.DB.Open(ctx)
 	defer cnxn.Close()
 
-	c.Require().NoError(c.Quirks.DropTable(cnxn, "bulk_ingest"))
+	c.Require().NoError(c.Quirks.DropTable(cnxn, "\"bulk_ingest\""))
 	rec, _, err := array.RecordFromJSON(c.Quirks.Alloc(), arrow.NewSchema(
 		[]arrow.Field{
 			{Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
@@ -430,7 +430,7 @@ func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 	c.Require().NoError(err)
 	defer rec.Release()
 
-	c.Require().NoError(c.Quirks.CreateSampleTable("bulk_ingest", rec))
+	c.Require().NoError(c.Quirks.CreateSampleTable("\"bulk_ingest\"", rec))
 
 	filter := "in%"
 	tests := []struct {
@@ -779,7 +779,7 @@ func (s *StatementTests) TestSqlIngestInts() {
 		s.T().SkipNow()
 	}
 
-	s.Require().NoError(s.Quirks.DropTable(s.Cnxn, "bulk_ingest"))
+	s.Require().NoError(s.Quirks.DropTable(s.Cnxn, "\"bulk_ingest\""))
 
 	schema := arrow.NewSchema([]arrow.Field{{
 		Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true}}, nil)
@@ -795,7 +795,7 @@ func (s *StatementTests) TestSqlIngestInts() {
 	s.Require().NoError(err)
 	defer stmt.Close()
 
-	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
+	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "\"bulk_ingest\""))
 	s.Require().NoError(stmt.Bind(s.ctx, batch))
 
 	affected, err := stmt.ExecuteUpdate(s.ctx)

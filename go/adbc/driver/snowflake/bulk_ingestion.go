@@ -29,7 +29,6 @@ import (
 	"io"
 	"math"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -133,7 +132,7 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 	var initialRows int64
 
 	// Check final row count of target table to get definitive rows affected
-	initialRows, err = countRowsInTable(ctx, st.cnxn.sqldb, strconv.Quote(st.targetTable))
+	initialRows, err = countRowsInTable(ctx, st.cnxn.sqldb, st.targetTable)
 	if err != nil {
 		st.bound.Release()
 		return
@@ -182,13 +181,13 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 	}
 
 	// Load the uploaded file into the target table
-	_, err = st.cnxn.cn.ExecContext(ctx, copyQuery, []driver.NamedValue{{Value: strconv.Quote(st.targetTable)}})
+	_, err = st.cnxn.cn.ExecContext(ctx, copyQuery, []driver.NamedValue{{Value: st.targetTable}})
 	if err != nil {
 		return
 	}
 
 	// Check final row count of target table to get definitive rows affected
-	nrows, err = countRowsInTable(ctx, st.cnxn.sqldb, strconv.Quote(st.targetTable))
+	nrows, err = countRowsInTable(ctx, st.cnxn.sqldb, st.targetTable)
 	nrows = nrows - initialRows
 	return
 }
@@ -206,7 +205,7 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 
 	var initialRows int64
 	// Check final row count of target table to get definitive rows affected
-	initialRows, err = countRowsInTable(ctx, st.cnxn.sqldb, strconv.Quote(st.targetTable))
+	initialRows, err = countRowsInTable(ctx, st.cnxn.sqldb, st.targetTable)
 	if err != nil {
 		return
 	}
@@ -214,7 +213,7 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 	defer func() {
 		// Always check the resulting row count, even in the case of an error. We may have ingested part of the data.
 		ctx := context.Background() // TODO(joellubi): switch to context.WithoutCancel(ctx) once we're on Go 1.21
-		n, countErr := countRowsInTable(ctx, st.cnxn.sqldb, strconv.Quote(st.targetTable))
+		n, countErr := countRowsInTable(ctx, st.cnxn.sqldb, st.targetTable)
 		nrows = n - initialRows
 
 		// Ingestion, row-count check, or both could have failed
@@ -268,7 +267,7 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 	}
 
 	// Kickoff background tasks to COPY Parquet files into Snowflake table as they are uploaded
-	fileReady, finishCopy, cancelCopy := runCopyTasks(ctx, st.cnxn.cn, strconv.Quote(st.targetTable), int(st.ingestOptions.copyConcurrency))
+	fileReady, finishCopy, cancelCopy := runCopyTasks(ctx, st.cnxn.cn, st.targetTable, int(st.ingestOptions.copyConcurrency))
 
 	// Read Parquet files from buffer pool and upload to Snowflake stage in parallel
 	g.Go(func() error {

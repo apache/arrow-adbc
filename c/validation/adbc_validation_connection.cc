@@ -291,12 +291,12 @@ void ConnectionTest::TestMetadataGetTableSchema() {
   }
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
-  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   Handle<ArrowSchema> schema;
   ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                           /*db_schema=*/nullptr, "bulk_ingest",
+                                           /*db_schema=*/nullptr, "\"bulk_ingest\"",
                                            &schema.value, &error),
               IsOkStatus(&error));
 
@@ -316,15 +316,15 @@ void ConnectionTest::TestMetadataGetTableSchemaDbSchema() {
   }
   ASSERT_THAT(status, IsOkStatus(&error));
 
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", "otherschema", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"bulk_ingest\"", "otherschema", &error),
               IsOkStatus(&error));
   ASSERT_THAT(
-      quirks()->CreateSampleTable(&connection, "bulk_ingest", "otherschema", &error),
+      quirks()->CreateSampleTable(&connection, "\"bulk_ingest\"", "otherschema", &error),
       IsOkStatus(&error));
 
   Handle<ArrowSchema> schema;
   ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                           /*db_schema=*/"otherschema", "bulk_ingest",
+                                           /*db_schema=*/"otherschema", "\"bulk_ingest\"",
                                            &schema.value, &error),
               IsOkStatus(&error));
 
@@ -577,7 +577,7 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
     GTEST_SKIP();
   }
 
-  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   std::vector<std::pair<const char*, bool>> test_cases = {
@@ -638,7 +638,7 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
             ArrowStringView table_name = ArrowArrayViewGetStringUnsafe(
                 db_schema_tables->children[0], tables_index);
             if (iequals(std::string(table_name.data, table_name.size_bytes),
-                        "bulk_ingest")) {
+                        "\"bulk_ingest\"")) {
               found_expected_table = true;
             }
 
@@ -664,7 +664,7 @@ void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
     GTEST_SKIP();
   }
 
-  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   std::vector<const char*> table_types(2);
@@ -739,7 +739,7 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
 
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
-  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "\"bulk_ingest\"", &error),
               IsOkStatus(&error));
 
   struct TestCase {

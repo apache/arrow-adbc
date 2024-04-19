@@ -143,7 +143,7 @@ func getArr(arr arrow.Array) interface{} {
 func (s *SnowflakeQuirks) CreateSampleTable(tableName string, r arrow.Record) error {
 	var b strings.Builder
 	b.WriteString("CREATE OR REPLACE TABLE ")
-	b.WriteString(strconv.Quote(tableName))
+	b.WriteString(tableName)
 	b.WriteString(" (")
 
 	for i := 0; i < int(r.NumCols()); i++ {
@@ -164,7 +164,7 @@ func (s *SnowflakeQuirks) CreateSampleTable(tableName string, r arrow.Record) er
 		return err
 	}
 
-	insertQuery := "INSERT INTO " + strconv.Quote(tableName) + " VALUES ("
+	insertQuery := "INSERT INTO " + tableName + " VALUES ("
 	bindings := strings.Repeat("?,", int(r.NumCols()))
 	insertQuery += bindings[:len(bindings)-1] + ")"
 
@@ -184,7 +184,7 @@ func (s *SnowflakeQuirks) DropTable(cnxn adbc.Connection, tblname string) error 
 	}
 	defer stmt.Close()
 
-	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + strconv.Quote(tblname)); err != nil {
+	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + tblname); err != nil {
 		return err
 	}
 
