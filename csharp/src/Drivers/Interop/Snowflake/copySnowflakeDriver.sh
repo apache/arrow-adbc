@@ -18,12 +18,17 @@
 
 echo "Copying the Snowflake ADBC Go drivers"
 
-location=$(pwd)
+destination_dir=$(pwd)
 
 file="libadbc_driver_snowflake.*"
 
 cd ../../../../../go/adbc/pkg
 
-pattern="$(pwd)/$file"
+source_dir=$(pwd)
 
-cp $pattern "$location"
+files_to_copy=$(find "$source_dir" -type f -name "$file")
+
+for file in $files_to_copy; do
+    cp "$file" "$destination_dir"
+    echo "Copied $file to $destination_dir"
+done
