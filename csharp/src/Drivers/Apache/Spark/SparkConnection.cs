@@ -268,6 +268,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 infoNameBuilder.Build(),
                 infoValue
             };
+            StandardSchemas.GetInfoSchema.Validate(dataArrays);
 
             return new SparkInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
 

@@ -257,6 +257,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 infoNameBuilder.Build(),
                 infoValue
             };
+            StandardSchemas.GetInfoSchema.Validate(dataArrays);
 
             return new BigQueryInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
         }
@@ -332,6 +333,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 catalogNameBuilder.Build(),
                 catalogDbSchemasValues.CreateNestedListArray(new StructType(StandardSchemas.DbSchemaSchema)),
             };
+            StandardSchemas.GetObjectsSchema.Validate(dataArrays);
 
             return dataArrays;
         }
@@ -382,6 +384,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 dbSchemaNameBuilder.Build(),
                 dbSchemaTablesValues.CreateNestedListArray(new StructType(StandardSchemas.TableSchema)),
             };
+            StandardSchemas.DbSchemaSchema.Validate(dataArrays);
 
             return new StructArray(
                 new StructType(StandardSchemas.DbSchemaSchema),
@@ -473,6 +476,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 tableColumnsValues.CreateNestedListArray(new StructType(StandardSchemas.ColumnSchema)),
                 tableConstraintsValues.CreateNestedListArray(new StructType(StandardSchemas.ConstraintSchema))
             };
+            StandardSchemas.TableSchema.Validate(dataArrays);
 
             return new StructArray(
                 new StructType(StandardSchemas.TableSchema),
@@ -581,6 +585,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 xdbcIsAutoincrementBuilder.Build(),
                 xdbcIsGeneratedcolumnBuilder.Build()
             };
+            StandardSchemas.ColumnSchema.Validate(dataArrays);
 
             return new StructArray(
                 new StructType(StandardSchemas.ColumnSchema),
@@ -648,6 +653,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 constraintColumnNamesValues.CreateNestedListArray(StringType.Default),
                 constraintColumnUsageValues.CreateNestedListArray(new StructType(StandardSchemas.UsageSchema))
             };
+            StandardSchemas.ConstraintSchema.Validate(dataArrays);
 
             return new StructArray(
                 new StructType(StandardSchemas.ConstraintSchema),
@@ -725,6 +731,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 constraintFkTableBuilder.Build(),
                 constraintFkColumnNameBuilder.Build()
             };
+            StandardSchemas.UsageSchema.Validate(dataArrays);
 
             return new StructArray(
                 new StructType(StandardSchemas.UsageSchema),
@@ -965,6 +972,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 tableTypesBuilder.Build()
             };
+            StandardSchemas.TableTypesSchema.Validate(dataArrays);
 
             return new BigQueryInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
         }

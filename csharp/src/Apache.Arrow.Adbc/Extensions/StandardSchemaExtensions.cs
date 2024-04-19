@@ -70,6 +70,14 @@ namespace Apache.Arrow.Adbc.Extensions
                         Validate(listType.Fields, dataField.Children.Select(e => new ContainerArray(e)).ToList());
                     }
                 }
+                else if (field.DataType.TypeId == ArrowTypeId.Union)
+                {
+                    UnionType unionType = (UnionType)field.DataType;
+                    if (unionType.Fields.Count > 0)
+                    {
+                        Validate(unionType.Fields, dataField.Children.Select(e => new ContainerArray(e)).ToList());
+                    }
+                }
             }
 
             return data;

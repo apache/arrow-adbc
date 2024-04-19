@@ -17,15 +17,16 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Types;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests
 {
     /// <summary>
-    /// Validate the support for adbc.h for the current version
-    /// of ADBC found in the build project.
+    /// Validate StandardSchema.
     /// </summary>
     public class StandardSchemasTests
     {
@@ -72,6 +73,22 @@ namespace Apache.Arrow.Adbc.Tests
             IReadOnlyList<IArrowArray> tableDataArrays = GetTableDataArrays(columnDataArrays);
             IReadOnlyList<IArrowArray> schemaDataArrays = GetDbSchemaDataArrays(tableDataArrays);
             Assert.Throws<ArgumentException>(() => StandardSchemas.GetObjectsSchema.Validate(GetGetObjectsDataArrays(schemaDataArrays)));
+        }
+
+        [Fact]
+        public void CanValidateGetInfoSchema()
+        {
+            _ = StandardSchemas.GetInfoSchema.Validate(GetGetInfoDataArrays());
+            Exception exception = Assert.Throws<ArgumentException>(() => StandardSchemas.GetInfoSchema.Validate(GetGetInfoDataArraysWithInvalidType()));
+            Assert.Equal("Expecting data type Apache.Arrow.Types.StringType but found Apache.Arrow.Types.Int32Type on field with name item.", exception.Message);
+        }
+
+        [Fact]
+        public void CanInvalidateGetInfoSchema()
+        {
+            Exception exception = Assert.Throws<ArgumentException>(() => StandardSchemas.GetInfoSchema.Validate(GetGetInfoDataArraysWithInvalidType()));
+            Assert.Equal("Expecting data type Apache.Arrow.Types.StringType but found Apache.Arrow.Types.Int32Type on field with name item.", exception.Message);
+            _ouputHelper.WriteLine(exception.Message);
         }
 
         private IReadOnlyList<IArrowArray> GetGetObjectsDataArrays(IReadOnlyList<IArrowArray> schemaDataArrays)
@@ -205,5 +222,147 @@ namespace Apache.Arrow.Adbc.Tests
                 new BooleanArray.Builder().Build(),
                 // new BooleanArray.Builder().Build(), // missing column
             };
+
+        private static List<IArrowArray> GetGetInfoDataArrays()
+        {
+            UnionType infoUnionType = new UnionType(
+                new List<Field>()
+                {
+                    new Field("string_value", StringType.Default, true),
+                    new Field("bool_value", BooleanType.Default, true),
+                    new Field("int64_value", Int64Type.Default, true),
+                    new Field("int32_bitmask", Int32Type.Default, true),
+                    new Field(
+                        "string_list",
+                        new ListType(
+                            new Field("item", StringType.Default, true)
+                        ),
+                        false
+                    ),
+                    new Field(
+                        "int32_to_int32_list_map",
+                        new ListType(
+                            new Field("entries", new StructType(
+                                new List<Field>()
+                                {
+                                    new Field("key", Int32Type.Default, false),
+                                    new Field("value", Int32Type.Default, true),
+                                }
+                                ), false)
+                        ),
+                        true
+                    )
+                },
+                new int[] { 0, 1, 2, 3, 4, 5 }.ToArray(),
+                UnionMode.Dense);
+
+            UInt32Array.Builder infoNameBuilder = new UInt32Array.Builder();
+            ArrowBuffer.Builder<byte> typeBuilder = new ArrowBuffer.Builder<byte>();
+            ArrowBuffer.Builder<int> offsetBuilder = new ArrowBuffer.Builder<int>();
+            StringArray.Builder stringInfoBuilder = new StringArray.Builder();
+            int nullCount = 0;
+            int arrayLength = 0;
+
+
+            StructType entryType = new StructType(
+                new List<Field>(){
+                    new Field("key", Int32Type.Default, false),
+                    new Field("value", Int32Type.Default, true)});
+
+            StructArray entriesDataArray = new StructArray(entryType, 0,
+                new[] { new Int32Array.Builder().Build(), new Int32Array.Builder().Build() },
+                new ArrowBuffer.BitmapBuilder().Build());
+
+            List<IArrowArray> childrenArrays = new List<IArrowArray>()
+            {
+                stringInfoBuilder.Build(),
+                new BooleanArray.Builder().Build(),
+                new Int64Array.Builder().Build(),
+                new Int32Array.Builder().Build(),
+                new ListArray.Builder(StringType.Default).Build(),
+                new List<IArrowArray?>(){ entriesDataArray }.CreateNestedListArray(entryType)
+            };
+
+            DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
+
+            List<IArrowArray> dataArrays = new List<IArrowArray>
+            {
+                infoNameBuilder.Build(),
+                infoValue
+            };
+            return dataArrays;
+        }
+
+        private static List<IArrowArray> GetGetInfoDataArraysWithInvalidType()
+        {
+            UnionType infoUnionType = new UnionType(
+                new List<Field>()
+                {
+                    new Field("string_value", StringType.Default, true),
+                    new Field("bool_value", BooleanType.Default, true),
+                    new Field("int64_value", Int64Type.Default, true),
+                    new Field("int32_bitmask", Int32Type.Default, true),
+                    new Field(
+                        "string_list",
+                        new ListType(
+                            new Field("item", StringType.Default, true)
+                        ),
+                        false
+                    ),
+                    new Field(
+                        "int32_to_int32_list_map",
+                        new ListType(
+                            new Field("entries", new StructType(
+                                new List<Field>()
+                                {
+                                    new Field("key", Int32Type.Default, false),
+                                    new Field("value", Int32Type.Default, true),
+                                }
+                                ), false)
+                        ),
+                        true
+                    )
+                },
+                new int[] { 0, 1, 2, 3, 4, 5 }.ToArray(),
+                UnionMode.Dense);
+
+            UInt32Array.Builder infoNameBuilder = new UInt32Array.Builder();
+            ArrowBuffer.Builder<byte> typeBuilder = new ArrowBuffer.Builder<byte>();
+            ArrowBuffer.Builder<int> offsetBuilder = new ArrowBuffer.Builder<int>();
+            StringArray.Builder stringInfoBuilder = new StringArray.Builder();
+            int nullCount = 0;
+            int arrayLength = 0;
+
+
+            StructType entryType = new StructType(
+                new List<Field>(){
+                    new Field("key", Int32Type.Default, false),
+                    new Field("value", Int32Type.Default, true)});
+
+            StructArray entriesDataArray = new StructArray(
+                entryType,
+                0,
+                new[] { new Int32Array.Builder().Build(), new Int32Array.Builder().Build() },
+                new ArrowBuffer.BitmapBuilder().Build());
+
+            List<IArrowArray> childrenArrays = new List<IArrowArray>()
+            {
+                stringInfoBuilder.Build(),
+                new BooleanArray.Builder().Build(),
+                new Int64Array.Builder().Build(),
+                new Int32Array.Builder().Build(),
+                new ListArray.Builder(Int32Type.Default).Build(), // Should be StringType.Default
+                new List<IArrowArray?>(){ entriesDataArray }.CreateNestedListArray(entryType)
+            };
+
+            DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
+
+            List<IArrowArray> dataArrays = new List<IArrowArray>
+            {
+                infoNameBuilder.Build(),
+                infoValue
+            };
+            return dataArrays;
+        }
     }
 }
