@@ -48,12 +48,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-latest", "macos-14", "ubuntu-latest"]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      # No Docker on M1
+      - name: Skip Binary Verifiction
+        if: matrix.os == 'macos-14'
+        shell: bash
+        run: |
+          echo "TEST_APT=0" | tee -a $GITHUB_ENV
+          echo "TEST_YUM=0" | tee -a $GITHUB_ENV
       - name: Verify
         shell: bash
         env:
@@ -71,7 +78,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest", "windows-latest"]
+        os: ["macos-latest", "macos-14", "ubuntu-latest", "windows-latest"]
     steps:
       - uses: actions/checkout@v4
         with:
