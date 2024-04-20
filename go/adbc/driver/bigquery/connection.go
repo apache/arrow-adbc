@@ -20,190 +20,99 @@ package bigquery
 import (
 	"context"
 	"fmt"
+	"regexp"
+
+	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
-	"github.com/apache/arrow/go/v16/arrow/memory"
-	"regexp"
+	"google.golang.org/api/option"
 )
 
-type ConnectionImpl struct {
+type connectionImpl struct {
 	driverbase.ConnectionImplBase
-	database *databaseImpl
-	alloc    memory.Allocator
-	catalog  *string
-	dbSchema *string
+
+	authType    string
+	credentials string
+	projectID   string
+	datasetID   string
+	tableID     string
+
+	catalog  string
+	dbSchema string
+
+	client *bigquery.Client
 }
 
 // GetCurrentCatalog implements driverbase.CurrentNamespacer.
-func (c *ConnectionImpl) GetCurrentCatalog() (string, error) {
-	if c.catalog == nil {
-		if c.database.projectID == nil {
-			return "", adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  "Catalog not set in connection and project_id not set in database",
-			}
-		} else {
-			return *c.database.projectID, nil
-		}
-	} else {
-		return *c.catalog, nil
-	}
+func (c *connectionImpl) GetCurrentCatalog() (string, error) {
+	return c.catalog, nil
 }
 
 // GetCurrentDbSchema implements driverbase.CurrentNamespacer.
-func (c *ConnectionImpl) GetCurrentDbSchema() (string, error) {
-	if c.dbSchema == nil {
-		if c.database.datasetID == nil {
-			return "", adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  "DbSchema not set in connection and dataset_id not set in database",
-			}
-		} else {
-			return *c.database.datasetID, nil
-		}
-	} else {
-		return *c.dbSchema, nil
-	}
+func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
+	return c.dbSchema, nil
 }
 
 // SetCurrentCatalog implements driverbase.CurrentNamespacer.
-func (c *ConnectionImpl) SetCurrentCatalog(value string) error {
+func (c *connectionImpl) SetCurrentCatalog(value string) error {
 	sanitizedCatalog, err := sanitize(value)
 	if err != nil {
 		return err
 	}
-	c.catalog = &sanitizedCatalog
+	c.catalog = sanitizedCatalog
 	return nil
 }
 
 // SetCurrentDbSchema implements driverbase.CurrentNamespacer.
-func (c *ConnectionImpl) SetCurrentDbSchema(value string) error {
+func (c *connectionImpl) SetCurrentDbSchema(value string) error {
 	sanitizedDbSchema, err := sanitize(value)
 	if err != nil {
 		return err
 	}
-	c.dbSchema = &sanitizedDbSchema
+	c.dbSchema = sanitizedDbSchema
 	return nil
-}
-
-// NewStatement initializes a new statement object tied to this connection
-func (c *ConnectionImpl) NewStatement() (adbc.Statement, error) {
-	return &statement{
-		ConnectionImpl: c,
-		alloc:          c.alloc,
-	}, nil
-}
-
-// Close closes this connection and releases any associated resources.
-func (c *ConnectionImpl) Close() error {
-	return nil
-}
-
-func (c *ConnectionImpl) GetOption(key string) (string, error) {
-	switch key {
-	default:
-		val, err := c.database.GetOption(key)
-		if err == nil {
-			return val, nil
-		}
-		return "", err
-	}
-}
-
-func (c *ConnectionImpl) GetOptionBytes(key string) ([]byte, error) {
-	switch key {
-	default:
-		val, err := c.ConnectionImplBase.GetOptionBytes(key)
-		if err == nil {
-			return val, nil
-		}
-		return nil, adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("unknown connection bytes type option `%s`", key),
-		}
-	}
-}
-
-func (c *ConnectionImpl) GetOptionInt(key string) (int64, error) {
-	switch key {
-	default:
-		val, err := c.ConnectionImplBase.GetOptionInt(key)
-		if err == nil {
-			return val, nil
-		}
-		return 0, adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("unknown connection int type option `%s`", key),
-		}
-	}
-}
-
-func (c *ConnectionImpl) GetOptionDouble(key string) (float64, error) {
-	switch key {
-	default:
-		val, err := c.ConnectionImplBase.GetOptionDouble(key)
-		if err == nil {
-			return val, nil
-		}
-		return 0, adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("unknown connection double type option `%s`", key),
-		}
-	}
-}
-
-func (c *ConnectionImpl) SetOption(key string, value string) error {
-	return adbc.Error{
-		Code: adbc.StatusInvalidArgument,
-		Msg:  fmt.Sprintf("unknown connection string type option `%s`", key),
-	}
-}
-
-func (c *ConnectionImpl) SetOptionBytes(key string, value []byte) error {
-	return adbc.Error{
-		Code: adbc.StatusInvalidArgument,
-		Msg:  fmt.Sprintf("unknown connection bytes type option `%s`", key),
-	}
-}
-
-func (c *ConnectionImpl) SetOptionInt(key string, value int64) error {
-	return adbc.Error{
-		Code: adbc.StatusInvalidArgument,
-		Msg:  fmt.Sprintf("unknown connection int type option `%s`", key),
-	}
-}
-
-func (c *ConnectionImpl) SetOptionDouble(key string, value float64) error {
-	return adbc.Error{
-		Code: adbc.StatusInvalidArgument,
-		Msg:  fmt.Sprintf("unknown connection double type option `%s`", key),
-	}
-}
-
-// ReadPartition constructs a statement for a partition of a query. The
-// results can then be read independently using the returned RecordReader.
-//
-// A partition can be retrieved by using ExecutePartitions on a statement.
-func (c *ConnectionImpl) ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error) {
-	return nil, adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "ReadPartition not yet implemented for BigQuery driver",
-	}
 }
 
 // ListTableTypes implements driverbase.TableTypeLister.
-func (c *ConnectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
-	return []string{"BASE TABLE", "TEMPORARY TABLE", "VIEW"}, nil
+func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
+	return []string{"BASE TABLE", "VIEW"}, nil
 }
 
 // SetAutocommit implements driverbase.AutocommitSetter.
-func (c *ConnectionImpl) SetAutocommit(enabled bool) error {
+func (c *connectionImpl) SetAutocommit(enabled bool) error {
 	return adbc.Error{
 		Code: adbc.StatusNotImplemented,
-		Msg:  "SetAutocommit not yet implemented for BigQuery driver",
+		Msg:  "SetAutocommit is not yet implemented",
 	}
+}
+
+// Commit commits any pending transactions on this connection, it should
+// only be used if autocommit is disabled.
+//
+// Behavior is undefined if this is mixed with SQL transaction statements.
+func (c *connectionImpl) Commit(_ context.Context) error {
+	return adbc.Error{
+		Code: adbc.StatusNotImplemented,
+		Msg:  "Commit not yet implemented for BigQuery driver",
+	}
+}
+
+// Rollback rolls back any pending transactions. Only used if autocommit
+// is disabled.
+//
+// Behavior is undefined if this is mixed with SQL transaction statements.
+func (c *connectionImpl) Rollback(_ context.Context) error {
+	return adbc.Error{
+		Code: adbc.StatusNotImplemented,
+		Msg:  "Rollback not yet implemented for BigQuery driver",
+	}
+}
+
+// Close closes this connection and releases any associated resources.
+func (c *connectionImpl) Close() error {
+	return nil
 }
 
 // Metadata methods
@@ -310,33 +219,15 @@ func (c *ConnectionImpl) SetAutocommit(enabled bool) error {
 //
 // All non-empty, non-nil strings should be a search pattern (as described
 // earlier).
-func (c *ConnectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
+
+func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	return nil, adbc.Error{
 		Code: adbc.StatusNotImplemented,
 		Msg:  "GetObjects not yet implemented for BigQuery driver",
 	}
 }
 
-var (
-	sanitizedInputRegex = regexp.MustCompile("^[a-zA-Z0-9_-]+")
-)
-
-func sanitize(value string) (string, error) {
-	if value == "" {
-		return value, nil
-	} else {
-		if sanitizedInputRegex.MatchString(value) {
-			return value, nil
-		} else {
-			return "", adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  fmt.Sprintf("invalid characters in value `%s`", value),
-			}
-		}
-	}
-}
-
-func (c *ConnectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
+func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
 	if catalog == nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -364,64 +255,102 @@ func (c *ConnectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 		return nil, err
 	}
 
-	query := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.TABLES WHERE table_name = '%s'", sanitizedCatalog, sanitizedDbSchema, sanitizedTableName)
-	print(query)
+	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.TABLES WHERE table_name = '%s'", sanitizedCatalog, sanitizedDbSchema, sanitizedTableName)
+	query := c.client.Query(queryString)
+	reader, err := newRecordReader(ctx, query, c.Alloc)
+	if err != nil {
+		return nil, err
+	}
 
-	//client, err := newClient(ctx, *c.database.projectID, c.database.authType, credentials)
-	//if err != nil {
-	//	return nil, adbc.Error{
-	//		Code: adbc.StatusInternal,
-	//		Msg:  fmt.Sprintf("Failed to create client for connection driver: %s", err.Error()),
-	//	}
+	schema := reader.Schema()
+	for i, f := range schema.Fields() {
+		println(fmt.Sprintf("field: %d, name: %s, type: %s", i, f.Name, f.Type.Name()))
+	}
+	//for reader.Next() && ctx.Err() == nil {
+	//	rec := reader.Record()
+	//	metadata := make(map[string]string)
+	//	metadata["PRIMARY_KEY"] = ""
+	//	metadata["ORDINAL_POSITION"] = "1"
+	//	metadata["DATA_TYPE"] = "INT"
+	//	columns := rec.NumCols()
 	//}
-	//
-	//tableIterator := client.Dataset(*c.database.datasetID).Tables()
-	//for {
-	//	table, err := tableIterator.Next()
-	//	if err != nil {
-	//		if errors.Is(err, iterator.Done) {
-	//			break
-	//		}
-	//		return nil, adbc.Error{
-	//			Code: adbc.StatusInternal,
-	//			Msg:  "Cannot fetch datasets",
-	//		}
-	//	}
-	//	md, err := table.Metadata(ctx)
-	//	if err != nil {
-	//		return nil, adbc.Error{
-	//			Code: adbc.StatusInternal,
-	//			Msg:  fmt.Sprintf("Cannot fetch metadata for table `%s`: %s", tableName, err.Error()),
-	//		}
-	//	}
-	//	if md.Name == tableName {
-	//		md.Schema
-	//	}
-	//}
+
 	return nil, adbc.Error{
 		Code: adbc.StatusNotImplemented,
 		Msg:  "GetTableSchema not yet implemented for BigQuery driver",
 	}
 }
 
-// Commit commits any pending transactions on this connection, it should
-// only be used if autocommit is disabled.
-//
-// Behavior is undefined if this is mixed with SQL transaction statements.
-func (c *ConnectionImpl) Commit(_ context.Context) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "Commit not yet implemented for BigQuery driver",
+// NewStatement initializes a new statement object tied to this connection
+func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
+	return &statement{
+		connectionImpl: c,
+		query:          c.client.Query(""),
+	}, nil
+}
+
+func (c *connectionImpl) GetOption(key string) (string, error) {
+	switch key {
+	case OptionStringAuthType:
+		return c.authType, nil
+	case OptionStringCredentials:
+		return c.credentials, nil
+	case OptionStringProjectID:
+		return c.projectID, nil
+	case OptionStringDatasetID:
+		return c.datasetID, nil
+	case OptionStringTableID:
+		return c.tableID, nil
+	default:
+		return c.ConnectionImplBase.GetOption(key)
 	}
 }
 
-// Rollback rolls back any pending transactions. Only used if autocommit
-// is disabled.
-//
-// Behavior is undefined if this is mixed with SQL transaction statements.
-func (c *ConnectionImpl) Rollback(_ context.Context) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "Rollback not yet implemented for BigQuery driver",
+func (c *connectionImpl) newClient(ctx context.Context) error {
+	switch c.authType {
+	case OptionValueAuthTypeCredentialsFile:
+		client, err := bigquery.NewClient(ctx, c.projectID, option.WithCredentialsFile(c.credentials))
+		if err != nil {
+			return err
+		}
+
+		err = client.EnableStorageReadClient(ctx, option.WithCredentialsFile(c.credentials))
+		if err != nil {
+			return err
+		}
+
+		c.client = client
+	default:
+		client, err := bigquery.NewClient(ctx, c.projectID)
+		if err != nil {
+			return err
+		}
+
+		err = client.EnableStorageReadClient(ctx)
+		if err != nil {
+			return err
+		}
+
+		c.client = client
+	}
+	return nil
+}
+
+var (
+	sanitizedInputRegex = regexp.MustCompile("^[a-zA-Z0-9_-]+")
+)
+
+func sanitize(value string) (string, error) {
+	if value == "" {
+		return value, nil
+	} else {
+		if sanitizedInputRegex.MatchString(value) {
+			return value, nil
+		} else {
+			return "", adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("invalid characters in value `%s`", value),
+			}
+		}
 	}
 }

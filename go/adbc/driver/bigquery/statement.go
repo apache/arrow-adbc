@@ -18,14 +18,15 @@
 package bigquery
 
 import (
-	"cloud.google.com/go/bigquery"
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
+	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
-	"github.com/apache/arrow/go/v16/arrow/memory"
-	"time"
 )
 
 // todos for bigquery.QueryConfig
@@ -40,12 +41,8 @@ import (
 // - ConnectionProperties
 
 type statement struct {
-	ConnectionImpl *ConnectionImpl
-	query          string
-	queryConfig    bigquery.QueryConfig
-	projectID      *string
-
-	alloc memory.Allocator
+	connectionImpl *connectionImpl
+	query          *bigquery.Query
 }
 
 // Close releases any relevant resources associated with this statement
@@ -59,241 +56,163 @@ func (st *statement) Close() error {
 func (st *statement) GetOption(key string) (string, error) {
 	switch key {
 	case OptionStringProjectID:
-		if st.projectID == nil {
-			val, err := st.ConnectionImpl.GetOption(OptionStringProjectID)
-			if err != nil {
-				return "", err
-			} else {
-				return val, nil
-			}
+		val, err := st.connectionImpl.GetOption(OptionStringProjectID)
+		if err != nil {
+			return "", err
 		} else {
-			return *st.projectID, nil
+			return val, nil
 		}
 	case OptionStringQueryDestinationTable:
-		return tableToString(st.queryConfig.Dst), nil
+		return tableToString(st.query.QueryConfig.Dst), nil
 	case OptionStringQueryDefaultProjectID:
-		return st.queryConfig.DefaultProjectID, nil
+		return st.query.QueryConfig.DefaultProjectID, nil
 	case OptionStringQueryDefaultDatasetID:
-		return st.queryConfig.DefaultDatasetID, nil
+		return st.query.QueryConfig.DefaultDatasetID, nil
 	case OptionStringQueryCreateDisposition:
-		return tableCreateDispositionToString(st.queryConfig.CreateDisposition), nil
+		return string(st.query.QueryConfig.CreateDisposition), nil
 	case OptionStringQueryWriteDisposition:
-		return tableWriteDispositionToString(st.queryConfig.WriteDisposition), nil
+		return string(st.query.QueryConfig.WriteDisposition), nil
 	case OptionBoolQueryDisableQueryCache:
-		return boolToString(st.queryConfig.DisableQueryCache), nil
+		return strconv.FormatBool(st.query.QueryConfig.DisableQueryCache), nil
 	case OptionBoolDisableFlattenedResults:
-		return boolToString(st.queryConfig.DisableFlattenedResults), nil
+		return strconv.FormatBool(st.query.QueryConfig.DisableFlattenedResults), nil
 	case OptionBoolQueryAllowLargeResults:
-		return boolToString(st.queryConfig.AllowLargeResults), nil
+		return strconv.FormatBool(st.query.QueryConfig.AllowLargeResults), nil
 	case OptionStringQueryPriority:
-		return queryPriorityToString(st.queryConfig.Priority), nil
+		return string(st.query.QueryConfig.Priority), nil
 	case OptionBoolQueryUseLegacySQL:
-		return boolToString(st.queryConfig.UseLegacySQL), nil
+		return strconv.FormatBool(st.query.QueryConfig.UseLegacySQL), nil
 	case OptionBoolQueryDryRun:
-		return boolToString(st.queryConfig.DryRun), nil
+		return strconv.FormatBool(st.query.QueryConfig.DryRun), nil
 	case OptionBoolQueryCreateSession:
-		return boolToString(st.queryConfig.CreateSession), nil
+		return strconv.FormatBool(st.query.QueryConfig.CreateSession), nil
 	default:
-		val, err := st.ConnectionImpl.GetOption(key)
+		val, err := st.connectionImpl.GetOption(key)
 		if err == nil {
 			return val, nil
 		}
-		return "", adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("unknown statement string type option `%s`", key),
-		}
-	}
-}
-
-func (st *statement) GetOptionBytes(key string) ([]byte, error) {
-	switch key {
-	default:
-		val, err := st.ConnectionImpl.GetOptionBytes(key)
-		if err == nil {
-			return val, nil
-		}
-		return nil, adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("unknown statement bytes type option `%s`", key),
-		}
+		return "", err
 	}
 }
 
 func (st *statement) GetOptionInt(key string) (int64, error) {
 	switch key {
 	case OptionIntQueryMaxBillingTier:
-		return int64(st.queryConfig.MaxBillingTier), nil
+		return int64(st.query.QueryConfig.MaxBillingTier), nil
 	case OptionIntQueryMaxBytesBilled:
-		return st.queryConfig.MaxBytesBilled, nil
+		return st.query.QueryConfig.MaxBytesBilled, nil
 	case OptionIntQueryJobTimeout:
-		return st.queryConfig.JobTimeout.Milliseconds(), nil
+		return st.query.QueryConfig.JobTimeout.Milliseconds(), nil
 	default:
-		val, err := st.ConnectionImpl.GetOptionInt(key)
+		val, err := st.connectionImpl.GetOptionInt(key)
 		if err == nil {
 			return val, nil
 		}
-		return 0, adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("unknown statement int type option `%s`", key),
-		}
+		return 0, err
 	}
 }
 
-func (st *statement) GetOptionDouble(key string) (float64, error) {
-	switch key {
-	default:
-		val, err := st.ConnectionImpl.GetOptionDouble(key)
-		if err == nil {
-			return val, nil
-		}
-		return 0, adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("unknown statement double type option `%s`", key),
-		}
-	}
-}
-
-func (st *statement) setQueryConfig(key, v string) (bool, error) {
+func (st *statement) SetOption(key string, v string) error {
 	switch key {
 	case OptionStringQueryDestinationTable:
 		val, err := stringToTable(v)
 		if err == nil {
-			st.queryConfig.Dst = val
+			st.query.QueryConfig.Dst = val
 		} else {
-			return true, err
+			return err
 		}
 	case OptionStringQueryDefaultProjectID:
-		st.queryConfig.DefaultProjectID = v
+		st.query.QueryConfig.DefaultProjectID = v
 	case OptionStringQueryDefaultDatasetID:
-		st.queryConfig.DefaultDatasetID = v
+		st.query.QueryConfig.DefaultDatasetID = v
 	case OptionStringQueryCreateDisposition:
 		val, err := stringToTableCreateDisposition(v)
 		if err == nil {
-			st.queryConfig.CreateDisposition = val
+			st.query.QueryConfig.CreateDisposition = val
 		} else {
-			return true, err
+			return err
 		}
 	case OptionStringQueryWriteDisposition:
 		val, err := stringToTableWriteDisposition(v)
 		if err == nil {
-			st.queryConfig.WriteDisposition = val
+			st.query.QueryConfig.WriteDisposition = val
 		} else {
-			return true, err
+			return err
 		}
 	case OptionBoolQueryDisableQueryCache:
-		val, err := stringToBool(v)
+		val, err := strconv.ParseBool(v)
 		if err == nil {
-			st.queryConfig.DisableQueryCache = val
+			st.query.QueryConfig.DisableQueryCache = val
 		} else {
-			return true, err
+			return err
 		}
 	case OptionBoolDisableFlattenedResults:
-		val, err := stringToBool(v)
+		val, err := strconv.ParseBool(v)
 		if err == nil {
-			st.queryConfig.DisableFlattenedResults = val
+			st.query.QueryConfig.DisableFlattenedResults = val
 		} else {
-			return true, err
+			return err
 		}
 	case OptionBoolQueryAllowLargeResults:
-		val, err := stringToBool(v)
+		val, err := strconv.ParseBool(v)
 		if err == nil {
-			st.queryConfig.AllowLargeResults = val
+			st.query.QueryConfig.AllowLargeResults = val
 		} else {
-			return true, err
+			return err
 		}
 	case OptionStringQueryPriority:
 		val, err := stringToQueryPriority(v)
 		if err == nil {
-			st.queryConfig.Priority = val
+			st.query.QueryConfig.Priority = val
 		} else {
-			return true, err
+			return err
 		}
 	case OptionBoolQueryUseLegacySQL:
-		val, err := stringToBool(v)
+		val, err := strconv.ParseBool(v)
 		if err == nil {
-			st.queryConfig.UseLegacySQL = val
+			st.query.QueryConfig.UseLegacySQL = val
 		} else {
-			return true, err
+			return err
 		}
 	case OptionBoolQueryDryRun:
-		val, err := stringToBool(v)
+		val, err := strconv.ParseBool(v)
 		if err == nil {
-			st.queryConfig.DryRun = val
+			st.query.QueryConfig.DryRun = val
 		} else {
-			return true, err
+			return err
 		}
 	case OptionBoolQueryCreateSession:
-		val, err := stringToBool(v)
+		val, err := strconv.ParseBool(v)
 		if err == nil {
-			st.queryConfig.CreateSession = val
+			st.query.QueryConfig.CreateSession = val
 		} else {
-			return true, err
-		}
-
-	default:
-		return false, nil
-	}
-	return true, nil
-}
-
-func (st *statement) setQueryConfigInt(key string, value int64) (bool, error) {
-	switch key {
-	case OptionIntQueryMaxBillingTier:
-		st.queryConfig.MaxBillingTier = int(value)
-	case OptionIntQueryMaxBytesBilled:
-		st.queryConfig.MaxBytesBilled = value
-	case OptionIntQueryJobTimeout:
-		st.queryConfig.JobTimeout = time.Duration(value) * time.Millisecond
-	default:
-		return false, nil
-	}
-	return true, nil
-}
-
-func (st *statement) SetOption(key string, value string) error {
-	handled, err := st.setQueryConfig(key, value)
-	if handled {
-		if err != nil {
 			return err
-		} else {
-			return nil
+		}
+
+	default:
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  fmt.Sprintf("unknown statement string type option `%s`", key),
 		}
 	}
-
-	return adbc.Error{
-		Code: adbc.StatusInvalidArgument,
-		Msg:  fmt.Sprintf("unknown statement string type option `%s`", key),
-	}
-}
-
-func (st *statement) SetOptionBytes(key string, value []byte) error {
-	return adbc.Error{
-		Code: adbc.StatusInvalidArgument,
-		Msg:  fmt.Sprintf("unknown statement bytes type option `%s`", key),
-	}
+	return nil
 }
 
 func (st *statement) SetOptionInt(key string, value int64) error {
-	handled, err := st.setQueryConfigInt(key, value)
-	if handled {
-		if err != nil {
-			return err
-		} else {
-			return nil
+	switch key {
+	case OptionIntQueryMaxBillingTier:
+		st.query.QueryConfig.MaxBillingTier = int(value)
+	case OptionIntQueryMaxBytesBilled:
+		st.query.QueryConfig.MaxBytesBilled = value
+	case OptionIntQueryJobTimeout:
+		st.query.QueryConfig.JobTimeout = time.Duration(value) * time.Millisecond
+	default:
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  fmt.Sprintf("unknown statement string type option `%s`", key),
 		}
 	}
-
-	return adbc.Error{
-		Code: adbc.StatusInvalidArgument,
-		Msg:  fmt.Sprintf("unknown statement int type option `%s`", key),
-	}
-}
-
-func (st *statement) SetOptionDouble(key string, value float64) error {
-	return adbc.Error{
-		Code: adbc.StatusInvalidArgument,
-		Msg:  fmt.Sprintf("unknown statement double type option `%s`", key),
-	}
+	return nil
 }
 
 // SetSqlQuery sets the query string to be executed.
@@ -302,7 +221,7 @@ func (st *statement) SetOptionDouble(key string, value float64) error {
 // For queries expected to be executed repeatedly, Prepare should be
 // called before execution.
 func (st *statement) SetSqlQuery(query string) error {
-	st.query = query
+	st.query.QueryConfig.Q = query
 	return nil
 }
 
@@ -312,24 +231,7 @@ func (st *statement) SetSqlQuery(query string) error {
 //
 // This invalidates any prior result sets on this statement.
 func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
-	projectID, err := st.GetOption(OptionStringProjectID)
-	if err != nil {
-		return nil, -1, err
-	}
-	authType, err := st.GetOption(OptionStringAuthType)
-	if err != nil {
-		return nil, -1, err
-	}
-	credentials, err := st.GetOption(OptionStringCredentials)
-	if err != nil {
-		return nil, -1, err
-	}
-	client, err := newClient(ctx, projectID, authType, credentials)
-	if err != nil {
-		return nil, -1, err
-	}
-
-	reader, err := newRecordReader(ctx, client, projectID, st.query, st.queryConfig, st.alloc)
+	reader, err := newRecordReader(ctx, st.query, st.connectionImpl.Alloc)
 	if err != nil {
 		return nil, -1, err
 	}

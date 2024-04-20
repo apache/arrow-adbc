@@ -18,58 +18,43 @@
 package bigquery
 
 import (
-	"bytes"
-	"cloud.google.com/go/bigquery"
 	"context"
-	"errors"
+	"sync/atomic"
+
+	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v16/arrow"
 	"github.com/apache/arrow/go/v16/arrow/array"
 	"github.com/apache/arrow/go/v16/arrow/ipc"
 	"github.com/apache/arrow/go/v16/arrow/memory"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/api/iterator"
-	"sync/atomic"
 )
 
 type reader struct {
-	refCount   int64
-	schema     *arrow.Schema
-	chs        []chan arrow.Record
-	curChIndex int
-	rec        arrow.Record
-	err        error
+	refCount int64
+	schema   *arrow.Schema
+	ch       chan arrow.Record
+	rec      arrow.Record
+	err      error
 
 	cancelFn context.CancelFunc
 }
 
-func deserializeSchema(info []byte, mem memory.Allocator) (*arrow.Schema, error) {
-	rdr, err := ipc.NewReader(bytes.NewReader(info), ipc.WithAllocator(mem))
-	if err != nil {
-		return nil, err
-	}
-	defer rdr.Release()
-	return rdr.Schema(), nil
-}
-
-func checkContext(maybeErr error, ctx context.Context) error {
+func checkContext(ctx context.Context, maybeErr error) error {
 	if maybeErr != nil {
 		return maybeErr
 	} else if ctx.Err() == context.Canceled {
-		return adbc.Error{Msg: "Cancelled by request", Code: adbc.StatusCancelled}
+		return adbc.Error{Msg: ctx.Err().Error(), Code: adbc.StatusCancelled}
 	} else if ctx.Err() == context.DeadlineExceeded {
-		return adbc.Error{Msg: "Deadline exceeded", Code: adbc.StatusTimeout}
+		return adbc.Error{Msg: ctx.Err().Error(), Code: adbc.StatusTimeout}
 	}
 	return ctx.Err()
 }
 
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
-func newRecordReader(ctx context.Context, cl *bigquery.Client, projectID, query string, queryConfig bigquery.QueryConfig, alloc memory.Allocator) (rdr array.RecordReader, err error) {
-	q := cl.Query("")
-	q.QueryConfig = queryConfig
-	q.QueryConfig.Q = query
-	job, err := q.Run(ctx)
+func newRecordReader(ctx context.Context, query *bigquery.Query, alloc memory.Allocator) (rdr array.RecordReader, err error) {
+	job, err := query.Run(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -78,11 +63,6 @@ func newRecordReader(ctx context.Context, cl *bigquery.Client, projectID, query 
 		return nil, err
 	}
 	arrowIterator, err := iter.ArrowIterator()
-	if err != nil {
-		return nil, err
-	}
-
-	schema, err := deserializeSchema(arrowIterator.SerializedArrowSchema(), alloc)
 	if err != nil {
 		return nil, err
 	}
@@ -98,51 +78,37 @@ func newRecordReader(ctx context.Context, cl *bigquery.Client, projectID, query 
 		}
 	}()
 
-	chs := make([]chan arrow.Record, 1)
-	chs[0] = ch
 	reader := &reader{
-		refCount:   1,
-		chs:        chs,
-		curChIndex: 0,
-		err:        nil,
-		cancelFn:   cancelFn,
-		schema:     schema,
+		refCount: 1,
+		ch:       ch,
+		err:      nil,
+		cancelFn: cancelFn,
+		schema:   nil,
 	}
 
 	group.Go(func() error {
-		for {
-			batch, err := arrowIterator.Next()
-			if err != nil {
-				if errors.Is(err, iterator.Done) {
-					return nil
-				}
-				return err
-			}
-
-			buf := bytes.NewBuffer(batch.Schema)
-			buf.Write(batch.Data)
-			rdr, err := ipc.NewReader(buf, ipc.WithAllocator(alloc))
-			if err != nil {
-				return err
-			}
-
-			defer rdr.Release()
-			for rdr.Next() && ctx.Err() == nil {
-				rec := rdr.Record()
-				rec.Retain()
-				chs[0] <- rec
-			}
-			if err := checkContext(rdr.Err(), ctx); err != nil {
-				return err
-			}
+		arrowItReader := bigquery.NewArrowIteratorReader(arrowIterator)
+		rdr, err := ipc.NewReader(arrowItReader, ipc.WithAllocator(alloc))
+		if err != nil {
+			return err
 		}
+		reader.schema = rdr.Schema()
+
+		defer rdr.Release()
+		for rdr.Next() && ctx.Err() == nil {
+			rec := rdr.Record()
+			rec.Retain()
+			ch <- rec
+		}
+		if err := checkContext(ctx, rdr.Err()); err != nil {
+			return err
+		}
+		return nil
 	})
 
 	go func() {
 		reader.err = group.Wait()
-		// Don't close the channel until after the group is finished, so that
-		// Next() can only return after reader.err may have been set
-		close(chs[0])
+		close(ch)
 	}()
 	return reader, nil
 }
@@ -157,10 +123,8 @@ func (r *reader) Release() {
 			r.rec.Release()
 		}
 		r.cancelFn()
-		for _, ch := range r.chs {
-			for rec := range ch {
-				rec.Release()
-			}
+		for rec := range r.ch {
+			rec.Release()
 		}
 	}
 }
@@ -175,17 +139,7 @@ func (r *reader) Next() bool {
 		r.rec = nil
 	}
 
-	if r.curChIndex >= len(r.chs) {
-		return false
-	}
-
-	var ok bool
-	for r.curChIndex < len(r.chs) {
-		if r.rec, ok = <-r.chs[r.curChIndex]; ok {
-			break
-		}
-		r.curChIndex++
-	}
+	r.rec = <-r.ch
 	return r.rec != nil
 }
 

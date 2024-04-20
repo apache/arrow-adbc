@@ -1,16 +1,3 @@
-package bigquery
-
-import (
-	"cloud.google.com/go/bigquery"
-	"fmt"
-	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/apache/arrow/go/v16/arrow/memory"
-	"golang.org/x/exp/maps"
-	"runtime/debug"
-	"strings"
-)
-
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -27,6 +14,19 @@ import (
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+
+package bigquery
+
+import (
+	"fmt"
+	"runtime/debug"
+	"strings"
+
+	"cloud.google.com/go/bigquery"
+	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"github.com/apache/arrow/go/v16/arrow/memory"
+)
 
 const (
 	OptionStringAuthType               = "adbc.bigquery.sql.auth_type"
@@ -89,10 +89,8 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
-	opts = maps.Clone(opts)
 	db := &databaseImpl{
 		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
-		alloc:            d.alloc,
 		authType:         OptionValueAuthTypeDefault,
 	}
 	if err := db.SetOptions(opts); err != nil {
@@ -100,20 +98,6 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 	}
 
 	return driverbase.NewDatabase(db), nil
-}
-
-func stringToBool(value string) (bool, error) {
-	switch value {
-	case "true":
-		return true, nil
-	case "false":
-		return false, nil
-	default:
-		return false, adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("Invalid boolean value, expected `true` or `false`, got `%s`", value),
-		}
-	}
 }
 
 func stringToTable(value string) (*bigquery.Table, error) {
@@ -133,54 +117,42 @@ func stringToTable(value string) (*bigquery.Table, error) {
 }
 
 func stringToTableCreateDisposition(value string) (bigquery.TableCreateDisposition, error) {
-	switch value {
-	case "CREATE_NEVER":
-		return bigquery.CreateNever, nil
-	case "CREATE_IF_NEEDED":
-		return bigquery.CreateIfNeeded, nil
+	v := bigquery.TableCreateDisposition(value)
+	switch v {
+	case bigquery.CreateIfNeeded, bigquery.CreateNever:
+		return v, nil
 	default:
-		return bigquery.CreateIfNeeded, adbc.Error{
+		return v, adbc.Error{
 			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("unknown table create disposition value `%s`", value),
+			Msg:  fmt.Sprintf("unknown table create disposition value `%s`", v),
 		}
 	}
 }
 
 func stringToTableWriteDisposition(value string) (bigquery.TableWriteDisposition, error) {
-	switch value {
-	case "WRITE_APPEND":
-		return bigquery.WriteAppend, nil
-	case "WRITE_TRUNCATE":
-		return bigquery.WriteTruncate, nil
-	case "WRITE_EMPTY":
-		return bigquery.WriteEmpty, nil
+	v := bigquery.TableWriteDisposition(value)
+	switch v {
+	case bigquery.WriteAppend, bigquery.WriteTruncate, bigquery.WriteEmpty:
+		return v, nil
 	default:
-		return bigquery.WriteEmpty, adbc.Error{
+		return v, adbc.Error{
 			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("unknown table write disposition value `%s`", value),
+			Msg:  fmt.Sprintf("unknown table write disposition value `%s`", v),
 		}
 	}
 }
 
 func stringToQueryPriority(value string) (bigquery.QueryPriority, error) {
-	switch value {
-	case "BATCH":
-		return bigquery.BatchPriority, nil
-	case "INTERACTIVE":
-		return bigquery.InteractivePriority, nil
+	v := bigquery.QueryPriority(value)
+	switch v {
+	case bigquery.BatchPriority, bigquery.InteractivePriority:
+		return v, nil
 	default:
-		return bigquery.InteractivePriority, adbc.Error{
+		return v, adbc.Error{
 			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("unknown table create disposition value `%s`", value),
+			Msg:  fmt.Sprintf("unknown priority value `%s`", v),
 		}
 	}
-}
-
-func boolToString(value bool) string {
-	if value {
-		return "true"
-	}
-	return "false"
 }
 
 func tableToString(value *bigquery.Table) string {
@@ -189,36 +161,4 @@ func tableToString(value *bigquery.Table) string {
 	} else {
 		return fmt.Sprintf("%s.%s.%s", value.ProjectID, value.DatasetID, value.TableID)
 	}
-}
-
-func tableCreateDispositionToString(value bigquery.TableCreateDisposition) string {
-	switch value {
-	case bigquery.CreateNever:
-		return "CREATE_NEVER"
-	case bigquery.CreateIfNeeded:
-		return "CREATE_IF_NEEDED"
-	}
-	return ""
-}
-
-func tableWriteDispositionToString(value bigquery.TableWriteDisposition) string {
-	switch value {
-	case bigquery.WriteAppend:
-		return "WRITE_APPEND"
-	case bigquery.WriteTruncate:
-		return "WRITE_TRUNCATE"
-	case bigquery.WriteEmpty:
-		return "WRITE_EMPTY"
-	}
-	return ""
-}
-
-func queryPriorityToString(value bigquery.QueryPriority) string {
-	switch value {
-	case bigquery.BatchPriority:
-		return "BATCH"
-	case bigquery.InteractivePriority:
-		return "INTERACTIVE"
-	}
-	return ""
 }
