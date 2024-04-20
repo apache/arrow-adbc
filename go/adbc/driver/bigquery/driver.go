@@ -71,7 +71,6 @@ func init() {
 
 type driverImpl struct {
 	driverbase.DriverImplBase
-	alloc memory.Allocator
 }
 
 // NewDriver creates a new BigQuery driver using the given Arrow allocator.
@@ -84,7 +83,6 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 	}
 	return driverbase.NewDriver(&driverImpl{
 		DriverImplBase: driverbase.NewDriverImplBase(info, alloc),
-		alloc:          alloc,
 	})
 }
 
