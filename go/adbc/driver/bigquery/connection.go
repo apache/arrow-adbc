@@ -309,13 +309,15 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 		return nil, err
 	}
 
-	sanitizedTableName, err := sanitize(tableName)
-	if err != nil {
-		return nil, err
-	}
-
-	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s'", sanitizedCatalog, sanitizedDbSchema, sanitizedTableName)
+	// sadly that query parameters cannot be used in place of table names
+	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = @tableName", sanitizedCatalog, sanitizedDbSchema)
 	query := c.client.Query(queryString)
+	query.Parameters = []bigquery.QueryParameter{
+		{
+			Name:  "tableName",
+			Value: tableName,
+		},
+	}
 	reader, _, err := newRecordReader(ctx, query, c.Alloc)
 	if err != nil {
 		return nil, err
@@ -371,9 +373,8 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 				case "COLUMN_NAME", "IS_NULLABLE", "DATA_TYPE":
 					continue
 				default:
-					metadata[columnName] = col.ValueStr(i)
+					metadata[columnName] = strings.Clone(col.ValueStr(i))
 				}
-				col.Release()
 			}
 
 			name := fieldName.ValueStr(i)
@@ -388,7 +389,6 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 			field.Metadata = arrow.MetadataFrom(metadata)
 			fields = append(fields, field)
 		}
-
 		fieldName.Release()
 		fieldNullable.Release()
 		fieldType.Release()
@@ -500,7 +500,7 @@ func buildSchemaField(name string, typeString string) (arrow.Field, error) {
 
 func buildField(name, typeString, dataType string, index int) (arrow.Field, error) {
 	field := arrow.Field{
-		Name: name,
+		Name: strings.Clone(name),
 	}
 	switch dataType {
 	case "INTEGER", "INT64":
