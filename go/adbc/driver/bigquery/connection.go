@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -229,10 +230,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 
 func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
 	if catalog == nil {
-		return nil, adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  "catalog is null",
-		}
+		catalog = &c.catalog
 	}
 	sanitizedCatalog, err := sanitize(*catalog)
 	if err != nil {
@@ -240,10 +238,7 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	}
 
 	if dbSchema == nil {
-		return nil, adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  "dbSchema is null",
-		}
+		dbSchema = &c.dbSchema
 	}
 	sanitizedDbSchema, err := sanitize(*dbSchema)
 	if err != nil {
@@ -255,30 +250,84 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 		return nil, err
 	}
 
-	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.TABLES WHERE table_name = '%s'", sanitizedCatalog, sanitizedDbSchema, sanitizedTableName)
+	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s'", sanitizedCatalog, sanitizedDbSchema, sanitizedTableName)
 	query := c.client.Query(queryString)
-	reader, err := newRecordReader(ctx, query, c.Alloc)
+	reader, nColsInTable, err := newRecordReader(ctx, query, c.Alloc)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := reader.Schema()
-	for i, f := range schema.Fields() {
-		println(fmt.Sprintf("field: %d, name: %s, type: %s", i, f.Name, f.Type.Name()))
-	}
-	//for reader.Next() && ctx.Err() == nil {
-	//	rec := reader.Record()
-	//	metadata := make(map[string]string)
-	//	metadata["PRIMARY_KEY"] = ""
-	//	metadata["ORDINAL_POSITION"] = "1"
-	//	metadata["DATA_TYPE"] = "INT"
-	//	columns := rec.NumCols()
-	//}
+	metadataArray := make([]map[string]string, 0)
+	fields := make([]arrow.Field, 0)
+	columnIndex := 0
 
-	return nil, adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "GetTableSchema not yet implemented for BigQuery driver",
+	for reader.Next() && ctx.Err() == nil {
+		rec := reader.Record()
+		numRows := int(rec.NumRows())
+		for i := 0; i < numRows; i++ {
+			metadata := make(map[string]string)
+			metadata["PRIMARY_KEY"] = ""
+			metadataArray = append(metadataArray, metadata)
+			fields = append(fields, arrow.Field{
+				Type: &arrow.NullType{},
+			})
+		}
+		for i := 0; i < int(rec.NumCols()); i++ {
+			col := rec.Column(i)
+			name := strings.ToUpper(rec.ColumnName(i))
+
+			switch name {
+			case "IS_NULLABLE":
+				for indexInTable := 0; indexInTable < numRows; indexInTable++ {
+					field := &fields[columnIndex+indexInTable]
+					field.Nullable = strings.ToUpper(col.ValueStr(indexInTable)) == "YES"
+				}
+			case "COLUMN_NAME":
+				for indexInTable := 0; indexInTable < numRows; indexInTable++ {
+					field := &fields[columnIndex+indexInTable]
+					field.Name = col.ValueStr(indexInTable)
+				}
+			case "DATA_TYPE":
+				for indexInTable := 0; indexInTable < numRows; indexInTable++ {
+					field := &fields[columnIndex+indexInTable]
+					typeString := col.ValueStr(indexInTable)
+					switch typeString {
+					case "INTEGER", "INT64":
+						field.Type = &arrow.Int64Type{}
+					case "FLOAT", "FLOAT64":
+						field.Type = &arrow.Float64Type{}
+					case "BOOL", "BOOLEAN":
+						field.Type = &arrow.BooleanType{}
+					case "STRING", "GEOGRAPHY", "JSON":
+						field.Type = &arrow.StringType{}
+					case "BYTES":
+						field.Type = &arrow.BinaryType{}
+					case "DATETIME", "TIMESTAMP":
+						field.Type = &arrow.TimestampType{}
+					case "TIME":
+						field.Type = &arrow.Time64Type{}
+					case "DATE":
+						field.Type = &arrow.Date64Type{}
+					default:
+						field.Type = &arrow.NullType{}
+					}
+				}
+			default:
+				for indexInTable := 0; indexInTable < numRows; indexInTable++ {
+					metadataArray[columnIndex+indexInTable][name] = col.ValueStr(indexInTable)
+				}
+			}
+			col.Release()
+		}
+		columnIndex += numRows
+		rec.Release()
 	}
+	for i := 0; i < int(nColsInTable); i++ {
+		field := &fields[i]
+		field.Metadata = arrow.MetadataFrom(metadataArray[i])
+	}
+	schema := arrow.NewSchema(fields, nil)
+	return schema, nil
 }
 
 // NewStatement initializes a new statement object tied to this connection
@@ -307,6 +356,12 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 }
 
 func (c *connectionImpl) newClient(ctx context.Context) error {
+	if c.projectID == "" {
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  "ProjectID is empty",
+		}
+	}
 	switch c.authType {
 	case OptionValueAuthTypeCredentialsFile:
 		client, err := bigquery.NewClient(ctx, c.projectID, option.WithCredentialsFile(c.credentials))

@@ -53,18 +53,19 @@ func checkContext(ctx context.Context, maybeErr error) error {
 
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
-func newRecordReader(ctx context.Context, query *bigquery.Query, alloc memory.Allocator) (rdr array.RecordReader, err error) {
+func newRecordReader(ctx context.Context, query *bigquery.Query, alloc memory.Allocator) (rdr array.RecordReader, totalRows int64, err error) {
 	job, err := query.Run(ctx)
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	}
 	iter, err := job.Read(ctx)
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	}
+	totalRows = int64(iter.TotalRows)
 	arrowIterator, err := iter.ArrowIterator()
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	}
 
 	ch := make(chan arrow.Record, 4096)
@@ -110,7 +111,7 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, alloc memory.Al
 		reader.err = group.Wait()
 		close(ch)
 	}()
-	return reader, nil
+	return reader, totalRows, nil
 }
 
 func (r *reader) Retain() {

@@ -231,11 +231,11 @@ func (st *statement) SetSqlQuery(query string) error {
 //
 // This invalidates any prior result sets on this statement.
 func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
-	reader, err := newRecordReader(ctx, st.query, st.connectionImpl.Alloc)
+	reader, affectedRows, err := newRecordReader(ctx, st.query, st.connectionImpl.Alloc)
 	if err != nil {
 		return nil, -1, err
 	}
-	return reader, -1, nil
+	return reader, affectedRows, nil
 }
 
 // ExecuteUpdate executes a statement that does not generate a result

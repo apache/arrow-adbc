@@ -43,6 +43,8 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		projectID:          d.projectID,
 		datasetID:          d.datasetID,
 		tableID:            d.tableID,
+		catalog:            d.projectID,
+		dbSchema:           d.datasetID,
 	}
 
 	err := conn.newClient(ctx)
