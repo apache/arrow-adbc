@@ -421,55 +421,33 @@ func buildSchemaField(name string, typeString string) (arrow.Field, error) {
 }
 
 func buildField(name, typeString, dataType string, index int) (arrow.Field, error) {
+	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
 	field := arrow.Field{
 		Name: strings.Clone(name),
 	}
 	switch dataType {
-	case "INTEGER", "INT64":
-		field.Type = &arrow.Int64Type{}
-	case "FLOAT", "FLOAT64":
-		field.Type = &arrow.Float64Type{}
 	case "BOOL", "BOOLEAN":
-		field.Type = &arrow.BooleanType{}
-	case "STRING", "GEOGRAPHY", "JSON":
-		field.Type = &arrow.StringType{}
+		field.Type = arrow.FixedWidthTypes.Boolean
+	case "INTEGER", "INT64":
+		field.Type = arrow.PrimitiveTypes.Int64
+	case "FLOAT", "FLOAT64":
+		field.Type = arrow.PrimitiveTypes.Float64
 	case "BYTES":
-		field.Type = &arrow.BinaryType{}
-	case "DATETIME", "TIMESTAMP":
-		field.Type = &arrow.TimestampType{}
-	case "TIME":
-		field.Type = &arrow.Time64Type{}
+		field.Type = arrow.BinaryTypes.Binary
+	case "STRING", "GEOGRAPHY", "JSON":
+		field.Type = arrow.BinaryTypes.String
 	case "DATE":
-		field.Type = &arrow.Date64Type{}
-	case "RECORD", "STRUCT":
-		fieldRecords := typeString[index+1:]
-		fieldRecords = fieldRecords[:len(fieldRecords)-1]
-		nestedFields := make([]arrow.Field, 0)
-		for _, record := range strings.Split(fieldRecords, ",") {
-			fieldRecord := strings.TrimSpace(record)
-			recordParts := strings.SplitN(fieldRecord, " ", 2)
-			if len(recordParts) != 2 {
-				return arrow.Field{}, adbc.Error{
-					Code: adbc.StatusInvalidData,
-					Msg:  fmt.Sprintf("invalid field record `%s` for type `%s`", fieldRecord, dataType),
-				}
-			}
-			fieldName := recordParts[0]
-			fieldType := recordParts[1]
-			nestedField, err := buildSchemaField(fieldName, fieldType)
-			if err != nil {
-				return arrow.Field{}, err
-			}
-			nestedFields = append(nestedFields, nestedField)
+		field.Type = arrow.FixedWidthTypes.Date32
+	case "DATETIME":
+		field.Type = &arrow.TimestampType{
+			Unit: arrow.Microsecond,
 		}
-		structType := arrow.StructOf(nestedFields...)
-		if structType == nil {
-			return arrow.Field{}, adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  fmt.Sprintf("Cannot create a struct schema for record `%s`", fieldRecords),
-			}
+	case "TIMESTAMP":
+		field.Type = &arrow.TimestampType{
+			Unit: arrow.Microsecond,
 		}
-		field.Type = structType
+	case "TIME":
+		field.Type = arrow.FixedWidthTypes.Time64us
 	case "NUMERIC", "DECIMAL":
 		precision, scale, err := parsePrecisionAndScale(name, typeString)
 		if err != nil {
@@ -503,6 +481,35 @@ func buildField(name, typeString, dataType string, index int) (arrow.Field, erro
 			return arrow.Field{}, err
 		}
 		field = arrayFieldType
+	case "RECORD", "STRUCT":
+		fieldRecords := typeString[index+1:]
+		fieldRecords = fieldRecords[:len(fieldRecords)-1]
+		nestedFields := make([]arrow.Field, 0)
+		for _, record := range strings.Split(fieldRecords, ",") {
+			fieldRecord := strings.TrimSpace(record)
+			recordParts := strings.SplitN(fieldRecord, " ", 2)
+			if len(recordParts) != 2 {
+				return arrow.Field{}, adbc.Error{
+					Code: adbc.StatusInvalidData,
+					Msg:  fmt.Sprintf("invalid field record `%s` for type `%s`", fieldRecord, dataType),
+				}
+			}
+			fieldName := recordParts[0]
+			fieldType := recordParts[1]
+			nestedField, err := buildSchemaField(fieldName, fieldType)
+			if err != nil {
+				return arrow.Field{}, err
+			}
+			nestedFields = append(nestedFields, nestedField)
+		}
+		structType := arrow.StructOf(nestedFields...)
+		if structType == nil {
+			return arrow.Field{}, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("Cannot create a struct schema for record `%s`", fieldRecords),
+			}
+		}
+		field.Type = structType
 	default:
 		return arrow.Field{}, adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -519,6 +526,12 @@ func parsePrecisionAndScale(name, typeString string) (int32, int32, error) {
 			Code: adbc.StatusInvalidData,
 			Msg:  fmt.Sprintf("Cannot parse data type `%s` for field `%s`", typeString, name),
 		}
+	}
+
+	if typeString == "NUMERIC" {
+		return 38, 9, nil
+	} else if typeString == "BIGNUMERIC" {
+		return 76, 38, nil
 	}
 
 	values := strings.Split(strings.TrimRight(typeString[strings.Index(typeString, "(")+1:], ")"), ",")
