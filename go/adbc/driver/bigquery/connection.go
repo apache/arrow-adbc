@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"cloud.google.com/go/bigquery"
@@ -252,80 +253,85 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 
 	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s'", sanitizedCatalog, sanitizedDbSchema, sanitizedTableName)
 	query := c.client.Query(queryString)
-	reader, nColsInTable, err := newRecordReader(ctx, query, c.Alloc)
+	reader, _, err := newRecordReader(ctx, query, c.Alloc)
 	if err != nil {
 		return nil, err
 	}
 
-	metadataArray := make([]map[string]string, 0)
 	fields := make([]arrow.Field, 0)
-	columnIndex := 0
+	var columns map[string]int = nil
 
 	for reader.Next() && ctx.Err() == nil {
 		rec := reader.Record()
+		if columns == nil {
+			columns = make(map[string]int)
+			for i, f := range reader.Schema().Fields() {
+				columns[strings.ToUpper(f.Name)] = i
+			}
+		}
+
 		numRows := int(rec.NumRows())
+		val, ok := columns["COLUMN_NAME"]
+		if !ok {
+			return nil, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  "Column `COLUMN_NAME` does not exist in response",
+			}
+		}
+		fieldName := rec.Column(val)
+
+		val, ok = columns["IS_NULLABLE"]
+		if !ok {
+			return nil, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  "Column `IS_NULLABLE` does not exist in response",
+			}
+		}
+		fieldNullable := rec.Column(val)
+
+		val, ok = columns["DATA_TYPE"]
+		if !ok {
+			return nil, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  "Column `DATA_TYPE` does not exist in response",
+			}
+		}
+		fieldType := rec.Column(val)
+
 		for i := 0; i < numRows; i++ {
 			metadata := make(map[string]string)
 			metadata["PRIMARY_KEY"] = ""
-			metadataArray = append(metadataArray, metadata)
-			fields = append(fields, arrow.Field{
-				Type: &arrow.NullType{},
-			})
-		}
-		for i := 0; i < int(rec.NumCols()); i++ {
-			col := rec.Column(i)
-			name := strings.ToUpper(rec.ColumnName(i))
-
-			switch name {
-			case "IS_NULLABLE":
-				for indexInTable := 0; indexInTable < numRows; indexInTable++ {
-					field := &fields[columnIndex+indexInTable]
-					field.Nullable = strings.ToUpper(col.ValueStr(indexInTable)) == "YES"
+			for j := 0; j < int(rec.NumCols()); j++ {
+				col := rec.Column(j)
+				columnName := strings.ToUpper(rec.ColumnName(j))
+				switch columnName {
+				case "COLUMN_NAME", "IS_NULLABLE", "DATA_TYPE":
+					continue
+				default:
+					metadata[columnName] = col.ValueStr(i)
 				}
-			case "COLUMN_NAME":
-				for indexInTable := 0; indexInTable < numRows; indexInTable++ {
-					field := &fields[columnIndex+indexInTable]
-					field.Name = col.ValueStr(indexInTable)
-				}
-			case "DATA_TYPE":
-				for indexInTable := 0; indexInTable < numRows; indexInTable++ {
-					field := &fields[columnIndex+indexInTable]
-					typeString := col.ValueStr(indexInTable)
-					switch typeString {
-					case "INTEGER", "INT64":
-						field.Type = &arrow.Int64Type{}
-					case "FLOAT", "FLOAT64":
-						field.Type = &arrow.Float64Type{}
-					case "BOOL", "BOOLEAN":
-						field.Type = &arrow.BooleanType{}
-					case "STRING", "GEOGRAPHY", "JSON":
-						field.Type = &arrow.StringType{}
-					case "BYTES":
-						field.Type = &arrow.BinaryType{}
-					case "DATETIME", "TIMESTAMP":
-						field.Type = &arrow.TimestampType{}
-					case "TIME":
-						field.Type = &arrow.Time64Type{}
-					case "DATE":
-						field.Type = &arrow.Date64Type{}
-					default:
-						field.Type = &arrow.NullType{}
-					}
-				}
-			default:
-				for indexInTable := 0; indexInTable < numRows; indexInTable++ {
-					metadataArray[columnIndex+indexInTable][name] = col.ValueStr(indexInTable)
-				}
+				col.Release()
 			}
-			col.Release()
+
+			name := fieldName.ValueStr(i)
+			nullable := strings.ToUpper(fieldNullable.ValueStr(i))
+			dataType := fieldType.ValueStr(i)
+
+			field, err := buildSchemaField(name, dataType)
+			if err != nil {
+				return nil, err
+			}
+			field.Nullable = nullable == "YES"
+			field.Metadata = arrow.MetadataFrom(metadata)
+			fields = append(fields, field)
 		}
-		columnIndex += numRows
+
+		fieldName.Release()
+		fieldNullable.Release()
+		fieldType.Release()
 		rec.Release()
 	}
-	for i := 0; i < int(nColsInTable); i++ {
-		field := &fields[i]
-		field.Metadata = arrow.MetadataFrom(metadataArray[i])
-	}
+
 	schema := arrow.NewSchema(fields, nil)
 	return schema, nil
 }
@@ -408,4 +414,151 @@ func sanitize(value string) (string, error) {
 			}
 		}
 	}
+}
+
+func buildSchemaField(name string, typeString string) (arrow.Field, error) {
+	index := strings.Index(name, "(")
+	if index == -1 {
+		index = strings.Index(name, "<")
+	} else {
+		lIndex := strings.Index(name, "<")
+		if index < lIndex {
+			index = lIndex
+		}
+	}
+
+	if index == -1 {
+		return buildField(name, typeString, typeString, index)
+	} else {
+		dataType := typeString[:index]
+		return buildField(name, typeString, dataType, index)
+	}
+}
+
+func buildField(name, typeString, dataType string, index int) (arrow.Field, error) {
+	field := arrow.Field{
+		Name: name,
+	}
+	switch dataType {
+	case "INTEGER", "INT64":
+		field.Type = &arrow.Int64Type{}
+	case "FLOAT", "FLOAT64":
+		field.Type = &arrow.Float64Type{}
+	case "BOOL", "BOOLEAN":
+		field.Type = &arrow.BooleanType{}
+	case "STRING", "GEOGRAPHY", "JSON":
+		field.Type = &arrow.StringType{}
+	case "BYTES":
+		field.Type = &arrow.BinaryType{}
+	case "DATETIME", "TIMESTAMP":
+		field.Type = &arrow.TimestampType{}
+	case "TIME":
+		field.Type = &arrow.Time64Type{}
+	case "DATE":
+		field.Type = &arrow.Date64Type{}
+	case "RECORD", "STRUCT":
+		fieldRecords := typeString[index+1:]
+		fieldRecords = fieldRecords[:len(fieldRecords)-1]
+		nestedFields := make([]arrow.Field, 0)
+		for _, record := range strings.Split(fieldRecords, ",") {
+			fieldRecord := strings.TrimSpace(record)
+			recordParts := strings.SplitN(fieldRecord, " ", 2)
+			if len(recordParts) != 2 {
+				return arrow.Field{}, adbc.Error{
+					Code: adbc.StatusInvalidData,
+					Msg:  fmt.Sprintf("invalid field record `%s` for type `%s`", fieldRecord, dataType),
+				}
+			}
+			fieldName := recordParts[0]
+			fieldType := recordParts[1]
+			nestedField, err := buildSchemaField(fieldName, fieldType)
+			if err != nil {
+				return arrow.Field{}, err
+			}
+			nestedFields = append(nestedFields, nestedField)
+		}
+		structType := arrow.StructOf(nestedFields...)
+		if structType == nil {
+			return arrow.Field{}, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("Cannot create a struct schema for record `%s`", fieldRecords),
+			}
+		}
+		field.Type = structType
+	case "NUMERIC", "DECIMAL":
+		precision, scale, err := parsePrecisionAndScale(name, typeString)
+		if err != nil {
+			return arrow.Field{}, err
+		}
+		field.Type = &arrow.Decimal128Type{
+			Precision: precision,
+			Scale:     scale,
+		}
+	case "BIGNUMERIC", "BIGDECIMAL":
+		precision, scale, err := parsePrecisionAndScale(name, typeString)
+		if err != nil {
+			return arrow.Field{}, err
+		}
+		field.Type = &arrow.Decimal256Type{
+			Precision: precision,
+			Scale:     scale,
+		}
+	case "ARRAY":
+		// todo: parse array
+		arrayType := strings.Replace(typeString[:len(dataType)], "<", "", 1)
+		rIndex := strings.LastIndex(arrayType, ">")
+		if rIndex == -1 {
+			return arrow.Field{}, adbc.Error{
+				Code: adbc.StatusInvalidData,
+				Msg:  fmt.Sprintf("Cannot parse array type `%s` for field `%s`: cannot find `>`", typeString, name),
+			}
+		}
+		arrayType = arrayType[:rIndex] + arrayType[rIndex+1:]
+		arrayFieldType, err := buildField(name, typeString, arrayType, rIndex)
+		if err != nil {
+			return arrow.Field{}, err
+		}
+		field = arrayFieldType
+	default:
+		return arrow.Field{}, adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  fmt.Sprintf("Cannot handle data type `%s`, type=`%s`", dataType, typeString),
+		}
+	}
+	return field, nil
+}
+
+func parsePrecisionAndScale(name, typeString string) (int32, int32, error) {
+	typeString = strings.TrimSpace(typeString)
+	if len(typeString) == 0 {
+		return 0, 0, adbc.Error{
+			Code: adbc.StatusInvalidData,
+			Msg:  fmt.Sprintf("Cannot parse data type `%s` for field `%s`", typeString, name),
+		}
+	}
+
+	values := strings.Split(strings.TrimRight(typeString[strings.Index(typeString, "(")+1:], ")"), ",")
+	if len(values) != 2 {
+		return 0, 0, adbc.Error{
+			Code: adbc.StatusInvalidData,
+			Msg:  fmt.Sprintf("Cannot parse data type `%s` for field `%s`", typeString, name),
+		}
+	}
+
+	precision, err := strconv.ParseInt(values[0], 10, 32)
+	if err != nil {
+		return 0, 0, adbc.Error{
+			Code: adbc.StatusInvalidData,
+			Msg:  fmt.Sprintf("Cannot parse precision `%s`: %s", values[0], err.Error()),
+		}
+	}
+
+	scale, err := strconv.ParseInt(values[1], 10, 32)
+	if err != nil {
+		return 0, 0, adbc.Error{
+			Code: adbc.StatusInvalidData,
+			Msg:  fmt.Sprintf("Cannot parse scale `%s`: %s", values[1], err.Error()),
+		}
+	}
+	return int32(precision), int32(scale), nil
 }
