@@ -20,6 +20,8 @@ package bigquery
 import (
 	"context"
 	"fmt"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"google.golang.org/api/iterator"
 	"regexp"
 	"strconv"
 	"strings"
@@ -227,6 +229,67 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		Code: adbc.StatusNotImplemented,
 		Msg:  "GetObjects not yet implemented for BigQuery driver",
 	}
+}
+
+func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error) {
+	catalogPattern := ""
+	if catalog != nil {
+		catalogPattern = *catalog
+	}
+	pattern, err := patternToRegexp(catalogPattern)
+	if err != nil {
+		return nil, err
+	}
+
+	catalogs := make([]string, 0)
+	if pattern.MatchString(c.client.Project()) {
+		catalogs = append(catalogs, c.client.Project())
+	}
+	return catalogs, nil
+}
+
+func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, metadataRecords []internal.Metadata) (map[string][]string, error) {
+	result := make(map[string][]string)
+	if depth == adbc.ObjectDepthCatalogs {
+		return result, nil
+	}
+
+	catalogPattern := ""
+	if catalog != nil {
+		catalogPattern = *catalog
+	}
+	pattern, err := patternToRegexp(catalogPattern)
+	if err != nil {
+		return nil, err
+	}
+	if !pattern.MatchString(c.client.Project()) {
+		return result, nil
+	}
+	result[c.client.Project()] = []string{}
+
+	dbSchemaPattern := ""
+	if dbSchema != nil {
+		dbSchemaPattern = *dbSchema
+	}
+	pattern, err = patternToRegexp(dbSchemaPattern)
+	if err != nil {
+		return nil, err
+	}
+
+	it := c.client.Datasets(ctx)
+	for {
+		dataset, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return result, err
+		}
+		if pattern.MatchString(dataset.DatasetID) {
+			result[c.client.Project()] = append(result[c.client.Project()], dataset.DatasetID)
+		}
+	}
+	return result, nil
 }
 
 func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
@@ -561,4 +624,20 @@ func parsePrecisionAndScale(name, typeString string) (int32, int32, error) {
 		}
 	}
 	return int32(precision), int32(scale), nil
+}
+
+func patternToRegexp(pattern string) (*regexp.Regexp, error) {
+	pattern = strings.TrimSpace(pattern)
+	convertedPattern := ".*"
+	if pattern == "" {
+		convertedPattern = fmt.Sprintf("(?!)^%s$", strings.ReplaceAll(strings.ReplaceAll(pattern, "_", "."), "%", ".*"))
+	}
+	r, err := regexp.Compile(convertedPattern)
+	if err != nil {
+		return nil, adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  fmt.Sprintf("Cannot parse pattern `%s`: %s", pattern, err.Error()),
+		}
+	}
+	return r, nil
 }
