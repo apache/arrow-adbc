@@ -28,11 +28,14 @@ import (
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
 
-	authType    string
-	credentials string
-	projectID   string
-	datasetID   string
-	tableID     string
+	authType     string
+	credentials  string
+	clientID     string
+	clientSecret string
+	refreshToken string
+	projectID    string
+	datasetID    string
+	tableID      string
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
@@ -40,6 +43,9 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 		authType:           d.authType,
 		credentials:        d.credentials,
+		clientID:           d.clientID,
+		clientSecret:       d.clientSecret,
+		refreshToken:       d.refreshToken,
 		projectID:          d.projectID,
 		datasetID:          d.datasetID,
 		tableID:            d.tableID,
@@ -66,8 +72,14 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 	switch key {
 	case OptionStringAuthType:
 		return d.authType, nil
-	case OptionStringCredentials:
+	case OptionStringAuthCredentials:
 		return d.credentials, nil
+	case OptionStringAuthClientID:
+		return d.clientID, nil
+	case OptionStringAuthClientSecret:
+		return d.clientSecret, nil
+	case OptionStringAuthRefreshToken:
+		return d.refreshToken, nil
 	case OptionStringProjectID:
 		return d.projectID, nil
 	case OptionStringDatasetID:
@@ -95,7 +107,11 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		switch value {
 		case OptionValueAuthTypeDefault:
 			d.authType = value
-		case OptionValueAuthTypeCredentialsFile:
+		case OptionValueAuthTypeJSONCredentialFile:
+			d.authType = value
+		case OptionValueAuthTypeJSONCredentialString:
+			d.authType = value
+		case OptionValueAuthTypeUserAuthentication:
 			d.authType = value
 		default:
 			return adbc.Error{
@@ -103,8 +119,14 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 				Msg:  fmt.Sprintf("unknown database auth type value `%s`", value),
 			}
 		}
-	case OptionStringCredentials:
+	case OptionStringAuthCredentials:
 		d.credentials = value
+	case OptionStringAuthClientID:
+		d.clientID = value
+	case OptionStringAuthClientSecret:
+		d.clientSecret = value
+	case OptionStringAuthRefreshToken:
+		d.refreshToken = value
 	case OptionStringProjectID:
 		d.projectID = value
 	case OptionStringDatasetID:

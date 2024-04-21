@@ -29,13 +29,21 @@ import (
 )
 
 const (
-	OptionStringAuthType               = "adbc.bigquery.sql.auth_type"
-	OptionStringCredentials            = "adbc.bigquery.sql.credentials"
-	OptionStringProjectID              = "adbc.bigquery.sql.project_id"
-	OptionStringDatasetID              = "adbc.bigquery.sql.dataset_id"
-	OptionStringTableID                = "adbc.bigquery.sql.table_id"
-	OptionValueAuthTypeDefault         = "adbc.bigquery.sql.auth_type.auth_bigquery"
-	OptionValueAuthTypeCredentialsFile = "adbc.bigquery.sql.auth_type.credentials_file"
+	OptionStringAuthType  = "adbc.bigquery.sql.auth_type"
+	OptionStringProjectID = "adbc.bigquery.sql.project_id"
+	OptionStringDatasetID = "adbc.bigquery.sql.dataset_id"
+	OptionStringTableID   = "adbc.bigquery.sql.table_id"
+
+	OptionValueAuthTypeDefault = "adbc.bigquery.sql.auth_type.auth_bigquery"
+
+	OptionValueAuthTypeJSONCredentialFile   = "adbc.bigquery.sql.auth_type.json_credential_file"
+	OptionValueAuthTypeJSONCredentialString = "adbc.bigquery.sql.auth_type.json_credential_string"
+	OptionStringAuthCredentials             = "adbc.bigquery.sql.auth.credentials"
+
+	OptionValueAuthTypeUserAuthentication = "adbc.bigquery.sql.auth_type.user_authentication"
+	OptionStringAuthClientID              = "adbc.bigquery.sql.auth.client_id"
+	OptionStringAuthClientSecret          = "adbc.bigquery.sql.auth.client_secret"
+	OptionStringAuthRefreshToken          = "adbc.bigquery.sql.auth.refresh_token"
 
 	OptionStringQueryDestinationTable  = "adbc.bigquery.sql.query.destination_table"
 	OptionStringQueryDefaultProjectID  = "adbc.bigquery.sql.query.default_project_id"
@@ -52,6 +60,9 @@ const (
 	OptionBoolQueryDryRun              = "adbc.bigquery.sql.query.dry_run"
 	OptionBoolQueryCreateSession       = "adbc.bigquery.sql.query.create_session"
 	OptionIntQueryJobTimeout           = "adbc.bigquery.sql.query.job_timeout"
+
+	AccessTokenEndpoint   = "https://accounts.google.com/o/oauth2/token"
+	AccessTokenServerName = "google.com"
 )
 
 var (

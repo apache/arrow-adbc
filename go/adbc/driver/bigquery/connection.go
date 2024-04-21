@@ -18,37 +18,56 @@
 package bigquery
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
-	"golang.org/x/exp/slices"
-	"google.golang.org/api/iterator"
+	"golang.org/x/oauth2"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v16/arrow"
+	"golang.org/x/exp/slices"
+	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
 type connectionImpl struct {
 	driverbase.ConnectionImplBase
 
-	authType    string
-	credentials string
-	projectID   string
-	datasetID   string
-	tableID     string
+	authType     string
+	credentials  string
+	clientID     string
+	clientSecret string
+	refreshToken string
+	projectID    string
+	datasetID    string
+	tableID      string
 
 	catalog  string
 	dbSchema string
 
 	client *bigquery.Client
+}
+
+type BigQueryTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in"`
+	Scope       string `json:"scope"`
+	TokenType   string `json:"token_type"`
 }
 
 type FilteredDatasetHandler func(dataset *bigquery.Dataset) error
@@ -333,8 +352,14 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 	switch key {
 	case OptionStringAuthType:
 		return c.authType, nil
-	case OptionStringCredentials:
+	case OptionStringAuthCredentials:
 		return c.credentials, nil
+	case OptionStringAuthClientID:
+		return c.clientID, nil
+	case OptionStringAuthClientSecret:
+		return c.clientSecret, nil
+	case OptionStringAuthRefreshToken:
+		return c.refreshToken, nil
 	case OptionStringProjectID:
 		return c.projectID, nil
 	case OptionStringDatasetID:
@@ -354,13 +379,40 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		}
 	}
 	switch c.authType {
-	case OptionValueAuthTypeCredentialsFile:
-		client, err := bigquery.NewClient(ctx, c.projectID, option.WithCredentialsFile(c.credentials))
+	case OptionValueAuthTypeJSONCredentialFile, OptionValueAuthTypeJSONCredentialString, OptionValueAuthTypeUserAuthentication:
+		var credentials option.ClientOption
+		if c.authType == OptionValueAuthTypeJSONCredentialFile {
+			credentials = option.WithCredentialsFile(c.credentials)
+		} else if c.authType == OptionValueAuthTypeJSONCredentialString {
+			credentials = option.WithCredentialsJSON([]byte(c.credentials))
+		} else {
+			if c.clientID == "" {
+				return adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthClientID),
+				}
+			}
+			if c.clientSecret == "" {
+				return adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthClientSecret),
+				}
+			}
+			if c.refreshToken == "" {
+				return adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthRefreshToken),
+				}
+			}
+			credentials = option.WithTokenSource(c)
+		}
+
+		client, err := bigquery.NewClient(ctx, c.projectID, credentials)
 		if err != nil {
 			return err
 		}
 
-		err = client.EnableStorageReadClient(ctx, option.WithCredentialsFile(c.credentials))
+		err = client.EnableStorageReadClient(ctx, credentials)
 		if err != nil {
 			return err
 		}
@@ -755,4 +807,62 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 
 	schema := arrow.NewSchema(fields, nil)
 	return schema, nil
+}
+
+func (c *connectionImpl) Token() (*oauth2.Token, error) {
+	token, err := c.getAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	return &oauth2.Token{
+		AccessToken:  token.AccessToken,
+		TokenType:    "Bearer",
+		RefreshToken: c.refreshToken,
+		Expiry:       now.Add(time.Second * time.Duration(token.ExpiresIn)),
+	}, nil
+}
+
+func (c *connectionImpl) getAccessToken() (*BigQueryTokenResponse, error) {
+	params := url.Values{}
+	params.Add("grant_type", "refresh_token")
+	params.Add("client_id", c.clientID)
+	params.Add("client_secret", c.clientSecret)
+	params.Add("refresh_token", c.refreshToken)
+	req, err := http.NewRequest("POST", AccessTokenEndpoint, bytes.NewBufferString(params.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{ServerName: AccessTokenServerName},
+	}
+	client := &http.Client{
+		Transport: tr,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func(Body io.ReadCloser) {
+		bodyErr := Body.Close()
+		if bodyErr != nil {
+			err = bodyErr
+		}
+	}(resp.Body)
+
+	contents, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var tokenResponse BigQueryTokenResponse
+	err = json.Unmarshal(contents, &tokenResponse)
+	if err != nil {
+		return nil, err
+	}
+	return &tokenResponse, nil
 }

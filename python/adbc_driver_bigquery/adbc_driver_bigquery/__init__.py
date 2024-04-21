@@ -39,8 +39,18 @@ class DatabaseOptions(enum.Enum):
 
     #: Specify the value for credentials
     #: It should be the path to the JSON credentials file if
-    #: AUTH_TYPE is AUTH_VALUE_CREDENTIALS_FILE
-    AUTH_CREDENTIALS = "adbc.bigquery.sql.credentials"
+    #: AUTH_TYPE is AUTH_VALUE_JSON_CREDENTIAL_FILE
+    #:
+    #: or, it should be the encoded JSON string if
+    #: AUTH_TYPE is AUTH_VALUE_JSON_CREDENTIAL_STRING
+    AUTH_CREDENTIALS = "adbc.bigquery.sql.auth.credentials"
+
+    #: Specify the client ID, client secret and refresh_token to
+    #: use for bigquery connection if AUTH_TYPE is
+    #: AUTH_VALUE_USER_AUTHENTICATION
+    AUTH_CLIENT_ID = "adbc.bigquery.sql.auth.client_id"
+    AUTH_CLIENT_SECRET = "adbc.bigquery.sql.auth.client_secret"
+    AUTH_REFRESH_TOKEN = "adbc.bigquery.sql.auth.refresh_token"
 
     #: Specify the project ID to use for bigquery connection.
     PROJECT_ID = "adbc.bigquery.sql.project_id"
@@ -51,12 +61,20 @@ class DatabaseOptions(enum.Enum):
     #: Specify the table ID to use for bigquery connection.
     TABLE_ID = "adbc.bigquery.sql.table_id"
 
-    #: use the default authentication method implemented in
+    #: Use the default authentication method implemented in
     #: Google Cloud SDK
     AUTH_VALUE_BIGQUERY = "adbc.bigquery.sql.auth_type.auth_bigquery"
 
-    #: specify to use a JSON credentials file for authentication
-    AUTH_VALUE_CREDENTIALS_FILE = "adbc.bigquery.sql.auth_type.credentials_file"
+    #: Specify to use a JSON credentials file for authentication
+    AUTH_VALUE_JSON_CREDENTIAL_FILE = "adbc.bigquery.sql.auth_type.json_credential_file"
+
+    #: Specify to use a JSON credentials string for authentication
+    AUTH_VALUE_JSON_CREDENTIAL_STRING = (
+        "adbc.bigquery.sql.auth_type.json_credential_string"
+    )
+
+    #: Specify to use access token for authentication
+    AUTH_VALUE_USER_AUTHENTICATION = "adbc.bigquery.sql.auth_type.user_authentication"
 
 
 class StatementOptions(enum.Enum):
