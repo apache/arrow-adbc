@@ -19,18 +19,20 @@ package bigquery
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
-	"google.golang.org/api/iterator"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"golang.org/x/exp/slices"
+	"google.golang.org/api/iterator"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v16/arrow"
-	"github.com/apache/arrow/go/v16/arrow/array"
 	"google.golang.org/api/option"
 )
 
@@ -48,6 +50,9 @@ type connectionImpl struct {
 
 	client *bigquery.Client
 }
+
+type FilteredDatasetHandler func(dataset *bigquery.Dataset) error
+type FilteredTableHandler func(dataset *bigquery.Table) error
 
 // GetCurrentCatalog implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) GetCurrentCatalog() (string, error) {
@@ -224,179 +229,96 @@ func (c *connectionImpl) Close() error {
 // All non-empty, non-nil strings should be a search pattern (as described
 // earlier).
 
-func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
-	return nil, adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "GetObjects not yet implemented for BigQuery driver",
-	}
-}
-
+// GetObjectsCatalogs implements driverbase.DbObjectsEnumerator.
 func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error) {
-	catalogPattern := ""
-	if catalog != nil {
-		catalogPattern = *catalog
-	}
-	pattern, err := patternToRegexp(catalogPattern)
+	pattern, err := patternToRegexp(catalog)
 	if err != nil {
 		return nil, err
 	}
 
+	// todo: check if we can get all projects that we have access
 	catalogs := make([]string, 0)
-	if pattern.MatchString(c.client.Project()) {
-		catalogs = append(catalogs, c.client.Project())
+	currentCatalog := c.client.Project()
+	if pattern.MatchString(currentCatalog) {
+		catalogs = append(catalogs, currentCatalog)
 	}
+
 	return catalogs, nil
 }
 
+// GetObjectsDbSchemas implements driverbase.DbObjectsEnumerator.
 func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, metadataRecords []internal.Metadata) (map[string][]string, error) {
 	result := make(map[string][]string)
 	if depth == adbc.ObjectDepthCatalogs {
 		return result, nil
 	}
 
-	catalogPattern := ""
-	if catalog != nil {
-		catalogPattern = *catalog
-	}
-	pattern, err := patternToRegexp(catalogPattern)
+	err := c.getDatasetsInProject(ctx, catalog, dbSchema, func(dataset *bigquery.Dataset) error {
+		val, ok := result[dataset.ProjectID]
+		if !ok {
+			result[dataset.ProjectID] = make([]string, 0)
+		}
+		result[dataset.ProjectID] = append(val, dataset.DatasetID)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	if !pattern.MatchString(c.client.Project()) {
+
+	return result, nil
+}
+
+// GetObjectsTables implements driverbase.DbObjectsEnumerator.
+func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (map[internal.CatalogAndSchema][]internal.TableInfo, error) {
+	result := make(map[internal.CatalogAndSchema][]internal.TableInfo)
+	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
 		return result, nil
 	}
-	result[c.client.Project()] = []string{}
 
-	dbSchemaPattern := ""
-	if dbSchema != nil {
-		dbSchemaPattern = *dbSchema
-	}
-	pattern, err = patternToRegexp(dbSchemaPattern)
+	// Pre-populate the map of which schemas are in which catalogs
+	includeSchema := depth == adbc.ObjectDepthColumns
+	err := c.getDatasetsInProject(ctx, catalog, dbSchema, func(dataset *bigquery.Dataset) error {
+		tableErr := getTablesInDataset(ctx, dataset, tableName, func(table *bigquery.Table) error {
+			metadata, tableErr := table.Metadata(ctx)
+			if tableErr != nil {
+				return tableErr
+			}
+			currentTableType := string(metadata.Type)
+			includeTable := len(tableType) == 0 || slices.Contains(tableType, currentTableType)
+			if !includeTable {
+				return nil
+			}
+
+			key := internal.CatalogAndSchema{
+				Catalog: table.ProjectID,
+				Schema:  table.DatasetID,
+			}
+
+			var schema *arrow.Schema
+			var schemaErr error
+			if includeSchema {
+				schema, schemaErr = c.getTableSchemaWithFilter(ctx, &key.Catalog, &key.Schema, table.TableID, columnName)
+				if schemaErr != nil {
+					return schemaErr
+				}
+			}
+			result[key] = append(result[key], internal.TableInfo{
+				Name:      table.TableID,
+				TableType: currentTableType,
+				Schema:    schema,
+			})
+			return nil
+		})
+		return tableErr
+	})
 	if err != nil {
 		return nil, err
-	}
-
-	it := c.client.Datasets(ctx)
-	for {
-		dataset, err := it.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return result, err
-		}
-		if pattern.MatchString(dataset.DatasetID) {
-			result[c.client.Project()] = append(result[c.client.Project()], dataset.DatasetID)
-		}
 	}
 	return result, nil
 }
 
 func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
-	if catalog == nil {
-		catalog = &c.catalog
-	}
-	sanitizedCatalog, err := sanitize(*catalog)
-	if err != nil {
-		return nil, err
-	}
-
-	if dbSchema == nil {
-		dbSchema = &c.dbSchema
-	}
-	sanitizedDbSchema, err := sanitize(*dbSchema)
-	if err != nil {
-		return nil, err
-	}
-
-	// sadly that query parameters cannot be used in place of table names
-	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = @tableName", sanitizedCatalog, sanitizedDbSchema)
-	query := c.client.Query(queryString)
-	query.Parameters = []bigquery.QueryParameter{
-		{
-			Name:  "tableName",
-			Value: tableName,
-		},
-	}
-	reader, _, err := newRecordReader(ctx, query, c.Alloc)
-	if err != nil {
-		return nil, err
-	}
-
-	fields := make([]arrow.Field, 0)
-	var columns map[string]int = nil
-
-	for reader.Next() && ctx.Err() == nil {
-		rec := reader.Record()
-		if columns == nil {
-			columns = make(map[string]int)
-			for i, f := range reader.Schema().Fields() {
-				columns[strings.ToUpper(f.Name)] = i
-			}
-		}
-
-		numRows := int(rec.NumRows())
-		val, ok := columns["COLUMN_NAME"]
-		if !ok {
-			return nil, adbc.Error{
-				Code: adbc.StatusInternal,
-				Msg:  "Column `COLUMN_NAME` does not exist in response",
-			}
-		}
-		fieldName := rec.Column(val)
-
-		val, ok = columns["IS_NULLABLE"]
-		if !ok {
-			return nil, adbc.Error{
-				Code: adbc.StatusInternal,
-				Msg:  "Column `IS_NULLABLE` does not exist in response",
-			}
-		}
-		fieldNullable := rec.Column(val)
-
-		val, ok = columns["DATA_TYPE"]
-		if !ok {
-			return nil, adbc.Error{
-				Code: adbc.StatusInternal,
-				Msg:  "Column `DATA_TYPE` does not exist in response",
-			}
-		}
-		fieldType := rec.Column(val)
-
-		for i := 0; i < numRows; i++ {
-			metadata := make(map[string]string)
-			metadata["PRIMARY_KEY"] = ""
-			for j := 0; j < int(rec.NumCols()); j++ {
-				col := rec.Column(j)
-				columnName := strings.ToUpper(rec.ColumnName(j))
-				switch columnName {
-				case "COLUMN_NAME", "IS_NULLABLE", "DATA_TYPE":
-					continue
-				default:
-					metadata[columnName] = strings.Clone(col.ValueStr(i))
-				}
-			}
-
-			name := fieldName.ValueStr(i)
-			nullable := strings.ToUpper(fieldNullable.ValueStr(i))
-			dataType := fieldType.ValueStr(i)
-
-			field, err := buildSchemaField(name, dataType)
-			if err != nil {
-				return nil, err
-			}
-			field.Nullable = nullable == "YES"
-			field.Metadata = arrow.MetadataFrom(metadata)
-			fields = append(fields, field)
-		}
-		fieldName.Release()
-		fieldNullable.Release()
-		fieldType.Release()
-		rec.Release()
-	}
-
-	schema := arrow.NewSchema(fields, nil)
-	return schema, nil
+	return c.getTableSchemaWithFilter(ctx, catalog, dbSchema, tableName, nil)
 }
 
 // NewStatement initializes a new statement object tied to this connection
@@ -567,7 +489,6 @@ func buildField(name, typeString, dataType string, index int) (arrow.Field, erro
 			Scale:     scale,
 		}
 	case "ARRAY":
-		// todo: parse array
 		arrayType := strings.Replace(typeString[:len(dataType)], "<", "", 1)
 		rIndex := strings.LastIndex(arrayType, ">")
 		if rIndex == -1 {
@@ -626,18 +547,199 @@ func parsePrecisionAndScale(name, typeString string) (int32, int32, error) {
 	return int32(precision), int32(scale), nil
 }
 
-func patternToRegexp(pattern string) (*regexp.Regexp, error) {
-	pattern = strings.TrimSpace(pattern)
+func patternToRegexp(pattern *string) (*regexp.Regexp, error) {
+	patternString := ""
+	if pattern != nil {
+		patternString = *pattern
+	}
+	patternString = strings.TrimSpace(patternString)
+
 	convertedPattern := ".*"
-	if pattern == "" {
-		convertedPattern = fmt.Sprintf("(?!)^%s$", strings.ReplaceAll(strings.ReplaceAll(pattern, "_", "."), "%", ".*"))
+	if patternString != "" {
+		convertedPattern = fmt.Sprintf("(?i)^%s$", strings.ReplaceAll(strings.ReplaceAll(patternString, "_", "."), "%", ".*"))
 	}
 	r, err := regexp.Compile(convertedPattern)
 	if err != nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("Cannot parse pattern `%s`: %s", pattern, err.Error()),
+			Msg:  fmt.Sprintf("Cannot parse pattern `%s`: %s", patternString, err.Error()),
 		}
 	}
 	return r, nil
+}
+
+func (c *connectionImpl) getDatasetsInProject(ctx context.Context, projectIDPattern, datasetsIDPattern *string, cb FilteredDatasetHandler) error {
+	pattern, err := patternToRegexp(projectIDPattern)
+	if err != nil {
+		return err
+	}
+	if !pattern.MatchString(c.client.Project()) {
+		return iterator.Done
+	}
+
+	pattern, err = patternToRegexp(datasetsIDPattern)
+	if err != nil {
+		return err
+	}
+
+	it := c.client.Datasets(ctx)
+	for {
+		dataset, err := it.Next()
+		if err != nil {
+			if errors.Is(err, iterator.Done) {
+				break
+			}
+			return err
+		}
+
+		if pattern.MatchString(dataset.DatasetID) {
+			err = cb(dataset)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func getTablesInDataset(ctx context.Context, dataset *bigquery.Dataset, tableNamePattern *string, cb FilteredTableHandler) error {
+	pattern, err := patternToRegexp(tableNamePattern)
+	if err != nil {
+		return err
+	}
+
+	it := dataset.Tables(ctx)
+	for {
+		table, err := it.Next()
+		if err != nil {
+			if errors.Is(err, iterator.Done) {
+				break
+			}
+			return err
+		}
+
+		if pattern.MatchString(table.TableID) {
+			err = cb(table)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *string, dbSchema *string, tableName string, columnName *string) (*arrow.Schema, error) {
+	if catalog == nil {
+		catalog = &c.catalog
+	}
+	sanitizedCatalog, err := sanitize(*catalog)
+	if err != nil {
+		return nil, err
+	}
+
+	if dbSchema == nil {
+		dbSchema = &c.dbSchema
+	}
+	sanitizedDbSchema, err := sanitize(*dbSchema)
+	if err != nil {
+		return nil, err
+	}
+
+	pattern, err := patternToRegexp(columnName)
+	if err != nil {
+		return nil, err
+	}
+
+	// sadly that query parameters cannot be used in place of table names
+	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = @tableName", sanitizedCatalog, sanitizedDbSchema)
+	query := c.client.Query(queryString)
+	query.Parameters = []bigquery.QueryParameter{
+		{
+			Name:  "tableName",
+			Value: tableName,
+		},
+	}
+	reader, _, err := newRecordReader(ctx, query, c.Alloc)
+	if err != nil {
+		return nil, err
+	}
+
+	fields := make([]arrow.Field, 0)
+	var columns map[string]int = nil
+
+	for reader.Next() && ctx.Err() == nil {
+		rec := reader.Record()
+		if columns == nil {
+			columns = make(map[string]int)
+			for i, f := range reader.Schema().Fields() {
+				columns[strings.ToUpper(f.Name)] = i
+			}
+		}
+
+		numRows := int(rec.NumRows())
+		val, ok := columns["COLUMN_NAME"]
+		if !ok {
+			return nil, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  "Column `COLUMN_NAME` does not exist in response",
+			}
+		}
+		fieldName := rec.Column(val)
+
+		val, ok = columns["IS_NULLABLE"]
+		if !ok {
+			return nil, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  "Column `IS_NULLABLE` does not exist in response",
+			}
+		}
+		fieldNullable := rec.Column(val)
+
+		val, ok = columns["DATA_TYPE"]
+		if !ok {
+			return nil, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  "Column `DATA_TYPE` does not exist in response",
+			}
+		}
+		fieldType := rec.Column(val)
+
+		for i := 0; i < numRows; i++ {
+			metadata := make(map[string]string)
+			metadata["PRIMARY_KEY"] = ""
+			for j := 0; j < int(rec.NumCols()); j++ {
+				col := rec.Column(j)
+				columnName := strings.ToUpper(rec.ColumnName(j))
+				switch columnName {
+				case "COLUMN_NAME", "IS_NULLABLE", "DATA_TYPE":
+					continue
+				default:
+					metadata[columnName] = strings.Clone(col.ValueStr(i))
+				}
+			}
+
+			name := fieldName.ValueStr(i)
+			if !pattern.MatchString(name) {
+				continue
+			}
+
+			nullable := strings.ToUpper(fieldNullable.ValueStr(i))
+			dataType := fieldType.ValueStr(i)
+
+			field, err := buildSchemaField(name, dataType)
+			if err != nil {
+				return nil, err
+			}
+			field.Nullable = nullable == "YES"
+			field.Metadata = arrow.MetadataFrom(metadata)
+			fields = append(fields, field)
+		}
+		fieldName.Release()
+		fieldNullable.Release()
+		fieldType.Release()
+		rec.Release()
+	}
+
+	schema := arrow.NewSchema(fields, nil)
+	return schema, nil
 }
