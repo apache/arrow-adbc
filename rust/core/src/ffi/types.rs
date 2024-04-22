@@ -278,7 +278,7 @@ fn vec_into_raw_parts<T>(data: Vec<T>) -> (*mut T, usize, usize) {
 }
 
 // We need to store capacities to correctly release memory because the C API
-// only stores lengths and so capacties are lost in translation.
+// only stores lengths and so capacities are lost in translation.
 struct PartitionsPrivateData {
     partitions_capacity: usize,
     partition_lengths_capacity: usize,
@@ -322,14 +322,10 @@ unsafe extern "C" fn release_ffi_partitions(partitions: *mut FFI_AdbcPartitions)
     match partitions.as_mut() {
         None => (),
         Some(partitions) => {
+            // SAFETY: `partitions.private_data` was necessarily obtained with `Box::into_raw`.
+            // Additionally, the boxed data is necessarily `PartitionsPrivateData`.
+            // Finally, C should call the release function only once.
             let private_data = Box::from_raw(partitions.private_data as *mut PartitionsPrivateData);
-
-            let partition_lengths = Vec::from_raw_parts(
-                partitions.partition_lengths,
-                partitions.num_partitions,
-                private_data.partition_lengths_capacity,
-            );
-            drop(partition_lengths);
 
             for p in 0..partitions.num_partitions {
                 let partition_ptr = *partitions.partitions.add(p);
@@ -338,6 +334,13 @@ unsafe extern "C" fn release_ffi_partitions(partitions: *mut FFI_AdbcPartitions)
                 let partition = Vec::from_raw_parts(partition_ptr, partition_len, partition_cap);
                 drop(partition);
             }
+
+            let partition_lengths = Vec::from_raw_parts(
+                partitions.partition_lengths,
+                partitions.num_partitions,
+                private_data.partition_lengths_capacity,
+            );
+            drop(partition_lengths);
 
             let partitions_vec = Vec::from_raw_parts(
                 partitions.partitions,
@@ -583,9 +586,14 @@ unsafe extern "C" fn release_ffi_error(error: *mut FFI_AdbcError) {
     match error.as_mut() {
         None => (),
         Some(error) => {
+            // SAFETY: `error.message` was necessarily obtained with `CString::into_raw`.
+            // Additionally, C should not modify the string's length.
             drop(CString::from_raw(error.message));
 
             if !error.private_data.is_null() {
+                // SAFETY: `error.private_data` was necessarily obtained with `Box::into_raw`.
+                // Additionally, the boxed data is necessarily `ErrorPrivateData`.
+                // Finally, C should call the release function only once.
                 let private_data = Box::from_raw(error.private_data as *mut ErrorPrivateData);
                 drop(private_data);
             }
