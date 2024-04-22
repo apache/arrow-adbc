@@ -287,15 +287,15 @@ const (
 	// approximate).
 	//
 	// For example, this is the maximum length of a string for a string column.
-	StatisticMaxByteWidthName = "adbc.statistic.byte_width"
+	StatisticMaxByteWidthName = "adbc.statistic.max_byte_width"
 	// The dictionary-encoded name of the max value statistic.
 	StatisticMaxValueKey = 3
 	// The max value statistic.  Value type is column-dependent.
-	StatisticMaxValueName = "adbc.statistic.byte_width"
+	StatisticMaxValueName = "adbc.statistic.max_value"
 	// The dictionary-encoded name of the min value statistic.
 	StatisticMinValueKey = 4
 	// The min value statistic.  Value type is column-dependent.
-	StatisticMinValueName = "adbc.statistic.byte_width"
+	StatisticMinValueName = "adbc.statistic.min_value"
 	// The dictionary-encoded name of the null count statistic.
 	StatisticNullCountKey = 5
 	// The null count statistic.  The number of values that are null in the
