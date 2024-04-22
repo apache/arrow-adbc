@@ -331,10 +331,15 @@ unsafe extern "C" fn release_ffi_partitions(partitions: *mut FFI_AdbcPartitions)
                 let partition_ptr = *partitions.partitions.add(p);
                 let partition_len = *partitions.partition_lengths.add(p);
                 let partition_cap = private_data.partition_capacities[p];
+                // SAFETY: `partition_ptr`, `partition_len` and `partition_cap` has been created in
+                // `From<Partitions> for FFI_AdbcPartitions` from the result of `vec_into_raw_parts`.
                 let partition = Vec::from_raw_parts(partition_ptr, partition_len, partition_cap);
                 drop(partition);
             }
 
+            // SAFETY: `partitions.partition_lengths`, `partitions.num_partitions`
+            // and `private_data.partition_lengths_capacity` has been created in
+            // `From<Partitions> for FFI_AdbcPartitions` from the result of `vec_into_raw_parts`.
             let partition_lengths = Vec::from_raw_parts(
                 partitions.partition_lengths,
                 partitions.num_partitions,
@@ -342,6 +347,9 @@ unsafe extern "C" fn release_ffi_partitions(partitions: *mut FFI_AdbcPartitions)
             );
             drop(partition_lengths);
 
+            // SAFETY: `partitions.partitions`, `partitions.num_partitions` and
+            // `private_data.partitions_capacity` has been created in
+            // `From<Partitions> for FFI_AdbcPartitions` from the result of `vec_into_raw_parts`.
             let partitions_vec = Vec::from_raw_parts(
                 partitions.partitions,
                 partitions.num_partitions,
@@ -497,6 +505,7 @@ impl TryFrom<&FFI_AdbcError> for Error {
         let message = match value.message.is_null() {
             true => "<empty>".to_string(),
             false => {
+                // SAFETY: we assume that C gives us a valid string.
                 let message = unsafe { CStr::from_ptr(value.message) };
                 let message = message.to_owned();
                 message.into_string()?
@@ -520,7 +529,9 @@ impl TryFrom<&FFI_AdbcError> for Error {
                     .map(|i| unsafe { get_detail(value, i) })
                     .filter(|d| !d.key.is_null() && !d.value.is_null())
                     .map(|d| unsafe {
+                        // SAFETY: we assume that C gives us a valid string.
                         let key = CStr::from_ptr(d.key).to_string_lossy().to_string();
+                        // SAFETY: we assume that C gives us valid data.
                         let value = std::slice::from_raw_parts(d.value, d.value_length);
                         (key, value.to_vec())
                     })
