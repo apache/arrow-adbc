@@ -49,7 +49,7 @@ def matches_commit_format(root: Path, title: str) -> typing.List[str]:
     delimiter = "!?:"
     subject = " (.+)"
     commit = re.compile(f"^{commit_type}{scope}{delimiter}{subject}$")
-    valid_component = re.compile(r"^[a-zA-Z0-9_/\-]+$")
+    valid_component = re.compile(r"^[a-zA-Z0-9_/\-\.]+$")
 
     m = commit.match(title)
     if m is None:
@@ -75,8 +75,8 @@ def matches_commit_format(root: Path, title: str) -> typing.List[str]:
                     )
                 elif not valid_component.match(component):
                     reasons.append(
-                        "Invalid component: must be alphanumeric with "
-                        f"dashes, slashes, and underscores: {component}"
+                        "Invalid component: must be alphanumeric "
+                        f"plus [.-/]: {component}"
                     )
                 elif component != "format" and not Path(component).exists():
                     reasons.append(
