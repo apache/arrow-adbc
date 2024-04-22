@@ -36,21 +36,21 @@
     </Content>
 
     <!-- Windows/DLLs -->
-    <Content Include="libadbc_driver_snowflake.dll" Condition="Exists('libadbc_driver_snowflake.dll')">
+    <Content Include="libadbc_driver_snowflake.dll">
       <Pack>true</Pack>
       <PackagePath>runtimes/win-x64/native</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
 
     <!-- Linux/so -->
-    <Content Include="libadbc_driver_snowflake.so" Condition="Exists('libadbc_driver_snowflake.so')">
+    <Content Include="libadbc_driver_snowflake.so">
       <Pack>true</Pack>
       <PackagePath>runtimes/linux-x64/native</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
 
     <!-- Mac/dylib -->
-    <Content Include="libadbc_driver_snowflake.dylib" Condition="Exists('libadbc_driver_snowflake.dylib')">
+    <Content Include="libadbc_driver_snowflake.dylib">
       <Pack>true</Pack>
       <PackagePath>runtimems/osx-64/runtimes</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
