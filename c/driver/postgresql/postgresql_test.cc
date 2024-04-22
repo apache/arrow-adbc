@@ -38,6 +38,7 @@
 using adbc_validation::Handle;
 using adbc_validation::IsOkStatus;
 using adbc_validation::IsStatus;
+using std::string_literals::operator""s;
 
 class PostgresQuirks : public adbc_validation::DriverQuirks {
  public:
@@ -1344,12 +1345,16 @@ struct TypeTestCase {
   std::string sql_type;
   std::string sql_literal;
   ArrowType arrow_type;
-  std::variant<bool, int64_t, double, std::string> scalar;
+  std::variant<bool, int64_t, double, std::string, ArrowInterval> scalar;
 
   static std::string FormatName(const ::testing::TestParamInfo<TypeTestCase>& info) {
     return info.param.name;
   }
 };
+
+ArrowInterval MonthDayNano(int32_t months, int32_t days, int64_t nanos) {
+  return {NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO, months, days, 0, nanos};
+}
 
 void PrintTo(const TypeTestCase& value, std::ostream* os) { (*os) << value.name; }
 
@@ -1460,8 +1465,18 @@ TEST_P(PostgresTypeTest, SelectValue) {
         } else if constexpr (std::is_same_v<T, std::string>) {
           ArrowStringView view =
               ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], 0);
-          ASSERT_EQ(arg.size(), view.size_bytes);
-          ASSERT_EQ(0, std::strncmp(arg.c_str(), view.data, arg.size()));
+          std::string_view v(view.data, static_cast<size_t>(view.size_bytes));
+          ASSERT_EQ(arg, v);
+        } else if constexpr (std::is_same_v<T, ArrowInterval>) {
+          ArrowInterval interval;
+          std::memset(&interval, 0, sizeof(interval));
+          ArrowArrayViewGetIntervalUnsafe(reader.array_view->children[0], 0, &interval);
+          // The getter doesn't set this.
+          // EXPECT_EQ(arg.type, interval.type);
+          EXPECT_EQ(arg.months, interval.months);
+          EXPECT_EQ(arg.days, interval.days);
+          EXPECT_EQ(arg.ms, interval.ms);
+          EXPECT_EQ(arg.ns, interval.ns);
         } else {
           FAIL() << "Unimplemented case";
         }
@@ -1477,12 +1492,12 @@ static std::initializer_list<TypeTestCase> kBoolTypeCases = {
     {"BOOL_FALSE", "BOOLEAN", "FALSE", NANOARROW_TYPE_BOOL, false},
 };
 static std::initializer_list<TypeTestCase> kBinaryTypeCases = {
-    {"BYTEA", "BYTEA", R"('\000\001\002\003\004\005\006\007'::bytea)",
+    {"BYTEA", "BYTEA", R"('\000\001\002\003\004\005\006\007'::bytea)"s,
      NANOARROW_TYPE_BINARY, std::string("\x00\x01\x02\x03\x04\x05\x06\x07", 8)},
-    {"TEXT", "TEXT", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
-    {"CHAR6_1", "CHAR(6)", "'foo'", NANOARROW_TYPE_STRING, "foo   "},
-    {"CHAR6_2", "CHAR(6)", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
-    {"VARCHAR", "VARCHAR", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
+    {"TEXT", "TEXT", "'foobar'", NANOARROW_TYPE_STRING, "foobar"s},
+    {"CHAR6_1", "CHAR(6)", "'foo'", NANOARROW_TYPE_STRING, "foo   "s},
+    {"CHAR6_2", "CHAR(6)", "'foobar'", NANOARROW_TYPE_STRING, "foobar"s},
+    {"VARCHAR", "VARCHAR", "'foobar'", NANOARROW_TYPE_STRING, "foobar"s},
 };
 static std::initializer_list<TypeTestCase> kFloatTypeCases = {
     {"REAL", "REAL", "-1E0", NANOARROW_TYPE_FLOAT, -1.0},
@@ -1501,19 +1516,162 @@ static std::initializer_list<TypeTestCase> kIntTypeCases = {
      NANOARROW_TYPE_INT64, std::numeric_limits<int64_t>::max()},
 };
 static std::initializer_list<TypeTestCase> kNumericTypeCases = {
-    {"NUMERIC_TRAILING0", "NUMERIC", "1000000", NANOARROW_TYPE_STRING, "1000000"},
-    {"NUMERIC_LEADING0", "NUMERIC", "0.00001234", NANOARROW_TYPE_STRING, "0.00001234"},
-    {"NUMERIC_TRAILING02", "NUMERIC", "'1.0000'", NANOARROW_TYPE_STRING, "1.0000"},
-    {"NUMERIC_NEGATIVE", "NUMERIC", "-123.456", NANOARROW_TYPE_STRING, "-123.456"},
-    {"NUMERIC_POSITIVE", "NUMERIC", "123.456", NANOARROW_TYPE_STRING, "123.456"},
-    {"NUMERIC_NAN", "NUMERIC", "'nan'", NANOARROW_TYPE_STRING, "nan"},
-    {"NUMERIC_NINF", "NUMERIC", "'-inf'", NANOARROW_TYPE_STRING, "-inf"},
-    {"NUMERIC_PINF", "NUMERIC", "'inf'", NANOARROW_TYPE_STRING, "inf"},
+    {"NUMERIC_TRAILING0", "NUMERIC", "1000000", NANOARROW_TYPE_STRING, "1000000"s},
+    {"NUMERIC_LEADING0", "NUMERIC", "0.00001234", NANOARROW_TYPE_STRING, "0.00001234"s},
+    {"NUMERIC_TRAILING02", "NUMERIC", "'1.0000'", NANOARROW_TYPE_STRING, "1.0000"s},
+    {"NUMERIC_NEGATIVE", "NUMERIC", "-123.456", NANOARROW_TYPE_STRING, "-123.456"s},
+    {"NUMERIC_POSITIVE", "NUMERIC", "123.456", NANOARROW_TYPE_STRING, "123.456"s},
+    {"NUMERIC_NAN", "NUMERIC", "'nan'", NANOARROW_TYPE_STRING, "nan"s},
+    {"NUMERIC_NINF", "NUMERIC", "'-inf'", NANOARROW_TYPE_STRING, "-inf"s},
+    {"NUMERIC_PINF", "NUMERIC", "'inf'", NANOARROW_TYPE_STRING, "inf"s},
+    {"MONEY", "MONEY", "12.34", NANOARROW_TYPE_INT64, int64_t(1234)},
 };
 static std::initializer_list<TypeTestCase> kDateTypeCases = {
     {"DATE0", "DATE", "'1970-01-01'", NANOARROW_TYPE_DATE32, int64_t(0)},
     {"DATE1", "DATE", "'2000-01-01'", NANOARROW_TYPE_DATE32, int64_t(10957)},
     {"DATE2", "DATE", "'1950-01-01'", NANOARROW_TYPE_DATE32, int64_t(-7305)},
+};
+static std::initializer_list<TypeTestCase> kIntervalTypeCases = {
+    {
+        "INTERVAL",
+        "INTERVAL",
+        "'P-1Y2M42DT1H1M1S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(-10, 42, (1L * 60 * 60 + 60L + 1L) * 1'000'000'000),
+    },
+    {
+        "INTERVAL2",
+        "INTERVAL",
+        "'P0Y0M0DT0H0M0.1S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 100L * 1'000'000),
+    },
+    {
+        "INTERVAL3",
+        "INTERVAL",
+        "'P0Y0M0DT0H0M0.01S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 10L * 1'000'000),
+    },
+    {
+        "INTERVAL4",
+        "INTERVAL",
+        "'P0Y0M0DT0H0M0.001S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 1L * 1'000'000),
+    },
+    {
+        "INTERVAL5",
+        "INTERVAL",
+        "'P0Y0M0DT0H0M0.0001S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 100'000L),
+    },
+    {
+        "INTERVAL6",
+        "INTERVAL",
+        "'P0Y0M0DT0H0M0.00001S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 10'000L),
+    },
+    {
+        "INTERVAL7",
+        "INTERVAL",
+        "'P0Y0M0DT0H0M0.000001S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 1'000L),
+    },
+    {
+        "INTERVAL_YEAR",
+        "INTERVAL YEAR",
+        "'16Y'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(16 * 12, 0, 0),
+    },
+    {
+        "INTERVAL_MONTH",
+        "INTERVAL MONTH",
+        "'P0Y-2M0D'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(-2, 0, 0),
+    },
+    {
+        "INTERVAL_DAY",
+        "INTERVAL DAY",
+        "'-102D'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, -102, 0),
+    },
+    {
+        "INTERVAL_HOUR",
+        "INTERVAL HOUR",
+        "'12H'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 12L * 60 * 60 * 1'000'000'000),
+    },
+    {
+        "INTERVAL_MINUTE",
+        "INTERVAL MINUTE",
+        "'P0Y0M0DT0H-5M0S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, -5L * 60 * 1'000'000'000),
+    },
+    {
+        "INTERVAL_SECOND",
+        "INTERVAL SECOND",
+        "'P0Y0M0DT0H0M42S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 42L * 1'000'000'000),
+    },
+    {
+        "INTERVAL_YEAR_TO_MONTH",
+        "INTERVAL YEAR TO MONTH",
+        "'P1Y1M0D'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(13, 0, 0),
+    },
+    {
+        "INTERVAL_DAY_TO_HOUR",
+        "INTERVAL DAY TO HOUR",
+        "'P0Y0M1DT-2H0M0S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 1, -2L * 60 * 60 * 1'000'000'000),
+    },
+    {
+        "INTERVAL_DAY_TO_MINUTE",
+        "INTERVAL DAY TO MINUTE",
+        "'P0Y0M1DT-2H1M0S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 1, (-2L * 60 + 1L) * 60 * 1'000'000'000),
+    },
+    {
+        "INTERVAL_DAY_TO_SECOND",
+        "INTERVAL DAY TO SECOND",
+        "'P0Y0M1DT-2H1M-1S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 1, ((-2L * 60 + 1L) * 60 - 1L) * 1'000'000'000),
+    },
+    {
+        "INTERVAL_HOUR_TO_MINUTE",
+        "INTERVAL HOUR TO MINUTE",
+        "'P0Y0M0DT-2H1M0S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, (-2L * 60 + 1L) * 60 * 1'000'000'000),
+    },
+    {
+        "INTERVAL_HOUR_TO_SECOND",
+        "INTERVAL HOUR TO SECOND",
+        "'P0Y0M0DT-2H1M-1S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, ((-2L * 60 + 1L) * 60 - 1L) * 1'000'000'000),
+    },
+    {
+        "INTERVAL_MINUTE_TO_SECOND",
+        "INTERVAL MINUTE TO SECOND",
+        "'P0Y0M0DT0H1M-1S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 59L * 1'000'000'000),
+    },
 };
 static std::initializer_list<TypeTestCase> kTimeTypeCases = {
     {"TIME_WITHOUT_TIME_ZONE", "TIME WITHOUT TIME ZONE", "'00:00'", NANOARROW_TYPE_TIME64,
@@ -1644,6 +1802,8 @@ INSTANTIATE_TEST_SUITE_P(NumericType, PostgresTypeTest,
                          testing::ValuesIn(kNumericTypeCases), TypeTestCase::FormatName);
 INSTANTIATE_TEST_SUITE_P(DateTypes, PostgresTypeTest, testing::ValuesIn(kDateTypeCases),
                          TypeTestCase::FormatName);
+INSTANTIATE_TEST_SUITE_P(IntervalTypes, PostgresTypeTest,
+                         testing::ValuesIn(kIntervalTypeCases), TypeTestCase::FormatName);
 INSTANTIATE_TEST_SUITE_P(TimeTypes, PostgresTypeTest, testing::ValuesIn(kTimeTypeCases),
                          TypeTestCase::FormatName);
 INSTANTIATE_TEST_SUITE_P(TimestampTypes, PostgresTypeTest,
