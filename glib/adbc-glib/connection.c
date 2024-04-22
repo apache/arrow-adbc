@@ -36,6 +36,35 @@
   ((boolean) ? ADBC_OPTION_VALUE_ENABLED : ADBC_OPTION_VALUE_DISABLED)
 
 /**
+ * gadbc_statistic_key_to_string:
+ * @key: A #GADBCStatisticsKey.
+ *
+ * Returns: The name of @key.
+ *
+ * Since: 1.0.0
+ */
+const gchar* gadbc_statistic_key_to_string(GADBCStatisticKey key) {
+  switch (key) {
+    case GADBC_STATISTIC_KEY_AVERAGE_BYTE_WIDTH:
+      return ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_NAME;
+    case GADBC_STATISTIC_KEY_DISTINCT_COUNT:
+      return ADBC_STATISTIC_DISTINCT_COUNT_NAME;
+    case GADBC_STATISTIC_KEY_MAX_BYTE_WIDTH:
+      return ADBC_STATISTIC_MAX_BYTE_WIDTH_NAME;
+    case GADBC_STATISTIC_KEY_MAX_VALUE:
+      return ADBC_STATISTIC_MAX_VALUE_NAME;
+    case GADBC_STATISTIC_KEY_MIN_VALUE:
+      return ADBC_STATISTIC_MIN_VALUE_NAME;
+    case GADBC_STATISTIC_KEY_NULL_COUNT:
+      return ADBC_STATISTIC_NULL_COUNT_NAME;
+    case GADBC_STATISTIC_KEY_ROW_COUNT:
+      return ADBC_STATISTIC_ROW_COUNT_NAME;
+    default:
+      return "adbc.statistic.invalid";
+  }
+}
+
+/**
  * gadbc_isolation_level_to_string:
  * @level: A #GADBCIsolationLevel.
  *
@@ -530,6 +559,93 @@ gpointer gadbc_connection_get_table_types(GADBCConnection* connection, GError** 
   struct AdbcError adbc_error = {};
   AdbcStatusCode status_code =
       AdbcConnectionGetTableTypes(adbc_connection, array_stream, &adbc_error);
+  if (gadbc_error_check(error, status_code, &adbc_error, context)) {
+    return array_stream;
+  } else {
+    g_free(array_stream);
+    return NULL;
+  }
+}
+
+/**
+ * gadbc_connection_get_statistics:
+ * @connection: A #GADBCConnection.
+ * @catalog: (nullable): A catalog or %NULL if not applicable.
+ * @db_schema: (nullable): A database schema or %NULL if not applicable.
+ * @table_name: (nullable): A table name.
+ * @approximate: Whether approximate values are allowed or not. If
+ *   this is %TRUE, best-effort, approximate or cached values may be
+ *   returned. Otherwise, exact values are requested. Note that the
+ *   database may return approximate values regardless as indicated
+ *   in the result. Request exact values may be expensive or
+ *   unsupported.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * The result is an Arrow dataset with the following schema:
+ *
+ * | Field Name               | Field Type                       |
+ * |--------------------------|----------------------------------|
+ * | catalog_name             | utf8                             |
+ * | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA> not null  |
+ *
+ * DB_SCHEMA_SCHEMA is a Struct with fields:
+ *
+ * | Field Name               | Field Type                       |
+ * |--------------------------|----------------------------------|
+ * | db_schema_name           | utf8                             |
+ * | db_schema_statistics     | list<STATISTICS_SCHEMA> not null |
+ *
+ * STATISTICS_SCHEMA is a Struct with fields:
+ *
+ * | Field Name               | Field Type                       | Comments |
+ * |--------------------------|----------------------------------| -------- |
+ * | table_name               | utf8 not null                    |          |
+ * | column_name              | utf8                             | (1)      |
+ * | statistic_key            | int16 not null                   | (2)      |
+ * | statistic_value          | VALUE_SCHEMA not null            |          |
+ * | statistic_is_approximate | bool not null                    | (3)      |
+ *
+ * 1. If null, then the statistic applies to the entire table.
+ * 2. A dictionary-encoded statistic name (although we do not use the Arrow
+ *    dictionary type). Values in [0, 1024) are reserved for ADBC.  Other
+ *    values are for implementation-specific statistics.  For the definitions
+ *    of predefined statistic types, see %GADBCStatistics. To get
+ *    driver-specific statistic names, use
+ *    gadbc_connection_get_statistic_names().
+ * 3. If true, then the value is approximate or best-effort.
+ *
+ * VALUE_SCHEMA is a dense union with members:
+ *
+ * | Field Name               | Field Type                       |
+ * |--------------------------|----------------------------------|
+ * | int64                    | int64                            |
+ * | uint64                   | uint64                           |
+ * | float64                  | float64                          |
+ * | binary                   | binary                           |
+ *
+ * Returns: The result set as `struct ArrowArrayStream *`. It should
+ *   be freed with the `ArrowArrayStream:release` callback then
+ *   g_free() when no longer needed.
+ *
+ *   This GADBCConnection must outlive the returned stream.
+ *
+ * Since: 1.0.0
+ */
+gpointer gadbc_connection_get_statistics(GADBCConnection* connection,
+                                         const gchar* catalog, const gchar* db_schema,
+                                         const gchar* table_name, gboolean approximate,
+                                         GError** error) {
+  const gchar* context = "[adbc][connection][get-statistics]";
+  struct AdbcConnection* adbc_connection =
+      gadbc_connection_get_raw(connection, context, error);
+  if (!adbc_connection) {
+    return NULL;
+  }
+  struct ArrowArrayStream* array_stream = g_new0(struct ArrowArrayStream, 1);
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code =
+      AdbcConnectionGetStatistics(adbc_connection, catalog, db_schema, table_name,
+                                  approximate, array_stream, &adbc_error);
   if (gadbc_error_check(error, status_code, &adbc_error, context)) {
     return array_stream;
   } else {
