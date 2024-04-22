@@ -5,18 +5,18 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<meta property="og:title" content="R" />
+<meta property="og:title" content="Writing New Drivers" />
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://arrow.apache.org/adbc/main/r/index.html" />
+<meta property="og:url" content="https://arrow.apache.org/adbc/main/driver/authoring.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="ADBC in R is implemented as a suite of R packages. Most users will interact with ADBC via the adbcdrivermanager package and use drivers that are also distributed as R packages. In addition to the l..." />
+<meta property="og:description" content="Currently, new drivers can be written in C#, C/C++, Go, and Java. A driver written in C/C++ or Go can be used from either of those languages, as well as C#, Python, R, and Ruby. (C# can experimenta..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="ADBC in R is implemented as a suite of R packages. Most users will interact with ADBC via the adbcdrivermanager package and use drivers that are also distributed as R packages. In addition to the l..." />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Installation" href="../driver/installation.html" /><link rel="prev" title="PostgreSQL Recipes" href="../python/recipe/postgresql.html" />
+<meta name="description" content="Currently, new drivers can be written in C#, C/C++, Go, and Java. A driver written in C/C++ or Go can be used from either of those languages, as well as C#, Python, R, and Ruby. (C# can experimenta..." />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="ADBC API Standard" href="../format/specification.html" /><link rel="prev" title="SQLite Driver" href="sqlite.html" />
 
     <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
-        <title>R - ADBC 1.0.0 (dev) documentation</title>
+        <title>Writing New Drivers - ADBC 1.0.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
@@ -203,7 +203,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -232,7 +232,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../cpp/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../cpp/driver_manager.html">Driver Manager</a></li>
@@ -270,19 +270,19 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../r/index.html">R</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/duckdb.html">DuckDB Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/snowflake.html">Snowflake Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/sqlite.html">SQLite Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/authoring.html">Writing New Drivers</a></li>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Driver Implementation Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="duckdb.html">DuckDB Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="flight_sql.html">Flight SQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jdbc.html">JDBC Adapter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="postgresql.html">PostgreSQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="snowflake.html">Snowflake Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Writing New Drivers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
@@ -316,7 +316,7 @@
         </a>
         <div class="content-icon-container">
           <div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/r/index.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/driver/authoring.rst" title="Edit this page">
     <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
@@ -332,54 +332,32 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="r">
-<h1>R<a class="headerlink" href="#r" title="Permalink to this heading">#</a></h1>
-<p>ADBC in R is implemented as a suite of R packages. Most users will
-interact with ADBC via the <a class="reference external" href="adbcdrivermanager/index.html">adbcdrivermanager</a>
-package and use drivers that are also distributed as R packages. In
-addition to the low-level interface provided by adbcdrivermanager,
-you can use <code class="docutils literal notranslate"><span class="pre">read_adbc()</span></code>, <code class="docutils literal notranslate"><span class="pre">write_adbc()</span></code> and <code class="docutils literal notranslate"><span class="pre">execute_adbc()</span></code>
-to quickly interact with an ADBC connection or database.</p>
-<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
-
-<span class="c1"># Use the driver manager to connect to a database</span>
-<span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">adbcsqlite</span><span class="o">::</span><span class="nf">adbcsqlite</span><span class="p">(),</span><span class="w"> </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;:memory:&quot;</span><span class="p">)</span>
-<span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_connection_init</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
-
-<span class="c1"># Write a table</span>
-<span class="n">mtcars</span><span class="w"> </span><span class="o">|&gt;</span>
-<span class="w">  </span><span class="nf">write_adbc</span><span class="p">(</span><span class="n">con</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;mtcars&quot;</span><span class="p">)</span>
-
-<span class="c1"># Query it</span>
-<span class="n">con</span><span class="w"> </span><span class="o">|&gt;</span>
-<span class="w">  </span><span class="nf">read_adbc</span><span class="p">(</span><span class="s">&quot;SELECT * from mtcars&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
-<span class="w">  </span><span class="n">tibble</span><span class="o">::</span><span class="nf">as_tibble</span><span class="p">()</span>
-
-<span class="c1"># Clean up</span>
-<span class="n">con</span><span class="w"> </span><span class="o">|&gt;</span>
-<span class="w">  </span><span class="nf">execute_adbc</span><span class="p">(</span><span class="s">&quot;DROP TABLE mtcars&quot;</span><span class="p">)</span>
-<span class="nf">adbc_connection_release</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
-<span class="nf">adbc_database_release</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>See individual package documentation for installation and usage
-details specific to each driver.</p>
-<section id="package-documentation">
-<h2>Package documentation<a class="headerlink" href="#package-documentation" title="Permalink to this heading">#</a></h2>
-<ul class="simple">
-<li><p><a class="reference external" href="adbcdrivermanager/index.html">adbcdrivermanager</a></p></li>
-<li><p><a class="reference external" href="adbcflightsql/index.html">adbcflightsql</a></p></li>
-<li><p><a class="reference external" href="adbcpostgresql/index.html">adbcpostgresql</a></p></li>
-<li><p><a class="reference external" href="adbcsnowflake/index.html">adbcsnowflake</a></p></li>
-<li><p><a class="reference external" href="adbcsqlite/index.html">adbcsqlite</a></p></li>
-</ul>
-</section>
+          <section id="writing-new-drivers">
+<h1>Writing New Drivers<a class="headerlink" href="#writing-new-drivers" title="Permalink to this heading">#</a></h1>
+<p>Currently, new drivers can be written in C#, C/C++, Go, and Java.  A driver
+written in C/C++ or Go can be used from either of those languages, as well as
+C#, Python, R, and Ruby.  (C# can experimentally export drivers to the same
+set of languges as well.)  The Rust API definitions for ADBC are still under
+development, but we plan for them to be on par with C#, C/C++, and Go in this
+respect.</p>
+<p>It is so far preferable to write new drivers in Go.  C/C++ have had issues
+with dependencies and in particular some not uncommon dependencies in that
+ecosystem tend to cause conflicts when loaded into Python processes and
+elsewhere.  (For example, the ADBC Flight SQL driver was originally written in
+C++ but would have conflicted with the grpcio and pyarrow Python packages.)
+It also tends to be easier for us to package and distribute additional Go
+libraries than it is for C/C++.</p>
+<p>In Go, some frameworks are available for driver
+authors. <a class="reference external" href="https://github.com/apache/arrow-adbc/tree/main/go/adbc/driver/internal/driverbase">go/adbc/driver/internal/driverbase</a> manages much of the boilerplate
+and basic state management for drivers.  <a class="reference external" href="https://github.com/apache/arrow-adbc/tree/main/go/adbc/pkg">go/adbc/pkg</a> can template out a C
+ABI wrapper around the Go driver.  Especially if the driver is planned to go
+upstream, we recommend driver authors consider using these frameworks.</p>
 </section>
 
         </article>
@@ -387,23 +365,23 @@ details specific to each driver.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="../driver/installation.html">
+          <a class="next-page" href="../format/specification.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Installation</div>
+                <div class="title">ADBC API Standard</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="../python/recipe/postgresql.html">
+          <a class="prev-page" href="sqlite.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">PostgreSQL Recipes</div>
+                <div class="title">SQLite Driver</div>
                 
               </div>
             </a>
@@ -428,27 +406,8 @@ United States and other countries.
         
       </footer>
     </div>
-    <aside class="toc-drawer">
+    <aside class="toc-drawer no-toc">
       
-      
-      <div class="toc-sticky toc-scroll">
-        <div class="toc-title-container">
-          <span class="toc-title">
-            On this page
-          </span>
-        </div>
-        <div class="toc-tree-container">
-          <div class="toc-tree">
-            <ul>
-<li><a class="reference internal" href="#">R</a><ul>
-<li><a class="reference internal" href="#package-documentation">Package documentation</a></li>
-</ul>
-</li>
-</ul>
-
-          </div>
-        </div>
-      </div>
       
       
     </aside>
