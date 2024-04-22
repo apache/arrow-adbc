@@ -52,7 +52,7 @@
     <!-- Mac/dylib -->
     <Content Include="libadbc_driver_snowflake.dylib">
       <Pack>true</Pack>
-      <PackagePath>runtimems/osx-64/runtimes</PackagePath>
+      <PackagePath>runtimes/osx-x64/native</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
