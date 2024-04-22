@@ -22,17 +22,6 @@ $file = "libadbc_driver_snowflake.dll"
 
 cd ..\..\..\..\..\go\adbc\pkg
 
-if(Test-Path $file)
-{
-    #because each framework build will run the script, avoid building it each time
-    $diff=((ls $file).LastWriteTime - (Get-Date)).TotalSeconds
-    if ($diff -gt -30)
-    {
-        Write-Output "Skipping build of $file because it is too recent"
-        exit
-    }
-}
-
 make $file
 
 if(Test-Path $file)
