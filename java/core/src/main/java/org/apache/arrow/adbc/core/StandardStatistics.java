@@ -44,11 +44,11 @@ public enum StandardStatistics {
    *
    * <p>For example, this is the maximum length of a string for a string column.
    */
-  MAX_BYTE_WIDTH("adbc.statistic.byte_width", (short) 2),
+  MAX_BYTE_WIDTH("adbc.statistic.max_byte_width", (short) 2),
   /** The max value statistic. Value type is column-dependent. */
-  MAX_VALUE("adbc.statistic.byte_width", (short) 3),
+  MAX_VALUE("adbc.statistic.max_value", (short) 3),
   /** The min value statistic. Value type is column-dependent. */
-  MIN_VALUE("adbc.statistic.byte_width", (short) 4),
+  MIN_VALUE("adbc.statistic.min_value", (short) 4),
   /**
    * The null count statistic. The number of values that are null in the column. Value type is int64
    * (when not approximate) or float64 (when approximate).
