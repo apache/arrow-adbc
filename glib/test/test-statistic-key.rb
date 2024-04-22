@@ -1,5 +1,3 @@
-#!/usr/bin/env ruby
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,28 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-ENV["TEST_UNIT_MAX_DIFF_TARGET_STRING_SIZE"] ||= "10000"
+class StatisticKeyTest < Test::Unit::TestCase
+  include Helper
 
-require "pathname"
-require "test-unit"
-
-(ENV["ADBC_DLL_PATH"] || "").split(File::PATH_SEPARATOR).each do |path|
-  RubyInstaller::Runtime.add_dll_directory(path)
+  def test_to_string
+    assert_equal("adbc.statistic.null_count",
+                 ADBC::StatisticKey.to_string(:null_count))
+  end
 end
-
-base_dir = Pathname(__dir__).parent
-test_dir = base_dir + "test"
-
-require "gi"
-
-ADBC = GI.load("ADBC")
-begin
-  ADBCArrow = GI.load("ADBCArrow")
-rescue GObjectIntrospection::RepositoryError => error
-  puts("ADBCArrow isn't found: #{error}")
-end
-
-require_relative "helper"
-require_relative "helper/sandbox"
-
-exit(Test::Unit::AutoRunner.run(true, test_dir.to_s))

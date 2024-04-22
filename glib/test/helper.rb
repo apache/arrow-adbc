@@ -28,18 +28,28 @@ module Helper
     omit(message)
   end
 
-  def execute_statement(statement, need_result: true)
-    _, c_abi_array_stream, n_rows_affected = statement.execute(need_result)
+  def import_array_stream(c_abi_array_stream)
     begin
-      if need_result
-        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
-        table = reader.read_all
-        yield(table, n_rows_affected) if block_given?
-      else
-        yield(n_rows_affected) if block_given?
+      reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+      begin
+        yield(reader)
+      ensure
+        reader.unref
       end
     ensure
-      GLib.free(c_abi_array_stream) if need_result
+      GLib.free(c_abi_array_stream)
+    end
+  end
+
+  def execute_statement(statement, need_result: true)
+    _, c_abi_array_stream, n_rows_affected = statement.execute(need_result)
+    if need_result
+      import_array_stream(c_abi_array_stream) do |reader|
+        table = reader.read_all
+        yield(table, n_rows_affected) if block_given?
+      end
+    else
+      yield(n_rows_affected) if block_given?
     end
   end
 
