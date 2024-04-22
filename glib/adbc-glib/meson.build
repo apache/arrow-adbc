@@ -31,6 +31,16 @@ definition_headers = files(
   'statement.h',
 )
 
+version_h_conf = configuration_data()
+version_h_conf.set('GADBC_VERSION', meson.project_version())
+version_h_conf.set('GADBC_VERSION_MAJOR', version_major)
+version_h_conf.set('GADBC_VERSION_MINOR', version_minor)
+version_h_conf.set('GADBC_VERSION_MICRO', version_micro)
+version_h = configure_file(input: 'version.h.in',
+                           output: 'version.h',
+                           configuration: version_h_conf)
+definition_headers += version_h
+
 headers = definition_headers
 headers += files(
   'adbc-glib-raw.h',
@@ -40,16 +50,6 @@ headers += files(
   'error-raw.h',
   'statement-raw.h',
 )
-
-version_h_conf = configuration_data()
-version_h_conf.set('GADBC_VERSION', meson.project_version())
-version_h_conf.set('GADBC_VERSION_MAJOR', version_major)
-version_h_conf.set('GADBC_VERSION_MINOR', version_minor)
-version_h_conf.set('GADBC_VERSION_MICRO', version_micro)
-version_h = configure_file(input: 'version.h.in',
-                           output: 'version.h',
-                           configuration: version_h_conf)
-headers += version_h
 
 enums = gnome.mkenums_simple('enum-types',
                              identifier_prefix: 'GADBC',

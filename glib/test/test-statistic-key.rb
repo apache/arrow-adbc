@@ -15,9 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-arrow-c-glib
-glib
-gobject-introspection
-meson
-postgresql
-ruby
+class StatisticKeyTest < Test::Unit::TestCase
+  include Helper
+
+  def test_to_string
+    assert_equal("adbc.statistic.null_count",
+                 ADBC::StatisticKey.to_string(:null_count))
+  end
+end
