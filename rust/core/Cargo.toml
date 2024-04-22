@@ -15,17 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[workspace]
-members = ["core", "drivers/*"]
-resolver = "2"
+[package]
+name = "adbc_core"
+description = "Public abstract API, driver manager and driver exporter"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 
-[workspace.package]
-version = "0.1.0"
-description = "Rust implementation of Arrow Database Connectivity (ADBC)"
-edition = "2021"
-authors = ["Apache Arrow <dev@arrow.apache.org>"]
-license = "Apache-2.0"
-
-[workspace.dependencies]
-arrow = { version = "51.0.0", default-features = false, features = ["ffi"] }
-adbc_core = { path = "./core" }
+[dependencies]
+arrow = { workspace = true }
+libloading = "0.8"
+once_cell = "1.19.0"

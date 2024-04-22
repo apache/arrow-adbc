@@ -38,7 +38,7 @@ permissions:
 
 defaults:
   run:
-    working-directory: rust
+    working-directory: rust2
 
 jobs:
   rust:
