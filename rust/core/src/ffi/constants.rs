@@ -93,9 +93,16 @@ pub const ADBC_OPTION_ISOLATION_LEVEL_LINEARIZABLE: &str =
     "adbc.connection.transaction.isolation.linearizable";
 
 pub const ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY: i16 = 0;
+pub const ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_NAME: &str = "adbc.statistic.byte_width";
 pub const ADBC_STATISTIC_DISTINCT_COUNT_KEY: i16 = 1;
+pub const ADBC_STATISTIC_DISTINCT_COUNT_NAME: &str = "adbc.statistic.distinct_count";
 pub const ADBC_STATISTIC_MAX_BYTE_WIDTH_KEY: i16 = 2;
+pub const ADBC_STATISTIC_MAX_BYTE_WIDTH_NAME: &str = "adbc.statistic.max_byte_width";
 pub const ADBC_STATISTIC_MAX_VALUE_KEY: i16 = 3;
+pub const ADBC_STATISTIC_MAX_VALUE_NAME: &str = "adbc.statistic.max_value";
 pub const ADBC_STATISTIC_MIN_VALUE_KEY: i16 = 4;
+pub const ADBC_STATISTIC_MIN_VALUE_NAME: &str = "adbc.statistic.min_value";
 pub const ADBC_STATISTIC_NULL_COUNT_KEY: i16 = 5;
+pub const ADBC_STATISTIC_NULL_COUNT_NAME: &str = "adbc.statistic.null_count";
 pub const ADBC_STATISTIC_ROW_COUNT_KEY: i16 = 6;
+pub const ADBC_STATISTIC_ROW_COUNT_NAME: &str = "adbc.statistic.row_count";
