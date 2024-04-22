@@ -22,7 +22,7 @@ use std::mem::ManuallyDrop;
 use std::os::raw::{c_char, c_int, c_void};
 use std::ptr::{null, null_mut};
 
-use super::{check_status, constants, methods};
+use super::{constants, methods};
 use crate::{
     error::{Error, Status},
     Partitions,
@@ -612,11 +612,9 @@ impl Drop for FFI_AdbcError {
 impl Drop for FFI_AdbcDriver {
     fn drop(&mut self) {
         if let Some(release) = self.release {
-            let mut error = FFI_AdbcError::default();
-            let status = unsafe { release(self, &mut error) };
-            if let Err(err) = check_status(status, error) {
-                panic!("Unable to drop FFI_AdbcDriver: {err:?}");
-            }
+            // TODO(alexandreyc): how should we handle `release` failing?
+            // See: https://github.com/apache/arrow-adbc/pull/1742#discussion_r1574388409
+            unsafe { release(self, null_mut()) };
         }
     }
 }
