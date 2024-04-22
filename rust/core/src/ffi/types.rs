@@ -252,23 +252,7 @@ impl From<Status> for FFI_AdbcStatusCode {
 
 impl From<&Status> for FFI_AdbcStatusCode {
     fn from(value: &Status) -> Self {
-        match value {
-            Status::Ok => constants::ADBC_STATUS_OK,
-            Status::Unknown => constants::ADBC_STATUS_UNKNOWN,
-            Status::NotImplemented => constants::ADBC_STATUS_NOT_IMPLEMENTED,
-            Status::NotFound => constants::ADBC_STATUS_NOT_FOUND,
-            Status::AlreadyExists => constants::ADBC_STATUS_ALREADY_EXISTS,
-            Status::InvalidArguments => constants::ADBC_STATUS_INVALID_ARGUMENT,
-            Status::InvalidState => constants::ADBC_STATUS_INVALID_STATE,
-            Status::InvalidData => constants::ADBC_STATUS_INVALID_DATA,
-            Status::Integrity => constants::ADBC_STATUS_INTEGRITY,
-            Status::Internal => constants::ADBC_STATUS_INTERNAL,
-            Status::IO => constants::ADBC_STATUS_IO,
-            Status::Cancelled => constants::ADBC_STATUS_CANCELLED,
-            Status::Timeout => constants::ADBC_STATUS_TIMEOUT,
-            Status::Unauthenticated => constants::ADBC_STATUS_UNAUTHENTICATED,
-            Status::Unauthorized => constants::ADBC_STATUS_UNAUTHORIZED,
-        }
+        (*value).into()
     }
 }
 
