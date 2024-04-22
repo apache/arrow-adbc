@@ -235,6 +235,7 @@ Why ADBC?
    driver/postgresql
    driver/snowflake
    driver/sqlite
+   driver/authoring
 
 .. toctree::
    :maxdepth: 1
