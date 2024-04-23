@@ -581,6 +581,8 @@ gpointer gadbc_connection_get_table_types(GADBCConnection* connection, GError** 
  *   unsupported.
  * @error: (nullable): Return location for a #GError or %NULL.
  *
+ * Get statistics about the data distribution of table(s).
+ *
  * The result is an Arrow dataset with the following schema:
  *
  * | Field Name               | Field Type                       |
@@ -646,6 +648,48 @@ gpointer gadbc_connection_get_statistics(GADBCConnection* connection,
   AdbcStatusCode status_code =
       AdbcConnectionGetStatistics(adbc_connection, catalog, db_schema, table_name,
                                   approximate, array_stream, &adbc_error);
+  if (gadbc_error_check(error, status_code, &adbc_error, context)) {
+    return array_stream;
+  } else {
+    g_free(array_stream);
+    return NULL;
+  }
+}
+
+/**
+ * gadbc_connection_get_statistic_names:
+ * @connection: A #GADBCConnection.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Get the names of statistics specific to this driver.
+ *
+ * The result is an Arrow dataset with the following schema:
+ *
+ * | Field Name     | Field Type
+ * |----------------|----------------
+ * | statistic_name | utf8 not null
+ * | statistic_key  | int16 not null
+ *
+ * Returns: The result set as `struct ArrowArrayStream *`. It should
+ *   be freed with the `ArrowArrayStream:release` callback then
+ *   g_free() when no longer needed.
+ *
+ *   This GADBCConnection must outlive the returned stream.
+ *
+ * Since: 1.0.0
+ */
+gpointer gadbc_connection_get_statistic_names(GADBCConnection* connection,
+                                              GError** error) {
+  const gchar* context = "[adbc][connection][get-statistic-names]";
+  struct AdbcConnection* adbc_connection =
+      gadbc_connection_get_raw(connection, context, error);
+  if (!adbc_connection) {
+    return NULL;
+  }
+  struct ArrowArrayStream* array_stream = g_new0(struct ArrowArrayStream, 1);
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code =
+      AdbcConnectionGetStatisticNames(adbc_connection, array_stream, &adbc_error);
   if (gadbc_error_check(error, status_code, &adbc_error, context)) {
     return array_stream;
   } else {
