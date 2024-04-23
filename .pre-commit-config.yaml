@@ -86,10 +86,8 @@ repos:
     hooks:
     - id: isort
       types_or: [python]
-  # TODO: Change this to vala-lang/vala-lint after
-  # https://github.com/vala-lang/vala-lint/pull/179 is merged.
-  - repo: https://github.com/kou/vala-lint
-    rev: pre-commit-hook
+  - repo: https://github.com/vala-lang/vala-lint
+    rev: 8ae2bb65fe66458263d94711ae4ddd978faece00
     hooks:
     - id: vala-lint
   - repo: local
@@ -110,5 +108,6 @@ repos:
     hooks:
     - id: fmt
       name: rustfmt
+      args: ["--manifest-path", "rust/Cargo.toml"]
 
 exclude: "^c/vendor/.*"
