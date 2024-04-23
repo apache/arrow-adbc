@@ -567,16 +567,13 @@ impl TryFrom<Error> for FFI_AdbcError {
         let private_data = match value.details.take() {
             None => null_mut(),
             Some(details) => {
-                let keys: Result<Vec<CString>, _> = details
+                let keys = details
                     .iter()
                     .map(|(key, _)| CString::new(key.as_str()))
-                    .collect();
+                    .collect::<Result<Vec<_>, _>>()?;
                 let values: Vec<Vec<u8>> = details.into_iter().map(|(_, value)| value).collect();
 
-                let private_data = Box::new(ErrorPrivateData {
-                    keys: keys?,
-                    values,
-                });
+                let private_data = Box::new(ErrorPrivateData { keys, values });
                 let private_data = Box::into_raw(private_data);
                 private_data as *mut c_void
             }
