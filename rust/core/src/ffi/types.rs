@@ -490,7 +490,7 @@ impl Default for FFI_AdbcPartitions {
 }
 
 impl FFI_AdbcError {
-    pub fn with_driver(driver: *const FFI_AdbcDriver) -> Self {
+    pub fn with_driver(driver: &FFI_AdbcDriver) -> Self {
         FFI_AdbcError {
             private_driver: driver,
             ..Default::default()
@@ -635,5 +635,32 @@ impl Drop for FFI_AdbcPartitions {
         if let Some(release) = self.release {
             unsafe { release(self) };
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error_roundtrip() {
+        let error_expected: Error = Error {
+            message: "Hello world!".into(),
+            status: Status::Unknown,
+            vendor_code: constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA,
+            sqlstate: [1, 2, 3, 4, 5],
+            details: None, // Details are not transfered here because there is no driver
+        };
+        let error_ffi: FFI_AdbcError = error_expected.clone().try_into().unwrap();
+        let error_actual: Error = error_ffi.try_into().unwrap();
+        assert_eq!(error_expected, error_actual);
+    }
+
+    #[test]
+    fn test_partitions_roundtrip() {
+        let partitions_expected: Partitions = vec![b"A".into(), b"BB".into(), b"CCC".into()];
+        let partitions_ffi: FFI_AdbcPartitions = partitions_expected.clone().into();
+        let partitions_actual: Partitions = partitions_ffi.into();
+        assert_eq!(partitions_expected, partitions_actual);
     }
 }
