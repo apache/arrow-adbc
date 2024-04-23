@@ -22,7 +22,7 @@
     </Content>
     <Content Include="libadbc_driver_snowflake.dll">
       <Pack>true</Pack>
-      <PackagePath>runtime/win-x64/native</PackagePath>
+      <PackagePath>runtimes/win-x64/native</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
