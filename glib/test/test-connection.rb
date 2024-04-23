@@ -714,6 +714,14 @@ class ConnectionTest < Test::Unit::TestCase
     end
   end
 
+  def test_statistic_names
+    c_abi_array_stream = @connection.statistic_names
+    import_array_stream(c_abi_array_stream) do |reader|
+      table = reader.read_all
+      assert_equal([], table.raw_records)
+    end
+  end
+
   def test_commit
     open_connection do |connection|
       execute_sql(connection,
