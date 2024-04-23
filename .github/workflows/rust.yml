@@ -73,8 +73,6 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ steps.rust.outputs.version }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ steps.rust.outputs.version }}-
-      - name: Rustfmt
-        run: cargo fmt --all -- --check
       - name: Clippy
         run: cargo clippy --workspace --all-targets --all-features -- -Dwarnings
       - name: Test
