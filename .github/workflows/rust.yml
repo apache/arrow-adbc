@@ -38,7 +38,8 @@ permissions:
 
 defaults:
   run:
-    working-directory: rust2
+    shell: bash
+    working-directory: rust
 
 jobs:
   rust:
@@ -47,22 +48,38 @@ jobs:
         os: [windows-latest, macos-latest, ubuntu-latest]
     name: "Rust ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
+    env:
+      CARGO_INCREMENTAL: 0
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Use stable Rust
+        id: rust
+        run: |
+          rustup update stable
+          rustup default stable
+          VERSION=$(rustup show active-toolchain -v | tail -1 | tr -d "[:space:]")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
         with:
-          components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
-      - name: Check format
-        run: cargo fmt -- --check
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            rust/target/
+          key: ${{ runner.os }}-cargo-${{ steps.rust.outputs.version }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ steps.rust.outputs.version }}-
+      - name: Rustfmt
+        run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --tests
+        run: cargo clippy --workspace --all-targets --all-features -- -Dwarnings
       - name: Test
-        shell: bash -l {0}
-        run: cargo test
+        run: cargo test --workspace --all-targets --all-features
+      - name: Doctests
+        run: cargo test --workspace --doc --all-features
       - name: Check docs
-        run: cargo doc
+        run: cargo doc --workspace --all-features
