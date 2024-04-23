@@ -252,6 +252,9 @@ gpointer gadbc_connection_get_statistics(GADBCConnection* connection,
                                          const gchar* catalog, const gchar* db_schema,
                                          const gchar* table_name, gboolean approximate,
                                          GError** error);
+GADBC_AVAILABLE_IN_1_0
+gpointer gadbc_connection_get_statistic_names(GADBCConnection* connection,
+                                              GError** error);
 GADBC_AVAILABLE_IN_0_4
 gboolean gadbc_connection_commit(GADBCConnection* connection, GError** error);
 GADBC_AVAILABLE_IN_0_4
