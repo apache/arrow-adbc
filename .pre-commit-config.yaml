@@ -108,6 +108,6 @@ repos:
     hooks:
     - id: fmt
       name: rustfmt
-      args: ["--manifest-path", "rust/Cargo.toml", "--"]
+      args: ["--all", "--manifest-path", "rust/Cargo.toml", "--"]
 
 exclude: "^c/vendor/.*"
