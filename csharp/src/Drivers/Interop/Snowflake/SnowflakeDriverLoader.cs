@@ -42,11 +42,9 @@ namespace Apache.Arrow.Adbc.Drivers.Interop.Snowflake
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 file = Path.Combine(root, $"linux-{RuntimeInformation.OSArchitecture}", native, $"{fileName}.so");
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                file = Path.Combine(root, $"win-{RuntimeInformation.OSArchitecture}", native, $"{fileName}.dll");
+                file = Path.Combine(root, $"win-{RuntimeInformation.OSArchitecture}",   native, $"{fileName}.dll");
             else
-                file = Path.Combine(root, $"osx-{RuntimeInformation.OSArchitecture}", native, $"{fileName}.dylib");
-
-            System.Diagnostics.Debug.WriteLine($"Looking for {file}");
+                file = Path.Combine(root, $"osx-{RuntimeInformation.OSArchitecture}",   native, $"{fileName}.dylib");
 
             if (File.Exists(file))
             {
