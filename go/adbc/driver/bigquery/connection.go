@@ -253,19 +253,25 @@ func (c *connectionImpl) Close() error {
 
 // GetObjectsCatalogs implements driverbase.DbObjectsEnumerator.
 func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error) {
-	pattern, err := patternToRegexp(catalog)
-	if err != nil {
-		return nil, err
+	return nil, adbc.Error{
+		Code: adbc.StatusNotImplemented,
+		Msg:  "GetObjectsCatalogs is not yet implemented",
 	}
 
 	// todo: check if we can get all projects that we have access
-	catalogs := make([]string, 0)
-	currentCatalog := c.client.Project()
-	if pattern.MatchString(currentCatalog) {
-		catalogs = append(catalogs, currentCatalog)
-	}
+	//
+	// pattern, err := patternToRegexp(catalog)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	return catalogs, nil
+	// catalogs := make([]string, 0)
+	// currentCatalog := c.client.Project()
+	// if pattern.MatchString(currentCatalog) {
+	// 	catalogs = append(catalogs, currentCatalog)
+	// }
+
+	// return catalogs, nil
 }
 
 // GetObjectsDbSchemas implements driverbase.DbObjectsEnumerator.
