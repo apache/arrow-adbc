@@ -25,7 +25,7 @@ file="libadbc_driver_snowflake.*"
 
 if ls libadbc_driver_snowflake.* 1> /dev/null 2>&1; then
     echo "Files found. Exiting the script."
-    exit 1
+    exit 0
 else
     cd ../../../../../go/adbc/pkg
 

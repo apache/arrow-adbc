@@ -175,8 +175,7 @@ jobs:
     needs:
       - source
       - go-binaries
-    env:
-         IsPackagingPipeline: "true"
+
     steps:
       - uses: actions/download-artifact@v3
         with:
@@ -211,6 +210,8 @@ jobs:
           popd
 
       - name: Package
+        env:
+          IsPackagingPipeline: "true"
         run: |
           pushd adbc/
           docker compose run csharp-dist
