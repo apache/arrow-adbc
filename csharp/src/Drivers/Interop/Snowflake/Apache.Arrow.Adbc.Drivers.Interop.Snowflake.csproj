@@ -39,21 +39,21 @@
     </Content>
 
     <!-- Windows/DLLs -->
-    <Content Include="libadbc_driver_snowflake.dll" Condition="$(IsPackagingPipeline)' == 'true'">
+    <Content Include="libadbc_driver_snowflake.dll" Condition="'$(IsPackagingPipeline)' == 'true'">
       <Pack>true</Pack>
       <PackagePath>runtimes/win-x64/native</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
 
     <!-- Linux/so -->
-    <Content Include="libadbc_driver_snowflake.so" Condition="$(IsPackagingPipeline)' == 'true'">
+    <Content Include="libadbc_driver_snowflake.so" Condition="'$(IsPackagingPipeline)' == 'true'">
       <Pack>true</Pack>
       <PackagePath>runtimes/linux-x64/native</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
 
     <!-- Mac/dylib -->
-    <Content Include="libadbc_driver_snowflake.dylib" Condition="$(IsPackagingPipeline)' == 'true'">
+    <Content Include="libadbc_driver_snowflake.dylib" Condition="'$(IsPackagingPipeline)' == 'true'">
       <Pack>true</Pack>
       <PackagePath>runtimes/osx-x64/native</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
