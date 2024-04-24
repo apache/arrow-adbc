@@ -23,7 +23,7 @@
       <PackagePath>/</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="libadbc_driver_snowflake.dll">
+    <Content Include="libadbc_driver_snowflake.dll" Condition="'$(IsPackagingPipeline)' == 'true'">
       <Pack>true</Pack>
       <PackagePath>runtimes/win-x64/native</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
