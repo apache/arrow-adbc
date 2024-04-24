@@ -40,11 +40,11 @@ namespace Apache.Arrow.Adbc.Drivers.Interop.Snowflake
 
             // matches extensions in https://github.com/apache/arrow-adbc/blob/main/go/adbc/pkg/Makefile
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                file = Path.Combine(root, $"linux-{RuntimeInformation.OSArchitecture}", native, $"{fileName}.so");
+                file = Path.Combine(root, $"linux-{GetArchitecture()}", native, $"{fileName}.so");
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                file = Path.Combine(root, $"win-{RuntimeInformation.OSArchitecture}",   native, $"{fileName}.dll");
+                file = Path.Combine(root, $"win-{GetArchitecture()}",   native, $"{fileName}.dll");
             else
-                file = Path.Combine(root, $"osx-{RuntimeInformation.OSArchitecture}",   native, $"{fileName}.dylib");
+                file = Path.Combine(root, $"osx-{GetArchitecture()}",   native, $"{fileName}.dylib");
 
             if (File.Exists(file))
             {
@@ -57,6 +57,11 @@ namespace Apache.Arrow.Adbc.Drivers.Interop.Snowflake
             }
 
             return LoadDriver(file, "SnowflakeDriverInit");
+        }
+
+        private static string GetArchitecture()
+        {
+            return RuntimeInformation.OSArchitecture.ToString().ToLower();
         }
 
         /// <summary>
