@@ -212,7 +212,7 @@ jobs:
       - name: Package
         run: |
           pushd adbc/
-          docker compose run csharp-dist -e IsPackagingPipeline=true
+          docker compose run -e IsPackagingPipeline=true csharp-dist
           popd
 
       - name: Archive nupkg
