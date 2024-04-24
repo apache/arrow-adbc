@@ -222,12 +222,7 @@ namespace Apache.Arrow.Adbc.C
                 return new AdbcStatementNative(_nativeDriver, nativeStatement);
             }
 
-            public override IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
-            {
-                return GetInfo(codes.Select(x => (int)x).ToList<int>());
-            }
-
-            public override unsafe IArrowArrayStream GetInfo(List<int> codes)
+            public unsafe override IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
             {
                 CArrowArrayStream* nativeArrayStream = CArrowArrayStream.Create();
 
@@ -696,28 +691,28 @@ namespace Apache.Arrow.Adbc.C
             }
 
 #if NET5_0_OR_GREATER
-            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, int*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection connection, List<int> infoCodes, CArrowArrayStream* stream)
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, int*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection connection, List<AdbcInfoCode> infoCodes, CArrowArrayStream* stream)
             {
                 fixed (CAdbcConnection* cn = &connection)
                 fixed (CAdbcError* e = &_error)
                 {
-                    Span<int> span = CollectionsMarshal.AsSpan(infoCodes);
-                    fixed (int* spanPtr = span)
+                    Span<AdbcInfoCode> span = CollectionsMarshal.AsSpan(infoCodes);
+                    fixed (AdbcInfoCode* spanPtr = span)
                     {
-                        TranslateCode(fn(cn, spanPtr, infoCodes.Count, stream, e));
+                        TranslateCode(fn(cn, (int*)spanPtr, infoCodes.Count, stream, e));
                     }
                 }
             }
 #else
-            public unsafe void Call(IntPtr ptr, ref CAdbcConnection connection, List<int> infoCodes, CArrowArrayStream* stream)
+            public unsafe void Call(IntPtr ptr, ref CAdbcConnection connection, List<AdbcInfoCode> infoCodes, CArrowArrayStream* stream)
             {
                 fixed (CAdbcConnection* cn = &connection)
                 fixed (CAdbcError* e = &_error)
                 {
-                    Span<int> span = infoCodes.ToArray().AsSpan();
-                    fixed (int* spanPtr = span)
+                    Span<AdbcInfoCode> span = infoCodes.ToArray().AsSpan();
+                    fixed (AdbcInfoCode* spanPtr = span)
                     {
-                        TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetInfo>(ptr)(cn, spanPtr, infoCodes.Count, stream, e));
+                        TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetInfo>(ptr)(cn, (int*)spanPtr, infoCodes.Count, stream, e));
                     }
                 }
             }

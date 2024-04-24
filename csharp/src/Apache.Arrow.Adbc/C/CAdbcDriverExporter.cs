@@ -847,8 +847,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe void GetInfo(int* info_codes, int info_codes_length, CArrowArrayStream* stream)
             {
-                int[] infoCodes = new int[info_codes_length];
-                fixed (int* infoCodesPtr = infoCodes)
+                AdbcInfoCode[] infoCodes = new AdbcInfoCode[info_codes_length];
+                fixed (AdbcInfoCode* infoCodesPtr = infoCodes)
                 {
                     long length = (long)info_codes_length * sizeof(int);
                     Buffer.MemoryCopy(info_codes, infoCodesPtr, length, length);

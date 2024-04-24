@@ -70,21 +70,7 @@ namespace Apache.Arrow.Adbc
         /// The metadata items to fetch.
         /// </param>
         /// <returns>
-        /// A statement that can be immediately executed.
-        /// </returns>
-        public virtual IArrowArrayStream GetInfo(List<int> codes)
-        {
-            throw AdbcException.NotImplemented("Connection does not support GetInfo");
-        }
-
-        /// <summary>
-        /// Get metadata about the driver/database.
-        /// </summary>
-        /// <param name="codes">
-        /// The metadata items to fetch.
-        /// </param>
-        /// <returns>
-        /// A statement that can be immediately executed.
+        /// Metadata about the driver and/or database
         /// </returns>
         /// <exception cref="ArgumentNullException"></exception>
         public virtual IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
@@ -92,9 +78,7 @@ namespace Apache.Arrow.Adbc
             if (codes == null)
                 throw new ArgumentNullException(nameof(codes));
 
-            List<int> codeValues = codes.Select(x => (int)x).ToList();
-
-            return GetInfo(codeValues);
+            throw AdbcException.NotImplemented("Connection does not support GetInfo");
         }
 
         /// <summary>
