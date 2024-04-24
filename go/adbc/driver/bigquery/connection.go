@@ -350,6 +350,21 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 
 var (
 	sanitizedInputRegex = regexp.MustCompile("^[a-zA-Z0-9_-]+")
+	precisionScaleRegex = regexp.MustCompile(`^(?:BIG)?NUMERIC\((?P<precision>\d+)(?:,(?P<scale>\d+))?\)$`)
+	simpleDataType      = map[string]arrow.DataType{
+		"BOOL":      arrow.FixedWidthTypes.Boolean,
+		"BOOLEAN":   arrow.FixedWidthTypes.Boolean,
+		"FLOAT":     arrow.PrimitiveTypes.Float64,
+		"FLOAT64":   arrow.PrimitiveTypes.Float64,
+		"BYTES":     arrow.BinaryTypes.Binary,
+		"STRING":    arrow.BinaryTypes.String,
+		"GEOGRAPHY": arrow.BinaryTypes.String,
+		"JSON":      arrow.BinaryTypes.String,
+		"DATE":      arrow.FixedWidthTypes.Date32,
+		"DATETIME":  &arrow.TimestampType{Unit: arrow.Microsecond},
+		"TIMESTAMP": &arrow.TimestampType{Unit: arrow.Microsecond},
+		"TIME":      arrow.FixedWidthTypes.Time64us,
+	}
 )
 
 func sanitize(value string) (string, error) {
@@ -385,23 +400,6 @@ func buildSchemaField(name string, typeString string) (arrow.Field, error) {
 		return buildField(name, typeString, dataType, index)
 	}
 }
-
-var (
-	simpleDataType = map[string]arrow.DataType{
-		"BOOL":      arrow.FixedWidthTypes.Boolean,
-		"BOOLEAN":   arrow.FixedWidthTypes.Boolean,
-		"FLOAT":     arrow.PrimitiveTypes.Float64,
-		"FLOAT64":   arrow.PrimitiveTypes.Float64,
-		"BYTES":     arrow.BinaryTypes.Binary,
-		"STRING":    arrow.BinaryTypes.String,
-		"GEOGRAPHY": arrow.BinaryTypes.String,
-		"JSON":      arrow.BinaryTypes.String,
-		"DATE":      arrow.FixedWidthTypes.Date32,
-		"DATETIME":  &arrow.TimestampType{Unit: arrow.Microsecond},
-		"TIMESTAMP": &arrow.TimestampType{Unit: arrow.Microsecond},
-		"TIME":      arrow.FixedWidthTypes.Time64us,
-	}
-)
 
 func buildField(name, typeString, dataType string, index int) (arrow.Field, error) {
 	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
@@ -503,27 +501,29 @@ func parsePrecisionAndScale(name, typeString string) (int32, int32, error) {
 		return 76, 38, nil
 	}
 
-	values := strings.Split(strings.TrimRight(typeString[strings.Index(typeString, "(")+1:], ")"), ",")
-	if len(values) != 2 {
+	r := precisionScaleRegex.FindStringSubmatch(typeString)
+	if len(r) != 3 {
 		return 0, 0, adbc.Error{
 			Code: adbc.StatusInvalidData,
 			Msg:  fmt.Sprintf("Cannot parse data type `%s` for field `%s`", typeString, name),
 		}
 	}
 
-	precision, err := strconv.ParseInt(values[0], 10, 32)
+	precisionString := r[precisionScaleRegex.SubexpIndex("precision")]
+	precision, err := strconv.ParseInt(precisionString, 10, 32)
 	if err != nil {
 		return 0, 0, adbc.Error{
 			Code: adbc.StatusInvalidData,
-			Msg:  fmt.Sprintf("Cannot parse precision `%s`: %s", values[0], err.Error()),
+			Msg:  fmt.Sprintf("Cannot parse precision `%s` for field `%s`: %s", precisionString, name, err.Error()),
 		}
 	}
 
-	scale, err := strconv.ParseInt(values[1], 10, 32)
+	scaleString := r[precisionScaleRegex.SubexpIndex("scale")]
+	scale, err := strconv.ParseInt(scaleString, 10, 32)
 	if err != nil {
 		return 0, 0, adbc.Error{
 			Code: adbc.StatusInvalidData,
-			Msg:  fmt.Sprintf("Cannot parse scale `%s`: %s", values[1], err.Error()),
+			Msg:  fmt.Sprintf("Cannot parse scale `%s` for field `%s`: %s", scaleString, name, err.Error()),
 		}
 	}
 	return int32(precision), int32(scale), nil
