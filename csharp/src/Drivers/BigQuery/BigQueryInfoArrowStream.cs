@@ -30,7 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         private Schema schema;
         private RecordBatch? batch;
 
-        public BigQueryInfoArrowStream(Schema schema, List<IArrowArray> data)
+        public BigQueryInfoArrowStream(Schema schema, IReadOnlyList<IArrowArray> data)
         {
             this.schema = schema;
             this.batch = new RecordBatch(schema, data, data[0].Length);

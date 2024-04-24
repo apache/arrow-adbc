@@ -65,7 +65,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             throw new System.NotImplementedException();
         }
 
-        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, List<string> tableTypes, string columnNamePattern)
+        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, IReadOnlyList<string> tableTypes, string columnNamePattern)
         {
             throw new System.NotImplementedException();
         }
