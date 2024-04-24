@@ -25,7 +25,7 @@
  * @include: adbc-arrow-glib/adbc-arrow-glib.h
  *
  * #GADBCArrowStatement is a class for Arrow GLib integrated
-    statement.
+ * statement.
  */
 
 G_DEFINE_TYPE(GADBCArrowStatement, gadbc_arrow_statement, GADBC_TYPE_STATEMENT)

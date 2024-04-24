@@ -127,6 +127,30 @@ static void gadbc_connection_class_init(GADBCConnectionClass* klass) {
 }
 
 /**
+ * gadbc_connection_initialize: (skip)
+ * @connection: A #GADBCConnection.
+ * @context: A context for error message.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * This is only for implementing subclass of #GADBCConnection. In
+ * general, users should use gadbc_connection_new().
+ *
+ * Initializes an empty #GADBCConnection.
+ *
+ * Returns: %TRUE if initialization is done successfully, %FALSE otherwise.
+ *
+ * Since: 1.0.0
+ */
+gboolean gadbc_connection_initialize(GADBCConnection* connection, const gchar* context,
+                                     GError** error) {
+  GADBCConnectionPrivate* priv = gadbc_connection_get_instance_private(connection);
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code = AdbcConnectionNew(&(priv->adbc_connection), &adbc_error);
+  priv->initialized = gadbc_error_check(error, status_code, &adbc_error, context);
+  return priv->initialized;
+}
+
+/**
  * gadbc_connection_new:
  * @error: (nullable): Return location for a #GError or %NULL.
  *
@@ -136,16 +160,12 @@ static void gadbc_connection_class_init(GADBCConnectionClass* klass) {
  */
 GADBCConnection* gadbc_connection_new(GError** error) {
   GADBCConnection* connection = g_object_new(GADBC_TYPE_CONNECTION, NULL);
-  GADBCConnectionPrivate* priv = gadbc_connection_get_instance_private(connection);
-  struct AdbcError adbc_error = {};
-  AdbcStatusCode status_code = AdbcConnectionNew(&(priv->adbc_connection), &adbc_error);
-  priv->initialized =
-      gadbc_error_check(error, status_code, &adbc_error, "[adbc][connection][new]");
-  if (!priv->initialized) {
+  if (gadbc_connection_initialize(connection, "[adbc][connection][new]", error)) {
+    return connection;
+  } else {
     g_object_unref(connection);
     return NULL;
   }
-  return connection;
 }
 
 /**
@@ -324,9 +344,10 @@ gboolean gadbc_connection_init(GADBCConnection* connection, GADBCDatabase* datab
  * for ADBC usage.  Drivers/vendors will ignore requests for
  * unrecognized codes (the row will be omitted from the result).
  *
- * Returns: The result set as `struct ArrowArrayStream *`. It should
- *   be freed with the `ArrowArrayStream::release` callback then
- *   g_free() when no longer needed.
+ * Returns: (nullable): The result set as `struct ArrowArrayStream *`
+ *   on success, %NULL on error. It should be freed with the
+ *   `ArrowArrayStream::release` callback then g_free() when no longer
+ *   needed.
  *
  * Since: 0.4.0
  */

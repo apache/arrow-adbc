@@ -58,6 +58,7 @@ module ADBCArrow
     end
 
     def require_libraries
+      require_relative "arrow-connection"
       require_relative "arrow-statement"
     end
   end

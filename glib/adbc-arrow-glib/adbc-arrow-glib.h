@@ -21,4 +21,5 @@
 
 #include <adbc-arrow-glib/version.h>
 
+#include <adbc-arrow-glib/connection.h>
 #include <adbc-arrow-glib/statement.h>
