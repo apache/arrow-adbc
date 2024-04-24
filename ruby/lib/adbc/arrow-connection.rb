@@ -15,17 +15,22 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[workspace]
-members = ["core", "drivers/*"]
-resolver = "2"
+module ADBCArrow
+  class Connection
+    include ADBC::ConnectionOperations
 
-[workspace.package]
-version = "0.1.0"
-description = "Rust implementation of Arrow Database Connectivity (ADBC)"
-edition = "2021"
-authors = ["Apache Arrow <dev@arrow.apache.org>"]
-license = "Apache-2.0"
+    def open_statement(&block)
+      Statement.open(self, &block)
+    end
 
-[workspace.dependencies]
-arrow = { version = "51.0.0", default-features = false, features = ["ffi"] }
-adbc_core = { path = "./core" }
+    alias_method :get_info_raw, :get_info
+    def get_info(codes)
+      reader = get_info_raw(codes)
+      begin
+        yield(reader.read_all)
+      ensure
+        reader.unref
+      end
+    end
+  end
+end

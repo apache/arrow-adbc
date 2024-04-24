@@ -15,54 +15,28 @@
 # specific language governing permissions and limitations
 # under the License.
 
+require_relative "connection-operations"
+
 module ADBC
   class Connection
+    include ConnectionOperations
+
     def open_statement(&block)
       Statement.open(self, &block)
     end
 
-    def query(sql, &block)
-      open_statement do |statement|
-        statement.query(sql, &block)
-      end
-    end
-
-    def ingest(table_name, values, mode: :create)
-      open_statment do |statement|
-        statement.ingest(table_name, values, mode: mode)
-      end
-    end
-
-    def info(codes=nil)
-      unless codes.nil?
-        codes = codes.collect do |code|
-          ADBC::Info.try_convert(code)
-        end
-      end
-      c_abi_array_stream = get_info(codes)
+    alias_method :get_info_raw, :get_info
+    def get_info(codes)
+      c_abi_array_stream = get_info_raw(codes)
       begin
         reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
         begin
-          table = reader.read_all
-          values = {}
-          table.raw_records.each do |code, value|
-            value = value.values[0] if value.is_a?(Hash)
-            code = ADBC::Info.try_convert(code)
-            values[code.nick.gsub("-", "_").to_sym] = value
-          end
-          values
+          yield(reader.read_all)
         ensure
           reader.unref
         end
       ensure
         GLib.free(c_abi_array_stream)
-      end
-    end
-
-    ADBC::Info.values.each do |value|
-      name = value.nick.gsub("-", "_").to_sym
-      define_method(name) do
-        info([name])[name]
       end
     end
   end

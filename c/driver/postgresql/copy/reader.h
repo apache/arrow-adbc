@@ -741,6 +741,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(
     case NANOARROW_TYPE_INT64:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kInt8:
+        case PostgresTypeId::kCash:
           *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<int64_t>>();
           return NANOARROW_OK;
         default:
