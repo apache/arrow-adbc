@@ -60,7 +60,6 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 
 	return driverbase.NewConnectionBuilder(conn).
 		WithAutocommitSetter(conn).
-		WithDbObjectsEnumerator(conn).
 		WithCurrentNamespacer(conn).
 		WithTableTypeLister(conn).
 		Connection(), nil

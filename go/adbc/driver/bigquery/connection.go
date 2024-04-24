@@ -22,7 +22,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -37,11 +36,8 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v16/arrow"
-	"golang.org/x/exp/slices"
-	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
@@ -250,100 +246,6 @@ func (c *connectionImpl) Close() error {
 //
 // All non-empty, non-nil strings should be a search pattern (as described
 // earlier).
-
-// GetObjectsCatalogs implements driverbase.DbObjectsEnumerator.
-func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error) {
-	return nil, adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "GetObjectsCatalogs is not yet implemented",
-	}
-
-	// todo: check if we can get all projects that we have access
-	//
-	// pattern, err := patternToRegexp(catalog)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// catalogs := make([]string, 0)
-	// currentCatalog := c.client.Project()
-	// if pattern.MatchString(currentCatalog) {
-	// 	catalogs = append(catalogs, currentCatalog)
-	// }
-
-	// return catalogs, nil
-}
-
-// GetObjectsDbSchemas implements driverbase.DbObjectsEnumerator.
-func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, metadataRecords []internal.Metadata) (map[string][]string, error) {
-	result := make(map[string][]string)
-	if depth == adbc.ObjectDepthCatalogs {
-		return result, nil
-	}
-
-	err := c.getDatasetsInProject(ctx, catalog, dbSchema, func(dataset *bigquery.Dataset) error {
-		val, ok := result[dataset.ProjectID]
-		if !ok {
-			result[dataset.ProjectID] = make([]string, 0)
-		}
-		result[dataset.ProjectID] = append(val, dataset.DatasetID)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
-// GetObjectsTables implements driverbase.DbObjectsEnumerator.
-func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (map[internal.CatalogAndSchema][]internal.TableInfo, error) {
-	result := make(map[internal.CatalogAndSchema][]internal.TableInfo)
-	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
-		return result, nil
-	}
-
-	// Pre-populate the map of which schemas are in which catalogs
-	includeSchema := depth == adbc.ObjectDepthColumns
-	err := c.getDatasetsInProject(ctx, catalog, dbSchema, func(dataset *bigquery.Dataset) error {
-		tableErr := getTablesInDataset(ctx, dataset, tableName, func(table *bigquery.Table) error {
-			metadata, tableErr := table.Metadata(ctx)
-			if tableErr != nil {
-				return tableErr
-			}
-			currentTableType := string(metadata.Type)
-			includeTable := len(tableType) == 0 || slices.Contains(tableType, currentTableType)
-			if !includeTable {
-				return nil
-			}
-
-			key := internal.CatalogAndSchema{
-				Catalog: table.ProjectID,
-				Schema:  table.DatasetID,
-			}
-
-			var schema *arrow.Schema
-			var schemaErr error
-			if includeSchema {
-				schema, schemaErr = c.getTableSchemaWithFilter(ctx, &key.Catalog, &key.Schema, table.TableID, columnName)
-				if schemaErr != nil {
-					return schemaErr
-				}
-			}
-			result[key] = append(result[key], internal.TableInfo{
-				Name:      table.TableID,
-				TableType: currentTableType,
-				Schema:    schema,
-			})
-			return nil
-		})
-		return tableErr
-	})
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
 
 func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
 	return c.getTableSchemaWithFilter(ctx, catalog, dbSchema, tableName, nil)
@@ -622,87 +524,6 @@ func parsePrecisionAndScale(name, typeString string) (int32, int32, error) {
 	return int32(precision), int32(scale), nil
 }
 
-func patternToRegexp(pattern *string) (*regexp.Regexp, error) {
-	patternString := ""
-	if pattern != nil {
-		patternString = *pattern
-	}
-	patternString = strings.TrimSpace(patternString)
-
-	convertedPattern := ".*"
-	if patternString != "" {
-		convertedPattern = fmt.Sprintf("(?i)^%s$", strings.ReplaceAll(strings.ReplaceAll(patternString, "_", "."), "%", ".*"))
-	}
-	r, err := regexp.Compile(convertedPattern)
-	if err != nil {
-		return nil, adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("Cannot parse pattern `%s`: %s", patternString, err.Error()),
-		}
-	}
-	return r, nil
-}
-
-func (c *connectionImpl) getDatasetsInProject(ctx context.Context, projectIDPattern, datasetsIDPattern *string, cb filteredDatasetHandler) error {
-	pattern, err := patternToRegexp(projectIDPattern)
-	if err != nil {
-		return err
-	}
-	if !pattern.MatchString(c.client.Project()) {
-		return iterator.Done
-	}
-
-	pattern, err = patternToRegexp(datasetsIDPattern)
-	if err != nil {
-		return err
-	}
-
-	it := c.client.Datasets(ctx)
-	for {
-		dataset, err := it.Next()
-		if err != nil {
-			if errors.Is(err, iterator.Done) {
-				break
-			}
-			return err
-		}
-
-		if pattern.MatchString(dataset.DatasetID) {
-			err = cb(dataset)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func getTablesInDataset(ctx context.Context, dataset *bigquery.Dataset, tableNamePattern *string, cb filteredTableHandler) error {
-	pattern, err := patternToRegexp(tableNamePattern)
-	if err != nil {
-		return err
-	}
-
-	it := dataset.Tables(ctx)
-	for {
-		table, err := it.Next()
-		if err != nil {
-			if errors.Is(err, iterator.Done) {
-				break
-			}
-			return err
-		}
-
-		if pattern.MatchString(table.TableID) {
-			err = cb(table)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *string, dbSchema *string, tableName string, columnName *string) (*arrow.Schema, error) {
 	if catalog == nil {
 		catalog = &c.catalog
@@ -716,11 +537,6 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 		dbSchema = &c.dbSchema
 	}
 	sanitizedDbSchema, err := sanitize(*dbSchema)
-	if err != nil {
-		return nil, err
-	}
-
-	pattern, err := patternToRegexp(columnName)
 	if err != nil {
 		return nil, err
 	}
@@ -794,10 +610,6 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 			}
 
 			name := fieldName.ValueStr(i)
-			if !pattern.MatchString(name) {
-				continue
-			}
-
 			nullable := strings.ToUpper(fieldNullable.ValueStr(i))
 			dataType := fieldType.ValueStr(i)
 
