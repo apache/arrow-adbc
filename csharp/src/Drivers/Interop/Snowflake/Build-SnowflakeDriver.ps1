@@ -15,10 +15,16 @@
 #  limitations under the License.
 
 Write-Host "Building the Snowflake ADBC Go driver"
+Write-Host "IsPackagingPipeline=$Env:IsPackagingPipeline"
 
 $location = Get-Location
 
 $file = "libadbc_driver_snowflake.dll"
+
+if(Test-Path $file)
+{
+    exit
+}
 
 cd ..\..\..\..\..\go\adbc\pkg
 

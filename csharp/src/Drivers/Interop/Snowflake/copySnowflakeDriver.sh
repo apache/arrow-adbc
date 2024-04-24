@@ -17,18 +17,24 @@
 ### copies the Snowflake binaries for all platforms to be packaged for NuGet
 
 echo "Copying the Snowflake ADBC Go drivers"
+echo "IsPackagingPipeline=$IsPackagingPipeline"
 
 destination_dir=$(pwd)
 
 file="libadbc_driver_snowflake.*"
 
-cd ../../../../../go/adbc/pkg
+if ls libadbc_driver_snowflake.* 1> /dev/null 2>&1; then
+    echo "Files found. Exiting the script."
+    exit 1
+else
+    cd ../../../../../go/adbc/pkg
 
-source_dir=$(pwd)
+    source_dir=$(pwd)
 
-files_to_copy=$(find "$source_dir" -type f -name "$file")
+    files_to_copy=$(find "$source_dir" -type f -name "$file")
 
-for file in $files_to_copy; do
-    cp "$file" "$destination_dir"
-    echo "Copied $file to $destination_dir"
-done
+    for file in $files_to_copy; do
+        cp "$file" "$destination_dir"
+        echo "Copied $file to $destination_dir"
+    done
+fi
