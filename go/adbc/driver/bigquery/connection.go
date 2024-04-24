@@ -110,9 +110,12 @@ func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
 
 // SetAutocommit implements driverbase.AutocommitSetter.
 func (c *connectionImpl) SetAutocommit(enabled bool) error {
+	if enabled {
+		return nil
+	}
 	return adbc.Error{
 		Code: adbc.StatusNotImplemented,
-		Msg:  "SetAutocommit is not yet implemented",
+		Msg:  "SetAutocommit to `false` is not yet implemented",
 	}
 }
 
