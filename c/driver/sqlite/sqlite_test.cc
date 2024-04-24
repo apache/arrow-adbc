@@ -48,7 +48,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     adbc_validation::Handle<struct AdbcStatement> statement;
     RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string query = "DROP TABLE IF EXISTS " + name;
+    std::string query = "DROP TABLE IF EXISTS \"" + name + "\"";
     RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
     RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
     return AdbcStatementRelease(&statement.value, error);
@@ -59,7 +59,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     adbc_validation::Handle<struct AdbcStatement> statement;
     RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string query = "DROP TABLE IF EXISTS temp . " + name;
+    std::string query = "DROP TABLE IF EXISTS temp . \"" + name + "\"";
     RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
     RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
     return AdbcStatementRelease(&statement.value, error);
@@ -373,7 +373,7 @@ class SqliteStatementTest : public ::testing::Test,
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
 TEST_F(SqliteStatementTest, SqlIngestNameEscaping) {
-  ASSERT_THAT(quirks()->DropTable(&connection, "\"test-table\"", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "test-table", &error),
               adbc_validation::IsOkStatus(&error));
 
   std::string table = "test-table";

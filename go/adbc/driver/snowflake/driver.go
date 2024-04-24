@@ -20,6 +20,7 @@ package snowflake
 import (
 	"errors"
 	"runtime/debug"
+	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
@@ -161,6 +162,10 @@ func errToAdbcErr(code adbc.Status, err error) error {
 		Msg:  err.Error(),
 		Code: code,
 	}
+}
+
+func quoteTblName(name string) string {
+	return "\"" + strings.ReplaceAll(name, "\"", "\"\"") + "\""
 }
 
 type driverImpl struct {

@@ -83,8 +83,9 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
     adbc_validation::Handle<struct AdbcStatement> statement;
     CHECK_OK(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string drop = "DROP TABLE IF EXISTS ";
+    std::string drop = "DROP TABLE IF EXISTS \"";
     drop += name;
+    drop += "\"";
     CHECK_OK(AdbcStatementSetSqlQuery(&statement.value, drop.c_str(), error));
     CHECK_OK(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
 
@@ -98,15 +99,15 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
     adbc_validation::Handle<struct AdbcStatement> statement;
     CHECK_OK(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string create = "CREATE TABLE ";
+    std::string create = "CREATE TABLE \"";
     create += name;
-    create += " (int64s INT, strings TEXT)";
+    create += "\" (int64s INT, strings TEXT)";
     CHECK_OK(AdbcStatementSetSqlQuery(&statement.value, create.c_str(), error));
     CHECK_OK(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
 
-    std::string insert = "INSERT INTO ";
+    std::string insert = "INSERT INTO \"";
     insert += name;
-    insert += " VALUES (42, 'foo'), (-42, NULL), (NULL, '')";
+    insert += "\" VALUES (42, 'foo'), (-42, NULL), (NULL, '')";
     CHECK_OK(AdbcStatementSetSqlQuery(&statement.value, insert.c_str(), error));
     CHECK_OK(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
 

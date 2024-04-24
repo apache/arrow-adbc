@@ -1211,12 +1211,12 @@ func (c *connectionImpl) getStringQuery(query string) (string, error) {
 func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
 	tblParts := make([]string, 0, 3)
 	if catalog != nil {
-		tblParts = append(tblParts, *catalog)
+		tblParts = append(tblParts, quoteTblName(*catalog))
 	}
 	if dbSchema != nil {
-		tblParts = append(tblParts, *dbSchema)
+		tblParts = append(tblParts, quoteTblName(*dbSchema))
 	}
-	tblParts = append(tblParts, tableName)
+	tblParts = append(tblParts, quoteTblName(tableName))
 	fullyQualifiedTable := strings.Join(tblParts, ".")
 
 	rows, err := c.sqldb.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable)
