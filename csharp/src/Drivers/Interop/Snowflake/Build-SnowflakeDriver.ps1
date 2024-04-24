@@ -26,5 +26,18 @@ make $file
 
 if(Test-Path $file)
 {
-    COPY $file $location
+    $processes = Get-Process | Where-Object { $_.Modules.ModuleName -contains $file }
+
+    if ($processes.Count -eq 0) {
+        try {
+        # File is not being used, copy it to the destination
+            Copy-Item -Path $file -Destination $location
+            Write-Host "File copied successfully."
+        }
+        catch {
+            Write-Host "Caught error: $_"
+        }
+    } else {
+        Write-Host "File is being used by another process. Cannot copy."
+    }
 }
