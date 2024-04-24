@@ -98,7 +98,13 @@ func (c *connectionImpl) SetCurrentDbSchema(value string) error {
 
 // ListTableTypes implements driverbase.TableTypeLister.
 func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
-	return []string{"BASE TABLE", "VIEW"}, nil
+	return []string{
+		string(bigquery.RegularTable),
+		string(bigquery.ViewTable),
+		string(bigquery.ExternalTable),
+		string(bigquery.MaterializedView),
+		string(bigquery.Snapshot),
+	}, nil
 }
 
 // SetAutocommit implements driverbase.AutocommitSetter.
