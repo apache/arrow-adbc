@@ -82,7 +82,7 @@ static void gadbc_statement_class_init(GADBCStatementClass* klass) {
  * Since: 0.10.0
  */
 gboolean gadbc_statement_initialize(GADBCStatement* statement,
-                                    GADBCConnection* connection, const char* context,
+                                    GADBCConnection* connection, const gchar* context,
                                     GError** error) {
   struct AdbcConnection* adbc_connection =
       gadbc_connection_get_raw(connection, context, error);
