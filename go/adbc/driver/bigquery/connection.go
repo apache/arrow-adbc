@@ -786,7 +786,7 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 				col := rec.Column(j)
 				columnName := strings.ToUpper(rec.ColumnName(j))
 				switch columnName {
-				case "COLUMN_NAME", "IS_NULLABLE", "DATA_TYPE":
+				case "COLUMN_NAME", "IS_NULLABLE":
 					continue
 				default:
 					metadata[columnName] = strings.Clone(col.ValueStr(i))
