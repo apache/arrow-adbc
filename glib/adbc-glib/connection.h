@@ -213,6 +213,9 @@ struct _GADBCConnectionClass {
   GObjectClass parent_class;
 };
 
+GADBC_AVAILABLE_IN_1_0
+gboolean gadbc_connection_initialize(GADBCConnection* connection, const gchar* context,
+                                     GError** error);
 GADBC_AVAILABLE_IN_0_1
 GADBCConnection* gadbc_connection_new(GError** error);
 GADBC_AVAILABLE_IN_0_1

@@ -32,6 +32,10 @@ begin
 rescue GObjectIntrospection::RepositoryError
 else
   module ADBC
+    RawConnection = Connection
+    remove_const(:Connection)
+    Connection = ADBCArrow::Connection
+
     RawStatement = Statement
     remove_const(:Statement)
     Statement = ADBCArrow::Statement
