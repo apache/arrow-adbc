@@ -67,7 +67,7 @@ pub enum Status {
 }
 
 /// An ADBC error.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Error {
     /// The error message.
     pub message: String,
