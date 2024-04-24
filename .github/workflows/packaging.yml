@@ -175,6 +175,8 @@ jobs:
     needs:
       - source
       - go-binaries
+    env:
+         IsPackagingPipeline: "true"
     steps:
       - uses: actions/download-artifact@v3
         with:
