@@ -19,6 +19,20 @@
 echo "Copying the Snowflake ADBC Go drivers"
 echo "IsPackagingPipeline=$IsPackagingPipeline"
 
+if [[ -z "${IsPackagingPipeline}" ]]; then
+    echo "IsPackagingPipeline environment variable does not exist."
+    exit 0
+fi
+
+# Get the value of the IsPackagingPipeline environment variable
+IsPackagingPipelineValue="${IsPackagingPipeline}"
+
+# Check if the value is "true"
+if [[ "${IsPackagingPipelineValue}" != "true" ]]; then
+    echo "IsPackagingPipeline is not set to 'true'. Exiting the script."
+    exit 0
+fi
+
 destination_dir=$(pwd)
 
 file="libadbc_driver_snowflake.*"
