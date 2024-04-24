@@ -63,15 +63,15 @@ type connectionImpl struct {
 	client *bigquery.Client
 }
 
-type BigQueryTokenResponse struct {
+type bigQueryTokenResponse struct {
 	AccessToken string `json:"access_token"`
 	ExpiresIn   int    `json:"expires_in"`
 	Scope       string `json:"scope"`
 	TokenType   string `json:"token_type"`
 }
 
-type FilteredDatasetHandler func(dataset *bigquery.Dataset) error
-type FilteredTableHandler func(dataset *bigquery.Table) error
+type filteredDatasetHandler func(dataset *bigquery.Dataset) error
+type filteredTableHandler func(dataset *bigquery.Table) error
 
 // GetCurrentCatalog implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) GetCurrentCatalog() (string, error) {
@@ -633,7 +633,7 @@ func patternToRegexp(pattern *string) (*regexp.Regexp, error) {
 	return r, nil
 }
 
-func (c *connectionImpl) getDatasetsInProject(ctx context.Context, projectIDPattern, datasetsIDPattern *string, cb FilteredDatasetHandler) error {
+func (c *connectionImpl) getDatasetsInProject(ctx context.Context, projectIDPattern, datasetsIDPattern *string, cb filteredDatasetHandler) error {
 	pattern, err := patternToRegexp(projectIDPattern)
 	if err != nil {
 		return err
@@ -667,7 +667,7 @@ func (c *connectionImpl) getDatasetsInProject(ctx context.Context, projectIDPatt
 	return nil
 }
 
-func getTablesInDataset(ctx context.Context, dataset *bigquery.Dataset, tableNamePattern *string, cb FilteredTableHandler) error {
+func getTablesInDataset(ctx context.Context, dataset *bigquery.Dataset, tableNamePattern *string, cb filteredTableHandler) error {
 	pattern, err := patternToRegexp(tableNamePattern)
 	if err != nil {
 		return err
@@ -824,7 +824,7 @@ func (c *connectionImpl) Token() (*oauth2.Token, error) {
 	}, nil
 }
 
-func (c *connectionImpl) getAccessToken() (*BigQueryTokenResponse, error) {
+func (c *connectionImpl) getAccessToken() (*bigQueryTokenResponse, error) {
 	params := url.Values{}
 	params.Add("grant_type", "refresh_token")
 	params.Add("client_id", c.clientID)
@@ -859,7 +859,7 @@ func (c *connectionImpl) getAccessToken() (*BigQueryTokenResponse, error) {
 		log.Fatal(err)
 	}
 
-	var tokenResponse BigQueryTokenResponse
+	var tokenResponse bigQueryTokenResponse
 	err = json.Unmarshal(contents, &tokenResponse)
 	if err != nil {
 		return nil, err
