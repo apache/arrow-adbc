@@ -143,7 +143,7 @@ func (c *connectionImpl) Rollback(_ context.Context) error {
 
 // Close closes this connection and releases any associated resources.
 func (c *connectionImpl) Close() error {
-	return nil
+	return c.client.Close()
 }
 
 // Metadata methods
