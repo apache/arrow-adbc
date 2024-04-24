@@ -17,10 +17,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
-using System.Linq;
 
 
 #if NETSTANDARD
