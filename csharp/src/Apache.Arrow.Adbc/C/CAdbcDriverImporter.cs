@@ -20,12 +20,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
 
-#if NETSTANDARD
-using Apache.Arrow.Adbc.Extensions;
-#endif
 
 namespace Apache.Arrow.Adbc.C
 {
@@ -696,9 +694,8 @@ namespace Apache.Arrow.Adbc.C
                 fixed (CAdbcConnection* cn = &connection)
                 fixed (CAdbcError* e = &_error)
                 {
-                    List<int> codesList = infoCodes as List<int>;
-                    Span<int> span = codesList != null ? CollectionsMarshal.AsSpan(codesList) : infoCodes.ToArray().AsSpan();
-                    fixed (int* spanPtr = span)
+                    Span<AdbcInfoCode> span = infoCodes.AsSpan();
+                    fixed (AdbcInfoCode* spanPtr = span)
                     {
                         TranslateCode(fn(cn, (int*)spanPtr, infoCodes.Count, stream, e));
                     }
