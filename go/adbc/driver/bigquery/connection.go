@@ -481,34 +481,35 @@ func buildSchemaField(name string, typeString string) (arrow.Field, error) {
 	}
 }
 
+var (
+	simpleDataType = map[string]arrow.DataType{
+		"BOOL":      arrow.FixedWidthTypes.Boolean,
+		"BOOLEAN":   arrow.FixedWidthTypes.Boolean,
+		"FLOAT":     arrow.PrimitiveTypes.Float64,
+		"FLOAT64":   arrow.PrimitiveTypes.Float64,
+		"BYTES":     arrow.BinaryTypes.Binary,
+		"STRING":    arrow.BinaryTypes.String,
+		"GEOGRAPHY": arrow.BinaryTypes.String,
+		"JSON":      arrow.BinaryTypes.String,
+		"DATE":      arrow.FixedWidthTypes.Date32,
+		"DATETIME":  &arrow.TimestampType{Unit: arrow.Microsecond},
+		"TIMESTAMP": &arrow.TimestampType{Unit: arrow.Microsecond},
+		"TIME":      arrow.FixedWidthTypes.Time64us,
+	}
+)
+
 func buildField(name, typeString, dataType string, index int) (arrow.Field, error) {
 	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
 	field := arrow.Field{
 		Name: strings.Clone(name),
 	}
+	val, ok := simpleDataType[dataType]
+	if ok {
+		field.Type = val
+		return field, nil
+	}
+
 	switch dataType {
-	case "BOOL", "BOOLEAN":
-		field.Type = arrow.FixedWidthTypes.Boolean
-	case "INTEGER", "INT64":
-		field.Type = arrow.PrimitiveTypes.Int64
-	case "FLOAT", "FLOAT64":
-		field.Type = arrow.PrimitiveTypes.Float64
-	case "BYTES":
-		field.Type = arrow.BinaryTypes.Binary
-	case "STRING", "GEOGRAPHY", "JSON":
-		field.Type = arrow.BinaryTypes.String
-	case "DATE":
-		field.Type = arrow.FixedWidthTypes.Date32
-	case "DATETIME":
-		field.Type = &arrow.TimestampType{
-			Unit: arrow.Microsecond,
-		}
-	case "TIMESTAMP":
-		field.Type = &arrow.TimestampType{
-			Unit: arrow.Microsecond,
-		}
-	case "TIME":
-		field.Type = arrow.FixedWidthTypes.Time64us
 	case "NUMERIC", "DECIMAL":
 		precision, scale, err := parsePrecisionAndScale(name, typeString)
 		if err != nil {
