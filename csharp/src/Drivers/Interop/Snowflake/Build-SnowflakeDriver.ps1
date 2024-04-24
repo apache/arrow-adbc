@@ -17,6 +17,20 @@
 Write-Host "Building the Snowflake ADBC Go driver"
 Write-Host "IsPackagingPipeline=$Env:IsPackagingPipeline"
 
+if (-not (Test-Path env:IsPackagingPipeline)) {
+    Write-Host "IsPackagingPipeline environment variable does not exist."
+    exit
+}
+
+# Get the value of the IsPackagingPipeline environment variable
+$IsPackagingPipelineValue = $env:IsPackagingPipeline
+
+# Check if the value is "true"
+if ($IsPackagingPipelineValue -ne "true") {
+    Write-Host "IsPackagingPipeline is not set to 'true'. Exiting the script."
+    exit
+}
+
 $location = Get-Location
 
 $file = "libadbc_driver_snowflake.dll"
