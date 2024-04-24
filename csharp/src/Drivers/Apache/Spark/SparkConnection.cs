@@ -272,8 +272,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         }
 
-        public override IArrowArrayStream GetInfo(List<int> codes) => base.GetInfo(codes);
-
         public override IArrowArrayStream GetTableTypes()
         {
             StringArray.Builder tableTypesBuilder = new StringArray.Builder();

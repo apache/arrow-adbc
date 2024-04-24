@@ -64,11 +64,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             throw new NotImplementedException();
         }
 
-        public override IArrowArrayStream GetInfo(List<int> codes)
-        {
-            throw new NotImplementedException();
-        }
-
         public override IArrowArrayStream GetTableTypes()
         {
             throw new NotImplementedException();

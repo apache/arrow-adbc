@@ -15,11 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require_relative "connection-operations"
-
-module ADBC
+module ADBCArrow
   class Connection
-    include ConnectionOperations
+    include ADBC::ConnectionOperations
 
     def open_statement(&block)
       Statement.open(self, &block)
@@ -27,16 +25,11 @@ module ADBC
 
     alias_method :get_info_raw, :get_info
     def get_info(codes)
-      c_abi_array_stream = get_info_raw(codes)
+      reader = get_info_raw(codes)
       begin
-        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
-        begin
-          yield(reader.read_all)
-        ensure
-          reader.unref
-        end
+        yield(reader.read_all)
       ensure
-        GLib.free(c_abi_array_stream)
+        reader.unref
       end
     end
   end

@@ -19,4 +19,5 @@ arrow-c-glib
 glib
 gobject-introspection
 meson
+postgresql
 ruby
