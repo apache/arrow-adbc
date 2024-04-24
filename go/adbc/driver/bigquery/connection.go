@@ -66,9 +66,6 @@ type bigQueryTokenResponse struct {
 	TokenType   string `json:"token_type"`
 }
 
-type filteredDatasetHandler func(dataset *bigquery.Dataset) error
-type filteredTableHandler func(dataset *bigquery.Table) error
-
 // GetCurrentCatalog implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) GetCurrentCatalog() (string, error) {
 	return c.catalog, nil
@@ -444,7 +441,9 @@ func buildField(name, typeString, dataType string, index int) (arrow.Field, erro
 		if err != nil {
 			return arrow.Field{}, err
 		}
-		field = arrayFieldType
+		field.Type = arrow.ListOf(arrayFieldType.Type)
+		field.Metadata = arrayFieldType.Metadata
+		field.Nullable = arrayFieldType.Nullable
 	case "RECORD", "STRUCT":
 		fieldRecords := typeString[index+1:]
 		fieldRecords = fieldRecords[:len(fieldRecords)-1]
