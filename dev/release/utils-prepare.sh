@@ -50,7 +50,7 @@ update_versions() {
   esac
 
   header "Updating versions for release ${RELEASE}"
-  echo "CMake: ${cmake_version}"
+  echo "C: ${c_version}"
   echo "Conda: ${conda_version}"
   echo "C#: ${csharp_version}"
   echo "Docs: ${docs_version}"
