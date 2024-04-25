@@ -85,9 +85,7 @@ impl<DriverType: Driver> ExportedConnection<DriverType> {
     }
 }
 
-struct ExportedStatement<DriverType: Driver> {
-    statement: StatementType<DriverType>,
-}
+struct ExportedStatement<DriverType: Driver>(StatementType<DriverType>);
 
 pub trait FFIDriver {
     fn ffi_driver() -> FFI_AdbcDriver;
@@ -1203,10 +1201,7 @@ unsafe fn statement_set_option_impl<DriverType: Driver + Default, Value: Into<Op
 ) -> FFI_AdbcStatusCode {
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
     let key = check_err!(CStr::from_ptr(key).to_str(), error);
-    check_err!(
-        exported.statement.set_option(key.into(), value.into()),
-        error
-    );
+    check_err!(exported.0.set_option(key.into(), value.into()), error);
     ADBC_STATUS_OK
 }
 
@@ -1224,9 +1219,7 @@ unsafe extern "C" fn statement_new<DriverType: Driver + Default>(
     let statement = statement.as_mut().unwrap();
     let inner_statement = check_err!(inner_connection.new_statement(), error);
 
-    let exported = Box::new(ExportedStatement::<DriverType> {
-        statement: inner_statement,
-    });
+    let exported = Box::new(ExportedStatement::<DriverType>(inner_statement));
     statement.private_data = Box::into_raw(exported) as *mut c_void;
 
     ADBC_STATUS_OK
@@ -1313,7 +1306,7 @@ unsafe extern "C" fn statement_get_option<DriverType: Driver + Default>(
     check_not_null!(length, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let optvalue = get_option(Some(&mut exported.statement), None, key);
+    let optvalue = get_option(Some(&mut exported.0), None, key);
     let optvalue = check_err!(optvalue, error);
     check_err!(copy_string(&optvalue, value, length), error);
 
@@ -1331,10 +1324,7 @@ unsafe extern "C" fn statement_get_option_int<DriverType: Driver + Default>(
     check_not_null!(value, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let optvalue = check_err!(
-        get_option_int(Some(&mut exported.statement), None, key),
-        error
-    );
+    let optvalue = check_err!(get_option_int(Some(&mut exported.0), None, key), error);
     std::ptr::write_unaligned(value, optvalue);
 
     ADBC_STATUS_OK
@@ -1351,10 +1341,7 @@ unsafe extern "C" fn statement_get_option_double<DriverType: Driver + Default>(
     check_not_null!(value, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let optvalue = check_err!(
-        get_option_double(Some(&mut exported.statement), None, key),
-        error
-    );
+    let optvalue = check_err!(get_option_double(Some(&mut exported.0), None, key), error);
     std::ptr::write_unaligned(value, optvalue);
 
     ADBC_STATUS_OK
@@ -1373,7 +1360,7 @@ unsafe extern "C" fn statement_get_option_bytes<DriverType: Driver + Default>(
     check_not_null!(length, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let optvalue = get_option_bytes(Some(&mut exported.statement), None, key);
+    let optvalue = get_option_bytes(Some(&mut exported.0), None, key);
     let optvalue = check_err!(optvalue, error);
     copy_bytes(&optvalue, value, length);
     ADBC_STATUS_OK
@@ -1390,7 +1377,7 @@ unsafe extern "C" fn statement_bind<DriverType: Driver + Default>(
     check_not_null!(schema, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.statement;
+    let statement = &mut exported.0;
 
     let schema = schema.as_ref().unwrap();
     let data = FFI_ArrowArray::from_raw(values);
@@ -1421,7 +1408,7 @@ unsafe extern "C" fn statement_bind_stream<DriverType: Driver + Default>(
     check_not_null!(stream, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.statement;
+    let statement = &mut exported.0;
 
     let reader = check_err!(ArrowArrayStreamReader::from_raw(stream), error);
     let reader = Box::new(reader);
@@ -1437,7 +1424,7 @@ unsafe extern "C" fn statement_cancel<DriverType: Driver + Default>(
     check_not_null!(statement, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.statement;
+    let statement = &mut exported.0;
 
     check_err!(statement.cancel(), error);
 
@@ -1453,7 +1440,7 @@ unsafe extern "C" fn statement_execute_query<DriverType: Driver + Default + 'sta
     check_not_null!(statement, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.statement;
+    let statement = &mut exported.0;
 
     if !out.is_null() {
         let reader = check_err!(statement.execute(), error);
@@ -1479,7 +1466,7 @@ unsafe extern "C" fn statement_execute_schema<DriverType: Driver + Default>(
     check_not_null!(schema, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.statement;
+    let statement = &mut exported.0;
 
     let schema_value = check_err!(statement.execute_schema(), error);
     let schema_value: FFI_ArrowSchema = check_err!(schema_value.try_into(), error);
@@ -1500,7 +1487,7 @@ unsafe extern "C" fn statement_execute_partitions<DriverType: Driver + Default>(
     check_not_null!(partitions, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.statement;
+    let statement = &mut exported.0;
 
     let result = check_err!(statement.execute_partitions(), error);
 
@@ -1524,7 +1511,7 @@ unsafe extern "C" fn statement_prepare<DriverType: Driver + Default>(
     check_not_null!(statement, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.statement;
+    let statement = &mut exported.0;
     check_err!(statement.prepare(), error);
     ADBC_STATUS_OK
 }
@@ -1538,7 +1525,7 @@ unsafe extern "C" fn statement_set_sql_query<DriverType: Driver + Default>(
     check_not_null!(query, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.statement;
+    let statement = &mut exported.0;
 
     let query = check_err!(CStr::from_ptr(query).to_str(), error);
     check_err!(statement.set_sql_query(query), error);
@@ -1556,7 +1543,7 @@ unsafe extern "C" fn statement_set_substrait_plan<DriverType: Driver + Default>(
     check_not_null!(plan, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.statement;
+    let statement = &mut exported.0;
 
     let plan = std::slice::from_raw_parts(plan, length);
     check_err!(statement.set_substrait_plan(plan), error);
@@ -1573,7 +1560,7 @@ unsafe extern "C" fn statement_get_parameter_schema<DriverType: Driver + Default
     check_not_null!(schema, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &exported.statement;
+    let statement = &exported.0;
 
     let schema_value = check_err!(statement.get_parameters_schema(), error);
     let schema_value: FFI_ArrowSchema = check_err!(schema_value.try_into(), error);
