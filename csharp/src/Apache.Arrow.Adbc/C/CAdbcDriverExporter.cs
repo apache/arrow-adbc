@@ -22,7 +22,6 @@ using System.Runtime.InteropServices;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
 
-
 #if NETSTANDARD
 using Apache.Arrow.Adbc.Extensions;
 #endif
@@ -775,7 +774,7 @@ namespace Apache.Arrow.Adbc.C
                 columnNamePattern = Marshal.PtrToStringUTF8((IntPtr)column_name);
 #endif
 
-                List<string> tableTypes = null;
+                string[] tableTypes = null;
                 const int maxTableTypeCount = 100;
                 if (table_type != null)
                 {
@@ -790,13 +789,13 @@ namespace Apache.Arrow.Adbc.C
                         throw new InvalidOperationException($"We do not expect to get more than {maxTableTypeCount} table types");
                     }
 
-                    tableTypes = new List<string>(count);
+                    tableTypes = new string[count];
                     for (int i = 0; i < count; i++)
                     {
 #if NETSTANDARD
-                        tableTypes.Add(MarshalExtensions.PtrToStringUTF8((IntPtr)table_type[i]));
+                        tableTypes[i] = MarshalExtensions.PtrToStringUTF8((IntPtr)table_type[i]);
 #else
-                        tableTypes.Add(Marshal.PtrToStringUTF8((IntPtr)table_type[i]));
+                        tableTypes[i] = Marshal.PtrToStringUTF8((IntPtr)table_type[i]);
 #endif
                     }
                 }

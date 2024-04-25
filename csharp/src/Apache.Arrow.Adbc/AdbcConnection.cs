@@ -73,7 +73,7 @@ namespace Apache.Arrow.Adbc
         /// Metadata about the driver and/or database
         /// </returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public virtual IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
+        public virtual IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
             if (codes == null)
                 throw new ArgumentNullException(nameof(codes));
@@ -119,7 +119,7 @@ namespace Apache.Arrow.Adbc
             string catalogPattern,
             string dbSchemaPattern,
             string tableNamePattern,
-            List<string> tableTypes,
+            IReadOnlyList<string> tableTypes,
             string columnNamePattern);
 
         public enum GetObjectsDepth

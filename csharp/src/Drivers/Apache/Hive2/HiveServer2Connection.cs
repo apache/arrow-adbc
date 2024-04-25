@@ -59,7 +59,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected abstract TProtocol CreateProtocol();
         protected abstract TOpenSessionReq CreateSessionRequest();
 
-        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, List<string> tableTypes, string columnNamePattern)
+        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, IReadOnlyList<string> tableTypes, string columnNamePattern)
         {
             throw new NotImplementedException();
         }

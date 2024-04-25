@@ -39,7 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         const string userAgent = "MicrosoftSparkODBCDriver/2.7.6.1014";
 
-        readonly IReadOnlyList<AdbcInfoCode> infoSupportedCodes = new List<AdbcInfoCode> {
+        readonly AdbcInfoCode[] infoSupportedCodes = new [] {
             AdbcInfoCode.DriverName,
             AdbcInfoCode.DriverVersion,
             AdbcInfoCode.DriverArrowVersion,
@@ -156,12 +156,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             */
         }
 
-        public override IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
+        public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
             const int strValTypeID = 0;
 
             UnionType infoUnionType = new UnionType(
-                new List<Field>()
+                new Field[]
                 {
                     new Field("string_value", StringType.Default, true),
                     new Field("bool_value", BooleanType.Default, true),
@@ -178,7 +178,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         "int32_to_int32_list_map",
                         new ListType(
                             new Field("entries", new StructType(
-                                new List<Field>()
+                                new Field[]
                                 {
                                     new Field("key", Int32Type.Default, false),
                                     new Field("value", Int32Type.Default, true),
@@ -193,7 +193,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             if (codes.Count == 0)
             {
-                codes = new List<AdbcInfoCode>(infoSupportedCodes);
+                codes = infoSupportedCodes;
             }
 
             UInt32Array.Builder infoNameBuilder = new UInt32Array.Builder();
@@ -242,7 +242,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
 
             StructType entryType = new StructType(
-                new List<Field>(){
+                new Field[] {
                     new Field("key", Int32Type.Default, false),
                     new Field("value", Int32Type.Default, true)});
 
@@ -250,19 +250,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 new[] { new Int32Array.Builder().Build(), new Int32Array.Builder().Build() },
                 new ArrowBuffer.BitmapBuilder().Build());
 
-            List<IArrowArray> childrenArrays = new List<IArrowArray>()
+            IArrowArray[] childrenArrays = new IArrowArray[]
             {
                 stringInfoBuilder.Build(),
                 new BooleanArray.Builder().Build(),
                 new Int64Array.Builder().Build(),
                 new Int32Array.Builder().Build(),
                 new ListArray.Builder(StringType.Default).Build(),
-                CreateNestedListArray(new List<IArrowArray?>(){ entriesDataArray }, entryType)
+                CreateNestedListArray(new IArrowArray?[] { entriesDataArray }, entryType)
             };
 
             DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 infoNameBuilder.Build(),
                 infoValue
@@ -277,7 +277,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             StringArray.Builder tableTypesBuilder = new StringArray.Builder();
             tableTypesBuilder.AppendRange(new string[] { "BASE TABLE", "VIEW" });
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 tableTypesBuilder.Build()
             };
@@ -316,23 +316,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
             return new Schema(fields, null);
         }
-        private static IReadOnlyList<int> ConvertSpanToReadOnlyList(Int32Array span)
-        {
-            // Initialize a list with the capacity equal to the length of the span
-            // to avoid resizing during the addition of elements
-            List<int> list = new List<int>(span.Length);
 
-            // Copy elements from the span to the list
-            foreach (int item in span)
-            {
-                list.Add(item);
-            }
-
-            // Return the list as IReadOnlyList<int>
-            return list;
-        }
-
-        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, List<string> tableTypes, string columnNamePattern)
+        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, IReadOnlyList<string> tableTypes, string columnNamePattern)
         {
             Trace.TraceError($"getting objects with depth={depth.ToString()}, catalog = {catalogPattern}, dbschema = {dbSchemaPattern}, tablename = {tableNamePattern}");
 
@@ -446,7 +431,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 IReadOnlyList<string> schemaList = resp.Columns[1].StringVal.Values;
                 IReadOnlyList<string> tableList = resp.Columns[2].StringVal.Values;
                 IReadOnlyList<string> columnList = resp.Columns[3].StringVal.Values;
-                IReadOnlyList<int> columnTypeList = ConvertSpanToReadOnlyList(resp.Columns[4].I32Val.Values);
+                ReadOnlySpan<int> columnTypeList = resp.Columns[4].I32Val.Values.Values;
 
                 for (int i = 0; i < catalogList.Count; i++)
                 {
@@ -464,7 +449,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             StringArray.Builder catalogNameBuilder = new StringArray.Builder();
             List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>();
 
-
             foreach (KeyValuePair<string, Dictionary<string, Dictionary<string, TableInfoPair>>> catalogEntry in catalogMap)
             {
                 catalogNameBuilder.Append(catalogEntry.Key);
@@ -478,10 +462,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     catalogDbSchemasValues.Add(GetDbSchemas(
                                 depth, catalogEntry.Value));
                 }
-
             }
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 catalogNameBuilder.Build(),
                 CreateNestedListArray(catalogDbSchemasValues, new StructType(StandardSchemas.DbSchemaSchema)),
@@ -559,7 +542,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
 
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 dbSchemaNameBuilder.Build(),
                 CreateNestedListArray(dbSchemaTablesValues, new StructType(StandardSchemas.TableSchema)),
@@ -606,7 +589,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
 
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 tableNameBuilder.Build(),
                 tableTypeBuilder.Build(),
@@ -677,7 +660,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 length++;
             }
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 columnNameBuilder.Build(),
                 ordinalPositionBuilder.Build(),
@@ -707,7 +690,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 nullBitmapBuffer.Build());
         }
 
-        private ListArray CreateNestedListArray(List<IArrowArray?> arrayList, IArrowType dataType)
+        private ListArray CreateNestedListArray(IReadOnlyList<IArrowArray?> arrayList, IArrowType dataType)
         {
             ArrowBuffer.Builder<int> valueOffsetsBufferBuilder = new ArrowBuffer.Builder<int>();
             ArrowBuffer.BitmapBuilder validityBufferBuilder = new ArrowBuffer.BitmapBuilder();
@@ -859,7 +842,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private Schema schema;
         private RecordBatch? batch;
 
-        public SparkInfoArrowStream(Schema schema, List<IArrowArray> data)
+        public SparkInfoArrowStream(Schema schema, IReadOnlyList<IArrowArray> data)
         {
             this.schema = schema;
             this.batch = new RecordBatch(schema, data, data[0].Length);
