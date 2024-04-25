@@ -160,9 +160,18 @@ impl<DriverType: Driver + Default + 'static> FFIDriver for DriverType {
 
 /// Export a Rust driver to a C driver.
 ///
-/// The default name recommended is `AdbcDriverInit` or `<Prefix>DriverInit`.
+/// Although drivers may choose any name for `$func_name`, the
+/// recommended name is `AdbcDriverInit`, or a name derived from the
+/// name of the driver's shared library as follows: remove the `lib`
+/// prefix (on Unix systems) and all file extensions, then `PascalCase`
+/// the driver name, append `Init`, and prepend `Adbc` (if not already
+/// there). For example:
 ///
-/// The driver type must implement [Driver] and [Default].
+/// - `libadbc_driver_sqlite.so.2.0.0` -> `AdbcDriverSqliteInit`
+/// - `adbc_driver_sqlite.dll` -> `AdbcDriverSqliteInit`
+/// - `proprietary_driver.dll` -> `AdbcProprietaryDriverInit`
+///
+/// The `$driver_type` must implement [Driver] and [Default].
 #[macro_export]
 macro_rules! export_driver {
     ($func_name:ident, $driver_type:ty) => {
