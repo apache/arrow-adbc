@@ -214,7 +214,8 @@ macro_rules! check_err {
                 let error = $crate::error::Error::from(error);
                 let status: $crate::ffi::FFI_AdbcStatusCode = error.status.into();
                 if !$err_out.is_null() {
-                    let mut ffi_error = $crate::ffi::FFI_AdbcError::try_from(error).unwrap();
+                    let mut ffi_error =
+                        $crate::ffi::FFI_AdbcError::try_from(error).unwrap_or_else(Into::into);
                     ffi_error.private_driver = (*$err_out).private_driver;
                     unsafe { std::ptr::write_unaligned($err_out, ffi_error) };
                 }
