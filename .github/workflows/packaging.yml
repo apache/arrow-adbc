@@ -448,7 +448,7 @@ jobs:
 
   python-conda-macos:
     name: "Python ${{ matrix.arch }} Conda"
-    runs-on: macos-latest
+    runs-on: macos-13
     # No need for Conda packages during release
     # TODO(apache/arrow-adbc#468): re-enable
     if: false
@@ -632,11 +632,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-latest", "macos-14"]
+        os: ["macos-13", "macos-latest"]
         include:
-          - os: macos-latest
+          - os: macos-13
             arch: amd64
-          - os: macos-14
+          - os: macos-latest
             arch: arm64v8
     env:
       MACOSX_DEPLOYMENT_TARGET: "10.15"
