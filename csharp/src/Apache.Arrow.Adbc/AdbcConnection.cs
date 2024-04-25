@@ -70,31 +70,15 @@ namespace Apache.Arrow.Adbc
         /// The metadata items to fetch.
         /// </param>
         /// <returns>
-        /// A statement that can be immediately executed.
-        /// </returns>
-        public virtual IArrowArrayStream GetInfo(List<int> codes)
-        {
-            throw AdbcException.NotImplemented("Connection does not support GetInfo");
-        }
-
-        /// <summary>
-        /// Get metadata about the driver/database.
-        /// </summary>
-        /// <param name="codes">
-        /// The metadata items to fetch.
-        /// </param>
-        /// <returns>
-        /// A statement that can be immediately executed.
+        /// Metadata about the driver and/or database
         /// </returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public virtual IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
+        public virtual IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
             if (codes == null)
                 throw new ArgumentNullException(nameof(codes));
 
-            List<int> codeValues = codes.Select(x => (int)x).ToList();
-
-            return GetInfo(codeValues);
+            throw AdbcException.NotImplemented("Connection does not support GetInfo");
         }
 
         /// <summary>
@@ -135,7 +119,7 @@ namespace Apache.Arrow.Adbc
             string catalogPattern,
             string dbSchemaPattern,
             string tableNamePattern,
-            List<string> tableTypes,
+            IReadOnlyList<string> tableTypes,
             string columnNamePattern);
 
         public enum GetObjectsDepth

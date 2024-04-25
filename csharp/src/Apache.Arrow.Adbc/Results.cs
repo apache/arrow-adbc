@@ -76,9 +76,9 @@ namespace Apache.Arrow.Adbc
     {
         private readonly Schema _schema;
         private readonly long _affectedRows = -1;
-        private readonly List<PartitionDescriptor> _partitionDescriptors;
+        private readonly IReadOnlyList<PartitionDescriptor> _partitionDescriptors;
 
-        public PartitionedResult(Schema schema, long affectedRows, List<PartitionDescriptor> partitionDescriptors)
+        public PartitionedResult(Schema schema, long affectedRows, IReadOnlyList<PartitionDescriptor> partitionDescriptors)
         {
             _schema = schema;
             _affectedRows = affectedRows;
@@ -98,6 +98,6 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Get partitions.
         /// </summary>
-        public List<PartitionDescriptor> PartitionDescriptors { get => _partitionDescriptors; }
+        public IReadOnlyList<PartitionDescriptor> PartitionDescriptors { get => _partitionDescriptors; }
     }
 }

@@ -20,12 +20,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
 
-#if NETSTANDARD
-using Apache.Arrow.Adbc.Extensions;
-#endif
 
 namespace Apache.Arrow.Adbc.C
 {
@@ -222,12 +220,7 @@ namespace Apache.Arrow.Adbc.C
                 return new AdbcStatementNative(_nativeDriver, nativeStatement);
             }
 
-            public override IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
-            {
-                return GetInfo(codes.Select(x => (int)x).ToList<int>());
-            }
-
-            public override unsafe IArrowArrayStream GetInfo(List<int> codes)
+            public unsafe override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
             {
                 CArrowArrayStream* nativeArrayStream = CArrowArrayStream.Create();
 
@@ -241,7 +234,7 @@ namespace Apache.Arrow.Adbc.C
                 return arrowArrayStream;
             }
 
-            public override unsafe IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, List<string> tableTypes, string columnNamePattern)
+            public override unsafe IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, IReadOnlyList<string> tableTypes, string columnNamePattern)
             {
                 CArrowArrayStream* nativeArrayStream = CArrowArrayStream.Create();
 
@@ -696,44 +689,44 @@ namespace Apache.Arrow.Adbc.C
             }
 
 #if NET5_0_OR_GREATER
-            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, int*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection connection, List<int> infoCodes, CArrowArrayStream* stream)
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, int*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection connection, IReadOnlyList<AdbcInfoCode> infoCodes, CArrowArrayStream* stream)
             {
                 fixed (CAdbcConnection* cn = &connection)
                 fixed (CAdbcError* e = &_error)
                 {
-                    Span<int> span = CollectionsMarshal.AsSpan(infoCodes);
-                    fixed (int* spanPtr = span)
+                    Span<AdbcInfoCode> span = infoCodes.AsSpan();
+                    fixed (AdbcInfoCode* spanPtr = span)
                     {
-                        TranslateCode(fn(cn, spanPtr, infoCodes.Count, stream, e));
+                        TranslateCode(fn(cn, (int*)spanPtr, infoCodes.Count, stream, e));
                     }
                 }
             }
 #else
-            public unsafe void Call(IntPtr ptr, ref CAdbcConnection connection, List<int> infoCodes, CArrowArrayStream* stream)
+            public unsafe void Call(IntPtr ptr, ref CAdbcConnection connection, IReadOnlyList<AdbcInfoCode> infoCodes, CArrowArrayStream* stream)
             {
                 fixed (CAdbcConnection* cn = &connection)
                 fixed (CAdbcError* e = &_error)
                 {
-                    Span<int> span = infoCodes.ToArray().AsSpan();
-                    fixed (int* spanPtr = span)
+                    Span<AdbcInfoCode> span = infoCodes.ToArray().AsSpan();
+                    fixed (AdbcInfoCode* spanPtr = span)
                     {
-                        TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetInfo>(ptr)(cn, spanPtr, infoCodes.Count, stream, e));
+                        TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetInfo>(ptr)(cn, (int*)spanPtr, infoCodes.Count, stream, e));
                     }
                 }
             }
 #endif
 
 #if NET5_0_OR_GREATER
-            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, int, byte*, byte*, byte*, byte**, byte*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection connection, int depth, string catalog, string db_schema, string table_name, List<string> table_types, string column_name, CArrowArrayStream* stream)
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, int, byte*, byte*, byte*, byte**, byte*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection connection, int depth, string catalog, string db_schema, string table_name, IReadOnlyList<string> table_types, string column_name, CArrowArrayStream* stream)
 #else
-            public unsafe void Call(IntPtr fn, ref CAdbcConnection connection, int depth, string catalog, string db_schema, string table_name, List<string> table_types, string column_name, CArrowArrayStream* stream)
+            public unsafe void Call(IntPtr fn, ref CAdbcConnection connection, int depth, string catalog, string db_schema, string table_name, IReadOnlyList<string> table_types, string column_name, CArrowArrayStream* stream)
 #endif
             {
                 byte* bcatalog, bDb_schema, bTable_name, bColumn_Name;
 
                 if (table_types == null)
                 {
-                    table_types = new List<string>();
+                    table_types = new string[0];
                 }
 
                 // need to terminate with a null entry per https://github.com/apache/arrow-adbc/blob/b97e22c4d6524b60bf261e1970155500645be510/adbc.h#L909-L911
