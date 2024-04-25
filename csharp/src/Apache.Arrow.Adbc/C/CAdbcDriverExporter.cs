@@ -19,12 +19,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
-
-#if NETSTANDARD
-using Apache.Arrow.Adbc.Extensions;
-#endif
 
 namespace Apache.Arrow.Adbc.C
 {
@@ -38,6 +35,7 @@ namespace Apache.Arrow.Adbc.C
 #if NET5_0_OR_GREATER
         private static unsafe delegate* unmanaged<CAdbcError*, void> ReleaseErrorPtr => (delegate* unmanaged<CAdbcError*, void>)s_releaseError.Pointer;
         private static unsafe delegate* unmanaged<CAdbcDriver*, CAdbcError*, AdbcStatusCode> ReleaseDriverPtr => &ReleaseDriver;
+        private static unsafe delegate* unmanaged<CAdbcPartitions*, void> ReleasePartitionsPtr => &ReleasePartitions;
 
         private static unsafe delegate* unmanaged<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> DatabaseInitPtr => &InitDatabase;
         private static unsafe delegate* unmanaged<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> DatabaseReleasePtr => &ReleaseDatabase;
@@ -55,16 +53,23 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe delegate* unmanaged<CAdbcConnection*, byte*, byte*, CAdbcError*, AdbcStatusCode> ConnectionSetOptionPtr => &SetConnectionOption;
 
         private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowArray*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementBindPtr => &BindStatement;
+        private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> StatementBindStreamPtr => &BindStreamStatement;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, long*, CAdbcError*, AdbcStatusCode> StatementExecuteQueryPtr => &ExecuteStatementQuery;
+        private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcPartitions*, long*, CAdbcError*, AdbcStatusCode> StatementExecutePartitionsPtr => &ExecuteStatementPartitions;
         private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementNewPtr => &NewStatement;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementReleasePtr => &ReleaseStatement;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementPreparePtr => &PrepareStatement;
         private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, CAdbcError*, AdbcStatusCode> StatementSetSqlQueryPtr => &SetStatementSqlQuery;
+        private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, int, CAdbcError*, AdbcStatusCode> StatementSetSubstraitPlanPtr => &SetStatementSubstraitPlan;
+        private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementGetParameterSchemaPtr => &GetStatementParameterSchema;
 #else
         private static IntPtr ReleaseErrorPtr => s_releaseError.Pointer;
         internal unsafe delegate AdbcStatusCode DriverRelease(CAdbcDriver* driver, CAdbcError* error);
         private static unsafe readonly NativeDelegate<DriverRelease> s_releaseDriver = new NativeDelegate<DriverRelease>(ReleaseDriver);
         private static IntPtr ReleaseDriverPtr => s_releaseDriver.Pointer;
+        internal unsafe delegate void PartitionsRelease(CAdbcPartitions* partitions);
+        private static unsafe readonly NativeDelegate<PartitionsRelease> s_releasePartitions = new NativeDelegate<PartitionsRelease>(ReleasePartitions);
+        private static IntPtr ReleasePartitionsPtr => s_releasePartitions.Pointer;
 
         private static unsafe readonly NativeDelegate<DatabaseFn> s_databaseInit = new NativeDelegate<DatabaseFn>(InitDatabase);
         private static IntPtr DatabaseInitPtr => s_databaseInit.Pointer;
@@ -102,12 +107,18 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe readonly NativeDelegate<ConnectionSetOption> s_connectionSetOption = new NativeDelegate<ConnectionSetOption>(SetConnectionOption);
         private static IntPtr ConnectionSetOptionPtr => s_connectionSetOption.Pointer;
 
-        private unsafe delegate AdbcStatusCode StatementBind(CAdbcStatement* statement, CArrowArray* array, CArrowSchema* schema, CAdbcError* error);
+        internal unsafe delegate AdbcStatusCode StatementBind(CAdbcStatement* statement, CArrowArray* array, CArrowSchema* schema, CAdbcError* error);
         private static unsafe readonly NativeDelegate<StatementBind> s_statementBind = new NativeDelegate<StatementBind>(BindStatement);
         private static IntPtr StatementBindPtr => s_statementBind.Pointer;
+        internal unsafe delegate AdbcStatusCode StatementBindStream(CAdbcStatement* statement, CArrowArrayStream* stream, CAdbcError* error);
+        private static unsafe readonly NativeDelegate<StatementBindStream> s_statementBindStream = new NativeDelegate<StatementBindStream>(BindStreamStatement);
+        private static IntPtr StatementBindStreamPtr => s_statementBindStream.Pointer;
         internal unsafe delegate AdbcStatusCode StatementExecuteQuery(CAdbcStatement* statement, CArrowArrayStream* stream, long* rows, CAdbcError* error);
         private static unsafe readonly NativeDelegate<StatementExecuteQuery> s_statementExecuteQuery = new NativeDelegate<StatementExecuteQuery>(ExecuteStatementQuery);
         private static IntPtr StatementExecuteQueryPtr = s_statementExecuteQuery.Pointer;
+        internal unsafe delegate AdbcStatusCode StatementExecutePartitions(CAdbcStatement* statement, CArrowSchema* schema, CAdbcPartitions* partitions, long* rows, CAdbcError* error);
+        private static unsafe readonly NativeDelegate<StatementExecutePartitions> s_statementExecutePartitions = new NativeDelegate<StatementExecutePartitions>(ExecuteStatementPartitions);
+        private static IntPtr StatementExecutePartitionsPtr = s_statementExecutePartitions.Pointer;
         internal unsafe delegate AdbcStatusCode StatementNew(CAdbcConnection* connection, CAdbcStatement* statement, CAdbcError* error);
         private static unsafe readonly NativeDelegate<StatementNew> s_statementNew = new NativeDelegate<StatementNew>(NewStatement);
         private static IntPtr StatementNewPtr => s_statementNew.Pointer;
@@ -119,16 +130,13 @@ namespace Apache.Arrow.Adbc.C
         internal unsafe delegate AdbcStatusCode StatementSetSqlQuery(CAdbcStatement* statement, byte* text, CAdbcError* error);
         private static unsafe readonly NativeDelegate<StatementSetSqlQuery> s_statementSetSqlQuery = new NativeDelegate<StatementSetSqlQuery>(SetStatementSqlQuery);
         private static IntPtr StatementSetSqlQueryPtr = s_statementSetSqlQuery.Pointer;
+        internal unsafe delegate AdbcStatusCode StatementSetSubstraitPlan(CAdbcStatement* statement, byte* plan, int length, CAdbcError* error);
+        private static unsafe readonly NativeDelegate<StatementSetSubstraitPlan> s_statementSetSubstraitPlan = new NativeDelegate<StatementSetSubstraitPlan>(SetStatementSubstraitPlan);
+        private static IntPtr StatementSetSubstraitPlanPtr = s_statementSetSubstraitPlan.Pointer;
+        internal unsafe delegate AdbcStatusCode StatementGetParameterSchema(CAdbcStatement* statement, CArrowSchema* schema, CAdbcError* error);
+        private static unsafe readonly NativeDelegate<StatementGetParameterSchema> s_statementGetParameterSchema = new NativeDelegate<StatementGetParameterSchema>(GetStatementParameterSchema);
+        private static IntPtr StatementGetParameterSchemaPtr = s_statementGetParameterSchema.Pointer;
 #endif
-
-        /*
-         * Not yet implemented
-
-                unsafe delegate AdbcStatusCode StatementBindStream(CAdbcStatement* statement, CArrowArrayStream* stream, CAdbcError* error);
-                unsafe delegate AdbcStatusCode StatementExecutePartitions(CAdbcStatement* statement, CArrowSchema* schema, CAdbcPartitions* partitions, long* rows_affected, CAdbcError* error);
-                unsafe delegate AdbcStatusCode StatementGetParameterSchema(CAdbcStatement* statement, CArrowSchema* schema, CAdbcError* error);
-                unsafe delegate AdbcStatusCode StatementSetSubstraitPlan(CAdbcStatement statement, byte* plan, int length, CAdbcError error);
-        */
 
         public unsafe static AdbcStatusCode AdbcDriverInit(int version, CAdbcDriver* nativeDriver, CAdbcError* error, AdbcDriver driver)
         {
@@ -142,7 +150,6 @@ namespace Apache.Arrow.Adbc.C
             nativeDriver->DatabaseSetOption = DatabaseSetOptionPtr;
             nativeDriver->DatabaseRelease = DatabaseReleasePtr;
 
-            // TODO: This should probably only set the pointers for the functionality actually supported by this particular driver
             nativeDriver->ConnectionCommit = ConnectionCommitPtr;
             nativeDriver->ConnectionGetInfo = ConnectionGetInfoPtr;
             nativeDriver->ConnectionGetObjects = ConnectionGetObjectsPtr;
@@ -156,15 +163,15 @@ namespace Apache.Arrow.Adbc.C
             nativeDriver->ConnectionRollback = ConnectionRollbackPtr;
 
             nativeDriver->StatementBind = StatementBindPtr;
-            // nativeDriver->StatementBindStream = StatementBindStreamPtr;
+            nativeDriver->StatementBindStream = StatementBindStreamPtr;
             nativeDriver->StatementExecuteQuery = StatementExecuteQueryPtr;
-            // nativeDriver->StatementExecutePartitions = StatementExecutePartitionsPtr;
-            // nativeDriver->StatementGetParameterSchema = StatementGetParameterSchemaPtr;
+            nativeDriver->StatementExecutePartitions = StatementExecutePartitionsPtr;
+            nativeDriver->StatementGetParameterSchema = StatementGetParameterSchemaPtr;
             nativeDriver->StatementNew = StatementNewPtr;
             nativeDriver->StatementPrepare = StatementPreparePtr;
             nativeDriver->StatementRelease = StatementReleasePtr;
             nativeDriver->StatementSetSqlQuery = StatementSetSqlQueryPtr;
-            // nativeDriver->StatementSetSubstraitPlan = StatementSetSubstraitPlanPtr;
+            nativeDriver->StatementSetSubstraitPlan = StatementSetSubstraitPlanPtr;
 
             return 0;
         }
@@ -181,12 +188,7 @@ namespace Apache.Arrow.Adbc.C
         {
             ReleaseError(error);
 
-#if NETSTANDARD
             error->message = (byte*)MarshalExtensions.StringToCoTaskMemUTF8(exception.Message);
-#else
-            error->message = (byte*)Marshal.StringToCoTaskMemUTF8(exception.Message);
-#endif
-
             error->sqlstate0 = (byte)0;
             error->sqlstate1 = (byte)0;
             error->sqlstate2 = (byte)0;
@@ -246,6 +248,37 @@ namespace Apache.Arrow.Adbc.C
             catch (Exception e)
             {
                 return SetError(error, e);
+            }
+        }
+
+#if NET5_0_OR_GREATER
+        [UnmanagedCallersOnly]
+#endif
+        private unsafe static void ReleasePartitions(CAdbcPartitions* partitions)
+        {
+            if (partitions != null)
+            {
+                if (partitions->partitions != null)
+                {
+                    for (int i = 0; i < partitions->num_partitions; i++)
+                    {
+                        byte* partition = partitions->partitions[i];
+                        if (partition != null)
+                        {
+                            Marshal.FreeHGlobal((IntPtr)partition);
+                            partitions->partitions[i] = null;
+                        }
+                    }
+                    Marshal.FreeHGlobal((IntPtr)partitions->partitions);
+                    partitions->partitions = null;
+                }
+                if (partitions->partition_lengths != null)
+                {
+                    Marshal.FreeHGlobal((IntPtr)partitions->partition_lengths);
+                    partitions->partition_lengths = null;
+                }
+
+                partitions->release = default;
             }
         }
 
@@ -515,6 +548,46 @@ namespace Apache.Arrow.Adbc.C
 #if NET5_0_OR_GREATER
         [UnmanagedCallersOnly]
 #endif
+        private unsafe static AdbcStatusCode SetStatementSubstraitPlan(CAdbcStatement* nativeStatement, byte* plan, int length, CAdbcError* error)
+        {
+            try
+            {
+                GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
+                AdbcStatement stub = (AdbcStatement)gch.Target;
+
+                stub.SubstraitPlan = MarshalExtensions.MarshalBuffer(plan, length);
+
+                return AdbcStatusCode.Success;
+            }
+            catch (Exception e)
+            {
+                return SetError(error, e);
+            }
+        }
+
+#if NET5_0_OR_GREATER
+        [UnmanagedCallersOnly]
+#endif
+        private unsafe static AdbcStatusCode GetStatementParameterSchema(CAdbcStatement* nativeStatement, CArrowSchema* schema, CAdbcError* error)
+        {
+            try
+            {
+                GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
+                AdbcStatement stub = (AdbcStatement)gch.Target;
+
+                CArrowSchemaExporter.ExportSchema(stub.GetParameterSchema(), schema);
+
+                return AdbcStatusCode.Success;
+            }
+            catch (Exception e)
+            {
+                return SetError(error, e);
+            }
+        }
+
+#if NET5_0_OR_GREATER
+        [UnmanagedCallersOnly]
+#endif
         private unsafe static AdbcStatusCode BindStatement(CAdbcStatement* nativeStatement, CArrowArray* array, CArrowSchema* cschema, CAdbcError* error)
         {
             try
@@ -525,6 +598,26 @@ namespace Apache.Arrow.Adbc.C
                 Schema schema = CArrowSchemaImporter.ImportSchema(cschema);
                 RecordBatch batch = CArrowArrayImporter.ImportRecordBatch(array, schema);
                 stub.Bind(batch, schema);
+                return AdbcStatusCode.Success;
+            }
+            catch (Exception e)
+            {
+                return SetError(error, e);
+            }
+        }
+
+#if NET5_0_OR_GREATER
+        [UnmanagedCallersOnly]
+#endif
+        private unsafe static AdbcStatusCode BindStreamStatement(CAdbcStatement* nativeStatement, CArrowArrayStream* stream, CAdbcError* error)
+        {
+            try
+            {
+                GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
+                AdbcStatement stub = (AdbcStatement)gch.Target;
+
+                IArrowArrayStream arrayStream = CArrowArrayStreamImporter.ImportArrayStream(stream);
+                stub.BindStream(arrayStream);
                 return AdbcStatusCode.Success;
             }
             catch (Exception e)
@@ -549,6 +642,44 @@ namespace Apache.Arrow.Adbc.C
                 }
 
                 CArrowArrayStreamExporter.ExportArrayStream(result.Stream, stream);
+                return AdbcStatusCode.Success;
+            }
+            catch (Exception e)
+            {
+                return SetError(error, e);
+            }
+        }
+
+#if NET5_0_OR_GREATER
+        [UnmanagedCallersOnly]
+#endif
+        private unsafe static AdbcStatusCode ExecuteStatementPartitions(CAdbcStatement* nativeStatement, CArrowSchema* schema, CAdbcPartitions* partitions, long* rows, CAdbcError* error)
+        {
+            try
+            {
+                GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
+                AdbcStatement stub = (AdbcStatement)gch.Target;
+                var result = stub.ExecutePartitioned();
+                if (rows != null)
+                {
+                    *rows = result.AffectedRows;
+                }
+
+                partitions->release = ReleasePartitionsPtr;
+                partitions->num_partitions = result.PartitionDescriptors.Count;
+                partitions->partitions = (byte**)Marshal.AllocHGlobal(IntPtr.Size * result.PartitionDescriptors.Count);
+                partitions->partition_lengths = (nuint*)Marshal.AllocHGlobal(IntPtr.Size * result.PartitionDescriptors.Count);
+                for (int i = 0; i < partitions->num_partitions; i++)
+                {
+                    ReadOnlySpan<byte> partition = result.PartitionDescriptors[i].Descriptor;
+                    partitions->partition_lengths[i] = (nuint)partition.Length;
+                    partitions->partitions[i] = (byte*)Marshal.AllocHGlobal(partition.Length);
+                    fixed (void* descriptor = partition)
+                    {
+                        Buffer.MemoryCopy(descriptor, partitions->partitions[i], partition.Length, partition.Length);
+                    }
+                }
+
                 return AdbcStatusCode.Success;
             }
             catch (Exception e)

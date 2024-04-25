@@ -44,13 +44,27 @@ namespace Apache.Arrow.Adbc
         /// </summary>
         public virtual byte[] SubstraitPlan
         {
-            get { throw new NotImplementedException(); }
-            set { throw new NotImplementedException(); }
+            get { throw AdbcException.NotImplemented("Statement does not support SubstraitPlan"); }
+            set { throw AdbcException.NotImplemented("Statement does not support SubstraitPlan"); }
         }
 
+        /// <summary>
+        /// Binds this statement to a <see cref="RecordBatch"/> to provide parameter values or bulk data ingestion.
+        /// </summary>
+        /// <param name="batch">the RecordBatch to bind</param>
+        /// <param name="schema">the schema of the RecordBatch</param>
         public virtual void Bind(RecordBatch batch, Schema schema)
         {
             throw AdbcException.NotImplemented("Statement does not support Bind");
+        }
+
+        /// <summary>
+        /// Binds this statement to an <see cref="IArrowArrayStream"/> to provide parameter values or bulk data ingestion.
+        /// </summary>
+        /// <param name="stream"></param>
+        public virtual void BindStream(IArrowArrayStream stream)
+        {
+            throw AdbcException.NotImplemented("Statement does not support BindStream");
         }
 
         /// <summary>
