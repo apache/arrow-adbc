@@ -220,7 +220,7 @@ unsafe fn copy_string(src: &str, dst: *mut c_char, length: *mut usize) -> Result
     let n = src.len() + 1; // +1 for nul terminator
     let src = CString::new(src)?;
     if n <= *length {
-        std::ptr::copy(src.as_ptr(), dst, n);
+        std::ptr::copy_nonoverlapping(src.as_ptr(), dst, n);
     }
     *length = n;
     Ok::<(), Error>(())
@@ -229,7 +229,7 @@ unsafe fn copy_string(src: &str, dst: *mut c_char, length: *mut usize) -> Result
 unsafe fn copy_bytes(src: &[u8], dst: *mut u8, length: *mut usize) {
     let n = src.len();
     if n <= *length {
-        std::ptr::copy(src.as_ptr(), dst, n);
+        std::ptr::copy_nonoverlapping(src.as_ptr(), dst, n);
     }
     *length = n;
 }
