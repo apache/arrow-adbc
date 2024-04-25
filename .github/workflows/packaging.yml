@@ -197,7 +197,7 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v3
         with:
           path: adbc/go/adbc/pkg
 
