@@ -892,7 +892,7 @@ jobs:
         run: |
           pushd adbc
           docker compose run  \
-            -e SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.VERSION }} \
+            -e SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION \
             python-sdist
           popd
 
