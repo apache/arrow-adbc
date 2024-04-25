@@ -18,30 +18,21 @@
 
 set -eu
 
-main() {
-    local -r source_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-    local -r source_top_dir="$( cd "${source_dir}/../../" && pwd )"
-    pushd "${source_top_dir}"
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SOURCE_DIR}/utils-common.sh"
+source "${SOURCE_DIR}/utils-prepare.sh"
 
-    if [ "$#" -ne 3 ]; then
-        echo "Usage: $0 <prev-version> <version> <rc-num>"
+main() {
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: $0 <rc-num>"
+        echo "Usage: $0 0"
         exit 1
     fi
 
-    local -r prev_version="$1"
-    local -r version="$2"
-    local -r rc_number="$3"
-    local -r tag="apache-arrow-adbc-${version}-rc${rc_number}"
-    local -r tarball="apache-arrow-adbc-${version}"
+    pushd "${SOURCE_TOP_DIR}"
 
-    : ${REPOSITORY:="apache/arrow-adbc"}
-
-    if [[ ! -f "${source_dir}/.env" ]]; then
-        echo "You must create ${source_dir}/.env"
-        echo "You can use ${source_dir}/.env.example as a template"
-    fi
-
-    source "${source_dir}/.env"
+    local -r rc_number="$1"
+    local -r tag="apache-arrow-adbc-${RELEASE}-rc${rc_number}"
 
     header "Looking for GitHub Actions workflow on ${REPOSITORY}:${tag}"
     local run_id=""
@@ -72,7 +63,7 @@ main() {
     header "Adding release notes"
     # XXX: commitizen likes to include the entire history even if we
     # give it a tag, so we have to give it both tags explicitly
-    local -r release_notes=$(cz ch --dry-run --unreleased-version "ADBC Libraries ${version}" --start-rev apache-arrow-adbc-${prev_version})
+    local -r release_notes=$(cz ch --dry-run --unreleased-version "ADBC Libraries ${RELEASE}" --start-rev apache-arrow-adbc-${PREVIOUS_RELEASE})
     echo "${release_notes}"
     gh release edit \
        "${tag}" \
@@ -95,12 +86,6 @@ main() {
     upload_asset_signatures "${tag}" "${download_dir}/docs.tgz"
 
     popd
-}
-
-header() {
-    echo "============================================================"
-    echo "${1}"
-    echo "============================================================"
 }
 
 sign_asset() {

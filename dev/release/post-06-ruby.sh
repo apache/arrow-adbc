@@ -21,24 +21,24 @@ set -e
 set -u
 set -o pipefail
 
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SOURCE_DIR}/utils-common.sh"
+source "${SOURCE_DIR}/utils-prepare.sh"
+
 main() {
-    if [ "$#" -ne 1 ]; then
-        echo "Usage: $0 <version>"
-        echo "Usage: $0 1.0.0"
+    if [ "$#" -ne 0 ]; then
+        echo "Usage: $0"
         exit 1
     fi
 
-    local -r version="$1"
-
-    archive_name=apache-arrow-adbc-${version}
-
-    tar_gz=${archive_name}.tar.gz
+    local -r archive_name=apache-arrow-adbc-${RELEASE}
+    local -r tar_gz=${archive_name}.tar.gz
 
     rm -f ${tar_gz}
     curl \
       --remote-name \
       --fail \
-      https://downloads.apache.org/arrow/apache-arrow-adbc-${version}/${tar_gz}
+      https://downloads.apache.org/arrow/apache-arrow-adbc-${RELEASE}/${tar_gz}
     rm -rf ${archive_name}
     tar xf ${tar_gz}
 
@@ -53,7 +53,7 @@ main() {
     rm -f ${tar_gz}
 
     echo "Success! The released RubyGems are available here:"
-    echo "  https://rubygems.org/gems/red-adbc/versions/${version}"
+    echo "  https://rubygems.org/gems/red-adbc/versions/${VERSION_NATIVE}"
 }
 
 main "$@"

@@ -21,22 +21,20 @@ set -e
 set -u
 set -o pipefail
 
-main() {
-    local -r source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local -r source_top_dir="$(cd "${source_dir}/../../" && pwd)"
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SOURCE_DIR}/utils-common.sh"
+source "${SOURCE_DIR}/utils-prepare.sh"
 
-    if [ $# -ne 3 ]; then
-        echo "Usage: $0 <arrow-dir> <version> <rc-number>"
-        echo "Usage: $0 ../arrow 1.0.0 0"
+main() {
+    if [ $# -ne 2 ]; then
+        echo "Usage: $0 <arrow-dir> <rc-number>"
+        echo "Usage: $0 ../arrow 0"
         exit
     fi
 
     local -r arrow_dir="$(cd "$1" && pwd)"
-    local -r version="$2"
-    local -r rc_number="$3"
-    local -r tag="apache-arrow-adbc-${version}-rc${rc_number}"
-
-    : ${REPOSITORY:="apache/arrow-adbc"}
+    local -r rc_number="$2"
+    local -r tag="apache-arrow-adbc-${RELEASE}-rc${rc_number}"
 
     export ARROW_ARTIFACTS_DIR="$(pwd)/packages/${tag}/java"
     rm -rf "${ARROW_ARTIFACTS_DIR}"
@@ -51,7 +49,7 @@ main() {
        "${tag}"
 
     export UPLOAD_FORCE_SIGN=0
-    "${arrow_dir}/dev/release/06-java-upload.sh" "${version}" "${rc_number}"
+    "${arrow_dir}/dev/release/06-java-upload.sh" "${RELEASE}" "${rc_number}"
 }
 
 main "$@"

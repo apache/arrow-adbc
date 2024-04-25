@@ -302,8 +302,14 @@ jobs:
       - name: Extract source archive
         run: |
           tar xf apache-arrow-adbc-${{ steps.info.outputs.VERSION }}.tar.gz
+
+          source ./apache-arrow-adbc-${{ steps.info.outputs.VERSION }}/dev/release/versions.env
+
           mv apache-arrow-adbc-${{ steps.info.outputs.VERSION }} adbc
-          mv apache-arrow-adbc-${{ steps.info.outputs.VERSION }}.tar.gz adbc/ci/linux-packages/
+          # Need to align the file path with the version number (and not the release)
+          cp -r adbc apache-arrow-adbc-${VERSION_NATIVE}
+          tar czf adbc/ci/linux-packages/apache-arrow-adbc-${VERSION_NATIVE}.tar.gz apache-arrow-adbc-${VERSION_NATIVE}
+          echo "VERSION=${VERSION_NATIVE}" | tee -a $GITHUB_ENV
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -527,7 +533,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: ["amd64", "arm64v8"]
+        # XXX(lidavidm): disable arm64 build for now while I test things
+        arch: ["amd64"]
         manylinux_version: ["2014"]
         is_pr:
           - ${{ startsWith(github.ref, 'refs/pull/') }}
@@ -546,11 +553,12 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
+
+          source adbc/dev/release/versions.env
+          echo "VERSION=${VERSION_NATIVE}" | tee -a $GITHUB_ENV
 
       - name: Show inputs
         run: |
@@ -654,11 +662,13 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION}" >> $GITHUB_ENV
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
+
+          source adbc/dev/release/versions.env
+          echo "VERSION=${VERSION_NATIVE}" | tee -a $GITHUB_ENV
+          echo "SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION_NATIVE}" | tee -a $GITHUB_ENV
 
       - name: Show inputs
         run: |
@@ -805,11 +815,12 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
+
+          source adbc/dev/release/versions.env
+          echo "VERSION=${VERSION_NATIVE}" | tee -a $GITHUB_ENV
 
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
 
@@ -903,11 +914,12 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
+
+          source adbc/dev/release/versions.env
+          echo "VERSION=${VERSION_NATIVE}" | tee -a $GITHUB_ENV
 
       - name: Show inputs
         run: |
