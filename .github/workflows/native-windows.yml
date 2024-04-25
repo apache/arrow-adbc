@@ -99,7 +99,7 @@ jobs:
         run: |
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -151,36 +151,31 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
-        run:
-          .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
+        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Build Driver PostgreSQL
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-        run:
-          .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
+        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Build Driver SQLite
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
-        run:
-          .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
+        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Test Driver Manager
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
-        run:
-          .\ci\scripts\cpp_test.ps1 $pwd\build
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build
       - name: Test Driver SQLite
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
-        run:
-          .\ci\scripts\cpp_test.ps1 $pwd\build
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build
 
   # ------------------------------------------------------------
   # Go build
@@ -232,7 +227,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
@@ -296,7 +291,7 @@ jobs:
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
@@ -306,40 +301,34 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
-        run:
-          .\ci\scripts\python_build.ps1 $pwd $pwd\build
+        run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Build Python Driver PostgreSQL
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-        run:
-          .\ci\scripts\python_build.ps1 $pwd $pwd\build
+        run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Build Python Driver SQLite
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
-        run:
-          .\ci\scripts\python_build.ps1 $pwd $pwd\build
+        run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Test Python Driver Manager
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
-        run:
-          .\ci\scripts\python_test.ps1 $pwd $pwd\build
+        run: .\ci\scripts\python_test.ps1 $pwd $pwd\build
       - name: Test Python Driver PostgreSQL
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-        run:
-          .\ci\scripts\python_test.ps1 $pwd $pwd\build
+        run: .\ci\scripts\python_test.ps1 $pwd $pwd\build
       - name: Test Python Driver SQLite
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
-        run:
-          .\ci\scripts\python_test.ps1 $pwd $pwd\build
+        run: .\ci\scripts\python_test.ps1 $pwd $pwd\build
