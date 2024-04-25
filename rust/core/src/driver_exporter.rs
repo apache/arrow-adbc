@@ -263,6 +263,7 @@ unsafe extern "C" fn release_ffi_driver(
 
 // Option helpers
 
+// SAFETY: `dst` and `length` must be not null otherwise the function will panic.
 unsafe fn copy_string(src: &str, dst: *mut c_char, length: *mut usize) -> Result<()> {
     assert!(!dst.is_null() && !length.is_null());
     let n = src.len() + 1; // +1 for nul terminator
@@ -274,6 +275,7 @@ unsafe fn copy_string(src: &str, dst: *mut c_char, length: *mut usize) -> Result
     Ok::<(), Error>(())
 }
 
+// SAFETY: `dst` and `length` must be not null otherwise the function will panic.
 unsafe fn copy_bytes(src: &[u8], dst: *mut u8, length: *mut usize) {
     assert!(!dst.is_null() && !length.is_null());
     let n = src.len();
