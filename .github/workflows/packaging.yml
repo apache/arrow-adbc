@@ -276,6 +276,7 @@ jobs:
           source ./apache-arrow-adbc-$VERSION/dev/release/versions.env
 
           mv apache-arrow-adbc-$VERSION adbc
+          mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
