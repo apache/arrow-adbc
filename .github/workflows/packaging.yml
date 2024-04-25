@@ -276,10 +276,6 @@ jobs:
           source ./apache-arrow-adbc-$VERSION/dev/release/versions.env
 
           mv apache-arrow-adbc-$VERSION adbc
-          # Need to align the file path with the version number (and not the release)
-          cp -r adbc apache-arrow-adbc-$VERSION_NATIVE
-          tar czf adbc/ci/linux-packages/apache-arrow-adbc-$VERSION_NATIVE.tar.gz apache-arrow-adbc-${VERSION_NATIVE}
-          echo "VERSION=$VERSION_NATIVE" | tee -a $GITHUB_ENV
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
