@@ -26,7 +26,7 @@ update_versions() {
   local rust_version="${VERSION_CSHARP}"
   case ${type} in
     release)
-      local cmake_version="${VERSION_NATIVE}"
+      local c_version="${VERSION_NATIVE}"
       local docs_version="${RELEASE}"
       local glib_version="${VERSION_NATIVE}"
       local java_version="${VERSION_JAVA}"
@@ -35,7 +35,7 @@ update_versions() {
       local r_version="${VERSION_R}"
       ;;
     snapshot)
-      local cmake_version="${VERSION_NATIVE}-SNAPSHOT"
+      local c_version="${VERSION_NATIVE}-SNAPSHOT"
       local docs_version="${RELEASE} (dev)"
       local glib_version="${VERSION_NATIVE}-SNAPSHOT"
       local java_version="${VERSION_JAVA}-SNAPSHOT"
@@ -62,7 +62,7 @@ update_versions() {
   echo "Rust: ${rust_version}"
 
   pushd "${ADBC_DIR}/c/"
-  sed -i.bak -E "s/set\(ADBC_VERSION \".+\"\)/set(ADBC_VERSION \"${cmake_version}\")/g" cmake_modules/AdbcVersion.cmake
+  sed -i.bak -E "s/set\(ADBC_VERSION \".+\"\)/set(ADBC_VERSION \"${c_version}\")/g" cmake_modules/AdbcVersion.cmake
   rm cmake_modules/AdbcVersion.cmake.bak
   git add cmake_modules/AdbcVersion.cmake
   popd

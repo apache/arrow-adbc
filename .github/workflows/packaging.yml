@@ -76,41 +76,13 @@ jobs:
       - name: Prepare version
         id: version
         run: |
-          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
-            VERSION=${GITHUB_REF_NAME#apache-arrow-adbc-}
-            VERSION=${VERSION%-rc*}
-          else
-            VERSION=$(grep 'set(ADBC_VERSION' c/cmake_modules/AdbcVersion.cmake | \
-                        grep -E -o '[0-9]+\.[0-9]+\.[0-9]+')
-            description=$(git describe \
-                            --always \
-                            --dirty \
-                            --long \
-                            --match "apache-arrow-adbc-[0-9]*.*" \
-                            --tags)
-            case "${description}" in
-              # apache-arrow-adbc-0.1.0-10-1234567-dirty
-              apache-arrow-adbc-*)
-                # 10-1234567-dirty
-                distance="${description#apache-arrow-adbc-*.*.*-}"
-                # 10-1234567
-                distance="${distance%-dirty}"
-                # 10
-                distance="${distance%-*}"
-                ;;
-              *)
-                distance=$(git log --format=oneline | wc -l)
-                ;;
-            esac
-            VERSION="${VERSION}.dev${distance}"
-          fi
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          source dev/release/versions.env
+          echo "VERSION=${VERSION}" | tee -a $GITHUB_ENV
 
       - name: Create archive
         run: |
           ci/scripts/source_build.sh \
-            apache-arrow-adbc-${{ steps.version.outputs.VERSION }} \
+            apache-arrow-adbc-${VERSION} \
             $(git log -n 1 --format=%h)
 
       - uses: actions/upload-artifact@v4
@@ -118,7 +90,7 @@ jobs:
           name: source
           retention-days: 7
           path: |
-            apache-arrow-adbc-${{ steps.version.outputs.VERSION }}.tar.gz
+            apache-arrow-adbc-*.tar.gz
 
   csharp:
     name: "C#/.NET"
@@ -177,8 +149,7 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" | tee -a $GITHUB_ENV
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
@@ -193,7 +164,7 @@ jobs:
         run: |
           pushd adbc
           docker compose run \
-            -e SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.VERSION }} \
+            -e SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION \
             docs
           popd
 
@@ -296,20 +267,19 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" | tee -a $GITHUB_ENV
 
       - name: Extract source archive
         run: |
-          tar xf apache-arrow-adbc-${{ steps.info.outputs.VERSION }}.tar.gz
+          tar xf apache-arrow-adbc-$VERSION.tar.gz
 
-          source ./apache-arrow-adbc-${{ steps.info.outputs.VERSION }}/dev/release/versions.env
+          source ./apache-arrow-adbc-$VERSION/dev/release/versions.env
 
-          mv apache-arrow-adbc-${{ steps.info.outputs.VERSION }} adbc
+          mv apache-arrow-adbc-$VERSION adbc
           # Need to align the file path with the version number (and not the release)
-          cp -r adbc apache-arrow-adbc-${VERSION_NATIVE}
-          tar czf adbc/ci/linux-packages/apache-arrow-adbc-${VERSION_NATIVE}.tar.gz apache-arrow-adbc-${VERSION_NATIVE}
-          echo "VERSION=${VERSION_NATIVE}" | tee -a $GITHUB_ENV
+          cp -r adbc apache-arrow-adbc-$VERSION_NATIVE
+          tar czf adbc/ci/linux-packages/apache-arrow-adbc-$VERSION_NATIVE.tar.gz apache-arrow-adbc-${VERSION_NATIVE}
+          echo "VERSION=$VERSION_NATIVE" | tee -a $GITHUB_ENV
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -412,8 +382,7 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" | tee -a $GITHUB_ENV
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
@@ -479,11 +448,10 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" | tee -a $GITHUB_ENV
 
-          tar xf apache-arrow-adbc-${VERSION}.tar.gz
-          mv apache-arrow-adbc-${VERSION} adbc
+          tar xf apache-arrow-adbc-$VERSION.tar.gz
+          mv apache-arrow-adbc-$VERSION adbc
 
       - name: Show inputs
         run: |
@@ -576,7 +544,7 @@ jobs:
         run: |
           pushd adbc
           docker compose run \
-            -e SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.VERSION }} \
+            -e SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION \
             python-wheel-manylinux
           popd
 
@@ -684,13 +652,13 @@ jobs:
         run: |
           pushd adbc
           vcpkg_version=$(cat ".env" | grep "VCPKG" | cut -d "=" -f2 | tr -d '"')
-          echo "VCPKG_VERSION=$vcpkg_version" >> "$GITHUB_OUTPUT"
+          echo "VCPKG_VERSION=$vcpkg_version" | tee -a "$GITHUB_ENV"
           popd
 
       - name: Install vcpkg
         run: |
           pushd adbc
-          ci/scripts/install_vcpkg.sh $VCPKG_ROOT ${{ steps.vcpkg_version.outputs.VCPKG_VERSION }}
+          ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
           popd
 
       - uses: actions/setup-go@v5
