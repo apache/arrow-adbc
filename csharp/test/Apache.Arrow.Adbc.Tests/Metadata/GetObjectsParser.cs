@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Apache.Arrow.Adbc.Tests.Metadata
 {
@@ -220,18 +221,21 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         /// <returns>The index of the first field with the provided name</returns>
         /// <exception cref="ArgumentNullException">Thrown if fields argument is null</exception>
         /// <exception cref="InvalidOperationException">Thrown if no matching field is found with the provided name</exception>
-        public static int FindIndexOrThrow(this List<Field> fields, string name)
+        public static int FindIndexOrThrow(this IReadOnlyList<Field> fields, string name)
         {
             if (fields == null)
             {
                 throw new ArgumentNullException(nameof(fields));
             }
-            int index = fields.FindIndex(f => f.Name == name);
-            if (index == -1)
+            for (int i = 0; i < fields.Count; i++)
             {
-                throw new InvalidOperationException($"No matching field found with name: {name}");
+                if (fields[i].Name == name)
+                {
+                    return i;
+                }
             }
-            return index;
+
+            throw new InvalidOperationException($"No matching field found with name: {name}");
         }
     }
 }
