@@ -206,10 +206,19 @@ macro_rules! check_not_null {
 
 unsafe extern "C" fn release_ffi_driver(
     driver: *mut FFI_AdbcDriver,
-    _error: *mut FFI_AdbcError,
+    error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
     if let Some(driver) = driver.as_mut() {
-        driver.release = None;
+        let release = driver.release.take();
+        if release.is_none() {
+            check_err!(
+                Err(Error::with_message_and_status(
+                    "Driver already released",
+                    Status::InvalidState
+                )),
+                error
+            );
+        }
     }
     ADBC_STATUS_OK
 }
