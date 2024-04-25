@@ -45,7 +45,8 @@ jobs:
   rust:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        # TODO(lidavidm): add back macos-latest once it has Cargo installed
+        os: [windows-latest, macos-13, ubuntu-latest]
     name: "Rust ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     env:
