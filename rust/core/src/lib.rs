@@ -58,8 +58,9 @@
 
 // TODO(alexandreyc): uncomment these lines during follow-up PRs
 // pub mod driver_manager;
+mod driver_exporter;
 #[doc(hidden)]
-pub mod driver_exporter;
+pub use driver_exporter::make_ffi_driver;
 pub mod error;
 pub mod ffi;
 pub mod options;

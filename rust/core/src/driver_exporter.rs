@@ -144,7 +144,7 @@ macro_rules! export_driver {
                 $crate::check_err!(Err(err), error);
             }
 
-            let ffi_driver = $crate::driver_exporter::make_ffi_driver::<$driver_type>();
+            let ffi_driver = $crate::make_ffi_driver::<$driver_type>();
             unsafe {
                 std::ptr::write_unaligned(driver as *mut $crate::ffi::FFI_AdbcDriver, ffi_driver);
             }
