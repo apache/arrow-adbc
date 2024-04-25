@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-#if NETSTANDARD
-
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -25,6 +23,7 @@ namespace Apache.Arrow.Adbc.Extensions
 {
     public static class MarshalExtensions
     {
+#if NETSTANDARD
         public static unsafe string PtrToStringUTF8(IntPtr intPtr)
         {
             if (intPtr == IntPtr.Zero)
@@ -60,7 +59,7 @@ namespace Apache.Arrow.Adbc.Extensions
 
             int nb = Encoding.UTF8.GetMaxByteCount(s.Length);
 
-            IntPtr pMem = Marshal.AllocCoTaskMem(nb + 1);
+            IntPtr pMem = Marshal.AllocHGlobal(nb + 1);
 
             int nbWritten;
             byte* pbMem = (byte*)pMem;
@@ -74,7 +73,27 @@ namespace Apache.Arrow.Adbc.Extensions
 
             return pMem;
         }
+#else
+        public static IntPtr StringToCoTaskMemUTF8(string s)
+        {
+            return Marshal.StringToCoTaskMemUTF8(s);
+        }
+#endif
+
+        public static unsafe byte[] MarshalBuffer(void* ptr, int size)
+        {
+            if (ptr == null)
+            {
+                return null;
+            }
+
+            byte[] bytes = new byte[size];
+            fixed (byte* firstByte = bytes)
+            {
+                Buffer.MemoryCopy(ptr, firstByte, size, size);
+            }
+
+            return bytes;
+        }
     }
 }
-
-#endif

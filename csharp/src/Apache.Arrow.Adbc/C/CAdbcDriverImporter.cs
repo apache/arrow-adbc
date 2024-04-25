@@ -17,13 +17,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
-
 
 namespace Apache.Arrow.Adbc.C
 {
@@ -284,11 +283,41 @@ namespace Apache.Arrow.Adbc.C
         {
             private CAdbcDriver _nativeDriver;
             private CAdbcStatement _nativeStatement;
+            private byte[] _substraitPlan;
 
             public AdbcStatementNative(CAdbcDriver nativeDriver, CAdbcStatement nativeStatement)
             {
                 _nativeDriver = nativeDriver;
                 _nativeStatement = nativeStatement;
+            }
+
+            public unsafe override byte[] SubstraitPlan
+            {
+                get => _substraitPlan;
+                set
+                {
+                    using (CallHelper caller = new CallHelper())
+                    {
+                        caller.Call(_nativeDriver.StatementSetSubstraitPlan, ref _nativeStatement, value);
+                        _substraitPlan = value;
+                    }
+                }
+            }
+
+            public unsafe override void Bind(RecordBatch batch, Schema schema)
+            {
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(_nativeDriver.StatementBind, ref _nativeStatement, batch, schema);
+                }
+            }
+
+            public unsafe override void BindStream(IArrowArrayStream stream)
+            {
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(_nativeDriver.StatementBindStream, ref _nativeStatement, stream);
+                }
             }
 
             public unsafe override QueryResult ExecuteQuery()
@@ -297,7 +326,11 @@ namespace Apache.Arrow.Adbc.C
 
                 using (CallHelper caller = new CallHelper())
                 {
-                    caller.Call(_nativeDriver.StatementSetSqlQuery, ref _nativeStatement, SqlQuery);
+                    if (SqlQuery != null)
+                    {
+                        // TODO: Consider moving this to the setter
+                        caller.Call(_nativeDriver.StatementSetSqlQuery, ref _nativeStatement, SqlQuery);
+                    }
 
                     long rows = 0;
 
@@ -311,7 +344,11 @@ namespace Apache.Arrow.Adbc.C
             {
                 using (CallHelper caller = new CallHelper())
                 {
-                    caller.Call(_nativeDriver.StatementSetSqlQuery, ref _nativeStatement, SqlQuery);
+                    if (SqlQuery != null)
+                    {
+                        // TODO: Consider moving this to the setter
+                        caller.Call(_nativeDriver.StatementSetSqlQuery, ref _nativeStatement, SqlQuery);
+                    }
 
                     long rows = 0;
 
@@ -331,11 +368,7 @@ namespace Apache.Arrow.Adbc.C
 
             public Utf8Helper(string s)
             {
-#if NETSTANDARD
                 _s = MarshalExtensions.StringToCoTaskMemUTF8(s);
-#else
-                _s = Marshal.StringToCoTaskMemUTF8(s);
-#endif
             }
 
             public static implicit operator IntPtr(Utf8Helper s) { return s._s; }
@@ -345,9 +378,12 @@ namespace Apache.Arrow.Adbc.C
         /// <summary>
         /// Assists with delegate calls and handling error codes
         /// </summary>
-        private struct CallHelper : IDisposable
+        private unsafe struct CallHelper : IDisposable
         {
             private CAdbcError _error;
+            private CArrowArray* _array;
+            private CArrowSchema* _schema;
+            private CArrowArrayStream* _arrayStream;
 
             public unsafe void Call(AdbcDriverInit init, int version, ref CAdbcDriver driver)
             {
@@ -539,6 +575,57 @@ namespace Apache.Arrow.Adbc.C
 #endif
 
 #if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcStatement*, CArrowArray*, CArrowSchema*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcStatement nativeStatement, RecordBatch batch, Schema schema)
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcStatement nativeStatement, RecordBatch batch, Schema schema)
+#endif
+            {
+                fixed (CAdbcStatement* stmt = &nativeStatement)
+                fixed (CAdbcError* e = &_error)
+                {
+                    Debug.Assert(_array == null);
+                    _array = CArrowArray.Create();
+                    CArrowArrayExporter.ExportRecordBatch(batch, _array);
+
+                    Debug.Assert(_schema == null);
+                    _schema = CArrowSchema.Create();
+                    CArrowSchemaExporter.ExportSchema(schema, _schema);
+
+#if NET5_0_OR_GREATER
+                    TranslateCode(fn(stmt, _array, _schema, e));
+#else
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.StatementBind>(fn)(stmt, _array, _schema, e));
+#endif
+
+                    _array = null;
+                    _schema = null;
+                }
+            }
+
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcStatement nativeStatement, IArrowArrayStream stream)
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcStatement nativeStatement, IArrowArrayStream stream)
+#endif
+            {
+                fixed (CAdbcStatement* stmt = &nativeStatement)
+                fixed (CAdbcError* e = &_error)
+                {
+                    Debug.Assert(_arrayStream == null);
+                    _arrayStream = CArrowArrayStream.Create();
+                    CArrowArrayStreamExporter.ExportArrayStream(stream, _arrayStream);
+
+#if NET5_0_OR_GREATER
+                    TranslateCode(fn(stmt, _arrayStream, e));
+#else
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.StatementBindStream>(fn)(stmt, _arrayStream, e));
+#endif
+
+                    _arrayStream = null;
+                }
+            }
+
+#if NET5_0_OR_GREATER
             public unsafe void Call(delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcStatement nativeStatement)
             {
                 fixed (CAdbcStatement* stmt = &nativeStatement)
@@ -584,6 +671,28 @@ namespace Apache.Arrow.Adbc.C
 
                         TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.StatementSetSqlQuery>(fn)(stmt, (byte*)bQuery, e));
                     }
+                }
+            }
+#endif
+
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcStatement*, byte*, int, CAdbcError*, AdbcStatusCode> fn, ref CAdbcStatement nativeStatement, byte[] substraitPlan)
+            {
+                fixed (CAdbcStatement* stmt = &nativeStatement)
+                fixed (byte* plan = substraitPlan)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(fn(stmt, plan, substraitPlan.Length, e));
+                }
+            }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcStatement nativeStatement, byte[] substraitPlan)
+            {
+                fixed (CAdbcStatement* stmt = &nativeStatement)
+                fixed (byte* plan = substraitPlan)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.StatementSetSubstraitPlan>(fn)(stmt, plan, substraitPlan.Length, e));
                 }
             }
 #endif
@@ -686,6 +795,22 @@ namespace Apache.Arrow.Adbc.C
                         _error.release = default;
                     }
                 }
+
+                if (_array != null)
+                {
+                    CArrowArray.Free(_array);
+                    _array = null;
+                }
+                if (_schema != null)
+                {
+                    CArrowSchema.Free(_schema);
+                    _schema = null;
+                }
+                if (_arrayStream != null)
+                {
+                    CArrowArrayStream.Free(_arrayStream);
+                    _arrayStream = null;
+                }
             }
 
 #if NET5_0_OR_GREATER
@@ -707,7 +832,7 @@ namespace Apache.Arrow.Adbc.C
                 fixed (CAdbcConnection* cn = &connection)
                 fixed (CAdbcError* e = &_error)
                 {
-                    Span<AdbcInfoCode> span = infoCodes.ToArray().AsSpan();
+                    Span<AdbcInfoCode> span = infoCodes.AsSpan();
                     fixed (AdbcInfoCode* spanPtr = span)
                     {
                         TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetInfo>(ptr)(cn, (int*)spanPtr, infoCodes.Count, stream, e));
@@ -736,11 +861,7 @@ namespace Apache.Arrow.Adbc.C
                 for (int i = 0; i < table_types.Count; i++)
                 {
                     string tableType = table_types[i];
-#if NETSTANDARD
                     bTable_type[i] = (byte*)MarshalExtensions.StringToCoTaskMemUTF8(tableType);
-#else
-                    bTable_type[i] = (byte*)Marshal.StringToCoTaskMemUTF8(tableType);
-#endif
                 }
 
                 try
