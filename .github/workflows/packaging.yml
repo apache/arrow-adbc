@@ -128,7 +128,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: ["ubuntu-latest", "windows-latest", "macos-13"]
         go-version: [1.21.8] # Customize Go versions as needed
 
     steps:
