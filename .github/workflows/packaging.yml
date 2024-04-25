@@ -77,7 +77,7 @@ jobs:
         id: version
         run: |
           source dev/release/versions.env
-          echo "VERSION=${VERSION}" | tee -a $GITHUB_ENV
+          echo "VERSION=${RELEASE}" | tee -a $GITHUB_ENV
 
       - name: Create archive
         run: |
