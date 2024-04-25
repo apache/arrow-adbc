@@ -266,8 +266,8 @@ unsafe extern "C" fn release_ffi_driver(
 // SAFETY: `dst` and `length` must be not null otherwise the function will panic.
 unsafe fn copy_string(src: &str, dst: *mut c_char, length: *mut usize) -> Result<()> {
     assert!(!dst.is_null() && !length.is_null());
-    let n = src.len() + 1; // +1 for nul terminator
     let src = CString::new(src)?;
+    let n = src.to_bytes_with_nul().len();
     if n <= *length {
         std::ptr::copy_nonoverlapping(src.as_ptr(), dst, n);
     }
