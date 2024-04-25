@@ -162,10 +162,9 @@ jobs:
           popd
 
       - name: Upload Go binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           retention-days: 7
-          overwrite: true
           path: |
             adbc/go/adbc/pkg/libadbc_driver_flightsql.*
             adbc/go/adbc/pkg/libadbc_driver_snowflake.*
