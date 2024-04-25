@@ -78,21 +78,13 @@ func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
 
 // SetCurrentCatalog implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) SetCurrentCatalog(value string) error {
-	sanitizedCatalog, err := sanitize(value)
-	if err != nil {
-		return err
-	}
-	c.catalog = sanitizedCatalog
+	c.catalog = value
 	return nil
 }
 
 // SetCurrentDbSchema implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) SetCurrentDbSchema(value string) error {
-	sanitizedDbSchema, err := sanitize(value)
-	if err != nil {
-		return err
-	}
-	c.dbSchema = sanitizedDbSchema
+	c.dbSchema = value
 	return nil
 }
 
@@ -349,7 +341,6 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 }
 
 var (
-	sanitizedInputRegex = regexp.MustCompile("^[a-zA-Z0-9_-]+")
 	precisionScaleRegex = regexp.MustCompile(`^(?:BIG)?NUMERIC\((?P<precision>\d+)(?:,(?P<scale>\d+))?\)$`)
 	simpleDataType      = map[string]arrow.DataType{
 		"BOOL":      arrow.FixedWidthTypes.Boolean,
@@ -366,21 +357,6 @@ var (
 		"TIME":      arrow.FixedWidthTypes.Time64us,
 	}
 )
-
-func sanitize(value string) (string, error) {
-	if value == "" {
-		return value, nil
-	} else {
-		if sanitizedInputRegex.MatchString(value) {
-			return value, nil
-		} else {
-			return "", adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  fmt.Sprintf("invalid characters in value `%s`", value),
-			}
-		}
-	}
-}
 
 func buildSchemaField(name string, typeString string) (arrow.Field, error) {
 	index := strings.Index(name, "(")
@@ -533,21 +509,13 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 	if catalog == nil {
 		catalog = &c.catalog
 	}
-	sanitizedCatalog, err := sanitize(*catalog)
-	if err != nil {
-		return nil, err
-	}
 
 	if dbSchema == nil {
 		dbSchema = &c.dbSchema
 	}
-	sanitizedDbSchema, err := sanitize(*dbSchema)
-	if err != nil {
-		return nil, err
-	}
 
 	// sadly that query parameters cannot be used in place of table names
-	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = @tableName", sanitizedCatalog, sanitizedDbSchema)
+	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = @tableName", *catalog, *dbSchema)
 	query := c.client.Query(queryString)
 	query.Parameters = []bigquery.QueryParameter{
 		{
