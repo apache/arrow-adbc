@@ -35,18 +35,18 @@ use crate::options::{InfoCode, ObjectDepth, OptionConnection, OptionDatabase, Op
 use crate::{Connection, Database, Driver, Optionable, Statement};
 
 // Invariant: options.is_none() XOR database.is_none()
-struct ExportedDatabase<DriverType: Driver + Default> {
+struct ExportedDatabase<DriverType: Driver> {
     options: Option<HashMap<OptionDatabase, OptionValue>>, // Pre-init options
     database: Option<DriverType::DatabaseType>,
 }
 
 // Invariant: options.is_none() XOR database.is_none()
-struct ExportedConnection<DriverType: Driver + Default> {
+struct ExportedConnection<DriverType: Driver> {
     options: Option<HashMap<OptionConnection, OptionValue>>, // Pre-init options
     connection: Option<<DriverType::DatabaseType as Database>::ConnectionType>,
 }
 
-struct ExportedStatement<DriverType: Driver + Default> {
+struct ExportedStatement<DriverType: Driver> {
     statement:
         <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::StatementType,
 }
