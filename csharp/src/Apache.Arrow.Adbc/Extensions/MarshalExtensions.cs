@@ -74,11 +74,21 @@ namespace Apache.Arrow.Adbc.Extensions
             return pMem;
         }
 #else
+        public static unsafe string PtrToStringUTF8(IntPtr intPtr)
+        {
+            return Marshal.PtrToStringUTF8(intPtr);
+        }
+
         public static IntPtr StringToCoTaskMemUTF8(string s)
         {
             return Marshal.StringToCoTaskMemUTF8(s);
         }
 #endif
+
+        public static unsafe string PtrToStringUTF8(byte* ptr)
+        {
+            return PtrToStringUTF8((IntPtr)ptr);
+        }
 
         public static unsafe byte[] MarshalBuffer(void* ptr, int size)
         {
