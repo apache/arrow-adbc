@@ -16,6 +16,7 @@
 */
 
 using System.IO;
+using System.Runtime.InteropServices;
 using Apache.Arrow.Adbc.C;
 
 namespace Apache.Arrow.Adbc.Drivers.Interop.Snowflake
@@ -32,7 +33,18 @@ namespace Apache.Arrow.Adbc.Drivers.Interop.Snowflake
         /// <exception cref="FileNotFoundException"></exception>
         public static AdbcDriver LoadDriver()
         {
-            string file = "libadbc_driver_snowflake.dll";
+            string root = "runtimes";
+            string native = "native";
+            string fileName = $"libadbc_driver_snowflake";
+            string file;
+
+            // matches extensions in https://github.com/apache/arrow-adbc/blob/main/go/adbc/pkg/Makefile
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                file = Path.Combine(root, $"linux-{GetArchitecture()}", native, $"{fileName}.so");
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                file = Path.Combine(root, $"win-{GetArchitecture()}",   native, $"{fileName}.dll");
+            else
+                file = Path.Combine(root, $"osx-{GetArchitecture()}",   native, $"{fileName}.dylib");
 
             if (File.Exists(file))
             {
@@ -45,6 +57,11 @@ namespace Apache.Arrow.Adbc.Drivers.Interop.Snowflake
             }
 
             return LoadDriver(file, "SnowflakeDriverInit");
+        }
+
+        private static string GetArchitecture()
+        {
+            return RuntimeInformation.OSArchitecture.ToString().ToLower();
         }
 
         /// <summary>

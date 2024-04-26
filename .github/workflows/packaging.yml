@@ -120,11 +120,62 @@ jobs:
           path: |
             apache-arrow-adbc-${{ steps.version.outputs.VERSION }}.tar.gz
 
+  go-binaries:
+    name: "Go ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    needs:
+      - source
+
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest", "macos-13"]
+        go-version: [1.21.8] # Customize Go versions as needed
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: source
+
+      - name: Extract source archive
+        run: |
+          source_archive=$(echo apache-arrow-adbc-*.tar.gz)
+          VERSION=${source_archive#apache-arrow-adbc-}
+          VERSION=${VERSION%.tar.gz}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+          tar xf apache-arrow-adbc-${VERSION}.tar.gz
+          mv apache-arrow-adbc-${VERSION} adbc
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          check-latest: true
+          cache: true
+          cache-dependency-path: adbc/go/adbc/go.sum
+
+      # run `make -i` because the Windows runs claim they can't delete the .h files, but they are still generated
+      - name: Build Go binaries
+        run: |
+          pushd adbc/go/adbc/pkg
+          make -i
+          popd
+
+      - name: Upload Go binaries
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 7
+          path: |
+            adbc/go/adbc/pkg/libadbc_driver_flightsql.*
+            adbc/go/adbc/pkg/libadbc_driver_snowflake.*
+
   csharp:
     name: "C#/.NET"
     runs-on: ubuntu-latest
     needs:
       - source
+      - go-binaries
+
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -146,10 +197,22 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
+      - uses: actions/download-artifact@v3
+        with:
+          path: adbc/go/adbc/pkg
+
+      - name: Copy Go binaries
+        run: |
+          pushd adbc/go/adbc/pkg/artifact
+          cp *.dll ../
+          cp *.so ../
+          cp *.dylib ../
+          popd
+
       - name: Package
         run: |
           pushd adbc/
-          docker compose run csharp-dist
+          docker compose run -e IsPackagingPipeline=true csharp-dist
           popd
 
       - name: Archive nupkg
