@@ -23,6 +23,7 @@ update_versions() {
 
   local conda_version="${VERSION_NATIVE}"
   local csharp_version="${VERSION_CSHARP}"
+  local linux_version="${RELEASE}"
   local rust_version="${VERSION_CSHARP}"
   case ${type} in
     release)
@@ -30,7 +31,6 @@ update_versions() {
       local docs_version="${RELEASE}"
       local glib_version="${VERSION_NATIVE}"
       local java_version="${VERSION_JAVA}"
-      local linux_version="${VERSION_NATIVE}"
       local py_version="${VERSION_NATIVE}"
       local r_version="${VERSION_R}"
       ;;
@@ -39,7 +39,6 @@ update_versions() {
       local docs_version="${RELEASE} (dev)"
       local glib_version="${VERSION_NATIVE}-SNAPSHOT"
       local java_version="${VERSION_JAVA}-SNAPSHOT"
-      local linux_version="${VERSION_NATIVE}-SNAPSHOT"
       local py_version="${VERSION_NATIVE}dev"
       local r_version="${VERSION_R}.9000"
       ;;
