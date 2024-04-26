@@ -531,11 +531,7 @@ namespace Apache.Arrow.Adbc.C
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
                 AdbcStatement stub = (AdbcStatement)gch.Target;
 
-#if NETSTANDARD
-                stub.SqlQuery = MarshalExtensions.PtrToStringUTF8((IntPtr)text);
-#else
-                stub.SqlQuery = Marshal.PtrToStringUTF8((IntPtr)text);
-#endif
+                stub.SqlQuery = MarshalExtensions.PtrToStringUTF8(text);
 
                 return AdbcStatusCode.Success;
             }
@@ -831,14 +827,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe void SetOption(byte* name, byte* value)
             {
-                IntPtr namePtr = (IntPtr)name;
-                IntPtr valuePtr = (IntPtr)value;
-
-#if NETSTANDARD
-                options[MarshalExtensions.PtrToStringUTF8(namePtr)] = MarshalExtensions.PtrToStringUTF8(valuePtr);
-#else
-                options[Marshal.PtrToStringUTF8(namePtr)] = Marshal.PtrToStringUTF8(valuePtr);
-#endif
+                options[MarshalExtensions.PtrToStringUTF8(name)] = MarshalExtensions.PtrToStringUTF8(value);
             }
 
             public void OpenConnection(IReadOnlyDictionary<string, string> options, out AdbcConnection connection)
@@ -867,14 +856,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe void SetOption(byte* name, byte* value)
             {
-                IntPtr namePtr = (IntPtr)name;
-                IntPtr valuePtr = (IntPtr)value;
-
-#if NETSTANDARD
-                options[MarshalExtensions.PtrToStringUTF8(namePtr)] = MarshalExtensions.PtrToStringUTF8(valuePtr);
-#else
-                options[Marshal.PtrToStringUTF8(namePtr)] = Marshal.PtrToStringUTF8(valuePtr);
-#endif
+                options[MarshalExtensions.PtrToStringUTF8(name)] = MarshalExtensions.PtrToStringUTF8(value);
             }
 
             public void Rollback() { this.connection.Rollback(); }
@@ -888,22 +870,10 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe void GetObjects(ref CAdbcConnection nativeConnection, int depth, byte* catalog, byte* db_schema, byte* table_name, byte** table_type, byte* column_name, CArrowArrayStream* cstream)
             {
-                string catalogPattern = string.Empty;
-                string dbSchemaPattern = string.Empty;
-                string tableNamePattern = string.Empty;
-                string columnNamePattern = string.Empty;
-
-#if NETSTANDARD
-                catalogPattern = MarshalExtensions.PtrToStringUTF8((IntPtr)catalog);
-                dbSchemaPattern = MarshalExtensions.PtrToStringUTF8((IntPtr)db_schema);
-                tableNamePattern = MarshalExtensions.PtrToStringUTF8((IntPtr)table_name);
-                columnNamePattern = MarshalExtensions.PtrToStringUTF8((IntPtr)column_name);
-#else
-                catalogPattern = Marshal.PtrToStringUTF8((IntPtr)catalog);
-                dbSchemaPattern = Marshal.PtrToStringUTF8((IntPtr)db_schema);
-                tableNamePattern = Marshal.PtrToStringUTF8((IntPtr)table_name);
-                columnNamePattern = Marshal.PtrToStringUTF8((IntPtr)column_name);
-#endif
+                string catalogPattern = MarshalExtensions.PtrToStringUTF8(catalog);
+                string dbSchemaPattern = MarshalExtensions.PtrToStringUTF8(db_schema);
+                string tableNamePattern = MarshalExtensions.PtrToStringUTF8(table_name);
+                string columnNamePattern = MarshalExtensions.PtrToStringUTF8(column_name);
 
                 string[] tableTypes = null;
                 const int maxTableTypeCount = 100;
@@ -923,11 +893,7 @@ namespace Apache.Arrow.Adbc.C
                     tableTypes = new string[count];
                     for (int i = 0; i < count; i++)
                     {
-#if NETSTANDARD
                         tableTypes[i] = MarshalExtensions.PtrToStringUTF8((IntPtr)table_type[i]);
-#else
-                        tableTypes[i] = Marshal.PtrToStringUTF8((IntPtr)table_type[i]);
-#endif
                     }
                 }
 
@@ -940,19 +906,9 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe void GetTableSchema(byte* catalog, byte* db_schema, byte* table_name, CArrowSchema* cschema)
             {
-                string sCatalog = string.Empty;
-                string sDbSchema = string.Empty;
-                string sTableName = string.Empty;
-
-#if NETSTANDARD
-                sCatalog = MarshalExtensions.PtrToStringUTF8((IntPtr)catalog);
-                sDbSchema = MarshalExtensions.PtrToStringUTF8((IntPtr)db_schema);
-                sTableName = MarshalExtensions.PtrToStringUTF8((IntPtr)table_name);
-#else
-                sCatalog = Marshal.PtrToStringUTF8((IntPtr)catalog);
-                sDbSchema = Marshal.PtrToStringUTF8((IntPtr)db_schema);
-                sTableName = Marshal.PtrToStringUTF8((IntPtr)table_name);
-#endif
+                string sCatalog = MarshalExtensions.PtrToStringUTF8(catalog);
+                string sDbSchema = MarshalExtensions.PtrToStringUTF8(db_schema);
+                string sTableName = MarshalExtensions.PtrToStringUTF8(table_name);
 
                 Schema schema = connection.GetTableSchema(sCatalog, sDbSchema, sTableName);
 
