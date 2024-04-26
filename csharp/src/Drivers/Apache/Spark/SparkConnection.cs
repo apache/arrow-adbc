@@ -547,7 +547,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
 
 
-            List<Field> schema = StandardSchemas.DbSchemaSchema;
+            IReadOnlyList<Field> schema = StandardSchemas.DbSchemaSchema;
             IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
                 new List<IArrowArray>
                 {
@@ -596,7 +596,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
 
 
-            List<Field> schema = StandardSchemas.TableSchema;
+            IReadOnlyList<Field> schema = StandardSchemas.TableSchema;
             IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
                 new List<IArrowArray>
                 {
@@ -669,7 +669,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 length++;
             }
 
-            List<Field> schema = StandardSchemas.ColumnSchema;
+            IReadOnlyList<Field> schema = StandardSchemas.ColumnSchema;
             IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
                 new List<IArrowArray>
                 {
