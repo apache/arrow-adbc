@@ -118,8 +118,8 @@ update_versions() {
   else
     so_version() {
       local -r version=$1
-      local -r major_version=$(echo $linux_version | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
-      local -r minor_version=$(echo $linux_version | sed -E -e 's/^[0-9]+\.([0-9]+)\.[0-9]+$/\1/')
+      local -r major_version=$(echo $c_version | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
+      local -r minor_version=$(echo $c_version | sed -E -e 's/^[0-9]+\.([0-9]+)\.[0-9]+$/\1/')
       printf "%0d%02d" ${major_version} ${minor_version}
     }
     local -r deb_lib_suffix=$(so_version ${base_version})
