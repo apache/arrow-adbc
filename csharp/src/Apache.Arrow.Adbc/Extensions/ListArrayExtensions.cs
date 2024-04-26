@@ -24,20 +24,21 @@ namespace Apache.Arrow.Adbc.Extensions
     internal static class ListArrayExtensions
     {
         /// <summary>
-        /// Creates a <see cref="ListArray"/> from a list of <see cref="IArrowArray"/> data for the given datatype <see cref="IArrowArray"/>.
+        /// Builds a <see cref="ListArray"/> from a list of <see cref="IArrowArray"/> data for the given datatype <see cref="IArrowArray"/>.
+        /// It concatenates the contained data into a single ListArray.
         /// </summary>
-        /// <param name="arrayList">The list of data.</param>
+        /// <param name="list">The list of data to build from.</param>
         /// <param name="dataType">The data type of the contained data.</param>
         /// <returns>A <see cref="ListArray"/> of the data.</returns>
-        public static ListArray BuildListArrayForType(this IReadOnlyList<IArrowArray?> arrayList, IArrowType dataType)
+        public static ListArray BuildListArrayForType(this IReadOnlyList<IArrowArray?> list, IArrowType dataType)
         {
             ArrowBuffer.Builder<int> valueOffsetsBufferBuilder = new ArrowBuffer.Builder<int>();
             ArrowBuffer.BitmapBuilder validityBufferBuilder = new ArrowBuffer.BitmapBuilder();
-            List<ArrayData> arrayDataList = new List<ArrayData>(arrayList.Count);
+            List<ArrayData> arrayDataList = new List<ArrayData>(list.Count);
             int length = 0;
             int nullCount = 0;
 
-            foreach (IArrowArray? array in arrayList)
+            foreach (IArrowArray? array in list)
             {
                 if (array == null)
                 {
@@ -70,7 +71,7 @@ namespace Apache.Arrow.Adbc.Extensions
 
             valueOffsetsBufferBuilder.Append(length);
 
-            return new ListArray(new ListType(dataType), arrayList.Count,
+            return new ListArray(new ListType(dataType), list.Count,
                     valueOffsetsBufferBuilder.Build(), value,
                     validityBuffer, nullCount, 0);
         }
