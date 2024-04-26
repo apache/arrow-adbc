@@ -36,5 +36,5 @@
       SourceFiles="$(PkgDuckDB_NET_Bindings_Full)\runtimes\osx\native\libduckdb.dylib"
       DestinationFolder="$(OutputPath)" />
   </Target>
-  
+
 </Project>
