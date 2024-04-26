@@ -71,7 +71,15 @@ Subject: [VOTE] Release Apache Arrow ADBC ${RELEASE} - RC${rc_number}
 
 Hello,
 
-I would like to propose the following release candidate (RC${rc_number}) of Apache Arrow ADBC version ${version}. This is a release consisting of ${RESOLVED_ISSUES} resolved GitHub issues [1].
+I would like to propose the following release candidate (RC${rc_number}) of Apache Arrow ADBC version ${RELEASE}. This is a release consisting of ${RESOLVED_ISSUES} resolved GitHub issues [1].
+
+The version numbers of subcomponents are:
+
+- C/C++/GLib/Go/Python/Ruby: ${VERSION_NATIVE}
+- C#: ${VERSION_CSHARP}
+- Java: ${VERSION_JAVA}
+- R: ${VERSION_R}
+- Rust: ${VERSION_RUST}
 
 This release candidate is based on commit: ${commit} [2]
 
