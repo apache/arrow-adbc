@@ -56,7 +56,7 @@ main() {
     # commit to svn
     svn add "tmp/${tag}"
     if [[ ${DRY_RUN} -eq 0 ]]; then
-        svn ci -m "Apache Arrow ADBC ${version} RC${rc_number}" "tmp/${tag}"
+        svn ci -m "Apache Arrow ADBC ${RELEASE} RC${rc_number}" "tmp/${tag}"
     else
         echo "Dry run: not committing to dist.apache.org"
     fi
