@@ -42,7 +42,7 @@ main() {
         echo "1. Create or checkout maint-<version>."
         echo "2. Execute the script again with bumped RC number."
         echo "Commands:"
-        echo "   git checkout maint-${version}"
+        echo "   git checkout maint-${RELEASE}"
         echo "   dev/release/01-prepare.sh ${arrow_dir} ${next_rc_number}"
         exit 1
     fi

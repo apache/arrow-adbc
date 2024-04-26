@@ -73,7 +73,7 @@ Hello,
 
 I would like to propose the following release candidate (RC${rc_number}) of Apache Arrow ADBC version ${RELEASE}. This is a release consisting of ${RESOLVED_ISSUES} resolved GitHub issues [1].
 
-The version numbers of subcomponents are:
+The subcomponents are versioned independently:
 
 - C/C++/GLib/Go/Python/Ruby: ${VERSION_NATIVE}
 - C#: ${VERSION_CSHARP}
@@ -93,9 +93,9 @@ See also a verification result on GitHub Actions [11].
 
 The vote will be open for at least 72 hours.
 
-[ ] +1 Release this as Apache Arrow ADBC ${version}
+[ ] +1 Release this as Apache Arrow ADBC ${RELEASE}
 [ ] +0
-[ ] -1 Do not release this as Apache Arrow ADBC ${version} because...
+[ ] -1 Do not release this as Apache Arrow ADBC ${RELEASE} because...
 
 Note: to verify APT/YUM packages on macOS/AArch64, you must \`export DOCKER_DEFAULT_PLATFORM=linux/amd64\`. (Or skip this step by \`export TEST_APT=0 TEST_YUM=0\`.)
 
