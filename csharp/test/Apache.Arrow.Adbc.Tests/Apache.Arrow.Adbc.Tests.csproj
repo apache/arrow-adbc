@@ -6,6 +6,7 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <SignAssembly>True</SignAssembly>
+    <ProcessArchitecture>$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</ProcessArchitecture>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,11 +14,27 @@
     <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="System.Text.Json" Version="7.0.4" />
     <PackageReference Include="xunit" Version="2.7.0" />
+    <PackageReference Include="DuckDB.NET.Bindings.Full" Version="0.10.2" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
     <ProjectReference Include="..\..\src\Client\Apache.Arrow.Adbc.Client.csproj" />
   </ItemGroup>
+
+  <Target Name="CopyDuckDb" AfterTargets="Build" Condition="'$(PkgDuckDB_NET_Bindings_Full)' != ''">
+    <Copy
+      Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'"
+      SourceFiles="$(PkgDuckDB_NET_Bindings_Full)\runtimes\win-$(ProcessArchitecture)\native\duckdb.dll"
+      DestinationFolder="$(OutputPath)" />
+    <Copy
+      Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'"
+      SourceFiles="$(PkgDuckDB_NET_Bindings_Full)\runtimes\linux-$(ProcessArchitecture)\native\libduckdb.so"
+      DestinationFolder="$(OutputPath)" />
+    <Copy
+      Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'"
+      SourceFiles="$(PkgDuckDB_NET_Bindings_Full)\runtimes\osx\native\libduckdb.dylib"
+      DestinationFolder="$(OutputPath)" />
+  </Target>
 
 </Project>
