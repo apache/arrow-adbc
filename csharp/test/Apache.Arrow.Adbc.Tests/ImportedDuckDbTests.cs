@@ -45,19 +45,21 @@ namespace Apache.Arrow.Adbc.Tests
             statement.SqlQuery = "SELECT * from integers";
             var results = statement.ExecuteQuery();
 
-            var schema = results.Stream.Schema;
+            using var stream = results.Stream;
+
+            var schema = stream.Schema;
             Assert.Equal(2, schema.FieldsList.Count);
             Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[0].DataType.TypeId);
             Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[1].DataType.TypeId);
 
-            var firstBatch = results.Stream.ReadNextRecordBatchAsync().Result;
+            var firstBatch = stream.ReadNextRecordBatchAsync().Result;
             Assert.Equal(3, firstBatch.Length);
             Assert.Equal(3, (firstBatch.Column(0) as Int32Array).Values[0]);
             Assert.Equal(5, (firstBatch.Column(0) as Int32Array).Values[1]);
             Assert.Equal(7, (firstBatch.Column(0) as Int32Array).Values[2]);
 
-
-            var secondBatch = results.Stream.ReadNextRecordBatchAsync().Result;
+            var secondBatch = stream.ReadNextRecordBatchAsync().Result;
+            Assert.Null(secondBatch);
         }
     }
 }
