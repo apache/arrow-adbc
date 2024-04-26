@@ -15,29 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require_relative "connection-operations"
+class StatisticKeyTest < Test::Unit::TestCase
+  include Helper
 
-module ADBC
-  class Connection
-    include ConnectionOperations
-
-    def open_statement(&block)
-      Statement.open(self, &block)
-    end
-
-    alias_method :get_info_raw, :get_info
-    def get_info(codes)
-      c_abi_array_stream = get_info_raw(codes)
-      begin
-        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
-        begin
-          yield(reader.read_all)
-        ensure
-          reader.unref
-        end
-      ensure
-        GLib.free(c_abi_array_stream)
-      end
-    end
+  def test_to_string
+    assert_equal("adbc.statistic.null_count",
+                 ADBC::StatisticKey.to_string(:null_count))
   end
 end

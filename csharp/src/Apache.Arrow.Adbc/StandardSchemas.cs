@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Apache.Arrow.Types;
@@ -33,13 +32,13 @@ namespace Apache.Arrow.Adbc
         /// </summary>
         public static readonly Schema GetInfoSchema =
             new Schema(
-                new List<Field>()
+                new Field[]
                 {
                     new Field("info_name", UInt32Type.Default, false),
                     new Field(
                         "info_value",
                         new UnionType(
-                            new List<Field>()
+                            new Field[]
                             {
                                 new Field("string_value", StringType.Default, true),
                                 new Field("bool_value", BooleanType.Default, true),
@@ -56,7 +55,7 @@ namespace Apache.Arrow.Adbc
                                     "int32_to_int32_list_map",
                                     new ListType(
                                         new Field("entries", new StructType(
-                                            new List<Field>()
+                                            new Field[]
                                             {
                                                 new Field("key", Int32Type.Default, false),
                                                 new Field("value", Int32Type.Default, true),
@@ -75,14 +74,14 @@ namespace Apache.Arrow.Adbc
         );
 
         public static readonly Schema TableTypesSchema = new Schema(
-            new List<Field>()
+            new Field[]
             {
                 new Field("table_type", StringType.Default, false)
             },
             metadata: null
         );
 
-        public static readonly List<Field> UsageSchema = new List<Field>()
+        public static readonly IReadOnlyList<Field> UsageSchema = new Field[]
         {
             new Field("fk_catalog", StringType.Default, true),
             new Field("fk_db_schema", StringType.Default, true),
@@ -90,7 +89,7 @@ namespace Apache.Arrow.Adbc
             new Field("fk_column_name", StringType.Default, false)
         };
 
-        public static readonly List<Field> ConstraintSchema = new List<Field>()
+        public static readonly IReadOnlyList<Field> ConstraintSchema = new Field[]
         {
             new Field("constraint_name", StringType.Default, false),
             new Field("constraint_type", StringType.Default, false),
@@ -108,8 +107,8 @@ namespace Apache.Arrow.Adbc
             ),
         };
 
-        public static readonly List<Field> ColumnSchema =
-            new List<Field>()
+        public static readonly IReadOnlyList<Field> ColumnSchema =
+            new Field[]
             {
                 new Field("column_name", StringType.Default, false),
                 new Field("ordinal_position", Int32Type.Default, true),
@@ -132,7 +131,7 @@ namespace Apache.Arrow.Adbc
                 new Field("xdbc_is_generatedcolumn", BooleanType.Default, true)
             };
 
-        public static readonly List<Field> TableSchema = new List<Field>() {
+        public static readonly IReadOnlyList<Field> TableSchema = new Field[] {
           new Field("table_name", StringType.Default, false, null),
           new Field("table_type", StringType.Default, false, null),
           new Field(
@@ -151,7 +150,7 @@ namespace Apache.Arrow.Adbc
           )
         };
 
-        public static readonly List<Field> DbSchemaSchema = new List<Field>()
+        public static readonly IReadOnlyList<Field> DbSchemaSchema = new Field[]
         {
             new Field("db_schema_name", StringType.Default, false, null),
             new Field(
@@ -164,7 +163,7 @@ namespace Apache.Arrow.Adbc
         };
 
         public static readonly Schema GetObjectsSchema = new Schema(
-            new List<Field>()
+            new Field[]
             {
                 new Field("catalog_name", StringType.Default, false),
                 new Field(

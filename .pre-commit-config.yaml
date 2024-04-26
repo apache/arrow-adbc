@@ -86,10 +86,8 @@ repos:
     hooks:
     - id: isort
       types_or: [python]
-  # TODO: Change this to vala-lang/vala-lint after
-  # https://github.com/vala-lang/vala-lint/pull/179 is merged.
-  - repo: https://github.com/kou/vala-lint
-    rev: pre-commit-hook
+  - repo: https://github.com/vala-lang/vala-lint
+    rev: 8ae2bb65fe66458263d94711ae4ddd978faece00
     hooks:
     - id: vala-lint
   - repo: local
@@ -105,5 +103,11 @@ repos:
       pass_filenames: true
       files: '(c/driver_manager/adbc_driver_manager\.)|(^adbc\.h)'
       entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+    - id: fmt
+      name: rustfmt
+      args: ["--all", "--manifest-path", "rust/Cargo.toml", "--"]
 
 exclude: "^c/vendor/.*"

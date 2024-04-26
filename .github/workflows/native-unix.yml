@@ -63,11 +63,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "macos-14", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
         include:
-          - os: macos-latest
+          - os: macos-13
             goarch: x64
-          - os: macos-14
+          - os: macos-latest
             goarch: arm64
           - os: ubuntu-latest
             goarch: x64
@@ -131,7 +131,7 @@ jobs:
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -146,7 +146,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "macos-14", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -251,9 +251,9 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        # N.B. no macos-14 here since conda-forge does not package
+        # N.B. no macos-latest here since conda-forge does not package
         # arrow-c-glib for M1
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-13", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -292,7 +292,7 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -316,7 +316,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "macos-14", "ubuntu-latest", "windows-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -324,7 +324,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@v5
         with:
-          go-version-file: 'go/adbc/go.mod'
+          go-version-file: "go/adbc/go.mod"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -358,11 +358,11 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-latest", "macos-14", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
         include:
-          - os: macos-latest
+          - os: macos-13
             goarch: x64
-          - os: macos-14
+          - os: macos-latest
             goarch: arm64
           - os: ubuntu-latest
             goarch: x64
@@ -414,7 +414,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: go install honnef.co/go/tools/cmd/staticcheck@latest
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -449,7 +449,7 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-latest", "macos-14", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
         python: ["3.9", "3.11"]
     env:
       # Required for macOS
@@ -498,7 +498,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -608,7 +608,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -627,7 +627,7 @@ jobs:
         run: |
           ./ci/scripts/docs_build.sh "$(pwd)"
       - name: Archive docs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docs
           retention-days: 2

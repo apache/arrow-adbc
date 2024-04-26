@@ -20,7 +20,7 @@ module github.com/apache/arrow-adbc/go/adbc
 go 1.21
 
 require (
-	github.com/apache/arrow/go/v16 v16.0.0-20240401151559-71321841eb6d
+	github.com/apache/arrow/go/v16 v16.0.0
 	github.com/bluele/gcache v0.0.2
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
@@ -66,7 +66,7 @@ require (
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/flatbuffers v24.3.7+incompatible // indirect
+	github.com/google/flatbuffers v24.3.25+incompatible // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect

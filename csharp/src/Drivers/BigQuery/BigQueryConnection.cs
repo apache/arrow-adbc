@@ -16,10 +16,8 @@
 */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -49,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         const string infoVendorName = "BigQuery";
         const string infoDriverArrowVersion = "1.0.0";
 
-        readonly IReadOnlyList<AdbcInfoCode> infoSupportedCodes = new List<AdbcInfoCode> {
+        readonly AdbcInfoCode[] infoSupportedCodes = new [] {
             AdbcInfoCode.DriverName,
             AdbcInfoCode.DriverVersion,
             AdbcInfoCode.DriverArrowVersion,
@@ -146,12 +144,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return credential;
         }
 
-        public override IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
+        public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
             const int strValTypeID = 0;
 
             UnionType infoUnionType = new UnionType(
-                new List<Field>()
+                new Field[]
                 {
                     new Field("string_value", StringType.Default, true),
                     new Field("bool_value", BooleanType.Default, true),
@@ -168,7 +166,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         "int32_to_int32_list_map",
                         new ListType(
                             new Field("entries", new StructType(
-                                new List<Field>()
+                                new Field[]
                                 {
                                     new Field("key", Int32Type.Default, false),
                                     new Field("value", Int32Type.Default, true),
@@ -183,7 +181,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (codes.Count == 0)
             {
-                codes = new List<AdbcInfoCode>(infoSupportedCodes);
+                codes = infoSupportedCodes;
             }
 
             UInt32Array.Builder infoNameBuilder = new UInt32Array.Builder();
@@ -232,7 +230,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
 
             StructType entryType = new StructType(
-                new List<Field>(){
+                new Field[] {
                     new Field("key", Int32Type.Default, false),
                     new Field("value", Int32Type.Default, true)});
 
@@ -240,7 +238,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 new[] { new Int32Array.Builder().Build(), new Int32Array.Builder().Build() },
                 new ArrowBuffer.BitmapBuilder().Build());
 
-            List<IArrowArray> childrenArrays = new List<IArrowArray>()
+            IArrowArray[] childrenArrays = new IArrowArray[]
             {
                 stringInfoBuilder.Build(),
                 new BooleanArray.Builder().Build(),
@@ -252,7 +250,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 infoNameBuilder.Build(),
                 infoValue
@@ -267,10 +265,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string catalogPattern,
             string dbSchemaPattern,
             string tableNamePattern,
-            List<string> tableTypes,
+            IReadOnlyList<string> tableTypes,
             string columnNamePattern)
         {
-            List<IArrowArray> dataArrays = GetCatalogs(depth, catalogPattern, dbSchemaPattern,
+            IArrowArray[] dataArrays = GetCatalogs(depth, catalogPattern, dbSchemaPattern,
                 tableNamePattern, tableTypes, columnNamePattern);
 
             return new BigQueryInfoArrowStream(StandardSchemas.GetObjectsSchema, dataArrays);
@@ -293,12 +291,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return result;
         }
 
-        private List<IArrowArray> GetCatalogs(
+        private IArrowArray[] GetCatalogs(
             GetObjectsDepth depth,
             string catalogPattern,
             string dbSchemaPattern,
             string tableNamePattern,
-            List<string> tableTypes,
+            IReadOnlyList<string> tableTypes,
             string columnNamePattern)
         {
             StringArray.Builder catalogNameBuilder = new StringArray.Builder();
@@ -328,7 +326,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
             }
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 catalogNameBuilder.Build(),
                 catalogDbSchemasValues.CreateNestedListArray(new StructType(StandardSchemas.DbSchemaSchema)),
@@ -343,7 +341,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string catalog,
             string dbSchemaPattern,
             string tableNamePattern,
-            List<string> tableTypes,
+            IReadOnlyList<string> tableTypes,
             string columnNamePattern)
         {
             StringArray.Builder dbSchemaNameBuilder = new StringArray.Builder();
@@ -379,7 +377,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
             }
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 dbSchemaNameBuilder.Build(),
                 dbSchemaTablesValues.CreateNestedListArray(new StructType(StandardSchemas.TableSchema)),
@@ -398,7 +396,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string catalog,
             string dbSchema,
             string tableNamePattern,
-            List<string> tableTypes,
+            IReadOnlyList<string> tableTypes,
             string columnNamePattern)
         {
             StringArray.Builder tableNameBuilder = new StringArray.Builder();
@@ -416,8 +414,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 query = string.Concat(query, string.Format(" WHERE table_name LIKE '{0}'", Sanitize(tableNamePattern)));
                 if (tableTypes?.Count > 0)
                 {
-                    List<string> sanitizedTypes = tableTypes.Select(x => Sanitize(x)).ToList();
-
+                    IEnumerable<string> sanitizedTypes = tableTypes.Select(x => Sanitize(x));
                     query = string.Concat(query, string.Format(" AND table_type IN ('{0}')", string.Join("', '", sanitizedTypes).ToUpper()));
                 }
             }
@@ -425,7 +422,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 if (tableTypes?.Count > 0)
                 {
-                    List<string> sanitizedTypes = tableTypes.Select(x => Sanitize(x)).ToList();
+                    IEnumerable<string> sanitizedTypes = tableTypes.Select(x => Sanitize(x));
                     query = string.Concat(query, string.Format(" WHERE table_type IN ('{0}')", string.Join("', '", sanitizedTypes).ToUpper()));
                 }
             }
@@ -469,7 +466,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
             }
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 tableNameBuilder.Build(),
                 tableTypeBuilder.Build(),
@@ -563,7 +560,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     length++;
                 }
             }
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 columnNameBuilder.Build(),
                 ordinalPositionBuilder.Build(),
@@ -646,7 +643,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
             }
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 constraintNameBuilder.Build(),
                 constraintTypeBuilder.Build(),
@@ -724,7 +721,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
             }
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 constraintFkCatalogBuilder.Build(),
                 constraintFkDbSchemaBuilder.Build(),
@@ -968,7 +965,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             StringArray.Builder tableTypesBuilder = new StringArray.Builder();
             tableTypesBuilder.AppendRange(new string[] { "BASE TABLE", "VIEW" });
 
-            List<IArrowArray> dataArrays = new List<IArrowArray>
+            IArrowArray[] dataArrays = new IArrowArray[]
             {
                 tableTypesBuilder.Build()
             };

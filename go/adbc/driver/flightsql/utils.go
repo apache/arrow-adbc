@@ -144,9 +144,9 @@ func checkContext(maybeErr error, ctx context.Context) error {
 	if maybeErr != nil {
 		return maybeErr
 	} else if ctx.Err() == context.Canceled {
-		return adbc.Error{Msg: "Cancelled by request", Code: adbc.StatusCancelled}
+		return adbc.Error{Msg: ctx.Err().Error(), Code: adbc.StatusCancelled}
 	} else if ctx.Err() == context.DeadlineExceeded {
-		return adbc.Error{Msg: "Deadline exceeded", Code: adbc.StatusTimeout}
+		return adbc.Error{Msg: ctx.Err().Error(), Code: adbc.StatusTimeout}
 	}
 	return ctx.Err()
 }

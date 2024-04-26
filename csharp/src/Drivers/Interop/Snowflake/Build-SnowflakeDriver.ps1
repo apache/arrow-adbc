@@ -15,22 +15,49 @@
 #  limitations under the License.
 
 Write-Host "Building the Snowflake ADBC Go driver"
+Write-Host "IsPackagingPipeline=$Env:IsPackagingPipeline"
+
+if (-not (Test-Path env:IsPackagingPipeline)) {
+    Write-Host "IsPackagingPipeline environment variable does not exist."
+    exit
+}
+
+# Get the value of the IsPackagingPipeline environment variable
+$IsPackagingPipelineValue = $env:IsPackagingPipeline
+
+# Check if the value is "true"
+if ($IsPackagingPipelineValue -ne "true") {
+    Write-Host "IsPackagingPipeline is not set to 'true'. Exiting the script."
+    exit
+}
 
 $location = Get-Location
 
 $file = "libadbc_driver_snowflake.dll"
 
+if(Test-Path $file)
+{
+    exit
+}
+
 cd ..\..\..\..\..\go\adbc\pkg
+
+make $file
 
 if(Test-Path $file)
 {
-    #because each framework build will run the script, avoid building it each time
-    $diff=((ls $file).LastWriteTime - (Get-Date)).TotalSeconds
-    if ($diff -gt -30)
-    {
-        Write-Output "Skipping build of $file because it is too recent"
-        exit
+    $processes = Get-Process | Where-Object { $_.Modules.ModuleName -contains $file }
+
+    if ($processes.Count -eq 0) {
+        try {
+        # File is not being used, copy it to the destination
+            Copy-Item -Path $file -Destination $location
+            Write-Host "File copied successfully."
+        }
+        catch {
+            Write-Host "Caught error: $_"
+        }
+    } else {
+        Write-Host "File is being used by another process. Cannot copy."
     }
 }
-make $file
-COPY $file $location

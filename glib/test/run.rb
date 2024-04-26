@@ -17,6 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+ENV["TEST_UNIT_MAX_DIFF_TARGET_STRING_SIZE"] ||= "10000"
+
 require "pathname"
 require "test-unit"
 
@@ -37,5 +39,6 @@ rescue GObjectIntrospection::RepositoryError => error
 end
 
 require_relative "helper"
+require_relative "helper/sandbox"
 
 exit(Test::Unit::AutoRunner.run(true, test_dir.to_s))
