@@ -258,7 +258,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 new Int64Array.Builder().Build(),
                 new Int32Array.Builder().Build(),
                 new ListArray.Builder(StringType.Default).Build(),
-                new List<IArrowArray?>(){ entriesDataArray }.CreateNestedListArray(entryType)
+                new List<IArrowArray?>(){ entriesDataArray }.BuildListArrayForType(entryType)
             };
 
             DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
@@ -471,7 +471,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 new List<IArrowArray>
                 {
                     catalogNameBuilder.Build(),
-                    catalogDbSchemasValues.CreateNestedListArray(new StructType(StandardSchemas.DbSchemaSchema)),
+                    catalogDbSchemasValues.BuildListArrayForType(new StructType(StandardSchemas.DbSchemaSchema)),
                 });
 
             return new SparkInfoArrowStream(schema, dataArrays);
@@ -552,7 +552,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 new List<IArrowArray>
                 {
                     dbSchemaNameBuilder.Build(),
-                    dbSchemaTablesValues.CreateNestedListArray(new StructType(StandardSchemas.TableSchema)),
+                    dbSchemaTablesValues.BuildListArrayForType(new StructType(StandardSchemas.TableSchema)),
                 });
 
             return new StructArray(
@@ -602,8 +602,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     tableNameBuilder.Build(),
                     tableTypeBuilder.Build(),
-                    tableColumnsValues.CreateNestedListArray(new StructType(StandardSchemas.ColumnSchema)),
-                    tableConstraintsValues.CreateNestedListArray( new StructType(StandardSchemas.ConstraintSchema))
+                    tableColumnsValues.BuildListArrayForType(new StructType(StandardSchemas.ColumnSchema)),
+                    tableConstraintsValues.BuildListArrayForType( new StructType(StandardSchemas.ConstraintSchema))
                 });
 
             return new StructArray(

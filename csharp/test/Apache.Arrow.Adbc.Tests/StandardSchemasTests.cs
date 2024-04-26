@@ -100,7 +100,7 @@ namespace Apache.Arrow.Adbc.Tests
             IReadOnlyList<IArrowArray> getObjectsDataArrays = new List<IArrowArray>
             {
                 new StringArray.Builder().Build(),
-                catalogDbSchemasValues.CreateNestedListArray(new StructType(StandardSchemas.DbSchemaSchema)),
+                catalogDbSchemasValues.BuildListArrayForType(new StructType(StandardSchemas.DbSchemaSchema)),
             };
             return getObjectsDataArrays;
         }
@@ -119,7 +119,7 @@ namespace Apache.Arrow.Adbc.Tests
             List<IArrowArray?> schemaDataArrays = new List<IArrowArray>
             {
                 new StringArray.Builder().Build(),
-                dbSchemaTablesValues.CreateNestedListArray(new StructType(StandardSchemas.TableSchema)),
+                dbSchemaTablesValues.BuildListArrayForType(new StructType(StandardSchemas.TableSchema)),
             };
 
             return schemaDataArrays;
@@ -144,8 +144,8 @@ namespace Apache.Arrow.Adbc.Tests
             {
                 new StringArray.Builder().Build(),
                 new StringArray.Builder().Build(),
-                tableColumnsValues.CreateNestedListArray(new StructType(StandardSchemas.ColumnSchema)),
-                tableConstraintsValues.CreateNestedListArray(new StructType(StandardSchemas.ConstraintSchema))
+                tableColumnsValues.BuildListArrayForType(new StructType(StandardSchemas.ColumnSchema)),
+                tableConstraintsValues.BuildListArrayForType(new StructType(StandardSchemas.ConstraintSchema))
             };
             return tableDataArrays;
         }
@@ -276,7 +276,7 @@ namespace Apache.Arrow.Adbc.Tests
                 new Int64Array.Builder().Build(),
                 new Int32Array.Builder().Build(),
                 new ListArray.Builder(StringType.Default).Build(),
-                new List<IArrowArray?>(){ entriesDataArray }.CreateNestedListArray(entryType)
+                new List<IArrowArray?>(){ entriesDataArray }.BuildListArrayForType(entryType)
             };
 
             DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
@@ -348,7 +348,7 @@ namespace Apache.Arrow.Adbc.Tests
                 new Int64Array.Builder().Build(),
                 new Int32Array.Builder().Build(),
                 new ListArray.Builder(Int32Type.Default).Build(), // Should be StringType.Default
-                new List<IArrowArray?>(){ entriesDataArray }.CreateNestedListArray(entryType)
+                new List<IArrowArray?>(){ entriesDataArray }.BuildListArrayForType(entryType)
             };
 
             DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);

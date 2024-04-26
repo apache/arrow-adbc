@@ -245,7 +245,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 new Int64Array.Builder().Build(),
                 new Int32Array.Builder().Build(),
                 new ListArray.Builder(StringType.Default).Build(),
-                new List<IArrowArray?>(){ entriesDataArray }.CreateNestedListArray(entryType)
+                new List<IArrowArray?>(){ entriesDataArray }.BuildListArrayForType(entryType)
             };
 
             DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
@@ -329,7 +329,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             IArrowArray[] dataArrays = new IArrowArray[]
             {
                 catalogNameBuilder.Build(),
-                catalogDbSchemasValues.CreateNestedListArray(new StructType(StandardSchemas.DbSchemaSchema)),
+                catalogDbSchemasValues.BuildListArrayForType(new StructType(StandardSchemas.DbSchemaSchema)),
             };
             StandardSchemas.GetObjectsSchema.Validate(dataArrays);
 
@@ -380,7 +380,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             IArrowArray[] dataArrays = new IArrowArray[]
             {
                 dbSchemaNameBuilder.Build(),
-                dbSchemaTablesValues.CreateNestedListArray(new StructType(StandardSchemas.TableSchema)),
+                dbSchemaTablesValues.BuildListArrayForType(new StructType(StandardSchemas.TableSchema)),
             };
             StandardSchemas.DbSchemaSchema.Validate(dataArrays);
 
@@ -470,8 +470,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 tableNameBuilder.Build(),
                 tableTypeBuilder.Build(),
-                tableColumnsValues.CreateNestedListArray(new StructType(StandardSchemas.ColumnSchema)),
-                tableConstraintsValues.CreateNestedListArray(new StructType(StandardSchemas.ConstraintSchema))
+                tableColumnsValues.BuildListArrayForType(new StructType(StandardSchemas.ColumnSchema)),
+                tableConstraintsValues.BuildListArrayForType(new StructType(StandardSchemas.ConstraintSchema))
             };
             StandardSchemas.TableSchema.Validate(dataArrays);
 
@@ -647,8 +647,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 constraintNameBuilder.Build(),
                 constraintTypeBuilder.Build(),
-                constraintColumnNamesValues.CreateNestedListArray(StringType.Default),
-                constraintColumnUsageValues.CreateNestedListArray(new StructType(StandardSchemas.UsageSchema))
+                constraintColumnNamesValues.BuildListArrayForType(StringType.Default),
+                constraintColumnUsageValues.BuildListArrayForType(new StructType(StandardSchemas.UsageSchema))
             };
             StandardSchemas.ConstraintSchema.Validate(dataArrays);
 

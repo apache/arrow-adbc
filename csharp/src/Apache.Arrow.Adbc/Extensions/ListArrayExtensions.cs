@@ -29,7 +29,7 @@ namespace Apache.Arrow.Adbc.Extensions
         /// <param name="arrayList">The list of data.</param>
         /// <param name="dataType">The data type of the contained data.</param>
         /// <returns>A <see cref="ListArray"/> of the data.</returns>
-        public static ListArray CreateNestedListArray(this IReadOnlyList<IArrowArray?> arrayList, IArrowType dataType)
+        public static ListArray BuildListArrayForType(this IReadOnlyList<IArrowArray?> arrayList, IArrowType dataType)
         {
             ArrowBuffer.Builder<int> valueOffsetsBufferBuilder = new ArrowBuffer.Builder<int>();
             ArrowBuffer.BitmapBuilder validityBufferBuilder = new ArrowBuffer.BitmapBuilder();
