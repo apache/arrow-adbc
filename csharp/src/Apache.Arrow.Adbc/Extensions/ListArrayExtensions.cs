@@ -21,7 +21,7 @@ using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Extensions
 {
-    public static class ListArrayExtensions
+    internal static class ListArrayExtensions
     {
         /// <summary>
         /// Creates a <see cref="ListArray"/> from a list of <see cref="IArrowArray"/> data for the given datatype <see cref="IArrowArray"/>.
