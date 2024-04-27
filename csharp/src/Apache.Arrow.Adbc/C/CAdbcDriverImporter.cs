@@ -200,11 +200,44 @@ namespace Apache.Arrow.Adbc.C
         {
             private CAdbcDriver _nativeDriver;
             private CAdbcConnection _nativeConnection;
+            private bool? _autoCommit;
+            private IsolationLevel? _isolationLevel;
+            private bool? _readOnly;
 
             public AdbcConnectionNative(CAdbcDriver nativeDriver, CAdbcConnection nativeConnection)
             {
                 _nativeDriver = nativeDriver;
                 _nativeConnection = nativeConnection;
+            }
+
+            public override bool AutoCommit
+            {
+                get => _autoCommit.Value;
+                set
+                {
+                    SetOption(AdbcOptions.Autocommit, AdbcOptions.GetEnabled(value));
+                    _autoCommit = value;
+                }
+            }
+
+            public override IsolationLevel IsolationLevel
+            {
+                get => _isolationLevel.Value;
+                set
+                {
+                    SetOption(AdbcOptions.IsolationLevel, AdbcOptions.GetIsolationLevel(value));
+                    _isolationLevel = value;
+                }
+            }
+
+            public override bool ReadOnly
+            {
+                get => _readOnly.Value;
+                set
+                {
+                    SetOption(AdbcOptions.ReadOnly, AdbcOptions.GetEnabled(value));
+                    _readOnly = value;
+                }
             }
 
             public unsafe override AdbcStatement CreateStatement()
@@ -328,6 +361,30 @@ namespace Apache.Arrow.Adbc.C
                             (connection, utf8Catalog, utf8Schema, utf8Table, caller.CreateSchema(), &caller._error));
                         return caller.ImportSchema();
                     }
+                }
+            }
+
+            public unsafe override void Commit()
+            {
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(_nativeDriver.ConnectionCommit, ref _nativeConnection);
+                }
+            }
+
+            public unsafe override void Rollback()
+            {
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(_nativeDriver.ConnectionRollback, ref _nativeConnection);
+                }
+            }
+
+            public unsafe override void SetOption(string key, string value)
+            {
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(_nativeDriver.ConnectionSetOption, ref _nativeConnection, key, value);
                 }
             }
         }

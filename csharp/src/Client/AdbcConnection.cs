@@ -38,6 +38,7 @@ namespace Apache.Arrow.Adbc.Client
         private readonly Dictionary<string, string> adbcConnectionOptions;
 
         private AdbcStatement adbcStatement;
+        private AdbcTransaction currentTransaction;
 
         /// <summary>
         /// Overloaded. Intializes an <see cref="AdbcConnection"/>.
@@ -90,6 +91,14 @@ namespace Apache.Arrow.Adbc.Client
             this.AdbcDriver = adbcDriver;
             this.adbcConnectionParameters = parameters;
             this.adbcConnectionOptions = options;
+        }
+
+        // For testing
+        internal AdbcConnection(AdbcDriver driver, AdbcDatabase database, Adbc.AdbcConnection connection)
+        {
+            this.AdbcDriver = driver;
+            this.adbcDatabase = database;
+            this.adbcConnectionInternal = connection;
         }
 
         /// <summary>
@@ -258,6 +267,65 @@ namespace Apache.Arrow.Adbc.Client
             return collection.GetSchema(this.Connection, restrictionValues);
         }
 
+        protected override DbTransaction BeginDbTransaction(System.Data.IsolationLevel isolationLevel)
+        {
+            if (this.currentTransaction != null) throw new InvalidOperationException("connection is already enlisted in a transaction");
+
+            this.Connection.AutoCommit = false;
+
+            if (isolationLevel != System.Data.IsolationLevel.Unspecified)
+            {
+                this.Connection.IsolationLevel = GetIsolationLevel(isolationLevel);
+            }
+
+            this.currentTransaction = new AdbcTransaction(this, isolationLevel);
+            return this.currentTransaction;
+        }
+
+        private static Adbc.IsolationLevel GetIsolationLevel(System.Data.IsolationLevel isolationLevel)
+        {
+            return isolationLevel switch
+            {
+                System.Data.IsolationLevel.Unspecified => Adbc.IsolationLevel.Default,
+                System.Data.IsolationLevel.ReadUncommitted => Adbc.IsolationLevel.ReadUncommitted,
+                System.Data.IsolationLevel.ReadCommitted => Adbc.IsolationLevel.ReadCommitted,
+                System.Data.IsolationLevel.RepeatableRead => Adbc.IsolationLevel.RepeatableRead,
+                System.Data.IsolationLevel.Snapshot => Adbc.IsolationLevel.Snapshot,
+                System.Data.IsolationLevel.Serializable => Adbc.IsolationLevel.Serializable,
+                _ => throw new NotSupportedException("unknown isolation level"),
+            };
+        }
+
+        private void Commit()
+        {
+            if (this.currentTransaction == null) throw new InvalidOperationException("connection is not enlisted in a transaction");
+            System.Data.IsolationLevel isolationLevel = this.currentTransaction.IsolationLevel;
+
+            this.Connection.Commit();
+
+            this.currentTransaction = null;
+            this.Connection.AutoCommit = true;
+            if (isolationLevel != System.Data.IsolationLevel.Unspecified)
+            {
+                this.adbcConnectionInternal.IsolationLevel = IsolationLevel.Default;
+            }
+        }
+
+        private void Rollback()
+        {
+            if (this.currentTransaction == null) throw new InvalidOperationException("connection is not enlisted in a transaction");
+            System.Data.IsolationLevel isolationLevel = this.currentTransaction.IsolationLevel;
+
+            this.Connection.Rollback();
+
+            this.currentTransaction = null;
+            this.Connection.AutoCommit = true;
+            if (isolationLevel != System.Data.IsolationLevel.Unspecified)
+            {
+                this.adbcConnectionInternal.IsolationLevel = IsolationLevel.Default;
+            }
+        }
+
         #region NOT_IMPLEMENTED
 
         public override string Database => throw new NotImplementedException();
@@ -271,12 +339,26 @@ namespace Apache.Arrow.Adbc.Client
             throw new NotImplementedException();
         }
 
-        protected override DbTransaction BeginDbTransaction(System.Data.IsolationLevel isolationLevel)
-        {
-            throw new NotImplementedException();
-        }
-
         #endregion
+
+        sealed class AdbcTransaction : DbTransaction
+        {
+            readonly AdbcConnection connection;
+            readonly System.Data.IsolationLevel isolationLevel;
+
+            public AdbcTransaction(AdbcConnection connection, System.Data.IsolationLevel isolationLevel)
+            {
+                this.connection = connection;
+                this.isolationLevel = isolationLevel;
+            }
+
+            public override System.Data.IsolationLevel IsolationLevel => this.isolationLevel;
+
+            protected override DbConnection DbConnection => this.connection;
+
+            public override void Commit() => this.connection.Commit();
+            public override void Rollback() => this.connection.Rollback();
+        }
 
         abstract class SchemaCollection
         {
