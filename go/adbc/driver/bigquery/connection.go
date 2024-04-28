@@ -53,7 +53,9 @@ type connectionImpl struct {
 	datasetID    string
 	tableID      string
 
-	catalog  string
+	// catalog is the same as the project id in BigQuery
+	catalog string
+	// dbSchema is the same as the dataset id in BigQuery
 	dbSchema string
 
 	client *bigquery.Client
@@ -84,7 +86,11 @@ func (c *connectionImpl) SetCurrentCatalog(value string) error {
 
 // SetCurrentDbSchema implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) SetCurrentDbSchema(value string) error {
-	c.dbSchema = value
+	sanitized, err := sanitizeDataset(value)
+	if err != nil {
+		return err
+	}
+	c.dbSchema = sanitized
 	return nil
 }
 
@@ -341,6 +347,19 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 }
 
 var (
+	// Dataset:
+	//
+	// https://cloud.google.com/bigquery/docs/datasets#dataset-naming
+	//
+	// When you create a dataset in BigQuery, the dataset name must be unique for each project.
+	// The dataset name can contain the following:
+	//   - Up to 1,024 characters.
+	//   - Letters (uppercase or lowercase), numbers, and underscores.
+	// Dataset names are case-sensitive by default. mydataset and MyDataset can coexist in the same project,
+	// unless one of them has case-sensitivity turned off.
+	// Dataset names cannot contain spaces or special characters such as -, &, @, or %.
+	datasetRegex = regexp.MustCompile("^[a-zA-Z0-9_-]")
+
 	precisionScaleRegex = regexp.MustCompile(`^(?:BIG)?NUMERIC\((?P<precision>\d+)(?:,(?P<scale>\d+))?\)$`)
 	simpleDataType      = map[string]arrow.DataType{
 		"BOOL":      arrow.FixedWidthTypes.Boolean,
@@ -357,6 +376,27 @@ var (
 		"TIME":      arrow.FixedWidthTypes.Time64us,
 	}
 )
+
+func sanitizeDataset(value string) (string, error) {
+	if value == "" {
+		return value, nil
+	} else {
+		if datasetRegex.MatchString(value) {
+			if len(value) > 1024 {
+				return "", adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  "Dataset name exceeds 1024 characters",
+				}
+			}
+			return value, nil
+		} else {
+			return "", adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("invalid characters in value `%s`", value),
+			}
+		}
+	}
+}
 
 func buildSchemaField(name string, typeString string) (arrow.Field, error) {
 	index := strings.Index(name, "(")
@@ -513,9 +553,13 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 	if dbSchema == nil {
 		dbSchema = &c.dbSchema
 	}
+	sanitizedDbSchema, err := sanitizeDataset(*dbSchema)
+	if err != nil {
+		return nil, err
+	}
 
 	// sadly that query parameters cannot be used in place of table names
-	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = @tableName", *catalog, *dbSchema)
+	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = @tableName", *catalog, sanitizedDbSchema)
 	query := c.client.Query(queryString)
 	query.Parameters = []bigquery.QueryParameter{
 		{
