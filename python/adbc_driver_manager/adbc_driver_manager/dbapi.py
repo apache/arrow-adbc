@@ -235,8 +235,7 @@ class _Closeable(abc.ABC):
         self.close()
 
     @abc.abstractmethod
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
 
 class _SharedDatabase(_Closeable):
