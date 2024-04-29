@@ -15,10 +15,10 @@
 <meta name="description" content="Available for: C/C++, GLib/Ruby, Go, Python, R The PostgreSQL driver provides access to any database that supports the PostgreSQL wire format. It wraps libpq, the client library for PostgreSQL. The..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Snowflake Driver" href="snowflake.html" /><link rel="prev" title="JDBC Adapter" href="jdbc.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.04.27 -->
         <title>PostgreSQL Driver - ADBC 1.0.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=46965ee0ad39e5260c2467c27b94afaae98bd900" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -181,6 +181,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -337,9 +339,9 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="postgresql-driver">
-<h1>PostgreSQL Driver<a class="headerlink" href="#postgresql-driver" title="Permalink to this heading">#</a></h1>
+<h1>PostgreSQL Driver<a class="headerlink" href="#postgresql-driver" title="Permalink to this heading">¶</a></h1>
 <p><strong>Available for:</strong> C/C++, GLib/Ruby, Go, Python, R</p>
 <p>The PostgreSQL driver provides access to any database that supports
 the PostgreSQL wire format.  It wraps <a class="reference external" href="https://www.postgresql.org/docs/current/libpq.html">libpq</a>, the client library for
@@ -356,7 +358,7 @@ Performance/optimization and support for complex types and
 different ADBC features is still ongoing.</p>
 </div>
 <section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h2>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
 </input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-0">
@@ -396,7 +398,7 @@ R</label><div class="sd-tab-content docutils">
 </div>
 </section>
 <section id="usage">
-<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">#</a></h2>
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">¶</a></h2>
 <p>To connect to a database, supply the “uri” parameter when constructing
 the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  This should be a <a class="reference external" href="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING">connection URI</a>.</p>
 <div class="sd-tab-set docutils">
@@ -473,25 +475,25 @@ R</label><div class="sd-tab-content docutils">
 </div>
 </section>
 <section id="supported-features">
-<h2>Supported Features<a class="headerlink" href="#supported-features" title="Permalink to this heading">#</a></h2>
+<h2>Supported Features<a class="headerlink" href="#supported-features" title="Permalink to this heading">¶</a></h2>
 <p>The PostgreSQL driver mostly supports features defined in the ADBC API
 specification 1.0.0, but not all cases are fully implemented
 (particularly around bind parameters and prepared statements).</p>
 <section id="bulk-ingestion">
-<h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
+<h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">¶</a></h3>
 <p>Bulk ingestion is supported.  The mapping from Arrow types to
 PostgreSQL types is the same as below.</p>
 </section>
 <section id="partitioned-result-sets">
-<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">#</a></h3>
+<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">¶</a></h3>
 <p>Partitioned result sets are not supported.</p>
 </section>
 <section id="transactions">
-<h3>Transactions<a class="headerlink" href="#transactions" title="Permalink to this heading">#</a></h3>
+<h3>Transactions<a class="headerlink" href="#transactions" title="Permalink to this heading">¶</a></h3>
 <p>Transactions are supported.</p>
 </section>
 <section id="type-support">
-<h3>Type Support<a class="headerlink" href="#type-support" title="Permalink to this heading">#</a></h3>
+<h3>Type Support<a class="headerlink" href="#type-support" title="Permalink to this heading">¶</a></h3>
 <p>PostgreSQL allows defining new types at runtime, so the driver must
 build a mapping of available types.  This is currently done once at
 startup.</p>
@@ -499,7 +501,7 @@ startup.</p>
 being read or written.</p>
 <div class="table-wrapper docutils container" id="id5">
 <table class="docutils align-default" id="id5">
-<caption><span class="caption-text">Arrow type to PostgreSQL type mapping</span><a class="headerlink" href="#id5" title="Permalink to this table">#</a></caption>
+<caption><span class="caption-text">Arrow type to PostgreSQL type mapping</span><a class="headerlink" href="#id5" title="Permalink to this table">¶</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Arrow Type</p></th>
 <th class="head"><p>As Bind Parameter</p></th>
@@ -580,7 +582,7 @@ being read or written.</p>
 </div>
 <div class="table-wrapper docutils container" id="id6">
 <table class="docutils align-default" id="id6">
-<caption><span class="caption-text">PostgreSQL type to Arrow type mapping</span><a class="headerlink" href="#id6" title="Permalink to this table">#</a></caption>
+<caption><span class="caption-text">PostgreSQL type to Arrow type mapping</span><a class="headerlink" href="#id6" title="Permalink to this table">¶</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>PostgreSQL Type</p></th>
 <th class="head"><p>In Result Set</p></th>
@@ -665,7 +667,7 @@ the case.</p>
 </section>
 </section>
 <section id="software-versions">
-<h2>Software Versions<a class="headerlink" href="#software-versions" title="Permalink to this heading">#</a></h2>
+<h2>Software Versions<a class="headerlink" href="#software-versions" title="Permalink to this heading">¶</a></h2>
 <p>For Python wheels, the shipped version of the PostgreSQL client libraries is
 15.2.  For conda-forge packages, the version of libpq is the same as the
 version of libpq in your Conda environment.</p>

@@ -15,10 +15,10 @@
 <meta name="description" content="This document summarizes the general featureset. For C/C++ details, see adbc.h., For Go details, see the source., For Java details, see the source, particularly the package org.apache.arrow.adbc.co..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Versioning and Compatibility" href="versioning.html" /><link rel="prev" title="Writing New Drivers" href="../driver/authoring.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.04.27 -->
         <title>ADBC API Standard - ADBC 1.0.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=46965ee0ad39e5260c2467c27b94afaae98bd900" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -181,6 +181,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -337,9 +339,9 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="adbc-api-standard">
-<h1>ADBC API Standard<a class="headerlink" href="#adbc-api-standard" title="Permalink to this heading">#</a></h1>
+<h1>ADBC API Standard<a class="headerlink" href="#adbc-api-standard" title="Permalink to this heading">¶</a></h1>
 <p>This document summarizes the general featureset.</p>
 <ul class="simple">
 <li><p>For C/C++ details, see <a class="reference internal" href="../cpp/api/adbc.html"><span class="doc">adbc.h</span></a>.</p></li>
@@ -348,7 +350,7 @@
 the package <a class="reference external" href="https://arrow.apache.org/adbc/main/java/api/org/apache/arrow/adbc/core/package-summary.html" title="(in ADBC vversion)"><code class="xref std std-jpackage docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core</span></code></a>.</p></li>
 </ul>
 <section id="databases">
-<h2>Databases<a class="headerlink" href="#databases" title="Permalink to this heading">#</a></h2>
+<h2>Databases<a class="headerlink" href="#databases" title="Permalink to this heading">¶</a></h2>
 <p>Databases hold state shared by multiple connections.  Generally, this
 means common configuration and caches.  For in-memory databases, it
 provides a place to hold ownership of the in-memory database.</p>
@@ -359,7 +361,7 @@ provides a place to hold ownership of the in-memory database.</p>
 </ul>
 </section>
 <section id="connections">
-<h2>Connections<a class="headerlink" href="#connections" title="Permalink to this heading">#</a></h2>
+<h2>Connections<a class="headerlink" href="#connections" title="Permalink to this heading">¶</a></h2>
 <p>A connection is a single, logical connection to a database.</p>
 <ul class="simple">
 <li><p>C/C++: <a class="reference internal" href="../cpp/api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a></p></li>
@@ -367,7 +369,7 @@ provides a place to hold ownership of the in-memory database.</p>
 <li><p>Java: <a class="reference external" href="https://arrow.apache.org/adbc/main/java/api/org/apache/arrow/adbc/core/AdbcConnection.html" title="(in ADBC vversion)"><code class="xref std std-jtype docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcConnection</span></code></a></p></li>
 </ul>
 <section id="autocommit">
-<h3>Autocommit<a class="headerlink" href="#autocommit" title="Permalink to this heading">#</a></h3>
+<h3>Autocommit<a class="headerlink" href="#autocommit" title="Permalink to this heading">¶</a></h3>
 <p>By default, connections are expected to operate in autocommit mode;
 that is, queries take effect immediately upon execution.  This can be
 disabled in favor of manual commit/rollback calls, but not all
@@ -379,12 +381,12 @@ implementations will support this.</p>
 </ul>
 </section>
 <section id="metadata">
-<h3>Metadata<a class="headerlink" href="#metadata" title="Permalink to this heading">#</a></h3>
+<h3>Metadata<a class="headerlink" href="#metadata" title="Permalink to this heading">¶</a></h3>
 <p>ADBC exposes a variety of metadata about the database, such as what catalogs,
 schemas, and tables exist, the Arrow schema of tables, and so on.</p>
 </section>
 <section id="statistics">
-<span id="specification-statistics"></span><h3>Statistics<a class="headerlink" href="#statistics" title="Permalink to this heading">#</a></h3>
+<span id="specification-statistics"></span><h3>Statistics<a class="headerlink" href="#statistics" title="Permalink to this heading">¶</a></h3>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Since API revision 1.1.0</p>
@@ -398,7 +400,7 @@ data entirely.</p>
 </section>
 </section>
 <section id="statements">
-<h2>Statements<a class="headerlink" href="#statements" title="Permalink to this heading">#</a></h2>
+<h2>Statements<a class="headerlink" href="#statements" title="Permalink to this heading">¶</a></h2>
 <p>Statements hold state related to query execution.  They represent both
 one-off queries and prepared statements.  They can be reused, though
 doing so will invalidate prior result sets from that statement.  (See
@@ -409,7 +411,7 @@ doing so will invalidate prior result sets from that statement.  (See
 <li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcStatement</span></code></p></li>
 </ul>
 <section id="bulk-ingestion">
-<span id="specification-bulk-ingestion"></span><h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
+<span id="specification-bulk-ingestion"></span><h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">¶</a></h3>
 <p>ADBC provides explicit facilities to ingest batches of Arrow data into
 a database table.  For databases which support it, this can avoid
 overheads from the typical bind-insert loop.  Also, this (mostly)
@@ -422,7 +424,7 @@ options.</p></li>
 </ul>
 </section>
 <section id="cancellation">
-<span id="specification-cancellation"></span><h3>Cancellation<a class="headerlink" href="#cancellation" title="Permalink to this heading">#</a></h3>
+<span id="specification-cancellation"></span><h3>Cancellation<a class="headerlink" href="#cancellation" title="Permalink to this heading">¶</a></h3>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Since API revision 1.1.0</p>
@@ -431,7 +433,7 @@ options.</p></li>
 <a class="reference internal" href="#specification-statistics"><span class="std std-ref">Statistics</span></a>) can be cancelled.</p>
 </section>
 <section id="partitioned-result-sets">
-<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">#</a></h3>
+<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">¶</a></h3>
 <p>ADBC lets a driver explicitly expose partitioned and/or distributed
 result sets to clients.  (This is similar to functionality in Flight
 RPC/Flight SQL.)  Clients may take advantage of this to distribute
@@ -453,54 +455,54 @@ endpoints.</p>
 </div>
 </section>
 <section id="lifecycle-usage">
-<h3>Lifecycle &amp; Usage<a class="headerlink" href="#lifecycle-usage" title="Permalink to this heading">#</a></h3>
+<h3>Lifecycle &amp; Usage<a class="headerlink" href="#lifecycle-usage" title="Permalink to this heading">¶</a></h3>
 <a class="reference internal image-reference" href="../_images/AdbcStatement.svg"><img alt="The lifecycle of a statement." src="../_images/AdbcStatement.svg" width="100%" /></a>
 <section id="basic-usage">
-<h4>Basic Usage<a class="headerlink" href="#basic-usage" title="Permalink to this heading">#</a></h4>
+<h4>Basic Usage<a class="headerlink" href="#basic-usage" title="Permalink to this heading">¶</a></h4>
 <figure class="align-default" id="id1">
 <img alt="../_images/AdbcStatementBasicUsage.mmd.svg" src="../_images/AdbcStatementBasicUsage.mmd.svg" /><figcaption>
-<p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id1" title="Permalink to this image">#</a></p>
+<p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 </section>
 <section id="consuming-result-sets">
-<h4>Consuming Result Sets<a class="headerlink" href="#consuming-result-sets" title="Permalink to this heading">#</a></h4>
+<h4>Consuming Result Sets<a class="headerlink" href="#consuming-result-sets" title="Permalink to this heading">¶</a></h4>
 <figure class="align-default" id="id2">
 <img alt="../_images/AdbcStatementConsumeResultSet.mmd.svg" src="../_images/AdbcStatementConsumeResultSet.mmd.svg" /><figcaption>
 <p><span class="caption-text">This is equivalent to reading from what many Arrow libraries call a
-RecordBatchReader.</span><a class="headerlink" href="#id2" title="Permalink to this image">#</a></p>
+RecordBatchReader.</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 </section>
 <section id="bulk-data-ingestion">
-<h4>Bulk Data Ingestion<a class="headerlink" href="#bulk-data-ingestion" title="Permalink to this heading">#</a></h4>
+<h4>Bulk Data Ingestion<a class="headerlink" href="#bulk-data-ingestion" title="Permalink to this heading">¶</a></h4>
 <figure class="align-default" id="id3">
 <img alt="../_images/AdbcStatementBulkIngest.mmd.svg" src="../_images/AdbcStatementBulkIngest.mmd.svg" /><figcaption>
-<p><span class="caption-text">There is no need to prepare the statement.</span><a class="headerlink" href="#id3" title="Permalink to this image">#</a></p>
+<p><span class="caption-text">There is no need to prepare the statement.</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 </section>
 <section id="update-only-queries-no-result-set">
-<h4>Update-only Queries (No Result Set)<a class="headerlink" href="#update-only-queries-no-result-set" title="Permalink to this heading">#</a></h4>
+<h4>Update-only Queries (No Result Set)<a class="headerlink" href="#update-only-queries-no-result-set" title="Permalink to this heading">¶</a></h4>
 <figure class="align-default" id="id4">
 <img alt="../_images/AdbcStatementUpdate.mmd.svg" src="../_images/AdbcStatementUpdate.mmd.svg" /><figcaption>
-<p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id4" title="Permalink to this image">#</a></p>
+<p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id4" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 </section>
 <section id="partitioned-execution">
-<h4>Partitioned Execution<a class="headerlink" href="#partitioned-execution" title="Permalink to this heading">#</a></h4>
+<h4>Partitioned Execution<a class="headerlink" href="#partitioned-execution" title="Permalink to this heading">¶</a></h4>
 <figure class="align-default" id="id5">
 <img alt="../_images/AdbcStatementPartitioned.mmd.svg" src="../_images/AdbcStatementPartitioned.mmd.svg" /><figcaption>
 <p><span class="caption-text">This is similar to fetching data in Arrow Flight RPC (by design). See
-<a class="reference external" href="https://arrow.apache.org/docs/format/Flight.html" title="(in Apache Arrow v16.0.0)"><span class="xref std std-doc">“Downloading Data”</span></a>.</span><a class="headerlink" href="#id5" title="Permalink to this image">#</a></p>
+<a class="reference external" href="https://arrow.apache.org/docs/format/Flight.html" title="(in Apache Arrow v16.0.0)"><span class="xref std std-doc">“Downloading Data”</span></a>.</span><a class="headerlink" href="#id5" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 </section>
 </section>
 </section>
 <section id="error-handling">
-<h2>Error Handling<a class="headerlink" href="#error-handling" title="Permalink to this heading">#</a></h2>
+<h2>Error Handling<a class="headerlink" href="#error-handling" title="Permalink to this heading">¶</a></h2>
 <p>The error handling strategy varies by language.</p>
 <p>In C, most methods take a <a class="reference internal" href="../cpp/api/adbc.html#_CPPv49AdbcError" title="AdbcError"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcError</span></code></a>.  In Go, most methods return
 an error that can be cast to an <code class="docutils literal notranslate"><span class="pre">AdbcError</span></code>.  In Java, most methods raise an
@@ -513,7 +515,7 @@ an error that can be cast to an <code class="docutils literal notranslate"><span
 <li><p>An optional 5-character “SQLSTATE” code (a SQL-like vendor-specific code).</p></li>
 </ul>
 <section id="rich-error-metadata">
-<span id="specification-rich-error-metadata"></span><h3>Rich Error Metadata<a class="headerlink" href="#rich-error-metadata" title="Permalink to this heading">#</a></h3>
+<span id="specification-rich-error-metadata"></span><h3>Rich Error Metadata<a class="headerlink" href="#rich-error-metadata" title="Permalink to this heading">¶</a></h3>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Since API revision 1.1.0</p>
@@ -528,9 +530,9 @@ expanded while preserving ABI.</p>
 </section>
 </section>
 <section id="changelog">
-<h2>Changelog<a class="headerlink" href="#changelog" title="Permalink to this heading">#</a></h2>
+<h2>Changelog<a class="headerlink" href="#changelog" title="Permalink to this heading">¶</a></h2>
 <section id="version-1-1-0">
-<h3>Version 1.1.0<a class="headerlink" href="#version-1-1-0" title="Permalink to this heading">#</a></h3>
+<h3>Version 1.1.0<a class="headerlink" href="#version-1-1-0" title="Permalink to this heading">¶</a></h3>
 <p>The info key ADBC_INFO_DRIVER_ADBC_VERSION can be used to retrieve the
 driver’s supported ADBC version.</p>
 <p>The canonical options “uri”, “username”, and “password” were added to make

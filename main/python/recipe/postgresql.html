@@ -15,10 +15,10 @@
 <meta name="description" content="Authenticate with a username and password: Recipe source: postgresql_authenticate.py To connect to a PostgreSQL database, the username and password must be provided in the URI. For example, See the..." />
 <link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="R" href="../../r/index.html" /><link rel="prev" title="Flight SQL Recipes" href="flight_sql.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.04.27 -->
         <title>PostgreSQL Recipes - ADBC 1.0.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=46965ee0ad39e5260c2467c27b94afaae98bd900" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -181,6 +181,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -337,11 +339,11 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="postgresql-recipes">
-<h1>PostgreSQL Recipes<a class="headerlink" href="#postgresql-recipes" title="Permalink to this heading">#</a></h1>
+<h1>PostgreSQL Recipes<a class="headerlink" href="#postgresql-recipes" title="Permalink to this heading">¶</a></h1>
 <section id="authenticate-with-a-username-and-password">
-<h2>Authenticate with a username and password<a class="headerlink" href="#authenticate-with-a-username-and-password" title="Permalink to this heading">#</a></h2>
+<h2>Authenticate with a username and password<a class="headerlink" href="#authenticate-with-a-username-and-password" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_authenticate.py">postgresql_authenticate.py</a></p>
 <p>To connect to a PostgreSQL database, the username and password must
 be provided in the URI.  For example,</p>
@@ -366,7 +368,7 @@ for full details.</p>
 </div>
 </section>
 <section id="create-append-to-a-table-from-an-arrow-dataset">
-<span id="recipe-postgresql-create-append"></span><h2>Create/append to a table from an Arrow dataset<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-dataset" title="Permalink to this heading">#</a></h2>
+<span id="recipe-postgresql-create-append"></span><h2>Create/append to a table from an Arrow dataset<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-dataset" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_dataset_table.py">postgresql_create_dataset_table.py</a></p>
 <p>ADBC makes it easy to load PyArrow datasets into your datastore.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
@@ -399,7 +401,7 @@ to use don’t exist.</p>
 </pre></div>
 </div>
 <section id="generating-sample-data">
-<h3>Generating sample data<a class="headerlink" href="#generating-sample-data" title="Permalink to this heading">#</a></h3>
+<h3>Generating sample data<a class="headerlink" href="#generating-sample-data" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">52</span><span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">(</span>
 <span class="linenos">53</span>    <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;adbc-docs-&quot;</span><span class="p">,</span>
 <span class="linenos">54</span>    <span class="n">ignore_cleanup_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -453,7 +455,7 @@ to use don’t exist.</p>
 </div>
 </section>
 <section id="loading-csv-files-into-postgresql">
-<h3>Loading CSV Files into PostgreSQL<a class="headerlink" href="#loading-csv-files-into-postgresql" title="Permalink to this heading">#</a></h3>
+<h3>Loading CSV Files into PostgreSQL<a class="headerlink" href="#loading-csv-files-into-postgresql" title="Permalink to this heading">¶</a></h3>
 <p>We can directly pass a <a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader" title="(in Apache Arrow v16.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pyarrow.RecordBatchReader</span></code></a> (from
 <code class="docutils literal notranslate"><span class="pre">open_csv</span></code>) to <code class="docutils literal notranslate"><span class="pre">adbc_ingest</span></code>.  We can also pass a
 <a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.dataset.Dataset.html#pyarrow.dataset.Dataset" title="(in Apache Arrow v16.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pyarrow.dataset.Dataset</span></code></a>, or a
@@ -481,7 +483,7 @@ to use don’t exist.</p>
 </div>
 </section>
 <section id="loading-arrow-ipc-feather-files-into-postgresql">
-<h3>Loading Arrow IPC (Feather) Files into PostgreSQL<a class="headerlink" href="#loading-arrow-ipc-feather-files-into-postgresql" title="Permalink to this heading">#</a></h3>
+<h3>Loading Arrow IPC (Feather) Files into PostgreSQL<a class="headerlink" href="#loading-arrow-ipc-feather-files-into-postgresql" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">133</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">134</span>    <span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">ipc</span><span class="o">.</span><span class="n">RecordBatchFileReader</span><span class="p">(</span><span class="n">ipc_file</span><span class="p">)</span>
 </pre></div>
@@ -512,7 +514,7 @@ PostgreSQL, though.</p>
 </div>
 </section>
 <section id="loading-parquet-files-into-postgresql">
-<h3>Loading Parquet Files into PostgreSQL<a class="headerlink" href="#loading-parquet-files-into-postgresql" title="Permalink to this heading">#</a></h3>
+<h3>Loading Parquet Files into PostgreSQL<a class="headerlink" href="#loading-parquet-files-into-postgresql" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">160</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">161</span>    <span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">parquet</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="n">parquet_file</span><span class="p">)</span>
 <span class="linenos">162</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;pqtable&quot;</span><span class="p">,</span> <span class="n">reader</span><span class="o">.</span><span class="n">iter_batches</span><span class="p">(),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
@@ -536,7 +538,7 @@ PostgreSQL, though.</p>
 </div>
 </section>
 <section id="cleanup">
-<h3>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this heading">#</a></h3>
+<h3>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">183</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 <span class="linenos">184</span><span class="n">tempdir</span><span class="o">.</span><span class="n">cleanup</span><span class="p">()</span>
 </pre></div>
@@ -544,7 +546,7 @@ PostgreSQL, though.</p>
 </section>
 </section>
 <section id="create-append-to-a-table-from-an-arrow-table">
-<h2>Create/append to a table from an Arrow table<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-table" title="Permalink to this heading">#</a></h2>
+<h2>Create/append to a table from an Arrow table<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-table" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_append_table.py">postgresql_create_append_table.py</a></p>
 <p>ADBC allows creating and appending to database tables using Arrow
 tables.</p>
@@ -639,7 +641,7 @@ append.</p>
 </div>
 </section>
 <section id="create-append-to-a-temporary-table">
-<h2>Create/append to a temporary table<a class="headerlink" href="#create-append-to-a-temporary-table" title="Permalink to this heading">#</a></h2>
+<h2>Create/append to a temporary table<a class="headerlink" href="#create-append-to-a-temporary-table" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_temp_table.py">postgresql_create_temp_table.py</a></p>
 <p>ADBC allows creating and appending to temporary tables as well.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">21</span><span class="kn">import</span> <span class="nn">os</span>
@@ -719,7 +721,7 @@ If we reconnect, the table won’t exist; we’ll see only the ‘normal’ tabl
 <a class="reference internal" href="#recipe-postgresql-create-append"><span class="std std-ref">Create/append to a table from an Arrow dataset</span></a> for more examples.</p>
 </section>
 <section id="execute-a-statement-with-bind-parameters">
-<h2>Execute a statement with bind parameters<a class="headerlink" href="#execute-a-statement-with-bind-parameters" title="Permalink to this heading">#</a></h2>
+<h2>Execute a statement with bind parameters<a class="headerlink" href="#execute-a-statement-with-bind-parameters" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_execute_bind.py">postgresql_execute_bind.py</a></p>
 <p>ADBC allows using Python and Arrow values as bind parameters.
 Right now, the PostgreSQL driver only supports bind parameters
@@ -775,7 +777,7 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 </div>
 </section>
 <section id="get-the-arrow-schema-of-a-table">
-<h2>Get the Arrow schema of a table<a class="headerlink" href="#get-the-arrow-schema-of-a-table" title="Permalink to this heading">#</a></h2>
+<h2>Get the Arrow schema of a table<a class="headerlink" href="#get-the-arrow-schema-of-a-table" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_table_schema.py">postgresql_get_table_schema.py</a></p>
 <p>ADBC lets you get the schema of a table as an Arrow schema.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
@@ -834,7 +836,7 @@ decimals do not map onto Arrow decimals.</p>
 </div>
 </section>
 <section id="get-the-arrow-schema-of-a-query">
-<h2>Get the Arrow schema of a query<a class="headerlink" href="#get-the-arrow-schema-of-a-query" title="Permalink to this heading">#</a></h2>
+<h2>Get the Arrow schema of a query<a class="headerlink" href="#get-the-arrow-schema-of-a-query" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_query_schema.py">postgresql_get_query_schema.py</a></p>
 <p>ADBC lets you get the schema of a result set, without executing the query.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
@@ -877,7 +879,7 @@ decimals do not map onto Arrow decimals.</p>
 </div>
 </section>
 <section id="list-catalogs-schemas-and-tables">
-<h2>List catalogs, schemas, and tables<a class="headerlink" href="#list-catalogs-schemas-and-tables" title="Permalink to this heading">#</a></h2>
+<h2>List catalogs, schemas, and tables<a class="headerlink" href="#list-catalogs-schemas-and-tables" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_list_catalogs.py">postgresql_list_catalogs.py</a></p>
 <p>ADBC allows listing tables, catalogs, and schemas in the database.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>

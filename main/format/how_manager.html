@@ -15,10 +15,10 @@
 <meta name="description" content="When an application calls a function like AdbcStatementExecuteQuery(), how does it “know” what function in which driver to actually call? This can happen in a few ways. In the simplest case, the ap..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Contributing" href="../development/contributing.html" /><link rel="prev" title="Comparison with Other APIs" href="comparison.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.04.27 -->
         <title>How Drivers and the Driver Manager Work Together - ADBC 1.0.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=46965ee0ad39e5260c2467c27b94afaae98bd900" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -181,6 +181,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -337,9 +339,9 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="how-drivers-and-the-driver-manager-work-together">
-<h1>How Drivers and the Driver Manager Work Together<a class="headerlink" href="#how-drivers-and-the-driver-manager-work-together" title="Permalink to this heading">#</a></h1>
+<h1>How Drivers and the Driver Manager Work Together<a class="headerlink" href="#how-drivers-and-the-driver-manager-work-together" title="Permalink to this heading">¶</a></h1>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>This document focuses on drivers/applications that implement or
@@ -356,7 +358,7 @@ driver:</p>
 <figure class="align-default" id="id1">
 <img alt="../_images/DriverDirectLink.mmd.svg" src="../_images/DriverDirectLink.mmd.svg" /><figcaption>
 <p><span class="caption-text">In the simplest case, an application directly links to the driver and calls
-ADBC functions.</span><a class="headerlink" href="#id1" title="Permalink to this image">#</a></p>
+ADBC functions.</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 <p>This doesn’t work with multiple drivers, or applications that don’t/can’t link
@@ -367,14 +369,14 @@ Then, the application proceeds in two steps.  First, it dynamically loads a
 driver and calls an entrypoint function to get the function table:</p>
 <figure class="align-default" id="id2">
 <img alt="../_images/DriverTableLoad.mmd.svg" src="../_images/DriverTableLoad.mmd.svg" /><figcaption>
-<p><span class="caption-text">Now, the application asks the driver for a table of functions to call.</span><a class="headerlink" href="#id2" title="Permalink to this image">#</a></p>
+<p><span class="caption-text">Now, the application asks the driver for a table of functions to call.</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 <p>Then, the application uses the driver by calling the functions in the table:</p>
 <figure class="align-default" id="id3">
 <img alt="../_images/DriverTableUse.mmd.svg" src="../_images/DriverTableUse.mmd.svg" /><figcaption>
 <p><span class="caption-text">The application uses the table to call driver functions.  This approach
-scales to multiple drivers.</span><a class="headerlink" href="#id3" title="Permalink to this image">#</a></p>
+scales to multiple drivers.</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 <p>Dealing with the table, however, is messy.  So the overall recommended
@@ -387,11 +389,11 @@ same application:</p>
 <figure class="align-default" id="id4">
 <img alt="../_images/DriverManagerUse.mmd.svg" src="../_images/DriverManagerUse.mmd.svg" /><figcaption>
 <p><span class="caption-text">The application uses driver manager to “feel like” it’s just using a single
-driver.  The driver manager handles the details behind the scenes.</span><a class="headerlink" href="#id4" title="Permalink to this image">#</a></p>
+driver.  The driver manager handles the details behind the scenes.</span><a class="headerlink" href="#id4" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 <section id="in-more-detail">
-<h2>In More Detail<a class="headerlink" href="#in-more-detail" title="Permalink to this heading">#</a></h2>
+<h2>In More Detail<a class="headerlink" href="#in-more-detail" title="Permalink to this heading">¶</a></h2>
 <p>The <a class="reference external" href="https://github.com/apache/arrow/blob/main/format/adbc.h">adbc.h</a> header ties everything together.  It is the abstract API
 definition, akin to interface/trait/protocol definitions in other languages.
 C being C, however, all it consists of is a bunch of function prototypes and
@@ -414,7 +416,7 @@ driver have a relationship no different than any other C library.</p>
 <img alt="../_images/DriverDirectLink.mmd.svg" src="../_images/DriverDirectLink.mmd.svg" /><figcaption>
 <p><span class="caption-text">In the simplest case, an application directly links to the driver and calls
 ADBC functions.  When the application calls <code class="docutils literal notranslate"><span class="pre">StatementExecuteQuery</span></code>, that
-is directly provided by the driver that it links against.</span><a class="headerlink" href="#id5" title="Permalink to this image">#</a></p>
+is directly provided by the driver that it links against.</span><a class="headerlink" href="#id5" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 <p>Unfortunately, this doesn’t work as well in other scenarios.  For example, if
@@ -431,7 +433,7 @@ the One Definition Rule there), and use the aliases instead.</p>
 <figure class="align-default" id="id6">
 <img alt="../_images/DriverAlias.mmd.svg" src="../_images/DriverAlias.mmd.svg" /><figcaption>
 <p><span class="caption-text">To get around the One Definition Rule, we can provide aliases of the ADBC
-APIs instead.</span><a class="headerlink" href="#id6" title="Permalink to this image">#</a></p>
+APIs instead.</span><a class="headerlink" href="#id6" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 <p>This is rather inconvenient for the application, though.  Additionally, this
@@ -450,14 +452,14 @@ the name of the entrypoint; the ADBC spec lists a set of names it can try,
 based on the name of the driver library itself.)</p>
 <figure class="align-default" id="id7">
 <img alt="../_images/DriverTableLoad.mmd.svg" src="../_images/DriverTableLoad.mmd.svg" /><figcaption>
-<p><span class="caption-text">The application first loads a table of function pointers from the driver.</span><a class="headerlink" href="#id7" title="Permalink to this image">#</a></p>
+<p><span class="caption-text">The application first loads a table of function pointers from the driver.</span><a class="headerlink" href="#id7" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 <p>Then, it can use the driver by calling functions in that table:</p>
 <figure class="align-default" id="id8">
 <img alt="../_images/DriverTableUse.mmd.svg" src="../_images/DriverTableUse.mmd.svg" /><figcaption>
 <p><span class="caption-text">The application uses the table to call driver functions.  This approach
-scales to multiple drivers.</span><a class="headerlink" href="#id8" title="Permalink to this image">#</a></p>
+scales to multiple drivers.</span><a class="headerlink" href="#id8" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 <p>Of course, calling all functions by jumping through a giant table of function
@@ -470,7 +472,7 @@ simplest case we started out with:</p>
 <figure class="align-default" id="id9">
 <img alt="../_images/DriverManagerUse.mmd.svg" src="../_images/DriverManagerUse.mmd.svg" /><figcaption>
 <p><span class="caption-text">The application uses driver manager to “feel like” it’s just using a single
-driver.  The driver manager handles the details behind the scenes.</span><a class="headerlink" href="#id9" title="Permalink to this image">#</a></p>
+driver.  The driver manager handles the details behind the scenes.</span><a class="headerlink" href="#id9" title="Permalink to this image">¶</a></p>
 </figcaption>
 </figure>
 <p>So to recap, a driver should implement these three things:</p>

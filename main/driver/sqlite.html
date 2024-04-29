@@ -15,10 +15,10 @@
 <meta name="description" content="Available for: C/C++, GLib/Ruby, Go, Python, R The SQLite driver provides access to SQLite databases. This driver is essentially a “reference” driver that was used during ADBC development. It gener..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Writing New Drivers" href="authoring.html" /><link rel="prev" title="Snowflake Driver" href="snowflake.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.04.27 -->
         <title>SQLite Driver - ADBC 1.0.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=46965ee0ad39e5260c2467c27b94afaae98bd900" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -181,6 +181,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -337,16 +339,16 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="sqlite-driver">
-<h1>SQLite Driver<a class="headerlink" href="#sqlite-driver" title="Permalink to this heading">#</a></h1>
+<h1>SQLite Driver<a class="headerlink" href="#sqlite-driver" title="Permalink to this heading">¶</a></h1>
 <p><strong>Available for:</strong> C/C++, GLib/Ruby, Go, Python, R</p>
 <p>The SQLite driver provides access to SQLite databases.</p>
 <p>This driver is essentially a “reference” driver that was used during
 ADBC development.  It generally supports most ADBC features but has
 not received attention to optimization.</p>
 <section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h2>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
 </input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-0">
@@ -386,7 +388,7 @@ R</label><div class="sd-tab-content docutils">
 </div>
 </section>
 <section id="usage">
-<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">#</a></h2>
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">¶</a></h2>
 <p>To connect to a database, supply the “uri” parameter when constructing
 the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  This should be a filename or <a class="reference external" href="https://www.sqlite.org/c3ref/open.html#urifilenamesinsqlite3open">URI
 filename</a>.
@@ -464,18 +466,18 @@ requires CGO and loads the C++ ADBC sqlite driver.</p>
 </div>
 </section>
 <section id="supported-features">
-<h2>Supported Features<a class="headerlink" href="#supported-features" title="Permalink to this heading">#</a></h2>
+<h2>Supported Features<a class="headerlink" href="#supported-features" title="Permalink to this heading">¶</a></h2>
 <section id="bulk-ingestion">
-<h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
+<h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">¶</a></h3>
 <p>Bulk ingestion is supported.  The mapping from Arrow types to SQLite
 types is the same as below.</p>
 </section>
 <section id="partitioned-result-sets">
-<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">#</a></h3>
+<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">¶</a></h3>
 <p>Partitioned result sets are not supported.</p>
 </section>
 <section id="run-time-loadable-extensions">
-<h3>Run-Time Loadable Extensions<a class="headerlink" href="#run-time-loadable-extensions" title="Permalink to this heading">#</a></h3>
+<h3>Run-Time Loadable Extensions<a class="headerlink" href="#run-time-loadable-extensions" title="Permalink to this heading">¶</a></h3>
 <p>ADBC allows loading SQLite extensions.  For details on extensions themselves,
 see <a class="reference external" href="https://www.sqlite.org/loadext.html">“Run-Time Loadable Extensions”</a> in
 the SQLite documentation.</p>
@@ -488,7 +490,7 @@ the SQLite documentation.</p>
 <p>These options can only be set after the connection is fully initialized with
 <code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcConnectionInit()</span></code>.</p>
 <section id="options">
-<h4>Options<a class="headerlink" href="#options" title="Permalink to this heading">#</a></h4>
+<h4>Options<a class="headerlink" href="#options" title="Permalink to this heading">¶</a></h4>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.sqlite.load_extension.enabled</span></code></dt><dd><p>Whether to enable (“true”) or disable (“false”) extension loading.  The
 default is disabled.</p>
@@ -502,7 +504,7 @@ to load.  This will not load the extension yet.</p>
 </dl>
 </section>
 <section id="example">
-<h4>Example<a class="headerlink" href="#example" title="Permalink to this heading">#</a></h4>
+<h4>Example<a class="headerlink" href="#example" title="Permalink to this heading">¶</a></h4>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-8" name="sd-tab-set-2" type="radio">
 </input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-8">
@@ -551,11 +553,11 @@ R</label><div class="sd-tab-content docutils">
 </section>
 </section>
 <section id="transactions">
-<h3>Transactions<a class="headerlink" href="#transactions" title="Permalink to this heading">#</a></h3>
+<h3>Transactions<a class="headerlink" href="#transactions" title="Permalink to this heading">¶</a></h3>
 <p>Transactions are supported.</p>
 </section>
 <section id="type-inference-type-support">
-<h3>Type Inference/Type Support<a class="headerlink" href="#type-inference-type-support" title="Permalink to this heading">#</a></h3>
+<h3>Type Inference/Type Support<a class="headerlink" href="#type-inference-type-support" title="Permalink to this heading">¶</a></h3>
 <p>SQLite does not enforce that values in a column have the same type.
 The SQLite driver will attempt to infer the best Arrow type for a
 column as the result set is read.  When reading the first batch of
@@ -578,7 +580,7 @@ rows are read to infer the Arrow type.</p>
 </section>
 </section>
 <section id="software-versions">
-<h2>Software Versions<a class="headerlink" href="#software-versions" title="Permalink to this heading">#</a></h2>
+<h2>Software Versions<a class="headerlink" href="#software-versions" title="Permalink to this heading">¶</a></h2>
 <p>For Python wheels, the shipped version of SQLite is 3.40.1.  For conda-forge
 packages, the version of sqlite is the same as the version of sqlite in your
 Conda environment.</p>

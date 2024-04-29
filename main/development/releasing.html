@@ -15,10 +15,10 @@
 <meta name="description" content="This page provides detailed information on the steps followed to perform a release. It can be used both as a guide to learn the ADBC release process and as a comprehensive checklist for the Release..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Nightly Packages" href="nightly.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.04.27 -->
         <title>Release Management Guide - ADBC 1.0.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=46965ee0ad39e5260c2467c27b94afaae98bd900" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -181,6 +181,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -337,9 +339,9 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="release-management-guide">
-<h1>Release Management Guide<a class="headerlink" href="#release-management-guide" title="Permalink to this heading">#</a></h1>
+<h1>Release Management Guide<a class="headerlink" href="#release-management-guide" title="Permalink to this heading">¶</a></h1>
 <p>This page provides detailed information on the steps followed to perform
 a release. It can be used both as a guide to learn the ADBC release
 process and as a comprehensive checklist for the Release Manager when
@@ -349,12 +351,12 @@ performing a release.</p>
 <p><a class="reference external" href="https://arrow.apache.org/docs/dev/developers/release.html">Apache Arrow Release Management Guide</a></p>
 </div>
 <section id="principles">
-<h2>Principles<a class="headerlink" href="#principles" title="Permalink to this heading">#</a></h2>
+<h2>Principles<a class="headerlink" href="#principles" title="Permalink to this heading">¶</a></h2>
 <p>The Apache Arrow Release follows the guidelines defined at the
 <a class="reference external" href="https://www.apache.org/legal/release-policy.html">Apache Software Foundation Release Policy</a>.</p>
 </section>
 <section id="preparing-for-the-release">
-<h2>Preparing for the release<a class="headerlink" href="#preparing-for-the-release" title="Permalink to this heading">#</a></h2>
+<h2>Preparing for the release<a class="headerlink" href="#preparing-for-the-release" title="Permalink to this heading">¶</a></h2>
 <p>Some steps of the release require being a committer or a PMC member.</p>
 <ul>
 <li><p>A GPG key in the Apache Web of Trust to sign artifacts. This will have to be cross signed by other Apache committers/PMC members. You must set your GPG key ID in <code class="docutils literal notranslate"><span class="pre">dev/release/.env</span></code> (see <code class="docutils literal notranslate"><span class="pre">dev/release/.env.example</span></code> for a template).</p></li>
@@ -378,7 +380,7 @@ performing a release.</p>
 </ul>
 </section>
 <section id="before-creating-a-release-candidate">
-<h2>Before creating a Release Candidate<a class="headerlink" href="#before-creating-a-release-candidate" title="Permalink to this heading">#</a></h2>
+<h2>Before creating a Release Candidate<a class="headerlink" href="#before-creating-a-release-candidate" title="Permalink to this heading">¶</a></h2>
 <p>Regenerate the LICENSE.txt (see CONTRIBUTING.md) and create a pull request if
 any changes were needed.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Setup gpg agent for signing artifacts</span>
@@ -389,14 +391,14 @@ any changes were needed.</p>
 </pre></div>
 </div>
 <section id="check-nightly-verification-job">
-<h3>Check Nightly Verification Job<a class="headerlink" href="#check-nightly-verification-job" title="Permalink to this heading">#</a></h3>
+<h3>Check Nightly Verification Job<a class="headerlink" href="#check-nightly-verification-job" title="Permalink to this heading">¶</a></h3>
 <p>Ensure that the <a class="reference external" href="https://github.com/apache/arrow-adbc/actions/workflows/nightly-verify.yml">verification job</a>
 is passing.  This simulates part of the release verification workflow
 to detect issues ahead of time.</p>
 </section>
 </section>
 <section id="creating-a-release-candidate">
-<h2>Creating a Release Candidate<a class="headerlink" href="#creating-a-release-candidate" title="Permalink to this heading">#</a></h2>
+<h2>Creating a Release Candidate<a class="headerlink" href="#creating-a-release-candidate" title="Permalink to this heading">¶</a></h2>
 <p>These are the different steps that are required to create a Release Candidate.</p>
 <p>For the initial Release Candidate, we will create a maintenance branch from master.
 Follow up Release Candidates will update the maintenance branch by cherry-picking
@@ -406,7 +408,7 @@ This means that, in general, we should only add bug fixes between Release Candid
 In rare cases, critical features can be added between Release Candidates, if
 there is community consensus.</p>
 <section id="create-or-update-the-corresponding-maintenance-branch">
-<h3>Create or update the corresponding maintenance branch<a class="headerlink" href="#create-or-update-the-corresponding-maintenance-branch" title="Permalink to this heading">#</a></h3>
+<h3>Create or update the corresponding maintenance branch<a class="headerlink" href="#create-or-update-the-corresponding-maintenance-branch" title="Permalink to this heading">¶</a></h3>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
 </input><label class="sd-tab-label" for="sd-tab-item-0">
@@ -438,7 +440,7 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 </div>
 </section>
 <section id="create-the-release-candidate-tag-from-the-updated-maintenance-branch">
-<h3>Create the Release Candidate tag from the updated maintenance branch<a class="headerlink" href="#create-the-release-candidate-tag-from-the-updated-maintenance-branch" title="Permalink to this heading">#</a></h3>
+<h3>Create the Release Candidate tag from the updated maintenance branch<a class="headerlink" href="#create-the-release-candidate-tag-from-the-updated-maintenance-branch" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Start from the updated maintenance branch.</span>
 <span class="n">git</span> <span class="n">switch</span> <span class="n">maint</span><span class="o">-</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
 
@@ -456,7 +458,7 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 </div>
 </section>
 <section id="build-source-and-binaries-and-submit-them">
-<h3>Build source and binaries and submit them<a class="headerlink" href="#build-source-and-binaries-and-submit-them" title="Permalink to this heading">#</a></h3>
+<h3>Build source and binaries and submit them<a class="headerlink" href="#build-source-and-binaries-and-submit-them" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the produced source and binaries, sign them, and add the</span>
 <span class="c1"># signatures to the GitHub release</span>
 <span class="c1">#</span>
@@ -488,16 +490,16 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 </div>
 </section>
 <section id="verify-the-release">
-<h3>Verify the Release<a class="headerlink" href="#verify-the-release" title="Permalink to this heading">#</a></h3>
+<h3>Verify the Release<a class="headerlink" href="#verify-the-release" title="Permalink to this heading">¶</a></h3>
 <p>Start the vote thread on <a class="reference external" href="mailto:dev&#37;&#52;&#48;arrow&#46;apache&#46;org">dev<span>&#64;</span>arrow<span>&#46;</span>apache<span>&#46;</span>org</a> using the template email from <code class="docutils literal notranslate"><span class="pre">06-binary-verify.sh</span></code>.</p>
 </section>
 </section>
 <section id="voting-and-approval">
-<h2>Voting and approval<a class="headerlink" href="#voting-and-approval" title="Permalink to this heading">#</a></h2>
+<h2>Voting and approval<a class="headerlink" href="#voting-and-approval" title="Permalink to this heading">¶</a></h2>
 <p>Start the vote thread on <a class="reference external" href="mailto:dev&#37;&#52;&#48;arrow&#46;apache&#46;org">dev<span>&#64;</span>arrow<span>&#46;</span>apache<span>&#46;</span>org</a> and supply instructions for verifying the integrity of the release.
 Approval requires a net of 3 +1 votes from PMC members. A release cannot be vetoed.</p>
 <section id="how-to-verify-release-candidates">
-<h3>How to Verify Release Candidates<a class="headerlink" href="#how-to-verify-release-candidates" title="Permalink to this heading">#</a></h3>
+<h3>How to Verify Release Candidates<a class="headerlink" href="#how-to-verify-release-candidates" title="Permalink to this heading">¶</a></h3>
 <ol class="arabic">
 <li><p>Install dependencies.  At minimum, you will need:</p>
 <ul class="simple">
@@ -569,7 +571,7 @@ vote thread with a +1 or a -1.</p></li>
 </section>
 </section>
 <section id="post-release-tasks">
-<h2>Post-release tasks<a class="headerlink" href="#post-release-tasks" title="Permalink to this heading">#</a></h2>
+<h2>Post-release tasks<a class="headerlink" href="#post-release-tasks" title="Permalink to this heading">¶</a></h2>
 <p>After the release vote, we must undertake many tasks to update source artifacts, binary builds, and the Arrow website.</p>
 <p>Be sure to go through on the following checklist:</p>
 <details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">

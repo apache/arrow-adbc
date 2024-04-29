@@ -15,10 +15,10 @@
 <meta name="description" content="Recipe source: quickstart.cc Here we’ll briefly tour basic features of ADBC with the SQLite driver in C++17. Installation: This quickstart is actually a literate C++ file. You can clone the reposit..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Driver Manager" href="driver_manager.html" /><link rel="prev" title="C and C++" href="index.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.04.27 -->
         <title>Quickstart - ADBC 1.0.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=46965ee0ad39e5260c2467c27b94afaae98bd900" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -181,6 +181,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -337,14 +339,14 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="quickstart">
-<h1>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this heading">#</a></h1>
+<h1>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this heading">¶</a></h1>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/cpp/recipe/quickstart.cc">quickstart.cc</a></p>
 <p>Here we’ll briefly tour basic features of ADBC with the SQLite
 driver in C++17.</p>
 <section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h2>
 <p>This quickstart is actually a literate C++ file.  You can clone
 the repository, build the sample, and follow along.</p>
 <p>We’ll assume you’re using <a class="reference external" href="https://conda-forge.org/">conda-forge</a> for dependencies.  CMake, a
@@ -355,7 +357,7 @@ installed as follows:</p>
 </div>
 </section>
 <section id="building">
-<h2>Building<a class="headerlink" href="#building" title="Permalink to this heading">#</a></h2>
+<h2>Building<a class="headerlink" href="#building" title="Permalink to this heading">¶</a></h2>
 <p>We’ll use <a class="reference external" href="https://cmake.org/">CMake</a> here.  From a source checkout of the ADBC repository:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>build
 <span class="nb">cd</span><span class="w"> </span>build
@@ -366,7 +368,7 @@ cmake<span class="w"> </span>--build<span class="w"> </span>.<span class="w"> </
 </div>
 </section>
 <section id="using-adbc">
-<h2>Using ADBC<a class="headerlink" href="#using-adbc" title="Permalink to this heading">#</a></h2>
+<h2>Using ADBC<a class="headerlink" href="#using-adbc" title="Permalink to this heading">¶</a></h2>
 <p>Let’s start with some includes:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">59</span><span class="c1">// For EXIT_SUCCESS</span>
 <span class="linenos">60</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdlib&gt;</span>
@@ -413,7 +415,7 @@ cmake<span class="w"> </span>--build<span class="w"> </span>.<span class="w"> </
 </pre></div>
 </div>
 <section id="loading-the-driver">
-<h3>Loading the Driver<a class="headerlink" href="#loading-the-driver" title="Permalink to this heading">#</a></h3>
+<h3>Loading the Driver<a class="headerlink" href="#loading-the-driver" title="Permalink to this heading">¶</a></h3>
 <p>We’ll load the SQLite driver using the driver manager.  We don’t
 have to explicitly link to the driver this way.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">107</span><span class="w">  </span><span class="n">AdbcError</span><span class="w"> </span><span class="n">error</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
@@ -430,7 +432,7 @@ have to explicitly link to the driver this way.</p>
 </div>
 </section>
 <section id="creating-a-connection">
-<h3>Creating a Connection<a class="headerlink" href="#creating-a-connection" title="Permalink to this heading">#</a></h3>
+<h3>Creating a Connection<a class="headerlink" href="#creating-a-connection" title="Permalink to this heading">¶</a></h3>
 <p>ADBC distinguishes between “<a class="reference internal" href="../glossary.html#term-database"><span class="xref std std-term">databases</span></a>”,
 “<a class="reference internal" href="../glossary.html#term-connection"><span class="xref std std-term">connections</span></a>”, and “<a class="reference internal" href="../glossary.html#term-statement"><span class="xref std std-term">statements</span></a>”.  A “database” holds shared state across multiple
 connections.  For example, in the SQLite driver, it holds the actual
@@ -442,7 +444,7 @@ instance of SQLite.  A “connection” is one connection to the database.</p>
 </div>
 </section>
 <section id="creating-a-statement">
-<h3>Creating a Statement<a class="headerlink" href="#creating-a-statement" title="Permalink to this heading">#</a></h3>
+<h3>Creating a Statement<a class="headerlink" href="#creating-a-statement" title="Permalink to this heading">¶</a></h3>
 <p>A statement lets us execute queries.  They are used for both
 prepared and non-prepared (“ad-hoc”) queries.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">135</span><span class="w">  </span><span class="n">AdbcStatement</span><span class="w"> </span><span class="n">statement</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
@@ -451,7 +453,7 @@ prepared and non-prepared (“ad-hoc”) queries.</p>
 </div>
 </section>
 <section id="executing-a-query">
-<h3>Executing a Query<a class="headerlink" href="#executing-a-query" title="Permalink to this heading">#</a></h3>
+<h3>Executing a Query<a class="headerlink" href="#executing-a-query" title="Permalink to this heading">¶</a></h3>
 <p>We execute a query by setting the query on the statement, then
 calling <code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery()</span></code>.  The results come
 back through the <a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html">Arrow C Data Interface</a>.</p>
@@ -516,7 +518,7 @@ record batches.</p>
 </div>
 </section>
 <section id="cleanup">
-<h3>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this heading">#</a></h3>
+<h3>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this heading">¶</a></h3>
 <p>At the end, we must release all our resources.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">208</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcStatementRelease</span><span class="p">(</span><span class="o">&amp;</span><span class="n">statement</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 <span class="linenos">209</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcConnectionRelease</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>

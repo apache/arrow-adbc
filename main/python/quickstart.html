@@ -15,10 +15,10 @@
 <meta name="description" content="Here we’ll briefly tour basic features of ADBC with the SQLite driver. Installation: DBAPI (PEP 249)-style API: If PyArrow is installed, ADBC provides a high-level API in the style of the DBAPI sta..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Driver Manager" href="driver_manager.html" /><link rel="prev" title="Python" href="index.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.04.27 -->
         <title>Quickstart - ADBC 1.0.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=46965ee0ad39e5260c2467c27b94afaae98bd900" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -181,6 +181,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -337,22 +339,22 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="quickstart">
-<h1>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this heading">#</a></h1>
+<h1>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this heading">¶</a></h1>
 <p>Here we’ll briefly tour basic features of ADBC with the SQLite driver.</p>
 <section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h2>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>adbc_driver_manager<span class="w"> </span>adbc_driver_sqlite<span class="w"> </span>pyarrow
 </pre></div>
 </div>
 </section>
 <section id="dbapi-pep-249-style-api">
-<h2>DBAPI (PEP 249)-style API<a class="headerlink" href="#dbapi-pep-249-style-api" title="Permalink to this heading">#</a></h2>
+<h2>DBAPI (PEP 249)-style API<a class="headerlink" href="#dbapi-pep-249-style-api" title="Permalink to this heading">¶</a></h2>
 <p>If PyArrow is installed, ADBC provides a high-level API in the style
 of the DBAPI standard.</p>
 <section id="creating-a-connection">
-<h3>Creating a Connection<a class="headerlink" href="#creating-a-connection" title="Permalink to this heading">#</a></h3>
+<h3>Creating a Connection<a class="headerlink" href="#creating-a-connection" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">adbc_driver_sqlite.dbapi</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_sqlite</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
 </pre></div>
@@ -362,7 +364,7 @@ memory may leak.  Connections can be used as context managers to
 accomplish this.</p>
 </section>
 <section id="creating-a-cursor">
-<h3>Creating a Cursor<a class="headerlink" href="#creating-a-cursor" title="Permalink to this heading">#</a></h3>
+<h3>Creating a Cursor<a class="headerlink" href="#creating-a-cursor" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -370,7 +372,7 @@ accomplish this.</p>
 may leak.  Cursors can be used as context managers to accomplish this.</p>
 </section>
 <section id="executing-a-query">
-<h3>Executing a Query<a class="headerlink" href="#executing-a-query" title="Permalink to this heading">#</a></h3>
+<h3>Executing a Query<a class="headerlink" href="#executing-a-query" title="Permalink to this heading">¶</a></h3>
 <p>We can execute a query and get the results via the normal,
 row-oriented DBAPI interface:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1, 2.0, &#39;Hello, world!&#39;&quot;</span><span class="p">)</span>
@@ -394,7 +396,7 @@ row-oriented DBAPI interface:</p>
 </div>
 </section>
 <section id="parameterized-queries">
-<h3>Parameterized Queries<a class="headerlink" href="#parameterized-queries" title="Permalink to this heading">#</a></h3>
+<h3>Parameterized Queries<a class="headerlink" href="#parameterized-queries" title="Permalink to this heading">¶</a></h3>
 <p>We can bind parameters in our queries:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT ? + 1 AS the_answer&quot;</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">(</span><span class="mi">41</span><span class="p">,))</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetch_arrow_table</span><span class="p">()</span>
@@ -406,7 +408,7 @@ row-oriented DBAPI interface:</p>
 </div>
 </section>
 <section id="ingesting-bulk-data">
-<h3>Ingesting Bulk Data<a class="headerlink" href="#ingesting-bulk-data" title="Permalink to this heading">#</a></h3>
+<h3>Ingesting Bulk Data<a class="headerlink" href="#ingesting-bulk-data" title="Permalink to this heading">¶</a></h3>
 <p>So far we’ve mostly demonstrated the usual DBAPI interface.  The ADBC
 APIs also offer additional methods.  For example, we can insert a
 table of Arrow data into a new database table:</p>
@@ -430,7 +432,7 @@ table of Arrow data into a new database table:</p>
 </div>
 </section>
 <section id="getting-database-driver-metadata">
-<h3>Getting Database/Driver Metadata<a class="headerlink" href="#getting-database-driver-metadata" title="Permalink to this heading">#</a></h3>
+<h3>Getting Database/Driver Metadata<a class="headerlink" href="#getting-database-driver-metadata" title="Permalink to this heading">¶</a></h3>
 <p>We can get information about the driver and the database using another
 extension method, this time on the connection itself:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_info</span><span class="p">()[</span><span class="s2">&quot;vendor_name&quot;</span><span class="p">]</span>

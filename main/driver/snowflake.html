@@ -15,10 +15,10 @@
 <meta name="description" content="Available for: C/C++, GLib/Ruby, Go, Python, R The Snowflake Driver provides access to Snowflake Database Warehouses. Installation: C/C++ For conda-forge users: Go Python R Usage: To connect to a S..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="SQLite Driver" href="sqlite.html" /><link rel="prev" title="PostgreSQL Driver" href="postgresql.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.04.27 -->
         <title>Snowflake Driver - ADBC 1.0.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=46965ee0ad39e5260c2467c27b94afaae98bd900" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -181,6 +181,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -337,13 +339,13 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="snowflake-driver">
-<h1>Snowflake Driver<a class="headerlink" href="#snowflake-driver" title="Permalink to this heading">#</a></h1>
+<h1>Snowflake Driver<a class="headerlink" href="#snowflake-driver" title="Permalink to this heading">¶</a></h1>
 <p><strong>Available for:</strong> C/C++, GLib/Ruby, Go, Python, R</p>
 <p>The Snowflake Driver provides access to Snowflake Database Warehouses.</p>
 <section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h2>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
 </input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-0">
@@ -382,7 +384,7 @@ pak::pak<span class="o">(</span><span class="s2">&quot;apache/arrow-adbc/r/adbcs
 </div>
 </section>
 <section id="usage">
-<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">#</a></h2>
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">¶</a></h2>
 <p>To connect to a Snowflake database you can supply the “uri” parameter when
 constructing the :cpp:<code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code>.</p>
 <div class="sd-tab-set docutils">
@@ -453,7 +455,7 @@ Go</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <section id="uri-format">
-<h3>URI Format<a class="headerlink" href="#uri-format" title="Permalink to this heading">#</a></h3>
+<h3>URI Format<a class="headerlink" href="#uri-format" title="Permalink to this heading">¶</a></h3>
 <p>The Snowflake URI should be of one of the following formats:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">user[:password]&#64;account/database/schema[?param1=value1&amp;paramN=valueN]</span></code></p></li>
@@ -468,11 +470,11 @@ and any explicit options provided will override anything parsed from the URI.</p
 </section>
 </section>
 <section id="supported-features">
-<h2>Supported Features<a class="headerlink" href="#supported-features" title="Permalink to this heading">#</a></h2>
+<h2>Supported Features<a class="headerlink" href="#supported-features" title="Permalink to this heading">¶</a></h2>
 <p>The Snowflake driver generally supports features defined in the ADBC API
 specification 1.0.0, as well as some additional, custom options.</p>
 <section id="authentication">
-<h3>Authentication<a class="headerlink" href="#authentication" title="Permalink to this heading">#</a></h3>
+<h3>Authentication<a class="headerlink" href="#authentication" title="Permalink to this heading">¶</a></h3>
 <p>Snowflake requires some form of authentication to be enabled. By default
 it will attempt to use Username/Password authentication. The username and
 password can be provided in the URI or via the <code class="docutils literal notranslate"><span class="pre">username</span></code> and <code class="docutils literal notranslate"><span class="pre">password</span></code>
@@ -480,7 +482,7 @@ options to the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv412
 <p>Alternately, other types of authentication can be specified and customized.
 See “Client Options” below for details on all the options.</p>
 <section id="sso-authentication">
-<h4>SSO Authentication<a class="headerlink" href="#sso-authentication" title="Permalink to this heading">#</a></h4>
+<h4>SSO Authentication<a class="headerlink" href="#sso-authentication" title="Permalink to this heading">¶</a></h4>
 <p>Snowflake supports <a class="reference external" href="https://docs.snowflake.com/en/user-guide/admin-security-fed-auth-overview">single sign-on</a>.
 If your account has been configured with SSO, it can be used with the
 Snowflake driver by setting the following options when constructing the
@@ -562,7 +564,7 @@ Go</label><div class="sd-tab-content docutils">
 </section>
 </section>
 <section id="bulk-ingestion">
-<h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
+<h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">¶</a></h3>
 <p>Bulk ingestion is supported. The mapping from Arrow types to Snowflake types
 is provided below.</p>
 <p>Bulk ingestion is implemented by writing Arrow data to Parquet file(s) and uploading (via PUT) to a temporary internal stage.
@@ -607,11 +609,11 @@ size of footer/metadata. Default is 10 MB. If set to 0, file size has no limit. 
 </dl>
 </section>
 <section id="partitioned-result-sets">
-<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">#</a></h3>
+<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">¶</a></h3>
 <p>Partitioned result sets are not currently supported.</p>
 </section>
 <section id="performance">
-<h3>Performance<a class="headerlink" href="#performance" title="Permalink to this heading">#</a></h3>
+<h3>Performance<a class="headerlink" href="#performance" title="Permalink to this heading">¶</a></h3>
 <p>When querying Snowflake data, results are potentially fetched in parallel from multiple endpoints.
 A limited number of batches are queued per endpoint, though data is always
 returned to the client in the order of the endpoints.</p>
@@ -628,12 +630,12 @@ Defaults to 10. Must be an integer &gt; 0.</p>
 </dl>
 </section>
 <section id="transactions">
-<h3>Transactions<a class="headerlink" href="#transactions" title="Permalink to this heading">#</a></h3>
+<h3>Transactions<a class="headerlink" href="#transactions" title="Permalink to this heading">¶</a></h3>
 <p>Transactions are supported. Keep in mind that Snowflake transactions will
 implicitly commit if any DDL statements are run, such as <code class="docutils literal notranslate"><span class="pre">CREATE</span> <span class="pre">TABLE</span></code>.</p>
 </section>
 <section id="client-options">
-<h3>Client Options<a class="headerlink" href="#client-options" title="Permalink to this heading">#</a></h3>
+<h3>Client Options<a class="headerlink" href="#client-options" title="Permalink to this heading">¶</a></h3>
 <p>The options used for creating a Snowflake Database connection can be customized.
 These options map 1:1 with the Snowflake <cite>Config object &lt;https://pkg.go.dev/github.com/snowflakedb/gosnowflake#Config&gt;</cite>.</p>
 <dl class="simple">
@@ -737,7 +739,7 @@ The default is <code class="docutils literal notranslate"><span class="pre">true
 </dl>
 </section>
 <section id="metadata">
-<h3>Metadata<a class="headerlink" href="#metadata" title="Permalink to this heading">#</a></h3>
+<h3>Metadata<a class="headerlink" href="#metadata" title="Permalink to this heading">¶</a></h3>
 <p>When calling <code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcConnectionGetTableSchema()</span></code>, the returned Arrow Schema
 will contain metadata on each field:</p>
 <dl class="simple">
@@ -765,7 +767,7 @@ regardless of the type of the field in Arrow.</p>
 </dl>
 </section>
 <section id="type-support">
-<h3>Type Support<a class="headerlink" href="#type-support" title="Permalink to this heading">#</a></h3>
+<h3>Type Support<a class="headerlink" href="#type-support" title="Permalink to this heading">¶</a></h3>
 <p>Because Snowflake types do not necessary match up 1-to-1 with Arrow types
 the following is what should be expected when requesting data. Any conversions
 indicated are done to ensure consistency of the stream of record batches.</p>

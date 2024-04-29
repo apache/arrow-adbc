@@ -15,10 +15,10 @@
 <meta name="description" content="The driver manager is a library that implements the ADBC API by delegating to dynamically-loaded drivers. This allows applications to use multiple drivers simultaneously, and decouple themselves fr..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Concurrency and Thread Safety" href="concurrency.html" /><link rel="prev" title="Quickstart" href="quickstart.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.04.27 -->
         <title>Driver Manager - ADBC 1.0.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=46965ee0ad39e5260c2467c27b94afaae98bd900" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -181,6 +181,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -337,15 +339,15 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="driver-manager">
-<h1>Driver Manager<a class="headerlink" href="#driver-manager" title="Permalink to this heading">#</a></h1>
+<h1>Driver Manager<a class="headerlink" href="#driver-manager" title="Permalink to this heading">¶</a></h1>
 <p>The driver manager is a library that implements the ADBC API by
 delegating to dynamically-loaded drivers.  This allows applications to
 use multiple drivers simultaneously, and decouple themselves from the
 specific driver.</p>
 <section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h2>
 <p>Install the appropriate driver package. You can use <a class="reference external" href="https://conda-forge.org/">conda-forge</a>, <code class="docutils literal notranslate"><span class="pre">apt</span></code> or <code class="docutils literal notranslate"><span class="pre">dnf</span></code>.</p>
 <p>conda-forge:</p>
 <ul class="simple">
@@ -403,7 +405,7 @@ sudo<span class="w"> </span>subscription-manager<span class="w"> </span>repos<sp
 </div>
 </section>
 <section id="usage">
-<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">#</a></h2>
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">¶</a></h2>
 <p>To create a database, use the <a class="reference internal" href="api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a> API as usual,
 but during initialization, provide two additional parameters in
 addition to the driver-specific connection parameters: <code class="docutils literal notranslate"><span class="pre">driver</span></code> and
@@ -427,7 +429,7 @@ entrypoint (see <code class="xref cpp cpp-type docutils literal notranslate"><sp
 </div>
 </section>
 <section id="api-reference">
-<h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this heading">#</a></h2>
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this heading">¶</a></h2>
 <p>The driver manager includes a few additional functions beyond the ADBC
 API.  See the API reference: <a class="reference internal" href="api/adbc_driver_manager.html"><span class="doc">adbc_driver_manager.h</span></a>.</p>
 </section>

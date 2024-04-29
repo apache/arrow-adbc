@@ -15,10 +15,10 @@
 <meta name="description" content="What exactly is ADBC?: ADBC is: A set of abstract APIs in different languages (C/C++, Go, and Java, with more on the way) for working with databases and Arrow data. For example, result sets of quer..." />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Glossary" href="glossary.html" /><link rel="prev" title="Apache Arrow ADBC" href="index.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.04.27 -->
         <title>Frequently Asked Questions (FAQ) - ADBC 1.0.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=46965ee0ad39e5260c2467c27b94afaae98bd900" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -181,6 +181,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -337,11 +339,11 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="frequently-asked-questions-faq">
-<h1>Frequently Asked Questions (FAQ)<a class="headerlink" href="#frequently-asked-questions-faq" title="Permalink to this heading">#</a></h1>
+<h1>Frequently Asked Questions (FAQ)<a class="headerlink" href="#frequently-asked-questions-faq" title="Permalink to this heading">¶</a></h1>
 <section id="what-exactly-is-adbc">
-<h2>What exactly is ADBC?<a class="headerlink" href="#what-exactly-is-adbc" title="Permalink to this heading">#</a></h2>
+<h2>What exactly is ADBC?<a class="headerlink" href="#what-exactly-is-adbc" title="Permalink to this heading">¶</a></h2>
 <p>ADBC is:</p>
 <ul>
 <li><p>A set of abstract APIs in different languages (C/C++, Go, and Java,
@@ -355,7 +357,7 @@ C#/.NET, Go, Java, Python, and Ruby) that target different databases
 </ul>
 </section>
 <section id="why-not-just-use-jdbc-odbc">
-<h2>Why not just use JDBC/ODBC?<a class="headerlink" href="#why-not-just-use-jdbc-odbc" title="Permalink to this heading">#</a></h2>
+<h2>Why not just use JDBC/ODBC?<a class="headerlink" href="#why-not-just-use-jdbc-odbc" title="Permalink to this heading">¶</a></h2>
 <p>JDBC uses row-based interfaces like <a class="reference external" href="https://docs.oracle.com/javase/8/docs/api/java/sql/ResultSet.html">ResultSet</a>.  When working with
 columnar data, like Arrow data, this means that we have to convert the
 data at least once and possibly twice:</p>
@@ -376,7 +378,7 @@ layouts that are not quite Arrow-compatible (requiring a data
 conversion anyways).</p>
 </section>
 <section id="how-do-adbc-and-arrow-flight-sql-differ">
-<h2>How do ADBC and Arrow Flight SQL differ?<a class="headerlink" href="#how-do-adbc-and-arrow-flight-sql-differ" title="Permalink to this heading">#</a></h2>
+<h2>How do ADBC and Arrow Flight SQL differ?<a class="headerlink" href="#how-do-adbc-and-arrow-flight-sql-differ" title="Permalink to this heading">¶</a></h2>
 <p>ADBC is a <em>client API specification</em>.  It doesn’t define what goes on
 between your client and the database, just the API calls that you make
 as an application developer.  Under the hood, a driver must take those
@@ -397,13 +399,13 @@ the database behind a proxy that translates between Flight SQL and the
 database.</p>
 </section>
 <section id="why-not-just-use-arrow-flight-sql">
-<h2>Why not just use Arrow Flight SQL?<a class="headerlink" href="#why-not-just-use-arrow-flight-sql" title="Permalink to this heading">#</a></h2>
+<h2>Why not just use Arrow Flight SQL?<a class="headerlink" href="#why-not-just-use-arrow-flight-sql" title="Permalink to this heading">¶</a></h2>
 <p>Because ADBC is client-side, ADBC can support databases that either
 don’t support returning Arrow data, or support Arrow data through a
 protocol besides Flight SQL.</p>
 </section>
 <section id="then-do-we-even-need-arrow-flight-sql">
-<h2>Then do we even need Arrow Flight SQL?<a class="headerlink" href="#then-do-we-even-need-arrow-flight-sql" title="Permalink to this heading">#</a></h2>
+<h2>Then do we even need Arrow Flight SQL?<a class="headerlink" href="#then-do-we-even-need-arrow-flight-sql" title="Permalink to this heading">¶</a></h2>
 <p>Flight SQL is a concrete protocol that database vendors can implement,
 instead of designing their own protocol.  And Flight SQL also has JDBC
 and ODBC drivers for maximal compatibility.</p>
@@ -417,7 +419,7 @@ including ADBC, JDBC, and ODBC drivers.  (And ADBC users can still use
 other drivers to work with other databases.)</p>
 </section>
 <section id="so-what-is-the-adbc-flight-sql-driver-then">
-<h2>So what is the “ADBC Flight SQL driver” then?<a class="headerlink" href="#so-what-is-the-adbc-flight-sql-driver-then" title="Permalink to this heading">#</a></h2>
+<h2>So what is the “ADBC Flight SQL driver” then?<a class="headerlink" href="#so-what-is-the-adbc-flight-sql-driver-then" title="Permalink to this heading">¶</a></h2>
 <p>The ADBC Flight SQL driver implements the ADBC API standard (which an
 application interacts with) using the Flight SQL wire protocol (which
 a database server exposes).  So it’s a generic driver that can talk to
@@ -436,7 +438,7 @@ non-Arrow-native databases, whether those databases support Flight
 SQL, a custom Arrow-native protocol, or no Arrow-native protocol.</p>
 </section>
 <section id="and-then-what-is-the-adbc-jdbc-driver">
-<h2>And then what is the “ADBC JDBC driver”?<a class="headerlink" href="#and-then-what-is-the-adbc-jdbc-driver" title="Permalink to this heading">#</a></h2>
+<h2>And then what is the “ADBC JDBC driver”?<a class="headerlink" href="#and-then-what-is-the-adbc-jdbc-driver" title="Permalink to this heading">¶</a></h2>
 <p>The ADBC JDBC driver, or a hypothetical ADBC ODBC driver, adapts the
 JDBC API to the ADBC API, so that an ADBC user can interact with
 databases that have JDBC APIs available.  While this doesn’t give you
@@ -448,7 +450,7 @@ ODBC driver in Python’s DBAPI (PEP 249), and <a class="reference external" hre
 JDBC driver in a bespoke Arrow-based API.</p>
 </section>
 <section id="what-is-the-adbc-driver-manager">
-<h2>What is the ADBC driver manager?<a class="headerlink" href="#what-is-the-adbc-driver-manager" title="Permalink to this heading">#</a></h2>
+<h2>What is the ADBC driver manager?<a class="headerlink" href="#what-is-the-adbc-driver-manager" title="Permalink to this heading">¶</a></h2>
 <p>The driver manager (in C/C++) is a library that implements the driver API but
 dynamically loads and manages multiple drivers behind the scenes.  It allows
 applications to link to a single library but use more than one driver at a
@@ -457,7 +459,7 @@ otherwise all provide the same ADBC APIs under the same names.</p>
 <p>For an in-depth look, see <a class="reference internal" href="format/how_manager.html"><span class="doc">How Drivers and the Driver Manager Work Together</span></a>.</p>
 </section>
 <section id="what-is-the-adbc-sql-dialect">
-<h2>What is the ADBC SQL dialect?<a class="headerlink" href="#what-is-the-adbc-sql-dialect" title="Permalink to this heading">#</a></h2>
+<h2>What is the ADBC SQL dialect?<a class="headerlink" href="#what-is-the-adbc-sql-dialect" title="Permalink to this heading">¶</a></h2>
 <p>Trick question!  ADBC is not a SQL dialect.  All an ADBC driver is
 required to do, is pass your query string to the database and get the
 result set as Arrow data.  In that respect, it’s like JDBC.  (ODBC has
@@ -466,7 +468,7 @@ a “standard” SQL dialect it defines; ADBC does not do this.)</p>
 vendor-independent query language, see <a class="reference internal" href="glossary.html#term-Substrait"><span class="xref std std-term">Substrait</span></a>.</p>
 </section>
 <section id="when-is-the-next-release">
-<h2>When is the next release?<a class="headerlink" href="#when-is-the-next-release" title="Permalink to this heading">#</a></h2>
+<h2>When is the next release?<a class="headerlink" href="#when-is-the-next-release" title="Permalink to this heading">¶</a></h2>
 <p>There is no fixed release cadence.  We currently target releases every 6-8
 weeks.</p>
 <p>Once a release is tagged, the project then gives at least 72 hours for the
@@ -475,7 +477,7 @@ are uploaded to places like PyPI, conda-forge, and so on.  So even after a
 release, it may take some time for binary packages to be available.</p>
 </section>
 <section id="when-where-is-1-0-is-this-project-ready">
-<h2>When/where is 1.0? Is this project ready?<a class="headerlink" href="#when-where-is-1-0-is-this-project-ready" title="Permalink to this heading">#</a></h2>
+<h2>When/where is 1.0? Is this project ready?<a class="headerlink" href="#when-where-is-1-0-is-this-project-ready" title="Permalink to this heading">¶</a></h2>
 <p>At this time, there is no formal date planned for a “1.0” release of the
 implementation.  <a class="reference internal" href="driver/status.html"><span class="doc">Driver Implementation Status</span></a> has a rough overview of the status of
 individual driver implementations.</p>
