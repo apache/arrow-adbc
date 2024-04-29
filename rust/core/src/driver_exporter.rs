@@ -470,12 +470,16 @@ unsafe fn database_private_data<'a, DriverType: Driver>(
     exported
 }
 
+// SAFETY: Will panic if `database` or `key` is null.
 unsafe fn database_set_option_impl<DriverType: Driver, Value: Into<OptionValue>>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: Value,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
+    assert!(!database.is_null());
+    assert!(!key.is_null());
+
     let exported = check_err!(database_private_data::<DriverType>(database), error);
     let key = check_err!(CStr::from_ptr(key).to_str(), error);
 
@@ -696,14 +700,17 @@ unsafe fn connection_private_data<'a, DriverType: Driver>(
     exported
 }
 
+// SAFETY: Will panic if `connection` or `key` is null.
 unsafe fn connection_set_option_impl<DriverType: Driver, Value: Into<OptionValue>>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: Value,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
+    assert!(!connection.is_null());
+    assert!(!key.is_null());
 
+    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
     let key = check_err!(CStr::from_ptr(key).to_str(), error);
 
     match exported {
@@ -1217,12 +1224,16 @@ unsafe fn statement_private_data<'a, DriverType: Driver>(
     exported
 }
 
+// SAFETY: Will panic if `statement` or `key` is null.
 unsafe fn statement_set_option_impl<DriverType: Driver, Value: Into<OptionValue>>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: Value,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
+    assert!(!statement.is_null());
+    assert!(!key.is_null());
+
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
     let key = check_err!(CStr::from_ptr(key).to_str(), error);
     check_err!(exported.0.set_option(key.into(), value.into()), error);
