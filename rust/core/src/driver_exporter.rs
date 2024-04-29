@@ -183,9 +183,15 @@ macro_rules! export_driver {
             driver: *mut std::os::raw::c_void,
             error: *mut $crate::ffi::FFI_AdbcError,
         ) -> $crate::ffi::FFI_AdbcStatusCode {
-            if version != $crate::options::AdbcVersion::V110.into() {
+            let version =
+                $crate::check_err!($crate::options::AdbcVersion::try_from(version), error);
+            if version != $crate::options::AdbcVersion::V110 {
                 let err = $crate::error::Error::with_message_and_status(
-                    format!("Unsupported ADBC version: {version}"),
+                    format!(
+                        "Unsupported ADBC version: got={:?} expected={:?}",
+                        version,
+                        $crate::options::AdbcVersion::V110
+                    ),
                     $crate::error::Status::NotImplemented,
                 );
                 $crate::check_err!(Err(err), error);
