@@ -518,8 +518,7 @@ unsafe extern "C" fn database_init<DriverType: Driver + Default>(
 
     if let ExportedDatabase::Options(options) = exported {
         let mut driver = DriverType::default();
-        let database = driver.new_database_with_opts(options.clone());
-        let database = check_err!(database, error);
+        let database = check_err!(driver.new_database_with_opts(options.clone()), error);
         *exported = ExportedDatabase::Database(database);
     } else {
         check_err!(
