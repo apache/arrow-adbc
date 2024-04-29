@@ -431,7 +431,7 @@ where
 
 // Database
 
-unsafe fn database_private_data<'a, DriverType: Driver + Default>(
+unsafe fn database_private_data<'a, DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
 ) -> Result<&'a mut ExportedDatabase<DriverType>> {
     let database = database.as_mut().ok_or(Error::with_message_and_status(
@@ -446,7 +446,7 @@ unsafe fn database_private_data<'a, DriverType: Driver + Default>(
     exported
 }
 
-unsafe fn database_set_option_impl<DriverType: Driver + Default, Value: Into<OptionValue>>(
+unsafe fn database_set_option_impl<DriverType: Driver, Value: Into<OptionValue>>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: Value,
@@ -467,7 +467,7 @@ unsafe fn database_set_option_impl<DriverType: Driver + Default, Value: Into<Opt
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn database_new<DriverType: Driver + Default>(
+unsafe extern "C" fn database_new<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
@@ -506,7 +506,7 @@ unsafe extern "C" fn database_init<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn database_release<DriverType: Driver + Default>(
+unsafe extern "C" fn database_release<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
@@ -520,7 +520,7 @@ unsafe extern "C" fn database_release<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn database_set_option<DriverType: Driver + Default>(
+unsafe extern "C" fn database_set_option<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: *const c_char,
@@ -534,7 +534,7 @@ unsafe extern "C" fn database_set_option<DriverType: Driver + Default>(
     database_set_option_impl::<DriverType, &str>(database, key, value, error)
 }
 
-unsafe extern "C" fn database_set_option_int<DriverType: Driver + Default>(
+unsafe extern "C" fn database_set_option_int<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: i64,
@@ -546,7 +546,7 @@ unsafe extern "C" fn database_set_option_int<DriverType: Driver + Default>(
     database_set_option_impl::<DriverType, i64>(database, key, value, error)
 }
 
-unsafe extern "C" fn database_set_option_double<DriverType: Driver + Default>(
+unsafe extern "C" fn database_set_option_double<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: f64,
@@ -558,7 +558,7 @@ unsafe extern "C" fn database_set_option_double<DriverType: Driver + Default>(
     database_set_option_impl::<DriverType, f64>(database, key, value, error)
 }
 
-unsafe extern "C" fn database_set_option_bytes<DriverType: Driver + Default>(
+unsafe extern "C" fn database_set_option_bytes<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: *const u8,
@@ -573,7 +573,7 @@ unsafe extern "C" fn database_set_option_bytes<DriverType: Driver + Default>(
     database_set_option_impl::<DriverType, &[u8]>(database, key, value, error)
 }
 
-unsafe extern "C" fn database_get_option<DriverType: Driver + Default>(
+unsafe extern "C" fn database_get_option<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: *mut c_char,
@@ -595,7 +595,7 @@ unsafe extern "C" fn database_get_option<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn database_get_option_int<DriverType: Driver + Default>(
+unsafe extern "C" fn database_get_option_int<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: *mut i64,
@@ -614,7 +614,7 @@ unsafe extern "C" fn database_get_option_int<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn database_get_option_double<DriverType: Driver + Default>(
+unsafe extern "C" fn database_get_option_double<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: *mut f64,
@@ -633,7 +633,7 @@ unsafe extern "C" fn database_get_option_double<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn database_get_option_bytes<DriverType: Driver + Default>(
+unsafe extern "C" fn database_get_option_bytes<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: *mut u8,
@@ -657,7 +657,7 @@ unsafe extern "C" fn database_get_option_bytes<DriverType: Driver + Default>(
 
 // Connection
 
-unsafe fn connection_private_data<'a, DriverType: Driver + Default>(
+unsafe fn connection_private_data<'a, DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
 ) -> Result<&'a mut ExportedConnection<DriverType>> {
     let connection = connection.as_mut().ok_or(Error::with_message_and_status(
@@ -672,7 +672,7 @@ unsafe fn connection_private_data<'a, DriverType: Driver + Default>(
     exported
 }
 
-unsafe fn connection_set_option_impl<DriverType: Driver + Default, Value: Into<OptionValue>>(
+unsafe fn connection_set_option_impl<DriverType: Driver, Value: Into<OptionValue>>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: Value,
@@ -694,7 +694,7 @@ unsafe fn connection_set_option_impl<DriverType: Driver + Default, Value: Into<O
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_new<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_new<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
@@ -707,7 +707,7 @@ unsafe extern "C" fn connection_new<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_init<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_init<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
@@ -740,7 +740,7 @@ unsafe extern "C" fn connection_init<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_release<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_release<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
@@ -754,7 +754,7 @@ unsafe extern "C" fn connection_release<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_set_option<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_set_option<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: *const c_char,
@@ -768,7 +768,7 @@ unsafe extern "C" fn connection_set_option<DriverType: Driver + Default>(
     connection_set_option_impl::<DriverType, &str>(connection, key, value, error)
 }
 
-unsafe extern "C" fn connection_set_option_int<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_set_option_int<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: i64,
@@ -780,7 +780,7 @@ unsafe extern "C" fn connection_set_option_int<DriverType: Driver + Default>(
     connection_set_option_impl::<DriverType, i64>(connection, key, value, error)
 }
 
-unsafe extern "C" fn connection_set_option_double<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_set_option_double<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: f64,
@@ -792,7 +792,7 @@ unsafe extern "C" fn connection_set_option_double<DriverType: Driver + Default>(
     connection_set_option_impl::<DriverType, f64>(connection, key, value, error)
 }
 
-unsafe extern "C" fn connection_set_option_bytes<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_set_option_bytes<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: *const u8,
@@ -807,7 +807,7 @@ unsafe extern "C" fn connection_set_option_bytes<DriverType: Driver + Default>(
     connection_set_option_impl::<DriverType, &[u8]>(connection, key, value, error)
 }
 
-unsafe extern "C" fn connection_get_option<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_get_option<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: *mut c_char,
@@ -829,7 +829,7 @@ unsafe extern "C" fn connection_get_option<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_get_option_int<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_get_option_int<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: *mut i64,
@@ -848,7 +848,7 @@ unsafe extern "C" fn connection_get_option_int<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_get_option_double<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_get_option_double<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: *mut f64,
@@ -867,7 +867,7 @@ unsafe extern "C" fn connection_get_option_double<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_get_option_bytes<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_get_option_bytes<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: *mut u8,
@@ -889,7 +889,7 @@ unsafe extern "C" fn connection_get_option_bytes<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_get_table_types<DriverType: Driver + Default + 'static>(
+unsafe extern "C" fn connection_get_table_types<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
@@ -908,7 +908,7 @@ unsafe extern "C" fn connection_get_table_types<DriverType: Driver + Default + '
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_get_table_schema<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_get_table_schema<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     catalog: *const c_char,
     db_schema: *const c_char,
@@ -949,7 +949,7 @@ unsafe extern "C" fn connection_get_table_schema<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_get_info<DriverType: Driver + Default + 'static>(
+unsafe extern "C" fn connection_get_info<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     info_codes: *const u32,
     info_codes_length: usize,
@@ -979,7 +979,7 @@ unsafe extern "C" fn connection_get_info<DriverType: Driver + Default + 'static>
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_commit<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_commit<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
@@ -992,7 +992,7 @@ unsafe extern "C" fn connection_commit<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_rollback<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_rollback<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
@@ -1005,7 +1005,7 @@ unsafe extern "C" fn connection_rollback<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_cancel<DriverType: Driver + Default>(
+unsafe extern "C" fn connection_cancel<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
@@ -1018,7 +1018,7 @@ unsafe extern "C" fn connection_cancel<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_get_statistic_names<DriverType: Driver + Default + 'static>(
+unsafe extern "C" fn connection_get_statistic_names<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
@@ -1037,7 +1037,7 @@ unsafe extern "C" fn connection_get_statistic_names<DriverType: Driver + Default
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_read_partition<DriverType: Driver + Default + 'static>(
+unsafe extern "C" fn connection_read_partition<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     serialized_partition: *const u8,
     serialized_length: usize,
@@ -1060,7 +1060,7 @@ unsafe extern "C" fn connection_read_partition<DriverType: Driver + Default + 's
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_get_statistics<DriverType: Driver + Default + 'static>(
+unsafe extern "C" fn connection_get_statistics<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     catalog: *const c_char,
     db_schema: *const c_char,
@@ -1104,7 +1104,7 @@ unsafe extern "C" fn connection_get_statistics<DriverType: Driver + Default + 's
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_get_objects<DriverType: Driver + Default + 'static>(
+unsafe extern "C" fn connection_get_objects<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     depth: c_int,
     catalog: *const c_char,
@@ -1178,7 +1178,7 @@ unsafe extern "C" fn connection_get_objects<DriverType: Driver + Default + 'stat
 
 // Statement
 
-unsafe fn statement_private_data<'a, DriverType: Driver + Default>(
+unsafe fn statement_private_data<'a, DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
 ) -> Result<&'a mut ExportedStatement<DriverType>> {
     let statement = statement.as_mut().ok_or(Error::with_message_and_status(
@@ -1193,7 +1193,7 @@ unsafe fn statement_private_data<'a, DriverType: Driver + Default>(
     exported
 }
 
-unsafe fn statement_set_option_impl<DriverType: Driver + Default, Value: Into<OptionValue>>(
+unsafe fn statement_set_option_impl<DriverType: Driver, Value: Into<OptionValue>>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: Value,
@@ -1205,7 +1205,7 @@ unsafe fn statement_set_option_impl<DriverType: Driver + Default, Value: Into<Op
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_new<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_new<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
@@ -1225,7 +1225,7 @@ unsafe extern "C" fn statement_new<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_release<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_release<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
@@ -1240,7 +1240,7 @@ unsafe extern "C" fn statement_release<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_set_option<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_set_option<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: *const c_char,
@@ -1254,7 +1254,7 @@ unsafe extern "C" fn statement_set_option<DriverType: Driver + Default>(
     statement_set_option_impl::<DriverType, &str>(statement, key, value, error)
 }
 
-unsafe extern "C" fn statement_set_option_int<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_set_option_int<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: i64,
@@ -1266,7 +1266,7 @@ unsafe extern "C" fn statement_set_option_int<DriverType: Driver + Default>(
     statement_set_option_impl::<DriverType, i64>(statement, key, value, error)
 }
 
-unsafe extern "C" fn statement_set_option_double<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_set_option_double<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: f64,
@@ -1278,7 +1278,7 @@ unsafe extern "C" fn statement_set_option_double<DriverType: Driver + Default>(
     statement_set_option_impl::<DriverType, f64>(statement, key, value, error)
 }
 
-unsafe extern "C" fn statement_set_option_bytes<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_set_option_bytes<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: *const u8,
@@ -1293,7 +1293,7 @@ unsafe extern "C" fn statement_set_option_bytes<DriverType: Driver + Default>(
     statement_set_option_impl::<DriverType, &[u8]>(statement, key, value, error)
 }
 
-unsafe extern "C" fn statement_get_option<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_get_option<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: *mut c_char,
@@ -1313,7 +1313,7 @@ unsafe extern "C" fn statement_get_option<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_get_option_int<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_get_option_int<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: *mut i64,
@@ -1330,7 +1330,7 @@ unsafe extern "C" fn statement_get_option_int<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_get_option_double<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_get_option_double<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: *mut f64,
@@ -1347,7 +1347,7 @@ unsafe extern "C" fn statement_get_option_double<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_get_option_bytes<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_get_option_bytes<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: *mut u8,
@@ -1366,7 +1366,7 @@ unsafe extern "C" fn statement_get_option_bytes<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_bind<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_bind<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     values: *mut FFI_ArrowArray,
     schema: *mut FFI_ArrowSchema,
@@ -1399,7 +1399,7 @@ unsafe extern "C" fn statement_bind<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_bind_stream<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_bind_stream<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     stream: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
@@ -1417,7 +1417,7 @@ unsafe extern "C" fn statement_bind_stream<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_cancel<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_cancel<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
@@ -1431,7 +1431,7 @@ unsafe extern "C" fn statement_cancel<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_execute_query<DriverType: Driver + Default + 'static>(
+unsafe extern "C" fn statement_execute_query<DriverType: Driver + 'static>(
     statement: *mut FFI_AdbcStatement,
     out: *mut FFI_ArrowArrayStream,
     rows_affected: *mut i64,
@@ -1457,7 +1457,7 @@ unsafe extern "C" fn statement_execute_query<DriverType: Driver + Default + 'sta
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_execute_schema<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_execute_schema<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
@@ -1475,7 +1475,7 @@ unsafe extern "C" fn statement_execute_schema<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_execute_partitions<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_execute_partitions<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     schema: *mut FFI_ArrowSchema,
     partitions: *mut FFI_AdbcPartitions,
@@ -1504,7 +1504,7 @@ unsafe extern "C" fn statement_execute_partitions<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_prepare<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_prepare<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
@@ -1516,7 +1516,7 @@ unsafe extern "C" fn statement_prepare<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_set_sql_query<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_set_sql_query<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     query: *const c_char,
     error: *mut FFI_AdbcError,
@@ -1533,7 +1533,7 @@ unsafe extern "C" fn statement_set_sql_query<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_set_substrait_plan<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_set_substrait_plan<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     plan: *const u8,
     length: usize,
@@ -1551,7 +1551,7 @@ unsafe extern "C" fn statement_set_substrait_plan<DriverType: Driver + Default>(
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_get_parameter_schema<DriverType: Driver + Default>(
+unsafe extern "C" fn statement_get_parameter_schema<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
