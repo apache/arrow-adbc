@@ -73,11 +73,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             {
                 if (this.statement == null)
                 {
-                    return new ValueTask<RecordBatch?>((RecordBatch)null);
+                    return new ValueTask<RecordBatch?>((RecordBatch?)null);
                 }
 
                 TFetchResultsReq request = new TFetchResultsReq(this.statement.operationHandle, TFetchOrientation.FETCH_NEXT, 50000);
-                TFetchResultsResp response = this.statement.connection.client.FetchResults(request).Result;
+                TFetchResultsResp response = this.statement.connection.Client.FetchResults(request).Result;
 
                 var buffer = new System.IO.MemoryStream();
                 response.WriteAsync(new TBinaryProtocol(new TStreamTransport(null, buffer, new TConfiguration())), cancellationToken).Wait();
@@ -97,7 +97,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             {
             }
 
-            static IArrowArray? GetArray(TColumn column)
+            static IArrowArray GetArray(TColumn column)
             {
                 return
                     (IArrowArray?)column.BoolVal?.Values ??
@@ -107,7 +107,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                     (IArrowArray?)column.I64Val?.Values ??
                     (IArrowArray?)column.DoubleVal?.Values ??
                     (IArrowArray?)column.StringVal?.Values ??
-                    (IArrowArray?)column.BinaryVal?.Values;
+                    (IArrowArray?)column.BinaryVal?.Values ??
+                    throw new InvalidOperationException("unsupported data type");
             }
         }
     }

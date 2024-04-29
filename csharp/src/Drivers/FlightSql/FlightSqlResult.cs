@@ -51,7 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
                 RefreshRecordBatchStreamReader();
             }
 
-            if (await _recordBatchStreamReader.MoveNext(cancellationToken))
+            if (await _recordBatchStreamReader!.MoveNext(cancellationToken))
             {
                 return _recordBatchStreamReader.Current;
             }

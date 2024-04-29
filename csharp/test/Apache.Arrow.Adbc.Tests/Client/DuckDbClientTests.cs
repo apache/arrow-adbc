@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System.Collections.Generic;
 using Apache.Arrow.Adbc.Client;
 using Xunit;
 
@@ -46,6 +47,7 @@ namespace Apache.Arrow.Adbc.Tests.Client
             using var reader = command.ExecuteReader();
 
             var schema = reader.GetSchemaTable();
+            Assert.NotNull(schema);
             Assert.Equal(2, schema.Rows.Count);
             Assert.Equal(typeof(int), schema.Rows[0].ItemArray[2]);
             Assert.Equal(typeof(int), schema.Rows[1].ItemArray[2]);

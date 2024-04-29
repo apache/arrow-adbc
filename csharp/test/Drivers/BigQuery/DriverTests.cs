@@ -104,9 +104,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         public void CanGetObjects()
         {
             // need to add the database
-            string? catalogName = _testConfiguration.Metadata?.Catalog;
-            string? schemaName = _testConfiguration.Metadata?.Schema;
-            string? tableName = _testConfiguration.Metadata?.Table;
+            string? catalogName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
+            string? tableName = _testConfiguration.Metadata.Table;
             string? columnName = null;
 
             AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(_testConfiguration);
@@ -131,7 +131,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 ?.Select(c => c.Columns)
                 .FirstOrDefault();
 
-            Assert.Equal(_testConfiguration.Metadata?.ExpectedColumnCount, columns?.Count);
+            Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns?.Count);
         }
 
         /// <summary>
@@ -142,9 +142,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(_testConfiguration);
 
-            string? catalogName = _testConfiguration.Metadata?.Catalog;
-            string? schemaName = _testConfiguration.Metadata?.Schema;
-            string tableName = _testConfiguration.Metadata?.Table ?? throw new ArgumentNullException("tableName");
+            string? catalogName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
+            string tableName = _testConfiguration.Metadata.Table;
 
             Schema schema = adbcConnection.GetTableSchema(catalogName, schemaName, tableName);
 

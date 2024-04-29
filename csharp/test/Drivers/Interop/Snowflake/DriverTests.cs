@@ -46,30 +46,30 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             if (string.IsNullOrEmpty(name)) yield break;
 
-            yield return new object[] { name };
-            yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name)}%" };
-            yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name).ToLower()}%" };
-            yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name).ToUpper()}%" };
-            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name)}" };
-            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name).ToLower()}" };
-            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name).ToUpper()}" };
+            yield return new object[] { name! };
+            yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name!)}%" };
+            yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name!).ToLower()}%" };
+            yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name!).ToUpper()}%" };
+            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name!)}" };
+            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name!).ToLower()}" };
+            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name!).ToUpper()}" };
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()
         {
-            string? databaseName = SnowflakeTestingUtils.TestConfiguration?.Metadata?.Catalog;
+            string? databaseName = SnowflakeTestingUtils.TestConfiguration?.Metadata.Catalog;
             return GetPatterns(databaseName);
         }
 
         public static IEnumerable<object[]> DbSchemasNamePatternData()
         {
-            string? dbSchemaName = SnowflakeTestingUtils.TestConfiguration?.Metadata?.Schema;
+            string? dbSchemaName = SnowflakeTestingUtils.TestConfiguration?.Metadata.Schema;
             return GetPatterns(dbSchemaName);
         }
 
         public static IEnumerable<object[]> TableNamePatternData()
         {
-            string? tableName = SnowflakeTestingUtils.TestConfiguration?.Metadata?.Table;
+            string? tableName = SnowflakeTestingUtils.TestConfiguration?.Metadata.Table;
             return GetPatterns(tableName);
         }
 
@@ -142,8 +142,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [MemberData(nameof(CatalogNamePatternData))]
         public void CanGetObjectsCatalogs(string catalogPattern)
         {
-            string? databaseName = _testConfiguration.Metadata?.Catalog;
-            string? schemaName = _testConfiguration.Metadata?.Schema;
+            string? databaseName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Catalogs,
@@ -169,8 +169,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public void CanGetObjectsDbSchemas(string dbSchemaPattern)
         {
             // need to add the database
-            string? databaseName = _testConfiguration.Metadata?.Catalog;
-            string? schemaName = _testConfiguration.Metadata?.Schema;
+            string? databaseName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.DbSchemas,
@@ -201,9 +201,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public void CanGetObjectsTables(string tableNamePattern)
         {
             // need to add the database
-            string? databaseName = _testConfiguration.Metadata?.Catalog;
-            string? schemaName = _testConfiguration.Metadata?.Schema;
-            string? tableName = _testConfiguration.Metadata?.Table;
+            string? databaseName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
+            string? tableName = _testConfiguration.Metadata.Table;
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Tables,
@@ -237,9 +237,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public void CanGetObjectsAll()
         {
             // need to add the database
-            string? databaseName = _testConfiguration.Metadata?.Catalog;
-            string? schemaName = _testConfiguration.Metadata?.Schema;
-            string? tableName = _testConfiguration.Metadata?.Table;
+            string? databaseName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
+            string? tableName = _testConfiguration.Metadata.Table;
             string? columnName = null;
 
             using IArrowArrayStream stream = _connection.GetObjects(
@@ -269,7 +269,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             List<AdbcColumn>? columns = table.Columns;
 
             Assert.True(columns != null, "Columns cannot be null");
-            Assert.Equal(_testConfiguration.Metadata?.ExpectedColumnCount, columns.Count);
+            Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
 
             if (_testConfiguration.UseHighPrecision)
             {
@@ -341,15 +341,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(4)]
         public void CanGetTableSchema()
         {
-            string? databaseName = _testConfiguration.Metadata?.Catalog;
-            string? schemaName = _testConfiguration.Metadata?.Schema;
-            string tableName = _testConfiguration.Metadata?.Table;
+            string? databaseName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
+            string tableName = _testConfiguration.Metadata.Table;
 
             Schema schema = _connection.GetTableSchema(databaseName, schemaName, tableName);
 
             int numberOfFields = schema.FieldsList.Count;
 
-            Assert.Equal(_testConfiguration.Metadata?.ExpectedColumnCount, numberOfFields);
+            Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
         }
 
         /// <summary>

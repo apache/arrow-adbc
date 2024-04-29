@@ -265,7 +265,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             _statement.SqlQuery = selectNumberStatement;
             QueryResult queryResult = _statement.ExecuteQuery();
             Assert.Equal(count, queryResult.RowCount);
-            using (IArrowArrayStream stream = queryResult.Stream)
+            using (IArrowArrayStream stream = queryResult.Stream ?? throw new InvalidOperationException("empty result"))
             {
                 Field field = stream.Schema.GetFieldByName(columnName);
                 while (true)

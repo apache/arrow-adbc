@@ -84,7 +84,9 @@ namespace Apache.Arrow.Adbc.Client
         public override string CommandText
         {
             get => this.adbcStatement.SqlQuery ?? string.Empty;
+#nullable disable
             set => this.adbcStatement.SqlQuery = string.IsNullOrEmpty(value) ? null : value;
+#nullable restore
         }
 
         public override CommandType CommandType

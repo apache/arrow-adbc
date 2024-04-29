@@ -44,9 +44,9 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
             _metadata = metadata;
         }
 
-        internal FlightClient? FlightClient
+        internal FlightClient FlightClient
         {
-            get => _flightClientInternal;
+            get => _flightClientInternal ?? throw new ArgumentNullException(nameof(FlightClient));
         }
 
         internal Metadata Metadata

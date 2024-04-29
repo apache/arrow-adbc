@@ -41,6 +41,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             this.properties = properties;
         }
 
+        internal TCLIService.Client Client
+        {
+            get { return this.client ?? throw new InvalidOperationException("connection not open"); }
+        }
+
         public void Open()
         {
             TProtocol protocol = CreateProtocol();
@@ -71,7 +76,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 if (statusResponse != null) { Thread.Sleep(500); }
                 TGetOperationStatusReq request = new TGetOperationStatusReq(this.operationHandle);
-                statusResponse = this.client.GetOperationStatus(request).Result;
+                statusResponse = this.Client.GetOperationStatus(request).Result;
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
         }
 
@@ -83,7 +88,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TCloseSessionReq r6 = new TCloseSessionReq(this.sessionHandle);
                 this.client.CloseSession(r6).Wait();
 
-                this.transport.Close();
+                this.transport?.Close();
                 this.client.Dispose();
                 this.transport = null;
                 this.client = null;
@@ -93,7 +98,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected Schema GetSchema()
         {
             TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
-            TGetResultSetMetadataResp response = this.client.GetResultSetMetadata(request).Result;
+            TGetResultSetMetadataResp response = this.Client.GetResultSetMetadata(request).Result;
             return SchemaParser.GetArrowSchema(response.Schema);
         }
 
@@ -142,7 +147,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     }
 
                     TFetchResultsReq request = new TFetchResultsReq(this.connection.operationHandle, TFetchOrientation.FETCH_NEXT, 50000);
-                    TFetchResultsResp response = await this.connection.client.FetchResults(request, cancellationToken);
+                    TFetchResultsResp response = await this.connection.Client.FetchResults(request, cancellationToken);
                     this.batches = response.Results.ArrowBatches;
 
                     if (!response.HasMoreRows)

@@ -45,7 +45,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// The query to run.
         /// </summary>
-        public string Query { get; set; }
+        public string Query { get; set; } = string.Empty;
 
         /// <summary>
         /// The expected values.

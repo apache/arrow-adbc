@@ -27,8 +27,8 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             ColumnUsage = new List<AdbcUsageSchema>();
         }
 
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string? Name { get; set; }
+        public string? Type { get; set; }
         public List<string> ColumnNames { get; set; }
         public List<AdbcUsageSchema> ColumnUsage { get; set; }
     }

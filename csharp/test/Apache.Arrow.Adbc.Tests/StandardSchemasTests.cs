@@ -105,9 +105,9 @@ namespace Apache.Arrow.Adbc.Tests
             return getObjectsDataArrays;
         }
 
-        private IReadOnlyList<IArrowArray?> GetDbSchemaDataArrays(IReadOnlyList<IArrowArray> tableDataArrays)
+        private IReadOnlyList<IArrowArray> GetDbSchemaDataArrays(IReadOnlyList<IArrowArray> tableDataArrays)
         {
-            List<IArrowArray?> dbSchemaTablesValues = new List<IArrowArray?>()
+            List<IArrowArray> dbSchemaTablesValues = new List<IArrowArray>()
             {
                 new StructArray(
                     new StructType(StandardSchemas.TableSchema),
@@ -116,7 +116,7 @@ namespace Apache.Arrow.Adbc.Tests
                     new ArrowBuffer.BitmapBuilder().Build())
             };
 
-            List<IArrowArray?> schemaDataArrays = new List<IArrowArray?>
+            List<IArrowArray> schemaDataArrays = new List<IArrowArray>
             {
                 new StringArray.Builder().Build(),
                 dbSchemaTablesValues.BuildListArrayForType(new StructType(StandardSchemas.TableSchema)),

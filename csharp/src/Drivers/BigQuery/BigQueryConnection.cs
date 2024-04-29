@@ -1053,7 +1053,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// <param name="refreshToken"></param>
         /// <param name="tokenEndpoint"></param>
         /// <returns></returns>
-        private string? GetAccessToken(string? clientId, string? clientSecret, string? refreshToken, string? tokenEndpoint)
+        private string? GetAccessToken(string clientId, string clientSecret, string refreshToken, string tokenEndpoint)
         {
             string body = string.Format(
                 "grant_type=refresh_token&client_id={0}&client_secret={1}&refresh_token={2}",

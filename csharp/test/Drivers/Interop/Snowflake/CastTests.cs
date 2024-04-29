@@ -293,7 +293,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         private static async Task ValidateCast(object? value, ArrowTypeId expectedType, QueryResult queryResult)
         {
             Assert.Equal(1, queryResult.RowCount);
-            using IArrowArrayStream stream = queryResult.Stream;
+            using IArrowArrayStream stream = queryResult.Stream ?? throw new InvalidOperationException("empty result");
             Field field = stream.Schema.GetFieldByName("CASTRESULT");
             Assert.NotNull(field);
             while (true)

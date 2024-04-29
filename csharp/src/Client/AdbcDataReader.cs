@@ -37,10 +37,10 @@ namespace Apache.Arrow.Adbc.Client
     {
         private readonly AdbcCommand adbcCommand;
         private readonly bool closeConnection;
-        private QueryResult adbcQueryResult;
+        private readonly QueryResult adbcQueryResult;
         private RecordBatch? recordBatch;
         private int currentRowInRecordBatch;
-        private Schema schema;
+        private readonly Schema schema;
         private bool isClosed;
         private int recordsAffected = -1;
 
@@ -360,7 +360,7 @@ namespace Apache.Arrow.Adbc.Client
         {
             this.currentRowInRecordBatch = 0;
 
-            RecordBatch? recordBatch = this.adbcQueryResult.Stream.ReadNextRecordBatchAsync(cancellationToken).Result;
+            RecordBatch? recordBatch = this.adbcQueryResult.Stream?.ReadNextRecordBatchAsync(cancellationToken).Result;
 
             if (recordBatch != null)
             {

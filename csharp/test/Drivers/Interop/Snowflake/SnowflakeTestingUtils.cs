@@ -88,11 +88,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 { SnowflakeParameters.USE_HIGH_PRECISION, testConfiguration.UseHighPrecision.ToString().ToLowerInvariant() }
             };
 
-            if (testConfiguration.Authentication?.Default is not null)
+            if (testConfiguration.Authentication.Default is not null)
             {
                 parameters[SnowflakeParameters.AUTH_TYPE] = SnowflakeAuthentication.AuthSnowflake;
-                parameters[SnowflakeParameters.USERNAME] = Parameter(testConfiguration.Authentication?.Default?.User, "username");
-                parameters[SnowflakeParameters.PASSWORD] = Parameter(testConfiguration.Authentication?.Default?.Password, "password");
+                parameters[SnowflakeParameters.USERNAME] = Parameter(testConfiguration.Authentication.Default.User, "username");
+                parameters[SnowflakeParameters.PASSWORD] = Parameter(testConfiguration.Authentication.Default.Password, "password");
             }
 
             if (!string.IsNullOrWhiteSpace(testConfiguration.Host))
@@ -171,9 +171,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
 
             Dictionary<string, string> placeholderValues = new Dictionary<string, string>() {
-                {"{ADBC_CATALOG}", Parameter(testConfiguration.Metadata?.Catalog, "catalog") },
-                {"{ADBC_SCHEMA}", Parameter(testConfiguration.Metadata?.Schema, "schema") },
-                {"{ADBC_TABLE}", Parameter(testConfiguration.Metadata?.Table, "table") }
+                {"{ADBC_CATALOG}", Parameter(testConfiguration.Metadata.Catalog, "catalog") },
+                {"{ADBC_SCHEMA}", Parameter(testConfiguration.Metadata.Schema, "schema") },
+                {"{ADBC_TABLE}", Parameter(testConfiguration.Metadata.Table, "table") }
             };
 
             foreach (string line in sql)

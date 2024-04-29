@@ -78,7 +78,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             string pattern = "#define " + adbcName;
 
-            string line = File.ReadAllLines(path).Where(x => x.StartsWith(pattern)).FirstOrDefault();
+            string? line = File.ReadAllLines(path).Where(x => x.StartsWith(pattern)).FirstOrDefault();
 
             Assert.False(string.IsNullOrEmpty(line));
 
@@ -161,7 +161,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="parameterTypes">The parameter types (in order)</param>
         private void ValidateMethod(Type t, string methodName, string[]? parameterNames = null, Type[]? parameterTypes = null)
         {
-            MethodInfo mi;
+            MethodInfo? mi;
 
             if (parameterTypes != null)
                 mi = t.GetMethod(methodName, parameterTypes);
@@ -170,6 +170,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             if (parameterNames != null)
             {
+                Assert.NotNull(mi);
                 Assert.True(parameterNames.Length > 0);
                 Assert.True(parameterTypes != null);
                 Assert.Equal(parameterNames.Length, parameterTypes.Length);
@@ -195,7 +196,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="parameterTypes">The parameter types (in order)</param>
         private void ValidateProperty(Type t, string propertyName, Type propertyType)
         {
-            PropertyInfo pi = t.GetProperty(propertyName, propertyType);
+            PropertyInfo? pi = t.GetProperty(propertyName, propertyType);
 
             Assert.NotNull(pi);
         }

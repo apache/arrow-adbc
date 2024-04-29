@@ -70,6 +70,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             const string NumberOfAffectedRowsColumnName = "num_affected_rows";
 
             QueryResult queryResult = ExecuteQuery();
+            if (queryResult.Stream == null)
+            {
+                throw new AdbcException("no data found");
+            }
+
             using IArrowArrayStream stream = queryResult.Stream;
 
             // Check if the affected rows columns are returned in the result.

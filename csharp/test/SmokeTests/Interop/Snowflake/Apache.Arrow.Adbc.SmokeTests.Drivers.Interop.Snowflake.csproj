@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <Import Project="..\..\Build.props" />
     <PropertyGroup>
-     <TargetFrameworks>net472;net8.0</TargetFrameworks>
+      <TargetFrameworks>net472;net8.0</TargetFrameworks>
+      <Nullable>enable</Nullable>
    </PropertyGroup>
     <ItemGroup>
       <Compile Include="..\..\..\Drivers\Interop\Snowflake\ClientTests.cs" Link="ClientTests.cs" />

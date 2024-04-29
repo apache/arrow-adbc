@@ -90,7 +90,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new Field(field.Name, TranslateType(field), field.Mode == "NULLABLE");
         }
 
-        public override object GetValue(IArrowArray arrowArray, int index)
+        public override object? GetValue(IArrowArray arrowArray, int index)
         {
             switch (arrowArray)
             {
@@ -241,7 +241,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             for (int i = 0; i < structArray.Data.Children.Length; i++)
             {
                 string name = structType.Fields[i].Name;
-                object value = GetValue(structArray.Fields[i], index);
+                object? value = GetValue(structArray.Fields[i], index);
 
                 if (value is StructArray structArray1)
                 {

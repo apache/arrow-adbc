@@ -19,15 +19,15 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
 {
     public class AdbcUsageSchema
     {
-        public string FkCatalog { get; set; }
+        public string? FkCatalog { get; set; }
 
-        public string FkDbSchema { get; set; }
+        public string? FkDbSchema { get; set; }
 
-        public string FkTable { get; set; }
+        public string? FkTable { get; set; }
 
-        public string FkColumnName { get; set; }
+        public string? FkColumnName { get; set; }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null || obj.GetType() != this.GetType())
             {

@@ -90,7 +90,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
             for (int i = 0; i < infoNameArray.Length; i++)
             {
-                AdbcInfoCode value = (AdbcInfoCode)infoNameArray.GetValue(i);
+                AdbcInfoCode? value = (AdbcInfoCode?)infoNameArray.GetValue(i);
                 DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
 
                 Assert.Contains(value.ToString(), expectedValues);
@@ -107,9 +107,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public void CanGetObjects()
         {
             // need to add the database
-            string? catalogName = TestConfiguration.Metadata?.Catalog;
-            string? schemaName = TestConfiguration.Metadata?.Schema;
-            string? tableName = TestConfiguration.Metadata?.Table;
+            string? catalogName = TestConfiguration.Metadata.Catalog;
+            string? schemaName = TestConfiguration.Metadata.Schema;
+            string? tableName = TestConfiguration.Metadata.Table;
             string? columnName = null;
 
             AdbcConnection adbcConnection = NewConnection();
@@ -134,7 +134,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 ?.Select(c => c.Columns)
                 .FirstOrDefault();
 
-            Assert.Equal(TestConfiguration.Metadata?.ExpectedColumnCount, columns?.Count);
+            Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, columns?.Count);
         }
 
         /// <summary>
@@ -145,9 +145,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             AdbcConnection adbcConnection = NewConnection();
 
-            string? catalogName = TestConfiguration.Metadata?.Catalog;
-            string? schemaName = TestConfiguration.Metadata?.Schema;
-            string tableName = TestConfiguration.Metadata!.Table!;
+            string? catalogName = TestConfiguration.Metadata.Catalog;
+            string? schemaName = TestConfiguration.Metadata.Schema;
+            string tableName = TestConfiguration.Metadata.Table!;
 
             Schema schema = adbcConnection.GetTableSchema(catalogName, schemaName, tableName);
 

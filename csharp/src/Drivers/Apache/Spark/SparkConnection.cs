@@ -289,7 +289,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             getColumnsReq.TableName = tableName;
             getColumnsReq.GetDirectResults = sparkGetDirectResults;
 
-            var columnsResponse = this.client.GetColumns(getColumnsReq).Result;
+            var columnsResponse = this.Client.GetColumns(getColumnsReq).Result;
             if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new Exception(columnsResponse.Status.ErrorMessage);
@@ -323,7 +323,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(this.sessionHandle);
                 getCatalogsReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetCatalogsResp getCatalogsResp = this.client.GetCatalogs(getCatalogsReq).Result;
+                TGetCatalogsResp getCatalogsResp = this.Client.GetCatalogs(getCatalogsReq).Result;
                 if (getCatalogsResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getCatalogsResp.Status.ErrorMessage);
@@ -351,7 +351,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 getSchemasReq.SchemaName = dbSchemaPattern;
                 getSchemasReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetSchemasResp getSchemasResp = this.client.GetSchemas(getSchemasReq).Result;
+                TGetSchemasResp getSchemasResp = this.Client.GetSchemas(getSchemasReq).Result;
                 if (getSchemasResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getSchemasResp.Status.ErrorMessage);
@@ -378,7 +378,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 getTablesReq.TableName = tableNamePattern;
                 getTablesReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetTablesResp getTablesResp = this.client.GetTables(getTablesReq).Result;
+                TGetTablesResp getTablesResp = this.Client.GetTables(getTablesReq).Result;
                 if (getTablesResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getTablesResp.Status.ErrorMessage);
@@ -415,7 +415,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 if (!string.IsNullOrEmpty(columnNamePattern))
                     columnsReq.ColumnName = columnNamePattern;
 
-                var columnsResponse = this.client.GetColumns(columnsReq).Result;
+                var columnsResponse = this.Client.GetColumns(columnsReq).Result;
                 if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(columnsResponse.Status.ErrorMessage);

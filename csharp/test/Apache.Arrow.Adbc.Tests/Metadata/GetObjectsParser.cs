@@ -98,7 +98,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             return tables;
         }
 
-        private static List<AdbcColumn> ParseColumns(StructArray columnsArray)
+        private static List<AdbcColumn>? ParseColumns(StructArray columnsArray)
         {
             if (columnsArray == null) return null;
 
@@ -153,7 +153,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             return columns;
         }
 
-        private static List<AdbcConstraint> ParseConstraints(StructArray constraintsArray)
+        private static List<AdbcConstraint>? ParseConstraints(StructArray constraintsArray)
         {
             if (constraintsArray == null) return null;
 
@@ -170,8 +170,8 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
                 c.Name = name.GetString(i);
                 c.Type = type.GetString(i);
 
-                StringArray colNames = columnNames.GetSlicedValues(i) as StringArray;
-                StructArray usages = columnUsages.GetSlicedValues(i) as StructArray;
+                StringArray? colNames = columnNames.GetSlicedValues(i) as StringArray;
+                StructArray? usages = columnUsages.GetSlicedValues(i) as StructArray;
 
                 if (colNames != null)
                 {

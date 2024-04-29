@@ -43,7 +43,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="environmentValue">
         /// The value from the environment variable.
         /// </param>
-        public static bool CanExecuteTest(string environmentVariable, out string environmentValue)
+        public static bool CanExecuteTest(string environmentVariable, out string? environmentValue)
         {
             if (!string.IsNullOrWhiteSpace(environmentVariable))
             {
@@ -75,7 +75,7 @@ namespace Apache.Arrow.Adbc.Tests
         public static T LoadTestConfiguration<T>(string environmentVariable)
             where T : TestConfiguration
         {
-            if (CanExecuteTest(environmentVariable, out string environmentValue))
+            if (CanExecuteTest(environmentVariable, out string? environmentValue))
                 return GetTestConfiguration<T>(environmentValue);
 
             throw new InvalidOperationException($"Cannot execute test configuration from environment variable `{environmentVariable}`");
@@ -89,16 +89,16 @@ namespace Apache.Arrow.Adbc.Tests
         /// The path of the configuration file
         /// </param>
         /// <returns>T</returns>
-        public static T GetTestConfiguration<T>(string fileName)
+        public static T GetTestConfiguration<T>(string? fileName)
             where T : TestConfiguration
         {
-            if (!File.Exists(fileName))
+            if (fileName == null || !File.Exists(fileName))
                 throw new FileNotFoundException(fileName);
 
             // use a JSON file for the various settings
             string json = File.ReadAllText(fileName);
 
-            T testConfiguration = JsonSerializer.Deserialize<T>(json);
+            T testConfiguration = JsonSerializer.Deserialize<T>(json)!;
 
             return testConfiguration;
         }

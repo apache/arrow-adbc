@@ -295,7 +295,7 @@ namespace Apache.Arrow.Adbc.Tests
             OutputHelper.WriteLine(selectStatement);
             QueryResult queryResult = Statement.ExecuteQuery();
             int actualLength = 0;
-            using (IArrowArrayStream stream = queryResult.Stream)
+            using (IArrowArrayStream stream = queryResult.Stream ?? throw new InvalidOperationException("stream is null"))
             {
                 // Assume first column
                 Field field = stream.Schema.GetFieldByIndex(0);
