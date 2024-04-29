@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,31 +16,26 @@
 # specific language governing permissions and limitations
 # under the License.
 
-set -e
-set -u
-set -o pipefail
+: ${DRY_RUN:=0}
+: ${REPOSITORY:="apache/arrow-adbc"}
+: ${WORKFLOW_REF:="main"}
 
-SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-source "${SOURCE_DIR}/utils-common.sh"
-source "${SOURCE_DIR}/utils-prepare.sh"
+SOURCE_TOP_DIR="$( cd "${SOURCE_DIR}/../../" && pwd )"
 
-main() {
-    if [ "$#" -ne 2 ]; then
-        echo "Usage: $0 <arrow-dir> <rc-num>"
-        echo "Usage: $0 ../arrow 0"
-        exit 1
-    fi
+if [[ ! -f "${SOURCE_DIR}/.env" ]]; then
+    echo "You must create ${SOURCE_DIR}/.env"
+    echo "You can use ${SOURCE_DIR}/.env.example as a template"
+fi
 
-    local -r arrow_dir="$(cd "$1" && pwd)"
-    local -r rc_number="$2"
+source "${SOURCE_DIR}/.env"
 
-    header "Deploying APT/Yum repositories ${RELEASE}"
-
-    export DEPLOY_DEFAULT=0
-    export DEPLOY_ALMALINUX=${DEPLOY_ALMALINUX:-1}
-    export DEPLOY_DEBIAN=${DEPLOY_DEBIAN:-1}
-    export DEPLOY_UBUNTU=${DEPLOY_UBUNTU:-1}
-    "${arrow_dir}/dev/release/post-02-binary.sh" "${RELEASE}" "${rc_number}"
+header() {
+    echo "============================================================"
+    echo "${1}"
+    echo "============================================================"
 }
 
-main "$@"
+header "Config"
+
+echo "Repository: ${REPOSITORY}"
+echo "Source Directory: ${SOURCE_TOP_DIR}"

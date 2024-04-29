@@ -20,39 +20,52 @@
 set -ue
 
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SOURCE_DIR}/utils-common.sh"
+source "${SOURCE_DIR}/utils-prepare.sh"
 
-if [ "$#" -ne 3 ]; then
-  echo "Usage: $0 <arrow-dir> <version> <next_version>"
-  echo "Usage: $0 ../arrow 0.1.0 1.0.0"
-  exit 1
-fi
+main() {
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: $0 <arrow-dir>"
+        echo "Usage: $0 ../arrow"
+        exit 1
+    fi
 
-. $SOURCE_DIR/utils-prepare.sh
+    local -r arrow_dir="$1"
 
-arrow_dir=$1
-version=$2
-next_version=$3
-next_version_snapshot="${next_version}-SNAPSHOT"
+    echo "Release: ${RELEASE}"
+    echo "Previous Release: ${PREVIOUS_RELEASE}"
 
-export ARROW_SOURCE="$(cd "${arrow_dir}" && pwd)"
+    local -r tag="apache-arrow-adbc-${RELEASE}"
+    if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+        echo "The tag ${tag} already exists."
+        echo "Please update ${SOURCE_DIR}/versions.env."
+        exit 1
+    fi
 
-########################## Update Snapshot Version ##########################
+    read -p "Please confirm that ${SOURCE_DIR}/versions.env has been updated. "
 
-git fetch --all --prune --tags --force -j$(nproc)
-git switch main
-git rebase apache/main
+    export ARROW_SOURCE="$(cd "${arrow_dir}" && pwd)"
 
-echo "Updating versions for ${next_version_snapshot}"
-update_versions "${version}" "${next_version}" "snapshot"
-git commit -m "chore: update versions for ${next_version_snapshot}"
-echo "Bumped versions on branch."
+    ########################## Update Snapshot Version ##########################
 
-############################# Update Changelog ##############################
+    git fetch --all --prune --tags --force -j$(nproc)
+    git switch main
+    git rebase apache/main
 
-git checkout apache-arrow-adbc-${version} -- CHANGELOG.md
-git commit -m "chore: update changelog for ${version}"
-echo "Updated changelog on branch."
+    echo "Updating versions for ${RELEASE}-SNAPSHOT"
+    update_versions "snapshot"
+    git commit -m "chore: update versions for ${RELEASE}-SNAPSHOT"
+    echo "Bumped versions on branch."
 
-echo "Review the commits just made."
-echo "Then, push changes to apache/arrow-adbc:main with:"
-echo git push apache main
+    ############################# Update Changelog ##############################
+
+    git checkout apache-arrow-adbc-${PREVIOUS_RELEASE} -- CHANGELOG.md
+    git commit -m "chore: update changelog for ${PREVIOUS_RELEASE}"
+    echo "Updated changelog on branch."
+
+    echo "Review the commits just made."
+    echo "Then, push changes to apache/arrow-adbc:main with:"
+    echo git push apache main
+}
+
+main "$@"

@@ -18,30 +18,33 @@
 
 set -eu
 
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SOURCE_DIR}/utils-common.sh"
+source "${SOURCE_DIR}/utils-prepare.sh"
+
 main() {
-    if [ "$#" -ne 2 ]; then
-        echo "Usage: $0 <version> <rc-num>"
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: $0 <rc-num>"
         exit 1
     fi
-    local -r version="$1"
-    local -r rc_number="$2"
-    local -r tag="apache-arrow-adbc-${version}-rc${rc_number}"
+    local -r rc_number="$1"
+    local -r tag="apache-arrow-adbc-${RELEASE}-rc${rc_number}"
 
-    rc_id="apache-arrow-adbc-${version}-rc${rc_number}"
-    release_id="apache-arrow-adbc-${version}"
+    rc_id="apache-arrow-adbc-${RELEASE}-rc${rc_number}"
+    release_id="apache-arrow-adbc-${RELEASE}"
     echo "Copying dev/ to release/"
     svn \
         cp \
-        -m "Apache Arrow ADBC ${version}" \
+        -m "Apache Arrow ADBC ${RELEASE}" \
         https://dist.apache.org/repos/dist/dev/arrow/${rc_id} \
         https://dist.apache.org/repos/dist/release/arrow/${release_id}
 
     echo "Create final tag"
-    git tag -a "apache-arrow-adbc-${version}" -m "ADBC Libraries ${version}" "${tag}^{}"
+    git tag -a "apache-arrow-adbc-${RELEASE}" -m "ADBC Libraries ${RELEASE}" "${tag}^{}"
 
     echo "Success! The release is available here:"
     echo "  https://dist.apache.org/repos/dist/release/arrow/${release_id}"
-    echo "Please push the tag apache-arrow-adbc-${version}!"
+    echo "Please push the tag apache-arrow-adbc-${RELEASE}!"
 }
 
 main "$@"

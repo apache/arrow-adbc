@@ -36,6 +36,7 @@ namespace Apache.Arrow.Adbc.Client
     public sealed class AdbcDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         private readonly AdbcCommand adbcCommand;
+        private readonly bool closeConnection;
         private QueryResult? adbcQueryResult;
         private RecordBatch? recordBatch;
         private int currentRowInRecordBatch;
@@ -43,7 +44,7 @@ namespace Apache.Arrow.Adbc.Client
         private bool isClosed;
         private int recordsAffected = -1;
 
-        internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior)
+        internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior, bool closeConnection)
         {
             if (adbcCommand == null)
                 throw new ArgumentNullException(nameof(adbcCommand));
@@ -58,6 +59,7 @@ namespace Apache.Arrow.Adbc.Client
             if (this.schema == null)
                 throw new ArgumentException("A Schema must be set for the AdbcQueryResult.Stream property");
 
+            this.closeConnection = closeConnection;
             this.isClosed = false;
             this.DecimalBehavior = decimalBehavior;
         }
@@ -99,7 +101,10 @@ namespace Apache.Arrow.Adbc.Client
 
         public override void Close()
         {
-            this.adbcCommand?.Connection?.Close();
+            if (this.closeConnection)
+            {
+                this.adbcCommand?.Connection?.Close();
+            }
             this.adbcQueryResult = null;
             this.isClosed = true;
         }

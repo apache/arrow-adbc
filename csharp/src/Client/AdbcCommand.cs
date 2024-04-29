@@ -169,12 +169,13 @@ namespace Apache.Arrow.Adbc.Client
         /// <returns><see cref="AdbcDataReader"/></returns>
         public new AdbcDataReader ExecuteReader(CommandBehavior behavior)
         {
-            switch (behavior)
+            bool closeConnection = (behavior & CommandBehavior.CloseConnection) != 0;
+            switch (behavior & ~CommandBehavior.CloseConnection)
             {
                 case CommandBehavior.SchemaOnly:   // The schema is not known until a read happens
                 case CommandBehavior.Default:
                     QueryResult result = this.ExecuteQuery();
-                    return new AdbcDataReader(this, result, this.DecimalBehavior);
+                    return new AdbcDataReader(this, result, this.DecimalBehavior, closeConnection);
 
                 default:
                     throw new InvalidOperationException($"{behavior} is not supported with this provider");

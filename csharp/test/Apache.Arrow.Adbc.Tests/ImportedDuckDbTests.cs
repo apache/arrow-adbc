@@ -64,45 +64,113 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
-        public void ThisSub()
+        public void TransactionsTest()
         {
-            const string query = "ClwIARJYaHR0cHM6Ly9naXRodWIuY29tL3N1YnN0cmFpdC1pby9zdWJzdHJhaXQvYmxvYi9tYWluL2V4dGVuc2lvbnMvZnVuY3Rpb25zX2NvbXBhcmlzb24ueWFtbBINGgsIARABGgVlcXVhbBqgARKdAQp3EnUSSwpJEjoKCnByb2R1Y3RfaWQKDHByb2R1Y3RfbmFtZQoIcXVhbnRpdHkSFAoEOgIQAgoEYgIQAgoEKgIQAhgCOgsKCWludmVudG9yeRomGiQIARoECgIQAiIOGgwKCmIIQ29tcHV0ZXIiChoIEgYKBBICCAESDHByb2R1Y3RfbmFtZRIKcHJvZHVjdF9pZBIIcXVhbnRpdHkyEhAUKg52YWxpZGF0b3ItdGVzdA==";
-
-            using var database = _duckDb.OpenDatabase("substraittest.db");
+            using var database = _duckDb.OpenDatabase("transactions.db");
             using var connection = database.Connect(null);
             using var statement = connection.CreateStatement();
 
-            statement.SqlQuery = "CREATE TABLE inventory(product_id BIGINT, product_name STRING, quantity INTEGER);";
+            statement.SqlQuery = "CREATE TABLE test(column1 INTEGER);";
             statement.ExecuteUpdate();
 
-            statement.SqlQuery = "INSERT INTO inventory VALUES (3, 'Computer', 24), (4, 'Keyboard', 30);";
+            connection.AutoCommit = false;
+
+            // Insert into connection1
+            statement.SqlQuery = "INSERT INTO test VALUES (3), (5), (7);";
+            statement.ExecuteUpdate();
+            Assert.Equal(3, GetResultCount(statement, "SELECT * from test"));
+
+            // Validate that we don't see the data on connection2
+            using var connection2 = database.Connect(null);
+            using var statement2 = connection2.CreateStatement();
+            Assert.Equal(0, GetResultCount(statement2, "SELECT * from test"));
+
+            // ... until after a commit on connection1
+            connection.Commit();
+            Assert.Equal(3, GetResultCount(statement2, "SELECT * from test"));
+
+            connection.AutoCommit = true;
+
+            // With AutoCommit on, we immediately see the results on another connection
+            statement.SqlQuery = "INSERT INTO test VALUES (2), (4);";
+            statement.ExecuteUpdate();
+            Assert.Equal(5, GetResultCount(statement2, "SELECT * from test"));
+
+            connection.AutoCommit = false;
+
+            // Now you see it...
+            statement.SqlQuery = "INSERT INTO test VALUES (6);";
+            statement.ExecuteUpdate();
+            Assert.Equal(6, GetResultCount(statement, "SELECT * from test"));
+
+            // Now you don't
+            connection.Rollback();
+            Assert.Equal(5, GetResultCount(statement, "SELECT * from test"));
+        }
+
+        [Fact(Skip = "DuckDb doesn't support ADBC readonly option yet")]
+        public void ReadOnlyTest()
+        {
+            using var database = _duckDb.OpenDatabase("readonly.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "CREATE TABLE test(column1 INTEGER);";
             statement.ExecuteUpdate();
 
-            statement.SqlQuery = "INSTALL substrait;";
-            statement.ExecuteUpdate();
+            connection.ReadOnly = true;
 
-            statement.SqlQuery = "LOAD substrait;";
-            statement.ExecuteUpdate();
+            AdbcException exception = Assert.Throws<AdbcException>(() =>
+            {
+                statement.SqlQuery = "INSERT INTO test VALUES (3), (5), (7);";
+                statement.ExecuteUpdate();
+            });
 
-            statement.SubstraitPlan = Convert.FromBase64String(query);
+            connection.ReadOnly = false;
+
+            statement.SqlQuery = "INSERT INTO test VALUES (2), (4);";
+            statement.ExecuteUpdate();
+            Assert.Equal(2, GetResultCount(statement, "SELECT * from test"));
+        }
+
+        [Fact]
+        public void ReadOnlyFails()
+        {
+            using var database = _duckDb.OpenDatabase("readonly.db");
+            using var connection = database.Connect(null);
+
+            Assert.Throws<AdbcException>(() =>
+            {
+                connection.ReadOnly = true;
+            });
+        }
+
+        [Fact]
+        public void SetIsolationLevelFails()
+        {
+            using var database = _duckDb.OpenDatabase("isolation.db");
+            using var connection = database.Connect(null);
+
+            Assert.Throws<AdbcException>(() =>
+            {
+                connection.IsolationLevel = IsolationLevel.Default;
+            });
+        }
+
+        private static long GetResultCount(AdbcStatement statement, string query)
+        {
+            statement.SqlQuery = "SELECT * from test";
             var results = statement.ExecuteQuery();
-
-            using var stream = results.Stream;
-
-            var schema = stream.Schema;
-            Assert.Equal(3, schema.FieldsList.Count);
-            Assert.Equal(ArrowTypeId.Int64, schema.FieldsList[0].DataType.TypeId);
-            Assert.Equal(ArrowTypeId.String, schema.FieldsList[1].DataType.TypeId);
-            Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[2].DataType.TypeId);
-
-            var firstBatch = stream.ReadNextRecordBatchAsync().Result;
-            Assert.Equal(1, firstBatch.Length);
-            //Assert.Equal(3, (firstBatch.Column(0) as Int32Array).Values[0]);
-            //Assert.Equal(5, (firstBatch.Column(0) as Int32Array).Values[1]);
-            //Assert.Equal(7, (firstBatch.Column(0) as Int32Array).Values[2]);
-
-            var secondBatch = stream.ReadNextRecordBatchAsync().Result;
-            Assert.Null(secondBatch);
+            long count = 0;
+            using (var stream = results.Stream)
+            {
+                RecordBatch batch;
+                while ((batch = stream.ReadNextRecordBatchAsync().Result) != null)
+                {
+                    count += batch.Length;
+                }
+            }
+            return count;
         }
     }
 }

@@ -21,24 +21,21 @@ set -e
 set -u
 set -o pipefail
 
-main() {
-    local -r source_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-    local -r source_top_dir="$( cd "${source_dir}/../../" && pwd )"
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SOURCE_DIR}/utils-common.sh"
+source "${SOURCE_DIR}/utils-prepare.sh"
 
-    if [ "$#" -ne 2 ]; then
-        echo "Usage: $0 <version> <rc-num>"
+main() {
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: $0 <rc-num>"
         exit 1
     fi
-
-    local -r version="$1"
-    local -r rc_number="$2"
-    local -r tag="apache-arrow-adbc-${version}"
-
-    : ${REPOSITORY:="apache/arrow-adbc"}
+    local -r rc_number="$1"
+    local -r tag="apache-arrow-adbc-${RELEASE}-rc${rc_number}"
 
     local -r tmp=$(mktemp -d -t "arrow-post-python.XXXXX")
 
-    header "Downloading Python packages for ${version}"
+    header "Downloading Python packages for ${RELEASE}"
 
     gh release download \
        --repo "${REPOSITORY}" \
@@ -47,7 +44,7 @@ main() {
        --pattern "*.whl" \
        --pattern "adbc_*.tar.gz" # sdist
 
-    header "Uploading Python packages for ${version}"
+    header "Uploading Python packages for ${RELEASE}"
 
     TWINE_ARGS=""
     if [ "${TEST_PYPI:-0}" -gt 0 ]; then
@@ -60,12 +57,6 @@ main() {
     rm -rf "${tmp}"
 
     echo "Success!"
-}
-
-header() {
-    echo "============================================================"
-    echo "${1}"
-    echo "============================================================"
 }
 
 main "$@"
