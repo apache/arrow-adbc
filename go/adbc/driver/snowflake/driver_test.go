@@ -2006,3 +2006,28 @@ func (suite *SnowflakeTests) TestJwtPrivateKey() {
 	defer os.Remove(binKey)
 	verifyKey(binKey)
 }
+
+func (suite *SnowflakeTests) TestMetadataOnlyQuery() {
+	// force more than one chunk for `SHOW FUNCTIONS` which will return
+	// JSON data instead of arrow, even though we ask for Arrow
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`ALTER SESSION SET CLIENT_RESULT_CHUNK_SIZE = 50`))
+	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+
+	// since we lowered the CLIENT_RESULT_CHUNK_SIZE this will return at least
+	// 1 chunk in addition to the first one. Metadata queries will return JSON
+	// no matter what currently.
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SHOW FUNCTIONS`))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	recv := int64(0)
+	for rdr.Next() {
+		recv += rdr.Record().NumRows()
+	}
+
+	// verify that we got the exepected number of rows if we sum up
+	// all the rows from each record in the stream.
+	suite.Equal(n, recv)
+}
