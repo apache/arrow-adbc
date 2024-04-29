@@ -52,7 +52,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             get
             {
                 // not advocating for this, but it works
-                Stream stream = ((FieldInfo[])((TypeInfo)this.GetType().BaseType).DeclaredFields)[4].GetValue(this) as Stream;
+                Stream stream = (Stream)((FieldInfo[])((TypeInfo)this.GetType().BaseType!).DeclaredFields)[4].GetValue(this)!;
                 return stream;
             }
         }
@@ -60,7 +60,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
         {
             get
             {
-                Stream stream = this.GetType().BaseType.GetField("_outputStream", BindingFlags.NonPublic).GetValue(this) as Stream;
+                Stream stream = (Stream)this.GetType().BaseType!.GetField("_outputStream", BindingFlags.NonPublic)!.GetValue(this)!;
                 return stream;
             }
         }

@@ -36,11 +36,9 @@ namespace Apache.Arrow.Adbc.Tests
     public abstract class TestBase<T> : IDisposable where T : TestConfiguration
     {
         private bool _disposedValue;
-        private T _testConfiguration;
-        private AdbcConnection _connection = null;
-        private AdbcStatement _statement = null;
-
-        private TestBase() { }
+        private T? _testConfiguration;
+        private AdbcConnection? _connection = null;
+        private AdbcStatement? _statement = null;
 
         /// <summary>
         /// Constructs a new TestBase object.
@@ -181,7 +179,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="testConfiguration"><see cref="Tests.TestConfiguration"/></param>
         /// <param name="connectionOptions"></param>
         /// <returns></returns>
-        protected AdbcConnection NewConnection(T testConfiguration = null, IReadOnlyDictionary<string, string> connectionOptions = null)
+        protected AdbcConnection NewConnection(T? testConfiguration = null, IReadOnlyDictionary<string, string>? connectionOptions = null)
         {
             Dictionary<string, string> parameters = GetDriverParameters(testConfiguration ?? TestConfiguration);
             AdbcDatabase database = NewDriver.Open(parameters);
@@ -197,7 +195,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to insert, select and delete.</param>
         /// <param name="formattedValue">The formated value to insert, select and delete.</param>
         /// <returns></returns>
-        protected async Task ValidateInsertSelectDeleteSingleValue(string selectStatement, string tableName, string columnName, object value, string formattedValue = null)
+        protected async Task ValidateInsertSelectDeleteSingleValue(string selectStatement, string tableName, string columnName, object value, string? formattedValue = null)
         {
             InsertSingleValue(tableName, columnName, formattedValue ?? value?.ToString());
             await SelectAndValidateValues(selectStatement, value, 1);
@@ -213,7 +211,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to insert, select and delete.</param>
         /// <param name="formattedValue">The formated value to insert, select and delete.</param>
         /// <returns></returns>
-        protected async Task ValidateInsertSelectDeleteSingleValue(string tableName, string columnName, object value, string formattedValue = null)
+        protected async Task ValidateInsertSelectDeleteSingleValue(string tableName, string columnName, object? value, string? formattedValue = null)
         {
             InsertSingleValue(tableName, columnName, formattedValue ?? value?.ToString());
             await SelectAndValidateValues(tableName, columnName, value, 1, formattedValue);
@@ -227,7 +225,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to insert.</param>
-        protected virtual void InsertSingleValue(string tableName, string columnName, string value)
+        protected virtual void InsertSingleValue(string tableName, string columnName, string? value)
         {
             string insertNumberStatement = GetInsertValueStatement(tableName, columnName, value);
             OutputHelper.WriteLine(insertNumberStatement);
@@ -243,7 +241,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to insert.</param>
         /// <returns></returns>
-        protected virtual string GetInsertValueStatement(string tableName, string columnName, string value) =>
+        protected virtual string GetInsertValueStatement(string tableName, string columnName, string? value) =>
             string.Format("INSERT INTO {0} ({1}) VALUES ({2});", tableName, columnName, value ?? "NULL");
 
         /// <summary>
@@ -278,7 +276,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to select and validate.</param>
         /// <param name="expectedLength">The number of expected results (rows).</param>
         /// <returns></returns>
-        protected virtual async Task SelectAndValidateValues(string table, string columnName, object value, int expectedLength, string formattedValue = null)
+        protected virtual async Task SelectAndValidateValues(string table, string columnName, object? value, int expectedLength, string? formattedValue = null)
         {
             string selectNumberStatement = GetSelectSingleValueStatement(table, columnName, formattedValue ?? value);
             await SelectAndValidateValues(selectNumberStatement, value, expectedLength);
@@ -291,7 +289,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to select and validate.</param>
         /// <param name="expectedLength">The number of expected results (rows).</param>
         /// <returns></returns>
-        protected virtual async Task SelectAndValidateValues(string selectStatement, object value, int expectedLength)
+        protected virtual async Task SelectAndValidateValues(string selectStatement, object? value, int expectedLength)
         {
             Statement.SqlQuery = selectStatement;
             OutputHelper.WriteLine(selectStatement);
@@ -390,7 +388,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to validate.</param>
         /// <param name="length">The length of the current batch/array.</param>
         /// <param name="getter">The getter function to retrieve the actual value.</param>
-        private static void ValidateValue(object value, int length, Func<int, object> getter)
+        private static void ValidateValue(object? value, int length, Func<int, object?> getter)
         {
             for (int i = 0; i < length; i++)
             {
@@ -405,10 +403,10 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to select and validate.</param>
         /// <returns>The native SQL statement.</returns>
-        protected virtual string GetSelectSingleValueStatement(string table, string columnName, object value) =>
+        protected virtual string GetSelectSingleValueStatement(string table, string columnName, object? value) =>
             $"SELECT {columnName} FROM {table} WHERE {GetWhereClause(columnName, value)}";
 
-        protected virtual string GetWhereClause(string columnName, object value) =>
+        protected virtual string GetWhereClause(string columnName, object? value) =>
             value == null
                 ? $"{columnName} IS NULL"
                 : string.Format("{0} = {1}", columnName, MaybeDoubleToString(value));

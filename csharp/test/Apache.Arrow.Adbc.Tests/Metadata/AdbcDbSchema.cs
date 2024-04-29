@@ -32,11 +32,11 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         /// <summary>
         /// The schema name.
         /// </summary>
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         /// <summary>
         /// Tables associated with the schema.
         /// </summary>
-        public List<AdbcTable> Tables { get; set; }
+        public List<AdbcTable>? Tables { get; set; }
     }
 }

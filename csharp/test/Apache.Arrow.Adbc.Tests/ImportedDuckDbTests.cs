@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using System;
 using Apache.Arrow.Types;
 using Xunit;
 
@@ -57,6 +58,48 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal(3, (firstBatch.Column(0) as Int32Array).Values[0]);
             Assert.Equal(5, (firstBatch.Column(0) as Int32Array).Values[1]);
             Assert.Equal(7, (firstBatch.Column(0) as Int32Array).Values[2]);
+
+            var secondBatch = stream.ReadNextRecordBatchAsync().Result;
+            Assert.Null(secondBatch);
+        }
+
+        [Fact]
+        public void ThisSub()
+        {
+            const string query = "ClwIARJYaHR0cHM6Ly9naXRodWIuY29tL3N1YnN0cmFpdC1pby9zdWJzdHJhaXQvYmxvYi9tYWluL2V4dGVuc2lvbnMvZnVuY3Rpb25zX2NvbXBhcmlzb24ueWFtbBINGgsIARABGgVlcXVhbBqgARKdAQp3EnUSSwpJEjoKCnByb2R1Y3RfaWQKDHByb2R1Y3RfbmFtZQoIcXVhbnRpdHkSFAoEOgIQAgoEYgIQAgoEKgIQAhgCOgsKCWludmVudG9yeRomGiQIARoECgIQAiIOGgwKCmIIQ29tcHV0ZXIiChoIEgYKBBICCAESDHByb2R1Y3RfbmFtZRIKcHJvZHVjdF9pZBIIcXVhbnRpdHkyEhAUKg52YWxpZGF0b3ItdGVzdA==";
+
+            using var database = _duckDb.OpenDatabase("substraittest.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "CREATE TABLE inventory(product_id BIGINT, product_name STRING, quantity INTEGER);";
+            statement.ExecuteUpdate();
+
+            statement.SqlQuery = "INSERT INTO inventory VALUES (3, 'Computer', 24), (4, 'Keyboard', 30);";
+            statement.ExecuteUpdate();
+
+            statement.SqlQuery = "INSTALL substrait;";
+            statement.ExecuteUpdate();
+
+            statement.SqlQuery = "LOAD substrait;";
+            statement.ExecuteUpdate();
+
+            statement.SubstraitPlan = Convert.FromBase64String(query);
+            var results = statement.ExecuteQuery();
+
+            using var stream = results.Stream;
+
+            var schema = stream.Schema;
+            Assert.Equal(3, schema.FieldsList.Count);
+            Assert.Equal(ArrowTypeId.Int64, schema.FieldsList[0].DataType.TypeId);
+            Assert.Equal(ArrowTypeId.String, schema.FieldsList[1].DataType.TypeId);
+            Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[2].DataType.TypeId);
+
+            var firstBatch = stream.ReadNextRecordBatchAsync().Result;
+            Assert.Equal(1, firstBatch.Length);
+            //Assert.Equal(3, (firstBatch.Column(0) as Int32Array).Values[0]);
+            //Assert.Equal(5, (firstBatch.Column(0) as Int32Array).Values[1]);
+            //Assert.Equal(7, (firstBatch.Column(0) as Int32Array).Values[2]);
 
             var secondBatch = stream.ReadNextRecordBatchAsync().Result;
             Assert.Null(secondBatch);

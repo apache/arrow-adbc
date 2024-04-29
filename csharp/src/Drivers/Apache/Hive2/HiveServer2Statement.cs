@@ -23,7 +23,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     public abstract class HiveServer2Statement : AdbcStatement
     {
         protected HiveServer2Connection connection;
-        protected TOperationHandle operationHandle;
+        protected TOperationHandle? operationHandle;
 
         protected HiveServer2Statement(HiveServer2Connection connection)
         {
@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected void PollForResponse()
         {
-            TGetOperationStatusResp statusResponse = null;
+            TGetOperationStatusResp? statusResponse = null;
             do
             {
                 if (statusResponse != null) { Thread.Sleep(500); }

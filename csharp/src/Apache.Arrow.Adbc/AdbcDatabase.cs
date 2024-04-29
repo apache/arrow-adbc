@@ -35,7 +35,7 @@ namespace Apache.Arrow.Adbc
         /// <param name="options">
         /// Additional options to use when connecting.
         /// </param>
-        public abstract AdbcConnection Connect(IReadOnlyDictionary<string, string> options);
+        public abstract AdbcConnection Connect(IReadOnlyDictionary<string, string>? options);
 
         public virtual void Dispose() { }
     }

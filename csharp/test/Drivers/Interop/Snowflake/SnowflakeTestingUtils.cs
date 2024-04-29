@@ -59,6 +59,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             catch (InvalidOperationException ex)
             {
                 Console.WriteLine(ex.Message);
+                TestConfiguration = new SnowflakeTestConfiguration();
             }
 
             CurrentAssembly = Assembly.GetExecutingAssembly();
@@ -80,18 +81,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             parameters = new Dictionary<string, string>
             {
-                { SnowflakeParameters.ACCOUNT, testConfiguration.Account },
-                { SnowflakeParameters.USERNAME, testConfiguration.User },
-                { SnowflakeParameters.PASSWORD, testConfiguration.Password },
-                { SnowflakeParameters.WAREHOUSE, testConfiguration.Warehouse },
+                { SnowflakeParameters.ACCOUNT, Parameter(testConfiguration.Account, "account") },
+                { SnowflakeParameters.USERNAME, Parameter(testConfiguration.User, "userName") },
+                { SnowflakeParameters.PASSWORD, Parameter(testConfiguration.Password, "password") },
+                { SnowflakeParameters.WAREHOUSE, Parameter(testConfiguration.Warehouse, "warehouse") },
                 { SnowflakeParameters.USE_HIGH_PRECISION, testConfiguration.UseHighPrecision.ToString().ToLowerInvariant() }
             };
 
-            if (testConfiguration.Authentication.Default is not null)
+            if (testConfiguration.Authentication?.Default is not null)
             {
                 parameters[SnowflakeParameters.AUTH_TYPE] = SnowflakeAuthentication.AuthSnowflake;
-                parameters[SnowflakeParameters.USERNAME] = testConfiguration.Authentication.Default.User;
-                parameters[SnowflakeParameters.PASSWORD] = testConfiguration.Authentication.Default.Password;
+                parameters[SnowflakeParameters.USERNAME] = Parameter(testConfiguration.Authentication?.Default?.User, "username");
+                parameters[SnowflakeParameters.PASSWORD] = Parameter(testConfiguration.Authentication?.Default?.Password, "password");
             }
 
             if (!string.IsNullOrWhiteSpace(testConfiguration.Host))
@@ -143,11 +144,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             StringBuilder content = new StringBuilder();
 
-            string[] sql = null;
+            string[]? sql = null;
 
             try
             {
-                using (Stream stream = CurrentAssembly.GetManifestResourceStream(resourceName))
+                using (Stream? stream = CurrentAssembly.GetManifestResourceStream(resourceName))
                 {
                     if (stream != null)
                     {
@@ -170,9 +171,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
 
             Dictionary<string, string> placeholderValues = new Dictionary<string, string>() {
-                {"{ADBC_CATALOG}", testConfiguration.Metadata.Catalog },
-                {"{ADBC_SCHEMA}", testConfiguration.Metadata.Schema },
-                {"{ADBC_TABLE}", testConfiguration.Metadata.Table }
+                {"{ADBC_CATALOG}", Parameter(testConfiguration.Metadata?.Catalog, "catalog") },
+                {"{ADBC_SCHEMA}", Parameter(testConfiguration.Metadata?.Schema, "schema") },
+                {"{ADBC_TABLE}", Parameter(testConfiguration.Metadata?.Table, "table") }
             };
 
             foreach (string line in sql)
@@ -201,13 +202,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// </summary>
         /// <param name="expectedTexts"></param>
         /// <param name="value"></param>
-        internal static void AssertContainsAll(string[] expectedTexts, string value)
+        internal static void AssertContainsAll(string[]? expectedTexts, string value)
         {
             if (expectedTexts == null) { return; };
             foreach (string text in expectedTexts)
             {
                 Assert.Contains(text, value);
             }
+        }
+
+        private static string Parameter(string? value, string parameterName)
+        {
+            if (value == null) throw new ArgumentNullException(parameterName);
+            return value;
         }
     }
 }

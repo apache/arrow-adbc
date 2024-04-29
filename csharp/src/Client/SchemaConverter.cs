@@ -60,7 +60,7 @@ namespace Apache.Arrow.Adbc.Client
                 row[SchemaTableColumn.ColumnOrdinal] = columnOrdinal;
                 row[SchemaTableColumn.AllowDBNull] = f.IsNullable;
                 row[SchemaTableColumn.ProviderType] = f.DataType;
-                Type t = ConvertArrowType(f, decimalBehavior);
+                Type? t = ConvertArrowType(f, decimalBehavior);
 
                 row[SchemaTableColumn.DataType] = t;
 
@@ -70,13 +70,13 @@ namespace Apache.Arrow.Adbc.Client
                     f.HasMetadata
                 )
                 {
-                    if (f.Metadata.TryGetValue("precision", out string precisionValue))
+                    if (f.Metadata.TryGetValue("precision", out string? precisionValue))
                     {
                         if (!string.IsNullOrEmpty(precisionValue))
                             row[SchemaTableColumn.NumericPrecision] = Convert.ToInt32(precisionValue);
                     }
 
-                    if (f.Metadata.TryGetValue("scale", out string scaleValue))
+                    if (f.Metadata.TryGetValue("scale", out string? scaleValue))
                     {
                         if (!string.IsNullOrEmpty(scaleValue))
                             row[SchemaTableColumn.NumericScale] = Convert.ToInt32(scaleValue);
@@ -110,12 +110,12 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         /// <param name="f"></param>
         /// <returns></returns>
-        public static Type ConvertArrowType(Field f, DecimalBehavior decimalBehavior)
+        public static Type? ConvertArrowType(Field f, DecimalBehavior decimalBehavior)
         {
             switch (f.DataType.TypeId)
             {
                 case ArrowTypeId.List:
-                    ListType list = f.DataType as ListType;
+                    ListType list = (ListType)f.DataType;
                     IArrowType valueType = list.ValueDataType;
                     return GetArrowArrayType(valueType);
                 default:
@@ -123,7 +123,7 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
-        public static Type GetArrowType(Field f, DecimalBehavior decimalBehavior)
+        public static Type? GetArrowType(Field f, DecimalBehavior decimalBehavior)
         {
             switch (f.DataType.TypeId)
             {

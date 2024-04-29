@@ -35,7 +35,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         protected override TProtocol CreateProtocol()
         {
             string hostName = properties["HostName"];
-            string tmp;
+            string? tmp;
             int port = 21050; // default?
             if (properties.TryGetValue("Port", out tmp))
             {
@@ -60,7 +60,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             return new ImpalaStatement(this);
         }
 
-        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, IReadOnlyList<string> tableTypes, string columnNamePattern)
+        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
             throw new System.NotImplementedException();
         }
@@ -70,6 +70,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             throw new System.NotImplementedException();
         }
 
-        public override Schema GetTableSchema(string catalog, string dbSchema, string tableName) => throw new System.NotImplementedException();
+        public override Schema GetTableSchema(string? catalog, string? dbSchema, string tableName) => throw new System.NotImplementedException();
     }
 }

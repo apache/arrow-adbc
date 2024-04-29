@@ -30,16 +30,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         const string userAgent = "AdbcExperimental/0.0";
 
-        protected TOperationHandle operationHandle;
-        protected IReadOnlyDictionary<string, string> properties;
-        internal TTransport transport;
-        internal TCLIService.Client client;
-        internal TSessionHandle sessionHandle;
-
-        internal HiveServer2Connection() : this(null)
-        {
-
-        }
+        protected TOperationHandle? operationHandle;
+        protected readonly IReadOnlyDictionary<string, string> properties;
+        internal TTransport? transport;
+        internal TCLIService.Client? client;
+        internal TSessionHandle? sessionHandle;
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
@@ -59,7 +54,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected abstract TProtocol CreateProtocol();
         protected abstract TOpenSessionReq CreateSessionRequest();
 
-        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, IReadOnlyList<string> tableTypes, string columnNamePattern)
+        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
             throw new NotImplementedException();
         }
@@ -71,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected void PollForResponse()
         {
-            TGetOperationStatusResp statusResponse = null;
+            TGetOperationStatusResp? statusResponse = null;
             do
             {
                 if (statusResponse != null) { Thread.Sleep(500); }
@@ -106,9 +101,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             HiveServer2Connection connection;
             Schema schema;
-            List<TSparkArrowBatch> batches;
+            List<TSparkArrowBatch>? batches;
             int index;
-            IArrowReader reader;
+            IArrowReader? reader;
 
             public GetObjectsReader(HiveServer2Connection connection, Schema schema)
             {
@@ -118,13 +113,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             public Schema Schema { get { return schema; } }
 
-            public async ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
             {
                 while (true)
                 {
                     if (this.reader != null)
                     {
-                        RecordBatch next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+                        RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
                         if (next != null)
                         {
                             return next;

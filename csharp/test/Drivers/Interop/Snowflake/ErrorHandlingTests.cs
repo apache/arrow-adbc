@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
             _connection = adbcDatabase.Connect(options);
             _statement = _connection.CreateStatement();
-            _catalogSchema = string.Format("{0}.{1}", _snowflakeTestConfiguration.Metadata.Catalog, _snowflakeTestConfiguration.Metadata.Schema);
+            _catalogSchema = string.Format("{0}.{1}", _snowflakeTestConfiguration.Metadata?.Catalog, _snowflakeTestConfiguration.Metadata?.Schema);
             _output = output;
         }
 
@@ -61,7 +61,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [InlineData("NUMERIC", "0", "INVALID_TABLE_NAME", null, new[] { "002003", "42S02" })]
         [InlineData("NUMERIC", "0", null, "INVALID_" + DefaultColumnName, new[] { "000904", "42000" })]
         [InlineData("NUMERIC", "0", null, "\"" + DefaultColumnNameLower + "\"", new[] { "000904", "42000" })]
-        public void TestInvalidObjectName(string columnSpecification, string sourceValue, string overrideTableName, string overrideColumnName, string[] expectedExceptionMessage = null)
+        public void TestInvalidObjectName(string columnSpecification, string sourceValue, string? overrideTableName, string? overrideColumnName, string[]? expectedExceptionMessage = null)
         {
             InitializeTest(columnSpecification, sourceValue, out string columnName, out string tableName);
             SelectAndValidateException(overrideTableName ?? tableName, overrideColumnName ?? columnName, typeof(AdbcException), expectedExceptionMessage);
@@ -77,7 +77,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [InlineData("NUMERIC", "0", null, DefaultColumnName + "'", new[] { "001003", "42000" })]
         [InlineData("NUMERIC", "0", null, "\"" + DefaultColumnName, new[] { "001003", "42000" })]
         [InlineData("NUMERIC", "0", null, DefaultColumnName + "\"", new[] { "001003", "42000" })]
-        public void TestInvalidSyntax(string columnSpecification, string sourceValue, string overrideTableName, string overrideColumnName, string[] expectedExceptionMessage = null)
+        public void TestInvalidSyntax(string columnSpecification, string sourceValue, string? overrideTableName, string overrideColumnName, string[]? expectedExceptionMessage = null)
         {
             InitializeTest(columnSpecification, sourceValue, out string columnName, out string tableName);
             SelectAndValidateException(overrideTableName ?? tableName, overrideColumnName ?? columnName, typeof(AdbcException), expectedExceptionMessage);
@@ -121,7 +121,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             Dictionary<string, string> options = new();
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(
-                test.TestConfiguration as SnowflakeTestConfiguration,
+                (SnowflakeTestConfiguration)test.TestConfiguration,
                 out Dictionary<string, string> parameters);
             AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
             Exception actualException = Assert.Throws(test.ExceptionType, () => adbcDatabase.Connect(options));
@@ -143,11 +143,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             //yield return new object[] { new SnowflakeTestConfigurationTest(testConfiguration, typeof(AdbcException), ["Unknown"]) };
 
             testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-            testConfiguration.Authentication.Default.User = property;
+            testConfiguration.Authentication!.Default!.User = property;
             yield return new object[] { new SnowflakeTestConfigurationTest(testConfiguration, typeof(AdbcException), new[] { "[Snowflake] 390100 (08004)", "Incorrect username or password was specified" }) };
 
             testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-            testConfiguration.Authentication.Default.Password = property;
+            testConfiguration.Authentication!.Default!.Password = property;
             yield return new object[] { new SnowflakeTestConfigurationTest(testConfiguration, typeof(AdbcException), new[] { "[Snowflake] 390100 (08004)", "Incorrect username or password was specified" }) };
 
             testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
@@ -188,7 +188,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string table,
             string projection,
             Type expectedExceptionType,
-            string[] expectedExceptionTextContains = null)
+            string[]? expectedExceptionTextContains = null)
         {
             Exception actualException = Assert.Throws(expectedExceptionType, () => PerformQuery(table, projection));
             SnowflakeTestingUtils.AssertContainsAll(expectedExceptionTextContains, actualException.Message);

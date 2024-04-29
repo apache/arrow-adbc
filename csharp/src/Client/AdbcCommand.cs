@@ -83,8 +83,8 @@ namespace Apache.Arrow.Adbc.Client
 
         public override string CommandText
         {
-            get => this.adbcStatement.SqlQuery;
-            set => this.adbcStatement.SqlQuery = value;
+            get => this.adbcStatement.SqlQuery ?? string.Empty;
+            set => this.adbcStatement.SqlQuery = string.IsNullOrEmpty(value) ? null : value;
         }
 
         public override CommandType CommandType
@@ -112,13 +112,13 @@ namespace Apache.Arrow.Adbc.Client
         /// <summary>
         /// Gets or sets the Substrait plan used by the command.
         /// </summary>
-        public byte[] SubstraitPlan
+        public byte[]? SubstraitPlan
         {
             get => this.adbcStatement.SubstraitPlan;
             set => this.adbcStatement.SubstraitPlan = value;
         }
 
-        protected override DbConnection DbConnection { get; set; }
+        protected override DbConnection? DbConnection { get; set; }
 
         public override int ExecuteNonQuery()
         {
@@ -208,7 +208,7 @@ namespace Apache.Arrow.Adbc.Client
 
         protected override DbParameterCollection DbParameterCollection => throw new NotImplementedException();
 
-        protected override DbTransaction DbTransaction { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        protected override DbTransaction? DbTransaction { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public override void Cancel()
         {

@@ -25,7 +25,7 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
     /// </summary>
     public class FlightSqlDriver : AdbcDriver
     {
-        public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
+        public override AdbcDatabase Open(IReadOnlyDictionary<string, string>? parameters)
         {
             return new FlightSqlDatabase(parameters);
         }

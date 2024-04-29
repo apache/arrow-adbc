@@ -189,7 +189,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             return new Adbc.Client.AdbcConnection(
                 new BigQueryDriver(),
                 BigQueryTestingUtils.GetBigQueryParameters(_testConfiguration),
-                new Dictionary<string,string>()
+                new Dictionary<string, string>()
             );
         }
     }

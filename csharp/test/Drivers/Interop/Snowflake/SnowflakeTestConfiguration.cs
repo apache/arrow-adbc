@@ -28,49 +28,49 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// The file path location of the driver.
         /// </summary>
         [JsonPropertyName("driverPath")]
-        public string DriverPath { get; set; }
+        public string? DriverPath { get; set; }
 
         /// <summary>
         /// The entrypoint of the driver.
         /// </summary>
         [JsonPropertyName("driverEntryPoint")]
-        public string DriverEntryPoint { get; set; }
+        public string? DriverEntryPoint { get; set; }
 
         /// <summary>
         /// The Snowflake account.
         /// </summary>
         [JsonPropertyName("account")]
-        public string Account { get; set; }
+        public string? Account { get; set; }
 
         /// <summary>
         /// The Snowflake host.
         /// </summary>
         [JsonPropertyName("host")]
-        public string Host { get; set; }
+        public string? Host { get; set; }
 
         /// <summary>
         /// The Snowflake database.
         /// </summary>
         [JsonPropertyName("database")]
-        public string Database { get; set; }
+        public string? Database { get; set; }
 
         /// <summary>
         /// The Snowflake user.
         /// </summary>
         [JsonPropertyName("user")]
-        public string User { get; set; }
+        public string? User { get; set; }
 
         /// <summary>
         /// The Snowflake password (if using).
         /// </summary>
         [JsonPropertyName("password")]
-        public string Password { get; set; }
+        public string? Password { get; set; }
 
         /// <summary>
         /// The Snowflake warehouse.
         /// </summary>
         [JsonPropertyName("warehouse")]
-        public string Warehouse { get; set; }
+        public string? Warehouse { get; set; }
 
         /// <summary>
         /// The Snowflake use high precision
@@ -82,7 +82,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// The snowflake Authentication
         /// </summary>
         [JsonPropertyName("authentication")]
-        public SnowflakeAuthentication Authentication { get; set; }
+        public SnowflakeAuthentication? Authentication { get; set; }
 
     }
 
@@ -93,45 +93,45 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public const string AuthSnowflake = "auth_snowflake";
 
         [JsonPropertyName(AuthOAuth)]
-        public OAuthAuthentication OAuth { get; set; }
+        public OAuthAuthentication? OAuth { get; set; }
 
         [JsonPropertyName(AuthJwt)]
-        public JwtAuthentication SnowflakeJwt { get; set; }
+        public JwtAuthentication? SnowflakeJwt { get; set; }
 
         [JsonPropertyName(AuthSnowflake)]
-        public DefaultAuthentication Default { get; set; }
+        public DefaultAuthentication? Default { get; set; }
     }
 
     public class OAuthAuthentication
     {
         [JsonPropertyName("token")]
-        public string Token { get; set; }
+        public string? Token { get; set; }
 
         [JsonPropertyName("user")]
-        public string User { get; set; }
+        public string? User { get; set; }
     }
 
     public class JwtAuthentication
     {
         [JsonPropertyName("private_key")]
-        public string PrivateKey { get; set; }
+        public string? PrivateKey { get; set; }
 
         [JsonPropertyName("private_key_file")]
-        public string PrivateKeyFile { get; set; }
+        public string? PrivateKeyFile { get; set; }
 
         [JsonPropertyName("private_key_pwd")]
-        public string PrivateKeyPassPhrase{ get; set; }
+        public string? PrivateKeyPassPhrase{ get; set; }
 
         [JsonPropertyName("user")]
-        public string User { get; set; }
+        public string? User { get; set; }
     }
 
     public class DefaultAuthentication
     {
         [JsonPropertyName("user")]
-        public string User { get; set; }
+        public string? User { get; set; }
 
         [JsonPropertyName("password")]
-        public string Password { get; set; }
+        public string? Password { get; set; }
     }
 }

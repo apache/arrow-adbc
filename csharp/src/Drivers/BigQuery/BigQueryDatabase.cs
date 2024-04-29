@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             this.properties = properties;
         }
 
-        public override AdbcConnection Connect(IReadOnlyDictionary<string, string> properties)
+        public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? properties)
         {
             BigQueryConnection connection = new BigQueryConnection(this.properties);
             connection.Open();

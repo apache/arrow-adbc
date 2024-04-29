@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFrameworks>net472;net8.0</TargetFrameworks>
     <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
     <SignAssembly>False</SignAssembly>
   </PropertyGroup>
   <ItemGroup>
