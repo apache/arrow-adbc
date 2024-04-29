@@ -41,8 +41,10 @@ type StatementType<DriverType> =
     <<<DriverType as Driver>::DatabaseType as Database>::ConnectionType as Connection>::StatementType;
 
 enum ExportedDatabase<DriverType: Driver> {
-    Options(HashMap<OptionDatabase, OptionValue>), // Pre-init options
-    Database(DatabaseType<DriverType>),            // Initialized database
+    /// Pre-init options
+    Options(HashMap<OptionDatabase, OptionValue>),
+    /// Initialized database
+    Database(DatabaseType<DriverType>),
 }
 
 impl<DriverType: Driver> ExportedDatabase<DriverType> {
@@ -60,8 +62,10 @@ impl<DriverType: Driver> ExportedDatabase<DriverType> {
 }
 
 enum ExportedConnection<DriverType: Driver> {
-    Options(HashMap<OptionConnection, OptionValue>), // Pre-init options
-    Connection(ConnectionType<DriverType>),          // Initialized connection
+    /// Pre-init options
+    Options(HashMap<OptionConnection, OptionValue>),
+    /// Initialized connection
+    Connection(ConnectionType<DriverType>),
 }
 
 impl<DriverType: Driver> ExportedConnection<DriverType> {
