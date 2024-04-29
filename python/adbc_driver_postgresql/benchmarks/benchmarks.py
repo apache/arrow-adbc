@@ -60,8 +60,7 @@ class BenchmarkBase(abc.ABC):
         self.sqlalchemy_connection.close()
 
     @abc.abstractmethod
-    def _make_table_name(self, *args, **kwargs) -> str:
-        ...
+    def _make_table_name(self, *args, **kwargs) -> str: ...
 
     def time_pandas_adbc(self, row_count: int, data_type: str) -> None:
         with self.conn.cursor() as cursor:

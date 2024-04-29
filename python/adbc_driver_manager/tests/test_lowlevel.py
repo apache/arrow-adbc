@@ -80,7 +80,7 @@ def test_error_mapping():
     ]
 
     message = "Message"
-    for (klass, code) in cases:
+    for klass, code in cases:
         with pytest.raises(klass) as exc_info:
             _lib._test_error(code, message, vendor_code=None, sqlstate=None)
         assert message in exc_info.value.args[0]
