@@ -190,14 +190,7 @@ macro_rules! export_driver {
                 );
                 $crate::check_err!(Err(err), error);
             }
-
-            if driver.is_null() {
-                let err = $crate::error::Error::with_message_and_status(
-                    "Passed null pointer to initialization function",
-                    $crate::error::Status::NotImplemented,
-                );
-                $crate::check_err!(Err(err), error);
-            }
+            $crate::check_not_null!(driver, error);
 
             let ffi_driver = <$driver_type as $crate::FFIDriver>::ffi_driver();
             unsafe {
@@ -240,6 +233,8 @@ macro_rules! check_err {
 ///
 /// If null, an error is returned from the enclosing function, otherwise this is
 /// a no-op.
+#[doc(hidden)]
+#[macro_export]
 macro_rules! check_not_null {
     ($ptr:ident, $err_out:expr) => {
         let res = if $ptr.is_null() {
@@ -250,7 +245,7 @@ macro_rules! check_not_null {
         } else {
             Ok(())
         };
-        check_err!(res, $err_out);
+        $crate::check_err!(res, $err_out);
     };
 }
 
