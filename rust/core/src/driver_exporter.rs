@@ -254,8 +254,7 @@ unsafe extern "C" fn release_ffi_driver(
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
     if let Some(driver) = driver.as_mut() {
-        let release = driver.release.take();
-        if release.is_none() {
+        if driver.release.take().is_none() {
             check_err!(
                 Err(Error::with_message_and_status(
                     "Driver already released",
