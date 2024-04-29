@@ -96,8 +96,8 @@ namespace Apache.Arrow.Adbc.Client
 
         // For testing
         internal AdbcConnection(AdbcDriver driver, AdbcDatabase database, Adbc.AdbcConnection connection)
+            : this(driver)
         {
-            this.AdbcDriver = driver;
             this.adbcDatabase = database;
             this.adbcConnectionInternal = connection;
         }
@@ -126,7 +126,7 @@ namespace Apache.Arrow.Adbc.Client
                 {
                     // need to have a connection in order to have a statement
                     EnsureConnectionOpen();
-                    this.adbcStatement = this.adbcConnectionInternal.CreateStatement();
+                    this.adbcStatement = this.adbcConnectionInternal!.CreateStatement();
                 }
 
                 return this.adbcStatement;
@@ -189,6 +189,10 @@ namespace Apache.Arrow.Adbc.Client
 
         public override void Close()
         {
+            if (this.currentTransaction != null)
+            {
+                this.currentTransaction.Rollback();
+            }
             this.Dispose();
         }
 
@@ -315,7 +319,7 @@ namespace Apache.Arrow.Adbc.Client
             this.Connection.AutoCommit = true;
             if (isolationLevel != System.Data.IsolationLevel.Unspecified)
             {
-                this.adbcConnectionInternal.IsolationLevel = IsolationLevel.Default;
+                this.adbcConnectionInternal!.IsolationLevel = IsolationLevel.Default;
             }
         }
 
@@ -330,7 +334,7 @@ namespace Apache.Arrow.Adbc.Client
             this.Connection.AutoCommit = true;
             if (isolationLevel != System.Data.IsolationLevel.Unspecified)
             {
-                this.adbcConnectionInternal.IsolationLevel = IsolationLevel.Default;
+                this.adbcConnectionInternal!.IsolationLevel = IsolationLevel.Default;
             }
         }
 

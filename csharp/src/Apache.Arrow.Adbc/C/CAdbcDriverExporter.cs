@@ -856,8 +856,11 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe void SetOption(byte* name, byte* value)
             {
-                string stringName = MarshalExtensions.PtrToStringUTF8(name);
-                string stringValue = MarshalExtensions.PtrToStringUTF8(value);
+                if (name == null) throw new ArgumentNullException(nameof(name));
+                if (value == null) throw new ArgumentNullException(nameof(value));
+
+                string stringName = MarshalExtensions.PtrToStringUTF8(name)!;
+                string stringValue = MarshalExtensions.PtrToStringUTF8(value)!;
 
                 if (connection == null)
                 {

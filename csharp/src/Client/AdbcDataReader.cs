@@ -37,10 +37,10 @@ namespace Apache.Arrow.Adbc.Client
     {
         private readonly AdbcCommand adbcCommand;
         private readonly bool closeConnection;
-        private QueryResult? adbcQueryResult;
+        private QueryResult adbcQueryResult;
         private RecordBatch? recordBatch;
         private int currentRowInRecordBatch;
-        private Schema? schema = null;
+        private Schema schema;
         private bool isClosed;
         private int recordsAffected = -1;
 
@@ -51,6 +51,9 @@ namespace Apache.Arrow.Adbc.Client
 
             if (adbcQueryResult == null)
                 throw new ArgumentNullException(nameof(adbcQueryResult));
+
+            if (adbcQueryResult.Stream == null)
+                throw new ArgumentNullException(nameof(adbcQueryResult.Stream));
 
             this.adbcCommand = adbcCommand;
             this.adbcQueryResult = adbcQueryResult;
@@ -66,11 +69,11 @@ namespace Apache.Arrow.Adbc.Client
 
         public override object this[int ordinal] => GetValue(ordinal);
 
-        public override object this[string name] => GetValue(this.RecordBatch.Column(name), GetOrdinal(name)) ;
+        public override object this[string name] => GetValue(this.RecordBatch.Column(name), GetOrdinal(name)) ?? DBNull.Value;
 
         public override int Depth => 0;
 
-        public override int FieldCount => this.schema == null ? 0 : this.schema.FieldsList.Count;
+        public override int FieldCount => this.schema.FieldsList.Count;
 
         public override bool HasRows => this.RecordBatch.Length > 0;
 
@@ -79,7 +82,7 @@ namespace Apache.Arrow.Adbc.Client
         /// <summary>
         /// The Arrow schema under the reader
         /// </summary>
-        public Schema? ArrowSchema => this.schema;
+        public Schema ArrowSchema => this.schema;
 
         public DecimalBehavior DecimalBehavior { get; set; }
 
@@ -105,7 +108,8 @@ namespace Apache.Arrow.Adbc.Client
             {
                 this.adbcCommand?.Connection?.Close();
             }
-            this.adbcQueryResult = null;
+            this.adbcQueryResult.Stream?.Dispose();
+            this.adbcQueryResult.Stream = null;
             this.isClosed = true;
         }
 
@@ -211,42 +215,35 @@ namespace Apache.Arrow.Adbc.Client
 
         public override string GetName(int ordinal)
         {
-           return RecordBatch.Schema.GetFieldByIndex(ordinal)?.Name;
+           return this.schema.GetFieldByIndex(ordinal)?.Name ?? string.Empty;
         }
 
         public override int GetOrdinal(string name)
         {
-            return RecordBatch.Schema.GetFieldIndex(name);
+            return this.schema.GetFieldIndex(name);
         }
 
         public override string GetString(int ordinal)
         {
-            return Convert.ToString(GetValue(ordinal));
+            return Convert.ToString(GetValue(ordinal)) ?? throw new InvalidCastException();
         }
 
         public override object GetValue(int ordinal)
         {
-            object value = GetValue(this.RecordBatch.Column(ordinal), ordinal);
+            object? value = GetValue(this.RecordBatch.Column(ordinal), ordinal);
 
             if (value == null)
                 return DBNull.Value;
 
-            if (value is SqlDecimal dValue)
+            if (value is SqlDecimal dValue && this.DecimalBehavior == DecimalBehavior.OverflowDecimalAsString)
             {
-                if (this.DecimalBehavior == DecimalBehavior.UseSqlDecimal)
+                try
                 {
-                    return dValue;
+                    return dValue.Value;
                 }
-                else
+                catch(OverflowException)
                 {
-                    try
-                    {
-                        return dValue.Value;
-                    }
-                    catch(OverflowException)
-                    {
-                        return dValue.ToString();
-                    }
+                    return dValue.ToString();
                 }
             }
 
@@ -302,20 +299,13 @@ namespace Apache.Arrow.Adbc.Client
             return this.recordBatch != null;
         }
 
-        public override DataTable GetSchemaTable()
+        public override DataTable? GetSchemaTable()
         {
-            if (this.schema != null)
-            {
-                return SchemaConverter.ConvertArrowSchema(this.schema, this.adbcCommand.AdbcStatement, this.DecimalBehavior);
-            }
-            else
-            {
-                throw new InvalidOperationException("Cannot obtain schema table because the Arrow schema is null");
-            }
+            return SchemaConverter.ConvertArrowSchema(this.schema, this.adbcCommand.AdbcStatement, this.DecimalBehavior);
         }
 
 #if NET5_0_OR_GREATER
-        public override Task<DataTable> GetSchemaTableAsync(CancellationToken cancellationToken = default)
+        public override Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
         {
             return Task.Run(() => GetSchemaTable(), cancellationToken);
         }
@@ -327,34 +317,27 @@ namespace Apache.Arrow.Adbc.Client
 
         public ReadOnlyCollection<AdbcColumn> GetAdbcColumnSchema()
         {
-            if (this.schema != null)
-            {
-                List<AdbcColumn> dbColumns = new List<AdbcColumn>();
+            List<AdbcColumn> dbColumns = new List<AdbcColumn>();
 
-                foreach (Field f in this.schema.FieldsList)
+            foreach (Field f in this.schema.FieldsList)
+            {
+                Type t = SchemaConverter.ConvertArrowType(f, this.DecimalBehavior);
+
+                if (f.HasMetadata &&
+                    f.Metadata.ContainsKey("precision") &&
+                    f.Metadata.ContainsKey("scale"))
                 {
-                    Type t = SchemaConverter.ConvertArrowType(f, this.DecimalBehavior);
-
-                    if (f.HasMetadata &&
-                       f.Metadata.ContainsKey("precision") &&
-                       f.Metadata.ContainsKey("scale"))
-                    {
-                        int precision = Convert.ToInt32(f.Metadata["precision"]);
-                        int scale = Convert.ToInt32(f.Metadata["scale"]);
-                        dbColumns.Add(new AdbcColumn(f.Name, t, f.DataType, f.IsNullable, precision, scale));
-                    }
-                    else
-                    {
-                        dbColumns.Add(new AdbcColumn(f.Name, t, f.DataType, f.IsNullable));
-                    }
+                    int precision = Convert.ToInt32(f.Metadata["precision"]);
+                    int scale = Convert.ToInt32(f.Metadata["scale"]);
+                    dbColumns.Add(new AdbcColumn(f.Name, t, f.DataType, f.IsNullable, precision, scale));
                 }
+                else
+                {
+                    dbColumns.Add(new AdbcColumn(f.Name, t, f.DataType, f.IsNullable));
+                }
+            }
 
-                return dbColumns.AsReadOnly();
-            }
-            else
-            {
-                throw new InvalidOperationException("Cannot obtain column schema because the Arrow schema is null");
-            }
+            return dbColumns.AsReadOnly();
         }
 
         /// <summary>
@@ -362,7 +345,7 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         /// <param name="arrowArray"></param>
         /// <returns></returns>
-        public object GetValue(IArrowArray arrowArray, int ordinal)
+        public object? GetValue(IArrowArray arrowArray, int ordinal)
         {
             Field field = this.schema.GetFieldByIndex(ordinal);
             return this.adbcCommand.AdbcStatement.GetValue(arrowArray, this.currentRowInRecordBatch);

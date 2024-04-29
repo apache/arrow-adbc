@@ -209,7 +209,7 @@ namespace Apache.Arrow.Adbc.C
 
             public override bool AutoCommit
             {
-                get => _autoCommit.Value;
+                get => _autoCommit ?? throw AdbcException.NotImplemented("no value has been set for AutoCommit");
                 set
                 {
                     SetOption(AdbcOptions.Autocommit, AdbcOptions.GetEnabled(value));
@@ -219,7 +219,7 @@ namespace Apache.Arrow.Adbc.C
 
             public override IsolationLevel IsolationLevel
             {
-                get => _isolationLevel.Value;
+                get => _isolationLevel ?? IsolationLevel.Default;
                 set
                 {
                     SetOption(AdbcOptions.IsolationLevel, AdbcOptions.GetIsolationLevel(value));
@@ -229,7 +229,7 @@ namespace Apache.Arrow.Adbc.C
 
             public override bool ReadOnly
             {
-                get => _readOnly.Value;
+                get => _readOnly ?? throw AdbcException.NotImplemented("no value has been set for ReadOnly");
                 set
                 {
                     SetOption(AdbcOptions.ReadOnly, AdbcOptions.GetEnabled(value));
