@@ -856,7 +856,33 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe void SetOption(byte* name, byte* value)
             {
-                options[MarshalExtensions.PtrToStringUTF8(name)] = MarshalExtensions.PtrToStringUTF8(value);
+                string stringName = MarshalExtensions.PtrToStringUTF8(name);
+                string stringValue = MarshalExtensions.PtrToStringUTF8(value);
+
+                if (connection == null)
+                {
+                    options[stringName] = stringValue;
+                }
+                else
+                {
+                    // TODO: how best to normalize this?
+                    if (StringComparer.OrdinalIgnoreCase.Equals(stringName, AdbcOptions.Autocommit))
+                    {
+                        connection.AutoCommit = AdbcOptions.GetEnabled(stringValue);
+                    }
+                    else if (StringComparer.OrdinalIgnoreCase.Equals(stringName, AdbcOptions.IsolationLevel))
+                    {
+                        connection.IsolationLevel = AdbcOptions.GetIsolationLevel(stringValue);
+                    }
+                    else if (StringComparer.OrdinalIgnoreCase.Equals(stringName, AdbcOptions.ReadOnly))
+                    {
+                        connection.ReadOnly = AdbcOptions.GetEnabled(stringValue);
+                    }
+                    else
+                    {
+                        connection.SetOption(stringName, stringValue);
+                    }
+                }
             }
 
             public void Rollback() { this.connection.Rollback(); }

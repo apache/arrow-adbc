@@ -61,5 +61,115 @@ namespace Apache.Arrow.Adbc.Tests
             var secondBatch = stream.ReadNextRecordBatchAsync().Result;
             Assert.Null(secondBatch);
         }
+
+        [Fact]
+        public void TransactionsTest()
+        {
+            using var database = _duckDb.OpenDatabase("transactions.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "CREATE TABLE test(column1 INTEGER);";
+            statement.ExecuteUpdate();
+
+            connection.AutoCommit = false;
+
+            // Insert into connection1
+            statement.SqlQuery = "INSERT INTO test VALUES (3), (5), (7);";
+            statement.ExecuteUpdate();
+            Assert.Equal(3, GetResultCount(statement, "SELECT * from test"));
+
+            // Validate that we don't see the data on connection2
+            using var connection2 = database.Connect(null);
+            using var statement2 = connection2.CreateStatement();
+            Assert.Equal(0, GetResultCount(statement2, "SELECT * from test"));
+
+            // ... until after a commit on connection1
+            connection.Commit();
+            Assert.Equal(3, GetResultCount(statement2, "SELECT * from test"));
+
+            connection.AutoCommit = true;
+
+            // With AutoCommit on, we immediately see the results on another connection
+            statement.SqlQuery = "INSERT INTO test VALUES (2), (4);";
+            statement.ExecuteUpdate();
+            Assert.Equal(5, GetResultCount(statement2, "SELECT * from test"));
+
+            connection.AutoCommit = false;
+
+            // Now you see it...
+            statement.SqlQuery = "INSERT INTO test VALUES (6);";
+            statement.ExecuteUpdate();
+            Assert.Equal(6, GetResultCount(statement, "SELECT * from test"));
+
+            // Now you don't
+            connection.Rollback();
+            Assert.Equal(5, GetResultCount(statement, "SELECT * from test"));
+        }
+
+        [Fact(Skip = "DuckDb doesn't support ADBC readonly option yet")]
+        public void ReadOnlyTest()
+        {
+            using var database = _duckDb.OpenDatabase("readonly.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "CREATE TABLE test(column1 INTEGER);";
+            statement.ExecuteUpdate();
+
+            connection.ReadOnly = true;
+
+            AdbcException exception = Assert.Throws<AdbcException>(() =>
+            {
+                statement.SqlQuery = "INSERT INTO test VALUES (3), (5), (7);";
+                statement.ExecuteUpdate();
+            });
+
+            connection.ReadOnly = false;
+
+            statement.SqlQuery = "INSERT INTO test VALUES (2), (4);";
+            statement.ExecuteUpdate();
+            Assert.Equal(2, GetResultCount(statement, "SELECT * from test"));
+        }
+
+        [Fact]
+        public void ReadOnlyFails()
+        {
+            using var database = _duckDb.OpenDatabase("readonly.db");
+            using var connection = database.Connect(null);
+
+            Assert.Throws<AdbcException>(() =>
+            {
+                connection.ReadOnly = true;
+            });
+        }
+
+        [Fact]
+        public void SetIsolationLevelFails()
+        {
+            using var database = _duckDb.OpenDatabase("isolation.db");
+            using var connection = database.Connect(null);
+
+            Assert.Throws<AdbcException>(() =>
+            {
+                connection.IsolationLevel = IsolationLevel.Default;
+            });
+        }
+
+        private static long GetResultCount(AdbcStatement statement, string query)
+        {
+            statement.SqlQuery = "SELECT * from test";
+            var results = statement.ExecuteQuery();
+            long count = 0;
+            using (var stream = results.Stream)
+            {
+                RecordBatch batch;
+                while ((batch = stream.ReadNextRecordBatchAsync().Result) != null)
+                {
+                    count += batch.Length;
+                }
+            }
+            return count;
+        }
     }
 }
