@@ -124,7 +124,9 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
+#if NET5_0_OR_GREATER
         [AllowNull]
+#endif
         public override string ConnectionString { get => GetConnectionString(); set => SetConnectionProperties(value!); }
 
         /// <summary>

@@ -99,7 +99,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         sealed class GetObjectsReader : IArrowArrayStream
         {
-            HiveServer2Connection connection;
+            HiveServer2Connection? connection;
             Schema schema;
             List<TSparkArrowBatch>? batches;
             int index;

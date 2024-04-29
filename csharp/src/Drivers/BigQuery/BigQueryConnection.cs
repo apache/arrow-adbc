@@ -1037,7 +1037,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (isValidInput)
             {
-                return input;
+                return input!;
             }
             else
             {

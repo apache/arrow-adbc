@@ -57,7 +57,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         class HiveServer2Reader : IArrowArrayStream
         {
-            ImpalaStatement statement;
+            ImpalaStatement? statement;
             Schema schema;
             int counter;
 
@@ -69,11 +69,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
             public Schema Schema { get { return schema; } }
 
-            public ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            public ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
             {
                 if (this.statement == null)
                 {
-                    return new ValueTask<RecordBatch>((RecordBatch)null);
+                    return new ValueTask<RecordBatch?>((RecordBatch)null);
                 }
 
                 TFetchResultsReq request = new TFetchResultsReq(this.statement.operationHandle, TFetchOrientation.FETCH_NEXT, 50000);
@@ -90,24 +90,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                     this.statement = null;
                 }
 
-                return new ValueTask<RecordBatch>(result);
+                return new ValueTask<RecordBatch?>(result);
             }
 
             public void Dispose()
             {
             }
 
-            static IArrowArray GetArray(TColumn column)
+            static IArrowArray? GetArray(TColumn column)
             {
                 return
-                    (IArrowArray)column.BoolVal?.Values ??
-                    (IArrowArray)column.ByteVal?.Values ??
-                    (IArrowArray)column.I16Val?.Values ??
-                    (IArrowArray)column.I32Val?.Values ??
-                    (IArrowArray)column.I64Val?.Values ??
-                    (IArrowArray)column.DoubleVal?.Values ??
-                    (IArrowArray)column.StringVal?.Values ??
-                    (IArrowArray)column.BinaryVal?.Values;
+                    (IArrowArray?)column.BoolVal?.Values ??
+                    (IArrowArray?)column.ByteVal?.Values ??
+                    (IArrowArray?)column.I16Val?.Values ??
+                    (IArrowArray?)column.I32Val?.Values ??
+                    (IArrowArray?)column.I64Val?.Values ??
+                    (IArrowArray?)column.DoubleVal?.Values ??
+                    (IArrowArray?)column.StringVal?.Values ??
+                    (IArrowArray?)column.BinaryVal?.Values;
             }
         }
     }

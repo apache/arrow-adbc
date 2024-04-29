@@ -41,7 +41,7 @@ namespace Apache.Arrow.Adbc.Client
         private int currentRowInRecordBatch;
         private Schema? schema = null;
         private bool isClosed;
-        private int recordsEffected = -1;
+        private int recordsAffected = -1;
 
         internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior)
         {
@@ -64,13 +64,13 @@ namespace Apache.Arrow.Adbc.Client
 
         public override object this[int ordinal] => GetValue(ordinal);
 
-        public override object this[string name] => GetValue(this.recordBatch?.Column(name), GetOrdinal(name)) ;
+        public override object this[string name] => GetValue(this.RecordBatch.Column(name), GetOrdinal(name)) ;
 
         public override int Depth => 0;
 
         public override int FieldCount => this.schema == null ? 0 : this.schema.FieldsList.Count;
 
-        public override bool HasRows => this.recordBatch?.Length > 0;
+        public override bool HasRows => this.RecordBatch.Length > 0;
 
         public override bool IsClosed => this.isClosed;
 
@@ -81,12 +81,21 @@ namespace Apache.Arrow.Adbc.Client
 
         public DecimalBehavior DecimalBehavior { get; set; }
 
-        public override int RecordsAffected => this.recordsEffected;
+        public override int RecordsAffected => this.recordsAffected;
 
         /// <summary>
         /// The total number of record batches in the result.
         /// </summary>
         public int TotalBatches { get; set; }
+
+        private RecordBatch RecordBatch
+        {
+            get
+            {
+                if (this.recordBatch == null) { throw new InvalidOperationException("reader has been closed"); }
+                return this.recordBatch;
+            }
+        }
 
         public override void Close()
         {
@@ -197,12 +206,12 @@ namespace Apache.Arrow.Adbc.Client
 
         public override string GetName(int ordinal)
         {
-           return this.recordBatch?.Schema.GetFieldByIndex(ordinal)?.Name;
+           return RecordBatch.Schema.GetFieldByIndex(ordinal)?.Name;
         }
 
         public override int GetOrdinal(string name)
         {
-            return this.recordBatch.Schema.GetFieldIndex(name);
+            return RecordBatch.Schema.GetFieldIndex(name);
         }
 
         public override string GetString(int ordinal)
@@ -212,7 +221,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override object GetValue(int ordinal)
         {
-            object value = GetValue(this.recordBatch?.Column(ordinal), ordinal);
+            object value = GetValue(this.RecordBatch.Column(ordinal), ordinal);
 
             if (value == null)
                 return DBNull.Value;
@@ -266,9 +275,13 @@ namespace Apache.Arrow.Adbc.Client
             return false;
         }
 
-        public new void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            this.recordBatch?.Dispose();
+            if (disposing)
+            {
+                this.recordBatch?.Dispose();
+                this.recordBatch = null;
+            }
         }
 
         public override bool Read()

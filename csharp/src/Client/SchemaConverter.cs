@@ -60,7 +60,7 @@ namespace Apache.Arrow.Adbc.Client
                 row[SchemaTableColumn.ColumnOrdinal] = columnOrdinal;
                 row[SchemaTableColumn.AllowDBNull] = f.IsNullable;
                 row[SchemaTableColumn.ProviderType] = f.DataType;
-                Type? t = ConvertArrowType(f, decimalBehavior);
+                Type t = ConvertArrowType(f, decimalBehavior);
 
                 row[SchemaTableColumn.DataType] = t;
 
@@ -110,7 +110,7 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         /// <param name="f"></param>
         /// <returns></returns>
-        public static Type? ConvertArrowType(Field f, DecimalBehavior decimalBehavior)
+        public static Type ConvertArrowType(Field f, DecimalBehavior decimalBehavior)
         {
             switch (f.DataType.TypeId)
             {
@@ -123,7 +123,7 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
-        public static Type? GetArrowType(Field f, DecimalBehavior decimalBehavior)
+        public static Type GetArrowType(Field f, DecimalBehavior decimalBehavior)
         {
             switch (f.DataType.TypeId)
             {
@@ -188,7 +188,7 @@ namespace Apache.Arrow.Adbc.Client
                     return typeof(DateTimeOffset);
 
                 case ArrowTypeId.Null:
-                    return null;
+                    return typeof(DBNull);
 
                 default:
                     return f.DataType.GetType();
