@@ -32,11 +32,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/apache/arrow/go/v16/arrow"
-	"github.com/apache/arrow/go/v16/arrow/array"
-	"github.com/apache/arrow/go/v16/arrow/flight"
-	"github.com/apache/arrow/go/v16/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v16/arrow/memory"
+	"github.com/apache/arrow/go/v17/arrow"
+	"github.com/apache/arrow/go/v17/arrow/array"
+	"github.com/apache/arrow/go/v17/arrow/flight"
+	"github.com/apache/arrow/go/v17/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v17/arrow/memory"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -268,6 +268,9 @@ func (srv *ExampleServer) DoGetPreparedStatement(ctx context.Context, cmd flight
 		}()
 		out = ch
 		return
+	case "stateless_prepared_statement":
+		err = status.Error(codes.InvalidArgument, "client didn't use the updated handle")
+		return
 	}
 
 	schema = arrow.NewSchema([]arrow.Field{{Name: "ints", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
@@ -319,17 +322,19 @@ func (srv *ExampleServer) DoGetStatement(ctx context.Context, cmd flightsql.Stat
 	return
 }
 
-func (srv *ExampleServer) DoPutPreparedStatementQuery(ctx context.Context, cmd flightsql.PreparedStatementQuery, reader flight.MessageReader, writer flight.MetadataWriter) error {
+func (srv *ExampleServer) DoPutPreparedStatementQuery(ctx context.Context, cmd flightsql.PreparedStatementQuery, reader flight.MessageReader, writer flight.MetadataWriter) ([]byte, error) {
 	switch string(cmd.GetPreparedStatementHandle()) {
 	case "error_do_put":
-		return status.Error(codes.Unknown, "expected error (DoPut)")
+		return nil, status.Error(codes.Unknown, "expected error (DoPut)")
 	case "error_do_put_detail":
 		detail1 := wrapperspb.String("detail1")
 		detail2 := wrapperspb.String("detail2")
-		return StatusWithDetail(codes.Unknown, "expected error (DoPut)", detail1, detail2)
+		return nil, StatusWithDetail(codes.Unknown, "expected error (DoPut)", detail1, detail2)
+	case "stateless_prepared_statement":
+		return []byte("expected prepared statement handle"), nil
 	}
 
-	return status.Error(codes.Unimplemented, "DoPutPreparedStatementQuery not implemented")
+	return nil, status.Error(codes.Unimplemented, fmt.Sprintf("DoPutPreparedStatementQuery not implemented: %s", string(cmd.GetPreparedStatementHandle())))
 }
 
 func (srv *ExampleServer) DoPutPreparedStatementUpdate(context.Context, flightsql.PreparedStatementUpdate, flight.MessageReader) (int64, error) {
