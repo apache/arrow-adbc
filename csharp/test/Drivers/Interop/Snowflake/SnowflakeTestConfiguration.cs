@@ -132,6 +132,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public string User { get; set; } = string.Empty;
 
         [JsonPropertyName("password")]
-        public string Password { get; set; } = string.Empty;    
+        public string Password { get; set; } = string.Empty;
     }
 }

@@ -199,6 +199,7 @@ namespace Apache.Arrow.Adbc.Tests
             }
 
             Type? netType = reader[name]?.GetType();
+            if (netType == typeof(DBNull)) netType = null;
 
             Assert.True(clientArrowType == ctv.ExpectedNetType, $"{name} is {clientArrowType.Name} and not {ctv.ExpectedNetType.Name} in the column schema for query [{query}]");
 
@@ -214,7 +215,7 @@ namespace Apache.Arrow.Adbc.Tests
                 Assert.True(netType == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader for query [{query}]");
             }
 
-            if (value != null)
+            if (value != DBNull.Value)
             {
                 var type = value.GetType();
                 if (type.BaseType?.Name.Contains("PrimitiveArray") == false)
