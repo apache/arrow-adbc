@@ -81,10 +81,13 @@ impl<DriverType: Driver> ExportedConnection<DriverType> {
         }
     }
 
-    fn unwrap_connection(&mut self) -> &mut ConnectionType<DriverType> {
+    fn try_connection(&mut self) -> Result<&mut ConnectionType<DriverType>> {
         match self {
-            Self::Connection(connection) => connection,
-            _ => panic!("Broken invariant"),
+            Self::Connection(connection) => Ok(connection),
+            _ => Err(Error::with_message_and_status(
+                "Connection not initialized",
+                Status::InvalidState,
+            )),
         }
     }
 }
@@ -765,7 +768,10 @@ unsafe extern "C" fn connection_init<DriverType: Driver>(
             ExportedDatabase::Database(database) => {
                 database.new_connection_with_opts(options.clone())
             }
-            _ => panic!("Broken invariant"),
+            _ => Err(Error::with_message_and_status(
+                "You must call DatabaseInit before ConnectionInit",
+                Status::InvalidState,
+            )),
         };
         let connection = check_err!(connection, error);
         *exported_connection = ExportedConnection::Connection(connection);
@@ -949,7 +955,7 @@ unsafe extern "C" fn connection_get_table_types<DriverType: Driver + 'static>(
     check_not_null!(out, error);
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = exported.unwrap_connection();
+    let connection = check_err!(exported.try_connection(), error);
 
     let reader = check_err!(connection.get_table_types(), error);
     let reader = Box::new(reader);
@@ -972,7 +978,7 @@ unsafe extern "C" fn connection_get_table_schema<DriverType: Driver>(
     check_not_null!(schema, error);
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = exported.unwrap_connection();
+    let connection = check_err!(exported.try_connection(), error);
 
     let catalog = check_err!(maybe_str(catalog), error);
     let db_schema = check_err!(maybe_str(db_schema), error);
@@ -997,7 +1003,7 @@ unsafe extern "C" fn connection_get_info<DriverType: Driver + 'static>(
     check_not_null!(out, error);
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = exported.unwrap_connection();
+    let connection = check_err!(exported.try_connection(), error);
 
     let info_codes = if info_codes.is_null() {
         None
@@ -1024,7 +1030,7 @@ unsafe extern "C" fn connection_commit<DriverType: Driver>(
     check_not_null!(connection, error);
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = exported.unwrap_connection();
+    let connection = check_err!(exported.try_connection(), error);
     check_err!(connection.commit(), error);
 
     ADBC_STATUS_OK
@@ -1037,7 +1043,7 @@ unsafe extern "C" fn connection_rollback<DriverType: Driver>(
     check_not_null!(connection, error);
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = exported.unwrap_connection();
+    let connection = check_err!(exported.try_connection(), error);
     check_err!(connection.rollback(), error);
 
     ADBC_STATUS_OK
@@ -1050,7 +1056,7 @@ unsafe extern "C" fn connection_cancel<DriverType: Driver>(
     check_not_null!(connection, error);
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = exported.unwrap_connection();
+    let connection = check_err!(exported.try_connection(), error);
     check_err!(connection.cancel(), error);
 
     ADBC_STATUS_OK
@@ -1065,7 +1071,7 @@ unsafe extern "C" fn connection_get_statistic_names<DriverType: Driver + 'static
     check_not_null!(out, error);
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = exported.unwrap_connection();
+    let connection = check_err!(exported.try_connection(), error);
 
     let reader = check_err!(connection.get_statistic_names(), error);
     let reader = Box::new(reader);
@@ -1087,7 +1093,7 @@ unsafe extern "C" fn connection_read_partition<DriverType: Driver + 'static>(
     check_not_null!(out, error);
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = exported.unwrap_connection();
+    let connection = check_err!(exported.try_connection(), error);
 
     let partition = std::slice::from_raw_parts(serialized_partition, serialized_length);
     let reader = check_err!(connection.read_partition(partition), error);
@@ -1116,7 +1122,7 @@ unsafe extern "C" fn connection_get_statistics<DriverType: Driver + 'static>(
     let approximate = approximate != 0;
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = exported.unwrap_connection();
+    let connection = check_err!(exported.try_connection(), error);
 
     let reader = connection.get_statistics(catalog, db_schema, table_name, approximate);
     let reader = check_err!(reader, error);
@@ -1161,7 +1167,7 @@ unsafe extern "C" fn connection_get_objects<DriverType: Driver + 'static>(
     };
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = exported.unwrap_connection();
+    let connection = check_err!(exported.try_connection(), error);
 
     let reader = connection.get_objects(
         depth,
@@ -1219,7 +1225,7 @@ unsafe extern "C" fn statement_new<DriverType: Driver>(
     check_not_null!(statement, error);
 
     let exported_connection = check_err!(connection_private_data::<DriverType>(connection), error);
-    let inner_connection = exported_connection.unwrap_connection();
+    let inner_connection = check_err!(exported_connection.try_connection(), error);
 
     let statement = statement.as_mut().unwrap();
     let inner_statement = check_err!(inner_connection.new_statement(), error);
