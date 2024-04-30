@@ -2,7 +2,9 @@
   <Import Project="..\Build.props" />
 
   <PropertyGroup>
-    <TargetFrameworks>net472;net8.0</TargetFrameworks>
+    <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
+    <TargetFrameworks Condition="'$(IsWindows)'=='true'">net8.0;net472</TargetFrameworks>
+    <TargetFrameworks Condition="'$(TargetFrameworks)'==''">net8.0</TargetFrameworks>
     <ImplicitUsings>disable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
