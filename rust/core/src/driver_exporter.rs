@@ -538,6 +538,15 @@ unsafe extern "C" fn database_release<DriverType: Driver>(
     check_not_null!(database, error);
 
     let database = database.as_mut().unwrap();
+    if database.private_data.is_null() {
+        check_err!(
+            Err(Error::with_message_and_status(
+                "Database already released",
+                Status::InvalidState
+            )),
+            error
+        );
+    }
     let exported = Box::from_raw(database.private_data as *mut ExportedDatabase<DriverType>);
     drop(exported);
     database.private_data = std::ptr::null_mut();
@@ -780,6 +789,15 @@ unsafe extern "C" fn connection_release<DriverType: Driver>(
     check_not_null!(connection, error);
 
     let connection = connection.as_mut().unwrap();
+    if connection.private_data.is_null() {
+        check_err!(
+            Err(Error::with_message_and_status(
+                "Connection already released",
+                Status::InvalidState
+            )),
+            error
+        );
+    }
     let exported = Box::from_raw(connection.private_data as *mut ExportedConnection<DriverType>);
     drop(exported);
     connection.private_data = std::ptr::null_mut();
@@ -1219,8 +1237,16 @@ unsafe extern "C" fn statement_release<DriverType: Driver>(
     check_not_null!(statement, error);
 
     let statement = statement.as_mut().unwrap();
+    if statement.private_data.is_null() {
+        check_err!(
+            Err(Error::with_message_and_status(
+                "Statement already released",
+                Status::InvalidState
+            )),
+            error
+        );
+    }
     let exported = Box::from_raw(statement.private_data as *mut ExportedStatement<DriverType>);
-
     drop(exported);
     statement.private_data = std::ptr::null_mut();
 
