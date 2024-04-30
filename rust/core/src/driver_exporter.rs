@@ -1131,6 +1131,7 @@ unsafe extern "C" fn connection_get_objects<DriverType: Driver + 'static>(
     let table_type = if !table_type.is_null() {
         let mut strs = Vec::new();
         let mut ptr = table_type;
+        // Iteration over an array of C-strings that ends with a null pointer.
         while !(*ptr).is_null() {
             let str = check_err!(CStr::from_ptr(*ptr).to_str(), error);
             strs.push(str);
