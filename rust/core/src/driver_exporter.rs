@@ -1595,6 +1595,9 @@ unsafe extern "C" fn error_get_detail(
             }
             let index = index as usize; // Cannot overflow since index >= 0 and index < detail_count
 
+            if error.private_data.is_null() {
+                return default;
+            }
             let private_data = error.private_data as *const ErrorPrivateData;
 
             let key = (*private_data).keys[index].as_ptr();
