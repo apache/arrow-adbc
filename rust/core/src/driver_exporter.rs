@@ -455,14 +455,12 @@ where
 
 // Database
 
+// SAFETY: Will panic if `database` is null.
 unsafe fn database_private_data<'a, DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
 ) -> Result<&'a mut ExportedDatabase<DriverType>> {
-    let database = database.as_mut().ok_or(Error::with_message_and_status(
-        "Passed null database pointer",
-        Status::InvalidArguments,
-    ))?;
-    let exported = database.private_data as *mut ExportedDatabase<DriverType>;
+    assert!(!database.is_null());
+    let exported = (*database).private_data as *mut ExportedDatabase<DriverType>;
     let exported = exported.as_mut().ok_or(Error::with_message_and_status(
         "Uninitialized database",
         Status::InvalidState,
@@ -684,14 +682,12 @@ unsafe extern "C" fn database_get_option_bytes<DriverType: Driver>(
 
 // Connection
 
+// SAFETY: Will panic if `connection` is null.
 unsafe fn connection_private_data<'a, DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
 ) -> Result<&'a mut ExportedConnection<DriverType>> {
-    let connection = connection.as_mut().ok_or(Error::with_message_and_status(
-        "Passed null connection pointer",
-        Status::InvalidArguments,
-    ))?;
-    let exported = connection.private_data as *mut ExportedConnection<DriverType>;
+    assert!(!connection.is_null());
+    let exported = (*connection).private_data as *mut ExportedConnection<DriverType>;
     let exported = exported.as_mut().ok_or(Error::with_message_and_status(
         "Uninitialized connection",
         Status::InvalidState,
@@ -1208,14 +1204,12 @@ unsafe extern "C" fn connection_get_objects<DriverType: Driver + 'static>(
 
 // Statement
 
+// SAFETY: Will panic if `statement` is null.
 unsafe fn statement_private_data<'a, DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
 ) -> Result<&'a mut ExportedStatement<DriverType>> {
-    let statement = statement.as_mut().ok_or(Error::with_message_and_status(
-        "Passed null statement pointer",
-        Status::InvalidArguments,
-    ))?;
-    let exported = statement.private_data as *mut ExportedStatement<DriverType>;
+    assert!(!statement.is_null());
+    let exported = (*statement).private_data as *mut ExportedStatement<DriverType>;
     let exported = exported.as_mut().ok_or(Error::with_message_and_status(
         "Uninitialized statement",
         Status::InvalidState,
