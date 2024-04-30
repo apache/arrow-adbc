@@ -515,7 +515,7 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 	suite.NoError(err)
 
 	suite.Require().NoError(suite.stmt.BindStream(suite.ctx, stream))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_bind_stream\""))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_bind_stream"))
 	n, err = suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
