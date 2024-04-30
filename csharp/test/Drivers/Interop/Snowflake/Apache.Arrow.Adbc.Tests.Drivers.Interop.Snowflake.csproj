@@ -1,8 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
-      <TargetFrameworks>net472;net8.0</TargetFrameworks>
-      <Nullable>enable</Nullable>
-   </PropertyGroup>
+  <PropertyGroup>
+    <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
+    <TargetFrameworks Condition="'$(IsWindows)'=='true'">net8.0;net472</TargetFrameworks>
+    <TargetFrameworks Condition="'$(TargetFrameworks)'==''">net8.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
     <ItemGroup>
       <None Remove="Resources\SnowflakeConstraints.sql" />
       <None Remove="Resources\SnowflakeData.sql" />
@@ -17,8 +19,8 @@
     </ItemGroup>
     <ItemGroup>
      <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
-     <PackageReference Include="xunit" Version="2.7.0" />
-     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.7">
+     <PackageReference Include="xunit" Version="2.8.0" />
+     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.0">
        <PrivateAssets>all</PrivateAssets>
        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
      </PackageReference>
