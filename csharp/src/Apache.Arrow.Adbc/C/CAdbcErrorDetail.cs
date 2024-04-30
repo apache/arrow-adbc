@@ -35,11 +35,11 @@ namespace Apache.Arrow.Adbc.C
         /// <summary>
         /// The metadata value.
         /// </summary>
-        public byte* values;
+        public byte* value;
 
         /// <summary>
         /// The metadata value length.
         /// </summary>
-        public nint lengths;
+        public nint length;
     }
 }

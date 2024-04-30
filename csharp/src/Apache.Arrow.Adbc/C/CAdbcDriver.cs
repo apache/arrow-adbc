@@ -21,8 +21,6 @@ using Apache.Arrow.C;
 
 namespace Apache.Arrow.Adbc.C
 {
-    #region ADBC API Revision 1.0.0
-
     /// <summary>
     /// An instance of an initialized database driver.
     /// </summary>
@@ -35,6 +33,8 @@ namespace Apache.Arrow.Adbc.C
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct CAdbcDriver
     {
+        #region ADBC API Revision 1.0.0
+
         /// <summary>
         /// Opaque driver-defined state.
         /// This field is NULL if the driver is unintialized/freed (but

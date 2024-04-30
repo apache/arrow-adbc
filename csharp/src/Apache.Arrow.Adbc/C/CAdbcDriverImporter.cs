@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -72,10 +73,21 @@ namespace Apache.Arrow.Adbc.C
 
                 AdbcDriverInit init = Marshal.GetDelegateForFunctionPointer<AdbcDriverInit>(export);
                 CAdbcDriver driver = new CAdbcDriver();
+                int version;
                 using (CallHelper caller = new CallHelper())
                 {
-                    caller.Call(init, ADBC_VERSION_1_0_0, ref driver);
-                    ImportedAdbcDriver result = new ImportedAdbcDriver(library, driver);
+                    try
+                    {
+                        caller.Call(init, ADBC_VERSION_1_1_0, ref driver);
+                        version = ADBC_VERSION_1_1_0;
+                    }
+                    catch (AdbcException e) when (e.Status == AdbcStatusCode.NotImplemented)
+                    {
+                        caller.Call(init, ADBC_VERSION_1_0_0, ref driver);
+                        version = ADBC_VERSION_1_0_0;
+                    }
+
+                    ImportedAdbcDriver result = new ImportedAdbcDriver(library, driver, version);
                     library = IntPtr.Zero;
                     return result;
                 }
@@ -93,11 +105,13 @@ namespace Apache.Arrow.Adbc.C
         {
             private IntPtr _library;
             private CAdbcDriver _nativeDriver;
+            private int _version;
 
-            public ImportedAdbcDriver(IntPtr library, CAdbcDriver nativeDriver)
+            public ImportedAdbcDriver(IntPtr library, CAdbcDriver nativeDriver, int version)
             {
                 _library = library;
                 _nativeDriver = nativeDriver;
+                _version = version;
             }
 
             /// <summary>
@@ -882,7 +896,7 @@ namespace Apache.Arrow.Adbc.C
 
                     Dispose();
 
-                    throw new AdbcException(message);
+                    throw new AdbcException(message, statusCode);
                 }
             }
         }
