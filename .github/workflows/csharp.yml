@@ -63,3 +63,6 @@ jobs:
       - name: Build
         shell: bash
         run: ci/scripts/csharp_build.sh $(pwd)
+      - name: Test
+        shell: bash
+        run: ci/scripts/csharp_test.sh $(pwd)
