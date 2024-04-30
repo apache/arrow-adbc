@@ -84,6 +84,14 @@ class DatabaseOptions(enum.Enum):
     OCSP_FAIL_OPEN_MODE = "adbc.snowflake.sql.client_option.ocsp_fail_open_mode"
     PORT = "adbc.snowflake.sql.uri.port"
     PROTOCOL = "adbc.snowflake.sql.uri.protocol"
+    #: Control the QUOTED_IDENTIFIERS_IGNORE_CASE snowflake session parameter as
+    #: described by snowflake parameter docs for #label-quoted-identifiers-ignore-case
+    #: This defaults to false as per the Snowflake documentation. This is
+    #: important for managing the table names created when using bulk_ingest
+    #: since we will wrap any identifiers in quotes by default. Behavior is not
+    #: defined when mixing this with manually running ALTER SESSION queries to
+    #: set the variable.
+    QUOTED_IDENTIFIERS_IGNORE_CASE = "adbc.snowflake.sql.quoted_identifiers_ignore_case"
     REGION = "adbc.snowflake.sql.region"
     #: request retry timeout EXCLUDING network roundtrip and reading http response
     #: use format like http://pkg.go.dev/time#ParseDuration such as
