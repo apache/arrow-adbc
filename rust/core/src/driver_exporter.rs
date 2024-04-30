@@ -983,6 +983,7 @@ unsafe extern "C" fn connection_get_info<DriverType: Driver + 'static>(
     error: *mut FFI_AdbcError,
 ) -> FFI_AdbcStatusCode {
     check_not_null!(connection, error);
+    check_not_null!(out, error);
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
     let connection = exported.unwrap_connection();
