@@ -107,6 +107,8 @@ namespace Apache.Arrow.Adbc.C
             /// </param>
             public unsafe override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
             {
+                if (parameters == null) throw new ArgumentNullException(nameof(parameters));
+
                 CAdbcDatabase nativeDatabase = new CAdbcDatabase();
 
                 using (CallHelper caller = new CallHelper())
