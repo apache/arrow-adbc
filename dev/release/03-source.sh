@@ -18,27 +18,19 @@
 
 set -eu
 
-main() {
-    local -r source_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-    local -r source_top_dir="$( cd "${source_dir}/../../" && pwd )"
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SOURCE_DIR}/utils-common.sh"
+source "${SOURCE_DIR}/utils-prepare.sh"
 
-    if [ "$#" -ne 2 ]; then
-        echo "Usage: $0 <version> <rc-num>"
+main() {
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: $0 <rc-num>"
         exit 1
     fi
-    local -r version="$1"
-    local -r rc_number="$2"
-    local -r tag="apache-arrow-adbc-${version}-rc${rc_number}"
-    local -r tarball="apache-arrow-adbc-${version}.tar.gz"
 
-    : ${REPOSITORY:="apache/arrow-adbc"}
-
-    if [[ ! -f "${source_dir}/.env" ]]; then
-        echo "You must create ${source_dir}/.env"
-        echo "You can use ${source_dir}/.env.example as a template"
-    fi
-
-    source "${source_dir}/.env"
+    local -r rc_number="$1"
+    local -r tag="apache-arrow-adbc-${RELEASE}-rc${rc_number}"
+    local -r tarball="apache-arrow-adbc-${RELEASE}.tar.gz"
 
     header "Downloading assets from release"
     local -r download_dir="packages/${tag}"
@@ -63,18 +55,16 @@ main() {
 
     # commit to svn
     svn add "tmp/${tag}"
-    svn ci -m "Apache Arrow ADBC ${version} RC${rc_number}" "tmp/${tag}"
+    if [[ ${DRY_RUN} -eq 0 ]]; then
+        svn ci -m "Apache Arrow ADBC ${RELEASE} RC${rc_number}" "tmp/${tag}"
+    else
+        echo "Dry run: not committing to dist.apache.org"
+    fi
 
     # clean up
     rm -rf tmp
 
     echo "Uploaded at https://dist.apache.org/repos/dist/dev/arrow/${tag}"
-}
-
-header() {
-    echo "============================================================"
-    echo "${1}"
-    echo "============================================================"
 }
 
 main "$@"

@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Apache.Arrow.Ipc;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests
@@ -106,10 +107,10 @@ namespace Apache.Arrow.Adbc.Tests
         [Theory]
         [InlineData("Commit")]
         [InlineData("CreateStatement")]
-        [InlineData("GetInfo", new string[]{ "codes" }, new Type[] { typeof(List<int>) })]
+        [InlineData("GetInfo", new string[] { "codes" }, new Type[] { typeof(IReadOnlyList<AdbcInfoCode>) })]
         [InlineData("GetObjects",
                     new string[] { "depth", "catalogPattern", "dbSchemaPattern", "tableNamePattern", "tableTypes", "columnNamePattern" },
-                    new Type[] { typeof(AdbcConnection.GetObjectsDepth), typeof(string), typeof(string), typeof(string), typeof(List<string>), typeof(string) })]
+                    new Type[] { typeof(AdbcConnection.GetObjectsDepth), typeof(string), typeof(string), typeof(string), typeof(IReadOnlyList<string>), typeof(string) })]
         [InlineData("GetTableSchema",
                     new string[] { "catalog", "dbSchema", "tableName" },
                     new Type[] { typeof(string), typeof(string), typeof(string) })]
@@ -132,7 +133,8 @@ namespace Apache.Arrow.Adbc.Tests
 
         [Theory]
         // TODO: Bind is defined differently to take a batch rather than an array
-        [InlineData("Bind", new string[] { "batch", "schema"}, new Type[] { typeof(RecordBatch), typeof(Schema) })]
+        [InlineData("Bind", new string[] { "batch", "schema" }, new Type[] { typeof(RecordBatch), typeof(Schema) })]
+        [InlineData("BindStream", new string[] { "stream" }, new Type[] { typeof(IArrowArrayStream) })]
         [InlineData("ExecuteQuery")]
         [InlineData("ExecuteUpdate")]
         [InlineData("ExecutePartitioned")] // C# matches Java here
@@ -176,7 +178,7 @@ namespace Apache.Arrow.Adbc.Tests
 
                 ParameterInfo[] parameters = mi.GetParameters();
 
-                for(int i=0;i<parameters.Length;i++)
+                for (int i = 0; i < parameters.Length; i++)
                 {
                     ParameterInfo parameter = parameters[i];
 

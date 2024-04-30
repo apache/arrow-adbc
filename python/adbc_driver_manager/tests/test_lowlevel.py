@@ -80,7 +80,7 @@ def test_error_mapping():
     ]
 
     message = "Message"
-    for (klass, code) in cases:
+    for klass, code in cases:
         with pytest.raises(klass) as exc_info:
             _lib._test_error(code, message, vendor_code=None, sqlstate=None)
         assert message in exc_info.value.args[0]
@@ -101,7 +101,7 @@ def test_database_set_options(sqlite):
     db, _ = sqlite
     with pytest.raises(
         adbc_driver_manager.NotSupportedError,
-        match="Unknown database option foo=bar",
+        match="Unknown database option foo='bar'",
     ):
         db.set_options(foo="bar")
 
@@ -204,7 +204,7 @@ def test_connection_set_options(sqlite):
     _, conn = sqlite
     with pytest.raises(
         adbc_driver_manager.NotSupportedError,
-        match="Unknown connection option foo=bar",
+        match="Unknown connection option foo='bar'",
     ):
         conn.set_options(foo="bar")
 
@@ -360,7 +360,7 @@ def test_statement_set_options(sqlite):
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         with pytest.raises(
             adbc_driver_manager.NotSupportedError,
-            match="Unknown statement option foo=bar",
+            match="Unknown statement option foo='bar'",
         ):
             stmt.set_options(foo="bar")
 
@@ -390,3 +390,75 @@ def test_child_tracking(sqlite):
                 RuntimeError, match="Cannot close AdbcDatabase with open AdbcConnection"
             ):
                 db.close()
+
+
+@pytest.mark.sqlite
+def test_pycapsule(sqlite):
+    _, conn = sqlite
+    handle = conn.get_table_types()
+    with pyarrow.RecordBatchReader._import_from_c_capsule(
+        handle.__arrow_c_stream__()
+    ) as reader:
+        reader.read_all()
+
+    # set up some data
+    data = pyarrow.record_batch(
+        [
+            [1, 2, 3, 4],
+            ["a", "b", "c", "d"],
+        ],
+        names=["ints", "strs"],
+    )
+    table = pyarrow.Table.from_batches([data])
+
+    with adbc_driver_manager.AdbcStatement(conn) as stmt:
+        stmt.set_options(**{adbc_driver_manager.INGEST_OPTION_TARGET_TABLE: "foo"})
+        schema_capsule, array_capsule = data.__arrow_c_array__()
+        stmt.bind(array_capsule, schema_capsule)
+        stmt.execute_update()
+
+    with adbc_driver_manager.AdbcStatement(conn) as stmt:
+        stmt.set_options(**{adbc_driver_manager.INGEST_OPTION_TARGET_TABLE: "bar"})
+        stream_capsule = data.__arrow_c_stream__()
+        stmt.bind_stream(stream_capsule)
+        stmt.execute_update()
+
+    # importing a schema
+
+    handle = conn.get_table_schema(catalog=None, db_schema=None, table_name="foo")
+    assert data.schema == pyarrow.schema(handle)
+    # ensure consumed schema was marked as such
+    with pytest.raises(ValueError, match="Cannot import released ArrowSchema"):
+        pyarrow.schema(handle)
+
+    # smoke test for the capsule calling release
+    capsule = conn.get_table_schema(
+        catalog=None, db_schema=None, table_name="foo"
+    ).__arrow_c_schema__()
+    del capsule
+
+    # importing a stream
+
+    with adbc_driver_manager.AdbcStatement(conn) as stmt:
+        stmt.set_sql_query("SELECT * FROM foo")
+        handle, _ = stmt.execute_query()
+
+    result = pyarrow.table(handle)
+    assert result == table
+
+    with adbc_driver_manager.AdbcStatement(conn) as stmt:
+        stmt.set_sql_query("SELECT * FROM bar")
+        handle, _ = stmt.execute_query()
+
+    result = pyarrow.table(handle)
+    assert result == table
+
+    # ensure consumed schema was marked as such
+    with pytest.raises(ValueError, match="Cannot import released ArrowArrayStream"):
+        pyarrow.table(handle)
+
+    # smoke test for the capsule calling release
+    with adbc_driver_manager.AdbcStatement(conn) as stmt:
+        stmt.set_sql_query("SELECT * FROM foo")
+        capsule = stmt.execute_query()[0].__arrow_c_stream__()
+    del capsule

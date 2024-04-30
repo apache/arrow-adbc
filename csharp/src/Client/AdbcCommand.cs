@@ -42,10 +42,10 @@ namespace Apache.Arrow.Adbc.Client
         /// <exception cref="ArgumentNullException"></exception>
         public AdbcCommand(AdbcStatement adbcStatement, AdbcConnection adbcConnection) : base()
         {
-            if(adbcStatement == null)
+            if (adbcStatement == null)
                 throw new ArgumentNullException(nameof(adbcStatement));
 
-            if(adbcConnection == null)
+            if (adbcConnection == null)
                 throw new ArgumentNullException(nameof(adbcConnection));
 
             this.adbcStatement = adbcStatement;
@@ -169,12 +169,13 @@ namespace Apache.Arrow.Adbc.Client
         /// <returns><see cref="AdbcDataReader"/></returns>
         public new AdbcDataReader ExecuteReader(CommandBehavior behavior)
         {
-            switch (behavior)
+            bool closeConnection = (behavior & CommandBehavior.CloseConnection) != 0;
+            switch (behavior & ~CommandBehavior.CloseConnection)
             {
                 case CommandBehavior.SchemaOnly:   // The schema is not known until a read happens
                 case CommandBehavior.Default:
                     QueryResult result = this.ExecuteQuery();
-                    return new AdbcDataReader(this, result, this.DecimalBehavior);
+                    return new AdbcDataReader(this, result, this.DecimalBehavior, closeConnection);
 
                 default:
                     throw new InvalidOperationException($"{behavior} is not supported with this provider");
@@ -183,7 +184,7 @@ namespace Apache.Arrow.Adbc.Client
 
         protected override void Dispose(bool disposing)
         {
-            if(disposing)
+            if (disposing)
             {
                 // TODO: ensure not in the middle of pulling
                 this.adbcStatement?.Dispose();

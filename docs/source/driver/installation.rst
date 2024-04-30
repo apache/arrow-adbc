@@ -145,18 +145,21 @@ From conda-forge_:
 R
 =
 
-Install the appropriate driver package from GitHub:
+Install the appropriate driver package from CRAN:
+
+.. code-block:: r
+
+   install.packages("adbcsqlite")
+   install.packages("adbcpostgresql")
+   install.packages("duckdb")
+
+Drivers not yet available on CRAN can be installed from GitHub:
 
 .. code-block:: r
 
    # install.packages("pak")
    pak::pak("apache/arrow-adbc/r/adbcflightsql")
-   pak::pak("apache/arrow-adbc/r/adbcpostgresql")
    pak::pak("apache/arrow-adbc/r/adbcsnowflake")
-   pak::pak("apache/arrow-adbc/r/adbcsqlite")
-
-Installation of stable releases from CRAN is anticipated following the
-release of ADBC Libraries 0.6.0.
 
 Ruby
 ====

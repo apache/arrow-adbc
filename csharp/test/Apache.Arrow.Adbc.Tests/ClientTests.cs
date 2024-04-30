@@ -17,10 +17,12 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
+using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Types;
 using Xunit;
 
@@ -32,6 +34,139 @@ namespace Apache.Arrow.Adbc.Tests
     public class ClientTests
     {
         /// <summary>
+        /// Validates if the client execute updates.
+        /// </summary>
+        /// <param name="adbcConnection">The <see cref="Adbc.Client.AdbcConnection"/> to use.</param>
+        /// <param name="testConfiguration">The <see cref="TestConfiguration"/> to use</param>
+        /// <param name="queries">The queries to run</param>
+        /// <param name="expectedResults">The expected results (one per query)</param>
+        public static void CanClientExecuteUpdate(Adbc.Client.AdbcConnection adbcConnection,
+            TestConfiguration testConfiguration,
+            string[] queries,
+            List<int> expectedResults)
+        {
+            if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
+            if (testConfiguration == null) throw new ArgumentNullException(nameof(testConfiguration));
+            if (queries == null) throw new ArgumentNullException(nameof(queries));
+            if (expectedResults == null) throw new ArgumentNullException(nameof(expectedResults));
+            if (queries.Length != expectedResults.Count) throw new ArgumentException($"{nameof(queries)} and {nameof(expectedResults)} must have the same number of values");
+
+            adbcConnection.Open();
+
+            for (int i = 0; i < queries.Length; i++)
+            {
+                string query = queries[i];
+
+                using AdbcCommand adbcCommand = adbcConnection.CreateCommand();
+
+                adbcCommand.CommandText = query;
+
+                int rows = adbcCommand.ExecuteNonQuery();
+
+                Assert.Equal(expectedResults[i], rows);
+            }
+        }
+
+        /// <summary>
+        /// Validates if the client can get the schema.
+        /// </summary>
+        /// <param name="adbcConnection">The <see cref="Adbc.Client.AdbcConnection"/> to use.</param>
+        /// <param name="testConfiguration">The <see cref="TestConfiguration"/> to use</param>
+        public static void CanClientGetSchema(Adbc.Client.AdbcConnection adbcConnection, TestConfiguration testConfiguration)
+        {
+            if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
+            if (testConfiguration == null) throw new ArgumentNullException(nameof(testConfiguration));
+
+            adbcConnection.Open();
+
+            using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+            using AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.SchemaOnly);
+
+            DataTable table = reader.GetSchemaTable();
+
+            // there is one row per field
+            Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, table.Rows.Count);
+        }
+
+        /// <summary>
+        /// Validates if the client can connect to a live server and
+        /// parse the results.
+        /// </summary>
+        /// <param name="adbcConnection">The <see cref="Adbc.Client.AdbcConnection"/> to use.</param>
+        /// <param name="testConfiguration">The <see cref="TestConfiguration"/> to use</param>
+        public static void CanClientExecuteQuery(Adbc.Client.AdbcConnection adbcConnection, TestConfiguration testConfiguration)
+        {
+            if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
+            if (testConfiguration == null) throw new ArgumentNullException(nameof(testConfiguration));
+
+            long count = 0;
+
+            adbcConnection.Open();
+
+            using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+            using AdbcDataReader reader = adbcCommand.ExecuteReader();
+
+            try
+            {
+                while (reader.Read())
+                {
+                    count++;
+
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        object value = reader.GetValue(i);
+
+                        if (value == null)
+                            value = "(null)";
+
+                        // write out the values to ensure things like null are correctly returned
+                        Console.WriteLine($"{reader.GetName(i)}: {value}");
+                    }
+                }
+            }
+            finally { reader.Close(); }
+
+            Assert.Equal(testConfiguration.ExpectedResultsCount, count);
+        }
+
+        /// <summary>
+        /// Validates if the client is retrieving and converting values
+        /// to the expected types.
+        /// </summary>
+        /// <param name="adbcConnection">The <see cref="Adbc.Client.AdbcConnection"/> to use.</param>
+        /// <param name="sampleDataBuilder">The <see cref="SampleDataBuilder"/> to use</param>
+        public static void VerifyTypesAndValues(Adbc.Client.AdbcConnection adbcConnection, SampleDataBuilder sampleDataBuilder)
+        {
+            if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
+            if (sampleDataBuilder == null) throw new ArgumentNullException(nameof(sampleDataBuilder));
+
+            adbcConnection.Open();
+
+            foreach (SampleData sample in sampleDataBuilder.Samples)
+            {
+                using AdbcCommand dbCommand = adbcConnection.CreateCommand();
+                dbCommand.CommandText = sample.Query;
+
+                using AdbcDataReader reader = dbCommand.ExecuteReader(CommandBehavior.Default);
+                if (reader.Read())
+                {
+                    var column_schema = reader.GetColumnSchema();
+                    DataTable dataTable = reader.GetSchemaTable();
+
+                    Assert.True(reader.FieldCount == sample.ExpectedValues.Count, $"{sample.ExpectedValues.Count} fields were expected but {reader.FieldCount} fields were returned for the query [{sample.Query}]");
+
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        object value = reader.GetValue(i);
+                        ColumnNetTypeArrowTypeValue ctv = sample.ExpectedValues[i];
+
+                        AssertTypeAndValue(ctv, value, reader, column_schema, dataTable, sample.Query);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Validates a column contains the correct types and values.
         /// </summary>
         /// <param name="ctv"><see cref="ColumnNetTypeArrowTypeValue"/></param>
@@ -39,7 +174,13 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="reader">The current reader</param>
         /// <param name="column_schema">The column schema from the reader</param>
         /// <param name="dataTable">The <see cref="DataTable"/></param>
-        public static void AssertTypeAndValue(ColumnNetTypeArrowTypeValue ctv, object value, DbDataReader reader, ReadOnlyCollection<DbColumn> column_schema, DataTable dataTable)
+        static void AssertTypeAndValue(
+            ColumnNetTypeArrowTypeValue ctv,
+            object value,
+            DbDataReader reader,
+            ReadOnlyCollection<DbColumn> column_schema,
+            DataTable dataTable,
+            string query)
         {
             string name = ctv.Name;
             Type clientArrowType = column_schema.Where(x => x.ColumnName == name).FirstOrDefault()?.DataType;
@@ -58,51 +199,32 @@ namespace Apache.Arrow.Adbc.Tests
 
             Type netType = reader[name]?.GetType();
 
-            Assert.True(clientArrowType == ctv.ExpectedNetType, $"{name} is {clientArrowType.Name} and not {ctv.ExpectedNetType.Name} in the column schema");
+            Assert.True(clientArrowType == ctv.ExpectedNetType, $"{name} is {clientArrowType.Name} and not {ctv.ExpectedNetType.Name} in the column schema for query [{query}]");
 
-            Assert.True(dataTableType == ctv.ExpectedNetType, $"{name} is {dataTableType.Name} and not {ctv.ExpectedNetType.Name} in the data table");
+            Assert.True(dataTableType == ctv.ExpectedNetType, $"{name} is {dataTableType.Name} and not {ctv.ExpectedNetType.Name} in the data table for query [{query}]");
 
-            Assert.True(arrowType.GetType() == ctv.ExpectedArrowArrayType, $"{name} is {arrowType.Name} and not {ctv.ExpectedArrowArrayType.Name} in the provider type");
+            Assert.True(arrowType.GetType() == ctv.ExpectedArrowArrayType, $"{name} is {arrowType.Name} and not {ctv.ExpectedArrowArrayType.Name} in the provider type for query [{query}]");
 
             if (netType != null)
             {
-                if (netType.BaseType.Name.Contains("PrimitiveArray") && value != null)
-                {
-                    int length = Convert.ToInt32(value.GetType().GetProperty("Length").GetValue(value));
-
-                    if (length > 0)
-                    {
-                        object internalValue = value.GetType().GetMethod("GetValue").Invoke(value, new object[] { 0 });
-
-                        Assert.True(internalValue.GetType() == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Could not validate the values inside of {netType.Name} because it is empty");
-                    }
-                }
-                else
-                {
-                    Assert.True(netType == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader");
-                }
+                Assert.True(netType == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader for query [{query}]");
             }
 
             if (value != null)
             {
                 if (!value.GetType().BaseType.Name.Contains("PrimitiveArray"))
                 {
-                    Assert.True(ctv.ExpectedNetType == value.GetType(), $"Expected type does not match actual type for {ctv.Name}");
+                    Assert.True(ctv.ExpectedNetType == value.GetType(), $"Expected type does not match actual type for {ctv.Name} for query [{query}]");
 
-                    if (value.GetType() == typeof(byte[]))
+                    if (value is byte[] actualBytes)
                     {
-                        byte[] actualBytes = (byte[])value;
                         byte[] expectedBytes = (byte[])ctv.ExpectedValue;
 
-                        Assert.True(actualBytes.SequenceEqual(expectedBytes), $"byte[] values do not match expected values for {ctv.Name}");
+                        Assert.True(actualBytes.SequenceEqual(expectedBytes), $"byte[] values do not match expected values for {ctv.Name} for query [{query}]");
                     }
                     else
                     {
-                        Assert.True(ctv.ExpectedValue.Equals(value), $"Expected value does not match actual value for {ctv.Name}");
+                        Assert.True(ctv.ExpectedValue.Equals(value), $"Expected value [{ctv.ExpectedValue}] does not match actual value [{value}] for {ctv.Name} for query [{query}]");
                     }
                 }
                 else
@@ -124,7 +246,7 @@ namespace Apache.Arrow.Adbc.Tests
 
                             if (i == j)
                             {
-                                Assert.True(expected.Equals(actual), $"Expected value does not match actual value for {ctv.Name} at {i}");
+                                Assert.True(expected.Equals(actual), $"Expected value does not match actual value for {ctv.Name} at {i} for query [{query}]");
                             }
                         }
                     }
@@ -132,7 +254,7 @@ namespace Apache.Arrow.Adbc.Tests
             }
             else
             {
-                Console.WriteLine($"The value for {ctv.Name} is null and cannot be verified");
+                Assert.True(ctv.ExpectedValue == null, $"The value for {ctv.Name} is null and but it's expected value is not null for query [{query}]");
             }
         }
     }

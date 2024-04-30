@@ -69,7 +69,7 @@ G_BEGIN_DECLS
  *   given operation.
  *   May indicate a database-side error only.
  *
- * The error codes are used by all arrow-glib functions.
+ * The error codes are used by all adbc-glib functions.
  *
  * They are corresponding to `ADBC_STATUS_*` values.
  */

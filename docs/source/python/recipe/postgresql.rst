@@ -24,10 +24,22 @@ Authenticate with a username and password
 
 .. recipe:: postgresql_authenticate.py
 
+.. _recipe-postgresql-create-append:
+
+Create/append to a table from an Arrow dataset
+==============================================
+
+.. recipe:: postgresql_create_dataset_table.py
+
 Create/append to a table from an Arrow table
 ============================================
 
 .. recipe:: postgresql_create_append_table.py
+
+Create/append to a temporary table
+==================================
+
+.. recipe:: postgresql_create_temp_table.py
 
 Execute a statement with bind parameters
 ========================================
@@ -38,6 +50,11 @@ Get the Arrow schema of a table
 ===============================
 
 .. recipe:: postgresql_get_table_schema.py
+
+Get the Arrow schema of a query
+===============================
+
+.. recipe:: postgresql_get_query_schema.py
 
 List catalogs, schemas, and tables
 ==================================

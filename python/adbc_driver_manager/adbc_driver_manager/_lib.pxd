@@ -22,10 +22,15 @@ from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t
 
 cdef extern from "adbc.h" nogil:
     # C ABI
+
+    ctypedef void (*CArrowSchemaRelease)(void*)
+    ctypedef void (*CArrowArrayRelease)(void*)
+
     cdef struct CArrowSchema"ArrowSchema":
-        pass
+        CArrowSchemaRelease release
+
     cdef struct CArrowArray"ArrowArray":
-        pass
+        CArrowArrayRelease release
 
     ctypedef int (*CArrowArrayStreamGetLastError)(void*)
     ctypedef int (*CArrowArrayStreamGetNext)(void*, CArrowArray*)
@@ -282,7 +287,7 @@ cdef const CAdbcError* PyAdbcErrorFromArrayStream(
     CArrowArrayStream* stream, CAdbcStatusCode* status)
 
 cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *
-cdef object convert_error(CAdbcStatusCode status, CAdbcError* error) except *
+cdef object convert_error(CAdbcStatusCode status, CAdbcError* error)
 
 cdef extern from "adbc_driver_manager.h":
     const char* CAdbcStatusCodeMessage"AdbcStatusCodeMessage"(CAdbcStatusCode code)

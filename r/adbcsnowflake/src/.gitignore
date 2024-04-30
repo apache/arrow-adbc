@@ -17,3 +17,5 @@
 
 adbc.h
 Makevars
+.go-cache
+.go-path

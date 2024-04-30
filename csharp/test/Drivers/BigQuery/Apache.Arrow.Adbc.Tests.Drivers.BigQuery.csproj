@@ -1,11 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
-     <TargetFrameworks>net472;net6.0</TargetFrameworks>
-   </PropertyGroup>
+  <PropertyGroup>
+    <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
+    <TargetFrameworks Condition="'$(IsWindows)'=='true'">net8.0;net472</TargetFrameworks>
+    <TargetFrameworks Condition="'$(TargetFrameworks)'==''">net8.0</TargetFrameworks>
+  </PropertyGroup>
     <ItemGroup>
-     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
-     <PackageReference Include="xunit" Version="2.5.3" />
-     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3">
+     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+     <PackageReference Include="xunit" Version="2.8.0" />
+     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.0">
        <PrivateAssets>all</PrivateAssets>
        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
      </PackageReference>
@@ -13,7 +15,6 @@
    </ItemGroup>
     <ItemGroup>
      <ProjectReference Include="..\..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
-     <ProjectReference Include="..\..\..\src\arrow\csharp\src\Apache.Arrow\Apache.Arrow.csproj" />
      <ProjectReference Include="..\..\..\src\Client\Apache.Arrow.Adbc.Client.csproj" />
      <ProjectReference Include="..\..\..\src\Drivers\BigQuery\Apache.Arrow.Adbc.Drivers.BigQuery.csproj" />
      <ProjectReference Include="..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />

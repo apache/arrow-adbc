@@ -59,7 +59,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -69,14 +69,14 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -99,7 +99,7 @@ jobs:
         run: |
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -116,7 +116,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -126,14 +126,14 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -151,36 +151,31 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
-        run:
-          .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
+        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Build Driver PostgreSQL
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-        run:
-          .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
+        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Build Driver SQLite
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
-        run:
-          .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
+        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Test Driver Manager
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
-        run:
-          .\ci\scripts\cpp_test.ps1 $pwd\build
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build
       - name: Test Driver SQLite
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
-        run:
-          .\ci\scripts\cpp_test.ps1 $pwd\build
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build
 
   # ------------------------------------------------------------
   # Go build
@@ -194,24 +189,28 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        shell: bash
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -221,14 +220,14 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.20.8
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
@@ -238,7 +237,7 @@ jobs:
         env:
           CGO_ENABLED: "1"
         run: |
-          $env:PATH="$($env:RUNNER_TOOL_CACHE)\go\1.20.8\x64\bin;" + $env:PATH
+          $env:PATH="${env:RUNNER_TOOL_CACHE}\go\${env:GO_VERSION}\x64\bin;${env:PATH}"
           .\ci\scripts\go_build.ps1 $pwd $pwd\build
       # TODO(apache/arrow#358): enable these tests on Windows
       # - name: Go Test
@@ -246,7 +245,7 @@ jobs:
       #   env:
       #     CGO_ENABLED: "1"
       #   run: |
-      #     $env:PATH="$($env:RUNNER_TOOL_CACHE)\go\1.20.8\x64\bin;" + $env:PATH
+      #     $env:PATH="${env:RUNNER_TOOL_CACHE}\go\${env:GO_VERSION}\x64\bin;${env:PATH}"
       #     .\ci\scripts\go_test.ps1 $pwd $pwd\build
 
   # ------------------------------------------------------------
@@ -262,7 +261,7 @@ jobs:
         os: ["windows-latest"]
         python: ["3.9", "3.11"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -272,14 +271,14 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -292,7 +291,7 @@ jobs:
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
@@ -302,40 +301,34 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
-        run:
-          .\ci\scripts\python_build.ps1 $pwd $pwd\build
+        run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Build Python Driver PostgreSQL
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-        run:
-          .\ci\scripts\python_build.ps1 $pwd $pwd\build
+        run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Build Python Driver SQLite
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
-        run:
-          .\ci\scripts\python_build.ps1 $pwd $pwd\build
+        run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Test Python Driver Manager
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
-        run:
-          .\ci\scripts\python_test.ps1 $pwd $pwd\build
+        run: .\ci\scripts\python_test.ps1 $pwd $pwd\build
       - name: Test Python Driver PostgreSQL
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-        run:
-          .\ci\scripts\python_test.ps1 $pwd $pwd\build
+        run: .\ci\scripts\python_test.ps1 $pwd $pwd\build
       - name: Test Python Driver SQLite
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
-        run:
-          .\ci\scripts\python_test.ps1 $pwd $pwd\build
+        run: .\ci\scripts\python_test.ps1 $pwd $pwd\build

@@ -17,6 +17,7 @@
 
 import pandas
 import pyarrow
+import pyarrow.dataset
 import pytest
 from pandas.testing import assert_frame_equal
 
@@ -109,7 +110,7 @@ def test_get_objects(sqlite):
     assert metadata[0]["catalog_name"] == "main"
     schemas = metadata[0]["catalog_db_schemas"]
     assert len(schemas) == 1
-    assert schemas[0]["db_schema_name"] is None
+    assert schemas[0]["db_schema_name"] == ""
     tables = schemas[0]["db_schema_tables"]
     assert len(tables) == 1
     assert tables[0]["table_name"] == "temporary"
@@ -134,6 +135,22 @@ def test_get_table_types(sqlite):
     assert sqlite.adbc_get_table_types() == ["table", "view"]
 
 
+class ArrayWrapper:
+    def __init__(self, array):
+        self.array = array
+
+    def __arrow_c_array__(self, requested_schema=None):
+        return self.array.__arrow_c_array__(requested_schema=requested_schema)
+
+
+class StreamWrapper:
+    def __init__(self, stream):
+        self.stream = stream
+
+    def __arrow_c_stream__(self, requested_schema=None):
+        return self.stream.__arrow_c_stream__(requested_schema=requested_schema)
+
+
 @pytest.mark.parametrize(
     "data",
     [
@@ -142,6 +159,12 @@ def test_get_table_types(sqlite):
         lambda: pyarrow.table(
             [[1, 2], ["foo", ""]], names=["ints", "strs"]
         ).to_reader(),
+        lambda: ArrayWrapper(
+            pyarrow.record_batch([[1, 2], ["foo", ""]], names=["ints", "strs"])
+        ),
+        lambda: StreamWrapper(
+            pyarrow.table([[1, 2], ["foo", ""]], names=["ints", "strs"])
+        ),
     ],
 )
 @pytest.mark.sqlite
@@ -237,6 +260,8 @@ def test_query_fetch_df(sqlite):
         (1.0, 2),
         pyarrow.record_batch([[1.0], [2]], names=["float", "int"]),
         pyarrow.table([[1.0], [2]], names=["float", "int"]),
+        ArrayWrapper(pyarrow.record_batch([[1.0], [2]], names=["float", "int"])),
+        StreamWrapper(pyarrow.table([[1.0], [2]], names=["float", "int"])),
     ],
 )
 def test_execute_parameters(sqlite, parameters):
@@ -253,6 +278,10 @@ def test_execute_parameters(sqlite, parameters):
         pyarrow.record_batch([[1, 3], ["a", None]], names=["float", "str"]),
         pyarrow.table([[1, 3], ["a", None]], names=["float", "str"]),
         pyarrow.table([[1, 3], ["a", None]], names=["float", "str"]).to_batches()[0],
+        ArrayWrapper(
+            pyarrow.record_batch([[1, 3], ["a", None]], names=["float", "str"])
+        ),
+        StreamWrapper(pyarrow.table([[1, 3], ["a", None]], names=["float", "str"])),
         ((x, y) for x, y in ((1, "a"), (3, None))),
     ],
 )
@@ -321,6 +350,15 @@ def test_fetch_empty(sqlite):
         cur.execute("CREATE TABLE foo (bar)")
         cur.execute("SELECT * FROM foo")
         assert cur.fetchall() == []
+
+
+@pytest.mark.sqlite
+def test_reader(sqlite, tmp_path) -> None:
+    # Regression test for https://github.com/apache/arrow-adbc/issues/1523
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT 1")
+        reader = cur.fetch_record_batch()
+        pyarrow.dataset.write_dataset(reader, tmp_path, format="parquet")
 
 
 @pytest.mark.sqlite

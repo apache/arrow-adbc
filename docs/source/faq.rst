@@ -30,7 +30,7 @@ ADBC is:
   For example, result sets of queries in ADBC are all returned as
   streams of Arrow data, not row-by-row.
 - A set of implementations of that API in different languages (C/C++,
-  Go, Java, Python, and Ruby) that target different databases
+  C#/.NET, Go, Java, Python, and Ruby) that target different databases
   (e.g. PostgreSQL, SQLite, any database supporting Flight SQL).
 
 Why not just use JDBC/ODBC?
@@ -146,6 +146,17 @@ JDBC driver in a bespoke Arrow-based API.
 .. _arrow-jdbc: https://central.sonatype.com/artifact/org.apache.arrow/arrow-jdbc/11.0.0
 .. _Turbodbc: https://turbodbc.readthedocs.io/en/latest/
 
+What is the ADBC driver manager?
+================================
+
+The driver manager (in C/C++) is a library that implements the driver API but
+dynamically loads and manages multiple drivers behind the scenes.  It allows
+applications to link to a single library but use more than one driver at a
+time.  This avoids symbol conflicts between multiple drivers that would
+otherwise all provide the same ADBC APIs under the same names.
+
+For an in-depth look, see :doc:`format/how_manager`.
+
 What is the ADBC SQL dialect?
 =============================
 
@@ -155,9 +166,7 @@ result set as Arrow data.  In that respect, it's like JDBC.  (ODBC has
 a "standard" SQL dialect it defines; ADBC does not do this.)
 
 For a project that does try to tackle the problem of defining a
-vendor-independent query language, see Substrait_.
-
-.. _Substrait: https://substrait.io/
+vendor-independent query language, see :term:`Substrait`.
 
 When is the next release?
 =========================

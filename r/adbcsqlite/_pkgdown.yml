@@ -28,3 +28,10 @@ template:
           </a>
         </li>
       </ul>
+
+repo:
+  url:
+    home: https://github.com/apache/arrow-adbc/
+    source: https://github.com/apache/arrow-adbc/blob/main/r/adbcsqlite/
+    issue: https://github.com/apache/arrow-adbc/issues/
+    user: https://github.com/

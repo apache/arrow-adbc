@@ -17,6 +17,7 @@
 package org.apache.arrow.adbc.core;
 
 import java.util.Objects;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Additional details (not necessarily human-readable) contained in an {@link AdbcException}. */
 public class ErrorDetail {
@@ -37,7 +38,7 @@ public class ErrorDetail {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(@Nullable Object o) {
     if (this == o) {
       return true;
     }

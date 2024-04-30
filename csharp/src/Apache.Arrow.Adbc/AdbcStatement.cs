@@ -16,8 +16,10 @@
  */
 
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
+using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc
 {
@@ -42,13 +44,27 @@ namespace Apache.Arrow.Adbc
         /// </summary>
         public virtual byte[] SubstraitPlan
         {
-            get { throw new NotImplementedException(); }
-            set { throw new NotImplementedException(); }
+            get { throw AdbcException.NotImplemented("Statement does not support SubstraitPlan"); }
+            set { throw AdbcException.NotImplemented("Statement does not support SubstraitPlan"); }
         }
 
+        /// <summary>
+        /// Binds this statement to a <see cref="RecordBatch"/> to provide parameter values or bulk data ingestion.
+        /// </summary>
+        /// <param name="batch">the RecordBatch to bind</param>
+        /// <param name="schema">the schema of the RecordBatch</param>
         public virtual void Bind(RecordBatch batch, Schema schema)
         {
             throw AdbcException.NotImplemented("Statement does not support Bind");
+        }
+
+        /// <summary>
+        /// Binds this statement to an <see cref="IArrowArrayStream"/> to provide parameter values or bulk data ingestion.
+        /// </summary>
+        /// <param name="stream"></param>
+        public virtual void BindStream(IArrowArrayStream stream)
+        {
+            throw AdbcException.NotImplemented("Statement does not support BindStream");
         }
 
         /// <summary>
@@ -145,10 +161,9 @@ namespace Apache.Arrow.Adbc
         /// <param name="index">
         /// The index in the array to get the value from.
         /// </param>
-        public virtual object GetValue(IArrowArray arrowArray, Field field, int index)
+        public virtual object GetValue(IArrowArray arrowArray, int index)
         {
             if (arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
-            if (field == null) throw new ArgumentNullException(nameof(field));
             if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
 
             switch (arrowArray)
@@ -181,13 +196,33 @@ namespace Apache.Arrow.Adbc
                     return int64Array.GetValue(index);
                 case StringArray stringArray:
                     return stringArray.GetString(index);
+#if NET6_0_OR_GREATER
                 case Time32Array time32Array:
-                    return time32Array.GetValue(index);
+                    return time32Array.GetTime(index);
                 case Time64Array time64Array:
-                    return time64Array.GetValue(index);
+                    return time64Array.GetTime(index);
+#else
+                case Time32Array time32Array:
+                    int? time32 = time32Array.GetValue(index);
+                    if (time32 == null) { return null; }
+                    return ((Time32Type)time32Array.Data.DataType).Unit switch
+                    {
+                        TimeUnit.Second => TimeSpan.FromSeconds(time32.Value),
+                        TimeUnit.Millisecond => TimeSpan.FromMilliseconds(time32.Value),
+                        _ => throw new InvalidDataException("Unsupported time unit for Time32Type")
+                    };
+                case Time64Array time64Array:
+                    long? time64 = time64Array.GetValue(index);
+                    if (time64 == null) { return null; }
+                    return ((Time64Type)time64Array.Data.DataType).Unit switch
+                    {
+                        TimeUnit.Microsecond => TimeSpan.FromTicks(time64.Value * 10),
+                        TimeUnit.Nanosecond => TimeSpan.FromTicks(time64.Value / 100),
+                        _ => throw new InvalidDataException("Unsupported time unit for Time64Type")
+                    };
+#endif
                 case TimestampArray timestampArray:
-                    DateTimeOffset dateTimeOffset = timestampArray.GetTimestamp(index).Value;
-                    return dateTimeOffset;
+                    return timestampArray.GetTimestamp(index);
                 case UInt8Array uInt8Array:
                     return uInt8Array.GetValue(index);
                 case UInt16Array uInt16Array:

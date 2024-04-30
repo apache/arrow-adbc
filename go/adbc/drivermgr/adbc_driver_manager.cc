@@ -71,23 +71,16 @@ void ReleaseError(struct AdbcError* error) {
 }
 
 void SetError(struct AdbcError* error, const std::string& message) {
-  if (!error) return;
-  if (error->message) {
-    // Append
-    std::string buffer = error->message;
-    buffer.reserve(buffer.size() + message.size() + 1);
-    buffer += '\n';
-    buffer += message;
-    error->release(error);
+  static const std::string kPrefix = "[Driver Manager] ";
 
-    error->message = new char[buffer.size() + 1];
-    buffer.copy(error->message, buffer.size());
-    error->message[buffer.size()] = '\0';
-  } else {
-    error->message = new char[message.size() + 1];
-    message.copy(error->message, message.size());
-    error->message[message.size()] = '\0';
-  }
+  if (!error) return;
+  if (error->release) error->release(error);
+
+  // Prepend a string to identify driver manager errors
+  error->message = new char[kPrefix.size() + message.size() + 1];
+  kPrefix.copy(error->message, kPrefix.size());
+  message.copy(error->message + kPrefix.size(), message.size());
+  error->message[kPrefix.size() + message.size()] = '\0';
   error->release = ReleaseError;
 }
 
@@ -314,108 +307,129 @@ void ErrorArrayStreamInit(struct ArrowArrayStream* out,
 
 AdbcStatusCode DatabaseGetOption(struct AdbcDatabase* database, const char* key,
                                  char* value, size_t* length, struct AdbcError* error) {
+  SetError(error, "AdbcDatabaseGetOption not implemented");
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode DatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
                                       uint8_t* value, size_t* length,
                                       struct AdbcError* error) {
+  SetError(error, "AdbcDatabaseGetOptionBytes not implemented");
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode DatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
                                     int64_t* value, struct AdbcError* error) {
+  SetError(error, "AdbcDatabaseGetOptionInt not implemented");
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode DatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
                                        double* value, struct AdbcError* error) {
+  SetError(error, "AdbcDatabaseGetOptionDouble not implemented");
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode DatabaseSetOption(struct AdbcDatabase* database, const char* key,
                                  const char* value, struct AdbcError* error) {
+  SetError(error, "AdbcDatabaseSetOption not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode DatabaseSetOptionBytes(struct AdbcDatabase* database, const char* key,
                                       const uint8_t* value, size_t length,
                                       struct AdbcError* error) {
+  SetError(error, "AdbcDatabaseSetOptionBytes not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode DatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
                                     int64_t value, struct AdbcError* error) {
+  SetError(error, "AdbcDatabaseSetOptionInt not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode DatabaseSetOptionDouble(struct AdbcDatabase* database, const char* key,
                                        double value, struct AdbcError* error) {
+  SetError(error, "AdbcDatabaseSetOptionDouble not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionCancel(struct AdbcConnection* connection,
                                 struct AdbcError* error) {
+  SetError(error, "AdbcConnectionCancel not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionCommit(struct AdbcConnection*, struct AdbcError* error) {
+  SetError(error, "AdbcConnectionCommit not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionGetInfo(struct AdbcConnection* connection,
                                  const uint32_t* info_codes, size_t info_codes_length,
                                  struct ArrowArrayStream* out, struct AdbcError* error) {
+  SetError(error, "AdbcConnectionGetInfo not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionGetObjects(struct AdbcConnection*, int, const char*, const char*,
                                     const char*, const char**, const char*,
                                     struct ArrowArrayStream*, struct AdbcError* error) {
+  SetError(error, "AdbcConnectionGetObjects not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionGetOption(struct AdbcConnection* connection, const char* key,
                                    char* value, size_t* length, struct AdbcError* error) {
+  SetError(error, "AdbcConnectionGetOption not implemented");
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode ConnectionGetOptionBytes(struct AdbcConnection* connection,
                                         const char* key, uint8_t* value, size_t* length,
                                         struct AdbcError* error) {
+  SetError(error, "AdbcConnectionGetOptionBytes not implemented");
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode ConnectionGetOptionInt(struct AdbcConnection* connection, const char* key,
                                       int64_t* value, struct AdbcError* error) {
+  SetError(error, "AdbcConnectionGetOptionInt not implemented");
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode ConnectionGetOptionDouble(struct AdbcConnection* connection,
                                          const char* key, double* value,
                                          struct AdbcError* error) {
+  SetError(error, "AdbcConnectionGetOptionDouble not implemented");
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode ConnectionGetStatistics(struct AdbcConnection*, const char*, const char*,
                                        const char*, char, struct ArrowArrayStream*,
-                                       struct AdbcError*) {
+                                       struct AdbcError* error) {
+  SetError(error, "AdbcConnectionGetStatistics not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionGetStatisticNames(struct AdbcConnection*,
-                                           struct ArrowArrayStream*, struct AdbcError*) {
+                                           struct ArrowArrayStream*,
+                                           struct AdbcError* error) {
+  SetError(error, "AdbcConnectionGetStatisticNames not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionGetTableSchema(struct AdbcConnection*, const char*, const char*,
                                         const char*, struct ArrowSchema*,
                                         struct AdbcError* error) {
+  SetError(error, "AdbcConnectionGetTableSchema not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionGetTableTypes(struct AdbcConnection*, struct ArrowArrayStream*,
                                        struct AdbcError* error) {
+  SetError(error, "AdbcConnectionGetTableTypes not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -424,45 +438,54 @@ AdbcStatusCode ConnectionReadPartition(struct AdbcConnection* connection,
                                        size_t serialized_length,
                                        struct ArrowArrayStream* out,
                                        struct AdbcError* error) {
+  SetError(error, "AdbcConnectionReadPartition not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionRollback(struct AdbcConnection*, struct AdbcError* error) {
+  SetError(error, "AdbcConnectionRollback not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionSetOption(struct AdbcConnection*, const char*, const char*,
                                    struct AdbcError* error) {
+  SetError(error, "AdbcConnectionSetOption not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionSetOptionBytes(struct AdbcConnection*, const char*,
                                         const uint8_t*, size_t, struct AdbcError* error) {
+  SetError(error, "AdbcConnectionSetOptionBytes not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionSetOptionInt(struct AdbcConnection* connection, const char* key,
                                       int64_t value, struct AdbcError* error) {
+  SetError(error, "AdbcConnectionSetOptionInt not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode ConnectionSetOptionDouble(struct AdbcConnection* connection,
                                          const char* key, double value,
                                          struct AdbcError* error) {
+  SetError(error, "AdbcConnectionSetOptionDouble not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementBind(struct AdbcStatement*, struct ArrowArray*,
                              struct ArrowSchema*, struct AdbcError* error) {
+  SetError(error, "AdbcStatementBind not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementBindStream(struct AdbcStatement*, struct ArrowArrayStream*,
                                    struct AdbcError* error) {
+  SetError(error, "AdbcStatementBindStream not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementCancel(struct AdbcStatement* statement, struct AdbcError* error) {
+  SetError(error, "AdbcStatementCancel not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -471,73 +494,87 @@ AdbcStatusCode StatementExecutePartitions(struct AdbcStatement* statement,
                                           struct AdbcPartitions* partitions,
                                           int64_t* rows_affected,
                                           struct AdbcError* error) {
+  SetError(error, "AdbcStatementExecutePartitions not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementExecuteSchema(struct AdbcStatement* statement,
                                       struct ArrowSchema* schema,
                                       struct AdbcError* error) {
+  SetError(error, "AdbcStatementExecuteSchema not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementGetOption(struct AdbcStatement* statement, const char* key,
                                   char* value, size_t* length, struct AdbcError* error) {
+  SetError(error, "AdbcStatementGetOption not implemented");
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode StatementGetOptionBytes(struct AdbcStatement* statement, const char* key,
                                        uint8_t* value, size_t* length,
                                        struct AdbcError* error) {
+  SetError(error, "AdbcStatementGetOptionBytes not implemented");
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode StatementGetOptionInt(struct AdbcStatement* statement, const char* key,
                                      int64_t* value, struct AdbcError* error) {
+  SetError(error, "AdbcStatementGetOptionInt not implemented");
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode StatementGetOptionDouble(struct AdbcStatement* statement, const char* key,
                                         double* value, struct AdbcError* error) {
+  SetError(error, "AdbcStatementGetOptionDouble not implemented");
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode StatementGetParameterSchema(struct AdbcStatement* statement,
                                            struct ArrowSchema* schema,
                                            struct AdbcError* error) {
+  SetError(error, "AdbcStatementGetParameterSchema not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementPrepare(struct AdbcStatement*, struct AdbcError* error) {
+  SetError(error, "AdbcStatementPrepare not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementSetOption(struct AdbcStatement*, const char*, const char*,
                                   struct AdbcError* error) {
+  SetError(error, "AdbcStatementSetOption not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementSetOptionBytes(struct AdbcStatement*, const char*, const uint8_t*,
                                        size_t, struct AdbcError* error) {
+  SetError(error, "AdbcStatementSetOptionBytes not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementSetOptionInt(struct AdbcStatement* statement, const char* key,
                                      int64_t value, struct AdbcError* error) {
+  SetError(error, "AdbcStatementSetOptionInt not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementSetOptionDouble(struct AdbcStatement* statement, const char* key,
                                         double value, struct AdbcError* error) {
+  SetError(error, "AdbcStatementSetOptionDouble not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementSetSqlQuery(struct AdbcStatement*, const char*,
                                     struct AdbcError* error) {
+  SetError(error, "AdbcStatementSetSqlQuery not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementSetSubstraitPlan(struct AdbcStatement*, const uint8_t*, size_t,
                                          struct AdbcError* error) {
+  SetError(error, "AdbcStatementSetSubstraitPlan not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -696,6 +733,7 @@ AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* 
   } else {
     const auto it = args->options.find(key);
     if (it == args->options.end()) {
+      SetError(error, std::string("Option not found: ") + key);
       return ADBC_STATUS_NOT_FOUND;
     }
     result = &it->second;
@@ -720,6 +758,7 @@ AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const c
   const auto* args = reinterpret_cast<const TempDatabase*>(database->private_data);
   const auto it = args->bytes_options.find(key);
   if (it == args->options.end()) {
+    SetError(error, std::string("Option not found: ") + key);
     return ADBC_STATUS_NOT_FOUND;
   }
   const std::string& result = it->second;
@@ -741,6 +780,7 @@ AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const cha
   const auto* args = reinterpret_cast<const TempDatabase*>(database->private_data);
   const auto it = args->int_options.find(key);
   if (it == args->int_options.end()) {
+    SetError(error, std::string("Option not found: ") + key);
     return ADBC_STATUS_NOT_FOUND;
   }
   *value = it->second;
@@ -756,6 +796,7 @@ AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const 
   const auto* args = reinterpret_cast<const TempDatabase*>(database->private_data);
   const auto it = args->double_options.find(key);
   if (it == args->double_options.end()) {
+    SetError(error, std::string("Option not found: ") + key);
     return ADBC_STATUS_NOT_FOUND;
   }
   *value = it->second;
@@ -822,6 +863,7 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetInitFunc(struct AdbcDatabase* databas
                                                     AdbcDriverInitFunc init_func,
                                                     struct AdbcError* error) {
   if (database->private_driver) {
+    SetError(error, "Cannot SetInitFunc after AdbcDatabaseInit");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -832,7 +874,7 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetInitFunc(struct AdbcDatabase* databas
 
 AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
   if (!database->private_data) {
-    SetError(error, "Must call AdbcDatabaseNew first");
+    SetError(error, "Must call AdbcDatabaseNew before AdbcDatabaseInit");
     return ADBC_STATUS_INVALID_STATE;
   }
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
@@ -948,6 +990,7 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
 AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
                                     struct AdbcError* error) {
   if (!connection->private_driver) {
+    SetError(error, "AdbcConnectionCancel: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
@@ -957,6 +1000,7 @@ AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
 AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
                                     struct AdbcError* error) {
   if (!connection->private_driver) {
+    SetError(error, "AdbcConnectionCommit: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
@@ -968,6 +1012,7 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
                                      struct ArrowArrayStream* out,
                                      struct AdbcError* error) {
   if (!connection->private_driver) {
+    SetError(error, "AdbcConnectionGetInfo: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
@@ -983,6 +1028,7 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         struct ArrowArrayStream* stream,
                                         struct AdbcError* error) {
   if (!connection->private_driver) {
+    SetError(error, "AdbcConnectionGetObjects: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
@@ -996,7 +1042,7 @@ AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const 
                                        char* value, size_t* length,
                                        struct AdbcError* error) {
   if (!connection->private_data) {
-    SetError(error, "AdbcConnectionGetOption: must AdbcConnectionNew first");
+    SetError(error, "AdbcConnectionGetOption: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   if (!connection->private_driver) {
@@ -1021,7 +1067,7 @@ AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
                                             const char* key, uint8_t* value,
                                             size_t* length, struct AdbcError* error) {
   if (!connection->private_data) {
-    SetError(error, "AdbcConnectionGetOption: must AdbcConnectionNew first");
+    SetError(error, "AdbcConnectionGetOption: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   if (!connection->private_driver) {
@@ -1046,7 +1092,7 @@ AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
                                           const char* key, int64_t* value,
                                           struct AdbcError* error) {
   if (!connection->private_data) {
-    SetError(error, "AdbcConnectionGetOption: must AdbcConnectionNew first");
+    SetError(error, "AdbcConnectionGetOption: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   if (!connection->private_driver) {
@@ -1068,7 +1114,7 @@ AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
                                              const char* key, double* value,
                                              struct AdbcError* error) {
   if (!connection->private_data) {
-    SetError(error, "AdbcConnectionGetOption: must AdbcConnectionNew first");
+    SetError(error, "AdbcConnectionGetOption: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   if (!connection->private_driver) {
@@ -1092,6 +1138,7 @@ AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error) {
   if (!connection->private_driver) {
+    SetError(error, "AdbcConnectionGetStatistics: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
@@ -1105,6 +1152,7 @@ AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection
                                                struct ArrowArrayStream* out,
                                                struct AdbcError* error) {
   if (!connection->private_driver) {
+    SetError(error, "AdbcConnectionGetStatisticNames: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
@@ -1119,6 +1167,7 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
                                             struct ArrowSchema* schema,
                                             struct AdbcError* error) {
   if (!connection->private_driver) {
+    SetError(error, "AdbcConnectionGetTableSchema: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
@@ -1130,6 +1179,7 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
                                            struct ArrowArrayStream* stream,
                                            struct AdbcError* error) {
   if (!connection->private_driver) {
+    SetError(error, "AdbcConnectionGetTableTypes: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
@@ -1204,6 +1254,7 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error) {
   if (!connection->private_driver) {
+    SetError(error, "AdbcConnectionReadPartition: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
@@ -1232,6 +1283,7 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
                                       struct AdbcError* error) {
   if (!connection->private_driver) {
+    SetError(error, "AdbcConnectionRollback: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
@@ -1241,7 +1293,7 @@ AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
 AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
                                        const char* value, struct AdbcError* error) {
   if (!connection->private_data) {
-    SetError(error, "AdbcConnectionSetOption: must AdbcConnectionNew first");
+    SetError(error, "AdbcConnectionSetOption: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   if (!connection->private_driver) {
@@ -1258,7 +1310,7 @@ AdbcStatusCode AdbcConnectionSetOptionBytes(struct AdbcConnection* connection,
                                             const char* key, const uint8_t* value,
                                             size_t length, struct AdbcError* error) {
   if (!connection->private_data) {
-    SetError(error, "AdbcConnectionSetOptionInt: must AdbcConnectionNew first");
+    SetError(error, "AdbcConnectionSetOptionInt: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   if (!connection->private_driver) {
@@ -1276,7 +1328,7 @@ AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
                                           const char* key, int64_t value,
                                           struct AdbcError* error) {
   if (!connection->private_data) {
-    SetError(error, "AdbcConnectionSetOptionInt: must AdbcConnectionNew first");
+    SetError(error, "AdbcConnectionSetOptionInt: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   if (!connection->private_driver) {
@@ -1294,7 +1346,7 @@ AdbcStatusCode AdbcConnectionSetOptionDouble(struct AdbcConnection* connection,
                                              const char* key, double value,
                                              struct AdbcError* error) {
   if (!connection->private_data) {
-    SetError(error, "AdbcConnectionSetOptionDouble: must AdbcConnectionNew first");
+    SetError(error, "AdbcConnectionSetOptionDouble: must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   if (!connection->private_driver) {
@@ -1312,6 +1364,7 @@ AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
                                  struct ArrowArray* values, struct ArrowSchema* schema,
                                  struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementBind: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1322,6 +1375,7 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
                                        struct ArrowArrayStream* stream,
                                        struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementBindStream: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1331,6 +1385,7 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
 AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
                                    struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementCancel: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1344,6 +1399,7 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
                                               int64_t* rows_affected,
                                               struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementExecutePartitions: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1356,6 +1412,7 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
                                          int64_t* rows_affected,
                                          struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementExecuteQuery: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1368,6 +1425,7 @@ AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
                                           struct ArrowSchema* schema,
                                           struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementExecuteSchema: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1378,6 +1436,7 @@ AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const cha
                                       char* value, size_t* length,
                                       struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementGetOption: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1389,6 +1448,7 @@ AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
                                            const char* key, uint8_t* value,
                                            size_t* length, struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementGetOptionBytes: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1399,6 +1459,7 @@ AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
 AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement, const char* key,
                                          int64_t* value, struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementGetOptionInt: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1409,6 +1470,7 @@ AdbcStatusCode AdbcStatementGetOptionDouble(struct AdbcStatement* statement,
                                             const char* key, double* value,
                                             struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementGetOptionDouble: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1420,6 +1482,7 @@ AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
                                                struct ArrowSchema* schema,
                                                struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementGetParameterSchema: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1430,6 +1493,7 @@ AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
                                 struct AdbcStatement* statement,
                                 struct AdbcError* error) {
   if (!connection->private_driver) {
+    SetError(error, "AdbcStatementNew: must call AdbcConnectionInit first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
@@ -1441,6 +1505,7 @@ AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
 AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
                                     struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementPrepare: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1450,6 +1515,7 @@ AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
 AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
                                     struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementRelease: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1461,6 +1527,7 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
 AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
                                       const char* value, struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementSetOption: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1471,6 +1538,7 @@ AdbcStatusCode AdbcStatementSetOptionBytes(struct AdbcStatement* statement,
                                            const char* key, const uint8_t* value,
                                            size_t length, struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementSetOptionBytes: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1481,6 +1549,7 @@ AdbcStatusCode AdbcStatementSetOptionBytes(struct AdbcStatement* statement,
 AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement, const char* key,
                                          int64_t value, struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementSetOptionInt: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1491,6 +1560,7 @@ AdbcStatusCode AdbcStatementSetOptionDouble(struct AdbcStatement* statement,
                                             const char* key, double value,
                                             struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementSetOptionDouble: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1501,6 +1571,7 @@ AdbcStatusCode AdbcStatementSetOptionDouble(struct AdbcStatement* statement,
 AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
                                         const char* query, struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementSetSqlQuery: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
@@ -1511,6 +1582,7 @@ AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
                                              const uint8_t* plan, size_t length,
                                              struct AdbcError* error) {
   if (!statement->private_driver) {
+    SetError(error, "AdbcStatementSetSubstraitPlan: must call AdbcStatementNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);

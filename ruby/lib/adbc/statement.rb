@@ -15,22 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
+require_relative "statement-openable"
+require_relative "statement-operations"
+
 module ADBC
   class Statement
-    class << self
-      def open(connection)
-        statement = new(connection)
-        if block_given?
-          begin
-            yield(statement)
-          ensure
-            statement.release
-          end
-        else
-          statement
-        end
-      end
-    end
+    extend StatementOpenable
+    include StatementOperations
 
     alias_method :execute_raw, :execute
     def execute(need_result: true)
@@ -93,26 +84,6 @@ module ADBC
       else
         bind_raw(*args)
       end
-    end
-
-    def ingest(table_name, values, mode: :create)
-      insert = "INSERT INTO #{table_name} (" # TODO escape
-      fields = values.schema.fields
-      insert << fields.collect(&:name).join(", ")
-      insert << ") VALUES ("
-      insert << (["?"] * fields.size).join(", ")
-      insert << ")"
-      self.sql_query = insert
-      self.ingest_target_table = table_name
-      self.ingest_mode = mode
-      bind(values) do
-        execute(need_result: false)
-      end
-    end
-
-    def query(sql, &block)
-      self.sql_query = sql
-      execute(&block)
     end
   end
 end

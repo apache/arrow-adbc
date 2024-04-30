@@ -29,8 +29,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string AuthenticationType = "adbc.bigquery.auth_type";
         public const string JsonCredential = "adbc.bigquery.auth_json_credential";
         public const string AllowLargeResults = "adbc.bigquery.allow_large_results";
+        public const string LargeResultsDestinationTable = "adbc.bigquery.large_results_destination_table";
         public const string UseLegacySQL = "adbc.bigquery.use_legacy_sql";
         public const string LargeDecimalsAsString = "adbc.bigquery.large_decimals_as_string";
+        public const string Scopes = "adbc.bigquery.scopes";
+        public const string IncludeConstraintsWithGetObjects = "adbc.bigquery.include_constraints_getobjects";
     }
 
     /// <summary>

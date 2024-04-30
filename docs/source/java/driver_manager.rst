@@ -35,4 +35,4 @@ To include the ADBC Driver Manager in your Maven project, add the following depe
 API Reference
 =============
 
-See the API reference: :doc:`./api/adbc_driver_manager`.
+See the `API reference <./api/org/apache/arrow/adbc/drivermanager/package-summary.html>`_.

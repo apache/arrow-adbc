@@ -41,6 +41,7 @@ MANIFEST
 compile_commands.json
 build.ninja
 .clangd
+.cache
 
 # Generated Visual Studio files
 *.vcxproj
@@ -64,6 +65,7 @@ python/doc/
 # Egg metadata
 *.egg-info
 
+.vs/
 .vscode
 .idea/
 .pytest_cache/

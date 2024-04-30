@@ -25,11 +25,11 @@ RUN \
   yum install -y ${quiet} epel-release && \
   yum install -y https://apache.jfrog.io/artifactory/arrow/almalinux/$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)/apache-arrow-release-latest.rpm && \
   yum install --enablerepo=powertools -y ${quiet} \
+    arrow-glib-devel \
     ccache \
     cmake \
     gcc-c++ \
     gobject-introspection-devel \
-    golang \
     libpq-devel \
     make \
     ninja-build \
@@ -38,5 +38,13 @@ RUN \
     python3-pip \
     rpmdevtools \
     sqlite-devel \
-    tar && \
+    tar \
+    wget \
+    vala && \
   yum clean ${quiet} all
+
+ARG GO_VERSION
+RUN wget --no-verbose https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
+    rm go${GO_VERSION}.linux-amd64.tar.gz
+ENV PATH="/usr/local/go/bin:${PATH}"

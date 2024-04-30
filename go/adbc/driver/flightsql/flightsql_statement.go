@@ -20,15 +20,19 @@ package flightsql
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
+	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/flight"
-	"github.com/apache/arrow/go/v14/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/flight"
+	"github.com/apache/arrow/go/v16/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/bluele/gcache"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -43,6 +47,14 @@ const (
 	// of substrait and the capabilities of the server.
 	OptionStatementSubstraitVersion = "adbc.flight.sql.substrait.version"
 )
+
+func atomicLoadFloat64(x *float64) float64 {
+	return math.Float64frombits(atomic.LoadUint64((*uint64)(unsafe.Pointer(x))))
+}
+
+func atomicStoreFloat64(x *float64, v float64) {
+	atomic.StoreUint64((*uint64)(unsafe.Pointer(x)), math.Float64bits(v))
+}
 
 type sqlOrSubstrait struct {
 	sqlQuery         string
@@ -60,7 +72,7 @@ func (s *sqlOrSubstrait) setSubstraitPlan(plan []byte) {
 	s.substraitPlan = plan
 }
 
-func (s *sqlOrSubstrait) execute(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
+func (s *sqlOrSubstrait) execute(ctx context.Context, cnxn *connectionImpl, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
 	if s.sqlQuery != "" {
 		return cnxn.execute(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
@@ -73,7 +85,7 @@ func (s *sqlOrSubstrait) execute(ctx context.Context, cnxn *cnxn, opts ...grpc.C
 	}
 }
 
-func (s *sqlOrSubstrait) executeSchema(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*arrow.Schema, error) {
+func (s *sqlOrSubstrait) executeSchema(ctx context.Context, cnxn *connectionImpl, opts ...grpc.CallOption) (*arrow.Schema, error) {
 	var (
 		res *flight.SchemaResult
 		err error
@@ -96,7 +108,7 @@ func (s *sqlOrSubstrait) executeSchema(ctx context.Context, cnxn *cnxn, opts ...
 	return flight.DeserializeSchema(res.Schema, cnxn.cl.Alloc)
 }
 
-func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (int64, error) {
+func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cnxn *connectionImpl, opts ...grpc.CallOption) (int64, error) {
 	if s.sqlQuery != "" {
 		return cnxn.executeUpdate(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
@@ -109,7 +121,20 @@ func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cnxn *cnxn, opts ...
 	}
 }
 
-func (s *sqlOrSubstrait) prepare(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
+func (s *sqlOrSubstrait) poll(ctx context.Context, cnxn *connectionImpl, retryDescriptor *flight.FlightDescriptor, opts ...grpc.CallOption) (*flight.PollInfo, error) {
+	if s.sqlQuery != "" {
+		return cnxn.poll(ctx, s.sqlQuery, retryDescriptor, opts...)
+	} else if s.substraitPlan != nil {
+		return cnxn.pollSubstrait(ctx, flightsql.SubstraitPlan{Plan: s.substraitPlan, Version: s.substraitVersion}, retryDescriptor, opts...)
+	}
+
+	return nil, adbc.Error{
+		Code: adbc.StatusInvalidState,
+		Msg:  "[Flight SQL] cannot call ExecuteQuery without a query or prepared statement",
+	}
+}
+
+func (s *sqlOrSubstrait) prepare(ctx context.Context, cnxn *connectionImpl, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
 	if s.sqlQuery != "" {
 		return cnxn.prepare(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
@@ -122,22 +147,55 @@ func (s *sqlOrSubstrait) prepare(ctx context.Context, cnxn *cnxn, opts ...grpc.C
 	}
 }
 
+type incrementalState struct {
+	schema          *arrow.Schema
+	previousInfo    *flight.FlightInfo
+	retryDescriptor *flight.FlightDescriptor
+	complete        bool
+}
+
 type statement struct {
 	alloc       memory.Allocator
-	cnxn        *cnxn
+	cnxn        *connectionImpl
 	clientCache gcache.Cache
 
-	hdrs      metadata.MD
-	query     sqlOrSubstrait
-	prepared  *flightsql.PreparedStatement
-	queueSize int
-	timeouts  timeoutOption
+	hdrs             metadata.MD
+	query            sqlOrSubstrait
+	prepared         *flightsql.PreparedStatement
+	queueSize        int
+	timeouts         timeoutOption
+	incrementalState *incrementalState
+	progress         float64
+	// may seem redundant, but incrementalState isn't locked
+	lastInfo atomic.Pointer[flight.FlightInfo]
 }
 
 func (s *statement) closePreparedStatement() error {
 	var header, trailer metadata.MD
 	err := s.prepared.Close(metadata.NewOutgoingContext(context.Background(), s.hdrs), grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	return adbcFromFlightStatusWithDetails(err, header, trailer, "ClosePreparedStatement")
+}
+
+func (s *statement) clearIncrementalQuery() error {
+	// retryDescriptor != nil ==> query is in progress
+	if s.incrementalState != nil {
+		if !s.incrementalState.complete && s.incrementalState.retryDescriptor != nil {
+			return adbc.Error{
+				Code: adbc.StatusInvalidState,
+				Msg:  "[Flight SQL] Cannot disable incremental execution while a query is in progress, finish execution first",
+			}
+		}
+		s.incrementalState = &incrementalState{}
+		s.lastInfo.Store(nil)
+	}
+	return nil
+}
+
+func (s *statement) poll(ctx context.Context, opts ...grpc.CallOption) (*flight.PollInfo, error) {
+	if s.prepared != nil {
+		return s.prepared.ExecutePoll(ctx, s.incrementalState.retryDescriptor, opts...)
+	}
+	return s.query.poll(ctx, s.cnxn, s.incrementalState.retryDescriptor, opts...)
 }
 
 // Close releases any relevant resources associated with this statement
@@ -173,6 +231,11 @@ func (s *statement) GetOption(key string) (string, error) {
 		return s.timeouts.queryTimeout.String(), nil
 	case OptionTimeoutUpdate:
 		return s.timeouts.updateTimeout.String(), nil
+	case adbc.OptionKeyIncremental:
+		if s.incrementalState != nil {
+			return adbc.OptionValueEnabled, nil
+		}
+		return adbc.OptionValueDisabled, nil
 	}
 
 	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
@@ -189,6 +252,21 @@ func (s *statement) GetOption(key string) (string, error) {
 	}
 }
 func (s *statement) GetOptionBytes(key string) ([]byte, error) {
+	switch key {
+	case OptionLastFlightInfo:
+		info := s.lastInfo.Load()
+		if info == nil {
+			return []byte{}, nil
+		}
+		serialized, err := proto.Marshal(info)
+		if err != nil {
+			return nil, adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] Could not serialize result for '%s': %s", key, err.Error()),
+				Code: adbc.StatusInternal,
+			}
+		}
+		return serialized, nil
+	}
 	return nil, adbc.Error{
 		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
 		Code: adbc.StatusNotFound,
@@ -221,6 +299,10 @@ func (s *statement) GetOptionDouble(key string) (float64, error) {
 		return s.timeouts.queryTimeout.Seconds(), nil
 	case OptionTimeoutUpdate:
 		return s.timeouts.updateTimeout.Seconds(), nil
+	case adbc.OptionKeyProgress:
+		return atomicLoadFloat64(&s.progress), nil
+	case adbc.OptionKeyMaxProgress:
+		return 1.0, nil
 	}
 
 	return 0, adbc.Error{
@@ -260,6 +342,24 @@ func (s *statement) SetOption(key string, val string) error {
 		return s.SetOptionInt(key, int64(size))
 	case OptionStatementSubstraitVersion:
 		s.query.substraitVersion = val
+	case adbc.OptionKeyIncremental:
+		switch val {
+		case adbc.OptionValueEnabled:
+			if err := s.clearIncrementalQuery(); err != nil {
+				return err
+			}
+			s.incrementalState = &incrementalState{}
+		case adbc.OptionValueDisabled:
+			if err := s.clearIncrementalQuery(); err != nil {
+				return err
+			}
+			s.incrementalState = nil
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] Invalid statement option value %s=%s", key, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
 	default:
 		return adbc.Error{
 			Msg:  "[Flight SQL] Unknown statement option '" + key + "'",
@@ -318,7 +418,9 @@ func (s *statement) SetSqlQuery(query string) error {
 		}
 		s.prepared = nil
 	}
-
+	if err := s.clearIncrementalQuery(); err != nil {
+		return err
+	}
 	s.query.setSqlQuery(query)
 	return nil
 }
@@ -329,6 +431,10 @@ func (s *statement) SetSqlQuery(query string) error {
 //
 // This invalidates any prior result sets on this statement.
 func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, nrec int64, err error) {
+	if err := s.clearIncrementalQuery(); err != nil {
+		return nil, -1, err
+	}
+
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var info *flight.FlightInfo
 	var header, trailer metadata.MD
@@ -351,6 +457,10 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
+	if err := s.clearIncrementalQuery(); err != nil {
+		return -1, err
+	}
+
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var header, trailer metadata.MD
 	opts := append([]grpc.CallOption{}, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
@@ -395,6 +505,9 @@ func (s *statement) SetSubstraitPlan(plan []byte) error {
 			return err
 		}
 		s.prepared = nil
+	}
+	if err := s.clearIncrementalQuery(); err != nil {
+		return err
 	}
 
 	s.query.setSubstraitPlan(plan)
@@ -485,13 +598,82 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 
 	var (
 		info *flight.FlightInfo
+		poll *flight.PollInfo
 		out  adbc.Partitions
 		sc   *arrow.Schema
 		err  error
 	)
 
 	var header, trailer metadata.MD
-	if s.prepared != nil {
+	if s.incrementalState != nil {
+		if s.incrementalState.complete {
+			schema := s.incrementalState.schema
+			totalRecords := s.incrementalState.previousInfo.TotalRecords
+			// Reset the statement for reuse
+			s.incrementalState = &incrementalState{}
+			atomicStoreFloat64(&s.progress, 0.0)
+			s.lastInfo.Store(nil)
+			return schema, adbc.Partitions{}, totalRecords, nil
+		}
+
+		backoff := 100 * time.Millisecond
+		for {
+			// Keep polling until the query completes or we get new partitions
+			poll, err = s.poll(ctx, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
+			if err != nil {
+				break
+			}
+			info = poll.GetInfo()
+			if info == nil {
+				// The server is misbehaving
+				// XXX: should we also issue a query cancellation?
+				s.incrementalState = &incrementalState{}
+				atomicStoreFloat64(&s.progress, 0.0)
+				return nil, adbc.Partitions{}, -1, adbc.Error{
+					Msg:  "[Flight SQL] Server returned a PollInfo with no FlightInfo",
+					Code: adbc.StatusInternal,
+				}
+			}
+			info = proto.Clone(info).(*flight.FlightInfo)
+			// We only return the new endpoints each time
+			if s.incrementalState.previousInfo != nil {
+				offset := len(s.incrementalState.previousInfo.Endpoint)
+				if offset >= len(info.Endpoint) {
+					info.Endpoint = []*flight.FlightEndpoint{}
+				} else {
+					info.Endpoint = info.Endpoint[offset:]
+				}
+			}
+			s.incrementalState.previousInfo = poll.GetInfo()
+			s.incrementalState.retryDescriptor = poll.GetFlightDescriptor()
+			atomicStoreFloat64(&s.progress, poll.GetProgress())
+			s.lastInfo.Store(poll.GetInfo())
+
+			if s.incrementalState.retryDescriptor == nil {
+				// Query is finished
+				s.incrementalState.complete = true
+				break
+			} else if len(info.Endpoint) > 0 {
+				// Query made progress
+				break
+			}
+			// Back off before next poll
+			time.Sleep(backoff)
+			backoff *= 2
+			if backoff > 5000*time.Millisecond {
+				backoff = 5000 * time.Millisecond
+			}
+		}
+
+		// Special case: the query completed but there were no new endpoints. We
+		// return 0 new partitions, and also reset the statement (because
+		// returning 0 partitions implies completion)
+		if s.incrementalState.complete && len(info.Endpoint) == 0 {
+			s.incrementalState = &incrementalState{}
+			atomicStoreFloat64(&s.progress, 0.0)
+			s.lastInfo.Store(nil)
+		}
+	} else if s.prepared != nil {
 		info, err = s.prepared.Execute(ctx, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	} else {
 		info, err = s.query.execute(ctx, s.cnxn, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
@@ -506,6 +688,10 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 		if err != nil {
 			return nil, out, -1, adbcFromFlightStatus(err, "ExecutePartitions: could not deserialize FlightInfo schema:")
 		}
+	}
+
+	if s.incrementalState != nil {
+		s.incrementalState.schema = sc
 	}
 
 	out.NumPartitions = uint64(len(info.Endpoint))

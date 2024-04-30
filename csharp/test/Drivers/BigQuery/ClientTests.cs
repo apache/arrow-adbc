@@ -17,9 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
@@ -29,16 +26,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     /// <summary>
     /// Class for testing the ADBC Client using the BigQuery ADBC driver.
     /// </summary>
-    /// /// <remarks>
+    /// <remarks>
     /// Tests are ordered to ensure data is created for the other
     /// queries to run.
     /// </remarks>
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class ClientTests
     {
+        private BigQueryTestConfiguration _testConfiguration;
+
         public ClientTests()
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
+
+            _testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
         }
 
         /// <summary>
@@ -47,26 +48,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(1)]
         public void CanClientExecuteUpdate()
         {
-            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
             {
                 adbcConnection.Open();
 
-                string[] queries = BigQueryTestingUtils.GetQueries(testConfiguration);
+                string[] queries = BigQueryTestingUtils.GetQueries(_testConfiguration);
 
-                List<int> expectedResults = new List<int>() { -1, 1, 1, 1 };
+                List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
-                for (int i = 0; i < queries.Length; i++)
-                {
-                    string query = queries[i];
-                    AdbcCommand adbcCommand = adbcConnection.CreateCommand();
-                    adbcCommand.CommandText = query;
-
-                    int rows = adbcCommand.ExecuteNonQuery();
-
-                    Assert.Equal(expectedResults[i], rows);
-                }
+                Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, _testConfiguration, queries, expectedResults);
             }
         }
 
@@ -76,20 +66,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(2)]
         public void CanClientGetSchema()
         {
-            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
             {
-                AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
-
-                adbcConnection.Open();
-
-                AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.SchemaOnly);
-
-                DataTable table = reader.GetSchemaTable();
-
-                // there is one row per field
-                Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, table.Rows.Count);
+                Tests.ClientTests.CanClientGetSchema(adbcConnection, _testConfiguration);
             }
         }
 
@@ -100,39 +79,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(3)]
         public void CanClientExecuteQuery()
         {
-            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
-
-            long count = 0;
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
             {
-                AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
-
-                adbcConnection.Open();
-
-                AdbcDataReader reader = adbcCommand.ExecuteReader();
-
-                try
-                {
-                    while (reader.Read())
-                    {
-                        count++;
-
-                        for(int i=0;i<reader.FieldCount;i++)
-                        {
-                            object value = reader.GetValue(i);
-
-                            if (value == null)
-                                value = "(null)";
-
-                            Console.WriteLine($"{reader.GetName(i)}: {value}");
-                        }
-                    }
-                }
-                finally { reader.Close(); }
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, _testConfiguration);
             }
-
-            Assert.Equal(testConfiguration.ExpectedResultsCount, count);
         }
 
         /// <summary>
@@ -142,38 +92,103 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(4)]
         public void VerifyTypesAndValues()
         {
-            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
-
-            Adbc.Client.AdbcConnection dbConnection = GetAdbcConnection(testConfiguration);
-
-            dbConnection.Open();
-            DbCommand dbCommand = dbConnection.CreateCommand();
-            dbCommand.CommandText = testConfiguration.Query;
-
-            DbDataReader reader = dbCommand.ExecuteReader(CommandBehavior.Default);
-
-            if (reader.Read())
+            using(Adbc.Client.AdbcConnection dbConnection = GetAdbcConnection())
             {
-                var column_schema = reader.GetColumnSchema();
-                DataTable dataTable = reader.GetSchemaTable();
+                SampleDataBuilder sampleDataBuilder = BigQueryData.GetSampleData();
 
-                List<ColumnNetTypeArrowTypeValue> expectedValues = SampleData.GetSampleData();
-
-                for (int i = 0; i < reader.FieldCount; i++)
-                {
-                    object value = reader.GetValue(i);
-                    ColumnNetTypeArrowTypeValue ctv = expectedValues[i];
-
-                    Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
-                }
+                Tests.ClientTests.VerifyTypesAndValues(dbConnection, sampleDataBuilder);
             }
         }
 
-        private Adbc.Client.AdbcConnection GetAdbcConnection(BigQueryTestConfiguration testConfiguration)
+        [SkippableFact]
+        public void VerifySchemaTablesWithNoConstraints()
         {
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(includeTableConstraints: false))
+            {
+                adbcConnection.Open();
+
+                string schema = "Tables";
+
+                var tables = adbcConnection.GetSchema(schema);
+
+                Assert.True(tables.Rows.Count > 0, $"No tables were found in the schema '{schema}'");
+            }
+        }
+
+
+        [SkippableFact]
+        public void VerifySchemaTables()
+        {
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
+            {
+                adbcConnection.Open();
+
+                var collections = adbcConnection.GetSchema("MetaDataCollections");
+                Assert.Equal(7, collections.Rows.Count);
+                Assert.Equal(2, collections.Columns.Count);
+
+                var restrictions = adbcConnection.GetSchema("Restrictions");
+                Assert.Equal(11, restrictions.Rows.Count);
+                Assert.Equal(3, restrictions.Columns.Count);
+
+                var catalogs = adbcConnection.GetSchema("Catalogs");
+                Assert.Single(catalogs.Columns);
+                var catalog = (string)catalogs.Rows[0].ItemArray[0];
+
+                catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
+                Assert.Equal(1, catalogs.Rows.Count);
+
+                string random = "X" + Guid.NewGuid().ToString("N");
+
+                catalogs = adbcConnection.GetSchema("Catalogs", new[] { random });
+                Assert.Equal(0, catalogs.Rows.Count);
+
+                var schemas = adbcConnection.GetSchema("Schemas", new[] { catalog });
+                Assert.Equal(2, schemas.Columns.Count);
+                var schema = (string)schemas.Rows[0].ItemArray[1];
+
+                schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, schema });
+                Assert.Equal(1, schemas.Rows.Count);
+
+                schemas = adbcConnection.GetSchema("Schemas", new[] { random });
+                Assert.Equal(0, schemas.Rows.Count);
+
+                schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, random });
+                Assert.Equal(0, schemas.Rows.Count);
+
+                schemas = adbcConnection.GetSchema("Schemas", new[] { random, random });
+                Assert.Equal(0, schemas.Rows.Count);
+
+                var tableTypes = adbcConnection.GetSchema("TableTypes");
+                Assert.Single(tableTypes.Columns);
+
+                var tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema });
+                Assert.Equal(4, tables.Columns.Count);
+
+                tables = adbcConnection.GetSchema("Tables", new[] { catalog, random });
+                Assert.Equal(0, tables.Rows.Count);
+
+                tables = adbcConnection.GetSchema("Tables", new[] { random, schema });
+                Assert.Equal(0, tables.Rows.Count);
+
+                tables = adbcConnection.GetSchema("Tables", new[] { random, random });
+                Assert.Equal(0, tables.Rows.Count);
+
+                tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema, random });
+                Assert.Equal(0, tables.Rows.Count);
+
+                var columns = adbcConnection.GetSchema("Columns", new[] { catalog, schema });
+                Assert.Equal(16, columns.Columns.Count);
+            }
+        }
+
+        private Adbc.Client.AdbcConnection GetAdbcConnection(bool includeTableConstraints = true)
+        {
+            _testConfiguration.IncludeTableConstraints = includeTableConstraints;
+
             return new Adbc.Client.AdbcConnection(
                 new BigQueryDriver(),
-                BigQueryTestingUtils.GetBigQueryParameters(testConfiguration),
+                BigQueryTestingUtils.GetBigQueryParameters(_testConfiguration),
                 new Dictionary<string,string>()
             );
         }

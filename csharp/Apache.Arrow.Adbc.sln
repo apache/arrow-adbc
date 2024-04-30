@@ -1,13 +1,8 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33403.182
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc", "src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj", "{232F2EC7-5FD3-4E0B-89FF-317A15CF698F}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Arrow", "Arrow", "{9ADA26E0-F328-4466-908A-2FA506DBDF7D}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow", "src\arrow\csharp\src\Apache.Arrow\Apache.Arrow.csproj", "{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests", "test\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj", "{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}"
 EndProject
@@ -25,11 +20,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Client", "Client", "{B61116
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Client", "src\Client\Apache.Arrow.Adbc.Client.csproj", "{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake", "test\Drivers\Snowflake\Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake.csproj", "{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Drivers.BigQuery", "src\Drivers\BigQuery\Apache.Arrow.Adbc.Drivers.BigQuery.csproj", "{A748041C-EF9A-4E88-B6FB-9F2D6CB79170}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.BigQuery", "test\Drivers\BigQuery\Apache.Arrow.Adbc.Tests.Drivers.BigQuery.csproj", "{EA43BB7C-BC00-4701-BDF4-367880C2495C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Drivers.Interop.Snowflake", "src\Drivers\Interop\Snowflake\Apache.Arrow.Adbc.Drivers.Interop.Snowflake.csproj", "{30024B6F-7BC1-4574-BE5A-924FBD6EAF83}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake", "test\Drivers\Interop\Snowflake\Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake.csproj", "{8BE1EECC-3ACF-41B2-AF7D-1A67196FF6C7}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Drivers.Apache", "src\Drivers\Apache\Apache.Arrow.Adbc.Drivers.Apache.csproj", "{6C0D8BE1-4A23-4C2F-88B1-D2FBEA0B1903}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.Apache", "test\Drivers\Apache\Apache.Arrow.Adbc.Tests.Drivers.Apache.csproj", "{714F0BD2-3A92-4D1A-8FAC-D0C0599BE3E3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,10 +42,6 @@ Global
 		{232F2EC7-5FD3-4E0B-89FF-317A15CF698F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{232F2EC7-5FD3-4E0B-89FF-317A15CF698F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{232F2EC7-5FD3-4E0B-89FF-317A15CF698F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -61,10 +58,6 @@ Global
 		{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A748041C-EF9A-4E88-B6FB-9F2D6CB79170}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A748041C-EF9A-4E88-B6FB-9F2D6CB79170}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A748041C-EF9A-4E88-B6FB-9F2D6CB79170}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -73,20 +66,38 @@ Global
 		{EA43BB7C-BC00-4701-BDF4-367880C2495C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EA43BB7C-BC00-4701-BDF4-367880C2495C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EA43BB7C-BC00-4701-BDF4-367880C2495C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30024B6F-7BC1-4574-BE5A-924FBD6EAF83}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30024B6F-7BC1-4574-BE5A-924FBD6EAF83}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30024B6F-7BC1-4574-BE5A-924FBD6EAF83}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30024B6F-7BC1-4574-BE5A-924FBD6EAF83}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8BE1EECC-3ACF-41B2-AF7D-1A67196FF6C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8BE1EECC-3ACF-41B2-AF7D-1A67196FF6C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8BE1EECC-3ACF-41B2-AF7D-1A67196FF6C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8BE1EECC-3ACF-41B2-AF7D-1A67196FF6C7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6C0D8BE1-4A23-4C2F-88B1-D2FBEA0B1903}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C0D8BE1-4A23-4C2F-88B1-D2FBEA0B1903}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C0D8BE1-4A23-4C2F-88B1-D2FBEA0B1903}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C0D8BE1-4A23-4C2F-88B1-D2FBEA0B1903}.Release|Any CPU.Build.0 = Release|Any CPU
+		{714F0BD2-3A92-4D1A-8FAC-D0C0599BE3E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{714F0BD2-3A92-4D1A-8FAC-D0C0599BE3E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{714F0BD2-3A92-4D1A-8FAC-D0C0599BE3E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{714F0BD2-3A92-4D1A-8FAC-D0C0599BE3E3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C} = {9ADA26E0-F328-4466-908A-2FA506DBDF7D}
 		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8} = {5BD04C26-CE52-4893-8C1A-479705195CEF}
 		{19AA450A-2F87-49BD-9122-8AD07D4C6DCE} = {FEB257A0-4FD3-495E-9A47-9E1649755445}
 		{C7290227-E925-47E7-8B6B-A8B171645D58} = {5BD04C26-CE52-4893-8C1A-479705195CEF}
 		{5C15E79C-19C4-4FF4-BB82-28754FE3966B} = {C7290227-E925-47E7-8B6B-A8B171645D58}
 		{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C} = {B6111602-2DC4-4B2F-9598-E3EE1972D3E4}
-		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156} = {C7290227-E925-47E7-8B6B-A8B171645D58}
 		{A748041C-EF9A-4E88-B6FB-9F2D6CB79170} = {FEB257A0-4FD3-495E-9A47-9E1649755445}
 		{EA43BB7C-BC00-4701-BDF4-367880C2495C} = {C7290227-E925-47E7-8B6B-A8B171645D58}
+		{30024B6F-7BC1-4574-BE5A-924FBD6EAF83} = {FEB257A0-4FD3-495E-9A47-9E1649755445}
+		{8BE1EECC-3ACF-41B2-AF7D-1A67196FF6C7} = {C7290227-E925-47E7-8B6B-A8B171645D58}
+		{6C0D8BE1-4A23-4C2F-88B1-D2FBEA0B1903} = {FEB257A0-4FD3-495E-9A47-9E1649755445}
+		{714F0BD2-3A92-4D1A-8FAC-D0C0599BE3E3} = {C7290227-E925-47E7-8B6B-A8B171645D58}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4795CF16-0FDB-4BE0-9768-5CF31564DC03}

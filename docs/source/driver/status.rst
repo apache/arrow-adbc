@@ -34,6 +34,11 @@ Implementation Status
      - Implementation Language
      - Status
 
+   * - BigQuery
+     - C#
+     - C#
+     - Experimental
+
    * - Flight SQL (Go)
      - C, Go
      - Go
@@ -62,11 +67,6 @@ Implementation Status
    * - Snowflake
      - C, Go
      - Go
-     - Experimental
-
-   * - BigQuery
-     - C#
-     - C#
      - Experimental
 
 .. [#supported-languages] C drivers are usable from Go, Python, and Ruby as well.
@@ -149,6 +149,7 @@ Update Queries
    :header-rows: 1
 
    * - Driver
+     - Incremental Queries
      - Partitioned Data
      - Parameterized Queries
      - Prepared Statements
@@ -161,8 +162,10 @@ Update Queries
      - Y
      - Y
      - Y
+     - Y
 
    * - Flight SQL (Java)
+     - N
      - Y
      - Y
      - Y
@@ -171,19 +174,22 @@ Update Queries
 
    * - JDBC
      - N/A
+     - N/A
      - Y
      - Y
      - Y
      - Y
 
    * - PostgreSQL
-     - Y
-     - Y
-     - Y
      - N/A
+     - N/A
+     - Y
+     - Y
+     - Y
      - Y
 
    * - SQLite
+     - N/A
      - N/A
      - Y
      - Y

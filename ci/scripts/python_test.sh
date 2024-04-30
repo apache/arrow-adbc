@@ -58,8 +58,8 @@ test_subproject() {
     fi
 
     echo "=== Testing ${subproject} ==="
-    echo env ${options[@]} python -m pytest -vv "${source_dir}/python/${subproject}/tests"
-    env ${options[@]} python -m pytest -vv "${source_dir}/python/${subproject}/tests"
+    echo env ${options[@]} python -m pytest -vvs --full-trace "${source_dir}/python/${subproject}/tests"
+    env ${options[@]} python -m pytest -vvs --full-trace "${source_dir}/python/${subproject}/tests"
     echo
 }
 

@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
+    <TargetFrameworks Condition="'$(IsWindows)'=='true'">net8.0;net472</TargetFrameworks>
+    <TargetFrameworks Condition="'$(TargetFrameworks)'==''">net8.0</TargetFrameworks>
+  </PropertyGroup>
+    <ItemGroup>
+      <None Remove="Resources\SnowflakeConstraints.sql" />
+      <None Remove="Resources\SnowflakeData.sql" />
+    </ItemGroup>
+    <ItemGroup>
+      <EmbeddedResource Include="Resources\SnowflakeConstraints.sql">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Resources\SnowflakeData.sql">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </EmbeddedResource>
+    </ItemGroup>
+    <ItemGroup>
+     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+     <PackageReference Include="xunit" Version="2.8.0" />
+     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.0">
+       <PrivateAssets>all</PrivateAssets>
+       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+     </PackageReference>
+     <PackageReference Include="Xunit.SkippableFact" Version="1.4.13" />
+   </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
+      <ProjectReference Include="..\..\..\..\src\Drivers\Interop\Snowflake\Apache.Arrow.Adbc.Drivers.Interop.Snowflake.csproj" />
+      <ProjectReference Include="..\..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+     <None Update="Resources\snowflakeconfig.json">
+       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+     </None>
+   </ItemGroup>
+ </Project>

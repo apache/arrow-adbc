@@ -31,8 +31,9 @@
 #include <adbc.h>
 #include <libpq-fe.h>
 
-#include "common/utils.h"
 #include "database.h"
+#include "driver/common/utils.h"
+#include "driver/framework/catalog.h"
 #include "error.h"
 #include "result_helper.h"
 
@@ -108,7 +109,7 @@ class PqGetObjectsHelper {
 
  private:
   AdbcStatusCode InitArrowArray() {
-    RAISE_ADBC(AdbcInitConnectionObjectsSchema(schema_, error_));
+    RAISE_ADBC(adbc::driver::AdbcInitConnectionObjectsSchema(schema_).ToAdbc(error_));
 
     CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(array_, schema_, &na_error_),
                     &na_error_, error_);
@@ -643,14 +644,14 @@ AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
 AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
     const uint32_t* info_codes, size_t info_codes_length, struct ArrowSchema* schema,
     struct ArrowArray* array, struct AdbcError* error) {
-  RAISE_ADBC(AdbcInitConnectionGetInfoSchema(info_codes, info_codes_length, schema, array,
-                                             error));
+  RAISE_ADBC(adbc::driver::AdbcInitConnectionGetInfoSchema(schema, array).ToAdbc(error));
 
   for (size_t i = 0; i < info_codes_length; i++) {
     switch (info_codes[i]) {
       case ADBC_INFO_VENDOR_NAME:
-        RAISE_ADBC(
-            AdbcConnectionGetInfoAppendString(array, info_codes[i], "PostgreSQL", error));
+        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(array, info_codes[i],
+                                                                   "PostgreSQL")
+                       .ToAdbc(error));
         break;
       case ADBC_INFO_VENDOR_VERSION: {
         const char* stmt = "SHOW server_version_num";
@@ -664,26 +665,31 @@ AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
         }
         const char* server_version_num = (*it)[0].data;
 
-        RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
-                                                     server_version_num, error));
+        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(array, info_codes[i],
+                                                                   server_version_num)
+                       .ToAdbc(error));
         break;
       }
       case ADBC_INFO_DRIVER_NAME:
-        RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
-                                                     "ADBC PostgreSQL Driver", error));
+        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(
+                       array, info_codes[i], "ADBC PostgreSQL Driver")
+                       .ToAdbc(error));
         break;
       case ADBC_INFO_DRIVER_VERSION:
         // TODO(lidavidm): fill in driver version
-        RAISE_ADBC(
-            AdbcConnectionGetInfoAppendString(array, info_codes[i], "(unknown)", error));
+        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(array, info_codes[i],
+                                                                   "(unknown)")
+                       .ToAdbc(error));
         break;
       case ADBC_INFO_DRIVER_ARROW_VERSION:
-        RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
-                                                     NANOARROW_VERSION, error));
+        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(array, info_codes[i],
+                                                                   NANOARROW_VERSION)
+                       .ToAdbc(error));
         break;
       case ADBC_INFO_DRIVER_ADBC_VERSION:
-        RAISE_ADBC(AdbcConnectionGetInfoAppendInt(array, info_codes[i],
-                                                  ADBC_VERSION_1_1_0, error));
+        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendInt(array, info_codes[i],
+                                                                ADBC_VERSION_1_1_0)
+                       .ToAdbc(error));
         break;
       default:
         // Ignore
@@ -932,7 +938,7 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
 
     for (PqResultRow row : result_helper) {
       auto reltuples = row[5].ParseDouble();
-      if (!reltuples.first) {
+      if (!reltuples) {
         SetError(error, "[libpq] Invalid double value in reltuples: '%s'", row[5].data);
         return ADBC_STATUS_INTERNAL;
       }
@@ -946,8 +952,7 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
         CHECK_NA(INTERNAL,
                  ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_ROW_COUNT_KEY),
                  error);
-        CHECK_NA(INTERNAL, ArrowArrayAppendDouble(value_float64_col, reltuples.second),
-                 error);
+        CHECK_NA(INTERNAL, ArrowArrayAppendDouble(value_float64_col, *reltuples), error);
         CHECK_NA(INTERNAL,
                  ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
                  error);
@@ -957,7 +962,7 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
       }
 
       auto null_frac = row[2].ParseDouble();
-      if (!null_frac.first) {
+      if (!null_frac) {
         SetError(error, "[libpq] Invalid double value in null_frac: '%s'", row[2].data);
         return ADBC_STATUS_INTERNAL;
       }
@@ -973,10 +978,8 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
       CHECK_NA(INTERNAL,
                ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_NULL_COUNT_KEY),
                error);
-      CHECK_NA(
-          INTERNAL,
-          ArrowArrayAppendDouble(value_float64_col, null_frac.second * reltuples.second),
-          error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendDouble(value_float64_col, *null_frac * *reltuples), error);
       CHECK_NA(INTERNAL,
                ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
                error);
@@ -984,7 +987,7 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_items), error);
 
       auto average_byte_width = row[3].ParseDouble();
-      if (!average_byte_width.first) {
+      if (!average_byte_width) {
         SetError(error, "[libpq] Invalid double value in avg_width: '%s'", row[3].data);
         return ADBC_STATUS_INTERNAL;
       }
@@ -1001,8 +1004,7 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
           INTERNAL,
           ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY),
           error);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendDouble(value_float64_col, average_byte_width.second),
+      CHECK_NA(INTERNAL, ArrowArrayAppendDouble(value_float64_col, *average_byte_width),
                error);
       CHECK_NA(INTERNAL,
                ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
@@ -1011,7 +1013,7 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_items), error);
 
       auto n_distinct = row[4].ParseDouble();
-      if (!n_distinct.first) {
+      if (!n_distinct) {
         SetError(error, "[libpq] Invalid double value in avg_width: '%s'", row[4].data);
         return ADBC_STATUS_INTERNAL;
       }
@@ -1031,13 +1033,11 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
       // > the column. If less than zero, the negative of the number of
       // > distinct values divided by the number of rows.
       // https://www.postgresql.org/docs/current/view-pg-stats.html
-      CHECK_NA(
-          INTERNAL,
-          ArrowArrayAppendDouble(value_float64_col,
-                                 n_distinct.second > 0
-                                     ? n_distinct.second
-                                     : (std::fabs(n_distinct.second) * reltuples.second)),
-          error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendDouble(
+                   value_float64_col,
+                   *n_distinct > 0 ? *n_distinct : (std::fabs(*n_distinct) * *reltuples)),
+               error);
       CHECK_NA(INTERNAL,
                ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
                error);
@@ -1137,8 +1137,6 @@ AdbcStatusCode PostgresConnection::GetStatisticNames(struct ArrowArrayStream* ou
     return status;
   }
   return BatchToArrayStream(&array, &schema, out, error);
-
-  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
@@ -1147,38 +1145,23 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
                                                   struct ArrowSchema* schema,
                                                   struct AdbcError* error) {
   AdbcStatusCode final_status = ADBC_STATUS_OK;
-  struct StringBuilder query;
-  std::memset(&query, 0, sizeof(query));
+
+  std::string query =
+      "SELECT attname, atttypid "
+      "FROM pg_catalog.pg_class AS cls "
+      "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
+      "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
+      "WHERE attr.attnum >= 0 AND cls.oid = $1::regclass::oid";
+
   std::vector<std::string> params;
-  if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
-
-  if (StringBuilderAppend(
-          &query, "%s",
-          "SELECT attname, atttypid "
-          "FROM pg_catalog.pg_class AS cls "
-          "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
-          "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
-          "WHERE attr.attnum >= 0 AND cls.oid = ") != 0)
-    return ADBC_STATUS_INTERNAL;
-
   if (db_schema != nullptr) {
-    if (StringBuilderAppend(&query, "%s", "$1.")) {
-      StringBuilderReset(&query);
-      return ADBC_STATUS_INTERNAL;
-    }
-    params.push_back(db_schema);
+    params.push_back(std::string(db_schema) + "." + table_name);
+  } else {
+    params.push_back(table_name);
   }
-
-  if (StringBuilderAppend(&query, "%s%" PRIu64 "%s", "$",
-                          static_cast<uint64_t>(params.size() + 1), "::regclass::oid")) {
-    StringBuilderReset(&query);
-    return ADBC_STATUS_INTERNAL;
-  }
-  params.push_back(table_name);
 
   PqResultHelper result_helper =
-      PqResultHelper{conn_, std::string(query.buffer), params, error};
-  StringBuilderReset(&query);
+      PqResultHelper{conn_, std::string(query.c_str()), params, error};
 
   RAISE_ADBC(result_helper.Prepare());
   auto result = result_helper.Execute();

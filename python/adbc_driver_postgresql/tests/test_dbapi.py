@@ -15,9 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from pathlib import Path
 from typing import Generator
 
 import pyarrow
+import pyarrow.dataset
 import pytest
 
 from adbc_driver_postgresql import StatementOptions, dbapi
@@ -209,6 +211,60 @@ def test_stmt_ingest(postgres: dbapi.Connection) -> None:
         cur.execute("DROP TABLE IF EXISTS test_ingest")
 
         cur.adbc_ingest("test_ingest", table, mode="create")
+        cur.execute("SELECT * FROM test_ingest ORDER BY ints")
+        assert cur.fetch_arrow_table() == table
+
+
+def test_stmt_ingest_dataset(postgres: dbapi.Connection, tmp_path: Path) -> None:
+    # Regression test for https://github.com/apache/arrow-adbc/issues/1310
+    table = pyarrow.table(
+        [
+            [1, 1, 2, 2, 3, 3],
+            ["a", "a", None, None, "b", "b"],
+        ],
+        schema=pyarrow.schema([("ints", "int32"), ("strs", "string")]),
+    )
+    pyarrow.dataset.write_dataset(
+        table, tmp_path, format="parquet", partitioning=["ints"]
+    )
+    ds = pyarrow.dataset.dataset(tmp_path, format="parquet", partitioning=["ints"])
+
+    with postgres.cursor() as cur:
+        for item in (
+            lambda: ds,
+            lambda: ds.scanner(),
+            lambda: ds.scanner().to_reader(),
+            lambda: ds.scanner().to_table(),
+        ):
+            cur.execute("DROP TABLE IF EXISTS test_ingest")
+
+            cur.adbc_ingest(
+                "test_ingest",
+                item(),
+                mode="create_append",
+            )
+            cur.execute("SELECT ints, strs FROM test_ingest ORDER BY ints")
+            assert cur.fetch_arrow_table() == table
+
+
+def test_stmt_ingest_multi(postgres: dbapi.Connection) -> None:
+    # Regression test for https://github.com/apache/arrow-adbc/issues/1310
+    table = pyarrow.table(
+        [
+            [1, 1, 2, 2, 3, 3],
+            ["a", "a", None, None, "b", "b"],
+        ],
+        names=["ints", "strs"],
+    )
+
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_ingest")
+
+        cur.adbc_ingest(
+            "test_ingest",
+            table.to_batches(max_chunksize=2),
+            mode="create_append",
+        )
         cur.execute("SELECT * FROM test_ingest ORDER BY ints")
         assert cur.fetch_arrow_table() == table
 

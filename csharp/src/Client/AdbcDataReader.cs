@@ -36,14 +36,15 @@ namespace Apache.Arrow.Adbc.Client
     public sealed class AdbcDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         private readonly AdbcCommand adbcCommand;
+        private readonly bool closeConnection;
         private QueryResult adbcQueryResult;
         private RecordBatch recordBatch;
         private int currentRowInRecordBatch;
         private Schema schema = null;
         private bool isClosed;
-        private int recordsEffected = -1;
+        private int recordsAffected = -1;
 
-        internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior)
+        internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior, bool closeConnection)
         {
             if (adbcCommand == null)
                 throw new ArgumentNullException(nameof(adbcCommand));
@@ -58,6 +59,7 @@ namespace Apache.Arrow.Adbc.Client
             if (this.schema == null)
                 throw new ArgumentException("A Schema must be set for the AdbcQueryResult.Stream property");
 
+            this.closeConnection = closeConnection;
             this.isClosed = false;
             this.DecimalBehavior = decimalBehavior;
         }
@@ -81,7 +83,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public DecimalBehavior DecimalBehavior { get; set; }
 
-        public override int RecordsAffected => this.recordsEffected;
+        public override int RecordsAffected => this.recordsAffected;
 
         /// <summary>
         /// The total number of record batches in the result.
@@ -90,7 +92,10 @@ namespace Apache.Arrow.Adbc.Client
 
         public override void Close()
         {
-            this.adbcCommand?.Connection?.Close();
+            if (this.closeConnection)
+            {
+                this.adbcCommand?.Connection?.Close();
+            }
             this.adbcQueryResult = null;
             this.isClosed = true;
         }
@@ -217,7 +222,7 @@ namespace Apache.Arrow.Adbc.Client
             if (value == null)
                 return null;
 
-            if(value is SqlDecimal dValue)
+            if (value is SqlDecimal dValue)
             {
                 if (this.DecimalBehavior == DecimalBehavior.UseSqlDecimal)
                 {
@@ -317,7 +322,7 @@ namespace Apache.Arrow.Adbc.Client
                 {
                     Type t = SchemaConverter.ConvertArrowType(f, this.DecimalBehavior);
 
-                    if(f.HasMetadata &&
+                    if (f.HasMetadata &&
                        f.Metadata.ContainsKey("precision") &&
                        f.Metadata.ContainsKey("scale"))
                     {
@@ -347,7 +352,7 @@ namespace Apache.Arrow.Adbc.Client
         public object GetValue(IArrowArray arrowArray, int ordinal)
         {
             Field field = this.schema.GetFieldByIndex(ordinal);
-            return this.adbcCommand.AdbcStatement.GetValue(arrowArray, field, this.currentRowInRecordBatch);
+            return this.adbcCommand.AdbcStatement.GetValue(arrowArray, this.currentRowInRecordBatch);
         }
 
         /// <summary>
@@ -361,7 +366,7 @@ namespace Apache.Arrow.Adbc.Client
 
             RecordBatch recordBatch = this.adbcQueryResult.Stream.ReadNextRecordBatchAsync(cancellationToken).Result;
 
-            if( recordBatch != null )
+            if (recordBatch != null)
             {
                 this.TotalBatches += 1;
             }

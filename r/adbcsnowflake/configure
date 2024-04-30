@@ -24,6 +24,16 @@ RSCRIPT_BIN="$R_HOME/bin/Rscript"
 # the downloaded file.
 DOWNLOAD_DEPENDENCY_ARCHIVE="false"
 
+# CRAN checks CPU time to enforce ~2 cores for building. Set GOMAXPROCS to 1
+# when building on CRAN to be safe.
+if [ ! "$DOWNLOAD_DEPENDENCY_ARCHIVE" = "false" ] && [ -z "$GOMAXPROCS" ]; then
+  echo "Using GOMAXPROCS=1 for go build"
+  echo "Set GOMAXPROCS to a higher value in ~/.Renviron for a faster build"
+  GOMAXPROCS=1
+elif [ ! -z "$GOMAXPROCS" ]; then
+  echo "Using GOMAXPROCS=$GOMAXPROCS for go build"
+fi
+
 # Run bootstrap.R. This will have already run if we are installing a source
 # package built with pkgbuild::build() with pkgbuild >1.4.0; however, we
 # run it again in case this is R CMD INSTALL on a directory or
@@ -62,8 +72,13 @@ if [ -f tools/src-go-adbc-vendor.zip ]; then
     cd ..
     "$RSCRIPT_BIN" tools/extract-go-vendor-archive.R
   else
-    echo "Checksum verification failed for vendored dependency archive"
-    exit 1
+    cd ..
+    if "$RSCRIPT_BIN" tools/verify-go-vendor-archive.R ; then
+      "$RSCRIPT_BIN" tools/extract-go-vendor-archive.R
+    else
+      echo "Checksum verification failed for vendored dependency archive"
+      exit 1
+    fi
   fi
 fi
 
@@ -120,12 +135,8 @@ fi
 CC=`"$R_BIN" CMD config CC`
 CXX=`"$R_BIN" CMD config CXX`
 
-# clang and gcc use different symbol-hiding syntax and we need to
-# make sure to hide any Adbc* symbols that might conflict with another
-# driver.
-if "$R_BIN" CMD config CC | grep -e "clang" >/dev/null ; then
-  SYMBOL_ARGS="-Wl,-exported_symbol,_adbcsnowflake_c_snowflake -Wl,-exported_symbol,_R_init_adbcsnowflake"
-elif "$R_BIN" CMD config CC | grep -e "gcc" >/dev/null ; then
+# Attempt to hide symbols where possible
+if "$R_BIN" CMD config CC | grep -e "gcc" >/dev/null ; then
   SYMBOL_ARGS="-Wl,--version-script=go/symbols.map"
 fi
 
@@ -148,6 +159,7 @@ sed \
   -e "s|@cflags@|$PKG_CPPFLAGS|" \
   -e "s|@cc@|$CC|" \
   -e "s|@cxx@|$CXX|" \
+  -e "s|@nproc@|$GOMAXPROCS|" \
   src/Makevars.in > src/Makevars
 
 if [ -f "src/go/adbc/pkg/snowflake/driver.go" ]; then

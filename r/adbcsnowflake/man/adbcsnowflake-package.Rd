@@ -12,6 +12,7 @@ Provides a developer-facing interface to the 'Arrow' Database Connectivity ('ADB
 Useful links:
 \itemize{
   \item \url{https://github.com/apache/arrow-adbc}
+  \item \url{https://arrow.apache.org/adbc/current/r/adbcsnowflake/}
   \item Report bugs at \url{https://github.com/apache/arrow-adbc/issues}
 }
 

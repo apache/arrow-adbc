@@ -47,15 +47,23 @@ main() {
     fi
 
     local -r regex='^([0-9]+\.[0-9]+\.[0-9]+)$'
+    local directory="main"
     if [[ "${new_version}" =~ $regex ]]; then
         cp -r "${docs}" "${site}/${new_version}"
         git -C "${site}" add --force "${new_version}"
+        directory="${new_version}"
     else
         # Assume this is dev docs
         rm -rf "${site}/main"
         cp -r "${docs}" "${site}/main"
         git -C "${site}" add --force "main"
+        directory="main"
     fi
+
+    # Fix up lazy Intersphinx links (see docs_build.sh)
+    # Assumes GNU sed
+    sed -i "s|http://javadocs.home.arpa/|https://arrow.apache.org/adbc/${directory}/|g" $(grep -Rl javadocs.home.arpa "${site}/${directory}/")
+    git -C "${site}" add --force "${directory}"
 
     # Copy the version script and regenerate the version list
     # The versions get embedded into the JavaScript file to save a roundtrip

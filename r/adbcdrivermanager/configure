@@ -39,6 +39,8 @@ curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver_manager/adbc_driv
   --output src/adbc_driver_manager.h --silent
 curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver_manager/adbc_driver_manager.cc \
   --output src/adbc_driver_manager.cc --silent
+curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver/common/driver_base.h \
+  --output src/driver_base.h --silent
 
 if [ -f "src/adbc.h" ] && [ -f "src/adbc_driver_manager.h" ] && [ -f "src/adbc_driver_manager.cc" ]; then
   echo "Fetched ADBC from https://github.com/apache/arrow-adbc"

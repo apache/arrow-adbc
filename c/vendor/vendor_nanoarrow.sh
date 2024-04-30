@@ -20,7 +20,8 @@
 
 main() {
     local -r repo_url="https://github.com/apache/arrow-nanoarrow"
-    local -r commit_sha=$(git ls-remote "$repo_url" HEAD | awk '{print $2}')
+    # Check releases page: https://github.com/apache/arrow-nanoarrow/releases/
+    local -r commit_sha=3f83f4c48959f7a51053074672b7a330888385b1
 
     echo "Fetching $commit_sha from $repo_url"
     SCRATCH=$(mktemp -d)
@@ -38,7 +39,9 @@ main() {
     # resulting bundle is perfectly synchronized with the commit we've pulled.
     pushd "$SCRATCH"
     mkdir build && cd build
-    cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=AdbcNs
+    # Do not use "adbc" in the namespace name since our scripts expose all
+    # such symbols
+    cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=Private
     cmake --build .
     cmake --install . --prefix=../dist-adbc
     popd

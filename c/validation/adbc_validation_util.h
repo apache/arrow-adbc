@@ -37,12 +37,25 @@
 namespace adbc_validation {
 
 // ------------------------------------------------------------
+// ADBC helpers
+
+std::optional<std::string> ConnectionGetOption(struct AdbcConnection* connection,
+                                               std::string_view option,
+                                               struct AdbcError* error);
+
+// ------------------------------------------------------------
 // Helpers to print values
 
 std::string StatusCodeToString(AdbcStatusCode code);
 std::string ToString(struct AdbcError* error);
 std::string ToString(struct ArrowError* error);
 std::string ToString(struct ArrowArrayStream* stream);
+
+// ------------------------------------------------------------
+// Nanoarrow helpers
+
+#define NULLABLE true
+#define NOT_NULL false
 
 // ------------------------------------------------------------
 // Helper to manage C Data Interface/Nanoarrow resources with RAII
@@ -122,6 +135,13 @@ struct Handle {
 
 // ------------------------------------------------------------
 // GTest/GMock helpers
+
+#define CHECK_OK(EXPR)                                              \
+  do {                                                              \
+    if (auto adbc_status = (EXPR); adbc_status != ADBC_STATUS_OK) { \
+      return adbc_status;                                           \
+    }                                                               \
+  } while (false)
 
 /// \brief A GTest matcher for Nanoarrow/C Data Interface error codes.
 class IsErrno {
@@ -212,12 +232,8 @@ struct GetObjectsReader {
   }
   ~GetObjectsReader() { AdbcGetObjectsDataDelete(get_objects_data_); }
 
-  struct AdbcGetObjectsData* operator*() {
-    return get_objects_data_;
-  }
-  struct AdbcGetObjectsData* operator->() {
-    return get_objects_data_;
-  }
+  struct AdbcGetObjectsData* operator*() { return get_objects_data_; }
+  struct AdbcGetObjectsData* operator->() { return get_objects_data_; }
 
  private:
   struct AdbcGetObjectsData* get_objects_data_;
@@ -281,6 +297,10 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
         }
       } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
         if (int errno_res = ArrowArrayAppendInterval(array, *v); errno_res != 0) {
+          return errno_res;
+        }
+      } else if constexpr (std::is_same<T, ArrowDecimal*>::value) {
+        if (int errno_res = ArrowArrayAppendDecimal(array, *v); errno_res != 0) {
           return errno_res;
         }
       } else {

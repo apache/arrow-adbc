@@ -29,8 +29,9 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import org.apache.arrow.adbc.core.AdbcConnection;
+import org.apache.arrow.adbc.core.AdbcException;
+import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.StandardSchemas;
-import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.IntVector;
@@ -43,6 +44,7 @@ import org.apache.arrow.vector.complex.impl.UnionListWriter;
 import org.apache.arrow.vector.complex.writer.BaseWriter.ListWriter;
 import org.apache.arrow.vector.complex.writer.BaseWriter.StructWriter;
 import org.apache.arrow.vector.complex.writer.VarCharWriter;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Helper class to track state needed to build up the object metadata structure. */
 final class ObjectMetadataBuilder implements AutoCloseable {
@@ -139,11 +141,19 @@ final class ObjectMetadataBuilder implements AutoCloseable {
         this.constraintColumnUsageStructWriter.varChar("fk_column_name");
   }
 
-  VectorSchemaRoot build() throws SQLException {
+  VectorSchemaRoot build() throws AdbcException, SQLException {
     try (final ResultSet rs = dbmd.getCatalogs()) {
       int catalogCount = 0;
       while (rs.next()) {
         final String catalogName = rs.getString(1);
+        if (catalogName == null) {
+          throw new AdbcException(
+              JdbcDriverUtil.prefixExceptionMessage("JDBC driver returned null catalog name"),
+              null,
+              AdbcStatusCode.INVALID_DATA,
+              null,
+              0);
+        }
         if (!catalogPattern.test(catalogName)) continue;
         addCatalogRow(catalogCount, catalogName);
         catalogCount++;
@@ -156,11 +166,16 @@ final class ObjectMetadataBuilder implements AutoCloseable {
       root.setRowCount(catalogCount);
     }
     VectorSchemaRoot result = root;
-    root = null;
+    try {
+      root = VectorSchemaRoot.create(StandardSchemas.GET_OBJECTS_SCHEMA, allocator);
+    } catch (RuntimeException e) {
+      result.close();
+      throw e;
+    }
     return result;
   }
 
-  private void addCatalogRow(int rowIndex, String catalogName) throws SQLException {
+  private void addCatalogRow(int rowIndex, String catalogName) throws AdbcException, SQLException {
     catalogNames.setSafe(rowIndex, catalogName.getBytes(StandardCharsets.UTF_8));
     if (depth == AdbcConnection.GetObjectsDepth.CATALOGS) {
       catalogDbSchemas.setNull(rowIndex);
@@ -171,12 +186,20 @@ final class ObjectMetadataBuilder implements AutoCloseable {
     }
   }
 
-  private int buildDbSchemas(int rowIndex, String catalogName) throws SQLException {
+  private int buildDbSchemas(int rowIndex, String catalogName) throws AdbcException, SQLException {
     int dbSchemaCount = 0;
     // TODO: get tables with no schema
     try (final ResultSet rs = dbmd.getSchemas(catalogName, dbSchemaPattern)) {
       while (rs.next()) {
         final String dbSchemaName = rs.getString(1);
+        if (dbSchemaName == null) {
+          throw new AdbcException(
+              JdbcDriverUtil.prefixExceptionMessage("JDBC driver returned null schema name"),
+              null,
+              AdbcStatusCode.INVALID_DATA,
+              null,
+              0);
+        }
         addDbSchemaRow(rowIndex + dbSchemaCount, catalogName, dbSchemaName);
         dbSchemaCount++;
       }
@@ -185,7 +208,7 @@ final class ObjectMetadataBuilder implements AutoCloseable {
   }
 
   private void addDbSchemaRow(int rowIndex, String catalogName, String dbSchemaName)
-      throws SQLException {
+      throws AdbcException, SQLException {
     dbSchemas.setIndexDefined(rowIndex);
     dbSchemaNames.setSafe(rowIndex, dbSchemaName.getBytes(StandardCharsets.UTF_8));
     if (depth == AdbcConnection.GetObjectsDepth.DB_SCHEMAS) {
@@ -198,14 +221,23 @@ final class ObjectMetadataBuilder implements AutoCloseable {
   }
 
   private int buildTables(int rowIndex, String catalogName, String dbSchemaName)
-      throws SQLException {
+      throws AdbcException, SQLException {
     int tableCount = 0;
     try (final ResultSet rs =
         dbmd.getTables(catalogName, dbSchemaName, tableNamePattern, tableTypesFilter)) {
 
       while (rs.next()) {
-        final String tableName = rs.getString(3);
-        final String tableType = rs.getString(4);
+        final @Nullable String tableName = rs.getString(3);
+        final @Nullable String tableType = rs.getString(4);
+        if (tableName == null || tableType == null) {
+          throw new AdbcException(
+              JdbcDriverUtil.prefixExceptionMessage("JDBC driver returned null table name/type"),
+              null,
+              AdbcStatusCode.INTERNAL,
+              null,
+              0);
+        }
+
         tables.setIndexDefined(rowIndex + tableCount);
         tableNames.setSafe(rowIndex + tableCount, tableName.getBytes(StandardCharsets.UTF_8));
         tableTypes.setSafe(rowIndex + tableCount, tableType.getBytes(StandardCharsets.UTF_8));
@@ -216,7 +248,7 @@ final class ObjectMetadataBuilder implements AutoCloseable {
         // 1. Primary keys
         try (final ResultSet pk = dbmd.getPrimaryKeys(catalogName, dbSchemaName, tableName)) {
           String constraintName = null;
-          List<String> constraintColumns = new ArrayList<>();
+          List<@Nullable String> constraintColumns = new ArrayList<>();
           while (pk.next()) {
             constraintName = pk.getString(6);
             String columnName = pk.getString(4);
@@ -232,8 +264,8 @@ final class ObjectMetadataBuilder implements AutoCloseable {
 
         // 2. Foreign keys ("imported" keys)
         try (final ResultSet fk = dbmd.getImportedKeys(catalogName, dbSchemaName, tableName)) {
-          List<String> names = new ArrayList<>();
-          List<List<String>> columns = new ArrayList<>();
+          List<@Nullable String> names = new ArrayList<>();
+          List<List<@Nullable String>> columns = new ArrayList<>();
           List<List<ReferencedColumn>> references = new ArrayList<>();
           while (fk.next()) {
             String keyName = fk.getString(12);
@@ -245,11 +277,19 @@ final class ObjectMetadataBuilder implements AutoCloseable {
               references.add(new ArrayList<>());
             }
             columns.get(columns.size() - 1).add(keyColumn);
-            final ReferencedColumn reference = new ReferencedColumn();
-            reference.catalog = fk.getString(1);
-            reference.dbSchema = fk.getString(2);
-            reference.table = fk.getString(3);
-            reference.column = fk.getString(4);
+            final @Nullable String fkTableName = fk.getString(3);
+            final @Nullable String fkColumnName = fk.getString(4);
+            if (fkTableName == null || fkColumnName == null) {
+              throw new AdbcException(
+                  JdbcDriverUtil.prefixExceptionMessage(
+                      "JDBC driver returned null table/column name"),
+                  null,
+                  AdbcStatusCode.INTERNAL,
+                  null,
+                  0);
+            }
+            final ReferencedColumn reference =
+                new ReferencedColumn(fk.getString(1), fk.getString(2), fkTableName, fkColumnName);
             references.get(references.size() - 1).add(reference);
           }
 
@@ -261,16 +301,26 @@ final class ObjectMetadataBuilder implements AutoCloseable {
         // 3. UNIQUE constraints
         try (final ResultSet uq =
             dbmd.getIndexInfo(catalogName, dbSchemaName, tableName, true, false)) {
-          Map<String, ArrayList<String>> uniqueConstraints = new HashMap<>();
+          Map<String, ArrayList<@Nullable String>> uniqueConstraints = new HashMap<>();
           while (uq.next()) {
-            String constraintName = uq.getString(6);
-            String columnName = uq.getString(9);
+            @Nullable String constraintName = uq.getString(6);
+            @Nullable String columnName = uq.getString(9);
             int columnIndex = uq.getInt(8);
+
+            if (constraintName == null || columnName == null) {
+              throw new AdbcException(
+                  JdbcDriverUtil.prefixExceptionMessage(
+                      "JDBC driver returned null constraint/column name"),
+                  null,
+                  AdbcStatusCode.INTERNAL,
+                  null,
+                  0);
+            }
 
             if (!uniqueConstraints.containsKey(constraintName)) {
               uniqueConstraints.put(constraintName, new ArrayList<>());
             }
-            ArrayList<String> uniqueColumns = uniqueConstraints.get(constraintName);
+            ArrayList<@Nullable String> uniqueColumns = uniqueConstraints.get(constraintName);
             while (uniqueColumns.size() < columnIndex) uniqueColumns.add(null);
             uniqueColumns.set(columnIndex - 1, columnName);
           }
@@ -299,14 +349,22 @@ final class ObjectMetadataBuilder implements AutoCloseable {
   }
 
   private int buildColumns(int rowIndex, String catalogName, String dbSchemaName, String tableName)
-      throws SQLException {
+      throws AdbcException, SQLException {
     int columnCount = 0;
     try (final ResultSet rs =
         dbmd.getColumns(catalogName, dbSchemaName, tableName, columnNamePattern)) {
       while (rs.next()) {
-        final String columnName = rs.getString(4);
+        final @Nullable String columnName = rs.getString(4);
+        if (columnName == null) {
+          throw new AdbcException(
+              JdbcDriverUtil.prefixExceptionMessage("JDBC driver returned null column name"),
+              null,
+              AdbcStatusCode.INTERNAL,
+              null,
+              0);
+        }
         final int ordinalPosition = rs.getInt(17);
-        final String remarks = rs.getString(12);
+        final @Nullable String remarks = rs.getString(12);
         final int xdbcDataType = rs.getInt(5);
         // TODO: other JDBC metadata
 
@@ -324,27 +382,28 @@ final class ObjectMetadataBuilder implements AutoCloseable {
     return columnCount;
   }
 
-  private void writeVarChar(VarCharWriter writer, String value) {
-    byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
-    try (ArrowBuf tempBuf = allocator.buffer(bytes.length)) {
-      tempBuf.setBytes(0, bytes, 0, bytes.length);
-      writer.writeVarChar(0, bytes.length, tempBuf);
-    }
-  }
-
   private void addConstraint(
-      String constraintName,
+      @Nullable String constraintName,
       String constraintType,
-      List<String> constraintColumns,
+      List<@Nullable String> constraintColumns,
       List<ReferencedColumn> referencedColumns) {
     tableConstraintsStructWriter.start();
 
-    writeVarChar(this.constraintNamesWriter, constraintName);
-    writeVarChar(this.constraintTypesWriter, constraintType);
+    if (constraintName == null) {
+      this.constraintNamesWriter.writeNull();
+    } else {
+      this.constraintNamesWriter.writeVarChar(constraintName);
+    }
+    this.constraintTypesWriter.writeVarChar(constraintType);
 
     constraintColumnNamesWriter.startList();
-    for (final String constraintColumn : constraintColumns) {
-      writeVarChar(constraintColumnNamesWriter.varChar(), constraintColumn);
+    for (final @Nullable String constraintColumn : constraintColumns) {
+      VarCharWriter writer = constraintColumnNamesWriter.varChar();
+      if (constraintColumn == null) {
+        writer.writeNull();
+      } else {
+        writer.writeVarChar(constraintColumn);
+      }
     }
     constraintColumnNamesWriter.endList();
 
@@ -352,11 +411,17 @@ final class ObjectMetadataBuilder implements AutoCloseable {
     for (ReferencedColumn referencedColumn : referencedColumns) {
       constraintColumnUsageStructWriter.start();
       if (referencedColumn.catalog != null) {
-        writeVarChar(constraintColumnUsageFkCatalogsWriter, referencedColumn.catalog);
+        constraintColumnUsageFkCatalogsWriter.writeVarChar(referencedColumn.catalog);
+      } else {
+        constraintColumnUsageFkCatalogsWriter.writeNull();
       }
-      writeVarChar(constraintColumnUsageFkDbSchemasWriter, referencedColumn.dbSchema);
-      writeVarChar(constraintColumnUsageFkTablesWriter, referencedColumn.table);
-      writeVarChar(constraintColumnUsageFkColumnsWriter, referencedColumn.column);
+      if (referencedColumn.dbSchema != null) {
+        constraintColumnUsageFkDbSchemasWriter.writeVarChar(referencedColumn.dbSchema);
+      } else {
+        constraintColumnUsageFkDbSchemasWriter.writeNull();
+      }
+      constraintColumnUsageFkTablesWriter.writeVarChar(referencedColumn.table);
+      constraintColumnUsageFkColumnsWriter.writeVarChar(referencedColumn.column);
       constraintColumnUsageStructWriter.end();
     }
     constraintColumnUsageWriter.endList();
@@ -370,7 +435,7 @@ final class ObjectMetadataBuilder implements AutoCloseable {
   }
 
   /** Turn a SQL-style pattern (%, _) to a regex. */
-  String translatePattern(String filter) {
+  static String translatePattern(String filter) {
     StringBuilder builder = new StringBuilder(filter.length());
     builder.append("^");
     for (char c : filter.toCharArray()) {
@@ -387,9 +452,26 @@ final class ObjectMetadataBuilder implements AutoCloseable {
   }
 
   static class ReferencedColumn {
-    String catalog;
-    String dbSchema;
+    @Nullable String catalog;
+    @Nullable String dbSchema;
     String table;
     String column;
+
+    public ReferencedColumn(
+        @Nullable String catalog, @Nullable String dbSchema, String table, String column)
+        throws AdbcException {
+      this.catalog = catalog;
+      this.dbSchema = dbSchema;
+      if (table == null || column == null) {
+        throw new AdbcException(
+            JdbcDriverUtil.prefixExceptionMessage("JDBC driver returned null table/column name"),
+            null,
+            AdbcStatusCode.INTERNAL,
+            null,
+            0);
+      }
+      this.table = table;
+      this.column = column;
+    }
   }
 }

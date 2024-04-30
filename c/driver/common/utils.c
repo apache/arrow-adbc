@@ -238,6 +238,7 @@ struct SingleBatchArrayStream {
   struct ArrowArray batch;
 };
 static const char* SingleBatchArrayStreamGetLastError(struct ArrowArrayStream* stream) {
+  (void)stream;
   return NULL;
 }
 static int SingleBatchArrayStreamGetNext(struct ArrowArrayStream* stream,
@@ -309,7 +310,7 @@ int StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
 }
 int StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
   va_list argptr;
-  int bytes_available = builder->capacity - builder->size;
+  int bytes_available = (int)builder->capacity - (int)builder->size;
 
   va_start(argptr, fmt);
   int n = vsnprintf(builder->buffer + builder->size, bytes_available, fmt, argptr);
@@ -344,9 +345,7 @@ void StringBuilderReset(struct StringBuilder* builder) {
   memset(builder, 0, sizeof(*builder));
 }
 
-AdbcStatusCode AdbcInitConnectionGetInfoSchema(const uint32_t* info_codes,
-                                               size_t info_codes_length,
-                                               struct ArrowSchema* schema,
+AdbcStatusCode AdbcInitConnectionGetInfoSchema(struct ArrowSchema* schema,
                                                struct ArrowArray* array,
                                                struct AdbcError* error) {
   // TODO: use C equivalent of UniqueSchema to avoid incomplete schema
@@ -796,29 +795,29 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
 
                 column->column_name = ArrowArrayViewGetStringUnsafe(
                     get_objects_data->column_name_array, column_index);
-                column->ordinal_position = ArrowArrayViewGetIntUnsafe(
+                column->ordinal_position = (int32_t)ArrowArrayViewGetIntUnsafe(
                     get_objects_data->column_position_array, column_index);
                 column->remarks = ArrowArrayViewGetStringUnsafe(
                     get_objects_data->column_remarks_array, column_index);
-                column->xdbc_data_type = ArrowArrayViewGetIntUnsafe(
+                column->xdbc_data_type = (int16_t)ArrowArrayViewGetIntUnsafe(
                     get_objects_data->xdbc_data_type_array, column_index);
                 column->xdbc_type_name = ArrowArrayViewGetStringUnsafe(
                     get_objects_data->xdbc_type_name_array, column_index);
-                column->xdbc_column_size = ArrowArrayViewGetIntUnsafe(
+                column->xdbc_column_size = (int32_t)ArrowArrayViewGetIntUnsafe(
                     get_objects_data->xdbc_column_size_array, column_index);
-                column->xdbc_decimal_digits = ArrowArrayViewGetIntUnsafe(
+                column->xdbc_decimal_digits = (int16_t)ArrowArrayViewGetIntUnsafe(
                     get_objects_data->xdbc_decimal_digits_array, column_index);
-                column->xdbc_num_prec_radix = ArrowArrayViewGetIntUnsafe(
+                column->xdbc_num_prec_radix = (int16_t)ArrowArrayViewGetIntUnsafe(
                     get_objects_data->xdbc_num_prec_radix_array, column_index);
-                column->xdbc_nullable = ArrowArrayViewGetIntUnsafe(
+                column->xdbc_nullable = (int16_t)ArrowArrayViewGetIntUnsafe(
                     get_objects_data->xdbc_nullable_array, column_index);
                 column->xdbc_column_def = ArrowArrayViewGetStringUnsafe(
                     get_objects_data->xdbc_column_def_array, column_index);
-                column->xdbc_sql_data_type = ArrowArrayViewGetIntUnsafe(
+                column->xdbc_sql_data_type = (int16_t)ArrowArrayViewGetIntUnsafe(
                     get_objects_data->xdbc_sql_data_type_array, column_index);
-                column->xdbc_datetime_sub = ArrowArrayViewGetIntUnsafe(
+                column->xdbc_datetime_sub = (int16_t)ArrowArrayViewGetIntUnsafe(
                     get_objects_data->xdbc_datetime_sub_array, column_index);
-                column->xdbc_char_octet_length = ArrowArrayViewGetIntUnsafe(
+                column->xdbc_char_octet_length = (int32_t)ArrowArrayViewGetIntUnsafe(
                     get_objects_data->xdbc_char_octet_length_array, column_index);
                 column->xdbc_scope_catalog = ArrowArrayViewGetStringUnsafe(
                     get_objects_data->xdbc_scope_catalog_array, column_index);

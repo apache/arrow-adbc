@@ -16,6 +16,8 @@
 # under the License.
 
 import re
+import threading
+import time
 
 import google.protobuf.any_pb2 as any_pb2
 import google.protobuf.wrappers_pb2 as wrappers_pb2
@@ -45,6 +47,24 @@ def test_query_cancel(test_dbapi):
             cur.fetchone()
 
 
+def test_query_cancel_async(test_dbapi):
+    with test_dbapi.cursor() as cur:
+        cur.execute("forever")
+
+        def _cancel():
+            time.sleep(2)
+            cur.adbc_cancel()
+
+        t = threading.Thread(target=_cancel, daemon=True)
+        t.start()
+
+        with pytest.raises(
+            test_dbapi.OperationalError,
+            match=re.escape("CANCELLED: [FlightSQL] context canceled"),
+        ):
+            cur.fetchone()
+
+
 def test_query_error_fetch(test_dbapi):
     with test_dbapi.cursor() as cur:
         cur.execute("error_do_get")
@@ -62,6 +82,21 @@ def test_query_error_fetch(test_dbapi):
         ) as excval:
             cur.fetch_arrow_table()
         assert_detail(excval.value)
+
+
+@pytest.mark.xfail(reason="apache/arrow-adbc#1576")
+def test_query_error_vendor_code(test_dbapi):
+    with test_dbapi.cursor() as cur:
+        cur.execute("error_do_get")
+        with pytest.raises(
+            test_dbapi.ProgrammingError,
+            match=re.escape("INVALID_ARGUMENT: [FlightSQL] expected error (DoGet)"),
+        ) as excval:
+            cur.fetch_arrow_table()
+
+        # TODO(https://github.com/apache/arrow-adbc/issues/1576): vendor code
+        # is gRPC status code; 3 is gRPC INVALID_ARGUMENT
+        assert excval.value.vendor_code == 3
 
 
 def test_query_error_stream(test_dbapi):

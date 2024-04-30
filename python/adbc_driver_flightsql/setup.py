@@ -49,7 +49,7 @@ else:
 # Resolve Version (miniver)
 
 
-def get_version_and_cmdclass(pkg_path):
+def get_version(pkg_path):
     """
     Load version.py module without importing the whole package.
 
@@ -60,15 +60,14 @@ def get_version_and_cmdclass(pkg_path):
     spec = spec_from_file_location("version", os.path.join(pkg_path, "_version.py"))
     module = module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.__version__, module.get_cmdclass(pkg_path)
+    return module.__version__
 
 
-version, cmdclass = get_version_and_cmdclass("adbc_driver_flightsql")
+version = get_version("adbc_driver_flightsql")
 
 # ------------------------------------------------------------
 # Setup
 
 setup(
-    cmdclass=cmdclass,
     version=version,
 )

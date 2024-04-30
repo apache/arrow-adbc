@@ -17,20 +17,46 @@
 
 # If we are building within the repo, copy the latest adbc.h and driver source
 # into src/
-files_to_vendor <- c(
-  "../../adbc.h",
-  "../../c/driver/sqlite/sqlite.c",
-  "../../c/driver/sqlite/statement_reader.c",
-  "../../c/driver/sqlite/statement_reader.h",
-  "../../c/driver/sqlite/types.h",
-  "../../c/driver/common/options.h",
-  "../../c/driver/common/utils.c",
-  "../../c/driver/common/utils.h",
-  "../../c/vendor/nanoarrow/nanoarrow.h",
-  "../../c/vendor/nanoarrow/nanoarrow.c",
-  "../../c/vendor/sqlite3/sqlite3.h",
-  "../../c/vendor/sqlite3/sqlite3.c"
+source_files <- c(
+  "adbc.h",
+  "c/driver/sqlite/sqlite.cc",
+  "c/driver/sqlite/statement_reader.c",
+  "c/driver/sqlite/statement_reader.h",
+  "c/driver/common/options.h",
+  "c/driver/common/utils.c",
+  "c/driver/common/utils.h",
+  "c/driver/framework/base_connection.h",
+  "c/driver/framework/base_database.h",
+  "c/driver/framework/base_driver.cc",
+  "c/driver/framework/base_driver.h",
+  "c/driver/framework/base_statement.h",
+  "c/driver/framework/catalog.h",
+  "c/driver/framework/objects.h",
+  "c/driver/framework/status.h",
+  "c/driver/framework/type_fwd.h",
+  "c/driver/framework/catalog.cc",
+  "c/driver/framework/objects.cc",
+  "c/vendor/fmt/include/fmt/args.h",
+  "c/vendor/fmt/include/fmt/base.h",
+  "c/vendor/fmt/include/fmt/chrono.h",
+  "c/vendor/fmt/include/fmt/color.h",
+  "c/vendor/fmt/include/fmt/compile.h",
+  "c/vendor/fmt/include/fmt/core.h",
+  "c/vendor/fmt/include/fmt/format-inl.h",
+  "c/vendor/fmt/include/fmt/format.h",
+  "c/vendor/fmt/include/fmt/os.h",
+  "c/vendor/fmt/include/fmt/ostream.h",
+  "c/vendor/fmt/include/fmt/printf.h",
+  "c/vendor/fmt/include/fmt/ranges.h",
+  "c/vendor/fmt/include/fmt/std.h",
+  "c/vendor/fmt/include/fmt/xchar.h",
+  "c/vendor/nanoarrow/nanoarrow.h",
+  "c/vendor/nanoarrow/nanoarrow.hpp",
+  "c/vendor/nanoarrow/nanoarrow.c",
+  "c/vendor/sqlite3/sqlite3.h",
+  "c/vendor/sqlite3/sqlite3.c"
 )
+files_to_vendor <- file.path("../..", source_files)
 
 if (all(file.exists(files_to_vendor))) {
   files_dst <- file.path("src", basename(files_to_vendor))
@@ -48,14 +74,7 @@ if (all(file.exists(files_to_vendor))) {
   )
 
   if (all(file.copy(files_to_vendor, "src"))) {
-    file.rename(
-      c("src/nanoarrow.c", "src/nanoarrow.h",
-        "src/sqlite3.c", "src/sqlite3.h",
-        "src/options.h", "src/utils.c", "src/utils.h"),
-      c("src/nanoarrow/nanoarrow.c", "src/nanoarrow/nanoarrow.h",
-        "tools/sqlite3.c", "tools/sqlite3.h",
-        "src/common/options.h", "src/common/utils.c", "src/common/utils.h")
-    )
+    file.rename(files_dst, file.path("src", source_files))
     cat("All files successfully copied to src/\n")
   } else {
     stop("Failed to vendor all files")

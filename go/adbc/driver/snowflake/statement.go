@@ -19,34 +19,39 @@ package snowflake
 
 import (
 	"context"
-	"database/sql/driver"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
-	"golang.org/x/exp/constraints"
 )
 
 const (
-	OptionStatementQueueSize           = "adbc.rpc.result_queue_size"
-	OptionStatementPrefetchConcurrency = "adbc.snowflake.rpc.prefetch_concurrency"
+	OptionStatementQueueSize               = "adbc.rpc.result_queue_size"
+	OptionStatementPrefetchConcurrency     = "adbc.snowflake.rpc.prefetch_concurrency"
+	OptionStatementIngestWriterConcurrency = "adbc.snowflake.statement.ingest_writer_concurrency"
+	OptionStatementIngestUploadConcurrency = "adbc.snowflake.statement.ingest_upload_concurrency"
+	OptionStatementIngestCopyConcurrency   = "adbc.snowflake.statement.ingest_copy_concurrency"
+	OptionStatementIngestTargetFileSize    = "adbc.snowflake.statement.ingest_target_file_size"
+	OptionStatementIngestCompressionCodec  = "adbc.snowflake.statement.ingest_compression_codec" // TODO(GH-1473): Implement option
+	OptionStatementIngestCompressionLevel  = "adbc.snowflake.statement.ingest_compression_level" // TODO(GH-1473): Implement option
 )
 
 type statement struct {
-	cnxn                *cnxn
+	cnxn                *connectionImpl
 	alloc               memory.Allocator
 	queueSize           int
 	prefetchConcurrency int
 	useHighPrecision    bool
 
-	query       string
-	targetTable string
-	ingestMode  string
+	query         string
+	targetTable   string
+	ingestMode    string
+	ingestOptions *ingestOptions
 
 	bound      arrow.Record
 	streamBind array.RecordReader
@@ -143,6 +148,42 @@ func (st *statement) SetOption(key string, val string) error {
 			}
 		}
 		return st.SetOptionInt(key, int64(concurrency))
+	case OptionStatementIngestWriterConcurrency:
+		concurrency, err := strconv.Atoi(val)
+		if err != nil {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Snowflake] could not parse '%s' as int for option '%s'", val, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		return st.SetOptionInt(key, int64(concurrency))
+	case OptionStatementIngestUploadConcurrency:
+		concurrency, err := strconv.Atoi(val)
+		if err != nil {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Snowflake] could not parse '%s' as int for option '%s'", val, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		return st.SetOptionInt(key, int64(concurrency))
+	case OptionStatementIngestCopyConcurrency:
+		concurrency, err := strconv.Atoi(val)
+		if err != nil {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Snowflake] could not parse '%s' as int for option '%s'", val, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		return st.SetOptionInt(key, int64(concurrency))
+	case OptionStatementIngestTargetFileSize:
+		size, err := strconv.Atoi(val)
+		if err != nil {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Snowflake] could not parse '%s' as int for option '%s'", val, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		return st.SetOptionInt(key, int64(size))
 	case OptionUseHighPrecision:
 		switch val {
 		case adbc.OptionValueEnabled:
@@ -190,6 +231,52 @@ func (st *statement) SetOptionInt(key string, value int64) error {
 			}
 		}
 		st.prefetchConcurrency = int(value)
+		return nil
+	case OptionStatementIngestWriterConcurrency:
+		if value < 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be >= 0", value, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		if value == 0 {
+			st.ingestOptions.writerConcurrency = defaultWriterConcurrency
+			return nil
+		}
+
+		st.ingestOptions.writerConcurrency = uint(value)
+		return nil
+	case OptionStatementIngestUploadConcurrency:
+		if value < 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be >= 0", value, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		if value == 0 {
+			st.ingestOptions.uploadConcurrency = defaultUploadConcurrency
+			return nil
+		}
+
+		st.ingestOptions.uploadConcurrency = uint(value)
+		return nil
+	case OptionStatementIngestCopyConcurrency:
+		if value < 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be >= 0", value, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		st.ingestOptions.copyConcurrency = uint(value)
+		return nil
+	case OptionStatementIngestTargetFileSize:
+		if value < 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be >= 0", value, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		st.ingestOptions.targetFileSize = uint(value)
 		return nil
 	}
 	return adbc.Error{
@@ -253,7 +340,7 @@ func toSnowflakeType(dt arrow.DataType) string {
 		if ts.TimeZone == "" {
 			return fmt.Sprintf("timestamp_ntz(%d)", prec)
 		}
-		return fmt.Sprintf("timestamp_tz(%d)", prec)
+		return fmt.Sprintf("timestamp_ltz(%d)", prec)
 	case arrow.DENSE_UNION, arrow.SPARSE_UNION:
 		return "variant"
 	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST:
@@ -265,21 +352,17 @@ func toSnowflakeType(dt arrow.DataType) string {
 	return ""
 }
 
-func (st *statement) initIngest(ctx context.Context) (string, error) {
+func (st *statement) initIngest(ctx context.Context) error {
 	var (
-		createBldr, insertBldr strings.Builder
+		createBldr strings.Builder
 	)
 
 	createBldr.WriteString("CREATE TABLE ")
 	if st.ingestMode == adbc.OptionValueIngestModeCreateAppend {
 		createBldr.WriteString(" IF NOT EXISTS ")
 	}
-	createBldr.WriteString(st.targetTable)
+	createBldr.WriteString(quoteTblName(st.targetTable))
 	createBldr.WriteString(" (")
-
-	insertBldr.WriteString("INSERT INTO ")
-	insertBldr.WriteString(st.targetTable)
-	insertBldr.WriteString(" VALUES (")
 
 	var schema *arrow.Schema
 	if st.bound != nil {
@@ -290,15 +373,14 @@ func (st *statement) initIngest(ctx context.Context) (string, error) {
 
 	for i, f := range schema.Fields() {
 		if i != 0 {
-			insertBldr.WriteString(", ")
 			createBldr.WriteString(", ")
 		}
 
-		createBldr.WriteString(strconv.Quote(f.Name))
+		createBldr.WriteString(quoteTblName(f.Name))
 		createBldr.WriteString(" ")
 		ty := toSnowflakeType(f.Type)
 		if ty == "" {
-			return "", adbc.Error{
+			return adbc.Error{
 				Msg:  fmt.Sprintf("unimplemented type conversion for field %s, arrow type: %s", f.Name, f.Type),
 				Code: adbc.StatusNotImplemented,
 			}
@@ -308,21 +390,18 @@ func (st *statement) initIngest(ctx context.Context) (string, error) {
 		if !f.Nullable {
 			createBldr.WriteString(" NOT NULL")
 		}
-
-		insertBldr.WriteString("?")
 	}
 
 	createBldr.WriteString(")")
-	insertBldr.WriteString(")")
 
 	switch st.ingestMode {
 	case adbc.OptionValueIngestModeAppend:
 		// Do nothing
 	case adbc.OptionValueIngestModeReplace:
-		replaceQuery := "DROP TABLE IF EXISTS " + st.targetTable
+		replaceQuery := "DROP TABLE IF EXISTS " + quoteTblName(st.targetTable)
 		_, err := st.cnxn.cn.ExecContext(ctx, replaceQuery, nil)
 		if err != nil {
-			return "", errToAdbcErr(adbc.StatusInternal, err)
+			return errToAdbcErr(adbc.StatusInternal, err)
 		}
 
 		fallthrough
@@ -335,124 +414,11 @@ func (st *statement) initIngest(ctx context.Context) (string, error) {
 		createQuery := createBldr.String()
 		_, err := st.cnxn.cn.ExecContext(ctx, createQuery, nil)
 		if err != nil {
-			return "", errToAdbcErr(adbc.StatusInternal, err)
+			return errToAdbcErr(adbc.StatusInternal, err)
 		}
 	}
 
-	return insertBldr.String(), nil
-}
-
-type nativeArrowArr[T string | []byte] interface {
-	arrow.Array
-	Value(int) T
-}
-
-func convToArr[T string | []byte](arr nativeArrowArr[T]) interface{} {
-	if arr.Len() == 1 {
-		if arr.IsNull(0) {
-			return nil
-		}
-
-		return arr.Value(0)
-	}
-
-	v := make([]interface{}, arr.Len())
-	for i := 0; i < arr.Len(); i++ {
-		if arr.IsNull(i) {
-			continue
-		}
-		v[i] = arr.Value(i)
-	}
-	return gosnowflake.Array(&v)
-}
-
-func convMarshal(arr arrow.Array) interface{} {
-	if arr.Len() == 0 {
-		if arr.IsNull(0) {
-			return nil
-		}
-		return arr.ValueStr(0)
-	}
-
-	v := make([]interface{}, arr.Len())
-	for i := 0; i < arr.Len(); i++ {
-		if arr.IsNull(i) {
-			continue
-		}
-		v[i] = arr.ValueStr(i)
-	}
-	return gosnowflake.Array(&v)
-}
-
-// snowflake driver bindings only support specific types
-// int/int32/int64/float64/float32/bool/string/byte/time
-// so we have to cast anything else appropriately
-func convToSlice[T, O constraints.Integer | constraints.Float](arr arrow.Array, vals []T) interface{} {
-	if arr.Len() == 1 {
-		if arr.IsNull(0) {
-			return nil
-		}
-
-		return vals[0]
-	}
-
-	out := make([]interface{}, arr.Len())
-	for i, v := range vals {
-		if arr.IsNull(i) {
-			continue
-		}
-		out[i] = O(v)
-	}
-	return gosnowflake.Array(&out)
-}
-
-func getQueryArg(arr arrow.Array) interface{} {
-	switch arr := arr.(type) {
-	case *array.Int8:
-		v := arr.Int8Values()
-		return convToSlice[int8, int32](arr, v)
-	case *array.Uint8:
-		v := arr.Uint8Values()
-		return convToSlice[uint8, int32](arr, v)
-	case *array.Int16:
-		v := arr.Int16Values()
-		return convToSlice[int16, int32](arr, v)
-	case *array.Uint16:
-		v := arr.Uint16Values()
-		return convToSlice[uint16, int32](arr, v)
-	case *array.Int32:
-		v := arr.Int32Values()
-		return convToSlice[int32, int32](arr, v)
-	case *array.Uint32:
-		v := arr.Uint32Values()
-		return convToSlice[uint32, int64](arr, v)
-	case *array.Int64:
-		v := arr.Int64Values()
-		return convToSlice[int64, int64](arr, v)
-	case *array.Uint64:
-		v := arr.Uint64Values()
-		return convToSlice[uint64, int64](arr, v)
-	case *array.Float32:
-		v := arr.Float32Values()
-		return convToSlice[float32, float64](arr, v)
-	case *array.Float64:
-		v := arr.Float64Values()
-		return convToSlice[float64, float64](arr, v)
-	case *array.LargeBinary:
-		return convToArr[[]byte](arr)
-	case *array.Binary:
-		return convToArr[[]byte](arr)
-	case *array.LargeString:
-		return convToArr[string](arr)
-	case *array.String:
-		return convToArr[string](arr)
-	default:
-		// default convert to array of strings and pass to snowflake driver
-		// not the most efficient, but snowflake doesn't really give a better
-		// route currently short of writing everything out to a Parquet file
-		// and then uploading that (which might be preferable)
-		return convMarshal(arr)
-	}
+	return nil
 }
 
 func (st *statement) executeIngest(ctx context.Context) (int64, error) {
@@ -463,60 +429,16 @@ func (st *statement) executeIngest(ctx context.Context) (int64, error) {
 		}
 	}
 
-	insertQuery, err := st.initIngest(ctx)
+	err := st.initIngest(ctx)
 	if err != nil {
 		return -1, err
 	}
 
-	// if the ingestion is large enough it might make more sense to
-	// write this out to a temporary file / stage / etc. and use
-	// the snowflake bulk loader that way.
-	//
-	// on the other hand, according to the documentation,
-	// https://pkg.go.dev/github.com/snowflakedb/gosnowflake#hdr-Batch_Inserts_and_Binding_Parameters
-	// snowflake's internal driver work should already be doing this.
-
-	var n int64
-	exec := func(rec arrow.Record, args []driver.NamedValue) error {
-		for i, c := range rec.Columns() {
-			args[i].Ordinal = i
-			args[i].Value = getQueryArg(c)
-		}
-
-		r, err := st.cnxn.cn.ExecContext(ctx, insertQuery, args)
-		if err != nil {
-			return errToAdbcErr(adbc.StatusInternal, err)
-		}
-
-		rows, err := r.RowsAffected()
-		if err == nil {
-			n += rows
-		}
-		return nil
-	}
-
 	if st.bound != nil {
-		defer func() {
-			st.bound.Release()
-			st.bound = nil
-		}()
-		args := make([]driver.NamedValue, len(st.bound.Schema().Fields()))
-		return n, exec(st.bound, args)
+		return st.ingestRecord(ctx)
 	}
 
-	defer func() {
-		st.streamBind.Release()
-		st.streamBind = nil
-	}()
-	args := make([]driver.NamedValue, len(st.streamBind.Schema().Fields()))
-	for st.streamBind.Next() {
-		rec := st.streamBind.Record()
-		if err := exec(rec, args); err != nil {
-			return n, err
-		}
-	}
-
-	return n, nil
+	return st.ingestStream(ctx)
 }
 
 // ExecuteQuery executes the current query or prepared statement

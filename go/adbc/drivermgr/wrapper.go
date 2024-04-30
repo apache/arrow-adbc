@@ -27,21 +27,30 @@ package drivermgr
 // #include "adbc.h"
 // #include <stdlib.h>
 //
-// void releaseErr(struct AdbcError* err) { err->release(err); }
+// void releaseErr(struct AdbcError* err) {
+//     if (err->release != NULL) {
+//         err->release(err);
+//         err->release = NULL;
+//     }
+// }
 // struct ArrowArray* allocArr() {
 //     return (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
+// }
+//
+// struct ArrowArrayStream* allocArrStream() {
+//     return (struct ArrowArrayStream*)malloc(sizeof(struct ArrowArrayStream));
 // }
 //
 import "C"
 import (
 	"context"
-	"runtime"
+	"sync"
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/cdata"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/cdata"
 )
 
 type option struct {
@@ -96,31 +105,25 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 		return nil, errOut
 	}
 
-	runtime.SetFinalizer(db, func(db *Database) {
-		if db.db != nil {
-			var err C.struct_AdbcError
-			code := adbc.Status(C.AdbcDatabaseRelease(db.db, &err))
-			if code != adbc.StatusOK {
-				panic(toAdbcError(code, &err))
-			}
-		}
-
-		for _, o := range db.options {
-			C.free(unsafe.Pointer(o.key))
-			C.free(unsafe.Pointer(o.val))
-		}
-	})
-
 	return db, nil
 }
 
 type Database struct {
 	options map[string]option
 	db      *C.struct_AdbcDatabase
+
+	mu     sync.Mutex // protects following fields
+	closed bool
 }
 
 func toAdbcError(code adbc.Status, e *C.struct_AdbcError) error {
-	err := &adbc.Error{
+	if e == nil || e.release == nil {
+		return adbc.Error{
+			Code: code,
+			Msg:  "[drivermgr] nil error",
+		}
+	}
+	err := adbc.Error{
 		Code:       code,
 		VendorCode: int32(e.vendor_code),
 		Msg:        C.GoString(e.message),
@@ -178,12 +181,47 @@ func (d *Database) Open(context.Context) (adbc.Connection, error) {
 	return &cnxn{conn: &c}, nil
 }
 
+func (d *Database) Close() error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.closed {
+		return nil
+	}
+
+	d.closed = true
+
+	for _, o := range d.options {
+		C.free(unsafe.Pointer(o.key))
+		C.free(unsafe.Pointer(o.val))
+	}
+
+	if d.db != nil {
+		var err C.struct_AdbcError
+		code := adbc.Status(C.AdbcDatabaseRelease(d.db, &err))
+		if code != adbc.StatusOK {
+			return toAdbcError(code, &err)
+		}
+	}
+
+	return nil
+}
+
 func getRdr(out *C.struct_ArrowArrayStream) (array.RecordReader, error) {
 	rdr, err := cdata.ImportCRecordReader((*cdata.CArrowArrayStream)(unsafe.Pointer(out)), nil)
 	if err != nil {
 		return nil, err
 	}
 	return rdr.(array.RecordReader), nil
+}
+
+func getSchema(out *C.struct_ArrowSchema) (*arrow.Schema, error) {
+	// Maybe: ImportCArrowSchema should perform this check?
+	if out.format == nil {
+		return nil, nil
+	}
+
+	return cdata.ImportCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(out)))
 }
 
 type cnxn struct {
@@ -208,23 +246,115 @@ func (c *cnxn) GetInfo(_ context.Context, infoCodes []adbc.InfoCode) (array.Reco
 }
 
 func (c *cnxn) GetObjects(_ context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (array.RecordReader, error) {
-	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		out         C.struct_ArrowArrayStream
+		err         C.struct_AdbcError
+		catalog_    *C.char
+		dbSchema_   *C.char
+		tableName_  *C.char
+		columnName_ *C.char
+		tableType_  **C.char
+	)
+
+	if catalog != nil {
+		catalog_ = C.CString(*catalog)
+		defer C.free(unsafe.Pointer(catalog_))
+	}
+
+	if dbSchema != nil {
+		dbSchema_ = C.CString(*dbSchema)
+		defer C.free(unsafe.Pointer(dbSchema_))
+	}
+
+	if tableName != nil {
+		tableName_ = C.CString(*tableName)
+		defer C.free(unsafe.Pointer(tableName_))
+	}
+
+	if columnName != nil {
+		columnName_ = C.CString(*columnName)
+		defer C.free(unsafe.Pointer(columnName_))
+	}
+
+	if len(tableType) > 0 {
+		cArr := []*C.char{}
+		for _, tt := range tableType {
+			cs := C.CString(tt)
+			cArr = append(cArr, cs)
+			defer C.free(unsafe.Pointer(cs))
+		}
+		tableType_ = &cArr[0]
+	}
+
+	if code := adbc.Status(C.AdbcConnectionGetObjects(c.conn, C.int(depth), catalog_, dbSchema_, tableName_, tableType_, columnName_, &out, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+	return getRdr(&out)
 }
 
 func (c *cnxn) GetTableSchema(_ context.Context, catalog, dbSchema *string, tableName string) (*arrow.Schema, error) {
-	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		schema     C.struct_ArrowSchema
+		err        C.struct_AdbcError
+		catalog_   *C.char
+		dbSchema_  *C.char
+		tableName_ *C.char
+	)
+
+	if catalog != nil {
+		catalog_ = C.CString(*catalog)
+		defer C.free(unsafe.Pointer(catalog_))
+	}
+
+	if dbSchema != nil {
+		dbSchema_ = C.CString(*dbSchema)
+		defer C.free(unsafe.Pointer(dbSchema_))
+	}
+
+	tableName_ = C.CString(tableName)
+	defer C.free(unsafe.Pointer(tableName_))
+
+	if code := adbc.Status(C.AdbcConnectionGetTableSchema(c.conn, catalog_, dbSchema_, tableName_, &schema, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+
+	return getSchema(&schema)
 }
 
 func (c *cnxn) GetTableTypes(context.Context) (array.RecordReader, error) {
-	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		out C.struct_ArrowArrayStream
+		err C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcConnectionGetTableTypes(c.conn, &out, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+	return getRdr(&out)
 }
 
 func (c *cnxn) Commit(context.Context) error {
-	return &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		err C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcConnectionCommit(c.conn, &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+
+	return nil
 }
 
 func (c *cnxn) Rollback(context.Context) error {
-	return &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		err C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcConnectionRollback(c.conn, &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+
+	return nil
 }
 
 func (c *cnxn) NewStatement() (adbc.Statement, error) {
@@ -362,11 +492,29 @@ func (s *stmt) Bind(_ context.Context, values arrow.Record) error {
 }
 
 func (s *stmt) BindStream(_ context.Context, stream array.RecordReader) error {
-	return &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		arrStream   = C.allocArrStream()
+		cdArrStream = (*cdata.CArrowArrayStream)(unsafe.Pointer(arrStream))
+		err         C.struct_AdbcError
+	)
+	cdata.ExportRecordReader(stream, cdArrStream)
+	if code := adbc.Status(C.AdbcStatementBindStream(s.st, arrStream, &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+	return nil
 }
 
 func (s *stmt) GetParameterSchema() (*arrow.Schema, error) {
-	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		schema C.struct_ArrowSchema
+		err    C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcStatementGetParameterSchema(s.st, &schema, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+
+	return getSchema(&schema)
 }
 
 func (s *stmt) ExecutePartitions(context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {

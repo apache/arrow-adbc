@@ -28,6 +28,7 @@ import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.driver.jdbc.JdbcDriver;
 import org.apache.arrow.adbc.driver.jdbc.StandardJdbcQuirks;
+import org.apache.arrow.adbc.driver.testsuite.SqlTestUtil;
 import org.apache.arrow.adbc.driver.testsuite.SqlValidationQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.types.TimeUnit;
@@ -45,6 +46,11 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
     final String postgresUrl = System.getenv(POSTGRESQL_URL_ENV_VAR);
     final String user = System.getenv(POSTGRESQL_USER_ENV_VAR);
     final String password = System.getenv(POSTGRESQL_PASSWORD_ENV_VAR);
+
+    if (SqlTestUtil.isCI() && (postgresUrl == null || postgresUrl.isEmpty())) {
+      throw new RuntimeException("PostgreSQL not found, set " + POSTGRESQL_URL_ENV_VAR);
+    }
+
     Assumptions.assumeFalse(
         postgresUrl == null, "PostgreSQL not found, set " + POSTGRESQL_URL_ENV_VAR);
     Assumptions.assumeFalse(
@@ -61,6 +67,10 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
     String url = makeJdbcUrl();
 
     final String catalog = System.getenv(POSTGRESQL_DATABASE_ENV_VAR);
+    if (SqlTestUtil.isCI() && catalog == null) {
+      throw new RuntimeException(
+          "PostgreSQL catalog not found, set " + POSTGRESQL_DATABASE_ENV_VAR);
+    }
     Assumptions.assumeFalse(
         catalog == null, "PostgreSQL catalog not found, set " + POSTGRESQL_DATABASE_ENV_VAR);
     this.catalog = catalog;

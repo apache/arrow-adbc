@@ -23,7 +23,8 @@ Build-Depends:
   cmake,
   debhelper-compat (= 12),
   gobject-introspection,
-  golang | golang-1.20,
+  golang | golang-1.21,
+  libarrow-glib-dev,
   libgirepository1.0-dev,
   libpq-dev,
   libsqlite3-dev,
@@ -33,7 +34,7 @@ Build-Depends:
 Standards-Version: 4.5.0
 Homepage: https://arrow.apache.org/adbc/
 
-Package: libadbc-driver-manager008
+Package: libadbc-driver-manager100
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -51,12 +52,12 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-manager008 (= ${binary:Version})
+  libadbc-driver-manager100 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) driver manager
  .
  This package provides C++ header files.
 
-Package: libadbc-driver-postgresql008
+Package: libadbc-driver-postgresql100
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -74,12 +75,12 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-postgresql008 (= ${binary:Version})
+  libadbc-driver-postgresql100 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) PostgreSQL driver
  .
  This package provides CMake package, pkg-config package and so on.
 
-Package: libadbc-driver-sqlite008
+Package: libadbc-driver-sqlite100
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -97,12 +98,12 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-sqlite008 (= ${binary:Version})
+  libadbc-driver-sqlite100 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) SQLite driver
  .
  This package provides CMake package, pkg-config package and so on.
 
-Package: libadbc-driver-flightsql008
+Package: libadbc-driver-flightsql100
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -120,12 +121,12 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-flightsql008 (= ${binary:Version})
+  libadbc-driver-flightsql100 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) Flight SQL driver
  .
  This package provides CMake package, pkg-config package and so on.
 
-Package: libadbc-driver-snowflake008
+Package: libadbc-driver-snowflake100
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -143,13 +144,13 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-snowflake008 (= ${binary:Version})
+  libadbc-driver-snowflake100 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) Snowflake driver
  .
  This package provides CMake package, pkg-config package and so on.
 
 
-Package: libadbc-glib0
+Package: libadbc-glib1
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -157,7 +158,7 @@ Pre-Depends: ${misc:Pre-Depends}
 Depends:
   ${misc:Depends},
   ${shlibs:Depends},
-  libadbc-driver-manager008 (= ${binary:Version})
+  libadbc-driver-manager100 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) driver manager
  .
  This package provides GLib based library files.
@@ -180,8 +181,7 @@ Multi-Arch: same
 Depends:
   ${misc:Depends},
   gir1.2-adbc-1.0 (= ${binary:Version}),
-  libadbc-driver-manager-dev (= ${binary:Version}),
-  libarrow-glib-dev
+  libadbc-driver-manager-dev (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) driver manager
  .
  This package provides GLib based header files.
@@ -198,3 +198,57 @@ Recommends:
 Description: Apache Arrow Database Connectivity (ADBC) driver manager
  .
  This package provides documentations.
+
+Package: libadbc-arrow-glib1
+Section: libs
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends:
+  ${misc:Depends},
+  ${shlibs:Depends},
+  libadbc-glib1 (= ${binary:Version})
+Description: Apache Arrow Database Connectivity (ADBC) driver manager
+ .
+ This package provides library files for Apache Arrow GLib integration.
+
+Package: gir1.2-adbc-arrow-1.0
+Section: introspection
+Architecture: any
+Multi-Arch: same
+Depends:
+  ${gir:Depends},
+  ${misc:Depends},
+  gir1.2-adbc-1.0 (= ${binary:Version})
+Description: Apache Arrow Database Connectivity (ADBC) driver manager
+ .
+ This package provides GObject Introspection typelib files for Apache
+ Arrow GLib integration.
+
+Package: libadbc-arrow-glib-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends:
+  ${misc:Depends},
+  gir1.2-adbc-arrow-1.0 (= ${binary:Version}),
+  libadbc-glib-dev (= ${binary:Version})
+Description: Apache Arrow Database Connectivity (ADBC) driver manager
+ .
+ This package provides header files for Apache Arrow GLib
+ integration.
+
+Package: libadbc-arrow-glib-doc
+Section: doc
+Architecture: all
+Multi-Arch: foreign
+Depends:
+  ${misc:Depends}
+Recommends:
+  libglib2.0-doc,
+  libadbc-glib-doc,
+  libarrow-glib-doc
+Description: Apache Arrow Database Connectivity (ADBC) driver manager
+ .
+ This package provides documentations for Apache Arrow GLib
+ integration.

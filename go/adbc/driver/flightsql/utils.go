@@ -20,6 +20,7 @@ package flightsql
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"google.golang.org/grpc/codes"
@@ -92,9 +93,18 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 	// XXX: must check both headers and trailers because some implementations
 	// (like gRPC-Java) will consolidate trailers into headers for failed RPCs
 	for key, values := range header {
-		switch key {
-		case "content-type", "grpc-status-details-bin":
+		switch {
+		case key == "content-type":
+			// Not useful info
 			continue
+		case key == "grpc-status-details-bin":
+			// gRPC library parses this above via grpcStatus.Proto()
+			continue
+		case strings.HasSuffix(key, "-bin"):
+			for _, value := range values {
+				// that's right, gRPC stuffs binary data into a "string"
+				details = append(details, &adbc.BinaryErrorDetail{Name: key, Detail: []byte(value)})
+			}
 		default:
 			for _, value := range values {
 				details = append(details, &adbc.TextErrorDetail{Name: key, Detail: value})
@@ -102,9 +112,18 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 		}
 	}
 	for key, values := range trailer {
-		switch key {
-		case "content-type", "grpc-status-details-bin":
+		switch {
+		case key == "content-type":
+			// Not useful info
 			continue
+		case key == "grpc-status-details-bin":
+			// gRPC library parses this above via grpcStatus.Proto()
+			continue
+		case strings.HasSuffix(key, "-bin"):
+			for _, value := range values {
+				// that's right, gRPC stuffs binary data into a "string"
+				details = append(details, &adbc.BinaryErrorDetail{Name: key, Detail: []byte(value)})
+			}
 		default:
 			for _, value := range values {
 				details = append(details, &adbc.TextErrorDetail{Name: key, Detail: value})
@@ -114,9 +133,10 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 
 	return adbc.Error{
 		// People don't read error messages, so backload the context and frontload the server error
-		Msg:     fmt.Sprintf("[FlightSQL] %s (%s; %s)", grpcStatus.Message(), grpcStatus.Code(), fmt.Sprintf(context, args...)),
-		Code:    adbcCode,
-		Details: details,
+		Msg:        fmt.Sprintf("[FlightSQL] %s (%s; %s)", grpcStatus.Message(), grpcStatus.Code(), fmt.Sprintf(context, args...)),
+		Code:       adbcCode,
+		VendorCode: int32(grpcStatus.Code()),
+		Details:    details,
 	}
 }
 
@@ -124,9 +144,9 @@ func checkContext(maybeErr error, ctx context.Context) error {
 	if maybeErr != nil {
 		return maybeErr
 	} else if ctx.Err() == context.Canceled {
-		return adbc.Error{Msg: "Cancelled by request", Code: adbc.StatusCancelled}
+		return adbc.Error{Msg: ctx.Err().Error(), Code: adbc.StatusCancelled}
 	} else if ctx.Err() == context.DeadlineExceeded {
-		return adbc.Error{Msg: "Deadline exceeded", Code: adbc.StatusTimeout}
+		return adbc.Error{Msg: ctx.Err().Error(), Code: adbc.StatusTimeout}
 	}
 	return ctx.Err()
 }

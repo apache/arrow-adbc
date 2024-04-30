@@ -21,14 +21,27 @@ services:
   # These reuse Arrow's images for simplicity. You won't be able to
   # build the image from here.
 
+  ############################### C#/.NET ######################################
+
+  csharp-dist:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    volumes:
+      - .:/adbc:delegated
+    command: |
+      /adbc/ci/scripts/csharp_pack.sh /adbc
+
   ############################ Documentation ###################################
 
   docs:
     image: condaforge/mambaforge:latest
     volumes:
       - .:/adbc:delegated
+    environment:
+      ADBC_USE_ASAN: "0"
+      ADBC_USE_UBSAN: "0"
+      CGO_ENABLED: "1"
     command: |
-      /bin/bash -c 'git config --global --add safe.directory /adbc && source /opt/conda/etc/profile.d/conda.sh && mamba create -y -n adbc -c conda-forge go --file /adbc/ci/conda_env_cpp.txt --file /adbc/ci/conda_env_docs.txt --file /adbc/ci/conda_env_python.txt && conda activate adbc && env ADBC_USE_ASAN=0 ADBC_USE_UBSAN=0 /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build && env CGO_ENABLED=1 /adbc/ci/scripts/go_build.sh /adbc /adbc/build && /adbc/ci/scripts/python_build.sh /adbc /adbc/build && /adbc/ci/scripts/r_build.sh /adbc && /adbc/ci/scripts/docs_build.sh /adbc'
+      /bin/bash -c 'git config --global --add safe.directory /adbc && source /opt/conda/etc/profile.d/conda.sh && mamba create -y -n adbc -c conda-forge go --file /adbc/ci/conda_env_cpp.txt --file /adbc/ci/conda_env_docs.txt --file /adbc/ci/conda_env_java.txt --file /adbc/ci/conda_env_python.txt && conda activate adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build && /adbc/ci/scripts/go_build.sh /adbc /adbc/build && /adbc/ci/scripts/python_build.sh /adbc /adbc/build && /adbc/ci/scripts/r_build.sh /adbc && /adbc/ci/scripts/docs_build.sh /adbc'
 
   ############################ Java JARs ######################################
 
@@ -70,6 +83,7 @@ services:
       dockerfile: ci/docker/python-wheel-manylinux.dockerfile
       args:
         ARCH: ${ARCH}
+        GO: ${GO}
         MANYLINUX: ${MANYLINUX}
         PYTHON: ${PYTHON}
         REPO: ${REPO}
@@ -89,6 +103,7 @@ services:
       dockerfile: ci/docker/python-wheel-manylinux.dockerfile
       args:
         ARCH: ${ARCH}
+        GO: ${GO}
         MANYLINUX: ${MANYLINUX}
         PYTHON: ${PYTHON}
         REPO: ${REPO}
@@ -150,6 +165,12 @@ services:
       dockerfile: ci/docker/flightsql-test.dockerfile
       args:
         GO: ${GO}
+    healthcheck:
+      test: ["CMD", "curl", "--http2-prior-knowledge", "-XPOST", "-H", "content-type: application/grpc"]
+      interval: 5s
+      timeout: 30s
+      retries: 3
+      start_period: 5m
     ports:
       - "41414:41414"
     volumes:

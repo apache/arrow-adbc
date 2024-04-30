@@ -20,14 +20,24 @@
 """Low-level ADBC API."""
 
 import enum
+import functools
 import threading
+import os
 import typing
-from typing import List, Tuple
+import sys
+import warnings
+from typing import List, Optional, Tuple
 
+cimport cpython
 import cython
 from cpython.bytes cimport PyBytes_FromStringAndSize
+from cpython.pycapsule cimport (
+    PyCapsule_GetPointer, PyCapsule_New, PyCapsule_CheckExact
+)
 from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t, uintptr_t
-from libc.string cimport memset
+from libc.stdlib cimport malloc, free
+from libc.string cimport memcpy, memset
+from libcpp.string cimport string as c_string
 from libcpp.vector cimport vector as c_vector
 
 if typing.TYPE_CHECKING:
@@ -158,7 +168,7 @@ INGEST_OPTION_MODE_CREATE_APPEND = ADBC_INGEST_OPTION_MODE_CREATE_APPEND.decode(
 INGEST_OPTION_TARGET_TABLE = ADBC_INGEST_OPTION_TARGET_TABLE.decode("utf-8")
 
 
-cdef object convert_error(CAdbcStatusCode status, CAdbcError* error) except *:
+cdef object convert_error(CAdbcStatusCode status, CAdbcError* error):
     cdef CAdbcErrorDetail c_detail
 
     if status == ADBC_STATUS_OK:
@@ -304,9 +314,29 @@ cdef class _AdbcHandle:
                     f"with open {self._child_type}")
 
 
+cdef void pycapsule_schema_deleter(object capsule) noexcept:
+    cdef CArrowSchema* allocated = <CArrowSchema*>PyCapsule_GetPointer(
+        capsule, "arrow_schema"
+    )
+    if allocated.release != NULL:
+        allocated.release(allocated)
+    free(allocated)
+
+
+cdef void pycapsule_stream_deleter(object capsule) noexcept:
+    cdef CArrowArrayStream* allocated = <CArrowArrayStream*> PyCapsule_GetPointer(
+        capsule, "arrow_array_stream"
+    )
+    if allocated.release != NULL:
+        allocated.release(allocated)
+    free(allocated)
+
+
 cdef class ArrowSchemaHandle:
     """
     A wrapper for an allocated ArrowSchema.
+
+    This object implements the Arrow PyCapsule interface.
     """
     cdef:
         CArrowSchema schema
@@ -316,23 +346,42 @@ cdef class ArrowSchemaHandle:
         """The address of the ArrowSchema."""
         return <uintptr_t> &self.schema
 
+    def __arrow_c_schema__(self) -> object:
+        """Consume this object to get a PyCapsule."""
+        # Reference:
+        # https://arrow.apache.org/docs/dev/format/CDataInterface/PyCapsuleInterface.html#create-a-pycapsule
+        cdef CArrowSchema* allocated = <CArrowSchema*> malloc(sizeof(CArrowSchema))
+        allocated.release = NULL
+        capsule = PyCapsule_New(
+            <void*>allocated, "arrow_schema", &pycapsule_schema_deleter,
+        )
+        memcpy(allocated, &self.schema, sizeof(CArrowSchema))
+        self.schema.release = NULL
+        return capsule
+
 
 cdef class ArrowArrayHandle:
     """
     A wrapper for an allocated ArrowArray.
+
+    This object implements the Arrow PyCapsule interface.
     """
     cdef:
         CArrowArray array
 
     @property
     def address(self) -> int:
-        """The address of the ArrowArray."""
+        """
+        The address of the ArrowArray.
+        """
         return <uintptr_t> &self.array
 
 
 cdef class ArrowArrayStreamHandle:
     """
     A wrapper for an allocated ArrowArrayStream.
+
+    This object implements the Arrow PyCapsule interface.
     """
     cdef:
         CArrowArrayStream stream
@@ -341,6 +390,21 @@ cdef class ArrowArrayStreamHandle:
     def address(self) -> int:
         """The address of the ArrowArrayStream."""
         return <uintptr_t> &self.stream
+
+    def __arrow_c_stream__(self, requested_schema=None) -> object:
+        """Consume this object to get a PyCapsule."""
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
+
+        cdef CArrowArrayStream* allocated = \
+            <CArrowArrayStream*> malloc(sizeof(CArrowArrayStream))
+        allocated.release = NULL
+        capsule = PyCapsule_New(
+            <void*>allocated, "arrow_array_stream", &pycapsule_stream_deleter,
+        )
+        memcpy(allocated, &self.stream, sizeof(CArrowArrayStream))
+        self.stream.release = NULL
+        return capsule
 
 
 class GetObjectsDepth(enum.IntEnum):
@@ -1000,32 +1064,47 @@ cdef class AdbcStatement(_AdbcHandle):
 
         connection._open_child()
 
-    def bind(self, data, schema) -> None:
+    def bind(self, data, schema=None) -> None:
         """
         Bind an ArrowArray to this statement.
 
         Parameters
         ----------
-        data : int or ArrowArrayHandle
-        schema : int or ArrowSchemaHandle
+        data : PyCapsule or int or ArrowArrayHandle
+        schema : PyCapsule or int or ArrowSchemaHandle
         """
         cdef CAdbcError c_error = empty_error()
         cdef CArrowArray* c_array
         cdef CArrowSchema* c_schema
 
-        if isinstance(data, ArrowArrayHandle):
+        if hasattr(data, "__arrow_c_array__") and not isinstance(data, ArrowArrayHandle):
+            if schema is not None:
+                raise ValueError(
+                    "Can not provide a schema when passing Arrow-compatible "
+                    "data that implements the Arrow PyCapsule Protocol"
+                )
+            schema, data = data.__arrow_c_array__()
+
+        if PyCapsule_CheckExact(data):
+            c_array = <CArrowArray*> PyCapsule_GetPointer(data, "arrow_array")
+        elif isinstance(data, ArrowArrayHandle):
             c_array = &(<ArrowArrayHandle> data).array
         elif isinstance(data, int):
             c_array = <CArrowArray*> data
         else:
-            raise TypeError(f"data must be int or ArrowArrayHandle, not {type(data)}")
+            raise TypeError(
+                "data must be Arrow-compatible data (implementing the Arrow PyCapsule "
+                f"Protocol), a PyCapsule, int or ArrowArrayHandle, not {type(data)}"
+            )
 
-        if isinstance(schema, ArrowSchemaHandle):
+        if PyCapsule_CheckExact(schema):
+            c_schema = <CArrowSchema*> PyCapsule_GetPointer(schema, "arrow_schema")
+        elif isinstance(schema, ArrowSchemaHandle):
             c_schema = &(<ArrowSchemaHandle> schema).schema
         elif isinstance(schema, int):
             c_schema = <CArrowSchema*> schema
         else:
-            raise TypeError(f"schema must be int or ArrowSchemaHandle, "
+            raise TypeError("schema must be a PyCapsule, int or ArrowSchemaHandle, "
                             f"not {type(schema)}")
 
         with nogil:
@@ -1042,17 +1121,27 @@ cdef class AdbcStatement(_AdbcHandle):
 
         Parameters
         ----------
-        stream : int or ArrowArrayStreamHandle
+        stream : PyCapsule or int or ArrowArrayStreamHandle
         """
         cdef CAdbcError c_error = empty_error()
         cdef CArrowArrayStream* c_stream
 
-        if isinstance(stream, ArrowArrayStreamHandle):
+        if (
+            hasattr(stream, "__arrow_c_stream__")
+            and not isinstance(stream, ArrowArrayStreamHandle)
+        ):
+            stream = stream.__arrow_c_stream__()
+
+        if PyCapsule_CheckExact(stream):
+            c_stream = <CArrowArrayStream*> PyCapsule_GetPointer(
+                stream, "arrow_array_stream"
+            )
+        elif isinstance(stream, ArrowArrayStreamHandle):
             c_stream = &(<ArrowArrayStreamHandle> stream).stream
         elif isinstance(stream, int):
             c_stream = <CArrowArrayStream*> stream
         else:
-            raise TypeError(f"data must be int or ArrowArrayStreamHandle, "
+            raise TypeError(f"data must be a PyCapsule, int or ArrowArrayStreamHandle, "
                             f"not {type(stream)}")
 
         with nogil:
@@ -1106,7 +1195,7 @@ cdef class AdbcStatement(_AdbcHandle):
         check_error(status, &c_error)
         return (stream, rows_affected)
 
-    def execute_partitions(self) -> Tuple[List[bytes], ArrowSchemaHandle, int]:
+    def execute_partitions(self) -> Tuple[List[bytes], Optional[ArrowSchemaHandle], int]:
         """
         Execute the query and get the partitions of the result set.
 
@@ -1116,8 +1205,9 @@ cdef class AdbcStatement(_AdbcHandle):
         -------
         list of byte
             The partitions of the distributed result set.
-        ArrowSchemaHandle
-            The schema of the result set.
+        ArrowSchemaHandle or None
+            The schema of the result set.  May be None if incremental
+            execution is enabled and the server does not return a schema.
         int
             The number of rows if known, else -1.
         """
@@ -1143,7 +1233,9 @@ cdef class AdbcStatement(_AdbcHandle):
             partitions.append(PyBytes_FromStringAndSize(data, length))
         c_partitions.release(&c_partitions)
 
-        return (partitions, schema, rows_affected)
+        if schema.schema.release == NULL:
+            return partitions, None, rows_affected
+        return partitions, schema, rows_affected
 
     def execute_schema(self) -> ArrowSchemaHandle:
         """
@@ -1397,3 +1489,97 @@ cdef class AdbcStatement(_AdbcHandle):
 cdef const CAdbcError* PyAdbcErrorFromArrayStream(
     CArrowArrayStream* stream, CAdbcStatusCode* status):
     return AdbcErrorFromArrayStream(stream, status)
+
+
+cdef extern from "_blocking_impl.h" nogil:
+    ctypedef void (*BlockingCallback)(void*) noexcept nogil
+    c_string CInitBlockingCallback"pyadbc_driver_manager::InitBlockingCallback"()
+    c_string CSetBlockingCallback"pyadbc_driver_manager::SetBlockingCallback"(BlockingCallback, void* data)
+    c_string CClearBlockingCallback"pyadbc_driver_manager::ClearBlockingCallback"()
+
+
+@functools.lru_cache
+def _init_blocking_call():
+    error = bytes(CInitBlockingCallback()).decode("utf-8")
+    if error:
+        warnings.warn(
+            f"Failed to initialize KeyboardInterrupt support: {error}",
+            RuntimeWarning,
+        )
+
+
+_blocking_lock = threading.Lock()
+_blocking_exc = None
+
+
+def _blocking_call_impl(func, args, kwargs, cancel):
+    """
+    Run functions that are expected to block with a native SIGINT handler.
+
+    Parameters
+    ----------
+    """
+    global _blocking_exc
+
+    if threading.current_thread() is not threading.main_thread():
+        return func(*args, **kwargs)
+
+    _init_blocking_call()
+
+    with _blocking_lock:
+        if _blocking_exc:
+            _blocking_exc = None
+
+    # Set the callback for the background thread and save the signal handler
+    # TODO: ideally this would be no-op if already set
+    error = bytes(
+        CSetBlockingCallback(&_handle_blocking_call, <void*>cancel)
+    ).decode("utf-8")
+    if error:
+        warnings.warn(
+            f"Failed to set SIGINT handler: {error}",
+            RuntimeWarning,
+        )
+
+    try:
+        return func(*args, **kwargs)
+    except BaseException as e:
+        with _blocking_lock:
+            if _blocking_exc:
+                exc = _blocking_exc
+                _blocking_exc = None
+                raise e from exc[1].with_traceback(exc[2])
+        raise e
+    finally:
+        # Restore the signal handler
+        error = bytes(CClearBlockingCallback()).decode("utf-8")
+        if error:
+            warnings.warn(
+                f"Failed to restore SIGINT handler: {error}",
+                RuntimeWarning,
+            )
+        with _blocking_lock:
+            if _blocking_exc:
+                exc = _blocking_exc
+                _blocking_exc = None
+                raise exc[1].with_traceback(exc[2]) from KeyboardInterrupt
+
+
+if os.name != "nt":
+    # https://github.com/apache/arrow-adbc/issues/1522
+    _blocking_call = _blocking_call_impl
+else:
+    def _blocking_call(func, args, kwargs, cancel):
+        return func(*args, **kwargs)
+
+
+
+cdef void _handle_blocking_call(void* c_cancel) noexcept nogil:
+    with gil:
+        try:
+            cancel = <object> c_cancel
+            cancel()
+        except:
+            with _blocking_lock:
+                global _blocking_exc
+                _blocking_exc = sys.exc_info()

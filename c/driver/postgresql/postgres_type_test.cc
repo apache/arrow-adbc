@@ -124,6 +124,7 @@ TEST(PostgresTypeTest, PostgresTypeBasic) {
 
 TEST(PostgresTypeTest, PostgresTypeSetSchema) {
   nanoarrow::UniqueSchema schema;
+  ArrowStringView typnameMetadataValue = ArrowCharView("<not found>");
 
   ArrowSchemaInit(schema.get());
   EXPECT_EQ(PostgresType(PostgresTypeId::kBool).SetSchema(schema.get()), NANOARROW_OK);
@@ -166,6 +167,28 @@ TEST(PostgresTypeTest, PostgresTypeSetSchema) {
   schema.reset();
 
   ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kNumeric).SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "u");
+  typnameMetadataValue = ArrowCharView("<not found>");
+  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ADBC:postgresql:typname"),
+                        &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "numeric");
+  schema.reset();
+
+  ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kNumeric).Array().SetSchema(schema.get()),
+            NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "+l");
+  EXPECT_STREQ(schema->children[0]->format, "u");
+  typnameMetadataValue = ArrowCharView("<not found>");
+  ArrowMetadataGetValue(schema->children[0]->metadata,
+                        ArrowCharView("ADBC:postgresql:typname"), &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "numeric");
+  schema.reset();
+
+  ArrowSchemaInit(schema.get());
   EXPECT_EQ(PostgresType(PostgresTypeId::kBool).Array().SetSchema(schema.get()),
             NANOARROW_OK);
   EXPECT_STREQ(schema->format, "+l");
@@ -184,11 +207,11 @@ TEST(PostgresTypeTest, PostgresTypeSetSchema) {
   PostgresType unknown(PostgresTypeId::kBrinMinmaxMultiSummary);
   EXPECT_EQ(unknown.WithPgTypeInfo(0, "some_name").SetSchema(schema.get()), NANOARROW_OK);
   EXPECT_STREQ(schema->format, "z");
-
-  ArrowStringView value = ArrowCharView("<not found>");
+  typnameMetadataValue = ArrowCharView("<not found>");
   ArrowMetadataGetValue(schema->metadata, ArrowCharView("ADBC:postgresql:typname"),
-                        &value);
-  EXPECT_EQ(std::string(value.data, value.size_bytes), "some_name");
+                        &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "some_name");
   schema.reset();
 }
 
@@ -277,6 +300,15 @@ TEST(PostgresTypeTest, PostgresTypeFromSchema) {
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kArray);
   EXPECT_EQ(type.child(0).type_id(), PostgresTypeId::kBool);
+  schema.reset();
+
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->dictionary, NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::kText);
   schema.reset();
 
   ArrowError error;

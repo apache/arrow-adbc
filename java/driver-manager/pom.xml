@@ -14,7 +14,7 @@
   <parent>
     <artifactId>arrow-adbc-java-root</artifactId>
     <groupId>org.apache.arrow.adbc</groupId>
-    <version>0.8.0-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>adbc-driver-manager</artifactId>
@@ -28,6 +28,12 @@
       <artifactId>adbc-core</artifactId>
     </dependency>
 
+    <!-- Static analysis and linting -->
+    <dependency>
+      <groupId>org.checkerframework</groupId>
+      <artifactId>checker-qual</artifactId>
+    </dependency>
+
     <!-- Testing -->
     <dependency>
       <groupId>org.assertj</groupId>
@@ -37,6 +43,11 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.arrow</groupId>
+      <artifactId>arrow-memory-unsafe</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

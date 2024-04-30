@@ -20,7 +20,6 @@ $ErrorActionPreference = "Stop"
 
 $SourceDir = $Args[0]
 $BuildDir = $Args[1]
-$InstallDir = if ($Args[2] -ne $null) { $Args[2] } else { Join-Path $BuildDir "local/" }
 
 $BuildAll = $env:BUILD_ALL -ne "0"
 $BuildDriverFlightSql = ($BuildAll -and (-not ($env:BUILD_DRIVER_FLIGHTSQL -eq "0"))) -or ($env:BUILD_DRIVER_FLIGHTSQL -eq "1")
@@ -29,70 +28,11 @@ $BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
 $BuildDriverSnowflake = ($BuildAll -and (-not ($env:BUILD_DRIVER_SNOWFLAKE -eq "0"))) -or ($env:BUILD_DRIVER_SNOWFLAKE -eq "1")
 
-function Build-Subproject {
-    $Subproject = $Args[0]
-    $SubprojectBuild = Join-Path $SourceDir "python\$($Subproject)"
-
-    echo "============================================================"
-    echo "Building $($Subproject)"
-    echo "============================================================"
-
-    pip install -e $SubprojectBuild
-    if (-not $?) { exit 1 }
-}
-
-if ($BuildDriverManager) {
-    Build-Subproject adbc_driver_manager
-}
-if ($BuildDriverFlightSql) {
-    $env:ADBC_FLIGHTSQL_LIBRARY = Get-Childitem `
-      -ErrorAction SilentlyContinue `
-      -Path $InstallDir `
-      -Recurse `
-      -Include "adbc_driver_flightsql.dll","libadbc_driver_flightsql.so" | % {$_.FullName}
-    echo $env:ADBC_FLIGHTSQL_LIBRARY
-    if ($env:ADBC_FLIGHTSQL_LIBRARY -eq $null) {
-        echo "Could not find Flight SQL driver in $($InstallDir)"
-        exit 1
-    }
-    Build-Subproject adbc_driver_flightsql
-}
-if ($BuildDriverPostgreSQL) {
-    $env:ADBC_POSTGRESQL_LIBRARY = Get-Childitem `
-      -ErrorAction SilentlyContinue `
-      -Path $InstallDir `
-      -Recurse `
-      -Include "adbc_driver_postgresql.dll","libadbc_driver_postgresql.so" | % {$_.FullName}
-    echo $env:ADBC_POSTGRESQL_LIBRARY
-    if ($env:ADBC_POSTGRESQL_LIBRARY -eq $null) {
-        echo "Could not find libpq driver in $($InstallDir)"
-        exit 1
-    }
-    Build-Subproject adbc_driver_postgresql
-}
-if ($BuildDriverSqlite) {
-    $env:ADBC_SQLITE_LIBRARY = Get-Childitem `
-      -ErrorAction SilentlyContinue `
-      -Path $InstallDir `
-      -Recurse `
-      -Include "adbc_driver_sqlite.dll","libadbc_driver_sqlite.so" | % {$_.FullName}
-    echo $env:ADBC_SQLITE_LIBRARY
-    if ($env:ADBC_SQLITE_LIBRARY -eq $null) {
-        echo "Could not find SQLite driver in $($InstallDir)"
-        exit 1
-    }
-    Build-Subproject adbc_driver_sqlite
-}
-if ($BuildDriverSnowflake) {
-    $env:ADBC_SNOWFLAKE_LIBRARY = Get-Childitem `
-      -ErrorAction SilentlyContinue `
-      -Path $InstallDir `
-      -Recurse `
-      -Include "adbc_driver_snowflake.dll","libadbc_driver_snowflake.so" | % {$_.FullName}
-    echo $env:ADBC_SNOWFLAKE_LIBRARY
-    if ($env:ADBC_SNOWFLAKE_LIBRARY -eq $null) {
-        echo "Could not find Snowflake driver in $($InstallDir)"
-        exit 1
-    }
-    Build-Subproject adbc_driver_snowflake
-}
+cmake -S "$($SourceDir)\c" -B $BuildDir `
+    -DADBC_DRIVER_MANAGER=$BuildDriverManager `
+    -DADBC_DRIVER_FLIGHTSQL=$BuildDriverFlightSql `
+    -DADBC_DRIVER_POSTGRESQL=$BuildDriverPostgreSQL `
+    -DADBC_DRIVER_SQLITE=$BuildDriverSqlite `
+    -DADBC_DRIVER_SNOWFLAKE=$BuildDriverSnowflake `
+    -DADBC_BUILD_PYTHON=ON
+cmake --build $BuildDir --target python

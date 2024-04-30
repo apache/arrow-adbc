@@ -131,19 +131,24 @@ def connect(
     kwargs = (db_kwargs or {}).copy()
     if uri is not None:
         kwargs["uri"] = uri
+    appname = kwargs.get(DatabaseOptions.APPLICATION_NAME.value, "")
+    kwargs[DatabaseOptions.APPLICATION_NAME.value] = (
+        f"[ADBC][Python-{__version__}]{appname}"
+    )
     return adbc_driver_manager.AdbcDatabase(driver=_driver_path(), **kwargs)
 
 
-@functools.cache
+@functools.lru_cache
 def _driver_path() -> str:
-    import importlib.resources
     import pathlib
     import sys
+
+    import importlib_resources
 
     driver = "adbc_driver_snowflake"
 
     # Wheels bundle the shared library
-    root = importlib.resources.files(__package__)
+    root = importlib_resources.files(driver)
     # The filename is always the same regardless of platform
     entrypoint = root.joinpath(f"lib{driver}.so")
     if entrypoint.is_file():

@@ -18,6 +18,7 @@
 package org.apache.arrow.adbc.drivermanager;
 
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
@@ -26,56 +27,75 @@ import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.memory.BufferAllocator;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
-/**
- * Load an ADBC driver based on name.
- *
- * <p>This class is EXPERIMENTAL. It will be rewritten before 1.0.0 (see <a
- * href="https://github.com/apache/arrow-adbc/issues/48">issue #48</a>).
- */
+/** Instantiate connections to ABDC databases generically based on driver name. */
 public final class AdbcDriverManager {
   private static final AdbcDriverManager INSTANCE = new AdbcDriverManager();
 
-  private final ConcurrentMap<String, Function<BufferAllocator, AdbcDriver>> drivers;
+  private final ConcurrentMap<String, Function<BufferAllocator, AdbcDriver>> driverFactoryFunctions;
 
-  public AdbcDriverManager() {
-    drivers = new ConcurrentHashMap<>();
+  private AdbcDriverManager() {
+    driverFactoryFunctions = new ConcurrentHashMap<>();
+    final ServiceLoader<AdbcDriverFactory> serviceLoader =
+        ServiceLoader.load(AdbcDriverFactory.class);
+    for (AdbcDriverFactory driverFactory : serviceLoader) {
+      final @Nullable String className = driverFactory.getClass().getCanonicalName();
+      if (className == null) {
+        throw new RuntimeException("Class has no canonical name");
+      }
+      driverFactoryFunctions.putIfAbsent(className, driverFactory::getDriver);
+    }
   }
 
   /**
    * Connect to a database.
    *
-   * @param driverName The driver to use.
+   * @param driverFactoryName The driver to use.
    * @param allocator The allocator to use.
    * @param parameters Parameters for the driver.
    * @return The AdbcDatabase instance.
    * @throws AdbcException if the driver was not found or if connection fails.
    */
   public AdbcDatabase connect(
-      String driverName, BufferAllocator allocator, Map<String, Object> parameters)
+      String driverFactoryName, BufferAllocator allocator, Map<String, Object> parameters)
       throws AdbcException {
-    final Function<BufferAllocator, AdbcDriver> driver = lookupDriver(driverName);
-    if (driver == null) {
+    final Function<BufferAllocator, AdbcDriver> driverFactoryFunction =
+        lookupDriver(driverFactoryName);
+    if (driverFactoryFunction == null) {
       throw new AdbcException(
-          "Driver not found for '" + driverName + "'", null, AdbcStatusCode.NOT_FOUND, null, 0);
+          "AdbcDriverFactory not found for '" + driverFactoryName + "'",
+          null,
+          AdbcStatusCode.NOT_FOUND,
+          null,
+          0);
     }
-    return driver.apply(allocator).open(parameters);
+
+    return driverFactoryFunction.apply(allocator).open(parameters);
   }
 
   /**
    * Lookup a registered driver.
    *
-   * @param driverName The driver to lookup.
-   * @return The driver instance, or null if not found.
+   * @param driverFactoryName The driver factory function to lookup. This is usually the
+   *     fully-qualified class name of an AdbcDriverFactory class.
+   * @return A function to construct an AdbcDriver from a BufferAllocator, or null if not found.
    */
-  public Function<BufferAllocator, AdbcDriver> lookupDriver(String driverName) {
-    return drivers.get(driverName);
+  @Nullable Function<BufferAllocator, AdbcDriver> lookupDriver(String driverFactoryName) {
+    return driverFactoryFunctions.get(driverFactoryName);
   }
 
-  public void registerDriver(String driverName, Function<BufferAllocator, AdbcDriver> driver) {
-    if (drivers.putIfAbsent(driverName, driver) != null) {
+  /**
+   * Register a driver manually.
+   *
+   * @param driverFactoryName The name of the driver to associate with the construction function.
+   * @param driverFactory The function to use to instantiate the driver.
+   */
+  public void registerDriver(
+      String driverFactoryName, Function<BufferAllocator, AdbcDriver> driverFactory) {
+    if (driverFactoryFunctions.putIfAbsent(driverFactoryName, driverFactory) != null) {
       throw new IllegalStateException(
-          "[DriverManager] Driver already registered for '" + driverName + "'");
+          "[DriverManager] Driver factory already registered for '" + driverFactoryName + "'");
     }
   }
 

@@ -33,20 +33,21 @@ jobs:
     name: "pre-commit"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-go@v3
+
+      - uses: actions/setup-go@v5
         with:
           go-version-file: 'go/adbc/go.mod'
           check-latest: true
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
       - name: install golangci-lint
         run: |
           go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.49.0
       - name: pre-commit (cache)
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}

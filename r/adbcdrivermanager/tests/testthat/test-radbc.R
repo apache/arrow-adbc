@@ -83,19 +83,19 @@ test_that("connection methods work for the void driver", {
     "NOT_IMPLEMENTED"
   )
 
-  expect_identical(
+  expect_error(
     adbc_connection_commit(con),
-    con
+    "NOT_IMPLEMENTED"
   )
 
-  expect_identical(
+  expect_error(
     adbc_connection_rollback(con),
-    con
+    "NOT_IMPLEMENTED"
   )
 
-  expect_identical(
+  expect_error(
     adbc_connection_cancel(con),
-    con
+    "NOT_IMPLEMENTED"
   )
 
   expect_error(
@@ -171,6 +171,11 @@ test_that("statement methods work for the void driver", {
 
   expect_error(
     adbc_statement_execute_schema(stmt),
+    "NOT_IMPLEMENTED"
+  )
+
+  expect_error(
+    adbc_statement_cancel(stmt),
     "NOT_IMPLEMENTED"
   )
 })

@@ -214,6 +214,8 @@ key_value_options <- function(options) {
       out[[n_out]] <- as.double(item)
     } else if (is.raw(item)) {
       out[[n_out]] <- item
+    } else if (is.logical(item)) {
+      out[[n_out]] <- tolower(as.character(item))
     } else {
       stop(
         sprintf(

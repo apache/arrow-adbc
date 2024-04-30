@@ -1,0 +1,31 @@
+{
+    "driverPath": "",
+    "driverEntryPoint": "",
+    "account": "",
+    "host": "",
+    "database": "",
+    "warehouse": "",
+    "useHighPrecision": true,
+    "metadata": {
+        "catalog": "",
+        "schema": "",
+        "table": "",
+        "expectedColumnCount": 0
+    },
+    "authentication": {
+        "auth_oauth": {
+            "token": ""
+        },
+        "auth_jwt": {
+            "private_key_file": "",
+            "private_key_pwd": "",
+            "user": ""
+        },
+        "auth_snowflake": {
+            "user": "",
+            "password": ""
+        }
+    },
+    "query": "",
+    "expectedResults": 0
+}

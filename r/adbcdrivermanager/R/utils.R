@@ -16,11 +16,21 @@
 # under the License.
 
 new_env <- function() {
-  new.env(parent = emptyenv())
+  env <- new.env(parent = emptyenv())
+  # A previous version of this just did env$.child_count <- 0L,
+  # which, perhaps because of compilation, results in env$.child_count
+  # referring to the exact same SEXP for every ADBC object! Use vector()
+  # to ensure a fresh allocation.
+  env$.child_count <- vector("integer", length = 1L)
+  env
 }
 
 xptr_env <- function(xptr) {
   .Call(RAdbcXptrEnv, xptr)
+}
+
+xptr_set_protected <- function(xptr, prot) {
+  .Call(RAdbcXptrSetProtected, xptr, prot)
 }
 
 #' @export
@@ -80,6 +90,20 @@ str.adbc_xptr <- function(object, ...) {
   invisible(object)
 }
 
+stop_for_nonzero_child_count <- function(obj) {
+  child_count <- obj$.child_count
+  if (!identical(child_count, 0L)) {
+    msg <- sprintf(
+      "<%s> has %d unreleased child object%s",
+      paste(class(obj), collapse = "/"),
+      child_count,
+      if (child_count != 1) "s" else ""
+    )
+    cnd <- simpleError(msg, call = sys.call(-1))
+    class(cnd) <- union("adbc_error_child_count_not_zero", class(cnd))
+    stop(cnd)
+  }
+}
 
 #' Low-level pointer details
 #'
@@ -93,6 +117,8 @@ str.adbc_xptr <- function(object, ...) {
 #'
 #' @param x An 'adbc_database', 'adbc_connection', 'adbc_statement', or
 #'   'nanoarrow_array_stream'
+#' @param check_child_count Ensures that `x` has a zero child count before
+#'   performing the move. This should almost always be `TRUE`.
 #'
 #' @return
 #' - `adbc_xptr_move()`: A freshly-allocated R object identical to `x`
@@ -107,7 +133,11 @@ str.adbc_xptr <- function(object, ...) {
 #' adbc_xptr_is_valid(db)
 #' adbc_xptr_is_valid(db_new)
 #'
-adbc_xptr_move <- function(x) {
+adbc_xptr_move <- function(x, check_child_count = TRUE) {
+  if (check_child_count && (".child_count" %in% names(x))) {
+    stop_for_nonzero_child_count(x)
+  }
+
   if (inherits(x, "adbc_database")) {
     .Call(RAdbcMoveDatabase, x)
   } else if (inherits(x, "adbc_connection")) {

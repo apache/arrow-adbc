@@ -16,6 +16,9 @@
 # under the License.
 
 Cython
+importlib-resources
+# nodejs is required by pyright
+nodejs >=13.0.0
 pandas
 pyarrow>=8.0.0
 pyright
@@ -23,6 +26,7 @@ pytest
 setuptools
 
 # For integration testing
-polars
+# 0.20.3 is broken on conda-forge
+polars<=0.20.2
 protobuf
 python-duckdb

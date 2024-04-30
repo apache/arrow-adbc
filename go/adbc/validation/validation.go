@@ -28,9 +28,9 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/utils"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -64,6 +64,8 @@ type DriverQuirks interface {
 	SupportsGetParameterSchema() bool
 	// Whether it supports dynamic parameter binding in queries
 	SupportsDynamicParameterBinding() bool
+	// Whether it returns an error when attempting to ingest with an incompatible schema
+	SupportsErrorIngestIncompatibleSchema() bool
 	// Expected Metadata responses
 	GetMetadata(adbc.InfoCode) interface{}
 	// Create a sample table from an arrow record
@@ -100,6 +102,7 @@ func (d *DatabaseTests) TestNewDatabase() {
 	d.NoError(err)
 	d.NotNil(db)
 	d.Implements((*adbc.Database)(nil), db)
+	d.NoError(db.Close())
 }
 
 type ConnectionTests struct {
@@ -121,6 +124,7 @@ func (c *ConnectionTests) SetupTest() {
 func (c *ConnectionTests) TearDownTest() {
 	c.Quirks.TearDownDriver(c.T(), c.Driver)
 	c.Driver = nil
+	c.NoError(c.DB.Close())
 	c.DB = nil
 }
 
@@ -325,6 +329,9 @@ func (c *ConnectionTests) TestMetadataGetInfo() {
 				case 0:
 					// String
 					actual = child.(*array.String).Value(offset)
+				case 1:
+					// bool
+					actual = child.(*array.Boolean).Value(offset)
 				case 2:
 					// int64
 					actual = child.(*array.Int64).Value(offset)
@@ -514,6 +521,7 @@ func (s *StatementTests) TearDownTest() {
 	s.Require().NoError(s.Cnxn.Close())
 	s.Quirks.TearDownDriver(s.T(), s.Driver)
 	s.Cnxn = nil
+	s.NoError(s.DB.Close())
 	s.DB = nil
 	s.Driver = nil
 }
@@ -797,7 +805,7 @@ func (s *StatementTests) TestSqlIngestInts() {
 	}
 
 	// use order by clause to ensure we get the same order as the input batch
-	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM bulk_ingest ORDER BY "int64s" DESC NULLS LAST`))
+	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest" ORDER BY "int64s" DESC NULLS LAST`))
 	rdr, rows, err := stmt.ExecuteQuery(s.ctx)
 	s.Require().NoError(err)
 	if rows != -1 && rows != 3 {
@@ -868,7 +876,7 @@ func (s *StatementTests) TestSqlIngestAppend() {
 	}
 
 	// use order by clause to ensure we get the same order as the input batch
-	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM bulk_ingest ORDER BY "int64s" DESC NULLS LAST`))
+	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest" ORDER BY "int64s" DESC NULLS LAST`))
 	rdr, rows, err := stmt.ExecuteQuery(s.ctx)
 	s.Require().NoError(err)
 	if rows != -1 && rows != 3 {
@@ -942,7 +950,7 @@ func (s *StatementTests) TestSqlIngestReplace() {
 		s.FailNowf("invalid number of affected rows", "should be -1 or 1, got: %d", affected)
 	}
 
-	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM bulk_ingest`))
+	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest"`))
 	rdr, rows, err := stmt.ExecuteQuery(s.ctx)
 	s.Require().NoError(err)
 	if rows != -1 && rows != 1 {
@@ -1007,7 +1015,7 @@ func (s *StatementTests) TestSqlIngestCreateAppend() {
 	}
 
 	// validate
-	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM bulk_ingest`))
+	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest"`))
 	rdr, rows, err := stmt.ExecuteQuery(s.ctx)
 	s.Require().NoError(err)
 	if rows != -1 && rows != 2 {
@@ -1078,6 +1086,10 @@ func (s *StatementTests) TestSqlIngestErrors() {
 	})
 
 	s.Run("overwrite and incompatible schema", func() {
+		if !s.Quirks.SupportsErrorIngestIncompatibleSchema() {
+			s.T().SkipNow()
+		}
+
 		s.Require().NoError(s.Quirks.DropTable(s.Cnxn, "bulk_ingest"))
 		schema := arrow.NewSchema([]arrow.Field{{
 			Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true}}, nil)

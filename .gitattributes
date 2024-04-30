@@ -16,8 +16,8 @@
 # under the License.
 
 c/vendor/* linguist-vendored
-go/adbc/drivermgr/adbc.h linguist-vendored
-go/adbc/drivermgr/adbc_driver_manager.cc linguist-vendored
+go/adbc/drivermgr/adbc.h linguist-generated
+go/adbc/drivermgr/adbc_driver_manager.cc linguist-generated
 go/adbc/pkg/flightsql/* linguist-generated
 go/adbc/pkg/panicdummy/* linguist-generated
 go/adbc/pkg/snowflake/* linguist-generated

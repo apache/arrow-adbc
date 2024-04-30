@@ -65,6 +65,44 @@ static void gadbc_statement_class_init(GADBCStatementClass* klass) {
 }
 
 /**
+ * gadbc_statement_initialize: (skip)
+ * @statement: A #GADBCStatement.
+ * @connection: A #GADBCConnection.
+ * @context: A context for error message.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * This is only for implementing subclass of #GADBCStatement. In
+ * general, users should use gadbc_statement_new().
+ *
+ * Initializes an empty #GADBCStatement with the given
+ * #GADBCConnection.
+ *
+ * Returns: %TRUE if initialization is done successfully, %FALSE otherwise.
+ *
+ * Since: 0.10.0
+ */
+gboolean gadbc_statement_initialize(GADBCStatement* statement,
+                                    GADBCConnection* connection, const gchar* context,
+                                    GError** error) {
+  struct AdbcConnection* adbc_connection =
+      gadbc_connection_get_raw(connection, context, error);
+  if (!adbc_connection) {
+    return FALSE;
+  }
+  GADBCStatementPrivate* priv = gadbc_statement_get_instance_private(statement);
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code =
+      AdbcStatementNew(adbc_connection, &(priv->adbc_statement), &adbc_error);
+  priv->initialized = gadbc_error_check(error, status_code, &adbc_error, context);
+  if (!priv->initialized) {
+    return FALSE;
+  }
+  priv->connection = connection;
+  g_object_ref(priv->connection);
+  return TRUE;
+}
+
+/**
  * gadbc_statement_new:
  * @connection: A #GADBCConnection.
  * @error: (nullable): Return location for a #GError or %NULL.
@@ -75,25 +113,14 @@ static void gadbc_statement_class_init(GADBCStatementClass* klass) {
  * Since: 0.1.0
  */
 GADBCStatement* gadbc_statement_new(GADBCConnection* connection, GError** error) {
-  const gchar* context = "[adbc][statement][new]";
-  struct AdbcConnection* adbc_connection =
-      gadbc_connection_get_raw(connection, context, error);
-  if (!adbc_connection) {
-    return NULL;
-  }
   GADBCStatement* statement = g_object_new(GADBC_TYPE_STATEMENT, NULL);
-  GADBCStatementPrivate* priv = gadbc_statement_get_instance_private(statement);
-  struct AdbcError adbc_error = {};
-  AdbcStatusCode status_code =
-      AdbcStatementNew(adbc_connection, &(priv->adbc_statement), &adbc_error);
-  priv->initialized = gadbc_error_check(error, status_code, &adbc_error, context);
-  if (!priv->initialized) {
+  if (gadbc_statement_initialize(statement, connection, "[adbc][statement][new]",
+                                 error)) {
+    return statement;
+  } else {
     g_object_unref(statement);
     return NULL;
   }
-  priv->connection = connection;
-  g_object_ref(priv->connection);
-  return statement;
 }
 
 /**

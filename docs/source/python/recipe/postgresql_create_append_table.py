@@ -28,10 +28,11 @@ import adbc_driver_postgresql.dbapi
 uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
 conn = adbc_driver_postgresql.dbapi.connect(uri)
 
-#: For the purposes of testing, we'll first make sure the table
-#: doesn't exist.
+#: For the purposes of testing, we'll first make sure the tables we're about
+#: to use don't exist.
 with conn.cursor() as cur:
     cur.execute("DROP TABLE IF EXISTS example")
+    cur.execute("DROP TABLE IF EXISTS example2")
 
 #: Now we can create the table.
 with conn.cursor() as cur:
@@ -76,5 +77,27 @@ with conn.cursor() as cur:
 
     cur.execute("SELECT COUNT(*) FROM example")
     assert cur.fetchone() == (8,)
+
+#: We can also choose to create the table if it doesn't exist, and otherwise
+#: append.
+
+with conn.cursor() as cur:
+    cur.adbc_ingest("example2", data, mode="create_append")
+
+    cur.execute("SELECT COUNT(*) FROM example2")
+    assert cur.fetchone() == (4,)
+
+    cur.adbc_ingest("example2", data, mode="create_append")
+
+    cur.execute("SELECT COUNT(*) FROM example2")
+    assert cur.fetchone() == (8,)
+
+#: Finally, we can replace the table.
+
+with conn.cursor() as cur:
+    cur.adbc_ingest("example", data.slice(0, 2), mode="replace")
+
+    cur.execute("SELECT COUNT(*) FROM example")
+    assert cur.fetchone() == (2,)
 
 conn.close()

@@ -54,10 +54,37 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             Dictionary<string, string> parameters = new Dictionary<string, string>
             {
                { BigQueryParameters.ProjectId, testConfiguration.ProjectId },
-               { BigQueryParameters.ClientId, testConfiguration.ClientId },
-               { BigQueryParameters.ClientSecret, testConfiguration.ClientSecret},
-               { BigQueryParameters.RefreshToken, testConfiguration.RefreshToken}
             };
+
+            if (!string.IsNullOrEmpty(testConfiguration.JsonCredential))
+            {
+                parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.ServiceAccountAuthenticationType);
+                parameters.Add(BigQueryParameters.JsonCredential, testConfiguration.JsonCredential);
+            }
+            else
+            {
+                parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.UserAuthenticationType);
+                parameters.Add(BigQueryParameters.ClientId, testConfiguration.ClientId);
+                parameters.Add(BigQueryParameters.ClientSecret, testConfiguration.ClientSecret);
+                parameters.Add(BigQueryParameters.RefreshToken, testConfiguration.RefreshToken);
+            }
+
+            if (!string.IsNullOrEmpty(testConfiguration.Scopes))
+            {
+                parameters.Add(BigQueryParameters.Scopes, testConfiguration.Scopes);
+            }
+
+            if (testConfiguration.AllowLargeResults)
+            {
+                parameters.Add(BigQueryParameters.AllowLargeResults, testConfiguration.AllowLargeResults.ToString());
+            }
+
+            parameters.Add(BigQueryParameters.IncludeConstraintsWithGetObjects, testConfiguration.IncludeTableConstraints.ToString());
+
+            if (!string.IsNullOrEmpty(testConfiguration.LargeResultsDestinationTable))
+            {
+                parameters.Add(BigQueryParameters.LargeResultsDestinationTable, testConfiguration.LargeResultsDestinationTable);
+            }
 
             return parameters;
         }

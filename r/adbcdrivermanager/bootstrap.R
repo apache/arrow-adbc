@@ -22,7 +22,8 @@
 files_to_vendor <- c(
   "../../adbc.h",
   "../../c/driver_manager/adbc_driver_manager.h",
-  "../../c/driver_manager/adbc_driver_manager.cc"
+  "../../c/driver_manager/adbc_driver_manager.cc",
+  "../../c/driver/common/driver_base.h"
 )
 
 if (all(file.exists(files_to_vendor))) {

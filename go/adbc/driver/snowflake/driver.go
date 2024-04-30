@@ -23,16 +23,13 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
 	"golang.org/x/exp/maps"
 )
 
 const (
-	infoDriverName = "ADBC Snowflake Driver - Go"
-	infoVendorName = "Snowflake"
-
 	OptionDatabase  = "adbc.snowflake.sql.db"
 	OptionSchema    = "adbc.snowflake.sql.schema"
 	OptionWarehouse = "adbc.snowflake.sql.warehouse"
@@ -119,36 +116,17 @@ const (
 )
 
 var (
-	infoDriverVersion      string
-	infoDriverArrowVersion string
-	infoSupportedCodes     []adbc.InfoCode
+	infoVendorVersion string
 )
 
 func init() {
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, dep := range info.Deps {
 			switch {
-			case dep.Path == "github.com/apache/arrow-adbc/go/adbc/driver/snowflake":
-				infoDriverVersion = dep.Version
-			case strings.HasPrefix(dep.Path, "github.com/apache/arrow/go/"):
-				infoDriverArrowVersion = dep.Version
+			case dep.Path == "github.com/snowflakedb/gosnowflake":
+				infoVendorVersion = dep.Version
 			}
 		}
-	}
-	// XXX: Deps not populated in tests
-	// https://github.com/golang/go/issues/33976
-	if infoDriverVersion == "" {
-		infoDriverVersion = "(unknown or development build)"
-	}
-	if infoDriverArrowVersion == "" {
-		infoDriverArrowVersion = "(unknown or development build)"
-	}
-
-	infoSupportedCodes = []adbc.InfoCode{
-		adbc.InfoDriverName,
-		adbc.InfoDriverVersion,
-		adbc.InfoDriverArrowVersion,
-		adbc.InfoVendorName,
 	}
 }
 
@@ -186,21 +164,34 @@ func errToAdbcErr(code adbc.Status, err error) error {
 	}
 }
 
+func quoteTblName(name string) string {
+	return "\"" + strings.ReplaceAll(name, "\"", "\"\"") + "\""
+}
+
 type driverImpl struct {
 	driverbase.DriverImplBase
 }
 
 // NewDriver creates a new Snowflake driver using the given Arrow allocator.
 func NewDriver(alloc memory.Allocator) adbc.Driver {
-	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase("Snowflake", alloc)})
+	info := driverbase.DefaultDriverInfo("Snowflake")
+	if infoVendorVersion != "" {
+		if err := info.RegisterInfoCode(adbc.InfoVendorVersion, infoVendorVersion); err != nil {
+			panic(err)
+		}
+	}
+	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)})
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	opts = maps.Clone(opts)
-	db := &databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
-		useHighPrecision: true}
+	db := &databaseImpl{
+		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
+		useHighPrecision: true,
+	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err
 	}
+
 	return driverbase.NewDatabase(db), nil
 }

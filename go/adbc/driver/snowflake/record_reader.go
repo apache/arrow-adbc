@@ -18,8 +18,12 @@
 package snowflake
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
 	"math"
 	"strconv"
 	"strings"
@@ -27,14 +31,16 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/compute"
-	"github.com/apache/arrow/go/v14/arrow/ipc"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/compute"
+	"github.com/apache/arrow/go/v16/arrow/ipc"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
 	"golang.org/x/sync/errgroup"
 )
+
+const MetadataKeySnowflakeType = "SNOWFLAKE_TYPE"
 
 func identCol(_ context.Context, a arrow.Array) (arrow.Array, error) {
 	a.Retain()
@@ -101,20 +107,36 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 					}
 					f.Type = dt
 					transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-						return compute.CastArray(ctx, a, compute.SafeCastOptions(dt))
+						return integerToDecimal128(ctx, a, dt)
 					}
 				} else {
 					if srcMeta.Scale != 0 {
 						f.Type = arrow.PrimitiveTypes.Float64
-						transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-							result, err := compute.Divide(ctx, compute.ArithmeticOptions{NoCheckOverflow: true},
-								&compute.ArrayDatum{Value: a.Data()},
-								compute.NewDatum(math.Pow10(int(srcMeta.Scale))))
-							if err != nil {
-								return nil, err
+						// For precisions of 16, 17 and 18, a conversion from int64 to float64 fails with an error
+						// So for these precisions, we instead convert first to a decimal128 and then to a float64.
+						if srcMeta.Precision > 15 && srcMeta.Precision < 19 {
+							transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
+								result, err := integerToDecimal128(ctx, a, &arrow.Decimal128Type{
+									Precision: int32(srcMeta.Precision),
+									Scale:     int32(srcMeta.Scale),
+								})
+								if err != nil {
+									return nil, err
+								}
+								return compute.CastArray(ctx, result, compute.UnsafeCastOptions(f.Type))
 							}
-							defer result.Release()
-							return result.(*compute.ArrayDatum).MakeArray(), nil
+						} else {
+							// For precisions less than 16, we can simply scale the integer value appropriately
+							transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
+								result, err := compute.Divide(ctx, compute.ArithmeticOptions{NoCheckOverflow: true},
+									&compute.ArrayDatum{Value: a.Data()},
+									compute.NewDatum(math.Pow10(int(srcMeta.Scale))))
+								if err != nil {
+									return nil, err
+								}
+								defer result.Release()
+								return result.(*compute.ArrayDatum).MakeArray(), nil
+							}
 						}
 					} else {
 						f.Type = arrow.PrimitiveTypes.Int64
@@ -196,13 +218,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 							continue
 						}
 
-						q := int64(t) / int64(math.Pow10(int(srcMeta.Scale)))
-						r := int64(t) % int64(math.Pow10(int(srcMeta.Scale)))
-						v, err := arrow.TimestampFromTime(time.Unix(q, r), dt.Unit)
-						if err != nil {
-							return nil, err
-						}
-						tb.Append(v)
+						tb.Append(arrow.Timestamp(t))
 					}
 				}
 				return tb.NewArray(), nil
@@ -266,7 +282,28 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 	return out, getRecTransformer(out, transformers)
 }
 
-func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool) (*arrow.Schema, error) {
+func integerToDecimal128(ctx context.Context, a arrow.Array, dt *arrow.Decimal128Type) (arrow.Array, error) {
+	// We can't do a cast directly into the destination type because the numbers we get from Snowflake
+	// are scaled integers. So not only would the cast produce the wrong value, it also risks producing
+	// an error of precisions which e.g. can't hold every int64. To work around these problems, we instead
+	// cast into a decimal type of a precision and scale which we know will hold all values and won't
+	// require scaling, We then substitute the type on this array with the actual return type.
+
+	dt0 := &arrow.Decimal128Type{
+		Precision: int32(20),
+		Scale:     int32(0),
+	}
+	result, err := compute.CastArray(ctx, a, compute.SafeCastOptions(dt0))
+	if err != nil {
+		return nil, err
+	}
+
+	data := result.Data()
+	result.Data().Reset(dt, data.Len(), data.Buffers(), data.Children(), data.NullN(), data.Offset())
+	return result, err
+}
+
+func rowTypesToArrowSchema(_ context.Context, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool) (*arrow.Schema, error) {
 	var loc *time.Location
 
 	metadata := ld.RowTypes()
@@ -276,7 +313,7 @@ func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader
 			Name:     srcMeta.Name,
 			Nullable: srcMeta.Nullable,
 			Metadata: arrow.MetadataFrom(map[string]string{
-				"SNOWFLAKE_TYPE": srcMeta.Type,
+				MetadataKeySnowflakeType: srcMeta.Type,
 			}),
 		}
 		switch srcMeta.Type {
@@ -326,8 +363,7 @@ func extractTimestamp(src *string) (sec, nsec int64, err error) {
 	return
 }
 
-func jsonDataToArrow(ctx context.Context, bldr *array.RecordBuilder, ld gosnowflake.ArrowStreamLoader) (arrow.Record, error) {
-	rawData := ld.JSONData()
+func jsonDataToArrow(_ context.Context, bldr *array.RecordBuilder, rawData [][]*string) (arrow.Record, error) {
 	fieldBuilders := bldr.Fields()
 	for _, rec := range rawData {
 		for i, col := range rec {
@@ -347,19 +383,43 @@ func jsonDataToArrow(ctx context.Context, bldr *array.RecordBuilder, ld gosnowfl
 
 				fb.Append(arrow.Time64(sec*1e9 + nsec))
 			case *array.TimestampBuilder:
-				tz, err := fb.Type().(*arrow.TimestampType).GetZone()
-				if err != nil {
-					return nil, err
+				snowflakeType, ok := bldr.Schema().Field(i).Metadata.GetValue(MetadataKeySnowflakeType)
+				if !ok {
+					return nil, errToAdbcErr(
+						adbc.StatusInvalidData,
+						fmt.Errorf("key %s not found in metadata for field %s", MetadataKeySnowflakeType, bldr.Schema().Field(i).Name),
+					)
 				}
 
-				if tz != time.UTC {
-					sec, nsec, err := extractTimestamp(col)
+				if snowflakeType == "timestamp_tz" {
+					// "timestamp_tz" should be value + offset separated by space
+					tm := strings.Split(*col, " ")
+					if len(tm) != 2 {
+						return nil, adbc.Error{
+							Msg:        "invalid TIMESTAMP_TZ data. value doesn't consist of two numeric values separated by a space: " + *col,
+							SqlState:   [5]byte{'2', '2', '0', '0', '7'},
+							VendorCode: 268000,
+							Code:       adbc.StatusInvalidData,
+						}
+					}
+
+					sec, nsec, err := extractTimestamp(&tm[0])
 					if err != nil {
 						return nil, err
 					}
+					offset, err := strconv.ParseInt(tm[1], 10, 64)
+					if err != nil {
+						return nil, adbc.Error{
+							Msg:        "invalid TIMESTAMP_TZ data. offset value is not an integer: " + tm[1],
+							SqlState:   [5]byte{'2', '2', '0', '0', '7'},
+							VendorCode: 268000,
+							Code:       adbc.StatusInvalidData,
+						}
+					}
 
-					val := time.Unix(sec, nsec).In(tz)
-					ts, err := arrow.TimestampFromTime(val, arrow.Nanosecond)
+					loc := gosnowflake.Location(int(offset) - 1440)
+					tt := time.Unix(sec, nsec).In(loc)
+					ts, err := arrow.TimestampFromTime(tt, arrow.Nanosecond)
 					if err != nil {
 						return nil, err
 					}
@@ -367,49 +427,14 @@ func jsonDataToArrow(ctx context.Context, bldr *array.RecordBuilder, ld gosnowfl
 					break
 				}
 
-				snowflakeType, _ := bldr.Schema().Field(i).Metadata.GetValue("SNOWFLAKE_TYPE")
-				if snowflakeType == "timestamp_ntz" {
-					sec, nsec, err := extractTimestamp(col)
-					if err != nil {
-						return nil, err
-					}
-
-					fb.Append(arrow.Timestamp(sec*1e9 + nsec))
-					break
-				}
-
-				// "timestamp_tz" should be value + offset separated by space
-				tm := strings.Split(*col, " ")
-				if len(tm) != 2 {
-					return nil, adbc.Error{
-						Msg:        "invalid TIMESTAMP_TZ data. value doesn't consist of two numeric values separated by a space: " + *col,
-						SqlState:   [5]byte{'2', '2', '0', '0', '7'},
-						VendorCode: 268000,
-						Code:       adbc.StatusInvalidData,
-					}
-				}
-
-				sec, nsec, err := extractTimestamp(&tm[0])
+				// otherwise timestamp_ntz or timestamp_ltz, which have the same physical representation
+				sec, nsec, err := extractTimestamp(col)
 				if err != nil {
 					return nil, err
 				}
-				offset, err := strconv.ParseInt(tm[1], 10, 64)
-				if err != nil {
-					return nil, adbc.Error{
-						Msg:        "invalid TIMESTAMP_TZ data. offset value is not an integer: " + tm[1],
-						SqlState:   [5]byte{'2', '2', '0', '0', '7'},
-						VendorCode: 268000,
-						Code:       adbc.StatusInvalidData,
-					}
-				}
 
-				loc := gosnowflake.Location(int(offset) - 1440)
-				tt := time.Unix(sec, nsec).In(loc)
-				ts, err := arrow.TimestampFromTime(tt, arrow.Nanosecond)
-				if err != nil {
-					return nil, err
-				}
-				fb.Append(ts)
+				fb.Append(arrow.Timestamp(sec*1e9 + nsec))
+
 			case *array.BinaryBuilder:
 				b, err := hex.DecodeString(*col)
 				if err != nil {
@@ -448,7 +473,12 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		return nil, errToAdbcErr(adbc.StatusInternal, err)
 	}
 
-	if len(batches) == 0 {
+	// if the first chunk was JSON, that means this was a metadata query which
+	// is only returning JSON data rather than Arrow
+	rawData := ld.JSONData()
+	if len(rawData) > 0 {
+		// construct an Arrow schema based on reading the JSON metadata description of the
+		// result type schema
 		schema, err := rowTypesToArrowSchema(ctx, ld, useHighPrecision)
 		if err != nil {
 			return nil, adbc.Error{
@@ -457,20 +487,87 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 			}
 		}
 
+		if ld.TotalRows() == 0 {
+			return array.NewRecordReader(schema, []arrow.Record{})
+		}
+
 		bldr := array.NewRecordBuilder(alloc, schema)
 		defer bldr.Release()
 
-		rec, err := jsonDataToArrow(ctx, bldr, ld)
+		rec, err := jsonDataToArrow(ctx, bldr, rawData)
 		if err != nil {
 			return nil, err
 		}
 		defer rec.Release()
 
-		if ld.TotalRows() != 0 {
-			return array.NewRecordReader(schema, []arrow.Record{rec})
-		} else {
-			return array.NewRecordReader(schema, []arrow.Record{})
+		results := []arrow.Record{rec}
+		for _, b := range batches {
+			rdr, err := b.GetStream(ctx)
+			if err != nil {
+				return nil, adbc.Error{
+					Msg:  err.Error(),
+					Code: adbc.StatusInternal,
+				}
+			}
+			defer rdr.Close()
+
+			// the "JSON" data returned isn't valid JSON. Instead it is a list of
+			// comma-delimited JSON lists containing every value as a string, except
+			// for a JSON null to represent nulls. Thus we can't just use the existing
+			// JSON parsing code in Arrow.
+			data, err := io.ReadAll(rdr)
+			if err != nil {
+				return nil, adbc.Error{
+					Msg:  err.Error(),
+					Code: adbc.StatusInternal,
+				}
+			}
+
+			if cap(rawData) >= int(b.NumRows()) {
+				rawData = rawData[:b.NumRows()]
+			} else {
+				rawData = make([][]*string, b.NumRows())
+			}
+			bldr.Reserve(int(b.NumRows()))
+
+			// we grab the entire JSON message and create a bytes reader
+			offset, buf := int64(0), bytes.NewReader(data)
+			for i := 0; i < int(b.NumRows()); i++ {
+				// we construct a decoder from the bytes.Reader to read the next JSON list
+				// of columns (one row) from the input
+				dec := json.NewDecoder(buf)
+				if err = dec.Decode(&rawData[i]); err != nil {
+					return nil, adbc.Error{
+						Msg:  err.Error(),
+						Code: adbc.StatusInternal,
+					}
+				}
+
+				// dec.InputOffset() now represents the index of the ',' so we skip the comma
+				offset += dec.InputOffset() + 1
+				// then seek the buffer to that spot. we have to seek based on the start
+				// because json.Decoder can read from the buffer more than is necessary to
+				// process the JSON data.
+				if _, err = buf.Seek(offset, 0); err != nil {
+					return nil, adbc.Error{
+						Msg:  err.Error(),
+						Code: adbc.StatusInternal,
+					}
+				}
+			}
+
+			// now that we have our [][]*string of JSON data, we can pass it to get converted
+			// to an Arrow record batch and appended to our slice of batches
+			rec, err := jsonDataToArrow(ctx, bldr, rawData)
+			if err != nil {
+				return nil, err
+			}
+			defer rec.Release()
+
+			results = append(results, rec)
 		}
+
+		return array.NewRecordReader(schema, results)
 	}
 
 	ch := make(chan arrow.Record, bufferSize)
@@ -563,9 +660,11 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 				return rr.Err()
 			})
 		}
-	}()
 
-	go func() {
+		// place this here so that we always clean up, but they can't be in a
+		// separate goroutine. Otherwise we'll have a race condition between
+		// the call to wait and the calls to group.Go to kick off the jobs
+		// to perform the pre-fetching (GH-1283).
 		rdr.err = group.Wait()
 		// don't close the last channel until after the group is finished,
 		// so that Next() can only return after reader.err may have been set

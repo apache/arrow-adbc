@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,12 +36,14 @@ import org.apache.arrow.vector.UInt4Vector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.complex.DenseUnionVector;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Helper class to track state needed to build up the info structure. */
 final class InfoMetadataBuilder implements AutoCloseable {
   private static final byte STRING_VALUE_TYPE_ID = (byte) 0;
   private static final byte BIGINT_VALUE_TYPE_ID = (byte) 2;
   private static final Map<Integer, AddInfo> SUPPORTED_CODES = new HashMap<>();
+  private final BufferAllocator allocator;
   private final Collection<Integer> requestedCodes;
   private final DatabaseMetaData dbmd;
   private VectorSchemaRoot root;
@@ -85,12 +88,14 @@ final class InfoMetadataBuilder implements AutoCloseable {
         });
   }
 
-  InfoMetadataBuilder(BufferAllocator allocator, Connection connection, int[] infoCodes)
+  InfoMetadataBuilder(BufferAllocator allocator, Connection connection, int @Nullable [] infoCodes)
       throws SQLException {
-    this.requestedCodes =
-        infoCodes == null
-            ? SUPPORTED_CODES.keySet()
-            : IntStream.of(infoCodes).boxed().collect(Collectors.toList());
+    this.allocator = allocator;
+    if (infoCodes == null) {
+      this.requestedCodes = new ArrayList<>(SUPPORTED_CODES.keySet());
+    } else {
+      this.requestedCodes = IntStream.of(infoCodes).boxed().collect(Collectors.toList());
+    }
     this.root = VectorSchemaRoot.create(StandardSchemas.GET_INFO_SCHEMA, allocator);
     this.dbmd = connection.getMetaData();
     this.infoCodes = (UInt4Vector) root.getVector(0);
@@ -130,7 +135,12 @@ final class InfoMetadataBuilder implements AutoCloseable {
     }
     root.setRowCount(rowIndex);
     VectorSchemaRoot result = root;
-    root = null;
+    try {
+      root = VectorSchemaRoot.create(StandardSchemas.GET_INFO_SCHEMA, allocator);
+    } catch (RuntimeException e) {
+      result.close();
+      throw e;
+    }
     return result;
   }
 

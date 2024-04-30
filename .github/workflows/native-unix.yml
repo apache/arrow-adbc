@@ -63,27 +63,37 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
+        include:
+          - os: macos-13
+            goarch: x64
+          - os: macos-latest
+            goarch: arm64
+          - os: ubuntu-latest
+            goarch: x64
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -94,9 +104,9 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.19.13
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -110,17 +120,18 @@ jobs:
           export ADBC_BUILD_TESTS=OFF
           export ADBC_USE_ASAN=OFF
           export ADBC_USE_UBSAN=OFF
-          export PATH=$RUNNER_TOOL_CACHE/go/1.19.13/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
+          export ADBC_CMAKE_ARGS="-DCMAKE_UNITY_BUILD=ON"
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Go Build
         shell: bash -l {0}
         env:
           CGO_ENABLED: "1"
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.19.13/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -135,13 +146,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -151,11 +162,11 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -166,25 +177,31 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
 
-      - name: Build SQLite3 Driver
+      - name: Build
         shell: bash -l {0}
+        env:
+          ADBC_CMAKE_ARGS: "-DCMAKE_UNITY_BUILD=ON"
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          BUILD_DRIVER_SQLITE: "1"
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test SQLite3 Driver
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Test
         shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_test.sh "$(pwd)/build"
-      - name: Build PostgreSQL Driver
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Build Driver Manager
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test Driver Manager
-        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          # PostgreSQL is explicitly not tested here since we don't spawn
+          # Postgres; see integration.yml
+          BUILD_DRIVER_POSTGRESQL: "0"
+          BUILD_DRIVER_SQLITE: "1"
         run: |
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
@@ -192,7 +209,7 @@ jobs:
     name: "clang-tidy"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -202,11 +219,11 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -234,13 +251,15 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        # N.B. no macos-latest here since conda-forge does not package
+        # arrow-c-glib for M1
+        os: ["macos-13", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -250,11 +269,11 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -267,8 +286,13 @@ jobs:
             'arrow-c-glib>=10.0.1' \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_glib.txt
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -292,20 +316,26 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest", "windows-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
-          go-version-file: 'go/adbc/go.mod'
+          go-version-file: "go/adbc/go.mod"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+
       - name: Install staticcheck
-        run: go install honnef.co/go/tools/cmd/staticcheck@v0.3.3
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
       - name: Go Build
         run: |
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
@@ -328,47 +358,63 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
+        include:
+          - os: macos-13
+            goarch: x64
+          - os: macos-latest
+            goarch: arm64
+          - os: ubuntu-latest
+            goarch: x64
     env:
       CGO_ENABLED: "1"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
           use-only-tar-bz2: false
           use-mamba: true
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+
       - name: Install Dependencies
         shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.19.13
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
       - name: Install staticcheck
         shell: bash -l {0}
-        if: ${{ !contains('macos-latest', matrix.os) }}
-        run: go install honnef.co/go/tools/cmd/staticcheck@v0.3.3
+        if: matrix.os == 'ubuntu-latest'
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
@@ -376,10 +422,10 @@ jobs:
       - name: Go Build
         shell: bash -l {0}
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.19.13/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Run Staticcheck
-        if: ${{ !contains('macos-latest', matrix.os) }}
+        if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
         run: |
           pushd go/adbc
@@ -390,7 +436,7 @@ jobs:
         env:
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.19.13/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
   # ------------------------------------------------------------
@@ -403,28 +449,31 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
         python: ["3.9", "3.11"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
         shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -437,25 +486,36 @@ jobs:
             python=${{ matrix.python }} \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
-      - uses: actions/setup-go@v3
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.19.13
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
 
-      - name: Build Python Driver Manager
+      - name: Build
         shell: bash -l {0}
+        env:
+          BUILD_ALL: "1"
+          ADBC_USE_ASAN: "0"
+          ADBC_USE_UBSAN: "0"
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
+          ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Build Panic Dummy
         shell: bash -l {0}
         run: |
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           if [[ $(uname) = "Darwin" ]]; then
             make -C ./go/adbc/pkg libadbc_driver_panicdummy.dylib
           else
@@ -469,35 +529,34 @@ jobs:
           else
             export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.so
           fi
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-      - name: Build Python Driver Flight SQL
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQL=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver Flight SQL
         shell: bash -l {0}
         run: |
+          export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
+          # Can't use Docker on macOS
+          pushd $(pwd)/go/adbc
+          go build -o testserver ./driver/flightsql/cmd/testserver
+          popd
+          $(pwd)/go/adbc/testserver -host 0.0.0.0 -port 41414 &
+          while ! curl --http2-prior-knowledge -H "content-type: application/grpc" -v localhost:41414 -XPOST;
+          do
+              echo "Waiting for test server..."
+              jobs
+              sleep 5
+          done
+          export ADBC_TEST_FLIGHTSQL_URI=grpc://localhost:41414
           env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQL=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-      - name: Build Python Driver PostgreSQL
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+          kill %1
       - name: Test Python Driver PostgreSQL
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-      - name: Build Python Driver SQLite
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver SQLite
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-      - name: Build Python Driver Snowflake
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_SNOWFLAKE=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver Snowflake
         shell: bash -l {0}
         run: |
@@ -512,25 +571,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs:
       - drivers-build-conda
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_PASSWORD: password
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
     strategy:
       matrix:
         os: ["ubuntu-latest"]
         python: ["3.11"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -540,11 +586,11 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -557,27 +603,47 @@ jobs:
             python=${{ matrix.python }} \
             --file ci/conda_env_docs.txt \
             --file ci/conda_env_python.txt
-      - uses: actions/download-artifact@v3
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           path: ~/local
 
       - name: Build Python
         shell: bash -l {0}
+        env:
+          BUILD_ALL: "1"
+          ADBC_USE_ASAN: "0"
+          ADBC_USE_UBSAN: "0"
         run: |
-          env BUILD_ALL=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+          ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       # Docs requires Python packages since it runs doctests
       - name: Build Docs
         shell: bash -l {0}
         run: |
           ./ci/scripts/docs_build.sh "$(pwd)"
+      - name: Archive docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs
+          retention-days: 2
+          path: |
+            docs/build/html
+      - name: Configure Integration Env Vars
+        shell: bash -l {0}
+        run: |
+          pip install python-dotenv[cli]
+          python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
       - name: Test Recipes (C++)
         shell: bash -l {0}
         run: |
           ./ci/scripts/cpp_recipe.sh $(pwd) ~/local build/recipe
       - name: Test Recipes (Python)
         shell: bash -l {0}
-        env:
-          ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
         run: |
+          docker compose up --detach --wait dremio dremio-init flightsql-sqlite-test postgres-test
           pytest -vvs docs/source/tests/

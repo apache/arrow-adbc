@@ -46,7 +46,6 @@ class StatementTest < Test::Unit::TestCase
 
     record_batch =
       Arrow::RecordBatch.new(number: Arrow::Int64Array.new([10, 20, 30]))
-    @statement.set_sql_query("INSERT INTO data VALUES (?)")
     @statement.ingest_target_table = "data"
     @statement.ingest_mode = :append
     _, c_abi_array, c_abi_schema = record_batch.export
@@ -76,7 +75,6 @@ class StatementTest < Test::Unit::TestCase
 
     record_batch =
       Arrow::RecordBatch.new(number: Arrow::Int64Array.new([10, 20, 30]))
-    @statement.set_sql_query("INSERT INTO data VALUES (?)")
     @statement.ingest_target_table = "data"
     @statement.ingest_mode = :append
     reader = Arrow::RecordBatchReader.new([record_batch])

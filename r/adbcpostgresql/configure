@@ -22,17 +22,23 @@
 # ADBC repo into this package. If the file doesn't exist, we're installing
 # from a pre-built tarball.
 if [ -f bootstrap.R ]; then
-  $R_HOME/bin/Rscript bootstrap.R
+  "$R_HOME/bin/Rscript" bootstrap.R
 fi
 
 # Include and library flags
+PKG_CPPFLAGS="$PKG_CPPFLAGS"
 PKG_LIBS="$PKG_LIBS"
 
 # Check for pkg-config
 HAS_PKG_CONFIG=""
-pkg-config libpq --exists
-if [ $? -eq 0 ]; then
+if pkg-config libpq --exists >/dev/null 2>&1 ; then
   HAS_PKG_CONFIG=true
+fi
+
+# Check for pg_config
+HAS_PG_CONFIG=""
+if pg_config >/dev/null 2>&1 ; then
+  HAS_PG_CONFIG=true
 fi
 
 echo "Checking for --configure-vars INCLUDE_DIR or LIB_DIR"
@@ -41,17 +47,21 @@ if [ "$INCLUDE_DIR" ] || [ "$LIB_DIR" ]; then
   PKG_CPPFLAGS="-I$INCLUDE_DIR $PKG_CPPFLAGS"
   PKG_LIBS="-L$LIB_DIR $PKG_LIBS"
 elif [ ! -z "$HAS_PKG_CONFIG" ]; then
-  echo "Using pkg-config libpq"
+  echo "Using pkg-config libpq to locate libpq headers/libs"
   PKG_CPPFLAGS="`pkg-config libpq --cflags` $PKG_CPPFLAGS"
-  PKG_LIBS="`pkg-config libpq --libs` -lpq $PKG_LIBS"
+  PKG_LIBS="`pkg-config libpq --libs` $PKG_LIBS"
+elif [ ! -z "$HAS_PG_CONFIG" ]; then
+  echo "Using pg_config to locate libpq headers/libs"
+  PKG_CPPFLAGS="-I`pg_config --includedir` $PKG_CPPFLAGS"
+  PKG_LIBS="-L`pg_config --libdir` -lpq $PKG_LIBS"
 else
-  echo "INCLUDE_DIR/LIB_DIR and pkg-config not found; trying PKG_LIBS=-lpq"
+  echo "INCLUDE_DIR/LIB_DIR, pkg-config, and pg_config not found; trying PKG_LIBS=-lpq"
   PKG_LIBS="-lpq"
 fi
 
 echo "Testing R CMD SHLIB with $PKG_CPPFLAGS $PKG_LIBS"
 PKG_CPPFLAGS="$PKG_CPPFLAGS" PKG_LIBS="$PKG_LIBS" \
-  $R_HOME/bin/R CMD SHLIB tools/test.c -o compile_test >compile_test.log 2>&1
+  "$R_HOME/bin/R" CMD SHLIB tools/test.c -o compile_test >compile_test.log 2>&1
 
 if [ $? -ne 0 ]; then
   echo "Test compile failed"

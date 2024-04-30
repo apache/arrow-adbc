@@ -39,6 +39,12 @@ public final class SqlTestUtil {
     this.quirks = quirks;
   }
 
+  /** Check if we are running in the Arrow CI. */
+  public static boolean isCI() {
+    // Set by GitHub Actions
+    return "true".equals(System.getenv("CI"));
+  }
+
   /** Load a simple table with two columns. */
   public Schema ingestTableIntsStrs(
       BufferAllocator allocator, AdbcConnection connection, String tableName) throws Exception {
@@ -79,8 +85,7 @@ public final class SqlTestUtil {
     final Schema schema =
         new Schema(
             Arrays.asList(
-                Field.notNullable(
-                    quirks.caseFoldColumnName("INTS"), new ArrowType.Int(32, /*signed=*/ true)),
+                Field.notNullable(quirks.caseFoldColumnName("INTS"), new ArrowType.Int(32, true)),
                 Field.nullable(quirks.caseFoldColumnName("INTS2"), new ArrowType.Int(32, true))));
     try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
       final IntVector ints = (IntVector) root.getVector(0);
@@ -133,8 +138,7 @@ public final class SqlTestUtil {
         new Schema(
             Collections.singletonList(
                 Field.notNullable(
-                    quirks.caseFoldColumnName("PRODUCT_ID"),
-                    new ArrowType.Int(32, /*signed=*/ true))));
+                    quirks.caseFoldColumnName("PRODUCT_ID"), new ArrowType.Int(32, true))));
 
     final Schema dependentSchema =
         new Schema(

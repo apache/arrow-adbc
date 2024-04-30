@@ -88,10 +88,11 @@ check_visibility $ADBC_SNOWFLAKE_LIBRARY
 # Get the latest pip so we have in-tree-build by default
 python -m pip install --upgrade pip auditwheel cibuildwheel delocate setuptools wheel
 
+# Build with Cython debug info
+export ADBC_BUILD_TYPE="debug"
+
 for component in $COMPONENTS; do
     pushd ${source_dir}/python/$component
-
-    component_dashes=${component//_/-}
 
     echo "=== Clean build artifacts ==="
     rm -rf ./build ./dist ./repaired_wheels ./$component/*.so ./$component/*.so.*
@@ -107,7 +108,7 @@ for component in $COMPONENTS; do
     # causing the build to fail.
     python setup.py sdist
     if [[ "$component" = "adbc_driver_manager" ]]; then
-        python -m cibuildwheel --output-dir repaired_wheels/ dist/$component_dashes-*.tar.gz
+        python -m cibuildwheel --output-dir repaired_wheels/ dist/$component-*.tar.gz
     else
         python -m pip wheel --no-deps -w dist -vvv .
 

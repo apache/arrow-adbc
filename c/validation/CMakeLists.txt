@@ -24,7 +24,9 @@ target_include_directories(adbc_validation_util SYSTEM
 target_link_libraries(adbc_validation_util PUBLIC adbc_driver_common nanoarrow
                                                   GTest::gtest GTest::gmock)
 
-add_library(adbc_validation OBJECT adbc_validation.cc)
+add_library(adbc_validation OBJECT
+            adbc_validation.cc adbc_validation_connection.cc adbc_validation_database.cc
+            adbc_validation_statement.cc)
 adbc_configure_target(adbc_validation)
 target_compile_features(adbc_validation PRIVATE cxx_std_17)
 target_include_directories(adbc_validation SYSTEM

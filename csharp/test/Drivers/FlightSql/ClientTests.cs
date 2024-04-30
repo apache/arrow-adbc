@@ -15,9 +15,7 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Drivers.FlightSql;
 using Xunit;
 
@@ -55,43 +53,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
                 { FlightSqlParameters.ServerAddress, flightSqlTestConfiguration.ServerAddress },
             };
 
-            long count = 0;
-
             using (Adbc.Client.AdbcConnection adbcConnection = new Adbc.Client.AdbcConnection(
                 new FlightSqlDriver(),
                 parameters,
                 options)
             )
             {
-                string query = flightSqlTestConfiguration.Query;
-
-                AdbcCommand adbcCommand = new AdbcCommand(query, adbcConnection);
-
-                adbcConnection.Open();
-
-                AdbcDataReader reader = adbcCommand.ExecuteReader();
-
-                try
-                {
-                    while (reader.Read())
-                    {
-                        count++;
-
-                        for (int i = 0; i < reader.FieldCount; i++)
-                        {
-                            object value = reader.GetValue(i);
-
-                            if (value == null)
-                                value = "(null)";
-
-                            Console.WriteLine($"{reader.GetName(i)}: {value}");
-                        }
-                    }
-                }
-                finally { reader.Close(); }
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, flightSqlTestConfiguration);
             }
-
-            Assert.Equal(flightSqlTestConfiguration.ExpectedResultsCount, count);
         }
     }
 }

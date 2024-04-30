@@ -75,7 +75,7 @@ namespace Apache.Arrow.Adbc.Tests
         public static T LoadTestConfiguration<T>(string environmentVariable)
             where T : TestConfiguration
         {
-            if(CanExecuteTest(environmentVariable, out string environmentValue))
+            if (CanExecuteTest(environmentVariable, out string environmentValue))
                 return GetTestConfiguration<T>(environmentValue);
 
             throw new InvalidOperationException($"Cannot execute test configuration from environment variable `{environmentVariable}`");
@@ -92,7 +92,7 @@ namespace Apache.Arrow.Adbc.Tests
         public static T GetTestConfiguration<T>(string fileName)
             where T : TestConfiguration
         {
-            if(!File.Exists(fileName))
+            if (!File.Exists(fileName))
                 throw new FileNotFoundException(fileName);
 
             // use a JSON file for the various settings

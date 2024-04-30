@@ -54,6 +54,7 @@ public interface AdbcDriver {
 
   /** ADBC API revision 1.0.0. */
   long ADBC_VERSION_1_0_0 = 1_000_000;
+
   /** ADBC API revision 1.1.0. */
   long ADBC_VERSION_1_1_0 = 1_001_000;
 

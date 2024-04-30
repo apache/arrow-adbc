@@ -31,23 +31,23 @@ export DEB_BUILD_MAINT_OPTIONS=reproducible=-timeless
 CMAKE_BUILD_TYPE = RelWithDebInfo
 
 override_dh_auto_configure:
-	env \
-	  PATH=/usr/lib/go-1.20/bin:$${PATH}		\
+	env						\
+	  PATH=/usr/lib/go-1.21/bin:$${PATH}		\
 	  dh_auto_configure				\
-	    --sourcedirectory=c/		        \
-	    --builddirectory=c.build               	\
+	    --sourcedirectory=c/			\
+	    --builddirectory=c.build			\
 	    --buildsystem=cmake+ninja			\
 	    --						\
-	    -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)      \
-            -DADBC_DRIVER_MANAGER=ON                    \
-            -DADBC_DRIVER_POSTGRESQL=ON                 \
-            -DADBC_DRIVER_SQLITE=ON                     \
-            -DADBC_DRIVER_FLIGHTSQL=ON                  \
-            -DADBC_DRIVER_SNOWFLAKE=ON
+	    -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)	\
+	    -DADBC_DRIVER_FLIGHTSQL=ON			\
+	    -DADBC_DRIVER_MANAGER=ON			\
+	    -DADBC_DRIVER_POSTGRESQL=ON			\
+	    -DADBC_DRIVER_SNOWFLAKE=ON			\
+	    -DADBC_DRIVER_SQLITE=ON
 
 override_dh_auto_build:
-	dh_auto_build					\
-	  --sourcedirectory=c              		\
+	dh_auto_build				\
+	  --sourcedirectory=c			\
 	  --builddirectory=c.build
 	dh_auto_configure				\
 	  --sourcedirectory=glib			\
@@ -55,7 +55,8 @@ override_dh_auto_build:
 	  --buildsystem=meson+ninja			\
 	  --						\
 	  --buildtype=debugoptimized			\
-	  -Dadbc_build_dir=../c.build/driver_manager
+	  -Dadbc_build_dir=../c.build/driver_manager	\
+	  -Dvapi=true
 	env							\
 	  LD_LIBRARY_PATH=$(CURDIR)/c.build/driver_manager	\
 	    dh_auto_build					\
@@ -64,8 +65,8 @@ override_dh_auto_build:
 	      --buildsystem=meson+ninja
 
 override_dh_auto_install:
-	dh_auto_install					\
-	  --sourcedirectory=c           		\
+	dh_auto_install				\
+	  --sourcedirectory=c			\
 	  --builddirectory=c.build
 	dh_auto_install				\
 	   --sourcedirectory=glib		\
@@ -77,4 +78,8 @@ override_dh_auto_test:
 override_dh_dwz:
 	# libadbc_driver_flightsql.so.* has compressed DWARF.
 	# We can't use dwz for compressed DWARF.
-	dh_dwz --exclude=libadbc_driver_flightsql --exclude=libadbc_driver_snowflake
+	dh_dwz \
+		--exclude=libadbc_driver_flightsql \
+		--exclude=libadbc_driver_postgresql \
+		--exclude=libadbc_driver_snowflake \
+		--exclude=libadbc_driver_sqlite

@@ -28,6 +28,7 @@ import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.driver.jdbc.JdbcDriver;
 import org.apache.arrow.adbc.driver.jdbc.StandardJdbcQuirks;
+import org.apache.arrow.adbc.driver.testsuite.SqlTestUtil;
 import org.apache.arrow.adbc.driver.testsuite.SqlValidationQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.types.TimeUnit;
@@ -42,6 +43,11 @@ public class MsSqlServerQuirks extends SqlValidationQuirks {
     final String url = System.getenv(URL_ENV_VAR);
     final String user = System.getenv(USER_ENV_VAR);
     final String password = System.getenv(PASSWORD_ENV_VAR);
+
+    if (SqlTestUtil.isCI() && (url == null || url.isEmpty())) {
+      throw new RuntimeException("SQL Server not found, set " + URL_ENV_VAR);
+    }
+
     Assumptions.assumeFalse(url == null, "Microsoft SQL Server not found, set " + URL_ENV_VAR);
     Assumptions.assumeFalse(url.isEmpty(), "Microsoft SQL Server not found, set " + URL_ENV_VAR);
     return String.format(

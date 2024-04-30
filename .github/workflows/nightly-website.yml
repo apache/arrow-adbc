@@ -22,8 +22,8 @@ on:
     branches:
       - main
     tags:
-      - 'apache-arrow-adbc-*'
-      - '!apache-arrow-adbc-*-rc*'
+      - "apache-arrow-adbc-*"
+      - "!apache-arrow-adbc-*-rc*"
   workflow_dispatch: {}
 
 # Ensure concurrent builds don't stomp on each other
@@ -36,16 +36,16 @@ jobs:
     name: "Build Website"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Build
         shell: bash
         run: |
-          docker-compose run docs
+          docker compose run docs
       - name: Archive docs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docs
           retention-days: 2
@@ -57,20 +57,20 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           path: site
           # NOTE: needed to push at the end
           persist-credentials: true
           ref: asf-site
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           path: scripts
           persist-credentials: false
       - name: Download docs
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: docs
           path: temp

@@ -19,7 +19,7 @@
 Flight SQL Driver
 =================
 
-**Available for:** C/C++, GLib/Ruby, Go, Java, Python
+**Available for:** C/C++, GLib/Ruby, Go, Java, Python, R
 
 The Flight SQL Driver provides access to any database implementing a
 :doc:`arrow:format/FlightSql` compatible endpoint.
@@ -123,6 +123,8 @@ the :cpp:class:`AdbcDatabase`.
          ) as conn:
              pass
 
+      For more examples, see :doc:`../python/recipe/flight_sql`.
+
    .. tab-item:: Go
       :sync: go
 
@@ -152,6 +154,7 @@ the :cpp:class:`AdbcDatabase`.
             if err != nil {
                 // do something with the error
             }
+            defer db.Close()
 
             cnxn, err := db.Open(context.Background())
             if err != nil {
@@ -324,6 +327,12 @@ The options are as follows:
 
     For example, this controls the timeout of the underlying Flight
     calls that implement bulk ingestion, or transaction support.
+
+There is also a timeout that is set on the :cpp:class:`AdbcDatabase`:
+
+``adbc.flight.sql.rpc.timeout_seconds.connect``
+    A timeout (in floating-point seconds) for establishing a connection.  The
+    default is 20 seconds.
 
 Transactions
 ------------

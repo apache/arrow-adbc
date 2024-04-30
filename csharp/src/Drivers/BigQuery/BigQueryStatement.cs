@@ -16,7 +16,9 @@
 */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -25,6 +27,7 @@ using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Google.Apis.Auth.OAuth2;
+using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.Storage.V1;
 using Google.Cloud.BigQuery.V2;
 using TableFieldSchema = Google.Apis.Bigquery.v2.Data.TableFieldSchema;
@@ -87,6 +90,19 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new Field(field.Name, TranslateType(field), field.Mode == "NULLABLE");
         }
 
+        public override object GetValue(IArrowArray arrowArray, int index)
+        {
+            switch (arrowArray)
+            {
+                case StructArray structArray:
+                    return SerializeToJson(structArray, index);
+                case ListArray listArray:
+                    return listArray.GetSlicedValues(index);
+                default:
+                    return base.GetValue(arrowArray, index);
+            }
+        }
+
         private IArrowType TranslateType(TableFieldSchema field)
         {
             // per https://developers.google.com/resources/api-libraries/documentation/bigquery/v2/java/latest/com/google/api/services/bigquery/model/TableFieldSchema.html#getType--
@@ -94,30 +110,30 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             switch (field.Type)
             {
                 case "INTEGER" or "INT64":
-                    return Int64Type.Default;
+                    return GetType(field, Int64Type.Default);
                 case "FLOAT" or "FLOAT64":
-                    return DoubleType.Default;
+                    return GetType(field, DoubleType.Default);
                 case "BOOL" or "BOOLEAN":
-                    return BooleanType.Default;
+                    return GetType(field, BooleanType.Default);
                 case "STRING":
-                    return StringType.Default;
+                    return GetType(field, StringType.Default);
                 case "BYTES":
-                    return BinaryType.Default;
+                    return GetType(field, BinaryType.Default);
                 case "DATETIME":
-                    return TimestampType.Default;
+                    return GetType(field, TimestampType.Default);
                 case "TIMESTAMP":
-                    return TimestampType.Default;
+                    return GetType(field, TimestampType.Default);
                 case "TIME":
-                    return Time64Type.Default;
+                    return GetType(field, Time64Type.Default);
                 case "DATE":
-                    return Date64Type.Default;
+                    return GetType(field, Date64Type.Default);
                 case "RECORD" or "STRUCT":
                     // its a json string
-                    return StringType.Default;
+                    return GetType(field, StringType.Default);
 
                 // treat these values as strings
-                case "GEOGRAPHY":
-                    return StringType.Default;
+                case "GEOGRAPHY" or "JSON":
+                    return GetType(field, StringType.Default);
 
                 // get schema cannot get precision and scale for NUMERIC or BIGNUMERIC types
                 // instead, the max values are returned from BigQuery
@@ -125,14 +141,24 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 // and discussion in https://github.com/apache/arrow-adbc/pull/1192#discussion_r1365987279
 
                 case "NUMERIC" or "DECIMAL":
-                    return new Decimal128Type(38, 9);
+                    return GetType(field, new Decimal128Type(38, 9));
 
                 case "BIGNUMERIC" or "BIGDECIMAL":
-                    return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? StringType.Default : new Decimal256Type(76, 38);
+                    if (this.Options != null)
+                        return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? GetType(field, StringType.Default) : GetType(field, new Decimal256Type(76, 38));
+                    else
+                        return GetType(field, StringType.Default);
 
-                // Google.Apis.Bigquery.v2.Data.TableFieldSchema do not include Array and Geography in types
-                default: throw new InvalidOperationException();
+                default: throw new InvalidOperationException($"{field.Type} cannot be translated");
             }
+        }
+
+        private IArrowType GetType(TableFieldSchema field, IArrowType type)
+        {
+            if (field.Mode == "REPEATED")
+                return new ListType(type);
+
+            return type;
         }
 
         static IArrowReader ReadChunk(BigQueryReadClient readClient, string streamName)
@@ -160,6 +186,36 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     options.AllowLargeResults = true ? keyValuePair.Value.ToLower().Equals("true") : false;
                 }
+                if (keyValuePair.Key == BigQueryParameters.LargeResultsDestinationTable)
+                {
+                    string destinationTable = keyValuePair.Value;
+
+                    if (!destinationTable.Contains("."))
+                        throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} is invalid");
+
+                    string projectId = string.Empty;
+                    string datasetId = string.Empty;
+                    string tableId = string.Empty;
+
+                    string[] segments = destinationTable.Split('.');
+
+                    if (segments.Length != 3)
+                        throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} cannot be parsed");
+
+                    projectId = segments[0];
+                    datasetId = segments[1];
+                    tableId = segments[2];
+
+                    if (string.IsNullOrEmpty(projectId.Trim()) || string.IsNullOrEmpty(datasetId.Trim()) || string.IsNullOrEmpty(tableId.Trim()))
+                        throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} contains invalid values");
+
+                    options.DestinationTable = new TableReference()
+                    {
+                        ProjectId = projectId,
+                        DatasetId = datasetId,
+                        TableId = tableId
+                    };
+                }
                 if (keyValuePair.Key == BigQueryParameters.UseLegacySQL)
                 {
                     options.UseLegacySql = true ? keyValuePair.Value.ToLower().Equals("true") : false;
@@ -170,15 +226,136 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private string SerializeToJson(StructArray structArray, int index)
         {
+            Dictionary<String, object> jsonDictionary = ParseStructArray(structArray, index);
+
+            return JsonSerializer.Serialize(jsonDictionary);
+        }
+
+        private Dictionary<String, object> ParseStructArray(StructArray structArray, int index)
+        {
+            if (structArray.IsNull(index))
+                return null;
+
             Dictionary<String, object> jsonDictionary = new Dictionary<String, object>();
             StructType structType = (StructType)structArray.Data.DataType;
             for (int i = 0; i < structArray.Data.Children.Length; i++)
             {
-                jsonDictionary.Add(structType.Fields[i].Name,
-                    GetValue(structArray.Fields[i], structType.GetFieldByName(structType.Fields[i].Name), index));
+                string name = structType.Fields[i].Name;
+                object value = GetValue(structArray.Fields[i], index);
+
+                if (value is StructArray structArray1)
+                {
+                    List<Dictionary<string, object>> children = new List<Dictionary<string, object>>();
+
+                    if (structArray1.Length > 1)
+                    {
+                        for (int j = 0; j < structArray1.Length; j++)
+                            children.Add(ParseStructArray(structArray1, j));
+                    }
+
+                    if (children.Count > 0)
+                    {
+                        jsonDictionary.Add(name, children);
+                    }
+                    else
+                    {
+                        jsonDictionary.Add(name, ParseStructArray(structArray1, index));
+                    }
+                }
+                else if (value is IArrowArray arrowArray)
+                {
+                    IList? values = CreateList(arrowArray);
+
+                    if (values != null)
+                    {
+                        for (int j = 0; j < arrowArray.Length; j++)
+                        {
+                            values.Add(base.GetValue(arrowArray, j));
+                        }
+
+                        jsonDictionary.Add(name, values);
+                    }
+                    else
+                    {
+                        jsonDictionary.Add(name, new List<object>());
+                    }
+                }
+                else
+                {
+                    jsonDictionary.Add(name, value);
+                }
             }
-            return JsonSerializer.Serialize(jsonDictionary);
+
+            return jsonDictionary;
         }
+
+        private IList? CreateList(IArrowArray arrowArray)
+        {
+            if (arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
+
+            switch (arrowArray)
+            {
+                case BooleanArray booleanArray:
+                    return new List<bool>();
+                case Date32Array date32Array:
+                case Date64Array date64Array:
+                    return new List<DateTime>();
+                case Decimal128Array decimal128Array:
+                    return new List<SqlDecimal>();
+                case Decimal256Array decimal256Array:
+                    return new List<string>();
+                case DoubleArray doubleArray:
+                    return new List<double>();
+                case FloatArray floatArray:
+                    return new List<float>();
+#if NET5_0_OR_GREATER
+                case PrimitiveArray<Half> halfFloatArray:
+                    return new List<Half>();
+#endif
+                case Int8Array int8Array:
+                    return new List<sbyte>();
+                case Int16Array int16Array:
+                    return new List<short>();
+                case Int32Array int32Array:
+                    return new List<int>();
+                case Int64Array int64Array:
+                    return new List<long>();
+                case StringArray stringArray:
+                    return new List<string>();
+#if NET6_0_OR_GREATER
+                case Time32Array time32Array:
+                case Time64Array time64Array:
+                    return new List<TimeOnly>();
+#else
+                case Time32Array time32Array:
+                case Time64Array time64Array:
+                    return new List<TimeSpan>();
+#endif
+                case TimestampArray timestampArray:
+                    return new List<DateTimeOffset>();
+                case UInt8Array uInt8Array:
+                    return new List<byte>();
+                case UInt16Array uInt16Array:
+                    return new List<ushort>();
+                case UInt32Array uInt32Array:
+                    return new List<uint>();
+                case UInt64Array uInt64Array:
+                    return new List<ulong>();
+
+                case BinaryArray binaryArray:
+                    return new List<byte>();
+
+                    // not covered:
+                    // -- struct array
+                    // -- dictionary array
+                    // -- fixed size binary
+                    // -- list array
+                    // -- union array
+            }
+
+            return null;
+        }
+
 
         class MultiArrowReader : IArrowArrayStream
         {

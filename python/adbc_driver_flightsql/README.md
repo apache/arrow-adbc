@@ -44,6 +44,18 @@ export ADBC_FLIGHTSQL_LIBRARY=/path/to/libadbc_driver_flightsql.so
 pip install --no-deps -e .
 ```
 
+For users building from the arrow-adbc source repository, you can alternately use CMake to manage library dependencies and set environment variables for you. Assuming you specify ``-DADBC_DRIVER_FLIGHTSQL=ON`` you can also add ``-DADBC_BUILD_PYTHON=ON`` to define a ``python`` target.
+
+For example, assuming you run cmake from the project root:
+
+```shell
+cmake -S c -B build --preset debug -DADBC_BUILD_PYTHON=ON
+cmake --build build --target python
+```
+
+will properly build and install the Python library for you.
+
+
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on the
 general build process.
 

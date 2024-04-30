@@ -22,6 +22,7 @@ build_dir="$(cd .; pwd)"
 
 modules=(
   adbc-glib
+  adbc-arrow-glib
 )
 
 for module in "${modules[@]}"; do

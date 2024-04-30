@@ -40,7 +40,6 @@
       adbc_database_release(db)
     Output
       LogDatabaseRelease()
-      LogDriverRelease()
 
 ---
 
@@ -84,7 +83,6 @@
       adbc_database_release(db)
     Output
       LogDatabaseRelease()
-      LogDriverRelease()
 
 # joiners work for databases, connections, and statements
 
@@ -111,5 +109,4 @@
       LogStatementRelease()
       LogConnectionRelease()
       LogDatabaseRelease()
-      LogDriverRelease()
 

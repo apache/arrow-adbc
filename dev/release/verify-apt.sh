@@ -149,6 +149,7 @@ ${APT_INSTALL} libadbc-driver-manager-dev=${package_version}
 required_packages=()
 required_packages+=(cmake)
 required_packages+=(gcc)
+required_packages+=(libc6-dev)
 required_packages+=(make)
 required_packages+=(pkg-config)
 ${APT_INSTALL} ${required_packages[@]}
@@ -195,4 +196,12 @@ ${APT_INSTALL} libadbc-glib-doc=${package_version}
 ${APT_INSTALL} ruby-dev rubygems-integration
 gem install gobject-introspection
 ruby -r gi -e "p GI.load('ADBC')"
+echo "::endgroup::"
+
+echo "::group::Test ADBC Arrow GLib"
+
+${APT_INSTALL} libadbc-arrow-glib-dev=${package_version}
+${APT_INSTALL} libadbc-arrow-glib-doc=${package_version}
+
+ruby -r gi -e "p GI.load('ADBCArrow')"
 echo "::endgroup::"

@@ -22,6 +22,7 @@ on:
     branches:
       - main
     paths:
+      - ".env"
       - "adbc.h"
       - "c/**"
       - "ci/**"
@@ -61,9 +62,11 @@ jobs:
     # For cron: only run on the main repo, not forks
     if: github.event_name != 'schedule' || github.repository == 'apache/arrow-adbc'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
 
       # https://github.com/actions/checkout/issues/882
       - name: Update tags
@@ -71,51 +74,126 @@ jobs:
           git fetch --tags --force origin
 
       - name: Prepare version
-        id: version
         run: |
-          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
-            VERSION=${GITHUB_REF_NAME#apache-arrow-adbc-}
-            VERSION=${VERSION%-rc*}
-          else
-            VERSION=$(grep 'set(ADBC_VERSION' c/cmake_modules/AdbcVersion.cmake | \
-                        grep -E -o '[0-9]+\.[0-9]+\.[0-9]+')
-            description=$(git describe \
-                            --always \
-                            --dirty \
-                            --long \
-                            --match "apache-arrow-adbc-[0-9]*.*" \
-                            --tags)
-            case "${description}" in
-              # apache-arrow-adbc-0.1.0-10-1234567-dirty
-              apache-arrow-adbc-*)
-                # 10-1234567-dirty
-                distance="${description#apache-arrow-adbc-*.*.*-}"
-                # 10-1234567
-                distance="${distance%-dirty}"
-                # 10
-                distance="${distance%-*}"
-                ;;
-              *)
-                distance=$(git log --format=oneline | wc -l)
-                ;;
-            esac
-            VERSION="${VERSION}.dev${distance}"
-          fi
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          source dev/release/versions.env
+          echo "VERSION=${RELEASE}" | tee -a $GITHUB_ENV
 
       - name: Create archive
         run: |
           ci/scripts/source_build.sh \
-            apache-arrow-adbc-${{ steps.version.outputs.VERSION }} \
+            apache-arrow-adbc-${VERSION} \
             $(git log -n 1 --format=%h)
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: source
           retention-days: 7
           path: |
-            apache-arrow-adbc-${{ steps.version.outputs.VERSION }}.tar.gz
+            apache-arrow-adbc-*.tar.gz
+
+  go-binaries:
+    name: "Go ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    needs:
+      - source
+
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest", "macos-13"]
+        go-version: [1.21.8] # Customize Go versions as needed
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: source
+
+      - name: Extract source archive
+        run: |
+          source_archive=$(echo apache-arrow-adbc-*.tar.gz)
+          VERSION=${source_archive#apache-arrow-adbc-}
+          VERSION=${VERSION%.tar.gz}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+          tar xf apache-arrow-adbc-${VERSION}.tar.gz
+          mv apache-arrow-adbc-${VERSION} adbc
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          check-latest: true
+          cache: true
+          cache-dependency-path: adbc/go/adbc/go.sum
+
+      # run `make -i` because the Windows runs claim they can't delete the .h files, but they are still generated
+      - name: Build Go binaries
+        run: |
+          pushd adbc/go/adbc/pkg
+          make -i
+          popd
+
+      - name: Upload Go binaries
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 7
+          path: |
+            adbc/go/adbc/pkg/libadbc_driver_flightsql.*
+            adbc/go/adbc/pkg/libadbc_driver_snowflake.*
+
+  csharp:
+    name: "C#/.NET"
+    runs-on: ubuntu-latest
+    needs:
+      - source
+      - go-binaries
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: source
+
+      - name: Extract source archive
+        run: |
+          source_archive=$(echo apache-arrow-adbc-*.tar.gz)
+          VERSION=${source_archive#apache-arrow-adbc-}
+          VERSION=${VERSION%.tar.gz}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+          tar xf apache-arrow-adbc-${VERSION}.tar.gz
+          mv apache-arrow-adbc-${VERSION} adbc
+
+      - name: Show inputs
+        run: |
+          echo "upload_artifacts: ${{ inputs.upload_artifacts }}" >> $GITHUB_STEP_SUMMARY
+          echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
+          echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+
+      - uses: actions/download-artifact@v3
+        with:
+          path: adbc/go/adbc/pkg
+
+      - name: Copy Go binaries
+        run: |
+          pushd adbc/go/adbc/pkg/artifact
+          cp *.dll ../
+          cp *.so ../
+          cp *.dylib ../
+          popd
+
+      - name: Package
+        run: |
+          pushd adbc/
+          docker compose run -e IsPackagingPipeline=true csharp-dist
+          popd
+
+      - name: Archive nupkg
+        uses: actions/upload-artifact@v4
+        with:
+          name: csharp
+          retention-days: 7
+          path: |
+            adbc/csharp/artifacts/**/*.nupkg
+            adbc/csharp/artifacts/**/*.snupkg
 
   docs:
     name: Documentation
@@ -123,18 +201,16 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
       - name: Extract source archive
-        id: version
         run: |
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" | tee -a $GITHUB_ENV
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
@@ -148,8 +224,8 @@ jobs:
       - name: Build and test
         run: |
           pushd adbc
-          docker-compose run \
-            -e SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.VERSION }} \
+          docker compose run \
+            -e SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION \
             docs
           popd
 
@@ -160,7 +236,7 @@ jobs:
           popd
 
       - name: Archive docs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docs
           retention-days: 2
@@ -173,7 +249,7 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -196,12 +272,12 @@ jobs:
       - name: Build and test
         run: |
           pushd adbc/
-          docker-compose run java-dist
+          docker compose run java-dist
           popd
           cp -a adbc/dist/ ./
 
       - name: Archive JARs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: java
           retention-days: 7
@@ -221,20 +297,18 @@ jobs:
           - almalinux-8
           - almalinux-9
           - debian-bookworm
-          - debian-bullseye
           - ubuntu-jammy
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: apache/arrow
           path: arrow
 
       - name: Set output variables
-        id: info
         run: |
           echo "ARROW_SOURCE=$(pwd)/arrow" >> $GITHUB_ENV
           case ${{ matrix.target }} in
@@ -253,14 +327,16 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" | tee -a $GITHUB_ENV
 
       - name: Extract source archive
         run: |
-          tar xf apache-arrow-adbc-${{ steps.info.outputs.VERSION }}.tar.gz
-          mv apache-arrow-adbc-${{ steps.info.outputs.VERSION }} adbc
-          mv apache-arrow-adbc-${{ steps.info.outputs.VERSION }}.tar.gz adbc/ci/linux-packages/
+          tar xf apache-arrow-adbc-$VERSION.tar.gz
+
+          source ./apache-arrow-adbc-$VERSION/dev/release/versions.env
+
+          mv apache-arrow-adbc-$VERSION adbc
+          mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -268,14 +344,14 @@ jobs:
           ruby-version: ruby
 
       - name: Cache ccache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: adbc/ci/linux-packages/${{ env.TASK_NAMESPACE }}/build/${{ matrix.target }}/ccache
           key: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ matrix.target }}-{{ "${{ hashFiles('adbc.h', 'c/**', 'glib/**') }}" }}
           restore-keys: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ matrix.target }}-
 
       - name: Login to GitHub Container registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -299,7 +375,7 @@ jobs:
           tar czf ${{ matrix.target }}.tar.gz ${DISTRIBUTION}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}
           retention-days: 7
@@ -353,7 +429,7 @@ jobs:
         # TODO: "linux_aarch64_"
         arch: ["linux_64_"]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -363,8 +439,7 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" | tee -a $GITHUB_ENV
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
@@ -380,13 +455,13 @@ jobs:
           ARCH_CONDA_FORGE: ${{ matrix.arch }}
         run: |
           pushd adbc
-          docker-compose run \
+          docker compose run \
             -e HOST_USER_ID=$(id -u) \
             python-conda
           popd
 
       - name: Archive Conda packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-${{ matrix.arch }}-conda
           retention-days: 7
@@ -399,13 +474,13 @@ jobs:
           ARCH_CONDA_FORGE: ${{ matrix.arch }}
         run: |
           pushd adbc
-          docker-compose run \
+          docker compose run \
             python-conda-test
           popd
 
   python-conda-macos:
     name: "Python ${{ matrix.arch }} Conda"
-    runs-on: macos-latest
+    runs-on: macos-13
     # No need for Conda packages during release
     # TODO(apache/arrow-adbc#468): re-enable
     if: false
@@ -420,7 +495,7 @@ jobs:
       run:
         shell: bash -l {0}
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -430,11 +505,10 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" | tee -a $GITHUB_ENV
 
-          tar xf apache-arrow-adbc-${VERSION}.tar.gz
-          mv apache-arrow-adbc-${VERSION} adbc
+          tar xf apache-arrow-adbc-$VERSION.tar.gz
+          mv apache-arrow-adbc-$VERSION adbc
 
       - name: Show inputs
         run: |
@@ -442,7 +516,7 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -462,7 +536,7 @@ jobs:
           ./adbc/ci/scripts/python_conda_build.sh $(pwd)/adbc ${ARCH_CONDA_FORGE}.yaml $(pwd)/adbc/build
 
       - name: Archive Conda packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-${{ matrix.arch }}-conda
           retention-days: 7
@@ -484,7 +558,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: ["amd64", "arm64v8"]
+        # XXX(lidavidm): disable arm64 build for now while I test things
+        arch: ["amd64"]
         manylinux_version: ["2014"]
         is_pr:
           - ${{ startsWith(github.ref, 'refs/pull/') }}
@@ -493,7 +568,7 @@ jobs:
           - arch: arm64v8
             is_pr: true
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -503,11 +578,12 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
+
+          source adbc/dev/release/versions.env
+          echo "VERSION=${VERSION_NATIVE}" | tee -a $GITHUB_ENV
 
       - name: Show inputs
         run: |
@@ -516,7 +592,7 @@ jobs:
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Build wheel
         env:
@@ -524,13 +600,13 @@ jobs:
           MANYLINUX: ${{ matrix.manylinux_version }}
         run: |
           pushd adbc
-          docker-compose run \
-            -e SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.VERSION }} \
+          docker compose run \
+            -e SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION \
             python-wheel-manylinux
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-${{ matrix.arch }}-manylinux${{ matrix.manylinux_version }}
           retention-days: 7
@@ -541,32 +617,67 @@ jobs:
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
 
-      - name: Test wheel
+      - name: Test wheel 3.8
         env:
           ARCH: ${{ matrix.arch }}
           MANYLINUX: ${{ matrix.manylinux_version }}
         run: |
           pushd adbc
-          env PYTHON=3.9 docker-compose run python-wheel-manylinux-test
-          env PYTHON=3.10 docker-compose run python-wheel-manylinux-test
-          env PYTHON=3.11 docker-compose run python-wheel-manylinux-test
+          env PYTHON=3.8 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.9
+        env:
+          ARCH: ${{ matrix.arch }}
+          MANYLINUX: ${{ matrix.manylinux_version }}
+        run: |
+          pushd adbc
+          env PYTHON=3.9 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.10
+        env:
+          ARCH: ${{ matrix.arch }}
+          MANYLINUX: ${{ matrix.manylinux_version }}
+        run: |
+          pushd adbc
+          env PYTHON=3.10 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.11
+        env:
+          ARCH: ${{ matrix.arch }}
+          MANYLINUX: ${{ matrix.manylinux_version }}
+        run: |
+          pushd adbc
+          env PYTHON=3.11 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.12
+        env:
+          ARCH: ${{ matrix.arch }}
+          MANYLINUX: ${{ matrix.manylinux_version }}
+        run: |
+          pushd adbc
+          env PYTHON=3.12 docker compose run python-wheel-manylinux-test
 
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     needs:
       - source
     strategy:
       fail-fast: false
       matrix:
-        arch: ["amd64", "arm64v8"]
+        os: ["macos-13", "macos-latest"]
+        include:
+          - os: macos-13
+            arch: amd64
+          - os: macos-latest
+            arch: arm64v8
     env:
       MACOSX_DEPLOYMENT_TARGET: "10.15"
       PYTHON: "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10"
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -576,11 +687,13 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION}" >> $GITHUB_ENV
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
+
+          source adbc/dev/release/versions.env
+          echo "VERSION=${VERSION_NATIVE}" | tee -a $GITHUB_ENV
+          echo "SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION_NATIVE}" | tee -a $GITHUB_ENV
 
       - name: Show inputs
         run: |
@@ -596,28 +709,36 @@ jobs:
         run: |
           pushd adbc
           vcpkg_version=$(cat ".env" | grep "VCPKG" | cut -d "=" -f2 | tr -d '"')
-          echo "VCPKG_VERSION=$vcpkg_version" >> "$GITHUB_OUTPUT"
+          echo "VCPKG_VERSION=$vcpkg_version" | tee -a "$GITHUB_ENV"
           popd
 
       - name: Install vcpkg
         run: |
           pushd adbc
-          ci/scripts/install_vcpkg.sh $VCPKG_ROOT ${{ steps.vcpkg_version.outputs.VCPKG_VERSION }}
+          ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
           popd
 
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.19.13
+          go-version: 1.21.8
           check-latest: true
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum
 
-      - name: Install Python
+      - name: Install Python (AMD64 only)
+        if: matrix.arch == 'amd64'
         run: |
           pushd adbc
+          sudo ci/scripts/install_python.sh macos 3.8
           sudo ci/scripts/install_python.sh macos 3.9
+          popd
+
+      - name: Install Python (AMD64 only)
+        run: |
+          pushd adbc
           sudo ci/scripts/install_python.sh macos 3.10
           sudo ci/scripts/install_python.sh macos 3.11
+          sudo ci/scripts/install_python.sh macos 3.12
           popd
 
       - name: Build wheel
@@ -631,7 +752,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-${{ matrix.arch }}-macos
           retention-days: 7
@@ -642,7 +763,18 @@ jobs:
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
 
-      - name: Test wheel
+      - name: Test wheel 3.8
+        if: matrix.arch == 'amd64'
+        run: |
+          pushd adbc
+
+          /Library/Frameworks/Python.framework/Versions/3.8/bin/python3.8 -m venv test-env-38
+          source test-env-38/bin/activate
+          export PYTHON_VERSION=3.8
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
+      - name: Test wheel 3.9
         if: matrix.arch == 'amd64'
         run: |
           pushd adbc
@@ -653,11 +785,19 @@ jobs:
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
+      - name: Test wheel 3.10
+        run: |
+          pushd adbc
+
           /Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10 -m venv test-env-310
           source test-env-310/bin/activate
           export PYTHON_VERSION=3.10
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
+
+      - name: Test wheel 3.11
+        run: |
+          pushd adbc
 
           /Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11 -m venv test-env-311
           source test-env-311/bin/activate
@@ -665,7 +805,15 @@ jobs:
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
-          popd
+      - name: Test wheel 3.12
+        run: |
+          pushd adbc
+
+          /Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12 -m venv test-env-312
+          source test-env-312/bin/activate
+          export PYTHON_VERSION=3.12
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
 
   python-windows:
     name: "Python ${{ matrix.python_version }} Windows"
@@ -681,7 +829,7 @@ jobs:
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}\\vcpkg"
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
@@ -692,11 +840,14 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
+
+          source adbc/dev/release/versions.env
+          echo "VERSION=${VERSION_NATIVE}" | tee -a $GITHUB_ENV
+
+          (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
 
       - name: Show inputs
         shell: pwsh
@@ -727,17 +878,15 @@ jobs:
           .\bootstrap-vcpkg.bat -disableMetrics
           popd
 
-      # Windows needs newer Go than 1.19
-      # https://github.com/golang/go/issues/51007
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.20.8
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum
 
       - name: Install Python ${{ matrix.python_version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python_version }}
 
@@ -752,7 +901,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python${{ matrix.python_version }}-windows
           retention-days: 7
@@ -762,6 +911,7 @@ jobs:
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
+            adbc/build/**/*.pdb
 
       - name: Test wheel
         shell: cmd
@@ -779,21 +929,21 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
 
       - name: Extract source archive
-        id: version
         run: |
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
+
+          source adbc/dev/release/versions.env
+          echo "VERSION=${VERSION_NATIVE}" | tee -a $GITHUB_ENV
 
       - name: Show inputs
         run: |
@@ -804,13 +954,13 @@ jobs:
       - name: Build sdist
         run: |
           pushd adbc
-          docker-compose run  \
-            -e SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.VERSION }} \
+          docker compose run  \
+            -e SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION \
             python-sdist
           popd
 
       - name: Archive sdist
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-sdist
           retention-days: 7
@@ -824,7 +974,7 @@ jobs:
       - name: Test sdist
         run: |
           pushd adbc
-          docker-compose run python-sdist-test
+          docker compose run python-sdist-test
           popd
 
   release:
@@ -832,6 +982,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     needs:
+      - csharp
       - docs
       - source
       - java
@@ -842,7 +993,7 @@ jobs:
       - python-sdist
     steps:
       - name: Get All Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: release-artifacts
       - name: Release
@@ -850,11 +1001,16 @@ jobs:
           RELEASE_TAG=${GITHUB_REF#refs/*/}
 
           # Deduplicate wheels built in different jobs with same tag
+          # Include .pdb files since those are debug symbols for Windows
+          # wheels
           mkdir -p upload-staging
           find ./release-artifacts/ \
             '(' \
               -name docs.tgz -or \
               -name '*.jar' -or \
+              -name '*.nupkg' -or \
+              -name '*.snupkg' -or \
+              -name '*.pdb' -or \
               -name '*.pom' -or \
               -name '*.whl' -or \
               -name 'adbc_*.tar.gz' -or \
@@ -890,15 +1046,16 @@ jobs:
       run:
         shell: bash -l {0}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
+          submodules: recursive
       - name: Get All Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: conda-packages
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-variant: Mambaforge
           miniforge-version: latest
@@ -933,12 +1090,13 @@ jobs:
       - python-windows
       - python-sdist
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
+          submodules: recursive
       - name: Get All Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: nightly-artifacts
       - name: Upload

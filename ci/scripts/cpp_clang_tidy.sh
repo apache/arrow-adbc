@@ -59,13 +59,13 @@ build_subproject() {
         -DADBC_DRIVER_SNOWFLAKE="${BUILD_DRIVER_SNOWFLAKE}" \
         -DADBC_USE_ASAN="${ADBC_USE_ASAN}" \
         -DADBC_USE_UBSAN="${ADBC_USE_UBSAN}" \
-        -DCMAKE_CXX_STANDARD=17 \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
 
     run-clang-tidy \
+        -extra-arg=-Wno-unknown-warning-option \
         -j $(nproc) \
         -p "${build_dir}" \
         -fix \

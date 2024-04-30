@@ -1,6 +1,8 @@
 *.json
 *.Rproj
 *.Rd
+c/vendor/backward/*
+c/vendor/fmt/*
 c/vendor/sqlite3/sqlite3.c
 c/vendor/sqlite3/sqlite3.h
 c/vendor/portable-snippets/safe-math.h
@@ -10,6 +12,7 @@ ci/linux-packages/changelog
 ci/linux-packages/*.install
 csharp/*.sln
 csharp/*.csproj
+csharp/*.props
 dev/release/rat_exclude_files.txt
 docs/source/format/*.drawio
 docs/source/format/*.svg
@@ -29,3 +32,5 @@ r/*/NEWS.md
 r/*/cran-comments.md
 r/*/.Rbuildignore
 r/*/tests/testthat/_snaps/*
+rust/Cargo.lock
+testing/*

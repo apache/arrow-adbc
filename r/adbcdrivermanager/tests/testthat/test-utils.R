@@ -17,8 +17,8 @@
 
 test_that("external pointer embedded environment works", {
   db <- adbc_database_init(adbc_driver_void())
-  expect_identical(names(db), "driver")
-  expect_identical(length(db), 1L)
+  expect_setequal(names(db), c("driver", ".child_count"))
+  expect_identical(db$.child_count, 0L)
 
   db$key <- "value"
   expect_identical(db$key, "value")

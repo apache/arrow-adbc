@@ -36,8 +36,8 @@ public class FlightSqlQuirks extends SqlValidationQuirks {
 
   static String getFlightLocation() {
     final String location = System.getenv(FLIGHT_SQL_LOCATION_ENV_VAR);
-    Assumptions.assumeFalse(
-        location == null || location.isEmpty(),
+    Assumptions.assumeTrue(
+        location != null && !location.isEmpty(),
         "Flight SQL server not found, set " + FLIGHT_SQL_LOCATION_ENV_VAR);
     return location;
   }

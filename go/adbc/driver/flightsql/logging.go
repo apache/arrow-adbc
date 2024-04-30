@@ -20,11 +20,11 @@ package flightsql
 import (
 	"context"
 	"io"
+	"log/slog"
 	"time"
 
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
-	"golang.org/x/exp/slog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )

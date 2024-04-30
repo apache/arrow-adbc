@@ -35,6 +35,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -42,12 +43,12 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v14/arrow"
-	"github.com/apache/arrow/go/v14/arrow/array"
-	"github.com/apache/arrow/go/v14/arrow/flight"
-	"github.com/apache/arrow/go/v14/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v14/arrow/flight/flightsql/example"
-	"github.com/apache/arrow/go/v14/arrow/memory"
+	"github.com/apache/arrow/go/v16/arrow"
+	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v16/arrow/flight"
+	"github.com/apache/arrow/go/v16/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v16/arrow/flight/flightsql/example"
+	"github.com/apache/arrow/go/v16/arrow/memory"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -236,13 +237,14 @@ func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool { return true }
 func (s *FlightSQLQuirks) SupportsCurrentCatalogSchema() bool { return false }
 
 // The driver supports it, but the server we use for testing does not.
-func (s *FlightSQLQuirks) SupportsExecuteSchema() bool           { return false }
-func (s *FlightSQLQuirks) SupportsGetSetOptions() bool           { return true }
-func (s *FlightSQLQuirks) SupportsPartitionedData() bool         { return true }
-func (s *FlightSQLQuirks) SupportsStatistics() bool              { return false }
-func (s *FlightSQLQuirks) SupportsTransactions() bool            { return true }
-func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool      { return false }
-func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool { return true }
+func (s *FlightSQLQuirks) SupportsErrorIngestIncompatibleSchema() bool { return true }
+func (s *FlightSQLQuirks) SupportsExecuteSchema() bool                 { return false }
+func (s *FlightSQLQuirks) SupportsGetSetOptions() bool                 { return true }
+func (s *FlightSQLQuirks) SupportsPartitionedData() bool               { return true }
+func (s *FlightSQLQuirks) SupportsStatistics() bool                    { return false }
+func (s *FlightSQLQuirks) SupportsTransactions() bool                  { return true }
+func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool            { return false }
+func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool       { return true }
 func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:
@@ -260,7 +262,7 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	case adbc.InfoVendorVersion:
 		return "sqlite 3"
 	case adbc.InfoVendorArrowVersion:
-		return "14.0.0"
+		return "16.0.0"
 	}
 
 	return nil
@@ -352,6 +354,7 @@ func (suite *DefaultDialOptionsTests) SetupSuite() {
 
 func (suite *DefaultDialOptionsTests) TearDownSuite() {
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -361,6 +364,7 @@ func (suite *DefaultDialOptionsTests) TestMaxIncomingMessageSizeDefault() {
 	opts["adbc.flight.sql.client_option.with_max_msg_size"] = "1000000"
 	db, err := suite.Driver.NewDatabase(opts)
 	suite.NoError(err)
+	defer suite.NoError(db.Close())
 
 	cnxn, err := db.Open(suite.ctx)
 	suite.NoError(err)
@@ -505,6 +509,7 @@ func (suite *PartitionTests) TearDownTest() {
 	suite.Require().NoError(suite.Cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Cnxn = nil
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -558,6 +563,7 @@ func (suite *StatementTests) TearDownTest() {
 	suite.Require().NoError(suite.Cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Cnxn = nil
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -639,6 +645,7 @@ func (suite *HeaderTests) TearDownTest() {
 	suite.Require().NoError(suite.Cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Cnxn = nil
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -842,6 +849,7 @@ func (suite *TLSTests) TearDownTest() {
 	suite.Require().NoError(suite.Cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Cnxn = nil
+	suite.NoError(suite.DB.Close())
 	suite.DB = nil
 	suite.Driver = nil
 }
@@ -863,6 +871,7 @@ func (suite *TLSTests) TestInvalidOptions() {
 		"adbc.flight.sql.client_option.tls_skip_verify": "false",
 	})
 	suite.Require().NoError(err)
+	defer suite.NoError(db.Close())
 
 	cnxn, err := db.Open(suite.ctx)
 	suite.Require().NoError(err)
@@ -912,6 +921,7 @@ func (suite *ConnectionTests) SetupSuite() {
 }
 
 func (suite *ConnectionTests) TearDownSuite() {
+	suite.NoError(suite.DB.Close())
 	suite.server.Shutdown()
 	suite.alloc.AssertSize(suite.T(), 0)
 }
@@ -996,6 +1006,12 @@ func (suite *DomainSocketTests) SetupSuite() {
 
 	suite.ctx = context.Background()
 	suite.Driver = driver.NewDriver(suite.alloc)
+
+	if runtime.GOOS == "windows" {
+		// Remove drive letter and reverse slash directions in path
+		listenSocket = strings.ReplaceAll(listenSocket[2:], "\\", "/")
+	}
+
 	suite.DB, err = suite.Driver.NewDatabase(map[string]string{
 		adbc.OptionKeyURI: "grpc+unix://" + listenSocket,
 	})
@@ -1009,6 +1025,7 @@ func (suite *DomainSocketTests) SetupSuite() {
 func (suite *DomainSocketTests) TearDownSuite() {
 	suite.Require().NoError(suite.Stmt.Close())
 	suite.Require().NoError(suite.Cnxn.Close())
+	suite.NoError(suite.DB.Close())
 	suite.server.Shutdown()
 	suite.alloc.AssertSize(suite.T(), 0)
 }

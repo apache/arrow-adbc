@@ -17,18 +17,16 @@
 
 class ConnectionTest < Test::Unit::TestCase
   include Helper
+  include Helper::Sandbox
 
-  def setup
+  setup def setup_database
     @database = ADBC::Database.new
-    @database.set_option("driver", "adbc_driver_sqlite")
-    Dir.mktmpdir do |tmp_dir|
-      database = File.join(tmp_dir, "test.sqlite3")
-      @database.set_option("uri", database)
-      @database.init
-      open_connection do |connection|
-        @connection = connection
-        yield
-      end
+    @database.set_option("driver", "adbc_driver_postgresql")
+    @database.set_option("uri", adbc_uri)
+    @database.init
+    open_connection do |connection|
+      @connection = connection
+      yield
     end
   end
 
@@ -42,39 +40,20 @@ class ConnectionTest < Test::Unit::TestCase
     end
   end
 
-  def normalize_version(version)
-    return nil if version.nil?
-    version.gsub(/\A\d+\.\d+\.\d+(?:-SNAPSHOT)?\z/, "X.Y.Z")
-  end
-
-  def normalize_info(info)
-    info.collect do |code, value|
-      value = value.values[0] if value.is_a?(Hash)
-      case code
-      when ADBC::Info::VENDOR_VERSION,
-           ADBC::Info::DRIVER_ARROW_VERSION
-        value = normalize_version(value)
-      end
-      [code, value]
-    end
-  end
-
   sub_test_case("#get_info") do
     def test_all
       c_abi_array_stream = @connection.get_info
-      begin
-        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+      import_array_stream(c_abi_array_stream) do |reader|
         table = reader.read_all
         assert_equal([
-                       [ADBC::Info::VENDOR_NAME, "SQLite"],
+                       [ADBC::Info::VENDOR_NAME, "PostgreSQL"],
                        [ADBC::Info::VENDOR_VERSION, "X.Y.Z"],
-                       [ADBC::Info::DRIVER_NAME, "ADBC SQLite Driver"],
+                       [ADBC::Info::DRIVER_NAME, "ADBC PostgreSQL Driver"],
                        [ADBC::Info::DRIVER_VERSION, "(unknown)"],
                        [ADBC::Info::DRIVER_ARROW_VERSION, "X.Y.Z"],
+                       [ADBC::Info::DRIVER_ADBC_VERSION, ADBC::VERSION_1_1_0],
                      ],
                      normalize_info(table.raw_records))
-        ensure
-        GLib.free(c_abi_array_stream)
       end
     end
 
@@ -84,53 +63,50 @@ class ConnectionTest < Test::Unit::TestCase
         ADBC::Info::DRIVER_NAME,
       ]
       c_abi_array_stream = @connection.get_info(codes)
-      begin
-        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+      import_array_stream(c_abi_array_stream) do |reader|
         table = reader.read_all
         assert_equal([
-                       [ADBC::Info::VENDOR_NAME, "SQLite"],
-                       [ADBC::Info::DRIVER_NAME, "ADBC SQLite Driver"],
+                       [ADBC::Info::VENDOR_NAME, "PostgreSQL"],
+                       [ADBC::Info::DRIVER_NAME, "ADBC PostgreSQL Driver"],
                      ],
                      normalize_info(table.raw_records))
-      ensure
-        GLib.free(c_abi_array_stream)
       end
     end
   end
 
   sub_test_case("#objects") do
-    def setup
-      super do
-        execute_sql(@connection,
-                    "CREATE TABLE data (number int, string text)",
-                    need_result: false)
-        execute_sql(@connection,
-                    "INSERT INTO data VALUES (1, 'hello')",
-                    need_result: false)
-        yield
-      end
+    setup def setup_schema
+      execute_sql(@connection,
+                  "CREATE TABLE data (number int, string text)",
+                  need_result: false)
+      execute_sql(@connection,
+                  "INSERT INTO data VALUES (1, 'hello')",
+                  need_result: false)
+      yield
     end
 
     def get_objects(*args)
       c_abi_array_stream = @connection.get_objects(*args)
-      begin
-        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+      import_array_stream(c_abi_array_stream) do |reader|
         yield(reader.read_all)
-      ensure
-        GLib.free(c_abi_array_stream)
       end
     end
 
     def test_catalogs_all
       get_objects(:catalogs) do |table|
-        assert_equal([["main", nil]],
+        assert_equal([
+                       ["postgres", nil],
+                       [@test_db_name, nil],
+                       ["template1", nil],
+                       ["template0", nil],
+                     ],
                      table.raw_records)
       end
     end
 
     def test_catalogs_match
-      get_objects(:catalogs, "main") do |table|
-        assert_equal([["main", nil]],
+      get_objects(:catalogs, @test_db_name) do |table|
+        assert_equal([[@test_db_name, nil]],
                      table.raw_records)
       end
     end
@@ -145,15 +121,18 @@ class ConnectionTest < Test::Unit::TestCase
     def test_db_schemas_all
       get_objects(:db_schemas) do |table|
         assert_equal([
+                       ["postgres", []],
                        [
-                         "main",
+                         @test_db_name,
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "public",
                              "db_schema_tables" => nil,
                            },
                          ],
                        ],
+                       ["template1", []],
+                       ["template0", []],
                      ],
                      table.raw_records)
       end
@@ -162,15 +141,18 @@ class ConnectionTest < Test::Unit::TestCase
     def test_db_schemas_match
       get_objects(:db_schemas, nil, nil) do |table|
         assert_equal([
+                       ["postgres", []],
                        [
-                         "main",
+                         @test_db_name,
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "public",
                              "db_schema_tables" => nil,
                            },
                          ],
                        ],
+                       ["template1", []],
+                       ["template0", []],
                      ],
                      table.raw_records)
       end
@@ -178,7 +160,12 @@ class ConnectionTest < Test::Unit::TestCase
 
     def test_db_schemas_not_match
       get_objects(:db_schemas, nil, "nonexistent") do |table|
-        assert_equal([["main", []]],
+        assert_equal([
+                       ["postgres", []],
+                       [@test_db_name, []],
+                       ["template1", []],
+                       ["template0", []],
+                     ],
                      table.raw_records)
       end
     end
@@ -186,11 +173,12 @@ class ConnectionTest < Test::Unit::TestCase
     def test_tables_all
       get_objects(:tables) do |table|
         assert_equal([
+                       ["postgres", []],
                        [
-                         "main",
+                         @test_db_name,
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "public",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => nil,
@@ -202,6 +190,8 @@ class ConnectionTest < Test::Unit::TestCase
                            },
                          ],
                        ],
+                       ["template1", []],
+                       ["template0", []],
                      ],
                      table.raw_records)
       end
@@ -210,11 +200,12 @@ class ConnectionTest < Test::Unit::TestCase
     def test_tables_match
       get_objects(:tables, nil, nil, "data") do |table|
         assert_equal([
+                       ["postgres", []],
                        [
-                         "main",
+                         @test_db_name,
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "public",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => nil,
@@ -226,6 +217,8 @@ class ConnectionTest < Test::Unit::TestCase
                            },
                          ],
                        ],
+                       ["template1", []],
+                       ["template0", []],
                      ],
                      table.raw_records)
       end
@@ -234,15 +227,18 @@ class ConnectionTest < Test::Unit::TestCase
     def test_tables_not_match
       get_objects(:tables, nil, nil, "nonexistent") do |table|
         assert_equal([
+                       ["postgres", []],
                        [
-                         "main",
+                         @test_db_name,
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "public",
                              "db_schema_tables" => [],
                            },
                          ],
                        ],
+                       ["template1", []],
+                       ["template0", []],
                      ],
                      table.raw_records)
       end
@@ -251,11 +247,12 @@ class ConnectionTest < Test::Unit::TestCase
     def test_table_types_all
       get_objects(:tables) do |table|
         assert_equal([
+                       ["postgres", []],
                        [
-                         "main",
+                         @test_db_name,
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "public",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => nil,
@@ -267,6 +264,8 @@ class ConnectionTest < Test::Unit::TestCase
                            },
                          ],
                        ],
+                       ["template1", []],
+                       ["template0", []],
                      ],
                      table.raw_records)
       end
@@ -275,11 +274,12 @@ class ConnectionTest < Test::Unit::TestCase
     def test_table_types_match
       get_objects(:tables, nil, nil, nil, ["table", "view"]) do |table|
         assert_equal([
+                       ["postgres", []],
                        [
-                         "main",
+                         @test_db_name,
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "public",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => nil,
@@ -291,6 +291,8 @@ class ConnectionTest < Test::Unit::TestCase
                            },
                          ],
                        ],
+                       ["template1", []],
+                       ["template0", []],
                      ],
                      table.raw_records)
       end
@@ -299,15 +301,18 @@ class ConnectionTest < Test::Unit::TestCase
     def test_table_types_not_match
       get_objects(:tables, nil, nil, nil, ["nonexistent"]) do |table|
         assert_equal([
+                       ["postgres", []],
                        [
-                         "main",
+                         @test_db_name,
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "public",
                              "db_schema_tables" => [],
                            },
                          ],
                        ],
+                       ["template1", []],
+                       ["template0", []],
                      ],
                      table.raw_records)
       end
@@ -316,11 +321,12 @@ class ConnectionTest < Test::Unit::TestCase
     def test_column_all
       get_objects(:all) do |table|
         assert_equal([
+                       ["postgres", []],
                        [
-                         "main",
+                         @test_db_name,
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "public",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => [
@@ -336,14 +342,14 @@ class ConnectionTest < Test::Unit::TestCase
                                      "xdbc_decimal_digits" => nil,
                                      "xdbc_is_autoincrement" => nil,
                                      "xdbc_is_generatedcolumn" => nil,
-                                     "xdbc_is_nullable" => "YES",
-                                     "xdbc_nullable" => 1,
+                                     "xdbc_is_nullable" => nil,
+                                     "xdbc_nullable" => nil,
                                      "xdbc_num_prec_radix" => nil,
                                      "xdbc_scope_catalog" => nil,
                                      "xdbc_scope_schema" => nil,
                                      "xdbc_scope_table" => nil,
                                      "xdbc_sql_data_type" => nil,
-                                     "xdbc_type_name" => "INT",
+                                     "xdbc_type_name" => nil,
                                    },
                                    {
                                      "column_name" => "string",
@@ -357,24 +363,26 @@ class ConnectionTest < Test::Unit::TestCase
                                      "xdbc_decimal_digits" => nil,
                                      "xdbc_is_autoincrement" => nil,
                                      "xdbc_is_generatedcolumn" => nil,
-                                     "xdbc_is_nullable" => "YES",
-                                     "xdbc_nullable" => 1,
+                                     "xdbc_is_nullable" => nil,
+                                     "xdbc_nullable" => nil,
                                      "xdbc_num_prec_radix" => nil,
                                      "xdbc_scope_catalog" => nil,
                                      "xdbc_scope_schema" => nil,
                                      "xdbc_scope_table" => nil,
                                      "xdbc_sql_data_type" => nil,
-                                     "xdbc_type_name" => "TEXT",
+                                     "xdbc_type_name" => nil,
                                    },
                                  ],
                                  "table_constraints" => [],
                                  "table_name" => "data",
                                  "table_type" => "table",
-                               },
+                               }
                              ],
                            },
                          ],
                        ],
+                       ["template1", []],
+                       ["template0", []],
                      ],
                      table.raw_records)
       end
@@ -383,11 +391,12 @@ class ConnectionTest < Test::Unit::TestCase
     def test_column_match
       get_objects(:all, nil, nil, nil, nil, "number") do |table|
         assert_equal([
+                       ["postgres", []],
                        [
-                         "main",
+                         @test_db_name,
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "public",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => [
@@ -403,24 +412,26 @@ class ConnectionTest < Test::Unit::TestCase
                                      "xdbc_decimal_digits" => nil,
                                      "xdbc_is_autoincrement" => nil,
                                      "xdbc_is_generatedcolumn" => nil,
-                                     "xdbc_is_nullable" => "YES",
-                                     "xdbc_nullable" => 1,
+                                     "xdbc_is_nullable" => nil,
+                                     "xdbc_nullable" => nil,
                                      "xdbc_num_prec_radix" => nil,
                                      "xdbc_scope_catalog" => nil,
                                      "xdbc_scope_schema" => nil,
                                      "xdbc_scope_table" => nil,
                                      "xdbc_sql_data_type" => nil,
-                                     "xdbc_type_name" => "INT",
+                                     "xdbc_type_name" => nil,
                                    },
                                  ],
                                  "table_constraints" => [],
                                  "table_name" => "data",
                                  "table_type" => "table",
-                               },
+                               }
                              ],
                            },
                          ],
                        ],
+                       ["template1", []],
+                       ["template0", []],
                      ],
                      table.raw_records)
       end
@@ -429,22 +440,25 @@ class ConnectionTest < Test::Unit::TestCase
     def test_column_not_match
       get_objects(:all, nil, nil, nil, nil, "nonexistent") do |table|
         assert_equal([
+                       ["postgres", []],
                        [
-                         "main",
+                         @test_db_name,
                          [
                            {
-                             "db_schema_name" => nil,
+                             "db_schema_name" => "public",
                              "db_schema_tables" => [
                                {
                                  "table_columns" => [],
                                  "table_constraints" => [],
                                  "table_name" => "data",
                                  "table_type" => "table",
-                               },
+                               }
                              ],
                            },
                          ],
                        ],
+                       ["template1", []],
+                       ["template0", []],
                      ],
                      table.raw_records)
       end
@@ -462,7 +476,7 @@ class ConnectionTest < Test::Unit::TestCase
     c_abi_schema = @connection.get_table_schema(nil, nil, "data")
     begin
       schema = Arrow::Schema.import(c_abi_schema)
-      assert_equal(Arrow::Schema.new(number: :int64,
+      assert_equal(Arrow::Schema.new(number: :int32,
                                      string: :string),
                    schema)
     ensure
@@ -472,18 +486,22 @@ class ConnectionTest < Test::Unit::TestCase
 
   def test_table_types
     c_abi_array_stream = @connection.table_types
-    begin
-      reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+    import_array_stream(c_abi_array_stream) do |reader|
       table = reader.read_all
       fields = [
         Arrow::Field.new("table_type", :string, false),
       ]
       schema = Arrow::Schema.new(fields)
-      table_types = Arrow::StringArray.new(["table", "view"])
+      table_types = Arrow::StringArray.new([
+                                             "partitioned_table",
+                                             "foreign_table",
+                                             "toast_table",
+                                             "materialized_view",
+                                             "view",
+                                             "table",
+                                           ])
       assert_equal(Arrow::Table.new(schema, [table_types]),
                    table)
-    ensure
-      GLib.free(c_abi_array_stream)
     end
   end
 
@@ -492,7 +510,7 @@ class ConnectionTest < Test::Unit::TestCase
       message =
         "[adbc][connection][set-option]" +
         "[NOT_IMPLEMENTED][0] " +
-        "[SQLite] Unknown connection option adbc.connection.readonly=false"
+        "[libpq] Unknown option adbc.connection.readonly"
       assert_raise(ADBC::Error::NotImplemented.new(message)) do
         connection.read_only = false
       end
@@ -504,12 +522,159 @@ class ConnectionTest < Test::Unit::TestCase
       message =
         "[adbc][connection][set-option]" +
         "[NOT_IMPLEMENTED][0] " +
-        "[SQLite] Unknown connection option " +
-        "adbc.connection.transaction.isolation_level=" +
-        "adbc.connection.transaction.isolation.linearizable"
+        "[libpq] Unknown option " +
+        "adbc.connection.transaction.isolation_level"
       assert_raise(ADBC::Error::NotImplemented.new(message)) do
         connection.isolation_level = :linearizable
       end
+    end
+  end
+
+  sub_test_case("#get_statistics") do
+    def test_schema
+      run_sql("CREATE TABLE public.data1 (number int)")
+      run_sql("INSERT INTO public.data1 VALUES (1), (NULL), (2)")
+      run_sql("CREATE TABLE public.data2 (name text)")
+      run_sql("INSERT INTO public.data2 VALUES ('hello'), (NULL)")
+      run_sql("ANALYZE")
+      c_abi_array_stream = @connection.get_statistics(nil, "public", nil, true)
+      import_array_stream(c_abi_array_stream) do |reader|
+        table = reader.read_all
+        assert_equal(
+          [
+            [
+              @test_db_name,
+              [
+                {
+                  "db_schema_name" => "public",
+                  "db_schema_statistics" => [
+                    {
+                      "table_name" => "data1",
+                      "column_name" => nil,
+                      "statistic_key" => ADBC::StatisticKey::ROW_COUNT,
+                      "statistic_value" => 3.0,
+                      "statistic_is_approximate" => true,
+                    },
+                    {
+                      "table_name" => "data1",
+                      "column_name" => "number",
+                      "statistic_key" => ADBC::StatisticKey::AVERAGE_BYTE_WIDTH,
+                      "statistic_value" => 4.0,
+                      "statistic_is_approximate" => true,
+                    },
+                    {
+                      "table_name" => "data1",
+                      "column_name" => "number",
+                      "statistic_key" => ADBC::StatisticKey::DISTINCT_COUNT,
+                      "statistic_value" => 2.0,
+                      "statistic_is_approximate" => true,
+                    },
+                    {
+                      "table_name" => "data1",
+                      "column_name" => "number",
+                      "statistic_key" => ADBC::StatisticKey::NULL_COUNT,
+                      "statistic_value" => 1.0,
+                      "statistic_is_approximate" => true,
+                    },
+                    {
+                      "table_name" => "data2",
+                      "column_name" => nil,
+                      "statistic_key" => ADBC::StatisticKey::ROW_COUNT,
+                      "statistic_value" => 2.0,
+                      "statistic_is_approximate" => true,
+                    },
+                    {
+                      "table_name" => "data2",
+                      "column_name" => "name",
+                      "statistic_key" => ADBC::StatisticKey::AVERAGE_BYTE_WIDTH,
+                      "statistic_value" => 6.0,
+                      "statistic_is_approximate" => true,
+                    },
+                    {
+                      "table_name" => "data2",
+                      "column_name" => "name",
+                      "statistic_key" => ADBC::StatisticKey::DISTINCT_COUNT,
+                      "statistic_value" => 1.0,
+                      "statistic_is_approximate" => true,
+                    },
+                    {
+                      "table_name" => "data2",
+                      "column_name" => "name",
+                      "statistic_key" => ADBC::StatisticKey::NULL_COUNT,
+                      "statistic_value" => 1.0,
+                      "statistic_is_approximate" => true,
+                    },
+                  ],
+                },
+              ],
+            ],
+          ],
+          normalize_statistics(table.raw_records)
+        )
+      end
+    end
+
+    def test_schema_table
+      run_sql("CREATE TABLE public.data1 (number int)")
+      run_sql("INSERT INTO public.data1 VALUES (1), (NULL), (2)")
+      run_sql("CREATE TABLE public.data2 (name text)")
+      run_sql("ANALYZE")
+      c_abi_array_stream =
+        @connection.get_statistics(nil, "public", "data1", true)
+      import_array_stream(c_abi_array_stream) do |reader|
+        table = reader.read_all
+        assert_equal(
+          [
+            [
+              @test_db_name,
+              [
+                {
+                  "db_schema_name" => "public",
+                  "db_schema_statistics" => [
+                    {
+                      "table_name" => "data1",
+                      "column_name" => nil,
+                      "statistic_key" => ADBC::StatisticKey::ROW_COUNT,
+                      "statistic_value" => 3.0,
+                      "statistic_is_approximate" => true,
+                    },
+                    {
+                      "table_name" => "data1",
+                      "column_name" => "number",
+                      "statistic_key" => ADBC::StatisticKey::AVERAGE_BYTE_WIDTH,
+                      "statistic_value" => 4.0,
+                      "statistic_is_approximate" => true,
+                    },
+                    {
+                      "table_name" => "data1",
+                      "column_name" => "number",
+                      "statistic_key" => ADBC::StatisticKey::DISTINCT_COUNT,
+                      "statistic_value" => 2.0,
+                      "statistic_is_approximate" => true,
+                    },
+                    {
+                      "table_name" => "data1",
+                      "column_name" => "number",
+                      "statistic_key" => ADBC::StatisticKey::NULL_COUNT,
+                      "statistic_value" => 1.0,
+                      "statistic_is_approximate" => true,
+                    },
+                  ],
+                },
+              ],
+            ],
+          ],
+          normalize_statistics(table.raw_records)
+        )
+      end
+    end
+  end
+
+  def test_statistic_names
+    c_abi_array_stream = @connection.statistic_names
+    import_array_stream(c_abi_array_stream) do |reader|
+      table = reader.read_all
+      assert_equal([], table.raw_records)
     end
   end
 
@@ -531,7 +696,7 @@ class ConnectionTest < Test::Unit::TestCase
       open_connection do |other_connection|
         execute_sql(other_connection, "SELECT * FROM data") do |table,|
           expected = {
-            number: Arrow::Int64Array.new([1]),
+            number: Arrow::Int32Array.new([1]),
             string: Arrow::StringArray.new(["hello"]),
           }
           assert_equal(Arrow::Table.new(expected),
@@ -542,7 +707,7 @@ class ConnectionTest < Test::Unit::TestCase
       open_connection do |other_connection|
         execute_sql(other_connection, "SELECT * FROM data") do |table,|
           expected = {
-            number: Arrow::Int64Array.new([1, 2]),
+            number: Arrow::Int32Array.new([1, 2]),
             string: Arrow::StringArray.new(["hello", "world"]),
           }
           assert_equal(Arrow::Table.new(expected),
@@ -570,7 +735,7 @@ class ConnectionTest < Test::Unit::TestCase
       open_connection do |other_connection|
         execute_sql(other_connection, "SELECT * FROM data") do |table,|
           expected = {
-            number: Arrow::Int64Array.new([1]),
+            number: Arrow::Int32Array.new([1]),
             string: Arrow::StringArray.new(["hello"]),
           }
           assert_equal(Arrow::Table.new(expected),
@@ -581,7 +746,7 @@ class ConnectionTest < Test::Unit::TestCase
       open_connection do |other_connection|
         execute_sql(other_connection, "SELECT * FROM data") do |table,|
           expected = {
-            number: Arrow::Int64Array.new([1]),
+            number: Arrow::Int32Array.new([1]),
             string: Arrow::StringArray.new(["hello"]),
           }
           assert_equal(Arrow::Table.new(expected),

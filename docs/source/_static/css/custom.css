@@ -24,3 +24,14 @@ p.admonition-title {
     display: block;
     margin: 0 auto;
 }
+
+figcaption {
+    font-style: italic;
+    margin: 0 auto;
+    text-wrap: balance;
+    width: 90%;
+}
+
+h1, h2, h3, h4 {
+    text-wrap: balance;
+}

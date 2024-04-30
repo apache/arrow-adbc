@@ -16,3 +16,5 @@
 # under the License.
 
 rm src/*.o src/go/*.a
+rm -rf src/.go-cache
+rm -rf src/.go-path

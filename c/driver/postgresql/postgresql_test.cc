@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <array>
 #include <cerrno>
 #include <cmath>
 #include <cstdlib>
@@ -37,6 +38,7 @@
 using adbc_validation::Handle;
 using adbc_validation::IsOkStatus;
 using adbc_validation::IsStatus;
+using std::string_literals::operator""s;
 
 class PostgresQuirks : public adbc_validation::DriverQuirks {
  public:
@@ -56,6 +58,18 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
 
     std::string query = "DROP TABLE IF EXISTS \"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
+  }
+
+  AdbcStatusCode DropTable(struct AdbcConnection* connection, const std::string& name,
+                           const std::string& db_schema,
+                           struct AdbcError* error) const override {
+    Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
+
+    std::string query = "DROP TABLE IF EXISTS \"" + db_schema + "\".\"" + name + "\"";
     RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
     RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
     return AdbcStatementRelease(&statement.value, error);
@@ -83,6 +97,18 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     return AdbcStatementRelease(&statement.value, error);
   }
 
+  AdbcStatusCode EnsureDbSchema(struct AdbcConnection* connection,
+                                const std::string& name,
+                                struct AdbcError* error) const override {
+    Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
+
+    std::string query = "CREATE SCHEMA IF NOT EXISTS \"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
+  }
+
   std::string BindParameter(int index) const override {
     return "$" + std::to_string(index + 1);
   }
@@ -94,6 +120,9 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
       case NANOARROW_TYPE_DURATION:
         return NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO;
       case NANOARROW_TYPE_LARGE_STRING:
+        return NANOARROW_TYPE_STRING;
+      case NANOARROW_TYPE_DECIMAL128:
+      case NANOARROW_TYPE_DECIMAL256:
         return NANOARROW_TYPE_STRING;
       default:
         return ingest_type;
@@ -343,7 +372,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_EQ(reader.rows_affected, -1);
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
@@ -416,7 +445,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_EQ(reader.rows_affected, -1);
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
@@ -435,7 +464,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_EQ(reader.rows_affected, -1);
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
@@ -820,17 +849,10 @@ class PostgresStatementTest : public ::testing::Test,
   void TestSqlIngestUInt16() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestUInt32() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestUInt64() { GTEST_SKIP() << "Not implemented"; }
-  void TestSqlIngestStringDictionary() { GTEST_SKIP() << "Not implemented"; }
 
   void TestSqlPrepareErrorParamCountMismatch() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareGetParameterSchema() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareSelectParams() { GTEST_SKIP() << "Not yet implemented"; }
-  void TestSqlQueryRowsAffectedDelete() {
-    GTEST_SKIP() << "Cannot query rows affected in delete (not implemented)";
-  }
-  void TestSqlQueryRowsAffectedDeleteStream() {
-    GTEST_SKIP() << "Cannot query rows affected in delete stream (not implemented)";
-  }
 
   void TestConcurrentStatements() {
     // TODO: refactor driver so that we read all the data as soon as
@@ -1169,7 +1191,7 @@ TEST_F(PostgresStatementTest, UpdateInExecuteQuery) {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_EQ(reader.rows_affected, -1);
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
@@ -1184,7 +1206,7 @@ TEST_F(PostgresStatementTest, UpdateInExecuteQuery) {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_EQ(reader.rows_affected, -1);
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
@@ -1323,12 +1345,16 @@ struct TypeTestCase {
   std::string sql_type;
   std::string sql_literal;
   ArrowType arrow_type;
-  std::variant<bool, int64_t, double, std::string> scalar;
+  std::variant<bool, int64_t, double, std::string, ArrowInterval> scalar;
 
   static std::string FormatName(const ::testing::TestParamInfo<TypeTestCase>& info) {
     return info.param.name;
   }
 };
+
+ArrowInterval MonthDayNano(int32_t months, int32_t days, int64_t nanos) {
+  return {NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO, months, days, 0, nanos};
+}
 
 void PrintTo(const TypeTestCase& value, std::ostream* os) { (*os) << value.name; }
 
@@ -1439,8 +1465,18 @@ TEST_P(PostgresTypeTest, SelectValue) {
         } else if constexpr (std::is_same_v<T, std::string>) {
           ArrowStringView view =
               ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], 0);
-          ASSERT_EQ(arg.size(), view.size_bytes);
-          ASSERT_EQ(0, std::strncmp(arg.c_str(), view.data, arg.size()));
+          std::string_view v(view.data, static_cast<size_t>(view.size_bytes));
+          ASSERT_EQ(arg, v);
+        } else if constexpr (std::is_same_v<T, ArrowInterval>) {
+          ArrowInterval interval;
+          std::memset(&interval, 0, sizeof(interval));
+          ArrowArrayViewGetIntervalUnsafe(reader.array_view->children[0], 0, &interval);
+          // The getter doesn't set this.
+          // EXPECT_EQ(arg.type, interval.type);
+          EXPECT_EQ(arg.months, interval.months);
+          EXPECT_EQ(arg.days, interval.days);
+          EXPECT_EQ(arg.ms, interval.ms);
+          EXPECT_EQ(arg.ns, interval.ns);
         } else {
           FAIL() << "Unimplemented case";
         }
@@ -1456,12 +1492,12 @@ static std::initializer_list<TypeTestCase> kBoolTypeCases = {
     {"BOOL_FALSE", "BOOLEAN", "FALSE", NANOARROW_TYPE_BOOL, false},
 };
 static std::initializer_list<TypeTestCase> kBinaryTypeCases = {
-    {"BYTEA", "BYTEA", R"('\000\001\002\003\004\005\006\007'::bytea)",
+    {"BYTEA", "BYTEA", R"('\000\001\002\003\004\005\006\007'::bytea)"s,
      NANOARROW_TYPE_BINARY, std::string("\x00\x01\x02\x03\x04\x05\x06\x07", 8)},
-    {"TEXT", "TEXT", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
-    {"CHAR6_1", "CHAR(6)", "'foo'", NANOARROW_TYPE_STRING, "foo   "},
-    {"CHAR6_2", "CHAR(6)", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
-    {"VARCHAR", "VARCHAR", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
+    {"TEXT", "TEXT", "'foobar'", NANOARROW_TYPE_STRING, "foobar"s},
+    {"CHAR6_1", "CHAR(6)", "'foo'", NANOARROW_TYPE_STRING, "foo   "s},
+    {"CHAR6_2", "CHAR(6)", "'foobar'", NANOARROW_TYPE_STRING, "foobar"s},
+    {"VARCHAR", "VARCHAR", "'foobar'", NANOARROW_TYPE_STRING, "foobar"s},
 };
 static std::initializer_list<TypeTestCase> kFloatTypeCases = {
     {"REAL", "REAL", "-1E0", NANOARROW_TYPE_FLOAT, -1.0},
@@ -1480,19 +1516,162 @@ static std::initializer_list<TypeTestCase> kIntTypeCases = {
      NANOARROW_TYPE_INT64, std::numeric_limits<int64_t>::max()},
 };
 static std::initializer_list<TypeTestCase> kNumericTypeCases = {
-    {"NUMERIC_TRAILING0", "NUMERIC", "1000000", NANOARROW_TYPE_STRING, "1000000"},
-    {"NUMERIC_LEADING0", "NUMERIC", "0.00001234", NANOARROW_TYPE_STRING, "0.00001234"},
-    {"NUMERIC_TRAILING02", "NUMERIC", "'1.0000'", NANOARROW_TYPE_STRING, "1.0000"},
-    {"NUMERIC_NEGATIVE", "NUMERIC", "-123.456", NANOARROW_TYPE_STRING, "-123.456"},
-    {"NUMERIC_POSITIVE", "NUMERIC", "123.456", NANOARROW_TYPE_STRING, "123.456"},
-    {"NUMERIC_NAN", "NUMERIC", "'nan'", NANOARROW_TYPE_STRING, "nan"},
-    {"NUMERIC_NINF", "NUMERIC", "'-inf'", NANOARROW_TYPE_STRING, "-inf"},
-    {"NUMERIC_PINF", "NUMERIC", "'inf'", NANOARROW_TYPE_STRING, "inf"},
+    {"NUMERIC_TRAILING0", "NUMERIC", "1000000", NANOARROW_TYPE_STRING, "1000000"s},
+    {"NUMERIC_LEADING0", "NUMERIC", "0.00001234", NANOARROW_TYPE_STRING, "0.00001234"s},
+    {"NUMERIC_TRAILING02", "NUMERIC", "'1.0000'", NANOARROW_TYPE_STRING, "1.0000"s},
+    {"NUMERIC_NEGATIVE", "NUMERIC", "-123.456", NANOARROW_TYPE_STRING, "-123.456"s},
+    {"NUMERIC_POSITIVE", "NUMERIC", "123.456", NANOARROW_TYPE_STRING, "123.456"s},
+    {"NUMERIC_NAN", "NUMERIC", "'nan'", NANOARROW_TYPE_STRING, "nan"s},
+    {"NUMERIC_NINF", "NUMERIC", "'-inf'", NANOARROW_TYPE_STRING, "-inf"s},
+    {"NUMERIC_PINF", "NUMERIC", "'inf'", NANOARROW_TYPE_STRING, "inf"s},
+    {"MONEY", "MONEY", "12.34", NANOARROW_TYPE_INT64, int64_t(1234)},
 };
 static std::initializer_list<TypeTestCase> kDateTypeCases = {
     {"DATE0", "DATE", "'1970-01-01'", NANOARROW_TYPE_DATE32, int64_t(0)},
     {"DATE1", "DATE", "'2000-01-01'", NANOARROW_TYPE_DATE32, int64_t(10957)},
     {"DATE2", "DATE", "'1950-01-01'", NANOARROW_TYPE_DATE32, int64_t(-7305)},
+};
+static std::initializer_list<TypeTestCase> kIntervalTypeCases = {
+    {
+        "INTERVAL",
+        "INTERVAL",
+        "'P-1Y2M42DT1H1M1S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(-10, 42, (1L * 60 * 60 + 60L + 1L) * 1'000'000'000),
+    },
+    {
+        "INTERVAL2",
+        "INTERVAL",
+        "'P0Y0M0DT0H0M0.1S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 100L * 1'000'000),
+    },
+    {
+        "INTERVAL3",
+        "INTERVAL",
+        "'P0Y0M0DT0H0M0.01S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 10L * 1'000'000),
+    },
+    {
+        "INTERVAL4",
+        "INTERVAL",
+        "'P0Y0M0DT0H0M0.001S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 1L * 1'000'000),
+    },
+    {
+        "INTERVAL5",
+        "INTERVAL",
+        "'P0Y0M0DT0H0M0.0001S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 100'000L),
+    },
+    {
+        "INTERVAL6",
+        "INTERVAL",
+        "'P0Y0M0DT0H0M0.00001S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 10'000L),
+    },
+    {
+        "INTERVAL7",
+        "INTERVAL",
+        "'P0Y0M0DT0H0M0.000001S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 1'000L),
+    },
+    {
+        "INTERVAL_YEAR",
+        "INTERVAL YEAR",
+        "'16Y'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(16 * 12, 0, 0),
+    },
+    {
+        "INTERVAL_MONTH",
+        "INTERVAL MONTH",
+        "'P0Y-2M0D'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(-2, 0, 0),
+    },
+    {
+        "INTERVAL_DAY",
+        "INTERVAL DAY",
+        "'-102D'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, -102, 0),
+    },
+    {
+        "INTERVAL_HOUR",
+        "INTERVAL HOUR",
+        "'12H'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 12L * 60 * 60 * 1'000'000'000),
+    },
+    {
+        "INTERVAL_MINUTE",
+        "INTERVAL MINUTE",
+        "'P0Y0M0DT0H-5M0S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, -5L * 60 * 1'000'000'000),
+    },
+    {
+        "INTERVAL_SECOND",
+        "INTERVAL SECOND",
+        "'P0Y0M0DT0H0M42S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 42L * 1'000'000'000),
+    },
+    {
+        "INTERVAL_YEAR_TO_MONTH",
+        "INTERVAL YEAR TO MONTH",
+        "'P1Y1M0D'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(13, 0, 0),
+    },
+    {
+        "INTERVAL_DAY_TO_HOUR",
+        "INTERVAL DAY TO HOUR",
+        "'P0Y0M1DT-2H0M0S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 1, -2L * 60 * 60 * 1'000'000'000),
+    },
+    {
+        "INTERVAL_DAY_TO_MINUTE",
+        "INTERVAL DAY TO MINUTE",
+        "'P0Y0M1DT-2H1M0S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 1, (-2L * 60 + 1L) * 60 * 1'000'000'000),
+    },
+    {
+        "INTERVAL_DAY_TO_SECOND",
+        "INTERVAL DAY TO SECOND",
+        "'P0Y0M1DT-2H1M-1S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 1, ((-2L * 60 + 1L) * 60 - 1L) * 1'000'000'000),
+    },
+    {
+        "INTERVAL_HOUR_TO_MINUTE",
+        "INTERVAL HOUR TO MINUTE",
+        "'P0Y0M0DT-2H1M0S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, (-2L * 60 + 1L) * 60 * 1'000'000'000),
+    },
+    {
+        "INTERVAL_HOUR_TO_SECOND",
+        "INTERVAL HOUR TO SECOND",
+        "'P0Y0M0DT-2H1M-1S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, ((-2L * 60 + 1L) * 60 - 1L) * 1'000'000'000),
+    },
+    {
+        "INTERVAL_MINUTE_TO_SECOND",
+        "INTERVAL MINUTE TO SECOND",
+        "'P0Y0M0DT0H1M-1S'",
+        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+        MonthDayNano(0, 0, 59L * 1'000'000'000),
+    },
 };
 static std::initializer_list<TypeTestCase> kTimeTypeCases = {
     {"TIME_WITHOUT_TIME_ZONE", "TIME WITHOUT TIME ZONE", "'00:00'", NANOARROW_TYPE_TIME64,
@@ -1623,8 +1802,247 @@ INSTANTIATE_TEST_SUITE_P(NumericType, PostgresTypeTest,
                          testing::ValuesIn(kNumericTypeCases), TypeTestCase::FormatName);
 INSTANTIATE_TEST_SUITE_P(DateTypes, PostgresTypeTest, testing::ValuesIn(kDateTypeCases),
                          TypeTestCase::FormatName);
+INSTANTIATE_TEST_SUITE_P(IntervalTypes, PostgresTypeTest,
+                         testing::ValuesIn(kIntervalTypeCases), TypeTestCase::FormatName);
 INSTANTIATE_TEST_SUITE_P(TimeTypes, PostgresTypeTest, testing::ValuesIn(kTimeTypeCases),
                          TypeTestCase::FormatName);
 INSTANTIATE_TEST_SUITE_P(TimestampTypes, PostgresTypeTest,
                          testing::ValuesIn(kTimestampTypeCases),
                          TypeTestCase::FormatName);
+
+struct DecimalTestCase {
+  const enum ArrowType type;
+  const int32_t precision;
+  const int32_t scale;
+  const std::vector<std::array<uint64_t, 4>> data;
+  const std::vector<std::optional<std::string>> expected;
+};
+
+class PostgresDecimalTest : public ::testing::TestWithParam<DecimalTestCase> {
+ public:
+  void SetUp() override {
+    ASSERT_THAT(AdbcDatabaseNew(&database_, &error_), IsOkStatus(&error_));
+    ASSERT_THAT(quirks_.SetupDatabase(&database_, &error_), IsOkStatus(&error_));
+    ASSERT_THAT(AdbcDatabaseInit(&database_, &error_), IsOkStatus(&error_));
+
+    ASSERT_THAT(AdbcConnectionNew(&connection_, &error_), IsOkStatus(&error_));
+    ASSERT_THAT(AdbcConnectionInit(&connection_, &database_, &error_),
+                IsOkStatus(&error_));
+
+    ASSERT_THAT(AdbcStatementNew(&connection_, &statement_, &error_),
+                IsOkStatus(&error_));
+
+    ASSERT_THAT(quirks_.DropTable(&connection_, "bulk_ingest", &error_),
+                IsOkStatus(&error_));
+  }
+
+  void TearDown() override {
+    if (statement_.private_data) {
+      ASSERT_THAT(AdbcStatementRelease(&statement_, &error_), IsOkStatus(&error_));
+    }
+    if (connection_.private_data) {
+      ASSERT_THAT(AdbcConnectionRelease(&connection_, &error_), IsOkStatus(&error_));
+    }
+    if (database_.private_data) {
+      ASSERT_THAT(AdbcDatabaseRelease(&database_, &error_), IsOkStatus(&error_));
+    }
+
+    if (error_.release) error_.release(&error_);
+  }
+
+ protected:
+  PostgresQuirks quirks_;
+  struct AdbcError error_ = {};
+  struct AdbcDatabase database_ = {};
+  struct AdbcConnection connection_ = {};
+  struct AdbcStatement statement_ = {};
+};
+
+TEST_P(PostgresDecimalTest, SelectValue) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+
+  const enum ArrowType type = GetParam().type;
+  const int32_t precision = GetParam().precision;
+  const int32_t scale = GetParam().scale;
+  const auto data = GetParam().data;
+  const auto expected = GetParam().expected;
+  const size_t nrecords = expected.size();
+
+  int32_t bitwidth;
+  switch (type) {
+    case NANOARROW_TYPE_DECIMAL128:
+      bitwidth = 128;
+      break;
+    case NANOARROW_TYPE_DECIMAL256:
+      bitwidth = 256;
+      break;
+    default:
+      FAIL();
+  }
+
+  // this is a bit of a hack to make std::vector play nicely with
+  // a dynamic number of stack-allocated ArrowDecimal objects
+  constexpr size_t max_decimals = 10;
+  struct ArrowDecimal decimals[max_decimals];
+  if (nrecords > max_decimals) {
+    FAIL() << " max_decimals exceeded for test case - please change parametrization";
+  }
+
+  std::vector<std::optional<ArrowDecimal*>> values;
+  for (size_t i = 0; i < nrecords; i++) {
+    ArrowDecimalInit(&decimals[i], bitwidth, precision, scale);
+    uint8_t buf[32];
+    const auto record = data[i];
+    memcpy(buf, record.data(), sizeof(buf));
+    ArrowDecimalSetBytes(&decimals[i], buf);
+    values.push_back(&decimals[i]);
+  }
+
+  auto expected_with_null{expected};
+  expected_with_null.insert(expected_with_null.begin(), std::nullopt);
+  values.push_back(std::nullopt);
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+  ASSERT_EQ(
+      PrivateArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
+      0);
+  ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
+
+  ASSERT_THAT(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                        &na_error, values),
+              adbc_validation::IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement_, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error_),
+              IsOkStatus(&error_));
+  ASSERT_THAT(AdbcStatementBind(&statement_, &array.value, &schema.value, &error_),
+              IsOkStatus(&error_));
+
+  int64_t rows_affected = 0;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement_, nullptr, &rows_affected, &error_),
+              IsOkStatus(&error_));
+  ASSERT_THAT(rows_affected,
+              ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement_,
+                  "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error_),
+              IsOkStatus(&error_));
+
+  {
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement_, &reader.stream.value,
+                                          &reader.rows_affected, &error_),
+                IsOkStatus(&error_));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ArrowType round_trip_type = quirks_.IngestSelectRoundTripType(type);
+    ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+        &reader.schema.value, {{"col", round_trip_type, true}}));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_EQ(values.size(), reader.array->length);
+    ASSERT_EQ(1, reader.array->n_children);
+
+    ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+        reader.array_view->children[0], expected_with_null));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  }
+}
+
+static std::vector<std::array<uint64_t, 4>> kDecimalData = {
+    // -12345600000
+    {18446744061363951616ULL, 18446744073709551615ULL, 0, 0},
+    // 1234
+    {1234ULL, 0, 0, 0},
+    // 100000000
+    {100000000ULL, 0, 0, 0},
+    // 12345600000
+    {12345600000ULL, 0, 0, 0},
+    // 100000000000000
+    {100000000000000ULL, 0, 0, 0},
+    // 2342394230592232349023094
+    {8221368519775271798ULL, 126981ULL, 0, 0},
+};
+
+static std::vector<std::array<uint64_t, 4>> kDecimal256Data = {
+    // 1234567890123456789012345678901234567890123456789012345678901234567890123456
+    {17877984925544397504ULL, 5352188884907840935ULL, 234631617561833724ULL,
+     196678011949953713ULL},
+    // -1234567890123456789012345678901234567890123456789012345678901234567890123456
+    {568759148165154112ULL, 13094555188801710680ULL, 18212112456147717891ULL,
+     18250066061759597902ULL},
+};
+
+static std::initializer_list<DecimalTestCase> kDecimal128Cases = {
+    {NANOARROW_TYPE_DECIMAL128,
+     38,
+     8,
+     kDecimalData,
+     {"-123.456", "0.00001234", "1", "123.456", "1000000",
+      "23423942305922323.49023094"}}};
+
+static std::initializer_list<DecimalTestCase> kDecimal128NoScaleCases = {
+    {NANOARROW_TYPE_DECIMAL128,
+     38,
+     0,
+     kDecimalData,
+     {"-12345600000", "1234", "100000000", "12345600000", "100000000000000",
+      "2342394230592232349023094"}}};
+
+static std::initializer_list<DecimalTestCase> kDecimal256Cases = {
+    {NANOARROW_TYPE_DECIMAL256,
+     38,
+     8,
+     kDecimalData,
+     {"-123.456", "0.00001234", "1", "123.456", "1000000",
+      "23423942305922323.49023094"}}};
+
+static std::initializer_list<DecimalTestCase> kDecimal256NoScaleCases = {
+    {NANOARROW_TYPE_DECIMAL256,
+     38,
+     0,
+     kDecimalData,
+     {"-12345600000", "1234", "100000000", "12345600000", "100000000000000",
+      "2342394230592232349023094"}}};
+
+static std::initializer_list<DecimalTestCase> kDecimal256LargeCases = {
+    {NANOARROW_TYPE_DECIMAL256,
+     76,
+     8,
+     kDecimal256Data,
+     {
+         "-12345678901234567890123456789012345678901234567890123456789012345678.90123456",
+         "12345678901234567890123456789012345678901234567890123456789012345678.90123456",
+     }}};
+
+static std::initializer_list<DecimalTestCase> kDecimal256LargeNoScaleCases = {
+    {NANOARROW_TYPE_DECIMAL256,
+     76,
+     0,
+     kDecimal256Data,
+     {
+         "-1234567890123456789012345678901234567890123456789012345678901234567890123456",
+         "1234567890123456789012345678901234567890123456789012345678901234567890123456",
+     }}};
+
+INSTANTIATE_TEST_SUITE_P(Decimal128Tests, PostgresDecimalTest,
+                         testing::ValuesIn(kDecimal128Cases));
+INSTANTIATE_TEST_SUITE_P(Decimal128NoScale, PostgresDecimalTest,
+                         testing::ValuesIn(kDecimal128NoScaleCases));
+INSTANTIATE_TEST_SUITE_P(Decimal256Tests, PostgresDecimalTest,
+                         testing::ValuesIn(kDecimal128Cases));
+INSTANTIATE_TEST_SUITE_P(Decimal256NoScale, PostgresDecimalTest,
+                         testing::ValuesIn(kDecimal128NoScaleCases));
+INSTANTIATE_TEST_SUITE_P(Decimal256LargeTests, PostgresDecimalTest,
+                         testing::ValuesIn(kDecimal256LargeCases));
+INSTANTIATE_TEST_SUITE_P(Decimal256LargeNoScale, PostgresDecimalTest,
+                         testing::ValuesIn(kDecimal256LargeNoScaleCases));

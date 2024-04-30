@@ -28,6 +28,7 @@ test_subproject() {
 
     export DYLD_LIBRARY_PATH="${install_dir}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}"
     export GI_TYPELIB_PATH="${build_dir}/glib/adbc-glib${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
+    export GI_TYPELIB_PATH="${build_dir}/glib/adbc-arrow-glib:${GI_TYPELIB_PATH}"
     export LD_LIBRARY_PATH="${install_dir}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
     export PKG_CONFIG_PATH="${install_dir}/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
     if [[ -n "${CONDA_PREFIX}" ]]; then

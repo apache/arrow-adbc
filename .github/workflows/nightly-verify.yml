@@ -18,6 +18,13 @@
 name: Verification (Nightly)
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/nightly-verify.yml"
+      - "dev/release/verify-release-candidate.sh"
+      - "dev/release/verify-release-candidate.ps1"
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch: {}
@@ -31,9 +38,11 @@ jobs:
     if: github.event_name != 'schedule' || github.repository == 'apache/arrow-adbc'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
 
       - name: Prepare version
         shell: bash
@@ -82,7 +91,7 @@ jobs:
           shasum --algorithm 512 \
             apache-arrow-adbc-${VERSION}.tar.gz > apache-arrow-adbc-${VERSION}.tar.gz.sha512
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: source
           retention-days: 7
@@ -100,9 +109,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-latest", "ubuntu-latest", "windows-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           path: arrow-adbc
@@ -115,7 +124,7 @@ jobs:
                       grep -E -o '[0-9]+\.[0-9]+\.[0-9]+')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: source
           path: ${{ github.workspace }}/apache-arrow-adbc-${{ env.VERSION }}-rc0/
@@ -125,7 +134,7 @@ jobs:
         run: |
           mv apache-arrow-adbc-${{ env.VERSION }}-rc0/KEYS .
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         # The Unix script will set up conda itself
         if: matrix.os == 'windows-latest'
         with:
@@ -133,9 +142,16 @@ jobs:
           miniforge-version: latest
           use-mamba: true
 
+      - name: Work around ASAN issue (GH-1617)
+        shell: bash -l {0}
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+
       - name: Verify
         if: matrix.os != 'windows-latest'
         env:
+          CI: "false"
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"
           TEST_SOURCE: "1"
@@ -149,6 +165,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         env:
+          CI: "false"
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"
           TEST_SOURCE: "1"

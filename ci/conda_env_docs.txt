@@ -18,7 +18,7 @@
 breathe
 doxygen
 # XXX(https://github.com/apache/arrow-adbc/issues/987)
-furo=2023.07.26
+furo>=2023.09.10
 make
 # Needed to install mermaid
 nodejs
@@ -28,4 +28,5 @@ sphinx>=5.0
 sphinx-autobuild
 sphinx-copybutton
 sphinx-design
+sphinxext-opengraph
 r-pkgdown

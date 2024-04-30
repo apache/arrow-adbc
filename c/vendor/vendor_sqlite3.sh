@@ -16,9 +16,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# Check for updates: https://www.sqlite.org/download.html
 # Download and extract sqlite3
 rm -rf sqlite3
-curl -L https://www.sqlite.org/2022/sqlite-amalgamation-3400100.zip -o sqlite3.zip
+curl -L https://www.sqlite.org/2023/sqlite-amalgamation-3440000.zip -o sqlite3.zip
 unzip sqlite3.zip -d .
 mv sqlite-amalgamation* sqlite3
 rm -f sqlite3/shell.c sqlite3/sqlite3ext.h sqlite3.zip

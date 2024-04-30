@@ -21,6 +21,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,7 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.arrow.vector.util.Text;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class JdbcConnection implements AdbcConnection {
   private final BufferAllocator allocator;
@@ -90,7 +92,7 @@ public class JdbcConnection implements AdbcConnection {
   }
 
   @Override
-  public ArrowReader getInfo(int[] infoCodes) throws AdbcException {
+  public ArrowReader getInfo(int @Nullable [] infoCodes) throws AdbcException {
     try {
       try (final VectorSchemaRoot root =
           new InfoMetadataBuilder(allocator, connection, infoCodes).build()) {
@@ -134,8 +136,15 @@ public class JdbcConnection implements AdbcConnection {
     short key;
     long value;
     boolean multiColumn = false;
+
+    public Statistic(String table, String column) {
+      this.table = table;
+      this.column = column;
+    }
   }
 
+  // We use null keys intentionally with HashMap, but the annotations don't technically allow this
+  @SuppressWarnings("argument")
   @Override
   public ArrowReader getStatistics(
       String catalogPattern, String dbSchemaPattern, String tableNamePattern, boolean approximate)
@@ -163,13 +172,22 @@ public class JdbcConnection implements AdbcConnection {
       Map<String, Map<String, Map<String, Statistic>>> allStatistics = new HashMap<>();
 
       while (rs.next()) {
-        String catalog = rs.getString(1);
+        @Nullable String catalog = rs.getString(1);
         String schema = rs.getString(2);
         String table = rs.getString(3);
         String index = rs.getString(6);
         short statisticType = rs.getShort(7);
         String column = rs.getString(9);
         long cardinality = rs.getLong(11);
+
+        if (table == null || column == null) {
+          throw new AdbcException(
+              JdbcDriverUtil.prefixExceptionMessage("JDBC driver returned null table/column name"),
+              null,
+              AdbcStatusCode.INTERNAL,
+              null,
+              0);
+        }
 
         if (!allStatistics.containsKey(catalog)) {
           allStatistics.put(catalog, new HashMap<>());
@@ -181,7 +199,8 @@ public class JdbcConnection implements AdbcConnection {
         }
 
         Map<String, Statistic> schemaStats = catalogStats.get(schema);
-        Statistic statistic = schemaStats.getOrDefault(index, new Statistic());
+        Statistic statistic = schemaStats.getOrDefault(index, new Statistic(table, column));
+        assert statistic != null; // for checker-framework
         if (schemaStats.containsKey(index)) {
           // Multi-column index, ignore it
           statistic.multiColumn = true;
@@ -315,7 +334,10 @@ public class JdbcConnection implements AdbcConnection {
             .getMetaData()
             .getColumns(catalog, dbSchema, tableName, /*columnNamePattern*/ null)) {
       while (rs.next()) {
-        final String fieldName = rs.getString("COLUMN_NAME");
+        @Nullable String fieldName = rs.getString("COLUMN_NAME");
+        if (fieldName == null) {
+          fieldName = "";
+        }
         final JdbcFieldInfoExtra fieldInfoExtra = new JdbcFieldInfoExtra(rs);
 
         final ArrowType arrowType = quirks.getTypeConverter().apply(fieldInfoExtra);
@@ -329,12 +351,10 @@ public class JdbcConnection implements AdbcConnection {
         final Field field =
             new Field(
                 fieldName,
-                new FieldType(
-                    fieldInfoExtra.isNullable() != DatabaseMetaData.columnNoNulls,
-                    arrowType, /*dictionary*/
-                    null, /*metadata*/
-                    null),
-                /*children*/ null);
+                fieldInfoExtra.isNullable() == DatabaseMetaData.columnNoNulls
+                    ? FieldType.notNullable(arrowType)
+                    : FieldType.nullable(arrowType),
+                Collections.emptyList());
         fields.add(field);
       }
     } catch (SQLException e) {

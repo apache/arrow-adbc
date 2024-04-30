@@ -92,6 +92,8 @@ if ($SourceKind -eq "local") {
 } else {
     $ArrowSourceDir = Join-Path $ArrowTempDir $DistName
     New-Item -ItemType Directory -Path $ArrowSourceDir -Force
+    # Convert to an absolute now that it should exist
+    $ArrowSourceDir = $ArrowSourceDir | Resolve-Path | % { $_.Path }
 
     Download-Dist-File "$($DistName).tar.gz"
     Download-Dist-File "$($DistName).tar.gz.sha512"
@@ -115,7 +117,8 @@ Show-Header "Create Conda Environment"
 mamba create -c conda-forge -f -y -p $(Join-Path $ArrowTempDir conda-env) `
   --file $(Join-Path $ArrowSourceDir ci\conda_env_cpp.txt) `
   --file $(Join-Path $ArrowSourceDir ci\conda_env_python.txt) `
-  go
+  go `
+  m2w64-gcc
 
 Invoke-Expression $(conda shell.powershell hook | Out-String)
 conda activate $(Join-Path $ArrowTempDir conda-env)
@@ -124,7 +127,7 @@ conda activate $(Join-Path $ArrowTempDir conda-env)
 # removes a bunch of other things, so force-remove instead
 # (https://github.com/conda-forge/libprotobuf-feedstock/issues/186)
 # Use conda, mamba appears to ignore --force
-conda remove --force gtest
+conda remove -y --force gtest
 
 # Activating doesn't appear to set GOROOT
 $env:GOROOT = $(Join-Path $ArrowTempDir conda-env go)

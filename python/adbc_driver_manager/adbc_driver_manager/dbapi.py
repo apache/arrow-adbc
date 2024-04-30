@@ -43,9 +43,19 @@ try:
 except ImportError as e:
     raise ImportError("PyArrow is required for the DBAPI-compatible interface") from e
 
+try:
+    import pyarrow.dataset
+except ImportError:
+    _pya_dataset = ()
+    _pya_scanner = ()
+else:
+    _pya_dataset = (pyarrow.dataset.Dataset,)
+    _pya_scanner = (pyarrow.dataset.Scanner,)
+
 import adbc_driver_manager
 
 from . import _lib, _reader
+from ._lib import _blocking_call
 
 if typing.TYPE_CHECKING:
     import pandas
@@ -225,8 +235,7 @@ class _Closeable(abc.ABC):
         self.close()
 
     @abc.abstractmethod
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
 
 class _SharedDatabase(_Closeable):
@@ -376,9 +385,10 @@ class Connection(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        handle = self._conn.get_info()
+        handle = _blocking_call(self._conn.get_info, (), {}, self._conn.cancel)
         reader = pyarrow.RecordBatchReader._import_from_c(handle.address)
-        info = reader.read_all().to_pylist()
+        table = _blocking_call(reader.read_all, (), {}, self._conn.cancel)
+        info = table.to_pylist()
         return dict(
             {
                 _KNOWN_INFO_VALUES.get(row["info_name"], row["info_name"]): row[
@@ -430,13 +440,17 @@ class Connection(_Closeable):
             c_depth = _lib.GetObjectsDepth.TABLES
         else:
             raise ValueError(f"Invalid value for 'depth': {depth}")
-        handle = self._conn.get_objects(
-            c_depth,
-            catalog=catalog_filter,
-            db_schema=db_schema_filter,
-            table_name=table_name_filter,
-            table_types=table_types_filter,
-            column_name=column_name_filter,
+        handle = _blocking_call(
+            self._conn.get_objects,
+            (c_depth,),
+            dict(
+                catalog=catalog_filter,
+                db_schema=db_schema_filter,
+                table_name=table_name_filter,
+                table_types=table_types_filter,
+                column_name=column_name_filter,
+            ),
+            self._conn.cancel,
         )
         return pyarrow.RecordBatchReader._import_from_c(handle.address)
 
@@ -463,8 +477,15 @@ class Connection(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        handle = self._conn.get_table_schema(
-            catalog_filter, db_schema_filter, table_name
+        handle = _blocking_call(
+            self._conn.get_table_schema,
+            (
+                catalog_filter,
+                db_schema_filter,
+                table_name,
+            ),
+            {},
+            self._conn.cancel,
         )
         return pyarrow.Schema._import_from_c(handle.address)
 
@@ -476,7 +497,12 @@ class Connection(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        handle = self._conn.get_table_types()
+        handle = _blocking_call(
+            self._conn.get_table_types,
+            (),
+            {},
+            self._conn.cancel,
+        )
         reader = pyarrow.RecordBatchReader._import_from_c(handle.address)
         table = reader.read_all()
         return table[0].to_pylist()
@@ -612,17 +638,21 @@ class Cursor(_Closeable):
         self._closed = True
 
     def _bind(self, parameters) -> None:
-        if isinstance(parameters, pyarrow.RecordBatch):
+        if hasattr(parameters, "__arrow_c_array__"):
+            self._stmt.bind(parameters)
+        elif hasattr(parameters, "__arrow_c_stream__"):
+            self._stmt.bind_stream(parameters)
+        elif isinstance(parameters, pyarrow.RecordBatch):
             arr_handle = _lib.ArrowArrayHandle()
             sch_handle = _lib.ArrowSchemaHandle()
             parameters._export_to_c(arr_handle.address, sch_handle.address)
             self._stmt.bind(arr_handle, sch_handle)
-            return
-        if isinstance(parameters, pyarrow.Table):
-            parameters = parameters.to_reader()
-        stream_handle = _lib.ArrowArrayStreamHandle()
-        parameters._export_to_c(stream_handle.address)
-        self._stmt.bind_stream(stream_handle)
+        else:
+            if isinstance(parameters, pyarrow.Table):
+                parameters = parameters.to_reader()
+            stream_handle = _lib.ArrowArrayStreamHandle()
+            parameters._export_to_c(stream_handle.address)
+            self._stmt.bind_stream(stream_handle)
 
     def _prepare_execute(self, operation, parameters=None) -> None:
         self._results = None
@@ -634,14 +664,12 @@ class Cursor(_Closeable):
             else:
                 self._stmt.set_sql_query(operation)
             try:
-                self._stmt.prepare()
+                _blocking_call(self._stmt.prepare, (), {}, self._stmt.cancel)
             except NotSupportedError:
                 # Not all drivers support it
                 pass
 
-        if isinstance(
-            parameters, (pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader)
-        ):
+        if _is_arrow_data(parameters):
             self._bind(parameters)
         elif parameters:
             rb = pyarrow.record_batch(
@@ -666,10 +694,12 @@ class Cursor(_Closeable):
             parameters, which will each be bound in turn).
         """
         self._prepare_execute(operation, parameters)
-        handle, self._rowcount = self._stmt.execute_query()
+
+        handle, self._rowcount = _blocking_call(
+            self._stmt.execute_query, (), {}, self._stmt.cancel
+        )
         self._results = _RowIterator(
-            # pyarrow.RecordBatchReader._import_from_c(handle.address)
-            _reader.AdbcRecordBatchReader._import_from_c(handle.address)
+            self._stmt, _reader.AdbcRecordBatchReader._import_from_c(handle.address)
         )
 
     def executemany(self, operation: Union[bytes, str], seq_of_parameters) -> None:
@@ -683,7 +713,7 @@ class Cursor(_Closeable):
         operation : bytes or str
             The query to execute.  Pass SQL queries as strings,
             (serialized) Substrait plans as bytes.
-        parameters
+        seq_of_parameters
             Parameters to bind.  Can be a list of Python sequences, or
             an Arrow record batch, table, or record batch reader.  If
             None, then the query will be executed once, else it will
@@ -695,10 +725,7 @@ class Cursor(_Closeable):
             self._stmt.set_sql_query(operation)
             self._stmt.prepare()
 
-        if isinstance(
-            seq_of_parameters,
-            (pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader),
-        ):
+        if _is_arrow_data(seq_of_parameters):
             arrow_parameters = seq_of_parameters
         elif seq_of_parameters:
             arrow_parameters = pyarrow.RecordBatch.from_pydict(
@@ -711,7 +738,9 @@ class Cursor(_Closeable):
             arrow_parameters = pyarrow.record_batch([])
 
         self._bind(arrow_parameters)
-        self._rowcount = self._stmt.execute_update()
+        self._rowcount = _blocking_call(
+            self._stmt.execute_update, (), {}, self._stmt.cancel
+        )
 
     def fetchone(self) -> Optional[tuple]:
         """Fetch one row of the result."""
@@ -806,7 +835,10 @@ class Cursor(_Closeable):
         table_name
             The table to insert into.
         data
-            The Arrow data to insert.
+            The Arrow data to insert. This can be a pyarrow RecordBatch, Table
+            or RecordBatchReader, or any Arrow-compatible data that implements
+            the Arrow PyCapsule Protocol (i.e. has an ``__arrow_c_array__``
+            or ``__arrow_c_stream__`` method).
         mode
             How to deal with existing data:
 
@@ -878,7 +910,11 @@ class Cursor(_Closeable):
             except NotSupportedError:
                 pass
 
-        if isinstance(data, pyarrow.RecordBatch):
+        if hasattr(data, "__arrow_c_array__"):
+            self._stmt.bind(data)
+        elif hasattr(data, "__arrow_c_stream__"):
+            self._stmt.bind_stream(data)
+        elif isinstance(data, pyarrow.RecordBatch):
             array = _lib.ArrowArrayHandle()
             schema = _lib.ArrowSchemaHandle()
             data._export_to_c(array.address, schema.address)
@@ -886,15 +922,24 @@ class Cursor(_Closeable):
         else:
             if isinstance(data, pyarrow.Table):
                 data = data.to_reader()
+            elif isinstance(data, pyarrow.dataset.Dataset):
+                data = data.scanner().to_reader()
+            elif isinstance(data, pyarrow.dataset.Scanner):
+                data = data.to_reader()
+            elif not hasattr(data, "_export_to_c"):
+                data = pyarrow.Table.from_batches(data)
+                data = data.to_reader()
             handle = _lib.ArrowArrayStreamHandle()
             data._export_to_c(handle.address)
             self._stmt.bind_stream(handle)
 
         self._last_query = None
-        return self._stmt.execute_update()
+        return _blocking_call(self._stmt.execute_update, (), {}, self._stmt.cancel)
 
     def adbc_execute_partitions(
-        self, operation, parameters=None
+        self,
+        operation,
+        parameters=None,
     ) -> Tuple[List[bytes], pyarrow.Schema]:
         """
         Execute a query and get the partitions of a distributed result set.
@@ -904,16 +949,23 @@ class Cursor(_Closeable):
         partitions : list of byte
             A list of partition descriptors, which can be read with
             read_partition.
-        schema : pyarrow.Schema
-            The schema of the result set.
+        schema : pyarrow.Schema or None
+            The schema of the result set.  May be None if incremental query
+            execution is enabled and the server has not returned a schema.
 
         Notes
         -----
         This is an extension and not part of the DBAPI standard.
         """
         self._prepare_execute(operation, parameters)
-        partitions, schema, self._rowcount = self._stmt.execute_partitions()
-        return partitions, pyarrow.Schema._import_from_c(schema.address)
+        partitions, schema_handle, self._rowcount = _blocking_call(
+            self._stmt.execute_partitions, (), {}, self._stmt.cancel
+        )
+        if schema_handle and schema_handle.address:
+            schema = pyarrow.Schema._import_from_c(schema_handle.address)
+        else:
+            schema = None
+        return partitions, schema
 
     def adbc_execute_schema(self, operation, parameters=None) -> pyarrow.Schema:
         """
@@ -929,7 +981,7 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         self._prepare_execute(operation, parameters)
-        schema = self._stmt.execute_schema()
+        schema = _blocking_call(self._stmt.execute_schema, (), {}, self._stmt.cancel)
         return pyarrow.Schema._import_from_c(schema.address)
 
     def adbc_prepare(self, operation: Union[bytes, str]) -> Optional[pyarrow.Schema]:
@@ -953,7 +1005,9 @@ class Cursor(_Closeable):
         self._prepare_execute(operation)
 
         try:
-            handle = self._stmt.get_parameter_schema()
+            handle = _blocking_call(
+                self._stmt.get_parameter_schema, (), {}, self._stmt.cancel
+            )
         except NotSupportedError:
             return None
         return pyarrow.Schema._import_from_c(handle.address)
@@ -967,10 +1021,12 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         self._results = None
-        handle = self._conn._conn.read_partition(partition)
+        handle = _blocking_call(
+            self._conn._conn.read_partition, (partition,), {}, self._stmt.cancel
+        )
         self._rowcount = -1
         self._results = _RowIterator(
-            pyarrow.RecordBatchReader._import_from_c(handle.address)
+            self._stmt, pyarrow.RecordBatchReader._import_from_c(handle.address)
         )
 
     @property
@@ -1000,7 +1056,7 @@ class Cursor(_Closeable):
         self._last_query = None
         self._results = None
         self._stmt.set_sql_query(operation)
-        self._stmt.execute_update()
+        _blocking_call(self._stmt.execute_update, (), {}, self._stmt.cancel)
 
     def fetchallarrow(self) -> pyarrow.Table:
         """
@@ -1064,7 +1120,10 @@ class Cursor(_Closeable):
                 "Cannot fetch_record_batch() before execute()",
                 status_code=_lib.AdbcStatusCode.INVALID_STATE,
             )
-        return self._results._reader
+        # XXX(https://github.com/apache/arrow-adbc/issues/1523): return the
+        # "real" PyArrow reader since PyArrow may try to poke the internal C++
+        # reader pointer
+        return self._results._reader._reader
 
 
 # ----------------------------------------------------------
@@ -1074,7 +1133,8 @@ class Cursor(_Closeable):
 class _RowIterator(_Closeable):
     """Track state needed to iterate over the result set."""
 
-    def __init__(self, reader: pyarrow.RecordBatchReader) -> None:
+    def __init__(self, stmt, reader: pyarrow.RecordBatchReader) -> None:
+        self._stmt = stmt
         self._reader = reader
         self._current_batch = None
         self._next_row = 0
@@ -1097,7 +1157,9 @@ class _RowIterator(_Closeable):
         if self._current_batch is None or self._next_row >= len(self._current_batch):
             try:
                 while True:
-                    self._current_batch = self._reader.read_next_batch()
+                    self._current_batch = _blocking_call(
+                        self._reader.read_next_batch, (), {}, self._stmt.cancel
+                    )
                     if self._current_batch.num_rows > 0:
                         break
                 self._next_row = 0
@@ -1132,10 +1194,10 @@ class _RowIterator(_Closeable):
         return rows
 
     def fetch_arrow_table(self) -> pyarrow.Table:
-        return self._reader.read_all()
+        return _blocking_call(self._reader.read_all, (), {}, self._stmt.cancel)
 
     def fetch_df(self) -> "pandas.DataFrame":
-        return self._reader.read_pandas()
+        return _blocking_call(self._reader.read_pandas, (), {}, self._stmt.cancel)
 
 
 _PYTEST_ENV_VAR = "PYTEST_CURRENT_TEST"
@@ -1151,3 +1213,13 @@ def _warn_unclosed(name):
             category=ResourceWarning,
             stacklevel=2,
         )
+
+
+def _is_arrow_data(data):
+    return (
+        hasattr(data, "__arrow_c_array__")
+        or hasattr(data, "__arrow_c_stream__")
+        or isinstance(
+            data, (pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader)
+        )
+    )

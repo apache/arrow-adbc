@@ -129,8 +129,6 @@ test_that("joiners work for databases, connections, and statements", {
 })
 
 test_that("joiners work with streams", {
-  skip_if_not(packageVersion("nanoarrow") >= "0.1.0.9000")
-
   stream <- local({
     db <- local_adbc(adbc_database_init(adbc_driver_monkey()))
 
@@ -143,8 +141,7 @@ test_that("joiners work with streams", {
     expect_false(adbc_xptr_is_valid(con))
 
     stream <- local_adbc(nanoarrow::nanoarrow_allocate_array_stream())
-    adbc_statement_execute_query(stmt, stream)
-    adbc_stream_join(stream, stmt)
+    adbc_statement_execute_query(stmt, stream, stream_join_parent = TRUE)
     expect_false(adbc_xptr_is_valid(stmt))
 
     adbc_xptr_move(stream)

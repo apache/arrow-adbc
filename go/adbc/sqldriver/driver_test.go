@@ -38,7 +38,7 @@ func Example() {
 		panic(err)
 	}
 
-	rows, err := db.Query("SELECT 1")
+	rows, err := db.Query("SELECT ?", 1)
 	if err != nil {
 		panic(err)
 	}
@@ -66,8 +66,8 @@ func Example() {
 	}
 
 	// Output:
-	// [1]
-	// 1
+	// [?]
+	// ?
 	// true true
 	// 1
 }

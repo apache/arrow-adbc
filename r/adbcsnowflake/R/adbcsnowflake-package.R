@@ -54,7 +54,16 @@ adbcsnowflake <- function() {
 #' @importFrom adbcdrivermanager adbc_database_init
 #' @export
 adbc_database_init.adbcsnowflake_driver_snowflake <- function(driver, ..., uri = NULL) {
-  options <- list(..., uri = uri)
+  options <- list(
+    ...,
+    uri = uri,
+    adbc.snowflake.sql.client_option.app_name = paste0(
+      "[ADBC][R-",
+      packageVersion("adbcsnowflake"),
+      "]"
+    )
+  )
+
   adbcdrivermanager::adbc_database_init_default(
     driver,
     options,

@@ -15,6 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// Windows
+#define NOMINMAX
+
 #include "statement.h"
 
 #include <array>
@@ -23,6 +26,7 @@
 #include <cinttypes>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -31,11 +35,11 @@
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.hpp>
 
-#include "common/options.h"
-#include "common/utils.h"
 #include "connection.h"
+#include "copy/writer.h"
+#include "driver/common/options.h"
+#include "driver/common/utils.h"
 #include "error.h"
-#include "postgres_copy_reader.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
 #include "result_helper.h"
@@ -210,6 +214,38 @@ struct BindStream {
           type_id = PostgresTypeId::kInterval;
           param_lengths[i] = 16;
           break;
+        case ArrowType::NANOARROW_TYPE_DECIMAL128:
+        case ArrowType::NANOARROW_TYPE_DECIMAL256:
+          type_id = PostgresTypeId::kNumeric;
+          param_lengths[i] = 0;
+          break;
+        case ArrowType::NANOARROW_TYPE_DICTIONARY: {
+          struct ArrowSchemaView value_view;
+          CHECK_NA(INTERNAL,
+                   ArrowSchemaViewInit(&value_view, bind_schema->children[i]->dictionary,
+                                       nullptr),
+                   error);
+          switch (value_view.type) {
+            case NANOARROW_TYPE_BINARY:
+            case NANOARROW_TYPE_LARGE_BINARY:
+              type_id = PostgresTypeId::kBytea;
+              param_lengths[i] = 0;
+              break;
+            case NANOARROW_TYPE_STRING:
+            case NANOARROW_TYPE_LARGE_STRING:
+              type_id = PostgresTypeId::kText;
+              param_lengths[i] = 0;
+              break;
+            default:
+              SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
+                       static_cast<uint64_t>(i + 1), " ('",
+                       bind_schema->children[i]->name,
+                       "') has unsupported dictionary value parameter type ",
+                       ArrowTypeString(value_view.type));
+              return ADBC_STATUS_NOT_IMPLEMENTED;
+          }
+          break;
+        }
         default:
           SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
                    static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
@@ -405,23 +441,23 @@ struct BindStream {
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
 
-              // 2000-01-01 00:00:00.000000 in microseconds
-              constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
               bool overflow_safe = true;
 
               auto unit = bind_schema_fields[col].time_unit;
 
               switch (unit) {
                 case NANOARROW_TIME_UNIT_SECOND:
-                  if ((overflow_safe = val <= kMaxSafeSecondsToMicros &&
-                                       val >= kMinSafeSecondsToMicros)) {
+                  overflow_safe =
+                      val <= kMaxSafeSecondsToMicros && val >= kMinSafeSecondsToMicros;
+                  if (overflow_safe) {
                     val *= 1000000;
                   }
 
                   break;
                 case NANOARROW_TIME_UNIT_MILLI:
-                  if ((overflow_safe = val <= kMaxSafeMillisToMicros &&
-                                       val >= kMinSafeMillisToMicros)) {
+                  overflow_safe =
+                      val <= kMaxSafeMillisToMicros && val >= kMinSafeMillisToMicros;
+                  if (overflow_safe) {
                     val *= 1000;
                   }
                   break;
@@ -437,6 +473,15 @@ struct BindStream {
                          "[libpq] Field #%" PRId64 " ('%s') Row #%" PRId64
                          " has value '%" PRIi64
                          "' which exceeds PostgreSQL timestamp limits",
+                         col + 1, bind_schema->children[col]->name, row + 1,
+                         array_view->children[col]->buffer_views[1].data.as_int64[row]);
+                return ADBC_STATUS_INVALID_ARGUMENT;
+              }
+
+              if (val < (std::numeric_limits<int64_t>::min)() + kPostgresTimestampEpoch) {
+                SetError(error,
+                         "[libpq] Field #%" PRId64 " ('%s') Row #%" PRId64
+                         " has value '%" PRIi64 "' which would underflow",
                          col + 1, bind_schema->children[col]->name, row + 1,
                          array_view->children[col]->buffer_views[1].data.as_int64[row]);
                 return ADBC_STATUS_INVALID_ARGUMENT;
@@ -527,7 +572,12 @@ struct BindStream {
   AdbcStatusCode ExecuteCopy(PGconn* conn, int64_t* rows_affected,
                              struct AdbcError* error) {
     if (rows_affected) *rows_affected = 0;
-    PGresult* result = nullptr;
+
+    PostgresCopyStreamWriter writer;
+    CHECK_NA(INTERNAL, writer.Init(&bind_schema.value), error);
+    CHECK_NA(INTERNAL, writer.InitFieldWriters(nullptr), error);
+
+    CHECK_NA(INTERNAL, writer.WriteHeader(nullptr), error);
 
     while (true) {
       Handle<struct ArrowArray> array;
@@ -541,20 +591,9 @@ struct BindStream {
       }
       if (!array->release) break;
 
-      Handle<struct ArrowArrayView> array_view;
-      CHECK_NA(
-          INTERNAL,
-          ArrowArrayViewInitFromSchema(&array_view.value, &bind_schema.value, nullptr),
-          error);
-      CHECK_NA(INTERNAL, ArrowArrayViewSetArray(&array_view.value, &array.value, nullptr),
-               error);
-
-      PostgresCopyStreamWriter writer;
-      CHECK_NA(INTERNAL, writer.Init(&bind_schema.value, &array.value), error);
-      CHECK_NA(INTERNAL, writer.InitFieldWriters(nullptr), error);
+      CHECK_NA(INTERNAL, writer.SetArray(&array.value), error);
 
       // build writer buffer
-      CHECK_NA(INTERNAL, writer.WriteHeader(nullptr), error);
       int write_result;
       do {
         write_result = writer.WriteRecord(nullptr);
@@ -567,31 +606,32 @@ struct BindStream {
       }
 
       ArrowBuffer buffer = writer.WriteBuffer();
-      if (PQputCopyData(conn, reinterpret_cast<char*>(buffer.data),
-                        buffer.size_bytes) <= 0) {
+      if (PQputCopyData(conn, reinterpret_cast<char*>(buffer.data), buffer.size_bytes) <=
+          0) {
         SetError(error, "Error writing tuple field data: %s", PQerrorMessage(conn));
         return ADBC_STATUS_IO;
       }
 
-      if (PQputCopyEnd(conn, NULL) <= 0) {
-        SetError(error, "Error message returned by PQputCopyEnd: %s",
-                 PQerrorMessage(conn));
-        return ADBC_STATUS_IO;
-      }
-
-      result = PQgetResult(conn);
-      ExecStatusType pg_status = PQresultStatus(result);
-      if (pg_status != PGRES_COMMAND_OK) {
-        AdbcStatusCode code =
-            SetError(error, result, "[libpq] Failed to execute COPY statement: %s %s",
-                     PQresStatus(pg_status), PQerrorMessage(conn));
-        PQclear(result);
-        return code;
-      }
-
-      PQclear(result);
       if (rows_affected) *rows_affected += array->length;
+      writer.Rewind();
     }
+
+    if (PQputCopyEnd(conn, NULL) <= 0) {
+      SetError(error, "Error message returned by PQputCopyEnd: %s", PQerrorMessage(conn));
+      return ADBC_STATUS_IO;
+    }
+
+    PGresult* result = PQgetResult(conn);
+    ExecStatusType pg_status = PQresultStatus(result);
+    if (pg_status != PGRES_COMMAND_OK) {
+      AdbcStatusCode code =
+          SetError(error, result, "[libpq] Failed to execute COPY statement: %s %s",
+                   PQresStatus(pg_status), PQerrorMessage(conn));
+      PQclear(result);
+      return code;
+    }
+
+    PQclear(result);
     return ADBC_STATUS_OK;
   }
 };
@@ -1029,6 +1069,34 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
       case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
         create += " INTERVAL";
         break;
+      case ArrowType::NANOARROW_TYPE_DECIMAL128:
+      case ArrowType::NANOARROW_TYPE_DECIMAL256:
+        create += " DECIMAL";
+        break;
+      case ArrowType::NANOARROW_TYPE_DICTIONARY: {
+        struct ArrowSchemaView value_view;
+        CHECK_NA(INTERNAL,
+                 ArrowSchemaViewInit(&value_view, source_schema.children[i]->dictionary,
+                                     nullptr),
+                 error);
+        switch (value_view.type) {
+          case NANOARROW_TYPE_BINARY:
+          case NANOARROW_TYPE_LARGE_BINARY:
+            create += " BYTEA";
+            break;
+          case NANOARROW_TYPE_STRING:
+          case NANOARROW_TYPE_LARGE_STRING:
+            create += " TEXT";
+            break;
+          default:
+            SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
+                     static_cast<uint64_t>(i + 1), " ('", source_schema.children[i]->name,
+                     "') has unsupported dictionary value type for ingestion ",
+                     ArrowTypeString(value_view.type));
+            return ADBC_STATUS_NOT_IMPLEMENTED;
+        }
+        break;
+      }
       default:
         SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
                  static_cast<uint64_t>(i + 1), " ('", source_schema.children[i]->name,
@@ -1255,7 +1323,18 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateQuery(int64_t* rows_affected,
     PQclear(result);
     return code;
   }
-  if (rows_affected) *rows_affected = PQntuples(reader_.result_);
+  if (rows_affected) {
+    if (status == PGRES_TUPLES_OK) {
+      *rows_affected = PQntuples(reader_.result_);
+    } else {
+      // In theory, PQcmdTuples would work here, but experimentally it gives
+      // an empty string even for a DELETE.  (Also, why does it return a
+      // string...)  Possibly, it doesn't work because we use PQexecPrepared
+      // but the docstring is careful to specify it works on an EXECUTE of a
+      // prepared statement.
+      *rows_affected = -1;
+    }
+  }
   PQclear(result);
   return ADBC_STATUS_OK;
 }
@@ -1470,7 +1549,7 @@ AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
 
   // Initialize the copy reader and infer the output schema (i.e., error for
   // unsupported types before issuing the COPY query)
-  reader_.copy_reader_.reset(new PostgresCopyStreamReader());
+  reader_.copy_reader_ = std::make_unique<PostgresCopyStreamReader>();
   reader_.copy_reader_->Init(root_type);
   struct ArrowError na_error;
   int na_res = reader_.copy_reader_->InferOutputSchema(&na_error);

@@ -47,6 +47,10 @@ struct _GADBCStatementClass {
   GObjectClass parent_class;
 };
 
+GADBC_AVAILABLE_IN_0_10
+gboolean gadbc_statement_initialize(GADBCStatement* statement,
+                                    GADBCConnection* connection, const gchar* context,
+                                    GError** error);
 GADBC_AVAILABLE_IN_0_1
 GADBCStatement* gadbc_statement_new(GADBCConnection* connection, GError** error);
 GADBC_AVAILABLE_IN_0_1

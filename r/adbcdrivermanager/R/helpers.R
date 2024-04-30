@@ -104,11 +104,7 @@ execute_adbc.default <- function(db_or_con, query, ..., bind = NULL, stream = NU
     adbc_statement_prepare(stmt)
   }
 
-  adbc_statement_execute_query(stmt, stream)
-
-  if (!is.null(stream)) {
-    adbc_stream_join(stream, stmt)
-  }
+  adbc_statement_execute_query(stmt, stream, stream_join_parent = TRUE)
 
   invisible(db_or_con)
 }
@@ -150,12 +146,13 @@ write_adbc.default <- function(tbl, db_or_con, target_table, ...,
 #' it is good practice to explicitly clean up these objects. These helpers
 #' are designed to make explicit and predictable cleanup easy to accomplish.
 #'
-#' Note that you can use [adbc_connection_join()],
-#' [adbc_statement_join()], and [adbc_stream_join()]
+#' Note that you can use [adbc_connection_join()] and [adbc_statement_join()]
 #' to tie the lifecycle of the parent object to that of the child object.
 #' These functions mark any previous references to the parent object as
 #' released so you can still use local and with helpers to manage the parent
-#' object before it is joined.
+#' object before it is joined. Use `stream_join_parent = TRUE` in
+#' [adbc_statement_execute_query()] to tie the lifecycle of a statement to
+#' the output stream.
 #'
 #' @param x An ADBC database, ADBC connection, ADBC statement, or
 #'   nanoarrow_array_stream returned from calls to an ADBC function.
@@ -217,8 +214,6 @@ local_adbc <- function(x, .local_envir = parent.frame()) {
 #' @param database A database created with [adbc_database_init()]
 #' @param connection A connection created with [adbc_connection_init()]
 #' @param statement A statement created with [adbc_statement_init()]
-#' @param stream A [nanoarrow_array_stream][nanoarrow::as_nanoarrow_array_stream]
-#' @inheritParams with_adbc
 #'
 #' @return The input, invisibly.
 #' @export
@@ -244,10 +239,15 @@ local_adbc <- function(x, .local_envir = parent.frame()) {
 #'
 adbc_connection_join <- function(connection, database) {
   assert_adbc(connection, "adbc_connection")
-  assert_adbc(database, "adbc_database")
+
+  stopifnot(
+    identical(database, connection$database),
+    identical(database$.child_count, 1L)
+  )
 
   connection$.release_database <- TRUE
-  connection$database <- adbc_xptr_move(database)
+  connection$database <- adbc_xptr_move(database, check_child_count = FALSE)
+  xptr_set_protected(connection, connection$database)
   invisible(connection)
 }
 
@@ -255,42 +255,53 @@ adbc_connection_join <- function(connection, database) {
 #' @export
 adbc_statement_join <- function(statement, connection) {
   assert_adbc(statement, "adbc_statement")
-  assert_adbc(connection, "adbc_connection")
+
+  stopifnot(
+    identical(connection, statement$connection),
+    identical(connection$.child_count, 1L)
+  )
 
   statement$.release_connection <- TRUE
-  statement$connection <- adbc_xptr_move(connection)
+  statement$connection <- adbc_xptr_move(connection, check_child_count = FALSE)
+  xptr_set_protected(statement, statement$connection)
   invisible(statement)
 }
 
-#' @rdname adbc_connection_join
-#' @export
-adbc_stream_join <- function(stream, x) {
-  if (utils::packageVersion("nanoarrow") < "0.1.0.9000") {
-    stop("adbc_stream_join_statement() requires nanoarrow >= 0.2.0")
-  }
+adbc_child_stream <- function(parent, stream, release_parent = FALSE) {
+  assert_adbc(parent)
 
-  assert_adbc(stream, "nanoarrow_array_stream")
-  assert_adbc(x)
-
+  # This finalizer will run immediately on release (if released explicitly
+  # on the main R thread) or on garbage collection otherwise.
   self_contained_finalizer <- function() {
-    try(adbc_release_non_null(x))
+    try({
+      parent$.child_count <- parent$.child_count - 1L
+      if (release_parent) {
+        adbc_release_non_null(parent)
+      }
+    })
   }
 
   # Make sure we don't keep any variables around that aren't needed
-  # for the finalizer and make sure we invalidate the original statement
+  # for the finalizer and make sure we do keep around a strong reference
+  # to parent.
   self_contained_finalizer_env <- as.environment(
-    list(x = adbc_xptr_move(x))
+    list(
+      parent = if (release_parent) adbc_xptr_move(parent) else parent,
+      release_parent = release_parent
+    )
   )
   parent.env(self_contained_finalizer_env) <- asNamespace("adbcdrivermanager")
   environment(self_contained_finalizer) <- self_contained_finalizer_env
 
-  # This finalizer will run immediately on release (if released explicitly
-  # on the main R thread) or on garbage collection otherwise.
+  # Set the finalizer using nanoarrow's method for this
+  stream_out <- nanoarrow::array_stream_set_finalizer(
+    stream,
+    self_contained_finalizer
+  )
 
-  # Until the release version of nanoarrow contains this we will get a check
-  # warning for nanoarrow::array_stream_set_finalizer()
-  set_finalizer <- asNamespace("nanoarrow")[["array_stream_set_finalizer"]]
-  set_finalizer(stream, self_contained_finalizer)
-
-  invisible(stream)
+  # Once we're sure this will succeed, increment the parent child count
+  # Use whatever version is in the finalizer env (we might have moved parent)
+  self_contained_finalizer_env$parent$.child_count <-
+    self_contained_finalizer_env$parent$.child_count + 1L
+  stream_out
 }
