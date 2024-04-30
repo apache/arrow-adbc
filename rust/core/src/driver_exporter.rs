@@ -680,6 +680,13 @@ unsafe extern "C" fn database_get_option_bytes<DriverType: Driver>(
     ADBC_STATUS_OK
 }
 
+unsafe fn maybe_str<'a>(str: *const c_char) -> Result<Option<&'a str>> {
+    Ok(str
+        .as_ref()
+        .map(|c| CStr::from_ptr(c).to_str())
+        .transpose()?)
+}
+
 // Connection
 
 // SAFETY: Will panic if `connection` is null.
@@ -949,25 +956,11 @@ unsafe extern "C" fn connection_get_table_schema<DriverType: Driver>(
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
     let connection = exported.unwrap_connection();
 
-    let catalog = catalog
-        .as_ref()
-        .map(|c| CStr::from_ptr(c).to_str())
-        .transpose();
-    let catalog = check_err!(catalog, error);
+    let catalog = check_err!(maybe_str(catalog), error);
+    let db_schema = check_err!(maybe_str(db_schema), error);
+    let table_name = check_err!(maybe_str(table_name), error);
 
-    let db_schema = db_schema
-        .as_ref()
-        .map(|c| CStr::from_ptr(c).to_str())
-        .transpose();
-    let db_schema = check_err!(db_schema, error);
-
-    let table_name = table_name
-        .as_ref()
-        .map(|c| CStr::from_ptr(c).to_str())
-        .unwrap();
-    let table_name = check_err!(table_name, error);
-
-    let schema_value = connection.get_table_schema(catalog, db_schema, table_name);
+    let schema_value = connection.get_table_schema(catalog, db_schema, table_name.unwrap());
     let schema_value = check_err!(schema_value, error);
     let schema_value: FFI_ArrowSchema = check_err!(schema_value.try_into(), error);
     std::ptr::write_unaligned(schema, schema_value);
@@ -1099,24 +1092,9 @@ unsafe extern "C" fn connection_get_statistics<DriverType: Driver + 'static>(
     check_not_null!(connection, error);
     check_not_null!(out, error);
 
-    let catalog = catalog
-        .as_ref()
-        .map(|c| CStr::from_ptr(c).to_str())
-        .transpose();
-    let catalog = check_err!(catalog, error);
-
-    let db_schema = db_schema
-        .as_ref()
-        .map(|c| CStr::from_ptr(c).to_str())
-        .transpose();
-    let db_schema = check_err!(db_schema, error);
-
-    let table_name = table_name
-        .as_ref()
-        .map(|c| CStr::from_ptr(c).to_str())
-        .transpose();
-    let table_name = check_err!(table_name, error);
-
+    let catalog = check_err!(maybe_str(catalog), error);
+    let db_schema = check_err!(maybe_str(db_schema), error);
+    let table_name = check_err!(maybe_str(table_name), error);
     let approximate = approximate != 0;
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
@@ -1146,31 +1124,10 @@ unsafe extern "C" fn connection_get_objects<DriverType: Driver + 'static>(
     check_not_null!(out, error);
 
     let depth = check_err!(ObjectDepth::try_from(depth), error);
-
-    let catalog = catalog
-        .as_ref()
-        .map(|c| CStr::from_ptr(c).to_str())
-        .transpose();
-    let catalog = check_err!(catalog, error);
-
-    let db_schema = db_schema
-        .as_ref()
-        .map(|c| CStr::from_ptr(c).to_str())
-        .transpose();
-    let db_schema = check_err!(db_schema, error);
-
-    let table_name = table_name
-        .as_ref()
-        .map(|c| CStr::from_ptr(c).to_str())
-        .transpose();
-    let table_name = check_err!(table_name, error);
-
-    let column_name = column_name
-        .as_ref()
-        .map(|c| CStr::from_ptr(c).to_str())
-        .transpose();
-    let column_name = check_err!(column_name, error);
-
+    let catalog = check_err!(maybe_str(catalog), error);
+    let db_schema = check_err!(maybe_str(db_schema), error);
+    let table_name = check_err!(maybe_str(table_name), error);
+    let column_name = check_err!(maybe_str(column_name), error);
     let table_type = if !table_type.is_null() {
         let mut strs = Vec::new();
         let mut ptr = table_type;
