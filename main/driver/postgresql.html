@@ -479,6 +479,14 @@ R</label><div class="sd-tab-content docutils">
 <p>The PostgreSQL driver mostly supports features defined in the ADBC API
 specification 1.0.0, but not all cases are fully implemented
 (particularly around bind parameters and prepared statements).</p>
+<section id="bind-parameters-and-prepared-statements">
+<h3>Bind Parameters and Prepared Statements<a class="headerlink" href="#bind-parameters-and-prepared-statements" title="Permalink to this heading">¶</a></h3>
+<p>The PostgreSQL driver only supports executing prepared statements with
+parameters that do not return result sets (basically, an INSERT with
+parameters).  Queries that return result sets are difficult with prepared
+statements because the driver is built around using COPY for best
+performance, which is not supported in this context.</p>
+</section>
 <section id="bulk-ingestion">
 <h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">¶</a></h3>
 <p>Bulk ingestion is supported.  The mapping from Arrow types to
@@ -737,6 +745,7 @@ United States and other countries.
 <li><a class="reference internal" href="#installation">Installation</a></li>
 <li><a class="reference internal" href="#usage">Usage</a></li>
 <li><a class="reference internal" href="#supported-features">Supported Features</a><ul>
+<li><a class="reference internal" href="#bind-parameters-and-prepared-statements">Bind Parameters and Prepared Statements</a></li>
 <li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>
 <li><a class="reference internal" href="#partitioned-result-sets">Partitioned Result Sets</a></li>
 <li><a class="reference internal" href="#transactions">Transactions</a></li>

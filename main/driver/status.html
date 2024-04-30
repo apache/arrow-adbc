@@ -346,7 +346,7 @@
 <h2>Implementation Status<a class="headerlink" href="#implementation-status" title="Permalink to this heading">¶</a></h2>
 <p><strong>Experimental</strong> drivers are not feature-complete and the implementation is still progressing.
 <strong>Beta</strong> drivers are (mostly) feature-complete but have only been available for a short time.
-<strong>Stable</strong> drivers are feature-complete (as much as possible for the underlying database) and have been available/tested for a while.</p>
+<strong>Stable</strong> drivers are (mostly) feature-complete (as much as possible for the underlying database) and have been available/tested for a while.</p>
 <div class="table-wrapper docutils container">
 <table class="docutils align-default">
 <thead>
@@ -365,7 +365,7 @@
 <tr class="row-odd"><td><p>Flight SQL (Go)</p></td>
 <td><p>C, Go</p></td>
 <td><p>Go</p></td>
-<td><p>Beta</p></td>
+<td><p>Stable</p></td>
 </tr>
 <tr class="row-even"><td><p>Flight SQL (Java)</p></td>
 <td><p>Java</p></td>
@@ -380,17 +380,17 @@
 <tr class="row-even"><td><p>PostgreSQL</p></td>
 <td><p>C</p></td>
 <td><p>C++</p></td>
-<td><p>Beta</p></td>
+<td><p>Stable</p></td>
 </tr>
 <tr class="row-odd"><td><p>SQLite</p></td>
 <td><p>C</p></td>
 <td><p>C</p></td>
-<td><p>Beta</p></td>
+<td><p>Stable</p></td>
 </tr>
 <tr class="row-even"><td><p>Snowflake</p></td>
 <td><p>C, Go</p></td>
 <td><p>Go</p></td>
-<td><p>Experimental</p></td>
+<td><p>Stable</p></td>
 </tr>
 </tbody>
 </table>
@@ -431,9 +431,9 @@ result set (<code class="xref cpp cpp-func docutils literal notranslate"><span c
 <dt>Update Queries</dt><dd><p>Does the driver support queries not returning result sets?</p>
 </dd>
 </dl>
-<div class="table-wrapper docutils container" id="id2">
-<table class="docutils align-default" id="id2">
-<caption><span class="caption-text">General features</span><a class="headerlink" href="#id2" title="Permalink to this table">¶</a></caption>
+<div class="table-wrapper docutils container" id="id3">
+<table class="docutils align-default" id="id3">
+<caption><span class="caption-text">General features</span><a class="headerlink" href="#id3" title="Permalink to this table">¶</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Driver</p></th>
 <th class="head"><p>Full Type Support</p></th>
@@ -470,9 +470,9 @@ result set (<code class="xref cpp cpp-func docutils literal notranslate"><span c
 </tbody>
 </table>
 </div>
-<div class="table-wrapper docutils container" id="id3">
-<table class="docutils align-default" id="id3">
-<caption><span class="caption-text">Statement/query-level features</span><a class="headerlink" href="#id3" title="Permalink to this table">¶</a></caption>
+<div class="table-wrapper docutils container" id="id4">
+<table class="docutils align-default" id="id4">
+<caption><span class="caption-text">Statement/query-level features</span><a class="headerlink" href="#id4" title="Permalink to this table">¶</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Driver</p></th>
 <th class="head"><p>Incremental Queries</p></th>
@@ -511,7 +511,7 @@ result set (<code class="xref cpp cpp-func docutils literal notranslate"><span c
 <tr class="row-odd"><td><p>PostgreSQL</p></td>
 <td><p>N/A</p></td>
 <td><p>N/A</p></td>
-<td><p>Y</p></td>
+<td><p>Y <a class="footnote-reference brackets" href="#postgresql-prepared" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a></p></td>
 <td><p>Y</p></td>
 <td><p>Y</p></td>
 <td><p>Y</p></td>
@@ -527,9 +527,19 @@ result set (<code class="xref cpp cpp-func docutils literal notranslate"><span c
 </tbody>
 </table>
 </div>
-<div class="table-wrapper docutils container" id="id4">
-<table class="docutils align-default" id="id4">
-<caption><span class="caption-text">Connection/database-level features</span><a class="headerlink" href="#id4" title="Permalink to this table">¶</a></caption>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="postgresql-prepared" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p>The PostgreSQL driver only supports executing
+prepared statements with parameters that do not return result sets
+(basically, an INSERT with parameters).  Queries that return result sets
+are difficult with prepared statements because the driver is built around
+using COPY for best performance, which is not supported in this context.</p>
+</aside>
+</aside>
+<div class="table-wrapper docutils container" id="id5">
+<table class="docutils align-default" id="id5">
+<caption><span class="caption-text">Connection/database-level features</span><a class="headerlink" href="#id5" title="Permalink to this table">¶</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Driver</p></th>
 <th class="head"><p>Bulk Ingestion</p></th>
@@ -541,7 +551,7 @@ result set (<code class="xref cpp cpp-func docutils literal notranslate"><span c
 <tr class="row-even"><td><p>Flight SQL (Go)</p></td>
 <td><p>N</p></td>
 <td><p>Y</p></td>
-<td><p>N</p></td>
+<td><p>Y</p></td>
 </tr>
 <tr class="row-odd"><td><p>Flight SQL (Java)</p></td>
 <td><p>Y</p></td>
@@ -556,7 +566,7 @@ result set (<code class="xref cpp cpp-func docutils literal notranslate"><span c
 <tr class="row-odd"><td><p>PostgreSQL</p></td>
 <td><p>Y</p></td>
 <td><p>Y</p></td>
-<td><p>N</p></td>
+<td><p>Y</p></td>
 </tr>
 <tr class="row-even"><td><p>SQLite</p></td>
 <td><p>Y</p></td>
