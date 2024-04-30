@@ -41,7 +41,7 @@ namespace Apache.Arrow.Adbc.C
         /// </summary>
         /// <param name="file">The path to the driver to load</param>
         /// <param name="entryPoint">The name of the entry point. If not provided, the name AdbcDriverInit will be used.</param>
-        public static AdbcDriver Load(string file, string entryPoint = null)
+        public static AdbcDriver Load(string file, string? entryPoint = null)
         {
             if (file == null)
             {
@@ -107,18 +107,17 @@ namespace Apache.Arrow.Adbc.C
             /// </param>
             public unsafe override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
             {
+                if (parameters == null) throw new ArgumentNullException(nameof(parameters));
+
                 CAdbcDatabase nativeDatabase = new CAdbcDatabase();
 
                 using (CallHelper caller = new CallHelper())
                 {
                     caller.Call(_nativeDriver.DatabaseNew, ref nativeDatabase);
 
-                    if (parameters != null)
+                    foreach (KeyValuePair<string, string> pair in parameters)
                     {
-                        foreach (KeyValuePair<string, string> pair in parameters)
-                        {
-                            caller.Call(_nativeDriver.DatabaseSetOption, ref nativeDatabase, pair.Key, pair.Value);
-                        }
+                        caller.Call(_nativeDriver.DatabaseSetOption, ref nativeDatabase, pair.Key, pair.Value);
                     }
 
                     caller.Call(_nativeDriver.DatabaseInit, ref nativeDatabase);
@@ -165,7 +164,7 @@ namespace Apache.Arrow.Adbc.C
                 _nativeDatabase = nativeDatabase;
             }
 
-            public unsafe override AdbcConnection Connect(IReadOnlyDictionary<string, string> options)
+            public unsafe override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
             {
                 CAdbcConnection nativeConnection = new CAdbcConnection();
 
@@ -212,7 +211,7 @@ namespace Apache.Arrow.Adbc.C
 
             public override bool AutoCommit
             {
-                get => _autoCommit.Value;
+                get => _autoCommit ?? throw AdbcException.NotImplemented("no value has been set for AutoCommit");
                 set
                 {
                     SetOption(AdbcOptions.Autocommit, AdbcOptions.GetEnabled(value));
@@ -222,7 +221,7 @@ namespace Apache.Arrow.Adbc.C
 
             public override IsolationLevel IsolationLevel
             {
-                get => _isolationLevel.Value;
+                get => _isolationLevel ?? IsolationLevel.Default;
                 set
                 {
                     SetOption(AdbcOptions.IsolationLevel, AdbcOptions.GetIsolationLevel(value));
@@ -232,7 +231,7 @@ namespace Apache.Arrow.Adbc.C
 
             public override bool ReadOnly
             {
-                get => _readOnly.Value;
+                get => _readOnly ?? throw AdbcException.NotImplemented("no value has been set for ReadOnly");
                 set
                 {
                     SetOption(AdbcOptions.ReadOnly, AdbcOptions.GetEnabled(value));
@@ -281,8 +280,9 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
-            public unsafe override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, IReadOnlyList<string> tableTypes, string columnNamePattern)
+            public unsafe override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
             {
+                tableTypes = tableTypes ?? [];
                 byte** utf8TableTypes = null;
                 try
                 {
@@ -343,7 +343,7 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
-            public unsafe override Schema GetTableSchema(string catalog, string db_schema, string table_name)
+            public unsafe override Schema GetTableSchema(string? catalog, string? db_schema, string table_name)
             {
                 using (Utf8Helper utf8Catalog = new Utf8Helper(catalog))
                 using (Utf8Helper utf8Schema = new Utf8Helper(db_schema))
@@ -396,7 +396,7 @@ namespace Apache.Arrow.Adbc.C
         {
             private CAdbcDriver _nativeDriver;
             private CAdbcStatement _nativeStatement;
-            private byte[] _substraitPlan;
+            private byte[]? _substraitPlan;
 
             public AdbcStatementNative(CAdbcDriver nativeDriver, CAdbcStatement nativeStatement)
             {
@@ -404,7 +404,7 @@ namespace Apache.Arrow.Adbc.C
                 _nativeStatement = nativeStatement;
             }
 
-            public unsafe override byte[] SubstraitPlan
+            public unsafe override byte[]? SubstraitPlan
             {
                 get => _substraitPlan;
                 set
@@ -420,7 +420,7 @@ namespace Apache.Arrow.Adbc.C
 #else
                                 Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.StatementSetSubstraitPlan>(_nativeDriver.StatementSetSubstraitPlan)
 #endif
-                                (statement, substraitPlan, value.Length, &caller._error));
+                                (statement, substraitPlan, value?.Length ?? 0, &caller._error));
                         }
                         _substraitPlan = value;
                     }
@@ -552,7 +552,7 @@ namespace Apache.Arrow.Adbc.C
                             PartitionDescriptor[] partitions = new PartitionDescriptor[nativePartitions->num_partitions];
                             for (int i = 0; i < partitions.Length; i++)
                             {
-                                partitions[i] = new PartitionDescriptor(MarshalExtensions.MarshalBuffer(nativePartitions->partitions[i], checked((int)nativePartitions->partition_lengths[i])));
+                                partitions[i] = new PartitionDescriptor(MarshalExtensions.MarshalBuffer(nativePartitions->partitions[i], checked((int)nativePartitions->partition_lengths[i]))!);
                             }
 
                             return new PartitionedResult(caller.ImportSchema(), rowsAffected, partitions);
@@ -603,9 +603,9 @@ namespace Apache.Arrow.Adbc.C
         {
             private IntPtr _s;
 
-            public Utf8Helper(string s)
+            public Utf8Helper(string? s)
             {
-                _s = MarshalExtensions.StringToCoTaskMemUTF8(s);
+                if (s != null) _s = MarshalExtensions.StringToCoTaskMemUTF8(s);
             }
 
             public static implicit operator IntPtr(Utf8Helper s) { return s._s; }
@@ -736,7 +736,7 @@ namespace Apache.Arrow.Adbc.C
 #endif
 
 #if NET5_0_OR_GREATER
-            public unsafe void Call(delegate* unmanaged<CAdbcDatabase*, byte*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDatabase nativeDatabase, string key, string value)
+            public unsafe void Call(delegate* unmanaged<CAdbcDatabase*, byte*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDatabase nativeDatabase, string key, string? value)
             {
                 fixed (CAdbcDatabase* db = &nativeDatabase)
                 fixed (CAdbcError* e = &_error)
@@ -749,7 +749,7 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 #else
-            public unsafe void Call(IntPtr fn, ref CAdbcDatabase nativeDatabase, string key, string value)
+            public unsafe void Call(IntPtr fn, ref CAdbcDatabase nativeDatabase, string key, string? value)
             {
                 fixed (CAdbcDatabase* db = &nativeDatabase)
                 fixed (CAdbcError* e = &_error)
@@ -784,7 +784,7 @@ namespace Apache.Arrow.Adbc.C
 #endif
 
 #if NET5_0_OR_GREATER
-            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, byte*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeConnection, string key, string value)
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, byte*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeConnection, string key, string? value)
             {
                 fixed (CAdbcConnection* cn = &nativeConnection)
                 fixed (CAdbcError* e = &_error)
@@ -797,7 +797,7 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 #else
-            public unsafe void Call(IntPtr fn, ref CAdbcConnection nativeConnection, string key, string value)
+            public unsafe void Call(IntPtr fn, ref CAdbcConnection nativeConnection, string key, string? value)
             {
                 fixed (CAdbcConnection* cn = &nativeConnection)
                 fixed (CAdbcError* e = &_error)
@@ -870,13 +870,9 @@ namespace Apache.Arrow.Adbc.C
                 if (statusCode != AdbcStatusCode.Success)
                 {
                     string message = "Undefined error";
-                    if ((IntPtr)_error.message != IntPtr.Zero)
+                    if (_error.message != null)
                     {
-#if NETSTANDARD
-                        message = MarshalExtensions.PtrToStringUTF8((IntPtr)_error.message);
-#else
-                        message = Marshal.PtrToStringUTF8((IntPtr)_error.message);
-#endif
+                        message = MarshalExtensions.PtrToStringUTF8(_error.message)!;
                     }
 
                     Dispose();

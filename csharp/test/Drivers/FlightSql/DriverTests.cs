@@ -53,9 +53,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
             };
 
             FlightSqlDriver flightSqlDriver = new FlightSqlDriver();
-            FlightSqlDatabase flightSqlDatabase = flightSqlDriver.Open(parameters) as FlightSqlDatabase;
-            FlightSqlConnection connection = flightSqlDatabase.Connect(options) as FlightSqlConnection;
-            FlightSqlStatement statement = connection.CreateStatement() as FlightSqlStatement;
+            FlightSqlDatabase flightSqlDatabase = (FlightSqlDatabase)flightSqlDriver.Open(parameters);
+            FlightSqlConnection connection = (FlightSqlConnection)flightSqlDatabase.Connect(options);
+            FlightSqlStatement statement = (FlightSqlStatement)connection.CreateStatement();
 
             statement.SqlQuery = flightSqlTestConfiguration.Query;
             QueryResult queryResult = statement.ExecuteQuery();

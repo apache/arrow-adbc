@@ -37,12 +37,12 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Gets or sets a SQL query to be executed on this statement.
         /// </summary>
-        public virtual string SqlQuery { get; set; }
+        public virtual string? SqlQuery { get; set; }
 
         /// <summary>
         /// Gets or sets the Substrait plan.
         /// </summary>
-        public virtual byte[] SubstraitPlan
+        public virtual byte[]? SubstraitPlan
         {
             get { throw AdbcException.NotImplemented("Statement does not support SubstraitPlan"); }
             set { throw AdbcException.NotImplemented("Statement does not support SubstraitPlan"); }
@@ -161,7 +161,7 @@ namespace Apache.Arrow.Adbc
         /// <param name="index">
         /// The index in the array to get the value from.
         /// </param>
-        public virtual object GetValue(IArrowArray arrowArray, int index)
+        public virtual object? GetValue(IArrowArray arrowArray, int index)
         {
             if (arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
             if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));

@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+using System;
+using System.Threading.Tasks;
 using Apache.Arrow.Types;
 using Xunit;
 
@@ -30,7 +32,7 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
-        public void SimpleEndToEndTest()
+        public async Task SimpleEndToEndTest()
         {
             using var database = _duckDb.OpenDatabase("test.db");
             using var connection = database.Connect(null);
@@ -46,19 +48,23 @@ namespace Apache.Arrow.Adbc.Tests
             var results = statement.ExecuteQuery();
 
             using var stream = results.Stream;
+            Assert.NotNull(stream);
 
             var schema = stream.Schema;
             Assert.Equal(2, schema.FieldsList.Count);
             Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[0].DataType.TypeId);
             Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[1].DataType.TypeId);
 
-            var firstBatch = stream.ReadNextRecordBatchAsync().Result;
+            var firstBatch = await stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(firstBatch);
             Assert.Equal(3, firstBatch.Length);
-            Assert.Equal(3, (firstBatch.Column(0) as Int32Array).Values[0]);
-            Assert.Equal(5, (firstBatch.Column(0) as Int32Array).Values[1]);
-            Assert.Equal(7, (firstBatch.Column(0) as Int32Array).Values[2]);
+            Int32Array? column = firstBatch.Column(0) as Int32Array;
+            Assert.NotNull(column);
+            Assert.Equal(3, column.Values[0]);
+            Assert.Equal(5, column.Values[1]);
+            Assert.Equal(7, column.Values[2]);
 
-            var secondBatch = stream.ReadNextRecordBatchAsync().Result;
+            var secondBatch = await stream.ReadNextRecordBatchAsync();
             Assert.Null(secondBatch);
         }
 
@@ -161,7 +167,7 @@ namespace Apache.Arrow.Adbc.Tests
             statement.SqlQuery = "SELECT * from test";
             var results = statement.ExecuteQuery();
             long count = 0;
-            using (var stream = results.Stream)
+            using (var stream = results.Stream ?? throw new InvalidOperationException("no results found"))
             {
                 RecordBatch batch;
                 while ((batch = stream.ReadNextRecordBatchAsync().Result) != null)

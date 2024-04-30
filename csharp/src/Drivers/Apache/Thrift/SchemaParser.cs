@@ -59,7 +59,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                 case TTypeId.NULL_TYPE: return NullType.Default;
                 case TTypeId.SMALLINT_TYPE: return Int16Type.Default;
                 case TTypeId.STRING_TYPE: return StringType.Default;
-                case TTypeId.TIMESTAMP_TYPE: return new TimestampType(TimeUnit.Microsecond, (string)null);
+                case TTypeId.TIMESTAMP_TYPE: return new TimestampType(TimeUnit.Microsecond, (string?)null);
                 case TTypeId.TINYINT_TYPE: return Int8Type.Default;
                 case TTypeId.VARCHAR_TYPE: return StringType.Default;
                 case TTypeId.DECIMAL_TYPE:

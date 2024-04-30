@@ -133,7 +133,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
                 var catalogs = adbcConnection.GetSchema("Catalogs");
                 Assert.Single(catalogs.Columns);
-                var catalog = (string)catalogs.Rows[0].ItemArray[0];
+                var catalog = (string?)catalogs.Rows[0].ItemArray[0];
 
                 catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
                 Assert.Equal(1, catalogs.Rows.Count);
@@ -145,7 +145,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
                 var schemas = adbcConnection.GetSchema("Schemas", new[] { catalog });
                 Assert.Equal(2, schemas.Columns.Count);
-                var schema = (string)schemas.Rows[0].ItemArray[1];
+                var schema = (string?)schemas.Rows[0].ItemArray[1];
 
                 schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, schema });
                 Assert.Equal(1, schemas.Rows.Count);
@@ -189,7 +189,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             return new Adbc.Client.AdbcConnection(
                 new BigQueryDriver(),
                 BigQueryTestingUtils.GetBigQueryParameters(_testConfiguration),
-                new Dictionary<string,string>()
+                new Dictionary<string, string>()
             );
         }
     }

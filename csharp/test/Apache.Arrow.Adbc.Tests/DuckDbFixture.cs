@@ -28,7 +28,8 @@ namespace Apache.Arrow.Adbc.Tests
     {
         readonly string _dataDirectory;
         readonly Dictionary<string, AdbcDatabase> _databases;
-        AdbcDriver _driver;
+        readonly AdbcDriver _driver;
+        bool _disposed;
 
         public DuckDbFixture()
         {
@@ -56,9 +57,9 @@ namespace Apache.Arrow.Adbc.Tests
             return _driver.Open(new Dictionary<string, string> { { "path", Path.Combine(_dataDirectory, name) } });
         }
 
-        public DbClient.AdbcConnection CreateConnection(string name, IReadOnlyDictionary<string, string> connectionOptions)
+        public DbClient.AdbcConnection CreateConnection(string name, IReadOnlyDictionary<string, string>? connectionOptions)
         {
-            AdbcDatabase database;
+            AdbcDatabase? database;
             if (!_databases.TryGetValue(name, out database))
             {
                 database = OpenDatabase(name);
@@ -71,10 +72,10 @@ namespace Apache.Arrow.Adbc.Tests
 
         public void Dispose()
         {
-            if (_driver != null)
+            if (!_disposed)
             {
                 _driver.Dispose();
-                _driver = null;
+                _disposed = true;
 
                 try
                 {

@@ -31,28 +31,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         [JsonPropertyName("projectId")]
-        public string ProjectId { get; set; }
+        public string ProjectId { get; set; } = string.Empty;
 
         [JsonPropertyName("clientId")]
-        public string ClientId { get; set; }
+        public string ClientId { get; set; } = string.Empty;
 
         [JsonPropertyName("clientSecret")]
-        public string ClientSecret { get; set; }
+        public string ClientSecret { get; set; } = string.Empty;
 
         [JsonPropertyName("refreshToken")]
-        public string RefreshToken { get; set; }
+        public string RefreshToken { get; set; } = string.Empty;
 
         [JsonPropertyName("scopes")]
-        public string Scopes { get; set; }
+        public string Scopes { get; set; } = string.Empty;
 
         [JsonPropertyName("jsonCredential")]
-        public string JsonCredential { get; set; }
+        public string JsonCredential { get; set; } = string.Empty;
 
         [JsonPropertyName("allowLargeResults")]
         public bool AllowLargeResults { get; set; }
 
         [JsonPropertyName("largeResultsDestinationTable")]
-        public string LargeResultsDestinationTable { get; set; }
+        public string LargeResultsDestinationTable { get; set; } = string.Empty;
 
         [JsonPropertyName("includeTableConstraints")]
         public bool IncludeTableConstraints { get; set; }

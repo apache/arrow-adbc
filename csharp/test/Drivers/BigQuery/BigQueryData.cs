@@ -34,7 +34,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         public static SampleDataBuilder GetSampleData()
         {
             ListArray.Builder labuilder = new ListArray.Builder(Int64Type.Default);
-            Int64Array.Builder numbersBuilder = labuilder.ValueBuilder as Int64Array.Builder;
+            Int64Array.Builder numbersBuilder = (Int64Array.Builder)labuilder.ValueBuilder;
             labuilder.Append();
             numbersBuilder.AppendRange(new List<long>() { 1, 2, 3 });
 

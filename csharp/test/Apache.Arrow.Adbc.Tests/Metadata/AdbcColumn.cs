@@ -25,7 +25,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         /// <summary>
         /// Column name
         /// </summary>
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         /// <summary>
         /// Column ordinal position
@@ -35,7 +35,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         /// <summary>
         /// Column remarks
         /// </summary>
-        public string Remarks { get; set; }
+        public string? Remarks { get; set; }
 
         /// <summary>
         /// Column XDBC data type
@@ -45,7 +45,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         /// <summary>
         /// Column XDBC type name
         /// </summary>
-        public string XdbcTypeName { get; set; }
+        public string? XdbcTypeName { get; set; }
 
         /// <summary>
         /// Column XDBC column size
@@ -70,7 +70,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         /// <summary>
         /// Column XDBC column definition
         /// </summary>
-        public string XdbcColumnDef { get; set; }
+        public string? XdbcColumnDef { get; set; }
 
         /// <summary>
         /// Column XDBC SQL data type
@@ -90,22 +90,22 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         /// <summary>
         /// Column XDBC is nullable (YES/NO)
         /// </summary>
-        public string XdbcIsNullable { get; set; }
+        public string? XdbcIsNullable { get; set; }
 
         /// <summary>
         /// Column XDBC scope catalog
         /// </summary>
-        public string XdbcScopeCatalog { get; set; }
+        public string? XdbcScopeCatalog { get; set; }
 
         /// <summary>
         /// Column XDBC scope schema
         /// </summary>
-        public string XdbcScopeSchema { get; set; }
+        public string? XdbcScopeSchema { get; set; }
 
         /// <summary>
         /// Column XDBC scope table
         /// </summary>
-        public string XdbcScopeTable { get; set; }
+        public string? XdbcScopeTable { get; set; }
 
         /// <summary>
         /// Column XDBC is auto increment

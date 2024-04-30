@@ -42,7 +42,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
             _snowflakeTestConfiguration = SnowflakeTestingUtils.TestConfiguration;
-            Dictionary<string, string> parameters = new Dictionary<string,string>();
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
             Dictionary<string, string> options = new Dictionary<string, string>();
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_snowflakeTestConfiguration, out parameters);
             AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
@@ -265,7 +265,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             _statement.SqlQuery = selectNumberStatement;
             QueryResult queryResult = _statement.ExecuteQuery();
             Assert.Equal(count, queryResult.RowCount);
-            using (IArrowArrayStream stream = queryResult.Stream)
+            using (IArrowArrayStream stream = queryResult.Stream ?? throw new InvalidOperationException("empty result"))
             {
                 Field field = stream.Schema.GetFieldByName(columnName);
                 while (true)

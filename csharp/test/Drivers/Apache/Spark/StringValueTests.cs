@@ -52,7 +52,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("你好")]
         [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.")]
         [InlineData(" Leading and trailing spaces ")]
-        public async Task TestStringData(string value)
+        public async Task TestStringData(string? value)
         {
             string columnName = "STRINGTYPE";
             using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, "STRING"));
@@ -72,7 +72,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("你好")]
         [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.")]
         [InlineData(" Leading and trailing spaces ")]
-        public async Task TestVarcharData(string value)
+        public async Task TestVarcharData(string? value)
         {
             string columnName = "VARCHARTYPE";
             using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, "VARCHAR(100)"));
@@ -92,14 +92,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("你好")]
         [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.")]
         [InlineData(" Leading and trailing spaces ")]
-        public async Task TestCharData(string value)
+        public async Task TestCharData(string? value)
         {
             string columnName = "CHARTYPE";
             int fieldLength = 100;
             using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, $"CHAR({fieldLength})"));
 
-            string formattedValue = value != null ? QuoteValue(value.PadRight(fieldLength)) : value;
-            string paddedValue = value != null ? value.PadRight(fieldLength) : value;
+            string? formattedValue = value != null ? QuoteValue(value.PadRight(fieldLength)) : value;
+            string? paddedValue = value != null ? value.PadRight(fieldLength) : value;
 
             InsertSingleValue(table.TableName, columnName, formattedValue);
             await SelectAndValidateValues(table.TableName, columnName, paddedValue, 1, formattedValue);
