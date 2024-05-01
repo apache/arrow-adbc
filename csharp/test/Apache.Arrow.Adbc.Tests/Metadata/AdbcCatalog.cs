@@ -32,11 +32,11 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         /// <summary>
         /// The catalog name.
         /// </summary>
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         /// <summary>
         /// Schemas associated with the catalog.
         /// </summary>
-        public List<AdbcDbSchema> DbSchemas { get; set; }
+        public List<AdbcDbSchema>? DbSchemas { get; set; }
     }
 }

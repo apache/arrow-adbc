@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
@@ -31,14 +32,14 @@ namespace Apache.Arrow.Adbc.Client
     /// </summary>
     public sealed class AdbcConnection : DbConnection
     {
-        private AdbcDatabase adbcDatabase;
-        private Adbc.AdbcConnection adbcConnectionInternal;
+        private AdbcDatabase? adbcDatabase;
+        private Adbc.AdbcConnection? adbcConnectionInternal;
 
         private readonly Dictionary<string, string> adbcConnectionParameters;
         private readonly Dictionary<string, string> adbcConnectionOptions;
 
-        private AdbcStatement adbcStatement;
-        private AdbcTransaction currentTransaction;
+        private AdbcStatement? adbcStatement;
+        private AdbcTransaction? currentTransaction;
 
         /// <summary>
         /// Overloaded. Intializes an <see cref="AdbcConnection"/>.
@@ -95,8 +96,8 @@ namespace Apache.Arrow.Adbc.Client
 
         // For testing
         internal AdbcConnection(AdbcDriver driver, AdbcDatabase database, Adbc.AdbcConnection connection)
+            : this(driver)
         {
-            this.AdbcDriver = driver;
             this.adbcDatabase = database;
             this.adbcConnectionInternal = connection;
         }
@@ -105,13 +106,13 @@ namespace Apache.Arrow.Adbc.Client
         /// Creates a new <see cref="AdbcCommand"/>.
         /// </summary>
         /// <returns><see cref="AdbcCommand"/></returns>
-        public new AdbcCommand CreateCommand() => CreateDbCommand() as AdbcCommand;
+        public new AdbcCommand CreateCommand() => (AdbcCommand)CreateDbCommand();
 
         /// <summary>
         /// Gets or sets the <see cref="AdbcDriver"/> associated with this
         /// connection.
         /// </summary>
-        public AdbcDriver AdbcDriver { get; set; }
+        public AdbcDriver? AdbcDriver { get; set; }
 
         /// <summary>
         /// Gets the <see cref="AdbcStatement"/> associated with the
@@ -125,14 +126,17 @@ namespace Apache.Arrow.Adbc.Client
                 {
                     // need to have a connection in order to have a statement
                     EnsureConnectionOpen();
-                    this.adbcStatement = this.adbcConnectionInternal.CreateStatement();
+                    this.adbcStatement = this.adbcConnectionInternal!.CreateStatement();
                 }
 
                 return this.adbcStatement;
             }
         }
 
-        public override string ConnectionString { get => GetConnectionString(); set => SetConnectionProperties(value); }
+#if NET5_0_OR_GREATER
+        [AllowNull]
+#endif
+        public override string ConnectionString { get => GetConnectionString(); set => SetConnectionProperties(value!); }
 
         /// <summary>
         /// Gets or sets the behavior of decimals.
@@ -185,6 +189,10 @@ namespace Apache.Arrow.Adbc.Client
 
         public override void Close()
         {
+            if (this.currentTransaction != null)
+            {
+                this.currentTransaction.Rollback();
+            }
             this.Dispose();
         }
 
@@ -233,7 +241,11 @@ namespace Apache.Arrow.Adbc.Client
 
             foreach (string key in builder.Keys)
             {
-                this.adbcConnectionParameters.Add(key, Convert.ToString(builder[key]));
+                object? builderValue = builder[key];
+                if (builderValue != null)
+                {
+                    this.adbcConnectionParameters.Add(key, Convert.ToString(builderValue)!);
+                }
             }
         }
 
@@ -247,9 +259,9 @@ namespace Apache.Arrow.Adbc.Client
             return GetSchema(collectionName, null);
         }
 
-        public override DataTable GetSchema(string collectionName, string[] restrictionValues)
+        public override DataTable GetSchema(string collectionName, string?[]? restrictionValues)
         {
-            SchemaCollection collection;
+            SchemaCollection? collection;
             if (!SchemaCollection.TryGetCollection(collectionName, out collection))
             {
                 throw new ArgumentException(
@@ -257,14 +269,14 @@ namespace Apache.Arrow.Adbc.Client
                     nameof(collectionName));
             }
 
-            if (restrictionValues != null && restrictionValues.Length > collection.Restrictions.Length)
+            if (restrictionValues != null && restrictionValues.Length > collection!.Restrictions.Length)
             {
                 throw new ArgumentException(
                     $"More restrictions were provided than the requested schema ('{collectionName}') supports.",
                     nameof(restrictionValues));
             }
 
-            return collection.GetSchema(this.Connection, restrictionValues);
+            return collection!.GetSchema(this.Connection, restrictionValues);
         }
 
         protected override DbTransaction BeginDbTransaction(System.Data.IsolationLevel isolationLevel)
@@ -307,7 +319,7 @@ namespace Apache.Arrow.Adbc.Client
             this.Connection.AutoCommit = true;
             if (isolationLevel != System.Data.IsolationLevel.Unspecified)
             {
-                this.adbcConnectionInternal.IsolationLevel = IsolationLevel.Default;
+                this.adbcConnectionInternal!.IsolationLevel = IsolationLevel.Default;
             }
         }
 
@@ -322,7 +334,7 @@ namespace Apache.Arrow.Adbc.Client
             this.Connection.AutoCommit = true;
             if (isolationLevel != System.Data.IsolationLevel.Unspecified)
             {
-                this.adbcConnectionInternal.IsolationLevel = IsolationLevel.Default;
+                this.adbcConnectionInternal!.IsolationLevel = IsolationLevel.Default;
             }
         }
 
@@ -385,7 +397,7 @@ namespace Apache.Arrow.Adbc.Client
                 schemaCollections.Add(collection.Name, collection);
             }
 
-            public static bool TryGetCollection(string name, out SchemaCollection collection)
+            public static bool TryGetCollection(string name, out SchemaCollection? collection)
             {
                 return schemaCollections.TryGetValue(name, out collection);
             }
@@ -393,15 +405,15 @@ namespace Apache.Arrow.Adbc.Client
             public abstract string Name { get; }
             public abstract string[] Restrictions { get; }
 
-            public abstract DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string[] restrictions);
+            public abstract DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string?[]? restrictions);
         }
 
         private sealed class MetadataCollection : SchemaCollection
         {
             public override string Name => "MetaDataCollections";
-            public override string[] Restrictions => new string[0];
+            public override string[] Restrictions => [];
 
-            public override DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string[] restrictions)
+            public override DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string?[]? restrictions)
             {
                 DataTable result = new DataTable(Name);
                 result.Columns.Add("CollectionName", typeof(string));
@@ -419,9 +431,9 @@ namespace Apache.Arrow.Adbc.Client
         private sealed class RestrictionsCollection : SchemaCollection
         {
             public override string Name => "Restrictions";
-            public override string[] Restrictions => new string[0];
+            public override string[] Restrictions => [];
 
-            public override DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string[] restrictions)
+            public override DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string?[]? restrictions)
             {
                 var result = new DataTable(Name);
                 result.Columns.Add("CollectionName", typeof(string));
@@ -445,9 +457,9 @@ namespace Apache.Arrow.Adbc.Client
         {
             protected abstract MapItem[] Map { get; }
 
-            protected abstract IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions);
+            protected abstract IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string?[]? restrictions);
 
-            public override DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string[] restrictions)
+            public override DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string?[]? restrictions)
             {
                 // Flattens the hierarchical ADBC schema into a DataTable
 
@@ -477,7 +489,7 @@ namespace Apache.Arrow.Adbc.Client
                                 {
                                     throw new InvalidOperationException($"Unable to find '{part}'");
                                 }
-                                ListType listType = types[i].GetFieldByIndex(index).DataType as ListType;
+                                ListType? listType = types[i].GetFieldByIndex(index).DataType as ListType;
                                 if (listType == null || listType.ValueDataType.TypeId != ArrowTypeId.Struct)
                                 {
                                     throw new InvalidOperationException($"Field '{part}' has unexpected type.");
@@ -504,7 +516,7 @@ namespace Apache.Arrow.Adbc.Client
                     State state = new State(result, indices.ToArray(), loaders.ToArray());
                     while (true)
                     {
-                        using (RecordBatch batch = stream.ReadNextRecordBatchAsync().Result)
+                        using (RecordBatch? batch = stream.ReadNextRecordBatchAsync().Result)
                         {
                             if (batch == null) { return result; }
 
@@ -519,7 +531,7 @@ namespace Apache.Arrow.Adbc.Client
                 private readonly DataTable table;
                 private readonly int[] indices;
                 private readonly Action<State>[] loaders;
-                private readonly object[] buffer;
+                private readonly object?[] buffer;
                 private readonly int[] offsets;
                 private readonly IArrowRecord[] records;
 
@@ -619,9 +631,9 @@ namespace Apache.Arrow.Adbc.Client
                 new MapItem("TABLE_CATALOG", new[] { "catalog_name" }, typeof(string)),
             };
 
-            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)
+            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string?[]? restrictions)
             {
-                string catalog = restrictions?.Length > 0 ? restrictions[0] : null;
+                string? catalog = restrictions?.Length > 0 ? restrictions[0] : null;
                 return connection.GetObjects(GetObjectsDepth.Catalogs, catalog, null, null, null, null);
             }
         }
@@ -637,10 +649,10 @@ namespace Apache.Arrow.Adbc.Client
                 new MapItem("TABLE_SCHEMA", new [] { "catalog_db_schemas", "db_schema_name" }, typeof(string)),
             };
 
-            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)
+            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string?[]? restrictions)
             {
-                string catalog = restrictions?.Length > 0 ? restrictions[0] : null;
-                string schema = restrictions?.Length > 1 ? restrictions[1] : null;
+                string? catalog = restrictions?.Length > 0 ? restrictions[0] : null;
+                string? schema = restrictions?.Length > 1 ? restrictions[1] : null;
                 return connection.GetObjects(GetObjectsDepth.DbSchemas, catalog, schema, null, null, null);
             }
         }
@@ -648,14 +660,14 @@ namespace Apache.Arrow.Adbc.Client
         private class TableTypesCollection : ArrowCollection
         {
             public override string Name => "TableTypes";
-            public override string[] Restrictions => new string[0];
+            public override string[] Restrictions => [];
 
             protected override MapItem[] Map => new[]
             {
                 new MapItem("TABLE_TYPE", new [] { "table_type" }, typeof(string)),
             };
 
-            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)
+            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string?[]? restrictions)
             {
                 return connection.GetTableTypes();
             }
@@ -674,12 +686,12 @@ namespace Apache.Arrow.Adbc.Client
                 new MapItem("TABLE_TYPE", new [] { "catalog_db_schemas", "db_schema_tables", "table_type" }, typeof(string)),
             };
 
-            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)
+            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string?[]? restrictions)
             {
-                string catalog = restrictions?.Length > 0 ? restrictions[0] : null;
-                string schema = restrictions?.Length > 1 ? restrictions[1] : null;
-                string table = restrictions?.Length > 2 ? restrictions[2] : null;
-                List<string> tableTypes = restrictions?.Length > 3 ? restrictions[3].Split(',').ToList() : null;
+                string? catalog = restrictions?.Length > 0 ? restrictions[0] : null;
+                string? schema = restrictions?.Length > 1 ? restrictions[1] : null;
+                string? table = restrictions?.Length > 2 ? restrictions[2] : null;
+                List<string>? tableTypes = restrictions?.Length > 3 ? restrictions[3]?.Split(',').ToList() : null;
                 return connection.GetObjects(GetObjectsDepth.Tables, catalog, schema, table, tableTypes, null);
             }
         }
@@ -709,12 +721,12 @@ namespace Apache.Arrow.Adbc.Client
                 new MapItem("DATETIME_PRECISION", new [] { "catalog_db_schemas", "db_schema_tables", "table_columns", "xdbc_datetime_sub" }, typeof(short)),
             };
 
-            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)
+            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string?[]? restrictions)
             {
-                string catalog = restrictions?.Length > 0 ? restrictions[0] : null;
-                string schema = restrictions?.Length > 1 ? restrictions[1] : null;
-                string table = restrictions?.Length > 2 ? restrictions[2] : null;
-                string column = restrictions?.Length > 3 ? restrictions[3] : null;
+                string? catalog = restrictions?.Length > 0 ? restrictions[0] : null;
+                string? schema = restrictions?.Length > 1 ? restrictions[1] : null;
+                string? table = restrictions?.Length > 2 ? restrictions[2] : null;
+                string? column = restrictions?.Length > 3 ? restrictions[3] : null;
                 return connection.GetObjects(GetObjectsDepth.All, catalog, schema, table, null, column);
             }
         }

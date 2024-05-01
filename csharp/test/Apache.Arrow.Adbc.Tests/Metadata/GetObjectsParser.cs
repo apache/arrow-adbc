@@ -33,7 +33,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         /// <param name="databaseName"></param>
         /// <param name="schemaName"></param>
         /// <returns></returns>
-        public static List<AdbcCatalog> ParseCatalog(RecordBatch recordBatch, string databaseName, string schemaName)
+        public static List<AdbcCatalog> ParseCatalog(RecordBatch recordBatch, string? databaseName, string? schemaName)
         {
             StringArray catalogNameArray = (StringArray)recordBatch.Column("catalog_name");
             ListArray dbSchemaArray = (ListArray)recordBatch.Column("catalog_db_schemas");
@@ -52,7 +52,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             return catalogs;
         }
 
-        private static List<AdbcDbSchema> ParseDbSchema(StructArray dbSchemaArray, string schemaName)
+        private static List<AdbcDbSchema>? ParseDbSchema(StructArray dbSchemaArray, string? schemaName)
         {
             if (dbSchemaArray == null) return null;
 
@@ -73,7 +73,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             return schemas;
         }
 
-        private static List<AdbcTable> ParseTables(StructArray tablesArray)
+        private static List<AdbcTable>? ParseTables(StructArray? tablesArray)
         {
             if (tablesArray == null) return null;
 
@@ -98,7 +98,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             return tables;
         }
 
-        private static List<AdbcColumn> ParseColumns(StructArray columnsArray)
+        private static List<AdbcColumn>? ParseColumns(StructArray columnsArray)
         {
             if (columnsArray == null) return null;
 
@@ -153,7 +153,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             return columns;
         }
 
-        private static List<AdbcConstraint> ParseConstraints(StructArray constraintsArray)
+        private static List<AdbcConstraint>? ParseConstraints(StructArray constraintsArray)
         {
             if (constraintsArray == null) return null;
 
@@ -170,8 +170,8 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
                 c.Name = name.GetString(i);
                 c.Type = type.GetString(i);
 
-                StringArray colNames = columnNames.GetSlicedValues(i) as StringArray;
-                StructArray usages = columnUsages.GetSlicedValues(i) as StructArray;
+                StringArray? colNames = columnNames.GetSlicedValues(i) as StringArray;
+                StructArray? usages = columnUsages.GetSlicedValues(i) as StructArray;
 
                 if (colNames != null)
                 {

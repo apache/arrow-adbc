@@ -22,16 +22,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
     public class ApacheTestConfiguration : TestConfiguration
     {
         [JsonPropertyName("hostName")]
-        public string HostName { get; set; }
+        public string HostName { get; set; } = string.Empty;
 
         [JsonPropertyName("port")]
-        public string Port { get; set; }
+        public string Port { get; set; } = string.Empty;
 
         [JsonPropertyName("token"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string Token { get; set; }
+        public string Token { get; set; } = string.Empty;
 
         [JsonPropertyName("path"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string Path { get; set; }
+        public string Path { get; set; } = string.Empty;
 
     }
 }

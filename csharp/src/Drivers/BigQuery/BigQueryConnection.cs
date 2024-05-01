@@ -68,7 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// Initializes the internal BigQuery connection
         /// </summary>
         /// <exception cref="ArgumentException"></exception>
-        internal void Open()
+        internal BigQueryClient Open()
         {
             string? projectId = null;
             string? clientId = null;
@@ -119,7 +119,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 this.credential = ApplyScopes(GoogleCredential.FromJson(json));
             }
 
-            this.client = BigQueryClient.Create(projectId, this.credential);
+            BigQueryClient client = BigQueryClient.Create(projectId, this.credential);
+            this.client = client;
+            return client;
         }
 
         /// <summary>
@@ -262,11 +264,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override IArrowArrayStream GetObjects(
             GetObjectsDepth depth,
-            string catalogPattern,
-            string dbSchemaPattern,
-            string tableNamePattern,
-            IReadOnlyList<string> tableTypes,
-            string columnNamePattern)
+            string? catalogPattern,
+            string? dbSchemaPattern,
+            string? tableNamePattern,
+            IReadOnlyList<string>? tableTypes,
+            string? columnNamePattern)
         {
             IArrowArray[] dataArrays = GetCatalogs(depth, catalogPattern, dbSchemaPattern,
                 tableNamePattern, tableTypes, columnNamePattern);
@@ -293,11 +295,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private IArrowArray[] GetCatalogs(
             GetObjectsDepth depth,
-            string catalogPattern,
-            string dbSchemaPattern,
-            string tableNamePattern,
-            IReadOnlyList<string> tableTypes,
-            string columnNamePattern)
+            string? catalogPattern,
+            string? dbSchemaPattern,
+            string? tableNamePattern,
+            IReadOnlyList<string>? tableTypes,
+            string? columnNamePattern)
         {
             StringArray.Builder catalogNameBuilder = new StringArray.Builder();
             List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>();
@@ -339,10 +341,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         private StructArray GetDbSchemas(
             GetObjectsDepth depth,
             string catalog,
-            string dbSchemaPattern,
-            string tableNamePattern,
-            IReadOnlyList<string> tableTypes,
-            string columnNamePattern)
+            string? dbSchemaPattern,
+            string? tableNamePattern,
+            IReadOnlyList<string>? tableTypes,
+            string? columnNamePattern)
         {
             StringArray.Builder dbSchemaNameBuilder = new StringArray.Builder();
             List<IArrowArray?> dbSchemaTablesValues = new List<IArrowArray?>();
@@ -395,9 +397,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             GetObjectsDepth depth,
             string catalog,
             string dbSchema,
-            string tableNamePattern,
-            IReadOnlyList<string> tableTypes,
-            string columnNamePattern)
+            string? tableNamePattern,
+            IReadOnlyList<string>? tableTypes,
+            string? columnNamePattern)
         {
             StringArray.Builder tableNameBuilder = new StringArray.Builder();
             StringArray.Builder tableTypeBuilder = new StringArray.Builder();
@@ -433,7 +435,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 bool includeConstraints = true;
 
-                if (this.properties.TryGetValue(BigQueryParameters.IncludeConstraintsWithGetObjects, out string includeConstraintsValue))
+                if (this.properties.TryGetValue(BigQueryParameters.IncludeConstraintsWithGetObjects, out string? includeConstraintsValue))
                 {
                     bool.TryParse(includeConstraintsValue, out includeConstraints);
                 }
@@ -486,7 +488,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string catalog,
             string dbSchema,
             string table,
-            string columnNamePattern)
+            string? columnNamePattern)
         {
             StringArray.Builder columnNameBuilder = new StringArray.Builder();
             Int32Array.Builder ordinalPositionBuilder = new Int32Array.Builder();
@@ -596,7 +598,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string catalog,
             string dbSchema,
             string table,
-            string columnNamePattern)
+            string? columnNamePattern)
         {
             StringArray.Builder constraintNameBuilder = new StringArray.Builder();
             StringArray.Builder constraintTypeBuilder = new StringArray.Builder();
@@ -737,7 +739,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 nullBitmapBuffer.Build());
         }
 
-        private string PatternToRegEx(string pattern)
+        private string PatternToRegEx(string? pattern)
         {
             if (pattern == null)
                 return ".*";
@@ -823,7 +825,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
         }
 
-        public override Schema GetTableSchema(string catalog, string dbSchema, string tableName)
+        public override Schema GetTableSchema(string? catalog, string? dbSchema, string tableName)
         {
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{2}'",
                 Sanitize(catalog), Sanitize(dbSchema), Sanitize(tableName));
@@ -983,7 +985,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (this.client == null)
             {
-                Open();
+                this.client = Open();
             }
 
             BigQueryStatement statement = new BigQueryStatement(this.client, this.credential);
@@ -1026,7 +1028,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private static Regex sanitizedInputRegex = new Regex("^[a-zA-Z0-9_-]+");
 
-        private string Sanitize(string input)
+        private string Sanitize(string? input)
         {
             if (string.IsNullOrEmpty(input))
                 return string.Empty;
@@ -1035,7 +1037,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (isValidInput)
             {
-                return input;
+                return input!;
             }
             else
             {

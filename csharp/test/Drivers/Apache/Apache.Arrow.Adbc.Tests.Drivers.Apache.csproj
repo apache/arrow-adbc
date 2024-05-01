@@ -4,6 +4,7 @@
     <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
     <TargetFrameworks Condition="'$(IsWindows)'=='true'">net8.0;net472</TargetFrameworks>
     <TargetFrameworks Condition="'$(TargetFrameworks)'==''">net8.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

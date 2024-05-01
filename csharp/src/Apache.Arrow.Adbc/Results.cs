@@ -48,7 +48,7 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// The <see cref="IArrowArrayStream"/> for reading.
         /// </summary>
-        public IArrowArrayStream Stream { get; set; }
+        public IArrowArrayStream? Stream { get; set; }
     }
 
     /// <summary>

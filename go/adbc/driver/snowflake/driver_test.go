@@ -38,10 +38,10 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v16/arrow"
-	"github.com/apache/arrow/go/v16/arrow/array"
-	"github.com/apache/arrow/go/v16/arrow/decimal128"
-	"github.com/apache/arrow/go/v16/arrow/memory"
+	"github.com/apache/arrow/go/v17/arrow"
+	"github.com/apache/arrow/go/v17/arrow/array"
+	"github.com/apache/arrow/go/v17/arrow/decimal128"
+	"github.com/apache/arrow/go/v17/arrow/memory"
 	"github.com/google/uuid"
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/stretchr/testify/require"
@@ -515,7 +515,7 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 	suite.NoError(err)
 
 	suite.Require().NoError(suite.stmt.BindStream(suite.ctx, stream))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_bind_stream\""))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_bind_stream"))
 	n, err = suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)

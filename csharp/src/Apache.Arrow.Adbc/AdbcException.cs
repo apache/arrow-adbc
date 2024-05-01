@@ -66,7 +66,7 @@ namespace Apache.Arrow.Adbc
         /// For database providers which don't support it, or for
         /// inapplicable error scenarios, contains null.
         /// </summary>
-        public virtual string SqlState
+        public virtual string? SqlState
         {
             get => null;
         }

@@ -79,7 +79,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             string pattern = "#define " + adbcName;
 
-            string line = File.ReadAllLines(path).Where(x => x.StartsWith(pattern)).FirstOrDefault();
+            string? line = File.ReadAllLines(path).Where(x => x.StartsWith(pattern)).FirstOrDefault();
 
             Assert.False(string.IsNullOrEmpty(line));
 
@@ -91,7 +91,7 @@ namespace Apache.Arrow.Adbc.Tests
         // C# is designed to match Java's AdbcDriver
         [Theory]
         [InlineData("Open", new string[] { "parameters" }, new Type[] { typeof(IReadOnlyDictionary<string, string>) })]
-        public void ValidateAdbcDriverMethods(string name, string[] parameterNames = null, Type[] parameterTypes = null)
+        public void ValidateAdbcDriverMethods(string name, string[]? parameterNames = null, Type[]? parameterTypes = null)
         {
             ValidateMethod(typeof(AdbcDriver), name, parameterNames, parameterTypes);
         }
@@ -99,7 +99,7 @@ namespace Apache.Arrow.Adbc.Tests
         // C# is designed to match Java's AdbcDatabase
         [Theory]
         [InlineData("Connect", new string[] { "options" }, new Type[] { typeof(IReadOnlyDictionary<string, string>) })]
-        public void ValidateAdbcDatabaseMethods(string name, string[] parameterNames = null, Type[] parameterTypes = null)
+        public void ValidateAdbcDatabaseMethods(string name, string[]? parameterNames = null, Type[]? parameterTypes = null)
         {
             ValidateMethod(typeof(AdbcDatabase), name, parameterNames, parameterTypes);
         }
@@ -118,7 +118,7 @@ namespace Apache.Arrow.Adbc.Tests
         [InlineData("ReadPartition", new string[] { "partition" }, new Type[] { typeof(PartitionDescriptor) })]
         [InlineData("Rollback")]
         [InlineData("SetOption", new string[] { "key", "value" }, new Type[] { typeof(string), typeof(string) })]
-        public void ValidateAdbcConnectionMethods(string name, string[] parameterNames = null, Type[] parameterTypes = null)
+        public void ValidateAdbcConnectionMethods(string name, string[]? parameterNames = null, Type[]? parameterTypes = null)
         {
             ValidateMethod(typeof(AdbcConnection), name, parameterNames, parameterTypes);
         }
@@ -141,7 +141,7 @@ namespace Apache.Arrow.Adbc.Tests
         [InlineData("GetParameterSchema")]
         [InlineData("Prepare")]
         [InlineData("SetOption", new string[] { "key", "value" }, new Type[] { typeof(string), typeof(string) })]
-        public void ValidateAdbcStatementMethods(string name, string[] parameterNames = null, Type[] parameterTypes = null)
+        public void ValidateAdbcStatementMethods(string name, string[]? parameterNames = null, Type[]? parameterTypes = null)
         {
             ValidateMethod(typeof(AdbcStatement), name, parameterNames, parameterTypes);
         }
@@ -161,9 +161,9 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="methodName">The name of the method</param>
         /// <param name="parameterNames">The parameter names (in order)</param>
         /// <param name="parameterTypes">The parameter types (in order)</param>
-        private void ValidateMethod(Type t, string methodName, string[] parameterNames = null, Type[] parameterTypes = null)
+        private void ValidateMethod(Type t, string methodName, string[]? parameterNames = null, Type[]? parameterTypes = null)
         {
-            MethodInfo mi;
+            MethodInfo? mi;
 
             if (parameterTypes != null)
                 mi = t.GetMethod(methodName, parameterTypes);
@@ -172,6 +172,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             if (parameterNames != null)
             {
+                Assert.NotNull(mi);
                 Assert.True(parameterNames.Length > 0);
                 Assert.True(parameterTypes != null);
                 Assert.Equal(parameterNames.Length, parameterTypes.Length);
@@ -197,7 +198,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="parameterTypes">The parameter types (in order)</param>
         private void ValidateProperty(Type t, string propertyName, Type propertyType)
         {
-            PropertyInfo pi = t.GetProperty(propertyName, propertyType);
+            PropertyInfo? pi = t.GetProperty(propertyName, propertyType);
 
             Assert.NotNull(pi);
         }

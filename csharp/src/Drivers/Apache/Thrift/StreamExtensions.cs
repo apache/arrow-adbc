@@ -80,7 +80,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
         {
             if (dictionary == null) throw new ArgumentNullException(nameof(dictionary));
 
-            return dictionary.TryGetValue(key, out TValue value) ? value : defaultValue;
+            return dictionary.TryGetValue(key, out TValue? value) ? value : defaultValue;
         }
 
         public static async Task<bool> ReadExactlyAsync(this Stream stream, Memory<byte> memory, CancellationToken cancellationToken = default)
@@ -98,7 +98,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
 
             while (totalBytesRead < count)
             {
-                int bytesRead = await stream.ReadAsync(arraySegment.Array, arraySegment.Offset + totalBytesRead, count - totalBytesRead, cancellationToken).ConfigureAwait(false);
+                int bytesRead = await stream.ReadAsync(arraySegment.Array!, arraySegment.Offset + totalBytesRead, count - totalBytesRead, cancellationToken).ConfigureAwait(false);
 
                 if (bytesRead == 0)
                 {

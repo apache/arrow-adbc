@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// The query to run.
         /// </summary>
         [JsonPropertyName("query")]
-        public string Query { get; set; }
+        public string Query { get; set; } = string.Empty;
 
         /// <summary>
         /// The number of expected results from the query.
@@ -40,7 +40,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// The <see cref="TestMetadata"/> details.
         /// </summary>
         [JsonPropertyName("metadata")]
-        public TestMetadata Metadata { get; set; }
+        public TestMetadata Metadata { get; set; } = new TestMetadata();
     }
 
     /// <summary>
@@ -52,19 +52,19 @@ namespace Apache.Arrow.Adbc.Tests
         /// The name of the catalog/database.
         /// </summary>
         [JsonPropertyName("catalog")]
-        public string Catalog { get; set; }
+        public string Catalog { get; set; } = string.Empty;
 
         /// <summary>
         /// The name of the schema.
         /// </summary>
         [JsonPropertyName("schema")]
-        public string Schema { get; set; }
+        public string Schema { get; set; } = string.Empty;
 
         /// <summary>
         /// The name of the table.
         /// </summary>
         [JsonPropertyName("table")]
-        public string Table { get; set; }
+        public string Table { get; set; } = string.Empty;
 
         /// <summary>
         /// The number of columns expected from the table.

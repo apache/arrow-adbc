@@ -70,7 +70,7 @@ namespace Apache.Arrow.Adbc.Tests
         {
             IReadOnlyList<IArrowArray> columnDataArrays = GetColumnDataArraysInvalidColumnType();
             IReadOnlyList<IArrowArray> tableDataArrays = GetTableDataArrays(columnDataArrays);
-            IReadOnlyList<IArrowArray> schemaDataArrays = GetDbSchemaDataArrays(tableDataArrays);
+            IReadOnlyList<IArrowArray?> schemaDataArrays = GetDbSchemaDataArrays(tableDataArrays);
             Assert.Throws<ArgumentException>(() => StandardSchemas.GetObjectsSchema.Validate(GetGetObjectsDataArrays(schemaDataArrays)));
         }
 
@@ -87,7 +87,7 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Contains("Expecting data type Apache.Arrow.Types.StringType but found Apache.Arrow.Types.Int32Type on field with name item.", exception.Message);
         }
 
-        private IReadOnlyList<IArrowArray> GetGetObjectsDataArrays(IReadOnlyList<IArrowArray> schemaDataArrays)
+        private IReadOnlyList<IArrowArray> GetGetObjectsDataArrays(IReadOnlyList<IArrowArray?> schemaDataArrays)
         {
             List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>()
             {
@@ -107,7 +107,7 @@ namespace Apache.Arrow.Adbc.Tests
 
         private IReadOnlyList<IArrowArray> GetDbSchemaDataArrays(IReadOnlyList<IArrowArray> tableDataArrays)
         {
-            List<IArrowArray?> dbSchemaTablesValues = new List<IArrowArray?>()
+            List<IArrowArray> dbSchemaTablesValues = new List<IArrowArray>()
             {
                 new StructArray(
                     new StructType(StandardSchemas.TableSchema),
@@ -116,7 +116,7 @@ namespace Apache.Arrow.Adbc.Tests
                     new ArrowBuffer.BitmapBuilder().Build())
             };
 
-            List<IArrowArray?> schemaDataArrays = new List<IArrowArray>
+            List<IArrowArray> schemaDataArrays = new List<IArrowArray>
             {
                 new StringArray.Builder().Build(),
                 dbSchemaTablesValues.BuildListArrayForType(new StructType(StandardSchemas.TableSchema)),

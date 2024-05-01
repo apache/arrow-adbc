@@ -886,5 +886,4 @@ impl Statement for DummyStatement {
     }
 }
 
-// TODO(alexandreyc): uncomment this line during follow-up PRs
-// adbc_core::export_driver!(DummyDriverInit, DummyDriver);
+adbc_core::export_driver!(DummyDriverInit, DummyDriver);

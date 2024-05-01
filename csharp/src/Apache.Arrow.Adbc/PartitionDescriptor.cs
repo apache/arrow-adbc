@@ -34,7 +34,7 @@ namespace Apache.Arrow.Adbc
 
         public ReadOnlySpan<byte> Descriptor => _descriptor;
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             PartitionDescriptor? other = obj as PartitionDescriptor?;
             return other != null && Equals(other.Value);

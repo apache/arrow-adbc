@@ -70,6 +70,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             const string NumberOfAffectedRowsColumnName = "num_affected_rows";
 
             QueryResult queryResult = ExecuteQuery();
+            if (queryResult.Stream == null)
+            {
+                throw new AdbcException("no data found");
+            }
+
             using IArrowArrayStream stream = queryResult.Stream;
 
             // Check if the affected rows columns are returned in the result.
@@ -97,18 +102,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return new UpdateResult(affectedRows ?? -1);
         }
 
-        public override object GetValue(IArrowArray arrowArray, int index)
+        public override object? GetValue(IArrowArray arrowArray, int index)
         {
             return base.GetValue(arrowArray, index);
         }
 
         sealed class SparkReader : IArrowArrayStream
         {
-            SparkStatement statement;
+            SparkStatement? statement;
             Schema schema;
-            List<TSparkArrowBatch> batches;
+            List<TSparkArrowBatch>? batches;
             int index;
-            IArrowReader reader;
+            IArrowReader? reader;
 
             public SparkReader(SparkStatement statement, Schema schema)
             {
@@ -118,13 +123,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             public Schema Schema { get { return schema; } }
 
-            public async ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
             {
                 while (true)
                 {
                     if (this.reader != null)
                     {
-                        RecordBatch next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+                        RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
                         if (next != null)
                         {
                             return next;
@@ -147,7 +152,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     }
 
                     TFetchResultsReq request = new TFetchResultsReq(this.statement.operationHandle, TFetchOrientation.FETCH_NEXT, 50000);
-                    TFetchResultsResp response = await this.statement.connection.client.FetchResults(request, cancellationToken);
+                    TFetchResultsResp response = await this.statement.connection.client!.FetchResults(request, cancellationToken);
                     this.batches = response.Results.ArrowBatches;
 
                     if (!response.HasMoreRows)

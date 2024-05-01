@@ -29,11 +29,11 @@ namespace Apache.Arrow.Adbc.Extensions
     {
         public static Span<T> AsSpan<T>(this IReadOnlyList<T> list)
         {
-            T[] array = list as T[];
+            T[]? array = list as T[];
             if (array != null) { return array.AsSpan(); }
 
 #if NET5_0_OR_GREATER
-            List<T> concreteList = list as List<T>;
+            List<T>? concreteList = list as List<T>;
             if (concreteList != null) { return CollectionsMarshal.AsSpan(concreteList); }
 #endif
 

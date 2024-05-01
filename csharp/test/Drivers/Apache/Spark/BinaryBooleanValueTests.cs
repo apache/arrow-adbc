@@ -72,7 +72,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "BOOLEANTYPE";
             using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, "BOOLEAN"));
-            string formattedValue =  value == null ? null : QuoteValue($"{value?.ToString(CultureInfo.InvariantCulture)}");
+            string? formattedValue =  value == null ? null : QuoteValue($"{value?.ToString(CultureInfo.InvariantCulture)}");
             await ValidateInsertSelectDeleteSingleValue(
                 table.TableName,
                 columnName,
