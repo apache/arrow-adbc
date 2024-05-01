@@ -26,13 +26,25 @@ use crate::{
 /// Option value.
 ///
 /// Can be created with various implementations of [From].
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum OptionValue {
     String(String),
     Bytes(Vec<u8>),
     Int(i64),
     Double(f64),
+}
+
+impl OptionValue {
+    /// Gets the data type of the option's value.
+    pub(crate) fn get_type(&self) -> &str {
+        match self {
+            Self::String(_) => "String",
+            Self::Bytes(_) => "Bytes",
+            Self::Int(_) => "Int",
+            Self::Double(_) => "Double",
+        }
+    }
 }
 
 impl From<String> for OptionValue {
@@ -84,7 +96,7 @@ impl<const N: usize> From<&[u8; N]> for OptionValue {
 }
 
 /// ADBC revision versions.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum AdbcVersion {
     /// Version 1.0.0.
@@ -98,6 +110,20 @@ impl From<AdbcVersion> for c_int {
         match value {
             AdbcVersion::V100 => constants::ADBC_VERSION_1_0_0,
             AdbcVersion::V110 => constants::ADBC_VERSION_1_1_0,
+        }
+    }
+}
+
+impl TryFrom<c_int> for AdbcVersion {
+    type Error = Error;
+    fn try_from(value: c_int) -> Result<Self, Self::Error> {
+        match value {
+            constants::ADBC_VERSION_1_0_0 => Ok(AdbcVersion::V100),
+            constants::ADBC_VERSION_1_1_0 => Ok(AdbcVersion::V110),
+            _ => Err(Error::with_message_and_status(
+                format!("Unknown ADBC version: {}", value),
+                Status::InvalidArguments,
+            )),
         }
     }
 }
@@ -207,7 +233,7 @@ impl TryFrom<c_int> for ObjectDepth {
 }
 
 /// Database option key.
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 #[non_exhaustive]
 pub enum OptionDatabase {
     /// Canonical option key for URIs.
@@ -255,7 +281,7 @@ impl From<&str> for OptionDatabase {
 }
 
 /// Connection option key.
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 #[non_exhaustive]
 pub enum OptionConnection {
     /// Whether autocommit is enabled.
@@ -303,7 +329,7 @@ impl From<&str> for OptionConnection {
 }
 
 /// Statement option key.
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 #[non_exhaustive]
 pub enum OptionStatement {
     /// The ingest mode for a bulk insert. See [IngestMode].
