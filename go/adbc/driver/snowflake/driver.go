@@ -72,9 +72,17 @@ const (
 	// scale will return a Float64 column.
 	OptionUseHighPrecision = "adbc.snowflake.sql.client_option.use_high_precision"
 
-	OptionApplicationName  = "adbc.snowflake.sql.client_option.app_name"
-	OptionSSLSkipVerify    = "adbc.snowflake.sql.client_option.tls_skip_verify"
-	OptionOCSPFailOpenMode = "adbc.snowflake.sql.client_option.ocsp_fail_open_mode"
+	// OptionQuotedIdentifiersIgnoreCase refers to the corresponding snowflake session
+	// parameter (https://docs.snowflake.com/en/sql-reference/parameters#label-quoted-identifiers-ignore-case)
+	// which controls whether or not the case of quoted identifiers will be preserved (default)
+	// or will be ignored (storing and resolving as uppercase).
+	// Because functionality such as bulk ingest and other options will automatically add quotes
+	// to identifiers by default, this option can be set to TRUE to ensure that the casing will
+	// be ignored for that functionality despite the fact that we wrap it in quotes.
+	OptionQuotedIdentifiersIgnoreCase = "adbc.snowflake.sql.quoted_identifiers_ignore_case"
+	OptionApplicationName             = "adbc.snowflake.sql.client_option.app_name"
+	OptionSSLSkipVerify               = "adbc.snowflake.sql.client_option.tls_skip_verify"
+	OptionOCSPFailOpenMode            = "adbc.snowflake.sql.client_option.ocsp_fail_open_mode"
 	// specify the token to use for OAuth or other forms of authentication
 	OptionAuthToken = "adbc.snowflake.sql.client_option.auth_token"
 	// specify the OKTAUrl to use for OKTA Authentication

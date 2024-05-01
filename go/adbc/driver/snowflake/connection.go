@@ -61,8 +61,9 @@ type connectionImpl struct {
 	ctor  gosnowflake.Connector
 	sqldb *sql.DB
 
-	activeTransaction bool
-	useHighPrecision  bool
+	activeTransaction     bool
+	useHighPrecision      bool
+	quotedIdentIgnoreCase bool
 }
 
 // Uniquely identify a constraint based on the dbName, schema, and tblName
@@ -1337,10 +1338,46 @@ func (c *connectionImpl) SetOption(key, value string) error {
 			}
 		}
 		return nil
+	case OptionQuotedIdentifiersIgnoreCase:
+		switch value {
+		case adbc.OptionValueEnabled, adbc.OptionValueDisabled:
+			c.quotedIdentIgnoreCase = value == adbc.OptionValueEnabled
+			q := "ALTER SESSION SET QUOTED_IDENTIFIERS_IGNORE_CASE = " + value
+			if _, err := c.cn.ExecContext(context.Background(), q, nil); err != nil {
+				return errToAdbcErr(adbc.StatusInternal, err)
+			}
+
+			if _, err := c.sqldb.ExecContext(context.Background(), q); err != nil {
+				return errToAdbcErr(adbc.StatusInternal, err)
+			}
+		default:
+			return adbc.Error{
+				Msg:  "[Snowflake] invalid value for option " + key + ": " + value,
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		return nil
 	default:
 		return adbc.Error{
 			Msg:  "[Snowflake] unknown connection option " + key + ": " + value,
 			Code: adbc.StatusInvalidArgument,
 		}
+	}
+}
+
+func (c *connectionImpl) GetOption(key string) (string, error) {
+	switch key {
+	case OptionUseHighPrecision:
+		if c.useHighPrecision {
+			return adbc.OptionValueEnabled, nil
+		}
+		return adbc.OptionValueDisabled, nil
+	case OptionQuotedIdentifiersIgnoreCase:
+		if c.quotedIdentIgnoreCase {
+			return adbc.OptionValueEnabled, nil
+		}
+		return adbc.OptionValueDisabled, nil
+	default:
+		return c.db.GetOption(key)
 	}
 }

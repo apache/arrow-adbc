@@ -44,6 +44,7 @@ import (
 	"github.com/apache/arrow/go/v17/arrow/memory"
 	"github.com/google/uuid"
 	"github.com/snowflakedb/gosnowflake"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -2030,4 +2031,123 @@ func (suite *SnowflakeTests) TestMetadataOnlyQuery() {
 	// verify that we got the exepected number of rows if we sum up
 	// all the rows from each record in the stream.
 	suite.Equal(n, recv)
+}
+
+func TestSnowflakeQuotedIdentIgnoreCase(t *testing.T) {
+	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
+	defer mem.AssertSize(t, 0)
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_list", Type: arrow.ListOf(arrow.BinaryTypes.String),
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(mem, sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+
+	listbldr := bldr.Field(1).(*array.ListBuilder)
+	listvalbldr := listbldr.ValueBuilder().(*array.StringBuilder)
+	listbldr.Append(true)
+	listvalbldr.Append("one")
+	listbldr.Append(true)
+	listvalbldr.Append("two")
+	listbldr.Append(true)
+	listvalbldr.Append("three")
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_list", Type: arrow.BinaryTypes.String,
+			Nullable: true,
+		},
+	}, nil)
+
+	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	[
+		{
+			"col_int64": 1,
+			"col_list": "[\n  \"one\"\n]"
+		},
+		{
+			"col_int64": 2,
+			"col_list": "[\n  \"two\"\n]"
+		},
+		{
+			"col_int64": 3,
+			"col_list": "[\n  \"three\"\n]"
+		}
+	]
+	`)))
+	require.NoError(t, err)
+	defer expectedRecord.Release()
+
+	withQuirks(t, func(q *SnowflakeQuirks) {
+		drv := q.SetupDriver(t)
+		opts := q.DatabaseOptions()
+		// initialize connection with this session parameter set so that ingest
+		// and DropTable will both ignore the casing for the quoted identifiers
+		opts[driver.OptionQuotedIdentifiersIgnoreCase] = adbc.OptionValueEnabled
+
+		db, err := drv.NewDatabase(opts)
+		require.NoError(t, err)
+		defer db.Close()
+
+		ctx := context.Background()
+		cnxn, err := db.Open(ctx)
+		require.NoError(t, err)
+		defer cnxn.Close()
+
+		require.NoError(t, q.DropTable(cnxn, "bulk_ingest_list"))
+
+		stmt, err := cnxn.NewStatement()
+		require.NoError(t, err)
+		defer stmt.Close()
+
+		require.NoError(t, stmt.Bind(ctx, rec))
+		require.NoError(t, stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_list"))
+		n, err := stmt.ExecuteUpdate(ctx)
+		require.NoError(t, err)
+		assert.EqualValues(t, 3, n)
+
+		// disable the quoted identifiers option to get the default behavior back
+		require.NoError(t, cnxn.(adbc.GetSetOptions).
+			SetOption(driver.OptionQuotedIdentifiersIgnoreCase, adbc.OptionValueDisabled))
+		// with the option disabled this query should error because wrapping with quotes
+		// would preserve the case and the table wouldn't exist
+		require.NoError(t, stmt.SetSqlQuery(`SELECT * FROM "bulk_ingest_list" order by col_int64 ASC`))
+		_, _, err = stmt.ExecuteQuery(ctx)
+		assert.Error(t, err)
+
+		// confirm that our ingested table is using uppercase because of our option usage
+		require.NoError(t, stmt.SetSqlQuery("SELECT * FROM BULK_INGEST_LIST order by col_int64 ASC"))
+
+		rdr, n, err := stmt.ExecuteQuery(ctx)
+		require.NoError(t, err)
+		defer rdr.Release()
+
+		assert.EqualValues(t, 3, n)
+		assert.True(t, rdr.Next())
+		result := rdr.Record()
+		assert.Truef(t, array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
+		logicalTypeList, ok := result.Schema().Field(1).Metadata.GetValue("logicalType")
+		assert.True(t, ok)
+		assert.Equal(t, "ARRAY", logicalTypeList)
+
+		assert.False(t, rdr.Next())
+		require.NoError(t, rdr.Err())
+	})
 }

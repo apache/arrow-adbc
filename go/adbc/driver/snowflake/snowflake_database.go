@@ -49,6 +49,8 @@ var (
 	}
 )
 
+const quotedIdentifiersIgnoreCase = "QUOTED_IDENTIFIERS_IGNORE_CASE"
+
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
 	cfg *gosnowflake.Config
@@ -130,6 +132,12 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 			return adbc.OptionValueEnabled, nil
 		}
 		return adbc.OptionValueDisabled, nil
+	case OptionQuotedIdentifiersIgnoreCase:
+		v, exists := d.cfg.Params[quotedIdentifiersIgnoreCase]
+		if !exists {
+			return adbc.OptionValueDisabled, nil
+		}
+		return *v, nil
 	default:
 		val, ok := d.cfg.Params[key]
 		if ok {
@@ -427,6 +435,17 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 					Code: adbc.StatusInvalidArgument,
 				}
 			}
+		case OptionQuotedIdentifiersIgnoreCase:
+			switch v {
+			case adbc.OptionValueEnabled, adbc.OptionValueDisabled:
+				d.cfg.Params[quotedIdentifiersIgnoreCase] = &v
+			default:
+				return adbc.Error{
+					Msg: fmt.Sprintf("Invalid value for database option '%s': '%s'",
+						OptionQuotedIdentifiersIgnoreCase, v),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
 		default:
 			d.cfg.Params[k] = &v
 		}
@@ -445,6 +464,13 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
 
+	var quoteIgnoreCase bool
+
+	v, exists := d.cfg.Params[quotedIdentifiersIgnoreCase]
+	if exists {
+		quoteIgnoreCase = *v == adbc.OptionValueEnabled
+	}
+
 	conn := &connectionImpl{
 		cn: cn.(snowflakeConn),
 		db: d, ctor: connector,
@@ -452,8 +478,9 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		// default enable high precision
 		// SetOption(OptionUseHighPrecision, adbc.OptionValueDisabled) to
 		// get Int64/Float64 instead
-		useHighPrecision:   d.useHighPrecision,
-		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+		useHighPrecision:      d.useHighPrecision,
+		ConnectionImplBase:    driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+		quotedIdentIgnoreCase: quoteIgnoreCase,
 	}
 
 	return driverbase.NewConnectionBuilder(conn).
