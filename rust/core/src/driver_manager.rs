@@ -1205,3 +1205,4 @@ impl Drop for ManagedStatement {
         unsafe { method(statement.deref_mut(), null_mut()) };
     }
 }
+
