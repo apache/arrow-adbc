@@ -93,6 +93,17 @@
 //! # }
 //! ```
 
+// According to the ADBC specification, objects allow serialized access from
+// multiple threads: one thread may make a call, and once finished, another
+// thread may make a call. They do not allow concurrent access from multiple
+// threads.
+//
+// In order to implement this semantics, all FFI objects are wrapped into
+// `Mutex`. Hence, we need to deal with multiple locks at once, so care must
+// be taken to avoid deadlock and in particular we must avoid "lock inversion".
+// The general convention chosen here is to first acquire lock to the driver
+// and then acquire lock to the specific object under implementation.
+
 use std::collections::HashSet;
 use std::ffi::{CStr, CString};
 use std::ops::DerefMut;
@@ -1205,4 +1216,3 @@ impl Drop for ManagedStatement {
         unsafe { method(statement.deref_mut(), null_mut()) };
     }
 }
-
