@@ -42,6 +42,7 @@ on:
       - "python/**"
       - "ruby/**"
       - ".github/workflows/native-unix.yml"
+  workflow_call:
 
 concurrency:
   group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}

@@ -42,6 +42,12 @@ defaults:
     working-directory: rust
 
 jobs:
+  native-unix:
+    uses: ./.github/workflows/native-unix.yml
+
+  native-windows:
+    uses: ./.github/workflows/native-windows.yml
+
   rust:
     strategy:
       matrix:
