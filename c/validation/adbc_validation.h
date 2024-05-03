@@ -407,6 +407,7 @@ class StatementTest {
   void TestSqlPrepareErrorNoQuery();
   void TestSqlPrepareErrorParamCountMismatch();
 
+  void TestSqlQueryEmpty();
   void TestSqlQueryInts();
   void TestSqlQueryFloats();
   void TestSqlQueryStrings();
@@ -504,6 +505,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlPrepareErrorParamCountMismatch) {                                  \
     TestSqlPrepareErrorParamCountMismatch();                                            \
   }                                                                                     \
+  TEST_F(FIXTURE, SqlQueryEmpty) { TestSqlQueryEmpty(); }                               \
   TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
   TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \
   TEST_F(FIXTURE, SqlQueryStrings) { TestSqlQueryStrings(); }                           \
