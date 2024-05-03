@@ -29,28 +29,23 @@ namespace Apache.Arrow.Adbc.Client
     {
         private AdbcStatement adbcStatement;
         private int _timeout = 30;
+        private bool _disposed;
 
         /// <summary>
         /// Overloaded. Initializes <see cref="AdbcCommand"/>.
         /// </summary>
-        /// <param name="adbcStatement">
-        /// The <see cref="AdbcStatement"/> to use.
-        /// </param>
         /// <param name="adbcConnection">
         /// The <see cref="AdbcConnection"/> to use.
         /// </param>
         /// <exception cref="ArgumentNullException"></exception>
-        public AdbcCommand(AdbcStatement adbcStatement, AdbcConnection adbcConnection) : base()
+        public AdbcCommand(AdbcConnection adbcConnection) : base()
         {
-            if (adbcStatement == null)
-                throw new ArgumentNullException(nameof(adbcStatement));
-
             if (adbcConnection == null)
                 throw new ArgumentNullException(nameof(adbcConnection));
 
-            this.adbcStatement = adbcStatement;
             this.DbConnection = adbcConnection;
             this.DecimalBehavior = adbcConnection.DecimalBehavior;
+            this.adbcStatement = adbcConnection.CreateStatement();
         }
 
         /// <summary>
@@ -61,14 +56,22 @@ namespace Apache.Arrow.Adbc.Client
         public AdbcCommand(string query, AdbcConnection adbcConnection) : base()
         {
             if (string.IsNullOrEmpty(query))
-                throw new ArgumentNullException(nameof(adbcStatement));
+                throw new ArgumentNullException(nameof(query));
 
             if (adbcConnection == null)
                 throw new ArgumentNullException(nameof(adbcConnection));
 
-            this.adbcStatement = adbcConnection.AdbcStatement;
+            this.adbcStatement = adbcConnection.CreateStatement();
             this.CommandText = query;
 
+            this.DbConnection = adbcConnection;
+            this.DecimalBehavior = adbcConnection.DecimalBehavior;
+        }
+
+        // For testing
+        internal AdbcCommand(AdbcStatement adbcStatement, AdbcConnection adbcConnection)
+        {
+            this.adbcStatement = adbcStatement;
             this.DbConnection = adbcConnection;
             this.DecimalBehavior = adbcConnection.DecimalBehavior;
         }
@@ -77,15 +80,15 @@ namespace Apache.Arrow.Adbc.Client
         /// Gets the <see cref="AdbcStatement"/> associated with
         /// this <see cref="AdbcCommand"/>.
         /// </summary>
-        public AdbcStatement AdbcStatement => this.adbcStatement;
+        public AdbcStatement AdbcStatement => _disposed ? throw new ObjectDisposedException(nameof(AdbcCommand)) : this.adbcStatement;
 
         public DecimalBehavior DecimalBehavior { get; set; }
 
         public override string CommandText
         {
-            get => this.adbcStatement.SqlQuery ?? string.Empty;
+            get => AdbcStatement.SqlQuery ?? string.Empty;
 #nullable disable
-            set => this.adbcStatement.SqlQuery = string.IsNullOrEmpty(value) ? null : value;
+            set => AdbcStatement.SqlQuery = string.IsNullOrEmpty(value) ? null : value;
 #nullable restore
         }
 
@@ -116,15 +119,15 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         public byte[]? SubstraitPlan
         {
-            get => this.adbcStatement.SubstraitPlan;
-            set => this.adbcStatement.SubstraitPlan = value;
+            get => AdbcStatement.SubstraitPlan;
+            set => AdbcStatement.SubstraitPlan = value;
         }
 
         protected override DbConnection? DbConnection { get; set; }
 
         public override int ExecuteNonQuery()
         {
-            return Convert.ToInt32(this.adbcStatement.ExecuteUpdate().AffectedRows);
+            return Convert.ToInt32(AdbcStatement.ExecuteUpdate().AffectedRows);
         }
 
         /// <summary>
@@ -134,7 +137,7 @@ namespace Apache.Arrow.Adbc.Client
         /// <returns></returns>
         public long ExecuteUpdate()
         {
-            return this.adbcStatement.ExecuteUpdate().AffectedRows;
+            return AdbcStatement.ExecuteUpdate().AffectedRows;
         }
 
         /// <summary>
@@ -143,7 +146,7 @@ namespace Apache.Arrow.Adbc.Client
         /// <returns><see cref="Result"></returns>
         public QueryResult ExecuteQuery()
         {
-            QueryResult executed = this.adbcStatement.ExecuteQuery();
+            QueryResult executed = AdbcStatement.ExecuteQuery();
 
             return executed;
         }
@@ -171,6 +174,9 @@ namespace Apache.Arrow.Adbc.Client
         /// <returns><see cref="AdbcDataReader"/></returns>
         public new AdbcDataReader ExecuteReader(CommandBehavior behavior)
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(AdbcCommand));
+
             bool closeConnection = (behavior & CommandBehavior.CloseConnection) != 0;
             switch (behavior & ~CommandBehavior.CloseConnection)
             {
@@ -186,15 +192,14 @@ namespace Apache.Arrow.Adbc.Client
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
+            if (disposing && !_disposed)
             {
                 // TODO: ensure not in the middle of pulling
-                this.adbcStatement?.Dispose();
+                this.adbcStatement.Dispose();
+                _disposed = true;
             }
 
             base.Dispose(disposing);
-
-            GC.SuppressFinalize(this);
         }
 
 #if NET5_0_OR_GREATER

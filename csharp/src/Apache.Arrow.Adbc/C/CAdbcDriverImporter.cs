@@ -151,20 +151,35 @@ namespace Apache.Arrow.Adbc.C
                 if (parameters == null) throw new ArgumentNullException(nameof(parameters));
 
                 CAdbcDatabase nativeDatabase = new CAdbcDatabase();
-
-                using (CallHelper caller = new CallHelper())
+                ImportedAdbcDatabase? result = null;
+                try
                 {
-                    caller.Call(Driver.DatabaseNew, ref nativeDatabase);
-
-                    foreach (KeyValuePair<string, string> pair in parameters)
+                    using (CallHelper caller = new CallHelper())
                     {
-                        caller.Call(Driver.DatabaseSetOption, ref nativeDatabase, pair.Key, pair.Value);
+                        caller.Call(Driver.DatabaseNew, ref nativeDatabase);
+
+                        foreach (KeyValuePair<string, string> pair in parameters)
+                        {
+                            caller.Call(Driver.DatabaseSetOption, ref nativeDatabase, pair.Key, pair.Value);
+                        }
+
+                        caller.Call(Driver.DatabaseInit, ref nativeDatabase);
                     }
 
-                    caller.Call(Driver.DatabaseInit, ref nativeDatabase);
+                    result = new ImportedAdbcDatabase(this, nativeDatabase);
+                }
+                finally
+                {
+                    if (result == null && nativeDatabase.private_data != null)
+                    {
+                        using (CallHelper caller = new CallHelper())
+                        {
+                            caller.Call(Driver.DatabaseRelease, ref nativeDatabase);
+                        }
+                    }
                 }
 
-                return new ImportedAdbcDatabase(this, nativeDatabase);
+                return result;
             }
 
             public unsafe override void Dispose()
@@ -219,23 +234,38 @@ namespace Apache.Arrow.Adbc.C
             public unsafe override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
             {
                 CAdbcConnection nativeConnection = new CAdbcConnection();
-
-                using (CallHelper caller = new CallHelper())
+                ImportedAdbcConnection? result = null;
+                try
                 {
-                    caller.Call(Driver.ConnectionNew, ref nativeConnection);
-
-                    if (options != null)
+                    using (CallHelper caller = new CallHelper())
                     {
-                        foreach (KeyValuePair<string, string> pair in options)
+                        caller.Call(Driver.ConnectionNew, ref nativeConnection);
+
+                        if (options != null)
                         {
-                            caller.Call(Driver.ConnectionSetOption, ref nativeConnection, pair.Key, pair.Value);
+                            foreach (KeyValuePair<string, string> pair in options)
+                            {
+                                caller.Call(Driver.ConnectionSetOption, ref nativeConnection, pair.Key, pair.Value);
+                            }
+                        }
+
+                        caller.Call(Driver.ConnectionInit, ref nativeConnection, ref _nativeDatabase);
+
+                        result = new ImportedAdbcConnection(_driver, nativeConnection);
+                    }
+                }
+                finally
+                {
+                    if (result == null && nativeConnection.private_data != null)
+                    {
+                        using (CallHelper caller = new CallHelper())
+                        {
+                            caller.Call(Driver.ConnectionRelease, ref nativeConnection);
                         }
                     }
-
-                    caller.Call(Driver.ConnectionInit, ref nativeConnection, ref _nativeDatabase);
                 }
 
-                return new ImportedAdbcConnection(_driver, nativeConnection);
+                return result;
             }
 
             public override void Dispose()
@@ -338,22 +368,37 @@ namespace Apache.Arrow.Adbc.C
             public unsafe override AdbcStatement CreateStatement()
             {
                 CAdbcStatement nativeStatement = new CAdbcStatement();
-
-                using (CallHelper caller = new CallHelper())
+                ImportedAdbcStatement? result = null;
+                try
                 {
-                    fixed (CAdbcConnection* connection = &_nativeConnection)
+                    using (CallHelper caller = new CallHelper())
                     {
-                        caller.TranslateCode(
+                        fixed (CAdbcConnection* connection = &_nativeConnection)
+                        {
+                            caller.TranslateCode(
 #if NET5_0_OR_GREATER
-                            Driver.StatementNew
+                                Driver.StatementNew
 #else
-                            Marshal.GetDelegateForFunctionPointer<StatementNew>(Driver.StatementNew)
+                                Marshal.GetDelegateForFunctionPointer<StatementNew>(Driver.StatementNew)
 #endif
-                            (connection, &nativeStatement, &caller._error));
+                                (connection, &nativeStatement, &caller._error));
+                        }
+
+                        result = new ImportedAdbcStatement(_driver, nativeStatement);
+                    }
+                }
+                finally
+                {
+                    if (result == null && nativeStatement.private_data != null)
+                    {
+                        using (CallHelper caller = new CallHelper())
+                        {
+                            caller.Call(Driver.StatementRelease, ref nativeStatement);
+                        }
                     }
                 }
 
-                return new ImportedAdbcStatement(_driver, nativeStatement);
+                return result;
             }
 
             public unsafe override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
@@ -831,7 +876,11 @@ namespace Apache.Arrow.Adbc.C
             {
                 Debug.Assert(_schema != null);
                 Schema schema = CArrowSchemaImporter.ImportSchema(_schema);
+
+                // ImportSchema makes a copy so we need to free the original
+                CArrowSchema.Free(_schema);
                 _schema = null;
+
                 return schema;
             }
 

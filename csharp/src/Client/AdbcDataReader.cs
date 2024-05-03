@@ -91,7 +91,7 @@ namespace Apache.Arrow.Adbc.Client
         /// <summary>
         /// The total number of record batches in the result.
         /// </summary>
-        public int TotalBatches { get; set; }
+        public int TotalBatches { get; private set; }
 
         private RecordBatch RecordBatch
         {

@@ -100,7 +100,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             string[] queries = SnowflakeTestingUtils.GetQueries(_testConfiguration);
 
-            List<int> expectedResults = new List<int>() { -1, 1, 1 };
+            List<int> expectedResults = new List<int>() { 1, 1, 1 };
 
             for (int i = 0; i < queries.Length; i++)
             {
