@@ -57,19 +57,7 @@ namespace Apache.Arrow.Adbc
         /// </param>
         public virtual AdbcStatement BulkIngest(string targetTableName, BulkIngestMode mode)
         {
-            AdbcStatement statement = CreateStatement();
-            bool succeeded = false;
-            try
-            {
-                statement.SetOption(AdbcOptions.Ingest.TargetTable, targetTableName);
-                statement.SetOption(AdbcOptions.Ingest.Mode, AdbcOptions.GetIngestMode(mode));
-                succeeded = true;
-                return statement;
-            }
-            finally
-            {
-                if (!succeeded) { statement.Dispose(); }
-            }
+            throw AdbcException.NotImplemented("Connection does not support BulkIngest");
         }
 
         public virtual void Dispose()

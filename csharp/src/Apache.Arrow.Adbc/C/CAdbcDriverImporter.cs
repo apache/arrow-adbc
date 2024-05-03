@@ -513,6 +513,23 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
+            public override AdbcStatement BulkIngest(string targetTableName, BulkIngestMode mode)
+            {
+                AdbcStatement statement = CreateStatement();
+                bool succeeded = false;
+                try
+                {
+                    statement.SetOption(AdbcOptions.Ingest.TargetTable, targetTableName);
+                    statement.SetOption(AdbcOptions.Ingest.Mode, AdbcOptions.GetIngestMode(mode));
+                    succeeded = true;
+                    return statement;
+                }
+                finally
+                {
+                    if (!succeeded) { statement.Dispose(); }
+                }
+            }
+
             public unsafe override void Commit()
             {
                 using (CallHelper caller = new CallHelper())
