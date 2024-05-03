@@ -19,6 +19,7 @@ package snowflake
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"strconv"
 	"strings"
@@ -463,10 +464,26 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 	// concatenate RecordReaders which doesn't exist yet. let's put
 	// that off for now.
 	if st.streamBind != nil || st.bound != nil {
-		return nil, -1, adbc.Error{
-			Msg:  "executing non-bulk ingest with bound params not yet implemented",
-			Code: adbc.StatusNotImplemented,
+		bind := snowflakeBindReader{
+			doQuery: func(params []driver.NamedValue) (array.RecordReader, error) {
+				loader, err := st.cnxn.cn.QueryArrowStream(ctx, st.query, params...)
+				if err != nil {
+					return nil, errToAdbcErr(adbc.StatusInternal, err)
+				}
+				return newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
+			},
+			currentBatch: st.bound,
+			stream:       st.streamBind,
 		}
+		st.bound = nil
+		st.streamBind = nil
+
+		rdr := concatReader{}
+		err := rdr.Init(&bind)
+		if err != nil {
+			return nil, -1, err
+		}
+		return &rdr, -1, nil
 	}
 
 	loader, err := st.cnxn.cn.QueryArrowStream(ctx, st.query)
@@ -491,6 +508,38 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 			Msg:  "cannot execute without a query",
 			Code: adbc.StatusInvalidState,
 		}
+	}
+
+	if st.streamBind != nil || st.bound != nil {
+		numRows := int64(0)
+		bind := snowflakeBindReader{
+			currentBatch: st.bound,
+			stream:       st.streamBind,
+		}
+		st.bound = nil
+		st.streamBind = nil
+
+		defer bind.Release()
+		for {
+			params, err := bind.NextParams()
+			if err != nil {
+				return -1, err
+			} else if params == nil {
+				break
+			}
+
+			r, err := st.cnxn.cn.ExecContext(ctx, st.query, params)
+			if err != nil {
+				return -1, errToAdbcErr(adbc.StatusInternal, err)
+			}
+			n, err := r.RowsAffected()
+			if err != nil {
+				numRows = -1
+			} else if numRows >= 0 {
+				numRows += n
+			}
+		}
+		return numRows, nil
 	}
 
 	r, err := st.cnxn.cn.ExecContext(ctx, st.query, nil)

@@ -19,6 +19,7 @@ package snowflake
 
 import (
 	"errors"
+	"maps"
 	"runtime/debug"
 	"strings"
 
@@ -26,7 +27,6 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v17/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
-	"golang.org/x/exp/maps"
 )
 
 const (
