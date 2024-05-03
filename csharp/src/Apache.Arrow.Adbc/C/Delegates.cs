@@ -40,6 +40,7 @@ namespace Apache.Arrow.Adbc.C
     internal unsafe delegate AdbcStatusCode StatementExecutePartitions(CAdbcStatement* statement, CArrowSchema* schema, CAdbcPartitions* partitions, long* rows, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementNew(CAdbcConnection* connection, CAdbcStatement* statement, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementFn(CAdbcStatement* statement, CAdbcError* error);
+    internal unsafe delegate AdbcStatusCode StatementSetOption(CAdbcStatement* statement, byte* name, byte* value, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementSetSqlQuery(CAdbcStatement* statement, byte* text, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementSetSubstraitPlan(CAdbcStatement* statement, byte* plan, int length, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementGetParameterSchema(CAdbcStatement* statement, CArrowSchema* schema, CAdbcError* error);

@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Apache.Arrow.Adbc.C;
 using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc
@@ -56,7 +57,19 @@ namespace Apache.Arrow.Adbc
         /// </param>
         public virtual AdbcStatement BulkIngest(string targetTableName, BulkIngestMode mode)
         {
-            throw AdbcException.NotImplemented("Connection does not support BulkIngest");
+            AdbcStatement statement = CreateStatement();
+            bool succeeded = false;
+            try
+            {
+                statement.SetOption(AdbcOptions.Ingest.TargetTable, targetTableName);
+                statement.SetOption(AdbcOptions.Ingest.Mode, AdbcOptions.GetIngestMode(mode));
+                succeeded = true;
+                return statement;
+            }
+            finally
+            {
+                if (!succeeded) { statement.Dispose(); }
+            }
         }
 
         public virtual void Dispose()

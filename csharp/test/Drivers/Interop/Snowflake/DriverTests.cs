@@ -16,12 +16,12 @@
 */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
+using Apache.Arrow.Types;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
@@ -100,7 +100,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             string[] queries = SnowflakeTestingUtils.GetQueries(_testConfiguration);
 
-            List<int> expectedResults = new List<int>() { 1, 1, 1 };
+            List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
             for (int i = 0; i < queries.Length; i++)
             {
@@ -398,6 +398,56 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             Tests.DriverTests.CanExecuteQuery(queryResult, _testConfiguration.ExpectedResultsCount);
         }
+
+        [SkippableFact, Order(7)]
+        public void CanIngestData()
+        {
+            const string tableName = "AdbcIngestTest";
+
+            using var statement = _connection.CreateStatement();
+            statement.SqlQuery = $"USE SCHEMA \"{_testConfiguration.Metadata.Schema}\"";
+            statement.ExecuteUpdate();
+            statement.SqlQuery = $"DROP TABLE IF EXISTS \"{tableName}\"";
+            statement.ExecuteUpdate();
+
+            statement.SqlQuery = null;
+            statement.SetOption("adbc.ingest.target_table", tableName);
+            statement.SetOption("adbc.ingest.mode", "adbc.ingest.mode.create");
+
+            Schema schema = new Schema([new Field("key", Int32Type.Default, false), new Field("value", StringType.Default, false)], null);
+            RecordBatch recordBatch = new RecordBatch(schema, [
+                new Int32Array.Builder().AppendRange([1, 2, 3]).Build(),
+                new StringArray.Builder().AppendRange(["foo", "bar", "baz"]).Build()
+                ], 3);
+            statement.Bind(recordBatch, schema);
+            statement.ExecuteUpdate();
+
+            Schema foundSchema = _connection.GetTableSchema(null, null, tableName);
+            Assert.Equal(schema.FieldsList.Count, foundSchema.FieldsList.Count);
+
+            statement.SqlQuery = $"SELECT * FROM \"{tableName}\"";
+            var result = statement.ExecuteQuery();
+            Assert.Equal(3, result.RowCount);
+            result.Stream?.Dispose();
+
+            using var statement2 = _connection.BulkIngest(tableName, BulkIngestMode.Append);
+
+            recordBatch = new RecordBatch(schema, [
+                new Int32Array.Builder().AppendRange([4, 5]).Build(),
+                new StringArray.Builder().AppendRange(["quux", "zozzle"]).Build()
+                ], 2);
+            statement2.Bind(recordBatch, schema);
+            statement2.ExecuteUpdate();
+
+            statement.SqlQuery = $"SELECT * FROM \"{tableName}\"";
+            result = statement.ExecuteQuery();
+            Assert.Equal(5, result.RowCount);
+            result.Stream?.Dispose();
+
+            statement.SqlQuery = $"DROP TABLE IF EXISTS \"{tableName}\"";
+            statement.ExecuteUpdate();
+        }
+
 
         private void CreateDatabaseAndTable(string databaseName, string schemaName, string tableName)
         {

@@ -268,6 +268,14 @@ namespace Apache.Arrow.Adbc.C
                 return result;
             }
 
+            public unsafe override void SetOption(string key, string value)
+            {
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(Driver.DatabaseSetOption, ref _nativeDatabase, key, value);
+                }
+            }
+
             public override void Dispose()
             {
                 Dispose(true);
@@ -707,7 +715,7 @@ namespace Apache.Arrow.Adbc.C
 #else
                             Marshal.GetDelegateForFunctionPointer<StatementExecuteQuery>(Driver.StatementExecuteQuery)
 #endif
-                            (statement, caller.CreateStream(), &rows, &caller._error));
+                            (statement, null, &rows, &caller._error));
 
                         return new UpdateResult(rows);
                     }
@@ -764,6 +772,14 @@ namespace Apache.Arrow.Adbc.C
                             }
                         }
                     }
+                }
+            }
+
+            public unsafe override void SetOption(string key, string value)
+            {
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(Driver.StatementSetOption, ref _nativeStatement, key, value);
                 }
             }
 
@@ -1077,6 +1093,34 @@ namespace Apache.Arrow.Adbc.C
                 fixed (CAdbcError* e = &_error)
                 {
                     TranslateCode(Marshal.GetDelegateForFunctionPointer<ConnectionInit>(fn)(cn, db, e));
+                }
+            }
+#endif
+
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcStatement*, byte*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcStatement nativeStatement, string key, string? value)
+            {
+                fixed (CAdbcStatement* stmt = &nativeStatement)
+                fixed (CAdbcError* e = &_error)
+                {
+                    using (Utf8Helper utf8Key = new Utf8Helper(key))
+                    using (Utf8Helper utf8Value = new Utf8Helper(value))
+                    {
+                        TranslateCode(fn(stmt, utf8Key, utf8Value, e));
+                    }
+                }
+            }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcStatement nativeStatement, string key, string? value)
+            {
+                fixed (CAdbcStatement* stmt = &nativeStatement)
+                fixed (CAdbcError* e = &_error)
+                {
+                    using (Utf8Helper utf8Key = new Utf8Helper(key))
+                    using (Utf8Helper utf8Value = new Utf8Helper(value))
+                    {
+                        TranslateCode(Marshal.GetDelegateForFunctionPointer<StatementSetOption>(fn)(stmt, utf8Key, utf8Value, e));
+                    }
                 }
             }
 #endif
