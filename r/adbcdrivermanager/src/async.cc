@@ -21,6 +21,7 @@
 #include <Rinternals.h>
 
 #include <deque>
+#include <future>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -29,6 +30,76 @@
 #include <adbc.h>
 
 #include "radbc.h"
+
+struct RAdbcAsyncTask {
+  AdbcError* return_error{nullptr};
+  int* return_code{nullptr};
+  double* rows_affected{nullptr};
+  void* return_value_ptr{nullptr};
+
+  std::string error_message;
+  std::unique_ptr<std::future<void>> result;
+};
+
+template <>
+inline const char* adbc_xptr_class<RAdbcAsyncTask>() {
+  return "adbc_async_task";
+}
+
+static void FinalizeTaskXptr(SEXP task_xptr) {
+  auto task = reinterpret_cast<RAdbcAsyncTask*>(R_ExternalPtrAddr(task_xptr));
+  if (task != nullptr) {
+    delete task;
+  }
+}
+
+extern "C" SEXP RAdbcAsyncTaskNew(SEXP error_xptr) {
+  const char* names[] = {"error_xptr", "return_code", "rows_affected", "result_xptr", ""};
+  SEXP task_prot = PROTECT(Rf_mkNamed(VECSXP, names));
+  SET_VECTOR_ELT(task_prot, 0, error_xptr);
+  SET_VECTOR_ELT(task_prot, 1, Rf_allocVector(INTSXP, 1));
+  SET_VECTOR_ELT(task_prot, 2, Rf_allocVector(REALSXP, 1));
+
+  auto task = new RAdbcAsyncTask();
+  SEXP task_xptr = PROTECT(R_MakeExternalPtr(task, R_NilValue, task_prot));
+  Rf_setAttrib(task_xptr, R_ClassSymbol, Rf_mkString("adbc_async_task"));
+  R_RegisterCFinalizer(task_xptr, &FinalizeTaskXptr);
+
+  task->return_error = adbc_from_xptr<AdbcError>(error_xptr);
+  task->return_code = INTEGER(VECTOR_ELT(task_prot, 1));
+  task->rows_affected = REAL(VECTOR_ELT(task_prot, 2));
+
+  UNPROTECT(1);
+  return R_NilValue;
+}
+
+extern "C" SEXP RAdbcAsyncTaskData(SEXP task_xptr) {
+  if (!Rf_inherits(task_xptr, adbc_xptr_class<RAdbcAsyncTask>())) {
+    Rf_error("task must inherit from 'adbc_async_task'");
+  }
+
+  return R_ExternalPtrProtected(task_xptr);
+}
+
+extern "C" SEXP RAdbcAsyncTaskWait(SEXP task_xptr, SEXP duration_ms_sexp) {
+  auto task = adbc_from_xptr<RAdbcAsyncTask>(task_xptr);
+  int duration_ms = adbc_as_int(duration_ms_sexp);
+
+  if (task->result == nullptr) {
+    return Rf_mkString("not_started");
+  }
+
+  std::future_status status =
+      task->result->wait_for(std::chrono::milliseconds(duration_ms));
+  switch (status) {
+    case std::future_status::timeout:
+      return Rf_mkString("timeout");
+    case std::future_status::ready:
+      return Rf_mkString("ready");
+    default:
+      return Rf_mkString("unknown");
+  }
+}
 
 // A thin wrapper around a std::thread() that ensures that the thread
 // does not leak. This could also maybe just be an external pointer to
