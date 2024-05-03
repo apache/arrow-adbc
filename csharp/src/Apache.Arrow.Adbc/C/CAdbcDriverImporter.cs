@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.C;
@@ -820,6 +821,28 @@ namespace Apache.Arrow.Adbc.C
             }
         }
 
+        internal class ImportedAdbcException : AdbcException
+        {
+            private readonly string? _sqlState;
+            private readonly int _nativeError;
+
+            public unsafe ImportedAdbcException(ref CAdbcError error, AdbcStatusCode statusCode)
+                : base(MarshalExtensions.PtrToStringUTF8(error.message) ?? "Undefined error", statusCode)
+            {
+                if (error.sqlstate0 != 0)
+                {
+                    fixed (CAdbcError* fixedError = &error)
+                    {
+                        _sqlState = Encoding.ASCII.GetString(&fixedError->sqlstate0, 5);
+                    }
+                    _nativeError = error.vendor_code;
+                }
+            }
+
+            public override string? SqlState => _sqlState;
+            public override int NativeError => _nativeError;
+        }
+
         /// <summary>
         /// Assists with UTF8/string marshalling
         /// </summary>
@@ -1117,15 +1140,11 @@ namespace Apache.Arrow.Adbc.C
             {
                 if (statusCode != AdbcStatusCode.Success)
                 {
-                    string message = "Undefined error";
-                    if (_error.message != null)
-                    {
-                        message = MarshalExtensions.PtrToStringUTF8(_error.message)!;
-                    }
+                    ImportedAdbcException exception = new ImportedAdbcException(ref _error, statusCode);
 
                     Dispose();
 
-                    throw new AdbcException(message);
+                    throw exception;
                 }
             }
         }

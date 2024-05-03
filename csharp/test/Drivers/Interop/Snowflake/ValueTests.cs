@@ -107,7 +107,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             string columnName = "SMALLNUMBER";
             string table = CreateTemporaryTable(string.Format("{0} NUMBER(2,0)", columnName));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, value));
+            Assert.ThrowsAny<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, value));
         }
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             string columnName = "LARGESCALENUMBER";
             string table = CreateTemporaryTable(string.Format("{0} NUMBER(38,37)", columnName));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse(value)));
+            Assert.ThrowsAny<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse(value)));
         }
 
         /// <summary>
@@ -166,7 +166,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             string columnName = "SMALLSCALENUMBER";
             string table = CreateTemporaryTable(string.Format("{0} NUMBER(38,2)", columnName));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse(value)));
+            Assert.ThrowsAny<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse(value)));
         }
 
 
