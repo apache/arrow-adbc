@@ -45,6 +45,7 @@ if [ $? -ne 0 ] || [ ! -z "$FORCE_VENDORED_SQLITE3" ]; then
   cat sqlite_test.log
 
   echo "Falling back to vendored SQLite at src/c/vendor/sqlite3/sqlite3.h"
+  PKG_CPPFLAGS="-I../src/c/vendor/sqlite3 $PKG_CPPFLAGS"
   OBJECTS="c/vendor/sqlite3/sqlite3.o"
 else
   echo "Success!"
