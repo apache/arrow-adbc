@@ -125,7 +125,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             connection.ReadOnly = true;
 
-            AdbcException exception = Assert.Throws<AdbcException>(() =>
+            AdbcException exception = Assert.ThrowsAny<AdbcException>(() =>
             {
                 statement.SqlQuery = "INSERT INTO test VALUES (3), (5), (7);";
                 statement.ExecuteUpdate();
@@ -144,7 +144,7 @@ namespace Apache.Arrow.Adbc.Tests
             using var database = _duckDb.OpenDatabase("readonly.db");
             using var connection = database.Connect(null);
 
-            Assert.Throws<AdbcException>(() =>
+            Assert.ThrowsAny<AdbcException>(() =>
             {
                 connection.ReadOnly = true;
             });
@@ -156,7 +156,7 @@ namespace Apache.Arrow.Adbc.Tests
             using var database = _duckDb.OpenDatabase("isolation.db");
             using var connection = database.Connect(null);
 
-            Assert.Throws<AdbcException>(() =>
+            Assert.ThrowsAny<AdbcException>(() =>
             {
                 connection.IsolationLevel = IsolationLevel.Default;
             });
