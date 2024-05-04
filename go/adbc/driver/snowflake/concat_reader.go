@@ -57,8 +57,10 @@ func (r *concatReader) Init(readers readerIter) error {
 	r.refCount.Store(1)
 	r.nextReader()
 	if r.err != nil {
+		r.Release()
 		return r.err
 	} else if r.currentReader == nil {
+		r.Release()
 		r.err = adbc.Error{
 			Code: adbc.StatusInternal,
 			Msg:  "[Snowflake] No data in this stream",
@@ -73,10 +75,10 @@ func (r *concatReader) Retain() {
 }
 func (r *concatReader) Release() {
 	if r.refCount.Add(-1) == 0 {
-		r.readers.Release()
 		if r.currentReader != nil {
 			r.currentReader.Release()
 		}
+		r.readers.Release()
 	}
 }
 func (r *concatReader) Schema() *arrow.Schema {
