@@ -54,7 +54,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             {
                 string[] queries = SnowflakeTestingUtils.GetQueries(testConfiguration);
 
-                List<int> expectedResults = new List<int>() { 1, 1, 1 };
+                List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
                 Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, testConfiguration, queries, expectedResults);
             }

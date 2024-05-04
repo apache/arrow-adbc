@@ -39,6 +39,18 @@ namespace Apache.Arrow.Adbc
             public const string Linearizable = "adbc.connection.transaction.isolation.linearizable";
         }
 
+        public static class Ingest
+        {
+            public const string TargetTable = "adbc.ingest.target_table";
+            public const string Mode = "adbc.ingest.mode";
+        }
+
+        public static class IngestMode
+        {
+            public const string Create = "adbc.ingest.mode.create";
+            public const string Append = "adbc.ingest.mode.append";
+        }
+
         public static string GetEnabled(bool value) => value ? Enabled : Disabled;
         public static bool GetEnabled(string value)
         {
@@ -72,6 +84,23 @@ namespace Apache.Arrow.Adbc
             if (StringComparer.OrdinalIgnoreCase.Equals(value, IsolationLevels.Serializable)) { return Adbc.IsolationLevel.Serializable; }
             if (StringComparer.OrdinalIgnoreCase.Equals(value, IsolationLevels.Linearizable)) { return Adbc.IsolationLevel.Linearizable; }
             throw new NotSupportedException("unknown isolation level");
+        }
+
+        public static string GetIngestMode(BulkIngestMode value)
+        {
+            return value switch
+            {
+                BulkIngestMode.Create => IngestMode.Create,
+                BulkIngestMode.Append => IngestMode.Append,
+                _ => throw new NotSupportedException("unknown ingestion mode"),
+            };
+        }
+
+        public static BulkIngestMode GetIngestMode(string value)
+        {
+            if (StringComparer.OrdinalIgnoreCase.Equals(value, IngestMode.Create)) { return BulkIngestMode.Create; }
+            if (StringComparer.OrdinalIgnoreCase.Equals(value, IngestMode.Append)) { return BulkIngestMode.Append; }
+            throw new NotSupportedException("unknown ingestion mode");
         }
     }
 }

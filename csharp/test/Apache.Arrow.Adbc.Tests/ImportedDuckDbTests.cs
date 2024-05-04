@@ -162,9 +162,43 @@ namespace Apache.Arrow.Adbc.Tests
             });
         }
 
+        [Fact]
+        public void IngestData()
+        {
+            using var database = _duckDb.OpenDatabase("ingest.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+            statement.SetOption("adbc.ingest.target_table", "ingested");
+            statement.SetOption("adbc.ingest.mode", "adbc.ingest.mode.create");
+
+            Schema schema = new Schema([new Field("key", Int32Type.Default, false), new Field("value", StringType.Default, false)], null);
+            RecordBatch recordBatch = new RecordBatch(schema, [
+                new Int32Array.Builder().AppendRange([1, 2, 3]).Build(),
+                new StringArray.Builder().AppendRange(["foo", "bar", "baz"]).Build()
+                ], 3);
+            statement.Bind(recordBatch, schema);
+            statement.ExecuteUpdate();
+
+            Schema foundSchema = connection.GetTableSchema(null, null, "ingested");
+            Assert.Equal(schema.FieldsList.Count, foundSchema.FieldsList.Count);
+
+            Assert.Equal(3, GetResultCount(statement, "SELECT * from ingested"));
+
+            using var statement2 = connection.BulkIngest("ingested", BulkIngestMode.Append);
+
+            recordBatch = new RecordBatch(schema, [
+                new Int32Array.Builder().AppendRange([4, 5]).Build(),
+                new StringArray.Builder().AppendRange(["quux", "zozzle"]).Build()
+                ], 2);
+            statement2.Bind(recordBatch, schema);
+            statement2.ExecuteUpdate();
+
+            Assert.Equal(5, GetResultCount(statement2, "SELECT * from ingested"));
+        }
+
         private static long GetResultCount(AdbcStatement statement, string query)
         {
-            statement.SqlQuery = "SELECT * from test";
+            statement.SqlQuery = query;
             var results = statement.ExecuteQuery();
             long count = 0;
             using (var stream = results.Stream ?? throw new InvalidOperationException("no results found"))
