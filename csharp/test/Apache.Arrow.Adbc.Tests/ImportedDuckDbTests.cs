@@ -184,7 +184,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             Assert.Equal(3, GetResultCount(statement, "SELECT * from ingested"));
 
-            using var statement2 = connection.BulkIngest("ingestion", BulkIngestMode.Append);
+            using var statement2 = connection.BulkIngest("ingested", BulkIngestMode.Append);
 
             recordBatch = new RecordBatch(schema, [
                 new Int32Array.Builder().AppendRange([4, 5]).Build(),
@@ -193,9 +193,7 @@ namespace Apache.Arrow.Adbc.Tests
             statement2.Bind(recordBatch, schema);
             statement2.ExecuteUpdate();
 
-            // Seems to be a bug in DuckDB?
-            // Assert.Equal(5, GetResultCount(statement2, "SELECT * from ingested"));
-            Assert.Equal(3, GetResultCount(statement2, "SELECT * from ingested"));
+            Assert.Equal(5, GetResultCount(statement2, "SELECT * from ingested"));
         }
 
         private static long GetResultCount(AdbcStatement statement, string query)
