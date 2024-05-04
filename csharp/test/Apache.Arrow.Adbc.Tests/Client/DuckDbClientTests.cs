@@ -111,7 +111,7 @@ namespace Apache.Arrow.Adbc.Tests.Client
             using var connection = _duckDb.CreateConnection("clientisolation.db", null);
             connection.Open();
 
-            Assert.Throws<AdbcException>(() =>
+            Assert.ThrowsAny<AdbcException>(() =>
             {
                 connection.BeginTransaction(System.Data.IsolationLevel.ReadCommitted);
             });

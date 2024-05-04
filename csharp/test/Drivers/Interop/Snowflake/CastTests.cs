@@ -408,7 +408,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             statement.SqlQuery = string.Format("ALTER SESSION SET TIMEZONE = '{0}'", timezone);
             UpdateResult result = statement.ExecuteUpdate();
-            Assert.Equal(-1, result.AffectedRows);
+            Assert.Equal(1, result.AffectedRows);
         }
 
         public void Dispose()

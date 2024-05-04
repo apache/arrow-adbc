@@ -571,6 +571,34 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 	}
 
 	ch := make(chan arrow.Record, bufferSize)
+	group, ctx := errgroup.WithContext(compute.WithAllocator(ctx, alloc))
+	ctx, cancelFn := context.WithCancel(ctx)
+	group.SetLimit(prefetchConcurrency)
+
+	defer func() {
+		if err != nil {
+			close(ch)
+			cancelFn()
+		}
+	}()
+
+	chs := make([]chan arrow.Record, len(batches))
+	rdr := &reader{
+		refCount: 1,
+		chs:      chs,
+		err:      nil,
+		cancelFn: cancelFn,
+	}
+
+	if len(batches) == 0 {
+		schema, err := rowTypesToArrowSchema(ctx, ld, useHighPrecision)
+		if err != nil {
+			return nil, err
+		}
+		rdr.schema, _ = getTransformer(schema, ld, useHighPrecision)
+		return rdr, nil
+	}
+
 	r, err := batches[0].GetStream(ctx)
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
@@ -584,19 +612,9 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		}
 	}
 
-	group, ctx := errgroup.WithContext(compute.WithAllocator(ctx, alloc))
-	ctx, cancelFn := context.WithCancel(ctx)
+	var recTransform recordTransformer
+	rdr.schema, recTransform = getTransformer(rr.Schema(), ld, useHighPrecision)
 
-	schema, recTransform := getTransformer(rr.Schema(), ld, useHighPrecision)
-
-	defer func() {
-		if err != nil {
-			close(ch)
-			cancelFn()
-		}
-	}()
-
-	group.SetLimit(prefetchConcurrency)
 	group.Go(func() error {
 		defer rr.Release()
 		defer r.Close()
@@ -615,15 +633,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		return rr.Err()
 	})
 
-	chs := make([]chan arrow.Record, len(batches))
 	chs[0] = ch
-	rdr := &reader{
-		refCount: 1,
-		chs:      chs,
-		err:      nil,
-		cancelFn: cancelFn,
-		schema:   schema,
-	}
 
 	lastChannelIndex := len(chs) - 1
 	go func() {

@@ -30,7 +30,7 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe readonly NativeDelegate<ErrorRelease> s_releaseError = new NativeDelegate<ErrorRelease>(ReleaseError);
 
 #if NET5_0_OR_GREATER
-        private static unsafe delegate* unmanaged<CAdbcError*, void> ReleaseErrorPtr => (delegate* unmanaged<CAdbcError*, void>)s_releaseError.Pointer;
+        internal static unsafe delegate* unmanaged<CAdbcError*, void> ReleaseErrorPtr => (delegate* unmanaged<CAdbcError*, void>)s_releaseError.Pointer;
         private static unsafe delegate* unmanaged<CAdbcDriver*, CAdbcError*, AdbcStatusCode> ReleaseDriverPtr => &ReleaseDriver;
         private static unsafe delegate* unmanaged<CAdbcPartitions*, void> ReleasePartitionsPtr => &ReleasePartitions;
 
@@ -61,7 +61,7 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, int, CAdbcError*, AdbcStatusCode> StatementSetSubstraitPlanPtr => &SetStatementSubstraitPlan;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementGetParameterSchemaPtr => &GetStatementParameterSchema;
 #else
-        private static unsafe IntPtr ReleaseErrorPtr => s_releaseError.Pointer;
+        internal static unsafe IntPtr ReleaseErrorPtr => s_releaseError.Pointer;
         private static unsafe IntPtr ReleaseDriverPtr = NativeDelegate<DriverRelease>.AsNativePointer(ReleaseDriver);
         private static unsafe IntPtr ReleasePartitionsPtr = NativeDelegate<PartitionsRelease>.AsNativePointer(ReleasePartitions);
 
@@ -86,8 +86,8 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe IntPtr StatementExecutePartitionsPtr = NativeDelegate<StatementExecutePartitions>.AsNativePointer(ExecuteStatementPartitions);
         private static unsafe IntPtr StatementExecuteSchemaPtr = NativeDelegate<StatementExecuteSchema>.AsNativePointer(ExecuteStatementSchema);
         private static unsafe IntPtr StatementNewPtr = NativeDelegate<StatementNew>.AsNativePointer(NewStatement);
-        private static unsafe IntPtr StatementReleasePtr = NativeDelegate<StatementFn>.AsNativePointer(ReleaseStatement);
-        private static unsafe IntPtr StatementPreparePtr = NativeDelegate<StatementFn>.AsNativePointer(PrepareStatement);
+        private static unsafe IntPtr StatementReleasePtr = NativeDelegate<StatementRelease>.AsNativePointer(ReleaseStatement);
+        private static unsafe IntPtr StatementPreparePtr = NativeDelegate<StatementPrepare>.AsNativePointer(PrepareStatement);
         private static unsafe IntPtr StatementSetSqlQueryPtr = NativeDelegate<StatementSetSqlQuery>.AsNativePointer(SetStatementSqlQuery);
         private static unsafe IntPtr StatementSetSubstraitPlanPtr = NativeDelegate<StatementSetSubstraitPlan>.AsNativePointer(SetStatementSubstraitPlan);
         private static unsafe IntPtr StatementGetParameterSchemaPtr = NativeDelegate<StatementGetParameterSchema>.AsNativePointer(GetStatementParameterSchema);
@@ -131,7 +131,7 @@ namespace Apache.Arrow.Adbc.C
             return 0;
         }
 
-        private unsafe static void ReleaseError(CAdbcError* error)
+        internal unsafe static void ReleaseError(CAdbcError* error)
         {
             if (error != null && ((IntPtr)error->message) != IntPtr.Zero)
             {
