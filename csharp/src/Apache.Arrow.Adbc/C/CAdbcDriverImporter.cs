@@ -21,6 +21,7 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.C;
@@ -36,8 +37,6 @@ namespace Apache.Arrow.Adbc.C
     public static class CAdbcDriverImporter
     {
         private const string driverInit = "AdbcDriverInit";
-        private const int ADBC_VERSION_1_0_0 = 1000000;
-        private const int ADBC_VERSION_1_1_0 = 1001000;
 
         /// <summary>
         /// Loads an <see cref="AdbcDriver"/> from the file system.
@@ -79,13 +78,13 @@ namespace Apache.Arrow.Adbc.C
                 {
                     try
                     {
-                        caller.Call(init, ADBC_VERSION_1_1_0, ref driver);
-                        version = ADBC_VERSION_1_1_0;
+                        caller.Call(init, AdbcVersion.Version_1_1_0, ref driver);
+                        version = AdbcVersion.Version_1_1_0;
                     }
                     catch (AdbcException e) when (e.Status == AdbcStatusCode.NotImplemented)
                     {
-                        caller.Call(init, ADBC_VERSION_1_0_0, ref driver);
-                        version = ADBC_VERSION_1_0_0;
+                        caller.Call(init, AdbcVersion.Version_1_0_0, ref driver);
+                        version = AdbcVersion.Version_1_0_0;
                     }
 
                     ImportedAdbcDriver result = new ImportedAdbcDriver(library, driver, version);
@@ -132,6 +131,17 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
+            public override int DriverVersion => _version;
+
+            internal ref CAdbcDriver Driver11
+            {
+                get
+                {
+                    if (_version < AdbcVersion.Version_1_1_0) { throw AdbcException.NotImplemented("This driver does not support ADBC 1.1.0"); }
+                    return ref Driver;
+                }
+            }
+
             internal ImportedAdbcDriver AddReference()
             {
                 Interlocked.Increment(ref _references);
@@ -155,12 +165,7 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
-            /// <summary>
-            /// Opens a database
-            /// </summary>
-            /// <param name="parameters">
-            /// Parameters to use when calling DatabaseNew.
-            /// </param>
+            /// <inheritdoc />
             public unsafe override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
             {
                 if (parameters == null) throw new ArgumentNullException(nameof(parameters));
@@ -174,6 +179,33 @@ namespace Apache.Arrow.Adbc.C
                     foreach (KeyValuePair<string, string> pair in parameters)
                     {
                         caller.Call(Driver.DatabaseSetOption, ref nativeDatabase, pair.Key, pair.Value);
+                    }
+
+                    caller.Call(Driver.DatabaseInit, ref nativeDatabase);
+                }
+
+                return new ImportedAdbcDatabase(this, nativeDatabase);
+            }
+
+            /// <inheritdoc />
+            public unsafe override AdbcDatabase Open(IReadOnlyDictionary<string, object> parameters)
+            {
+                if (parameters == null) throw new ArgumentNullException(nameof(parameters));
+
+                CAdbcDatabase nativeDatabase = new CAdbcDatabase();
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(Driver.DatabaseNew, ref nativeDatabase);
+
+                    foreach (KeyValuePair<string, object> pair in parameters)
+                    {
+                        switch (pair.Value)
+                        {
+                            case int intValue:
+                            case long longValue:
+                                // TODO!
+                                break;
+                        }
                     }
 
                     caller.Call(Driver.DatabaseInit, ref nativeDatabase);
@@ -564,6 +596,15 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
+            private unsafe ref CAdbcDriver Driver11
+            {
+                get
+                {
+                    if (_disposed) { throw new ObjectDisposedException(nameof(ImportedAdbcStatement)); }
+                    return ref _driver.Driver11;
+                }
+            }
+
             public unsafe override byte[]? SubstraitPlan
             {
                 get => _substraitPlan;
@@ -658,6 +699,31 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
+            public override unsafe Schema ExecuteSchema()
+            {
+                if (SqlQuery != null)
+                {
+                    // TODO: Consider moving this to the setter
+                    SetSqlQuery(SqlQuery);
+                }
+
+                using (CallHelper caller = new CallHelper())
+                {
+                    fixed (CAdbcStatement* statement = &_nativeStatement)
+                    {
+                        caller.TranslateCode(
+#if NET5_0_OR_GREATER
+                            Driver11.StatementExecuteSchema
+#else
+                            Marshal.GetDelegateForFunctionPointer<StatementExecuteSchema>(Driver11.StatementExecuteSchema)
+#endif
+                            (statement, caller.CreateSchema(), &caller._error));
+
+                        return caller.ImportSchema();
+                    }
+                }
+            }
+
             public unsafe override UpdateResult ExecuteUpdate()
             {
                 if (SqlQuery != null)
@@ -737,6 +803,14 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
+            public unsafe override void SetOption(string key, string value)
+            {
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(Driver.StatementSetOption, ref _nativeStatement, key, value);
+                }
+            }
+
             public override void Dispose()
             {
                 Dispose(true);
@@ -811,6 +885,62 @@ namespace Apache.Arrow.Adbc.C
                 {
                     Marshal.FreeCoTaskMem(_s);
                     _s = IntPtr.Zero;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Assists with fetching values of arbitrary length
+        /// </summary>
+        private struct GetBufferHelper : IDisposable
+        {
+            const int DefaultLength = 256;
+
+            private IntPtr _buffer;
+            public IntPtr Length;
+
+            public GetBufferHelper()
+            {
+                Length = (IntPtr)DefaultLength;
+                _buffer = Marshal.AllocHGlobal(Length);
+            }
+
+            public bool RequiresRetry()
+            {
+                if (checked((uint)Length) <= DefaultLength)
+                {
+                    return false;
+                }
+
+                Marshal.FreeHGlobal(_buffer);
+                _buffer = IntPtr.Zero;
+                _buffer = Marshal.AllocHGlobal(Length);
+                return true;
+            }
+
+            public unsafe string AsString()
+            {
+                return Encoding.UTF8.GetString((byte*)_buffer, checked((int)Length));
+            }
+
+            public unsafe byte[] AsBytes()
+            {
+                byte[] result = new byte[checked((int)Length)];
+                fixed (byte* ptr = result)
+                {
+                    Buffer.MemoryCopy((byte*)_buffer, ptr, result.Length, result.Length);
+                }
+                return result;
+            }
+
+            public static unsafe implicit operator byte*(GetBufferHelper s) { return (byte*)s._buffer; }
+
+            public void Dispose()
+            {
+                if (_buffer != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(_buffer);
+                    _buffer = IntPtr.Zero;
                 }
             }
         }
@@ -931,19 +1061,9 @@ namespace Apache.Arrow.Adbc.C
 
 #if NET5_0_OR_GREATER
             public unsafe void Call(delegate* unmanaged<CAdbcDatabase*, byte*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDatabase nativeDatabase, string key, string? value)
-            {
-                fixed (CAdbcDatabase* db = &nativeDatabase)
-                fixed (CAdbcError* e = &_error)
-                {
-                    using (Utf8Helper utf8Key = new Utf8Helper(key))
-                    using (Utf8Helper utf8Value = new Utf8Helper(value))
-                    {
-                        TranslateCode(fn(db, utf8Key, utf8Value, e));
-                    }
-                }
-            }
 #else
             public unsafe void Call(IntPtr fn, ref CAdbcDatabase nativeDatabase, string key, string? value)
+#endif
             {
                 fixed (CAdbcDatabase* db = &nativeDatabase)
                 fixed (CAdbcError* e = &_error)
@@ -951,11 +1071,45 @@ namespace Apache.Arrow.Adbc.C
                     using (Utf8Helper utf8Key = new Utf8Helper(key))
                     using (Utf8Helper utf8Value = new Utf8Helper(value))
                     {
+#if NET5_0_OR_GREATER
+                        TranslateCode(fn(db, utf8Key, utf8Value, e));
+#else
                         TranslateCode(Marshal.GetDelegateForFunctionPointer<DatabaseSetOption>(fn)(db, utf8Key, utf8Value, e));
+#endif
                     }
                 }
             }
+
+#if NET5_0_OR_GREATER
+            public unsafe string Call(delegate* unmanaged<CAdbcDatabase*, byte*, byte*, nint*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDatabase nativeDatabase, string key)
+#else
+            public unsafe string Call(IntPtr fn, ref CAdbcDatabase nativeDatabase, string key)
 #endif
+            {
+                fixed (CAdbcDatabase* db = &nativeDatabase)
+                fixed (CAdbcError* e = &_error)
+                {
+                    using (Utf8Helper utf8Key = new Utf8Helper(key))
+                    using (GetBufferHelper value = new GetBufferHelper())
+                    {
+#if NET5_0_OR_GREATER
+                        TranslateCode(fn(db, utf8Key, value, &value.Length, e));
+#else
+                        TranslateCode(Marshal.GetDelegateForFunctionPointer<DatabaseGetOption>(fn)(db, utf8Key, value, &value.Length, e));
+#endif
+                        if (value.RequiresRetry())
+                        {
+#if NET5_0_OR_GREATER
+                            TranslateCode(fn(db, utf8Key, value, &value.Length, e));
+#else
+                            TranslateCode(Marshal.GetDelegateForFunctionPointer<DatabaseGetOption>(fn)(db, utf8Key, value, &value.Length, e));
+#endif
+                        }
+
+                        return value.AsString();
+                    }
+                }
+            }
 
 #if NET5_0_OR_GREATER
             public unsafe void Call(delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeConnection)
@@ -1043,6 +1197,34 @@ namespace Apache.Arrow.Adbc.C
                 fixed (CAdbcError* e = &_error)
                 {
                     TranslateCode(Marshal.GetDelegateForFunctionPointer<ConnectionInit>(fn)(cn, db, e));
+                }
+            }
+#endif
+
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcStatement*, byte*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcStatement nativeStatement, string key, string? value)
+            {
+                fixed (CAdbcStatement* stmt = &nativeStatement)
+                fixed (CAdbcError* e = &_error)
+                {
+                    using (Utf8Helper utf8Key = new Utf8Helper(key))
+                    using (Utf8Helper utf8Value = new Utf8Helper(value))
+                    {
+                        TranslateCode(fn(stmt, utf8Key, utf8Value, e));
+                    }
+                }
+            }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcStatement nativeStatement, string key, string? value)
+            {
+                fixed (CAdbcStatement* stmt = &nativeStatement)
+                fixed (CAdbcError* e = &_error)
+                {
+                    using (Utf8Helper utf8Key = new Utf8Helper(key))
+                    using (Utf8Helper utf8Value = new Utf8Helper(value))
+                    {
+                        TranslateCode(Marshal.GetDelegateForFunctionPointer<StatementSetOption>(fn)(stmt, utf8Key, utf8Value, e));
+                    }
                 }
             }
 #endif

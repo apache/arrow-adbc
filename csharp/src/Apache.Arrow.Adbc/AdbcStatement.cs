@@ -91,6 +91,16 @@ namespace Apache.Arrow.Adbc
         }
 
         /// <summary>
+        /// Analyzes the statement and returns the schema of the result set that would
+        /// be expected if the statement were to be executed.
+        /// </summary>
+        /// <returns>An Arrow <see cref="Schema"/> describing the result set.</returns>
+        public virtual Schema ExecuteSchema()
+        {
+            throw AdbcException.NotImplemented("Statement does not support ExecuteSchema");
+        }
+
+        /// <summary>
         /// Executes an update command and returns the number of
         /// records effected.
         /// </summary>

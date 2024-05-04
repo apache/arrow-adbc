@@ -53,6 +53,7 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> StatementBindStreamPtr => &BindStreamStatement;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, long*, CAdbcError*, AdbcStatusCode> StatementExecuteQueryPtr => &ExecuteStatementQuery;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcPartitions*, long*, CAdbcError*, AdbcStatusCode> StatementExecutePartitionsPtr => &ExecuteStatementPartitions;
+        private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementExecuteSchemaPtr => &ExecuteStatementSchema;
         private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementNewPtr => &NewStatement;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementReleasePtr => &ReleaseStatement;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementPreparePtr => &PrepareStatement;
@@ -83,6 +84,7 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe IntPtr StatementBindStreamPtr = NativeDelegate<StatementBindStream>.AsNativePointer(BindStreamStatement);
         private static unsafe IntPtr StatementExecuteQueryPtr = NativeDelegate<StatementExecuteQuery>.AsNativePointer(ExecuteStatementQuery);
         private static unsafe IntPtr StatementExecutePartitionsPtr = NativeDelegate<StatementExecutePartitions>.AsNativePointer(ExecuteStatementPartitions);
+        private static unsafe IntPtr StatementExecuteSchemaPtr = NativeDelegate<StatementExecuteSchema>.AsNativePointer(ExecuteStatementSchema);
         private static unsafe IntPtr StatementNewPtr = NativeDelegate<StatementNew>.AsNativePointer(NewStatement);
         private static unsafe IntPtr StatementReleasePtr = NativeDelegate<StatementFn>.AsNativePointer(ReleaseStatement);
         private static unsafe IntPtr StatementPreparePtr = NativeDelegate<StatementFn>.AsNativePointer(PrepareStatement);
@@ -629,6 +631,26 @@ namespace Apache.Arrow.Adbc.C
                     }
                 }
 
+                return AdbcStatusCode.Success;
+            }
+            catch (Exception e)
+            {
+                return SetError(error, e);
+            }
+        }
+
+#if NET5_0_OR_GREATER
+        [UnmanagedCallersOnly]
+#endif
+        private unsafe static AdbcStatusCode ExecuteStatementSchema(CAdbcStatement* nativeStatement, CArrowSchema* schema, CAdbcError* error)
+        {
+            try
+            {
+                GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
+                AdbcStatement stub = (AdbcStatement)gch.Target!;
+                var result = stub.ExecuteSchema();
+
+                CArrowSchemaExporter.ExportSchema(result, schema);
                 return AdbcStatusCode.Success;
             }
             catch (Exception e)
