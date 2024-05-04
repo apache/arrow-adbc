@@ -27,4 +27,4 @@ OBJECTS = init.o \
     c/driver/sqlite/sqlite.o \
     c/driver/sqlite/statement_reader.o \
     c/vendor/nanoarrow/nanoarrow.o \
-    c/vendor/sqlite3/sqlite3.o @objects@
+    @objects@

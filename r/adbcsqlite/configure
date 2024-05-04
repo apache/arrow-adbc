@@ -44,9 +44,9 @@ if [ $? -ne 0 ] || [ ! -z "$FORCE_VENDORED_SQLITE3" ]; then
   echo "Forcing vendored sqlite3 or #include <sqlite3.h>/-lsqlite3 failed:"
   cat sqlite_test.log
 
-  echo "Falling back to vendored SQLite at tools/sqlite3.h"
-  cp tools/sqlite3.h tools/sqlite3.c src
-  OBJECTS="sqlite3.o"
+  echo "Falling back to vendored SQLite at src/c/vendor/sqlite3/sqlite3.h"
+  PKG_CPPFLAGS="-I../src/c/vendor/sqlite3 $PKG_CPPFLAGS"
+  OBJECTS="c/vendor/sqlite3/sqlite3.o"
 else
   echo "Success!"
   PKG_LIBS="$PKG_LIBS -lsqlite3"

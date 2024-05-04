@@ -39,7 +39,7 @@ jobs:
           persist-credentials: false
 
       - name: Assign milestone
-        if: always()
+        if: '! github.event.pull_request.draft'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

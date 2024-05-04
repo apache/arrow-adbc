@@ -75,6 +75,9 @@ namespace Apache.Arrow.Adbc.C
                 using (CallHelper caller = new CallHelper())
                 {
                     caller.Call(init, ADBC_VERSION_1_0_0, ref driver);
+
+                    ValidateDriver(ref driver, ADBC_VERSION_1_0_0);
+
                     ImportedAdbcDriver result = new ImportedAdbcDriver(library, driver);
                     library = IntPtr.Zero;
                     return result;
@@ -84,6 +87,249 @@ namespace Apache.Arrow.Adbc.C
             {
                 if (library != IntPtr.Zero) { NativeLibrary.Free(library); }
             }
+        }
+
+        private static unsafe void ValidateDriver(ref CAdbcDriver driver, int version)
+        {
+#if NET5_0_OR_GREATER
+            void* empty = null;
+#else
+            IntPtr empty = IntPtr.Zero;
+#endif
+            if (driver.DatabaseNew == empty) { throw AdbcException.Missing(nameof(driver.DatabaseNew)); }
+            if (driver.DatabaseInit == empty) { throw AdbcException.Missing(nameof(driver.DatabaseInit)); }
+            if (driver.DatabaseRelease == empty) { throw AdbcException.Missing(nameof(driver.DatabaseRelease)); }
+            if (driver.DatabaseSetOption == empty) { driver.DatabaseSetOption = DatabaseSetOptionDefault; }
+
+            if (driver.ConnectionNew == empty) { throw AdbcException.Missing(nameof(driver.ConnectionNew)); }
+            if (driver.ConnectionInit == empty) { throw AdbcException.Missing(nameof(driver.ConnectionInit)); }
+            if (driver.ConnectionRelease == empty) { throw AdbcException.Missing(nameof(driver.ConnectionRelease)); }
+            if (driver.ConnectionCommit == empty) { driver.ConnectionCommit = ConnectionCommitDefault; }
+            if (driver.ConnectionGetInfo == empty) { driver.ConnectionGetInfo = ConnectionGetInfoDefault; }
+            if (driver.ConnectionGetObjects == empty) { driver.ConnectionGetObjects = ConnectionGetObjectsDefault; }
+            if (driver.ConnectionGetTableSchema == empty) { driver.ConnectionGetTableSchema = ConnectionGetTableSchemaDefault; }
+            if (driver.ConnectionGetTableTypes == empty) { driver.ConnectionGetTableTypes = ConnectionGetTableTypesDefault; }
+            if (driver.ConnectionReadPartition == empty) { driver.ConnectionReadPartition = ConnectionReadPartitionDefault; }
+            if (driver.ConnectionRollback == empty) { driver.ConnectionRollback = ConnectionRollbackDefault; }
+            if (driver.ConnectionSetOption == empty) { driver.ConnectionSetOption = ConnectionSetOptionDefault; }
+
+            if (driver.StatementExecutePartitions == empty) { driver.StatementExecutePartitions = StatementExecutePartitionsDefault; }
+            if (driver.StatementExecuteQuery == empty) { throw AdbcException.Missing(nameof(driver.StatementExecuteQuery)); }
+            if (driver.StatementNew == empty) { throw AdbcException.Missing(nameof(driver.StatementNew)); }
+            if (driver.StatementRelease == empty) { throw AdbcException.Missing(nameof(driver.StatementRelease)); }
+            if (driver.StatementBind == empty) { driver.StatementBind = StatementBindDefault; }
+            if (driver.StatementBindStream == empty) { driver.StatementBindStream = StatementBindStreamDefault; }
+            if (driver.StatementGetParameterSchema == empty) { driver.StatementGetParameterSchema = StatementGetParameterSchemaDefault; }
+            if (driver.StatementPrepare == empty) { driver.StatementPrepare = StatementPrepareDefault; }
+            if (driver.StatementSetOption == empty) { driver.StatementSetOption = StatementSetOptionDefault; }
+            if (driver.StatementSetSqlQuery == empty) { driver.StatementSetSqlQuery = StatementSetSqlQueryDefault; }
+            if (driver.StatementSetSubstraitPlan == empty) { driver.StatementSetSubstraitPlan = StatementSetSubstraitPlanDefault; }
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr DatabaseSetOptionDefault = NativeDelegate<DatabaseSetOption>.AsNativePointer(DatabaseSetOptionDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcDatabase*, byte*, byte*, CAdbcError*, AdbcStatusCode> DatabaseSetOptionDefault => &DatabaseSetOptionDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode DatabaseSetOptionDefaultImpl(CAdbcDatabase* database, byte* key, byte* value, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.DatabaseSetOption));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr ConnectionCommitDefault = NativeDelegate<ConnectionCommit>.AsNativePointer(ConnectionCommitDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionCommitDefault => &ConnectionCommitDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode ConnectionCommitDefaultImpl(CAdbcConnection* connection, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.ConnectionCommit));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr ConnectionGetInfoDefault = NativeDelegate<ConnectionGetInfo>.AsNativePointer(ConnectionGetInfoDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcConnection*, int*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetInfoDefault => &ConnectionGetInfoDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode ConnectionGetInfoDefaultImpl(CAdbcConnection* connection, int* info_codes, int info_codes_length, CArrowArrayStream* stream, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.ConnectionGetInfo));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr ConnectionGetObjectsDefault = NativeDelegate<ConnectionGetObjects>.AsNativePointer(ConnectionGetObjectsDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcConnection*, int, byte*, byte*, byte*, byte**, byte*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetObjectsDefault => &ConnectionGetObjectsDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode ConnectionGetObjectsDefaultImpl(CAdbcConnection* connection, int depth, byte* catalog, byte* db_schema, byte* table_name, byte** table_type, byte* column_name, CArrowArrayStream* stream, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.ConnectionGetObjects));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr ConnectionGetTableSchemaDefault = NativeDelegate<ConnectionGetTableSchema>.AsNativePointer(ConnectionGetTableSchemaDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcConnection*, byte*, byte*, byte*, CArrowSchema*, CAdbcError*, AdbcStatusCode> ConnectionGetTableSchemaDefault => &ConnectionGetTableSchemaDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode ConnectionGetTableSchemaDefaultImpl(CAdbcConnection* connection, byte* catalog, byte* db_schema, byte* table_name, CArrowSchema* schema, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.ConnectionGetTableSchema));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr ConnectionGetTableTypesDefault = NativeDelegate<ConnectionGetTableTypes>.AsNativePointer(ConnectionGetTableTypesDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcConnection*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetTableTypesDefault => &ConnectionGetTableTypesDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode ConnectionGetTableTypesDefaultImpl(CAdbcConnection* connection, CArrowArrayStream* stream, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.ConnectionGetTableTypes));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr ConnectionReadPartitionDefault = NativeDelegate<ConnectionReadPartition>.AsNativePointer(ConnectionReadPartitionDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcConnection*, byte*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionReadPartitionDefault => &ConnectionReadPartitionDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode ConnectionReadPartitionDefaultImpl(CAdbcConnection* connection, byte* serialized_partition, int serialized_length, CArrowArrayStream* stream, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.ConnectionReadPartition));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr ConnectionRollbackDefault = NativeDelegate<ConnectionRollback>.AsNativePointer(ConnectionRollbackDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionRollbackDefault => &ConnectionRollbackDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode ConnectionRollbackDefaultImpl(CAdbcConnection* connection, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.ConnectionRollback));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr ConnectionSetOptionDefault = NativeDelegate<ConnectionSetOption>.AsNativePointer(ConnectionSetOptionDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcConnection*, byte*, byte*, CAdbcError*, AdbcStatusCode> ConnectionSetOptionDefault => &ConnectionSetOptionDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode ConnectionSetOptionDefaultImpl(CAdbcConnection* connection, byte* name, byte* value, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.ConnectionSetOption));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr StatementExecutePartitionsDefault = NativeDelegate<StatementExecutePartitions>.AsNativePointer(StatementExecutePartitionsDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcPartitions*, long*, CAdbcError*, AdbcStatusCode> StatementExecutePartitionsDefault => &StatementExecutePartitionsDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode StatementExecutePartitionsDefaultImpl(CAdbcStatement* statement, CArrowSchema* schema, CAdbcPartitions* partitions, long* rows, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.StatementExecutePartitions));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr StatementBindDefault = NativeDelegate<StatementBind>.AsNativePointer(StatementBindDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowArray*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementBindDefault => &StatementBindDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode StatementBindDefaultImpl(CAdbcStatement* statement, CArrowArray* array, CArrowSchema* schema, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.StatementBind));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr StatementBindStreamDefault = NativeDelegate<StatementBindStream>.AsNativePointer(StatementBindStreamDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> StatementBindStreamDefault => &StatementBindStreamDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode StatementBindStreamDefaultImpl(CAdbcStatement* statement, CArrowArrayStream* stream, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.StatementBindStream));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr StatementGetParameterSchemaDefault = NativeDelegate<StatementGetParameterSchema>.AsNativePointer(StatementGetParameterSchemaDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementGetParameterSchemaDefault => &StatementGetParameterSchemaDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode StatementGetParameterSchemaDefaultImpl(CAdbcStatement* statement, CArrowSchema* schema, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.StatementGetParameterSchema));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr StatementPrepareDefault = NativeDelegate<StatementPrepare>.AsNativePointer(StatementPrepareDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementPrepareDefault => &StatementPrepareDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode StatementPrepareDefaultImpl(CAdbcStatement* statement, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.StatementPrepare));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr StatementSetOptionDefault = NativeDelegate<StatementSetOption>.AsNativePointer(StatementSetOptionDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, byte*, CAdbcError*, AdbcStatusCode> StatementSetOptionDefault => &StatementSetOptionDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode StatementSetOptionDefaultImpl(CAdbcStatement* statement, byte* name, byte* value, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.StatementSetOption));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr StatementSetSqlQueryDefault = NativeDelegate<StatementSetSqlQuery>.AsNativePointer(StatementSetSqlQueryDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, CAdbcError*, AdbcStatusCode> StatementSetSqlQueryDefault => &StatementSetSqlQueryDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode StatementSetSqlQueryDefaultImpl(CAdbcStatement* statement, byte* text, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.StatementSetSqlQuery));
+        }
+
+#if !NET5_0_OR_GREATER
+        private static unsafe IntPtr StatementSetSubstraitPlanDefault = NativeDelegate<StatementSetSubstraitPlan>.AsNativePointer(StatementSetSubstraitPlanDefaultImpl);
+#else
+        private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, int, CAdbcError*, AdbcStatusCode> StatementSetSubstraitPlanDefault => &StatementSetSubstraitPlanDefaultImpl;
+        [UnmanagedCallersOnly]
+#endif
+        private static unsafe AdbcStatusCode StatementSetSubstraitPlanDefaultImpl(CAdbcStatement* statement, byte* plan, int length, CAdbcError* error)
+        {
+            return NotImplemented(error, nameof(CAdbcDriver.StatementSetSubstraitPlan));
+        }
+
+        private static unsafe AdbcStatusCode NotImplemented(CAdbcError* error, string name)
+        {
+            if (error != null)
+            {
+                CAdbcDriverExporter.ReleaseError(error);
+
+                error->message = (byte*)MarshalExtensions.StringToCoTaskMemUTF8($"Adbc{name} not implemented");
+                error->sqlstate0 = (byte)0;
+                error->sqlstate1 = (byte)0;
+                error->sqlstate2 = (byte)0;
+                error->sqlstate3 = (byte)0;
+                error->sqlstate4 = (byte)0;
+                error->vendor_code = 0;
+                error->release = CAdbcDriverExporter.ReleaseErrorPtr;
+            }
+
+            return AdbcStatusCode.NotImplemented;
         }
 
         /// <summary>
@@ -1059,7 +1305,7 @@ namespace Apache.Arrow.Adbc.C
                 fixed (CAdbcStatement* stmt = &nativeStatement)
                 fixed (CAdbcError* e = &_error)
                 {
-                    TranslateCode(Marshal.GetDelegateForFunctionPointer<StatementFn>(fn)(stmt, e));
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<StatementPrepare>(fn)(stmt, e));
                 }
             }
 #endif

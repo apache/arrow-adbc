@@ -56,6 +56,11 @@ namespace Apache.Arrow.Adbc
             return new AdbcException(message, AdbcStatusCode.NotImplemented);
         }
 
+        internal static AdbcException Missing(string name)
+        {
+            return new AdbcException($"Driver does not implement required function Adbc{name}", AdbcStatusCode.InternalError);
+        }
+
         /// <summary>
         /// For database providers which support it, contains a standard
         /// SQL 5-character return code indicating the success or failure
