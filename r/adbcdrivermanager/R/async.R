@@ -36,6 +36,22 @@ adbc_async_task_wait <- function(task, resolution_ms = 100) {
   adbc_async_task_result(task)
 }
 
+later_loop_schedule_task_callback <- function(task, callback,
+                                              loop = later::current_loop(),
+                                              delay = 0) {
+  force(task)
+  force(callback)
+
+  later::later(function() {
+    status <- adbc_async_task_wait_for(task, 0)
+    if (status == "timeout") {
+      later_loop_schedule_task_callback(task, callback, loop = loop, delay = delay)
+    } else {
+      callback(adbc_async_task_result(task))
+    }
+  }, delay = delay, loop = loop)
+}
+
 adbc_async_task_result <- function(task) {
   UseMethod("adbc_async_task_result")
 }
