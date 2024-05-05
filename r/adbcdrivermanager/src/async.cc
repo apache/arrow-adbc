@@ -95,7 +95,7 @@ extern "C" SEXP RAdbcAsyncTaskData(SEXP task_xptr) {
   return R_ExternalPtrProtected(task_xptr);
 }
 
-extern "C" SEXP RAdbcAsyncTaskWait(SEXP task_xptr, SEXP duration_ms_sexp) {
+extern "C" SEXP RAdbcAsyncTaskWaitFor(SEXP task_xptr, SEXP duration_ms_sexp) {
   auto task = adbc_from_xptr<RAdbcAsyncTask>(task_xptr);
   int duration_ms = adbc_as_int(duration_ms_sexp);
 

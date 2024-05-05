@@ -23,8 +23,8 @@ adbc_async_task <- function(subclass = character()) {
   )
 }
 
-adbc_async_task_wait <- function(task, duration_ms) {
-  .Call(RAdbcAsyncTaskWait, task, duration_ms)
+adbc_async_task_wait_for <- function(task, duration_ms) {
+  .Call(RAdbcAsyncTaskWaitFor, task, duration_ms)
 }
 
 #' @export
