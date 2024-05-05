@@ -142,7 +142,7 @@ namespace Apache.Arrow.Adbc
             /// <summary>
             /// Linearizability can be viewed as a special case of strict serializability where transactions
             /// are restricted to consist of a single operation applied to a single object.
-            /// 
+            ///
             /// The central distinction between serializability and linearizability is that serializability
             /// is a global property; a property of an entire history of operations and transactions.
             /// Linearizability is a local property; a property of a single operation or transaction.
