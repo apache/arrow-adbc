@@ -16,8 +16,11 @@
 # under the License.
 
 
-adbc_async_task <- function() {
-  .Call(RAdbcAsyncTaskNew, adbc_allocate_error())
+adbc_async_task <- function(subclass = character()) {
+  structure(
+    .Call(RAdbcAsyncTaskNew, adbc_allocate_error()),
+    class = union(subclass, "adbc_async_task")
+  )
 }
 
 adbc_async_task_wait <- function(task, duration_ms) {
@@ -38,6 +41,17 @@ names.adbc_async_task <- function(x) {
 `$.adbc_async_task` <- function(x, name) {
   .Call(RAdbcAsyncTaskData, x)[[name]]
 }
+
+adbc_async_sleep <- function(duration_ms) {
+  task <- adbc_async_task("adbc_async_sleep")
+  .Call(RAdbcAsyncTaskLaunchSleep, task, duration_ms)
+
+  user_data <- task$user_data
+  user_data$duration_ms <- duration_ms
+
+  task
+}
+
 
 adbc_callback_queue <- function() {
   .Call(RAdbcNewCallbackQueue)

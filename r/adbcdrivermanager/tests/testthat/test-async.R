@@ -16,18 +16,30 @@
 # under the License.
 
 test_that("async tasks can be created and inspected", {
-  task <- adbc_async_task()
+  task <- adbc_async_task(subclass = "specific_cls")
+  expect_s3_class(task, "adbc_async_task")
+  expect_s3_class(task, "specific_cls")
 
   expect_identical(
     names(task),
-    c("error_xptr", "return_code", "rows_affected", "result_xptr")
+    c("error_xptr", "return_code", "rows_affected", "result_xptr", "user_data")
   )
 
   expect_s3_class(task$error_xptr, "adbc_error")
   expect_identical(task$return_code, NA_integer_)
   expect_identical(task$rows_affected, NA_real_)
   expect_identical(task$result_xptr, NULL)
+
   expect_identical(adbc_async_task_wait(task, 0), "not_started")
+})
+
+test_that("async tasks can update R-level user data", {
+  task <- adbc_async_task()
+  expect_identical(as.list(task$user_data), list())
+
+  user_data <- task$user_data
+  user_data$some_field <- "some_value"
+  expect_identical(task$user_data$some_field, "some_value")
 })
 
 test_that("async task methods error for invalid input", {
@@ -41,7 +53,23 @@ test_that("async task methods error for invalid input", {
     adbc_async_task_wait(adbc_async_task(), -1),
     "duration_ms must be >= 0"
   )
+
+  task <- adbc_async_task()
+  expect_error(
+    task$result_xptr <- NULL,
+    "Can't update field"
+  )
 })
+
+test_that("async sleeper test works", {
+  sleep_task <- adbc_async_sleep(500)
+  expect_identical(adbc_async_task_wait(sleep_task, 0), "timeout")
+  expect_identical(adbc_async_task_wait(sleep_task, 1000), "ready")
+  expect_identical(adbc_async_task_wait(sleep_task, 0), "ready")
+  expect_identical(sleep_task$return_code, 0L)
+})
+
+
 
 test_that("async array_stream$get_next() works", {
   stream <- nanoarrow::basic_array_stream(list(1:5))
