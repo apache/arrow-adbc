@@ -54,9 +54,12 @@ namespace Apache.Arrow.Adbc
         public static string GetEnabled(bool value) => value ? Enabled : Disabled;
         public static bool GetEnabled(string value)
         {
-            if (StringComparer.OrdinalIgnoreCase.Equals(value, Enabled)) { return true; }
-            if (StringComparer.OrdinalIgnoreCase.Equals(value, Disabled)) { return false; }
-            throw new NotSupportedException("unknown enabled flag");
+            return value switch
+            {
+                Enabled => true,
+                Disabled => false,
+                _ => throw new NotSupportedException("unknown enabled flag"),
+            };
         }
 
         public static string GetIsolationLevel(IsolationLevel value)
@@ -76,14 +79,17 @@ namespace Apache.Arrow.Adbc
 
         public static IsolationLevel GetIsolationLevel(string value)
         {
-            if (StringComparer.OrdinalIgnoreCase.Equals(value, IsolationLevels.Default)) { return Adbc.IsolationLevel.Default; }
-            if (StringComparer.OrdinalIgnoreCase.Equals(value, IsolationLevels.ReadUncommitted)) { return Adbc.IsolationLevel.ReadUncommitted; }
-            if (StringComparer.OrdinalIgnoreCase.Equals(value, IsolationLevels.ReadCommitted)) { return Adbc.IsolationLevel.ReadCommitted; }
-            if (StringComparer.OrdinalIgnoreCase.Equals(value, IsolationLevels.RepeatableRead)) { return Adbc.IsolationLevel.RepeatableRead; }
-            if (StringComparer.OrdinalIgnoreCase.Equals(value, IsolationLevels.Snapshot)) { return Adbc.IsolationLevel.Snapshot; }
-            if (StringComparer.OrdinalIgnoreCase.Equals(value, IsolationLevels.Serializable)) { return Adbc.IsolationLevel.Serializable; }
-            if (StringComparer.OrdinalIgnoreCase.Equals(value, IsolationLevels.Linearizable)) { return Adbc.IsolationLevel.Linearizable; }
-            throw new NotSupportedException("unknown isolation level");
+            return value switch
+            {
+                IsolationLevels.Default => Adbc.IsolationLevel.Default,
+                IsolationLevels.ReadUncommitted => Adbc.IsolationLevel.ReadUncommitted,
+                IsolationLevels.ReadCommitted => Adbc.IsolationLevel.ReadCommitted,
+                IsolationLevels.RepeatableRead => Adbc.IsolationLevel.RepeatableRead,
+                IsolationLevels.Snapshot => Adbc.IsolationLevel.Snapshot,
+                IsolationLevels.Serializable => Adbc.IsolationLevel.Serializable,
+                IsolationLevels.Linearizable => Adbc.IsolationLevel.Linearizable,
+                _ => throw new NotSupportedException("unknown isolation level"),
+            };
         }
 
         public static string GetIngestMode(BulkIngestMode value)
@@ -98,9 +104,12 @@ namespace Apache.Arrow.Adbc
 
         public static BulkIngestMode GetIngestMode(string value)
         {
-            if (StringComparer.OrdinalIgnoreCase.Equals(value, IngestMode.Create)) { return BulkIngestMode.Create; }
-            if (StringComparer.OrdinalIgnoreCase.Equals(value, IngestMode.Append)) { return BulkIngestMode.Append; }
-            throw new NotSupportedException("unknown ingestion mode");
+            return value switch
+            {
+                IngestMode.Create => BulkIngestMode.Create,
+                IngestMode.Append => BulkIngestMode.Append,
+                _ => throw new NotSupportedException("unknown ingestion mode"),
+            };
         }
     }
 }
