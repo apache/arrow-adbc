@@ -852,22 +852,20 @@ namespace Apache.Arrow.Adbc.C
                 }
                 else
                 {
-                    // TODO: how best to normalize this?
-                    if (StringComparer.OrdinalIgnoreCase.Equals(stringName, AdbcOptions.Autocommit))
+                    switch (stringName)
                     {
-                        connection.AutoCommit = AdbcOptions.GetEnabled(stringValue);
-                    }
-                    else if (StringComparer.OrdinalIgnoreCase.Equals(stringName, AdbcOptions.IsolationLevel))
-                    {
-                        connection.IsolationLevel = AdbcOptions.GetIsolationLevel(stringValue);
-                    }
-                    else if (StringComparer.OrdinalIgnoreCase.Equals(stringName, AdbcOptions.ReadOnly))
-                    {
-                        connection.ReadOnly = AdbcOptions.GetEnabled(stringValue);
-                    }
-                    else
-                    {
-                        connection.SetOption(stringName, stringValue);
+                        case AdbcOptions.Connection.Autocommit:
+                            connection.AutoCommit = AdbcOptions.GetEnabled(stringValue);
+                            break;
+                        case AdbcOptions.Connection.IsolationLevel:
+                            connection.IsolationLevel = AdbcOptions.GetIsolationLevel(stringValue);
+                            break;
+                        case AdbcOptions.Connection.ReadOnly:
+                            connection.ReadOnly = AdbcOptions.GetEnabled(stringValue);
+                            break;
+                        default:
+                            connection.SetOption(stringName, stringValue);
+                            break;
                     }
                 }
             }

@@ -487,7 +487,7 @@ namespace Apache.Arrow.Adbc.C
                 get => _autoCommit ?? throw AdbcException.NotImplemented("no value has been set for AutoCommit");
                 set
                 {
-                    SetOption(AdbcOptions.Autocommit, AdbcOptions.GetEnabled(value));
+                    SetOption(AdbcOptions.Connection.Autocommit, AdbcOptions.GetEnabled(value));
                     _autoCommit = value;
                 }
             }
@@ -497,7 +497,7 @@ namespace Apache.Arrow.Adbc.C
                 get => _isolationLevel ?? IsolationLevel.Default;
                 set
                 {
-                    SetOption(AdbcOptions.IsolationLevel, AdbcOptions.GetIsolationLevel(value));
+                    SetOption(AdbcOptions.Connection.IsolationLevel, AdbcOptions.GetIsolationLevel(value));
                     _isolationLevel = value;
                 }
             }
@@ -507,7 +507,7 @@ namespace Apache.Arrow.Adbc.C
                 get => _readOnly ?? throw AdbcException.NotImplemented("no value has been set for ReadOnly");
                 set
                 {
-                    SetOption(AdbcOptions.ReadOnly, AdbcOptions.GetEnabled(value));
+                    SetOption(AdbcOptions.Connection.ReadOnly, AdbcOptions.GetEnabled(value));
                     _readOnly = value;
                 }
             }
