@@ -258,5 +258,19 @@ namespace Apache.Arrow.Adbc
 
             return null;
         }
+
+        /// <summary>
+        /// Attempts to cancel an in-progress operation on a connection.
+        /// </summary>
+        /// <remarks>
+        /// This can be called during a method like ExecuteQuery or while consuming an ArrowArrayStream
+        /// returned from such. Calling this function should make the other function throw a cancellation exception.
+        ///
+        /// This must always be thread-safe.
+        /// </remarks>
+        public virtual void Cancel()
+        {
+            throw AdbcException.NotImplemented("Statement does not support cancellation");
+        }
     }
 }

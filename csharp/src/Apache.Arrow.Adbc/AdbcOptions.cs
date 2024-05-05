@@ -27,6 +27,12 @@ namespace Apache.Arrow.Adbc
         public const string Autocommit = "adbc.connection.autocommit";
         public const string ReadOnly = "adbc.connection.readonly";
         public const string IsolationLevel = "adbc.connection.transaction.isolation_level";
+        public const string CurrentCatalog = "adbc.connection.catalog";
+        public const string CurrentDbSchema = "adbc.connection.db_schema";
+
+        public const string Uri = "uri";
+        public const string Username = "username";
+        public const string Password = "password";
 
         public static class IsolationLevels
         {
@@ -41,7 +47,10 @@ namespace Apache.Arrow.Adbc
 
         public static class Ingest
         {
+            public const string TargetCatalog = "adbc.ingest.target_catalog";
+            public const string TargetDbSchema = "adbc.ingest.target_db_schema";
             public const string TargetTable = "adbc.ingest.target_table";
+            public const string Temporary = "adbc.ingest.temporary";
             public const string Mode = "adbc.ingest.mode";
         }
 
@@ -49,6 +58,8 @@ namespace Apache.Arrow.Adbc
         {
             public const string Create = "adbc.ingest.mode.create";
             public const string Append = "adbc.ingest.mode.append";
+            public const string Replace = "adbc.ingest.mode.replace";
+            public const string CreateAppend = "adbc.ingest.mode.create_append";
         }
 
         public static string GetEnabled(bool value) => value ? Enabled : Disabled;
@@ -92,6 +103,8 @@ namespace Apache.Arrow.Adbc
             {
                 BulkIngestMode.Create => IngestMode.Create,
                 BulkIngestMode.Append => IngestMode.Append,
+                BulkIngestMode.Replace => IngestMode.Replace,
+                BulkIngestMode.CreateAppend => IngestMode.CreateAppend,
                 _ => throw new NotSupportedException("unknown ingestion mode"),
             };
         }

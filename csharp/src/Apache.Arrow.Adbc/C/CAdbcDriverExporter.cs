@@ -95,6 +95,12 @@ namespace Apache.Arrow.Adbc.C
 
         public unsafe static AdbcStatusCode AdbcDriverInit(int version, CAdbcDriver* nativeDriver, CAdbcError* error, AdbcDriver driver)
         {
+            if (version != AdbcVersion.Version_1_0_0)
+            {
+                // TODO: implement support for AdbcVersion.Version_1_1_0
+                return AdbcStatusCode.InternalError;
+            }
+
             DriverStub stub = new DriverStub(driver);
             GCHandle handle = GCHandle.Alloc(stub);
             nativeDriver->private_data = (void*)GCHandle.ToIntPtr(handle);
