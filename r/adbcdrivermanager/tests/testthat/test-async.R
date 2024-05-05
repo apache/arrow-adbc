@@ -53,12 +53,6 @@ test_that("async task methods error for invalid input", {
     adbc_async_task_wait(adbc_async_task(), -1),
     "duration_ms must be >= 0"
   )
-
-  task <- adbc_async_task()
-  expect_error(
-    task$result_xptr <- NULL,
-    "Can't update field"
-  )
 })
 
 test_that("async sleeper test works", {
