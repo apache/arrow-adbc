@@ -20,4 +20,3 @@
 # Apache Arrow ADBC
 
 An implementation of Arrow ADBC targeting .NET Standard 2.0 and .NET 6 or later.
-
