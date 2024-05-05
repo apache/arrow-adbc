@@ -31,6 +31,8 @@
 
 #include "radbc.h"
 
+enum class RAdbcAsyncTaskStatus { NOT_STARTED, STARTED, READY };
+
 struct RAdbcAsyncTask {
   AdbcError* return_error{nullptr};
   int* return_code{nullptr};
@@ -38,7 +40,8 @@ struct RAdbcAsyncTask {
   void* return_value_ptr{nullptr};
 
   std::string error_message;
-  std::unique_ptr<std::future<void>> result;
+  RAdbcAsyncTaskStatus status;
+  std::future<void> result;
 };
 
 template <>
@@ -53,16 +56,26 @@ static void FinalizeTaskXptr(SEXP task_xptr) {
   }
 }
 
+static void error_for_started_task(RAdbcAsyncTask* task) {
+  if (task->result.valid()) {
+    Rf_error("adbc_async_task is already in use");
+  }
+}
+
 extern "C" SEXP RAdbcAsyncTaskNew(SEXP error_xptr) {
-  const char* names[] = {"error_xptr", "return_code", "rows_affected", "result_xptr", ""};
+  const char* names[] = {"error_xptr",  "return_code", "rows_affected",
+                         "result_xptr", "user_data",   ""};
   SEXP task_prot = PROTECT(Rf_mkNamed(VECSXP, names));
   SET_VECTOR_ELT(task_prot, 0, error_xptr);
   SET_VECTOR_ELT(task_prot, 1, Rf_allocVector(INTSXP, 1));
   SET_VECTOR_ELT(task_prot, 2, Rf_allocVector(REALSXP, 1));
 
+  SEXP new_env = PROTECT(adbc_new_env());
+  SET_VECTOR_ELT(task_prot, 4, new_env);
+  UNPROTECT(1);
+
   auto task = new RAdbcAsyncTask();
   SEXP task_xptr = PROTECT(R_MakeExternalPtr(task, R_NilValue, task_prot));
-  Rf_setAttrib(task_xptr, R_ClassSymbol, Rf_mkString("adbc_async_task"));
   R_RegisterCFinalizer(task_xptr, &FinalizeTaskXptr);
 
   task->return_error = adbc_from_xptr<AdbcError>(error_xptr);
@@ -71,6 +84,7 @@ extern "C" SEXP RAdbcAsyncTaskNew(SEXP error_xptr) {
 
   *(task->return_code) = NA_INTEGER;
   *(task->rows_affected) = NA_REAL;
+  task->status = RAdbcAsyncTaskStatus::NOT_STARTED;
 
   UNPROTECT(2);
   return task_xptr;
@@ -89,20 +103,41 @@ extern "C" SEXP RAdbcAsyncTaskWait(SEXP task_xptr, SEXP duration_ms_sexp) {
     Rf_error("duration_ms must be >= 0");
   }
 
-  if (task->result == nullptr) {
-    return Rf_mkString("not_started");
+  switch (task->status) {
+    case RAdbcAsyncTaskStatus::NOT_STARTED:
+      return Rf_mkString("not_started");
+    case RAdbcAsyncTaskStatus::READY:
+      return Rf_mkString("ready");
+    default:
+      break;
   }
 
   std::future_status status =
-      task->result->wait_for(std::chrono::milliseconds(duration_ms));
+      task->result.wait_for(std::chrono::milliseconds(duration_ms));
   switch (status) {
     case std::future_status::timeout:
       return Rf_mkString("timeout");
     case std::future_status::ready:
+
       return Rf_mkString("ready");
     default:
-      return Rf_mkString("unknown");
+      Rf_error("Unknown status returned from future::wait_for()");
   }
+}
+
+extern "C" SEXP RAdbcAsyncTaskLaunchSleep(SEXP task_xptr, SEXP duration_ms_sexp) {
+  auto task = adbc_from_xptr<RAdbcAsyncTask>(task_xptr);
+  error_for_started_task(task);
+
+  int duration_ms = adbc_as_int(duration_ms_sexp);
+
+  task->result = std::async(std::launch::async, [task, duration_ms] {
+    std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
+    *(task->return_code) = ADBC_STATUS_OK;
+  });
+
+  task->status = RAdbcAsyncTaskStatus::STARTED;
+  return R_NilValue;
 }
 
 // A thin wrapper around a std::thread() that ensures that the thread
