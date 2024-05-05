@@ -27,6 +27,19 @@ adbc_async_task_wait_for <- function(task, duration_ms) {
   .Call(RAdbcAsyncTaskWaitFor, task, duration_ms)
 }
 
+adbc_async_task_wait <- function(task, resolution_ms = 100) {
+  status <- "started"
+  while (status != "ready") {
+    status <- adbc_async_task_wait_for(task, resolution_ms)
+  }
+
+  adbc_async_task_result(task)
+}
+
+adbc_async_task_result <- function(task) {
+  UseMethod("adbc_async_task_result")
+}
+
 #' @export
 names.adbc_async_task <- function(x) {
   names(.Call(RAdbcAsyncTaskData, x))
@@ -50,6 +63,11 @@ adbc_async_sleep <- function(duration_ms) {
   user_data$duration_ms <- duration_ms
 
   task
+}
+
+#' @export
+adbc_async_task_result.adbc_async_sleep <- function(task) {
+  task$user_data$duration_ms
 }
 
 

@@ -61,9 +61,13 @@ test_that("async sleeper test works", {
   expect_identical(adbc_async_task_wait_for(sleep_task, 1000), "ready")
   expect_identical(adbc_async_task_wait_for(sleep_task, 0), "ready")
   expect_identical(sleep_task$return_code, 0L)
+  expect_identical(adbc_async_task_result(sleep_task), 500)
 })
 
-
+test_that("async task waiter works", {
+  sleep_task <- adbc_async_sleep(500)
+  expect_identical(adbc_async_task_wait(sleep_task), 500)
+})
 
 test_that("async array_stream$get_next() works", {
   stream <- nanoarrow::basic_array_stream(list(1:5))
