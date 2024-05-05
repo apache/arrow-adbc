@@ -15,6 +15,34 @@
 # specific language governing permissions and limitations
 # under the License.
 
+test_that("async tasks can be created and inspected", {
+  task <- adbc_async_task()
+
+  expect_identical(
+    names(task),
+    c("error_xptr", "return_code", "rows_affected", "result_xptr")
+  )
+
+  expect_s3_class(task$error_xptr, "adbc_error")
+  expect_identical(task$return_code, NA_integer_)
+  expect_identical(task$rows_affected, NA_real_)
+  expect_identical(task$result_xptr, NULL)
+  expect_identical(adbc_async_task_wait(task, 0), "not_started")
+})
+
+test_that("async task methods error for invalid input", {
+  task <- unserialize(serialize(adbc_async_task(), NULL))
+  expect_error(
+    names(task),
+    "Can't convert external pointer to NULL"
+  )
+
+  expect_error(
+    adbc_async_task_wait(adbc_async_task(), -1),
+    "duration_ms must be >= 0"
+  )
+})
+
 test_that("async array_stream$get_next() works", {
   stream <- nanoarrow::basic_array_stream(list(1:5))
   async_called <- FALSE

@@ -69,21 +69,25 @@ extern "C" SEXP RAdbcAsyncTaskNew(SEXP error_xptr) {
   task->return_code = INTEGER(VECTOR_ELT(task_prot, 1));
   task->rows_affected = REAL(VECTOR_ELT(task_prot, 2));
 
-  UNPROTECT(1);
-  return R_NilValue;
+  *(task->return_code) = NA_INTEGER;
+  *(task->rows_affected) = NA_REAL;
+
+  UNPROTECT(2);
+  return task_xptr;
 }
 
 extern "C" SEXP RAdbcAsyncTaskData(SEXP task_xptr) {
-  if (!Rf_inherits(task_xptr, adbc_xptr_class<RAdbcAsyncTask>())) {
-    Rf_error("task must inherit from 'adbc_async_task'");
-  }
-
+  adbc_from_xptr<RAdbcAsyncTask>(task_xptr);
   return R_ExternalPtrProtected(task_xptr);
 }
 
 extern "C" SEXP RAdbcAsyncTaskWait(SEXP task_xptr, SEXP duration_ms_sexp) {
   auto task = adbc_from_xptr<RAdbcAsyncTask>(task_xptr);
   int duration_ms = adbc_as_int(duration_ms_sexp);
+
+  if (duration_ms < 0) {
+    Rf_error("duration_ms must be >= 0");
+  }
 
   if (task->result == nullptr) {
     return Rf_mkString("not_started");

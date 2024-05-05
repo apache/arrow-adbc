@@ -15,6 +15,30 @@
 # specific language governing permissions and limitations
 # under the License.
 
+
+adbc_async_task <- function() {
+  .Call(RAdbcAsyncTaskNew, adbc_allocate_error())
+}
+
+adbc_async_task_wait <- function(task, duration_ms) {
+  .Call(RAdbcAsyncTaskWait, task, duration_ms)
+}
+
+#' @export
+names.adbc_async_task <- function(x) {
+  names(.Call(RAdbcAsyncTaskData, x))
+}
+
+#' @export
+`[[.adbc_async_task` <- function(x, i) {
+  .Call(RAdbcAsyncTaskData, x)[[i]]
+}
+
+#' @export
+`$.adbc_async_task` <- function(x, name) {
+  .Call(RAdbcAsyncTaskData, x)[[name]]
+}
+
 adbc_callback_queue <- function() {
   .Call(RAdbcNewCallbackQueue)
 }
