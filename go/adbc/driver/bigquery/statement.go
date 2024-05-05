@@ -43,6 +43,9 @@ import (
 type statement struct {
 	connectionImpl *connectionImpl
 	query          *bigquery.Query
+	parameterMode  string
+	paramBinding   arrow.Record
+	streamBinding  array.RecordReader
 }
 
 // Close releases any relevant resources associated with this statement
@@ -50,6 +53,7 @@ type statement struct {
 //
 // A statement instance should not be used after Close is called.
 func (st *statement) Close() error {
+	st.clearParameters()
 	return nil
 }
 
@@ -62,6 +66,8 @@ func (st *statement) GetOption(key string) (string, error) {
 		} else {
 			return val, nil
 		}
+	case OptionStringQueryParameterMode:
+		return st.parameterMode, nil
 	case OptionStringQueryDestinationTable:
 		return tableToString(st.query.QueryConfig.Dst), nil
 	case OptionStringQueryDefaultProjectID:
@@ -114,6 +120,16 @@ func (st *statement) GetOptionInt(key string) (int64, error) {
 
 func (st *statement) SetOption(key string, v string) error {
 	switch key {
+	case OptionStringQueryParameterMode:
+		switch v {
+		case OptionValueQueryParameterModeNamed, OptionValueQueryParameterModePositional:
+			st.parameterMode = v
+		default:
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("Parameter mode for the statement can only be either %s or %s", OptionValueQueryParameterModeNamed, OptionValueQueryParameterModePositional),
+			}
+		}
 	case OptionStringQueryDestinationTable:
 		val, err := stringToTable(v)
 		if err == nil {
@@ -231,6 +247,13 @@ func (st *statement) SetSqlQuery(query string) error {
 //
 // This invalidates any prior result sets on this statement.
 func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+	parameters, err := st.getQueryParameter()
+	if err != nil {
+		return nil, 0, err
+	}
+	if parameters != nil {
+		st.query.QueryConfig.Parameters = parameters
+	}
 	reader, affectedRows, err := newRecordReader(ctx, st.query, st.connectionImpl.Alloc)
 	if err != nil {
 		return nil, -1, err
@@ -277,6 +300,169 @@ func (st *statement) SetSubstraitPlan(plan []byte) error {
 	}
 }
 
+func arrowValueToQueryParameterValue(value arrow.Array) bigquery.QueryParameter {
+	parameter := bigquery.QueryParameter{}
+	if value.IsNull(0) {
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "NULL",
+			},
+			Value: "NULL",
+		}
+		return parameter
+	}
+
+	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
+	// https://cloud.google.com/bigquery/docs/reference/rest/v2/StandardSqlDataType#typekind
+	switch value.DataType().ID() {
+	case arrow.BOOL:
+		// GoogleSQL type: BOOLEAN
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "BOOL",
+			},
+			Value: value.ValueStr(0),
+		}
+	case arrow.INT8, arrow.INT16, arrow.INT32, arrow.INT64, arrow.UINT8, arrow.UINT16, arrow.UINT32, arrow.UINT64:
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "INT64",
+			},
+			Value: value.ValueStr(0),
+		}
+	case arrow.FLOAT32, arrow.FLOAT64:
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "FLOAT64",
+			},
+			Value: value.ValueStr(0),
+		}
+	case arrow.BINARY, arrow.BINARY_VIEW, arrow.LARGE_BINARY:
+		// todo: Encoded as a base64 string per RFC 4648, section 4.
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "BYTES",
+			},
+			Value: value.ValueStr(0),
+		}
+	case arrow.STRING, arrow.STRING_VIEW, arrow.LARGE_STRING:
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "STRING",
+			},
+			Value: value.ValueStr(0),
+		}
+	case arrow.DATE32, arrow.DATE64:
+		// todo: Encoded as RFC 3339 full-date format string: 1985-04-12
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "DATE",
+			},
+			Value: value.ValueStr(0),
+		}
+	case arrow.TIMESTAMP:
+		// todo: Encoded as an RFC 3339 timestamp with mandatory "Z" time zone string: 1985-04-12T23:20:50.52Z
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "TIMESTAMP",
+			},
+			Value: value.ValueStr(0),
+		}
+	case arrow.TIME32, arrow.TIME64:
+		// todo: Encoded as RFC 3339 partial-time format string: 23:20:50.52
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "TIME",
+			},
+			Value: value.ValueStr(0),
+		}
+	case arrow.DECIMAL128:
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "NUMERIC",
+			},
+			Value: value.ValueStr(0),
+		}
+	case arrow.DECIMAL256:
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "BIGNUMERIC",
+			},
+			Value: value.ValueStr(0),
+		}
+	}
+
+	return parameter
+}
+
+func (st *statement) getQueryParameter() ([]bigquery.QueryParameter, error) {
+	var values arrow.Record
+	if st.paramBinding != nil {
+		values = st.paramBinding
+	} else if st.streamBinding != nil {
+		if st.streamBinding.Next() {
+			values = st.streamBinding.Record()
+		} else {
+			return nil, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  "Cannot bind query parameters: stream has no next record",
+			}
+		}
+	} else {
+		return nil, nil
+	}
+
+	parameters := make([]bigquery.QueryParameter, values.NumCols())
+	includeName := st.parameterMode == OptionValueQueryParameterModeNamed
+	for i, v := range values.Columns() {
+		parameters[i] = arrowValueToQueryParameterValue(v)
+		if includeName {
+			parameters[i].Name = values.ColumnName(i)
+		}
+	}
+	return parameters, nil
+}
+
+func (st *statement) clearParameters() {
+	if st.paramBinding != nil {
+		st.paramBinding.Release()
+		st.paramBinding = nil
+	}
+	if st.streamBinding != nil {
+		st.streamBinding.Release()
+		st.streamBinding = nil
+	}
+}
+
+// SetParameters takes a record batch to send as the parameter bindings when
+// executing. It should match the schema from ParameterSchema.
+//
+// This will call Retain on the record to ensure it doesn't get released out
+// from under the statement. Release will be called on a previous binding
+// record or reader if it existed, and will be called upon calling Close on the
+// PreparedStatement.
+func (st *statement) SetParameters(binding arrow.Record) {
+	st.clearParameters()
+	st.paramBinding = binding
+	if st.paramBinding != nil {
+		st.paramBinding.Retain()
+	}
+}
+
+// SetRecordReader takes a RecordReader to send as the parameter bindings when
+// executing. It should match the schema from ParameterSchema.
+//
+// This will call Retain on the reader to ensure it doesn't get released out
+// from under the statement. Release will be called on a previous binding
+// record or reader if it existed, and will be called upon calling Close on the
+// PreparedStatement.
+func (st *statement) SetRecordReader(binding array.RecordReader) {
+	st.clearParameters()
+	binding.Retain()
+	st.streamBinding = binding
+	st.streamBinding.Retain()
+}
+
 // Bind uses an arrow record batch to bind parameters to the query.
 //
 // This can be used for bulk inserts or for prepared statements.
@@ -284,10 +470,8 @@ func (st *statement) SetSubstraitPlan(plan []byte) error {
 // but it may not do this until the statement is closed or another
 // record is bound.
 func (st *statement) Bind(_ context.Context, values arrow.Record) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "Bind not yet implemented for BigQuery driver",
-	}
+	st.SetParameters(values)
+	return nil
 }
 
 // BindStream uses a record batch stream to bind parameters for this
@@ -296,10 +480,8 @@ func (st *statement) Bind(_ context.Context, values arrow.Record) error {
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
 func (st *statement) BindStream(_ context.Context, stream array.RecordReader) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "BindStream not yet implemented for BigQuery driver",
-	}
+	st.SetRecordReader(stream)
+	return nil
 }
 
 // GetParameterSchema returns an Arrow schema representation of

@@ -257,6 +257,7 @@ func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	return &statement{
 		connectionImpl: c,
 		query:          c.client.Query(""),
+		parameterMode:  OptionValueQueryParameterModePositional,
 	}, nil
 }
 

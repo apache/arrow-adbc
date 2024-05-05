@@ -45,6 +45,13 @@ const (
 	OptionStringAuthClientSecret          = "adbc.bigquery.sql.auth.client_secret"
 	OptionStringAuthRefreshToken          = "adbc.bigquery.sql.auth.refresh_token"
 
+	// OptionStringQueryParameterMode specifies if the query uses positional syntax ("?")
+	// or the named syntax ("@p"). It is illegal to mix positional and named syntax.
+	// Default is OptionValueQueryParameterModePositional.
+	OptionStringQueryParameterMode          = "adbc.bigquery.sql.query.parameter_mode"
+	OptionValueQueryParameterModeNamed      = "adbc.bigquery.sql.query.parameter_mode_named"
+	OptionValueQueryParameterModePositional = "adbc.bigquery.sql.query.parameter_mode_positional"
+
 	OptionStringQueryDestinationTable  = "adbc.bigquery.sql.query.destination_table"
 	OptionStringQueryDefaultProjectID  = "adbc.bigquery.sql.query.default_project_id"
 	OptionStringQueryDefaultDatasetID  = "adbc.bigquery.sql.query.default_dataset_id"
