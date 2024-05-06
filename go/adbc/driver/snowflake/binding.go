@@ -21,6 +21,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"io"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v17/arrow"
@@ -105,33 +106,44 @@ type snowflakeBindReader struct {
 func (r *snowflakeBindReader) Release() {
 	if r.currentBatch != nil {
 		r.currentBatch.Release()
+		r.currentBatch = nil
 	}
 	if r.stream != nil {
 		r.stream.Release()
+		r.stream = nil
 	}
 }
 
 func (r *snowflakeBindReader) Next() (array.RecordReader, error) {
 	params, err := r.NextParams()
 	if err != nil {
+		// includes EOF
 		return nil, err
-	} else if params == nil {
-		// end-of-stream
-		return nil, nil
 	}
 	return r.doQuery(params)
 }
 
 func (r *snowflakeBindReader) NextParams() ([]driver.NamedValue, error) {
 	for r.currentBatch == nil || r.nextIndex >= r.currentBatch.NumRows() {
+		// We can be used both by binding a stream or by binding a
+		// batch. In the latter case, we have to release the batch,
+		// but not in the former case. Unify the cases by always
+		// releasing the batch, adding an "extra" retain so that the
+		// release does not cause issues.
+		if r.currentBatch != nil {
+			r.currentBatch.Release()
+		}
+		r.currentBatch = nil
 		if r.stream != nil && r.stream.Next() {
 			r.currentBatch = r.stream.Record()
+			r.currentBatch.Retain()
 			r.nextIndex = 0
 			continue
 		} else if r.stream != nil && r.stream.Err() != nil {
 			return nil, r.stream.Err()
 		} else {
-			return nil, nil
+			// no more params
+			return nil, io.EOF
 		}
 	}
 

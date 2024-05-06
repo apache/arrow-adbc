@@ -21,6 +21,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -522,10 +523,10 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 		defer bind.Release()
 		for {
 			params, err := bind.NextParams()
-			if err != nil {
-				return -1, err
-			} else if params == nil {
+			if err == io.EOF {
 				break
+			} else if err != nil {
+				return -1, err
 			}
 
 			r, err := st.cnxn.cn.ExecContext(ctx, st.query, params)

@@ -18,6 +18,7 @@
 package snowflake
 
 import (
+	"io"
 	"sync/atomic"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -45,7 +46,9 @@ func (r *concatReader) nextReader() {
 		r.currentReader = nil
 	}
 	reader, err := r.readers.Next()
-	if err != nil {
+	if err == io.EOF {
+		r.currentReader = nil
+	} else if err != nil {
 		r.err = err
 	} else {
 		// May be nil
