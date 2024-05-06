@@ -36,20 +36,37 @@ adbc_async_task_wait <- function(task, resolution_ms = 100) {
   adbc_async_task_result(task)
 }
 
-later_loop_schedule_task_callback <- function(task, callback,
+later_loop_schedule_task_callback <- function(task, resolve, reject,
                                               loop = later::current_loop(),
                                               delay = 0) {
   force(task)
-  force(callback)
+  force(resolve)
+  force(reject)
 
   later::later(function() {
     status <- adbc_async_task_wait_for(task, 0)
     if (status == "timeout") {
-      later_loop_schedule_task_callback(task, callback, loop = loop, delay = delay)
+      later_loop_schedule_task_callback(
+        task,
+        resolve,
+        reject,
+        loop = loop,
+        delay = delay
+      )
     } else {
-      callback(adbc_async_task_result(task))
+      tryCatch(
+        resolve(adbc_async_task_result(task)),
+        error = function(e) reject(e)
+      )
     }
   }, delay = delay, loop = loop)
+}
+
+as.promise.adbc_async_task <- function(task) {
+  force(task)
+  promises::promise(function(resolve, reject) {
+    later_loop_schedule_task_callback(task, resolve, reject)
+  })
 }
 
 adbc_async_task_result <- function(task) {
@@ -71,18 +88,25 @@ names.adbc_async_task <- function(x) {
   .Call(RAdbcAsyncTaskData, x)[[name]]
 }
 
-adbc_async_sleep <- function(duration_ms) {
+adbc_async_sleep <- function(duration_ms, error_message = NULL) {
   task <- adbc_async_task("adbc_async_sleep")
   .Call(RAdbcAsyncTaskLaunchSleep, task, duration_ms)
 
   user_data <- task$user_data
   user_data$duration_ms <- duration_ms
+  user_data$error_message <- error_message
 
   task
 }
 
 #' @export
 adbc_async_task_result.adbc_async_sleep <- function(task) {
+  if (!is.null(task$user_data$error_message)) {
+    cnd <- simpleError(task$user_data$error_message)
+    class(cnd) <- c("adbc_async_sleep_error", class(cnd))
+    stop(cnd)
+  }
+
   task$user_data$duration_ms
 }
 
