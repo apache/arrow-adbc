@@ -183,7 +183,7 @@ impl Driver for DummyDriver {
     type DatabaseType = DummyDatabase;
 
     fn new_database(&mut self) -> Result<Self::DatabaseType> {
-        self.new_database_with_opts([])
+        self.new_database_with_opts(None)
     }
 
     fn new_database_with_opts(
@@ -232,7 +232,7 @@ impl Database for DummyDatabase {
     type ConnectionType = DummyConnection;
 
     fn new_connection(&mut self) -> Result<Self::ConnectionType> {
-        self.new_connection_with_opts([])
+        self.new_connection_with_opts(None)
     }
 
     fn new_connection_with_opts(

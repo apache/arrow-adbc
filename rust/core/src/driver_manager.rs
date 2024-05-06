@@ -221,7 +221,7 @@ impl Driver for ManagedDriver {
     type DatabaseType = ManagedDatabase;
 
     fn new_database(&mut self) -> Result<Self::DatabaseType> {
-        self.new_database_with_opts([])
+        self.new_database_with_opts(None)
     }
 
     fn new_database_with_opts(
@@ -478,7 +478,7 @@ impl Database for ManagedDatabase {
     type ConnectionType = ManagedConnection;
 
     fn new_connection(&mut self) -> Result<Self::ConnectionType> {
-        self.new_connection_with_opts([])
+        self.new_connection_with_opts(None)
     }
 
     fn new_connection_with_opts(
