@@ -56,7 +56,7 @@
 //! # };
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let opts = [(OptionDatabase::Uri, ":memory:".into())];
-//! let mut driver = ManagedDriver::load_dynamic("adbc_driver_sqlite", None, AdbcVersion::V100)?;
+//! let mut driver = ManagedDriver::load_dynamic_from_name("adbc_driver_sqlite", None, AdbcVersion::V100)?;
 //! let mut database = driver.new_database_with_opts(opts)?;
 //! let mut connection = database.new_connection()?;
 //! let mut statement = connection.new_statement()?;
@@ -103,7 +103,7 @@
 // and then acquire lock to the specific object under implementation.
 
 use std::collections::HashSet;
-use std::ffi::{CStr, CString};
+use std::ffi::{CStr, CString, OsStr};
 use std::ops::DerefMut;
 use std::os::raw::{c_char, c_void};
 use std::ptr::{null, null_mut};
@@ -173,22 +173,23 @@ impl ManagedDriver {
         Ok(ManagedDriver { inner })
     }
 
-    /// Load a driver from a dynamic library.
+    /// Load a driver from a dynamic library filename.
     ///
-    /// Will attempt to load the dynamic library with the given `name`, find the
+    /// Will attempt to load the dynamic library located at `filename`, find the
     /// symbol with name `entrypoint` (defaults to `AdbcDriverInit` if `None`),
     /// and then create the driver using the resolved function.
     ///
-    /// The `name` should not include any platform-specific prefixes or suffixes.
-    /// For example, use `adbc_driver_sqlite` rather than `libadbc_driver_sqlite.so`.
-    pub fn load_dynamic(
-        name: impl AsRef<str>,
+    /// The `filename` argument may be either:
+    /// - A library filename;
+    /// - The absolute path to the library;
+    /// - A relative (to the current working directory) path to the library.
+    pub fn load_dynamic_from_filename(
+        filename: impl AsRef<OsStr>,
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
         let entrypoint = entrypoint.unwrap_or(b"AdbcDriverInit");
-        let library =
-            unsafe { libloading::Library::new(libloading::library_filename(name.as_ref()))? };
+        let library = unsafe { libloading::Library::new(filename.as_ref())? };
         let init: libloading::Symbol<ffi::FFI_AdbcDriverInitFunc> =
             unsafe { library.get(entrypoint)? };
         let driver = Self::load_impl(&init, version)?;
@@ -198,6 +199,23 @@ impl ManagedDriver {
             _library: Some(library),
         });
         Ok(ManagedDriver { inner })
+    }
+
+    /// Load a driver from a dynamic library name.
+    ///
+    /// Will attempt to load the dynamic library with the given `name`, find the
+    /// symbol with name `entrypoint` (defaults to `AdbcDriverInit` if `None`),
+    /// and then create the driver using the resolved function.
+    ///
+    /// The `name` should not include any platform-specific prefixes or suffixes.
+    /// For example, use `adbc_driver_sqlite` rather than `libadbc_driver_sqlite.so`.
+    pub fn load_dynamic_from_name(
+        name: impl AsRef<str>,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+    ) -> Result<Self> {
+        let filename = libloading::library_filename(name.as_ref());
+        Self::load_dynamic_from_filename(filename, entrypoint, version)
     }
 
     fn load_impl(
