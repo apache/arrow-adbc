@@ -254,7 +254,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string catalogName = TestConfiguration.Metadata.Catalog;
             string schemaPrefix = Guid.NewGuid().ToString().Replace("-", "");
-            using TemporarySchema schema = TemporarySchema.NewSchema(catalogName, schemaPrefix, Statement);
+            using TemporarySchema schema = TemporarySchema.NewTemporarySchema(catalogName, Statement);
             string schemaName = schema.SchemaName;
             string fullTableName = $"{DelimitIdentifier(catalogName)}.{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
             using TemporaryTable temporaryTable = TemporaryTable.NewTemporaryTable(Statement, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)");

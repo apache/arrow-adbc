@@ -625,24 +625,22 @@ namespace Apache.Arrow.Adbc.Tests
         {
             private bool _disposedValue;
 
-            private TemporarySchema(string catalogName, string schemaPrefix, AdbcStatement statement)
+            private TemporarySchema(string catalogName, AdbcStatement statement)
             {
                 CatalogName = catalogName;
-                SchemaPrefix = schemaPrefix;
-                SchemaName = SchemaPrefix + "_" + Guid.NewGuid().ToString().Replace("-", "");
+                SchemaName = Guid.NewGuid().ToString().Replace("-", "");
                 _statement = statement;
             }
 
-            public static TemporarySchema NewSchema(string catalogName, string schemaPrefix, AdbcStatement statement)
+            public static TemporarySchema NewTemporarySchema(string catalogName, AdbcStatement statement)
             {
-                TemporarySchema schema = new TemporarySchema(catalogName, schemaPrefix, statement);
+                TemporarySchema schema = new TemporarySchema(catalogName, statement);
                 statement.SqlQuery = $"CREATE SCHEMA IF NOT EXISTS {schema.CatalogName}.{schema.SchemaName}";
                 statement.ExecuteUpdate();
                 return schema;
             }
 
             public string CatalogName { get; }
-            public string SchemaPrefix { get; }
             public string SchemaName { get; }
             private AdbcStatement _statement;
 
