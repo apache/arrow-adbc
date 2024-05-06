@@ -41,10 +41,10 @@ namespace Apache.Arrow.Adbc.Tests
         private AdbcStatement? _statement = null;
 
         /// <summary>
-        /// Constructs a new TestBase object.
+        /// Constructs a new TestBase object with an output helper.
         /// </summary>
         /// <param name="outputHelper">Test output helper for writing test output.</param>
-        public TestBase(ITestOutputHelper outputHelper)
+        public TestBase(ITestOutputHelper? outputHelper)
         {
             OutputHelper = outputHelper;
         }
@@ -52,7 +52,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Gets the test ouput helper.
         /// </summary>
-        protected ITestOutputHelper OutputHelper { get; }
+        protected ITestOutputHelper? OutputHelper { get; }
 
         /// <summary>
         /// The name of the environment variable that stores the full location of the test configuration file.
@@ -228,7 +228,7 @@ namespace Apache.Arrow.Adbc.Tests
         protected virtual void InsertSingleValue(string tableName, string columnName, string? value)
         {
             string insertNumberStatement = GetInsertValueStatement(tableName, columnName, value);
-            OutputHelper.WriteLine(insertNumberStatement);
+            OutputHelper?.WriteLine(insertNumberStatement);
             Statement.SqlQuery = insertNumberStatement;
             UpdateResult updateResult = Statement.ExecuteUpdate();
             Assert.Equal(1, updateResult.AffectedRows);
@@ -253,7 +253,7 @@ namespace Apache.Arrow.Adbc.Tests
         protected virtual void DeleteFromTable(string tableName, string whereClause, int expectedRowsAffected)
         {
             string deleteNumberStatement = GetDeleteValueStatement(tableName, whereClause);
-            OutputHelper.WriteLine(deleteNumberStatement);
+            OutputHelper?.WriteLine(deleteNumberStatement);
             Statement.SqlQuery = deleteNumberStatement;
             UpdateResult updateResult = Statement.ExecuteUpdate();
             Assert.Equal(expectedRowsAffected, updateResult.AffectedRows);
@@ -292,7 +292,7 @@ namespace Apache.Arrow.Adbc.Tests
         protected virtual async Task SelectAndValidateValues(string selectStatement, object? value, int expectedLength)
         {
             Statement.SqlQuery = selectStatement;
-            OutputHelper.WriteLine(selectStatement);
+            OutputHelper?.WriteLine(selectStatement);
             QueryResult queryResult = Statement.ExecuteQuery();
             int actualLength = 0;
             using (IArrowArrayStream stream = queryResult.Stream ?? throw new InvalidOperationException("stream is null"))
@@ -510,6 +510,13 @@ namespace Apache.Arrow.Adbc.Tests
             return $"'{value.Replace("'", "''")}'";
         }
 
+        protected virtual string DelimitIdentifier(string value)
+        {
+            return $"{Delimiter}{value.Replace(Delimiter, $"{Delimiter}{Delimiter}")}`";
+        }
+
+        protected virtual string Delimiter => "\"";
+
         protected static void AssertContainsAll(string[] expectedTexts, string value)
         {
             if (expectedTexts == null) { return; };
@@ -520,9 +527,41 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         /// <summary>
+        /// Gets test patterns for GetObject identifier matching.
+        /// </summary>
+        /// <param name="name">The idenytifier to create a pattern for.</param>
+        /// <returns>An enumeration of patterns to match produced from the identifier.</returns>
+        protected static IEnumerable<object[]> GetPatterns(string? name)
+        {
+            if (string.IsNullOrEmpty(name)) yield break;
+
+            yield return new object[] { name! };
+            yield return new object[] { $"{GetPartialNameForPatternMatch(name!)}%" };
+            yield return new object[] { $"{GetPartialNameForPatternMatch(name!).ToLower()}%" };
+            yield return new object[] { $"{GetPartialNameForPatternMatch(name!).ToUpper()}%" };
+            yield return new object[] { $"_{GetNameWithoutFirstChatacter(name!)}" };
+            yield return new object[] { $"_{GetNameWithoutFirstChatacter(name!).ToLower()}" };
+            yield return new object[] { $"_{GetNameWithoutFirstChatacter(name!).ToUpper()}" };
+        }
+
+        private static string GetPartialNameForPatternMatch(string name)
+        {
+            if (string.IsNullOrEmpty(name) || name.Length == 1) return name;
+
+            return name.Substring(0, name.Length / 2);
+        }
+
+        private static string GetNameWithoutFirstChatacter(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
+
+            return name.Substring(1);
+        }
+
+        /// <summary>
         /// Represents a temporary table that can create and drop the table automatically.
         /// </summary>
-        public class TemporaryTable : IDisposable
+        protected class TemporaryTable : IDisposable
         {
             private bool _disposedValue;
             private readonly AdbcStatement _statement;
@@ -568,6 +607,53 @@ namespace Apache.Arrow.Adbc.Tests
                     if (disposing)
                     {
                         Drop();
+                    }
+
+                    _disposedValue = true;
+                }
+            }
+
+            public void Dispose()
+            {
+                // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+                Dispose(disposing: true);
+                GC.SuppressFinalize(this);
+            }
+        }
+
+        protected class TemporarySchema : IDisposable
+        {
+            private bool _disposedValue;
+
+            private TemporarySchema(string catalogName, string schemaPrefix, AdbcStatement statement)
+            {
+                CatalogName = catalogName;
+                SchemaPrefix = schemaPrefix;
+                SchemaName = SchemaPrefix + "_" + Guid.NewGuid().ToString().Replace("-", "");
+                _statement = statement;
+            }
+
+            public static TemporarySchema NewSchema(string catalogName, string schemaPrefix, AdbcStatement statement)
+            {
+                TemporarySchema schema = new TemporarySchema(catalogName, schemaPrefix, statement);
+                statement.SqlQuery = $"CREATE SCHEMA IF NOT EXISTS {schema.CatalogName}.{schema.SchemaName}";
+                statement.ExecuteUpdate();
+                return schema;
+            }
+
+            public string CatalogName { get; }
+            public string SchemaPrefix { get; }
+            public string SchemaName { get; }
+            private AdbcStatement _statement;
+
+            protected virtual void Dispose(bool disposing)
+            {
+                if (!_disposedValue)
+                {
+                    if (disposing)
+                    {
+                        _statement.SqlQuery = $"DROP SCHEMA IF EXISTS {CatalogName}.{SchemaName}";
+                        _statement.ExecuteUpdate();
                     }
 
                     _disposedValue = true;
