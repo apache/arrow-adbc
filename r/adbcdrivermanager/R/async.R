@@ -116,7 +116,12 @@ adbc_statement_execute_query_rows_affected_async <- function(statement) {
   user_data <- task$user_data
   user_data$statement <- statement
 
-  .Call(RAdbcAsyncTaskLaunchExecuteQuery, task, statement, NULL)
+  user_data$rows_affected <- .Call(
+    RAdbcAsyncTaskLaunchExecuteQuery,
+    task,
+    statement,
+    NULL
+  )
 
   task
 }
@@ -127,5 +132,5 @@ adbc_async_task_result.adbc_async_execute_query_rows_affected <- function(task) 
     stop_for_error(task$return_code, task$error_xptr)
   }
 
-  task$rows_affected
+  task$user_data$rows_affected
 }

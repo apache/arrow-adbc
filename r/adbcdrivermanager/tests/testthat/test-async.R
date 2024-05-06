@@ -22,13 +22,11 @@ test_that("async tasks can be created and inspected", {
 
   expect_identical(
     names(task),
-    c("error_xptr", "return_code", "rows_affected", "result_xptr", "user_data")
+    c("error_xptr", "return_code", "user_data")
   )
 
   expect_s3_class(task$error_xptr, "adbc_error")
   expect_identical(task$return_code, NA_integer_)
-  expect_identical(task$rows_affected, NA_real_)
-  expect_identical(task$result_xptr, NULL)
 
   expect_identical(adbc_async_task_wait_for(task, 0), "not_started")
 })
