@@ -36,11 +36,7 @@ enum class RAdbcAsyncTaskStatus { NOT_STARTED, STARTED, READY };
 struct RAdbcAsyncTask {
   AdbcError* return_error{nullptr};
   int* return_code{nullptr};
-  double* rows_affected{nullptr};
-  AdbcStatement* statement{nullptr};
-  ArrowArrayStream* stream{nullptr};
 
-  std::string error_message;
   RAdbcAsyncTaskStatus status;
   std::future<void> result;
 };
@@ -64,15 +60,17 @@ static void error_for_started_task(RAdbcAsyncTask* task) {
 }
 
 extern "C" SEXP RAdbcAsyncTaskNew(SEXP error_xptr) {
-  const char* names[] = {"error_xptr",  "return_code", "rows_affected",
-                         "result_xptr", "user_data",   ""};
+  const char* names[] = {"error_xptr", "return_code", "user_data", ""};
   SEXP task_prot = PROTECT(Rf_mkNamed(VECSXP, names));
+
   SET_VECTOR_ELT(task_prot, 0, error_xptr);
-  SET_VECTOR_ELT(task_prot, 1, Rf_allocVector(INTSXP, 1));
-  SET_VECTOR_ELT(task_prot, 2, Rf_allocVector(REALSXP, 1));
+
+  SEXP return_code_sexp = PROTECT(Rf_allocVector(INTSXP, 1));
+  SET_VECTOR_ELT(task_prot, 1, return_code_sexp);
+  UNPROTECT(1);
 
   SEXP new_env = PROTECT(adbc_new_env());
-  SET_VECTOR_ELT(task_prot, 4, new_env);
+  SET_VECTOR_ELT(task_prot, 2, new_env);
   UNPROTECT(1);
 
   auto task = new RAdbcAsyncTask();
@@ -81,10 +79,8 @@ extern "C" SEXP RAdbcAsyncTaskNew(SEXP error_xptr) {
 
   task->return_error = adbc_from_xptr<AdbcError>(error_xptr);
   task->return_code = INTEGER(VECTOR_ELT(task_prot, 1));
-  task->rows_affected = REAL(VECTOR_ELT(task_prot, 2));
 
   *(task->return_code) = NA_INTEGER;
-  *(task->rows_affected) = NA_REAL;
   task->status = RAdbcAsyncTaskStatus::NOT_STARTED;
 
   UNPROTECT(2);
@@ -147,17 +143,21 @@ extern "C" SEXP RAdbcAsyncTaskLaunchExecuteQuery(SEXP task_xptr, SEXP statement_
   error_for_started_task(task);
 
   auto statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
-  //auto stream = adbc_from_xptr<ArrowArrayStream>(stream_xptr, /*null_ok*/ true);
+  // auto stream = adbc_from_xptr<ArrowArrayStream>(stream_xptr, /*null_ok*/ true);
 
-  task->result = std::async(std::launch::async, [task, statement] {
+  SEXP rows_affected_sexp = PROTECT(Rf_allocVector(REALSXP, 1));
+  double* rows_affected_dbl = REAL(rows_affected_sexp);
+
+  task->result = std::async(std::launch::async, [task, statement, rows_affected_dbl] {
     int64_t rows_affected = -1;
     *(task->return_code) =
         AdbcStatementExecuteQuery(statement, nullptr, &rows_affected, task->return_error);
-    *(task->rows_affected) = static_cast<double>(rows_affected);
+    *rows_affected_dbl = static_cast<double>(rows_affected);
   });
 
   task->status = RAdbcAsyncTaskStatus::STARTED;
-  return R_NilValue;
+  UNPROTECT(1);
+  return rows_affected_sexp;
 }
 
 // A thin wrapper around a std::thread() that ensures that the thread
