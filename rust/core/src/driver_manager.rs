@@ -182,12 +182,13 @@ impl ManagedDriver {
     /// The `name` should not include any platform-specific prefixes or suffixes.
     /// For example, use `adbc_driver_sqlite` rather than `libadbc_driver_sqlite.so`.
     pub fn load_dynamic(
-        name: &str,
+        name: impl AsRef<str>,
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
         let entrypoint = entrypoint.unwrap_or(b"AdbcDriverInit");
-        let library = unsafe { libloading::Library::new(libloading::library_filename(name))? };
+        let library =
+            unsafe { libloading::Library::new(libloading::library_filename(name.as_ref()))? };
         let init: libloading::Symbol<ffi::FFI_AdbcDriverInitFunc> =
             unsafe { library.get(entrypoint)? };
         let driver = Self::load_impl(&init, version)?;
