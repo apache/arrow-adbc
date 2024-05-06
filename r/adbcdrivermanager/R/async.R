@@ -27,7 +27,7 @@ adbc_async_task_wait_for <- function(task, duration_ms) {
   .Call(RAdbcAsyncTaskWaitFor, task, duration_ms)
 }
 
-adbc_async_task_wait <- function(task, resolution_ms = 100) {
+adbc_async_task_wait <- function(task, resolution_ms = 50) {
   status <- "started"
   while (status != "ready") {
     status <- adbc_async_task_wait_for(task, resolution_ms)
@@ -110,27 +110,63 @@ adbc_async_task_result.adbc_async_sleep <- function(task) {
   task$user_data$duration_ms
 }
 
-adbc_statement_execute_query_rows_affected_async <- function(statement) {
-  task <- adbc_async_task("adbc_async_execute_query_rows_affected")
+adbc_statement_execute_query_async <- function(statement, stream = NULL) {
+  task <- adbc_async_task("adbc_async_execute_query")
 
   user_data <- task$user_data
   user_data$statement <- statement
+  user_data$stream <- stream
 
   user_data$rows_affected <- .Call(
     RAdbcAsyncTaskLaunchExecuteQuery,
     task,
     statement,
-    NULL
+    stream
   )
 
   task
 }
 
 #' @export
-adbc_async_task_result.adbc_async_execute_query_rows_affected <- function(task) {
+adbc_async_task_result.adbc_async_execute_query <- function(task) {
   if (!identical(task$return_code, 0L)) {
     stop_for_error(task$return_code, task$error_xptr)
   }
 
-  task$user_data$rows_affected
+  list(
+    statement = task$user_data$statement,
+    stream = task$user_data$stream,
+    rows_affected = task$user_data$rows_affected
+  )
+}
+
+adbc_statement_stream_get_next_async <- function(statement, stream) {
+  task <- adbc_async_task("adbc_async_statement_stream_get_next")
+
+  user_data <- task$user_data
+  user_data$statement <- statement
+  user_data$stream <- stream
+  user_data$array <- nanoarrow::nanoarrow_allocate_array()
+
+  user_data$rows_affected <- .Call(
+    RAdbcAsyncTaskLaunchStreamGetNext,
+    task,
+    stream,
+    user_data$array
+  )
+
+  task
+}
+
+#' @export
+adbc_async_task_result.adbc_async_statement_stream_get_next <- function(task) {
+  if (!identical(task$return_code, 0L)) {
+    adbc_statement_release(task$user_data$statement)
+    stop(task$user_data$stream$get_last_error())
+  }
+
+  list(
+    statement = task$user_data$statement,
+    array = task$user_data$array
+  )
 }
