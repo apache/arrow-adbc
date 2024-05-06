@@ -67,6 +67,44 @@ test_that("async sleeper test works", {
 test_that("async task waiter works", {
   sleep_task <- adbc_async_sleep(500)
   expect_identical(adbc_async_task_wait(sleep_task), 500)
+
+  erroring_sleep_task <- adbc_async_sleep(500, error_message = "some error")
+  expect_error(
+    adbc_async_task_wait(erroring_sleep_task),
+    "some error",
+    class = "adbc_async_sleep_error"
+  )
+})
+
+test_that("async task can be converted to a promise", {
+  skip_if_not_installed("promises")
+
+  expect_output(
+    {
+      adbc_async_sleep(100) |>
+        promises::as.promise() |>
+        promises::then(~print(sprintf("waited for %s ms", .x)))
+      Sys.sleep(0.2)
+      later::run_now()
+      later::run_now()
+    },
+    "waited for 100 ms"
+  )
+
+  expect_output(
+    {
+      adbc_async_sleep(100, error_message = "errored after 100 ms") |>
+        promises::as.promise() |>
+        promises::then(
+          onFulfilled = ~print(sprintf("waited for %s ms", .x)),
+          onRejected = ~print(.x)
+        )
+      Sys.sleep(0.2)
+      later::run_now()
+      later::run_now()
+    },
+    "errored after 100 ms"
+  )
 })
 
 test_that("async array_stream$get_next() works", {
