@@ -1094,7 +1094,7 @@ impl Statement for ManagedStatement {
         Ok(result)
     }
 
-    fn get_parameters_schema(&self) -> Result<arrow::datatypes::Schema> {
+    fn get_parameter_schema(&self) -> Result<arrow::datatypes::Schema> {
         let driver = &self.inner.connection.database.driver.driver.lock().unwrap();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);

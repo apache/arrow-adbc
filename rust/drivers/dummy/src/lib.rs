@@ -869,7 +869,7 @@ impl Statement for DummyStatement {
         Ok(Some(0))
     }
 
-    fn get_parameters_schema(&self) -> Result<Schema> {
+    fn get_parameter_schema(&self) -> Result<Schema> {
         Ok(get_table_schema())
     }
 

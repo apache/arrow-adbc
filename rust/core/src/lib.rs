@@ -488,7 +488,7 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     /// the corresponding field will be NA (NullType).
     ///
     /// This should be called after [Statement::prepare].
-    fn get_parameters_schema(&self) -> Result<Schema>;
+    fn get_parameter_schema(&self) -> Result<Schema>;
 
     /// Turn this statement into a prepared statement to be executed multiple
     /// times.
