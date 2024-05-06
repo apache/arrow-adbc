@@ -48,6 +48,8 @@
 //! The [driver_manager] module allows loading drivers exposing the C API,
 //! either from an initialization function (link-time, either static or dynamic)
 //! or by dynamically finding such a function in a dynamic library (run-time).
+//! The driver manager is gated behind the `driver_manager` feature flag.
+//!
 //! # Driver Exporter
 //!
 //! The driver exporter allows exposing native Rust drivers as C drivers to be

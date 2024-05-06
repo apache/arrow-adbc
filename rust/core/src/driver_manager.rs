@@ -21,13 +21,11 @@
 //! uses FFI to wrap an object file implementation of
 //! [`adbc.h`](https://github.com/apache/arrow-adbc/blob/main/adbc.h).
 //!
-//! There are three ways that drivers can be loaded:
-//! 1. By statically linking the driver implementation using
-//! [ManagedDriver::load_static].
-//! 2. By dynamically linking the driver implementation using
-//! [ManagedDriver::load_static].
-//! 3. By loading the driver implementation at runtime (with
-//! `dlopen/LoadLibrary`) using [ManagedDriver::load_dynamic].
+//! There are two ways that drivers can be used:
+//! 2. By linking (either statically or dynamically) the driver implementation
+//! at link-time and then using [ManagedDriver::load_static].
+//! 3. By loading the driver implementation at run-time (with `dlopen/LoadLibrary`)
+//! using [ManagedDriver::load_dynamic].
 //!
 //! Drivers are initialized using a function provided by the driver as a main
 //! entrypoint, canonically called `AdbcDriverInit`. Although many will use a
@@ -64,16 +62,16 @@
 //! let mut statement = connection.new_statement()?;
 //!
 //! // Define some data.
-//! # let columns: Vec<Arc<dyn Array>> = vec![
-//! #     Arc::new(Int64Array::from(vec![1, 2, 3, 4])),
-//! #     Arc::new(Float64Array::from(vec![1.0, 2.0, 3.0, 4.0])),
-//! #     Arc::new(StringArray::from(vec!["a", "b", "c", "d"])),
-//! # ];
-//! # let schema = Schema::new(vec![
-//! #     Field::new("a", DataType::Int64, true),
-//! #     Field::new("b", DataType::Float64, true),
-//! #     Field::new("c", DataType::Utf8, true),
-//! # ]);
+//! let columns: Vec<Arc<dyn Array>> = vec![
+//!     Arc::new(Int64Array::from(vec![1, 2, 3, 4])),
+//!     Arc::new(Float64Array::from(vec![1.0, 2.0, 3.0, 4.0])),
+//!     Arc::new(StringArray::from(vec!["a", "b", "c", "d"])),
+//! ];
+//! let schema = Schema::new(vec![
+//!     Field::new("a", DataType::Int64, true),
+//!     Field::new("b", DataType::Float64, true),
+//!     Field::new("c", DataType::Utf8, true),
+//! ]);
 //! let input: RecordBatch = RecordBatch::try_new(Arc::new(schema), columns)?;
 //!
 //! // Ingest data.
@@ -179,7 +177,7 @@ impl ManagedDriver {
     ///
     /// Will attempt to load the dynamic library with the given `name`, find the
     /// symbol with name `entrypoint` (defaults to `AdbcDriverInit` if `None`),
-    /// and then call create the driver using the resolved function.
+    /// and then create the driver using the resolved function.
     ///
     /// The `name` should not include any platform-specific prefixes or suffixes.
     /// For example, use `adbc_driver_sqlite` rather than `libadbc_driver_sqlite.so`.
