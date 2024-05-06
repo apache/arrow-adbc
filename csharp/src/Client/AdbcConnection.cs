@@ -38,7 +38,6 @@ namespace Apache.Arrow.Adbc.Client
         private readonly Dictionary<string, string> adbcConnectionParameters;
         private readonly Dictionary<string, string> adbcConnectionOptions;
 
-        private AdbcStatement? adbcStatement;
         private AdbcTransaction? currentTransaction;
 
         /// <summary>
@@ -115,22 +114,12 @@ namespace Apache.Arrow.Adbc.Client
         public AdbcDriver? AdbcDriver { get; set; }
 
         /// <summary>
-        /// Gets the <see cref="AdbcStatement"/> associated with the
-        /// connection.
+        /// Creates an <see cref="AdbcStatement"/> for the connection.
         /// </summary>
-        internal AdbcStatement AdbcStatement
+        internal AdbcStatement CreateStatement()
         {
-            get
-            {
-                if (this.adbcStatement == null)
-                {
-                    // need to have a connection in order to have a statement
-                    EnsureConnectionOpen();
-                    this.adbcStatement = this.adbcConnectionInternal!.CreateStatement();
-                }
-
-                return this.adbcStatement;
-            }
+            EnsureConnectionOpen();
+            return this.adbcConnectionInternal!.CreateStatement();
         }
 
 #if NET5_0_OR_GREATER
@@ -147,7 +136,7 @@ namespace Apache.Arrow.Adbc.Client
         {
             EnsureConnectionOpen();
 
-            return new AdbcCommand(this.AdbcStatement, this);
+            return new AdbcCommand(this);
         }
 
         /// <summary>
@@ -163,7 +152,6 @@ namespace Apache.Arrow.Adbc.Client
         {
             this.adbcConnectionInternal?.Dispose();
             this.adbcConnectionInternal = null;
-            this.adbcStatement = null;
 
             base.Dispose(disposing);
         }
