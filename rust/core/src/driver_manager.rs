@@ -1058,12 +1058,7 @@ impl Statement for ManagedStatement {
             )
         };
         check_status(status, error)?;
-        let rows_affected = if rows_affected == -1 {
-            None
-        } else {
-            Some(rows_affected)
-        };
-        Ok(rows_affected)
+        Ok((rows_affected != -1).then_some(rows_affected))
     }
 
     fn execute_partitions(&mut self) -> Result<PartitionedResult> {
