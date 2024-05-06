@@ -429,7 +429,7 @@ impl Optionable for ManagedDatabase {
         let mut database = self.inner.database.lock().unwrap();
         let key = CString::new(key.as_ref())?;
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
-        let mut value: f64 = 0.0;
+        let mut value: f64 = f64::default();
         let method = driver_method!(driver, DatabaseGetOptionDouble);
         let status = unsafe { method(database.deref_mut(), key.as_ptr(), &mut value, &mut error) };
         check_status(status, error)?;
@@ -602,7 +602,7 @@ impl Optionable for ManagedConnection {
 
     fn get_option_double(&self, key: Self::Option) -> Result<f64> {
         let key = CString::new(key.as_ref())?;
-        let mut value: f64 = 0.0;
+        let mut value: f64 = f64::default();
         let driver = &self.inner.database.driver.driver.lock().unwrap();
         let mut connection = self.inner.connection.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1156,7 +1156,7 @@ impl Optionable for ManagedStatement {
 
     fn get_option_double(&self, key: Self::Option) -> Result<f64> {
         let key = CString::new(key.as_ref())?;
-        let mut value: f64 = 0.0;
+        let mut value: f64 = f64::default();
         let driver = &self.inner.connection.database.driver.driver.lock().unwrap();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
