@@ -37,7 +37,8 @@ struct RAdbcAsyncTask {
   AdbcError* return_error{nullptr};
   int* return_code{nullptr};
   double* rows_affected{nullptr};
-  void* return_value_ptr{nullptr};
+  AdbcStatement* statement{nullptr};
+  ArrowArrayStream* stream{nullptr};
 
   std::string error_message;
   RAdbcAsyncTaskStatus status;
@@ -134,6 +135,25 @@ extern "C" SEXP RAdbcAsyncTaskLaunchSleep(SEXP task_xptr, SEXP duration_ms_sexp)
   task->result = std::async(std::launch::async, [task, duration_ms] {
     std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
     *(task->return_code) = ADBC_STATUS_OK;
+  });
+
+  task->status = RAdbcAsyncTaskStatus::STARTED;
+  return R_NilValue;
+}
+
+extern "C" SEXP RAdbcAsyncTaskLaunchExecuteQuery(SEXP task_xptr, SEXP statement_xptr,
+                                                 SEXP stream_xptr) {
+  auto task = adbc_from_xptr<RAdbcAsyncTask>(task_xptr);
+  error_for_started_task(task);
+
+  auto statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
+  //auto stream = adbc_from_xptr<ArrowArrayStream>(stream_xptr, /*null_ok*/ true);
+
+  task->result = std::async(std::launch::async, [task, statement] {
+    int64_t rows_affected = -1;
+    *(task->return_code) =
+        AdbcStatementExecuteQuery(statement, nullptr, &rows_affected, task->return_error);
+    *(task->rows_affected) = static_cast<double>(rows_affected);
   });
 
   task->status = RAdbcAsyncTaskStatus::STARTED;

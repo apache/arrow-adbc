@@ -109,3 +109,23 @@ adbc_async_task_result.adbc_async_sleep <- function(task) {
 
   task$user_data$duration_ms
 }
+
+adbc_statement_execute_query_rows_affected_async <- function(statement) {
+  task <- adbc_async_task("adbc_async_execute_query_rows_affected")
+
+  user_data <- task$user_data
+  user_data$statement <- statement
+
+  .Call(RAdbcAsyncTaskLaunchExecuteQuery, task, statement, NULL)
+
+  task
+}
+
+#' @export
+adbc_async_task_result.adbc_async_execute_query_rows_affected <- function(task) {
+  if (!identical(task$return_code, 0L)) {
+    stop_for_error(task$return_code, task$error_xptr)
+  }
+
+  task$rows_affected
+}
