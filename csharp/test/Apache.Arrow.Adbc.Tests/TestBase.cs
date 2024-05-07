@@ -512,7 +512,7 @@ namespace Apache.Arrow.Adbc.Tests
 
         protected virtual string DelimitIdentifier(string value)
         {
-            return $"{Delimiter}{value.Replace(Delimiter, $"{Delimiter}{Delimiter}")}`";
+            return $"{Delimiter}{value.Replace(Delimiter, $"{Delimiter}{Delimiter}")}{Delimiter}";
         }
 
         protected virtual string Delimiter => "\"";
