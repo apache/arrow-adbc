@@ -877,11 +877,11 @@ impl Statement for DummyStatement {
         Ok(())
     }
 
-    fn set_sql_query(&mut self, _query: &str) -> Result<()> {
+    fn set_sql_query(&mut self, _query: impl AsRef<str>) -> Result<()> {
         Ok(())
     }
 
-    fn set_substrait_plan(&mut self, _plan: &[u8]) -> Result<()> {
+    fn set_substrait_plan(&mut self, _plan: impl AsRef<[u8]>) -> Result<()> {
         Ok(())
     }
 }

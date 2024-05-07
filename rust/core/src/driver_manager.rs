@@ -1123,8 +1123,8 @@ impl Statement for ManagedStatement {
         Ok(())
     }
 
-    fn set_sql_query(&mut self, query: &str) -> Result<()> {
-        let query = CString::new(query)?;
+    fn set_sql_query(&mut self, query: impl AsRef<str>) -> Result<()> {
+        let query = CString::new(query.as_ref())?;
         let driver = &self.inner.connection.database.driver.driver.lock().unwrap();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1134,11 +1134,12 @@ impl Statement for ManagedStatement {
         Ok(())
     }
 
-    fn set_substrait_plan(&mut self, plan: &[u8]) -> Result<()> {
+    fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> Result<()> {
         let driver = &self.inner.connection.database.driver.driver.lock().unwrap();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementSetSubstraitPlan);
+        let plan = plan.as_ref();
         let status =
             unsafe { method(statement.deref_mut(), plan.as_ptr(), plan.len(), &mut error) };
         check_status(status, error)?;

@@ -500,13 +500,13 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     ///
     /// The query can then be executed with [Statement::execute]. For queries
     /// expected to be executed repeatedly, call [Statement::prepare] first.
-    fn set_sql_query(&mut self, query: &str) -> Result<()>;
+    fn set_sql_query(&mut self, query: impl AsRef<str>) -> Result<()>;
 
     /// Set the Substrait plan to execute.
     ///
     /// The query can then be executed with [Statement::execute]. For queries
     /// expected to be executed repeatedly, call [Statement::prepare] first.
-    fn set_substrait_plan(&mut self, plan: &[u8]) -> Result<()>;
+    fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> Result<()>;
 
     /// Cancel execution of an in-progress query.
     ///
