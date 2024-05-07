@@ -139,7 +139,7 @@
       <dependency>
         <groupId>org.checkerframework</groupId>
         <artifactId>checker-qual</artifactId>
-        <version>3.42.0</version>
+        <version>3.43.0</version>
       </dependency>
 
       <!-- Testing -->
@@ -309,17 +309,17 @@
                 <path>
                   <groupId>com.google.errorprone</groupId>
                   <artifactId>error_prone_core</artifactId>
-                  <version>2.27.0</version>
+                  <version>2.27.1</version>
                 </path>
                 <path>
                   <groupId>com.uber.nullaway</groupId>
                   <artifactId>nullaway</artifactId>
-                  <version>0.10.25</version>
+                  <version>0.10.26</version>
                 </path>
                 <path>
                   <groupId>org.checkerframework</groupId>
                   <artifactId>checker</artifactId>
-                  <version>3.42.0</version>
+                  <version>3.43.0</version>
                 </path>
               </annotationProcessorPaths>
               <annotationProcessors>
