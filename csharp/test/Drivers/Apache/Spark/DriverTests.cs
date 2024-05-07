@@ -80,13 +80,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if the driver can call GetInfo.
         /// </summary>
         [SkippableFact, Order(2)]
-        public void CanGetInfo()
+        public async Task CanGetInfo()
         {
             AdbcConnection adbcConnection = NewConnection();
 
             using IArrowArrayStream stream = adbcConnection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
 
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            RecordBatch recordBatch = await stream.ReadNextRecordBatchAsync();
             UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
 
             List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "VendorName" };
@@ -251,14 +251,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("mYiDentifier")]
         [InlineData("3rd_identifier")]
         // Note: Tables in 'hive_metastore' only support ASCII alphabetic, numeric and underscore.
-        public async Task CanGetObjectsTablesWithSpecialCharacter(string tableName)
+        public void CanGetObjectsTablesWithSpecialCharacter(string tableName)
         {
             string catalogName = TestConfiguration.Metadata.Catalog;
             string schemaPrefix = Guid.NewGuid().ToString().Replace("-", "");
-            using TemporarySchema schema = TemporarySchema.NewTemporarySchema(catalogName, Statement);
+            using TemporarySchema schema = TemporarySchema.NewTemporarySchemaAsync(catalogName, Statement).Result;
             string schemaName = schema.SchemaName;
             string fullTableName = $"{DelimitIdentifier(catalogName)}.{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
-            using TemporaryTable temporaryTable = await TemporaryTable.NewTemporaryTableAsync(Statement, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)");
+            using TemporaryTable temporaryTable = TemporaryTable.NewTemporaryTableAsync(Statement, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)").Result;
 
             using IArrowArrayStream stream = Connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Tables,
@@ -309,13 +309,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if the driver can call GetTableTypes.
         /// </summary>
         [SkippableFact, Order(9)]
-        public void CanGetTableTypes()
+        public async Task CanGetTableTypes()
         {
             AdbcConnection adbcConnection = NewConnection();
 
             using IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
 
-            RecordBatch recordBatch = arrowArrayStream.ReadNextRecordBatchAsync().Result;
+            RecordBatch recordBatch = await arrowArrayStream.ReadNextRecordBatchAsync();
 
             StringArray stringArray = (StringArray)recordBatch.Column("table_type");
 

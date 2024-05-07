@@ -624,6 +624,7 @@ namespace Apache.Arrow.Adbc.Tests
         protected class TemporarySchema : IDisposable
         {
             private bool _disposedValue;
+            private readonly AdbcStatement _statement;
 
             private TemporarySchema(string catalogName, AdbcStatement statement)
             {
@@ -632,17 +633,17 @@ namespace Apache.Arrow.Adbc.Tests
                 _statement = statement;
             }
 
-            public static TemporarySchema NewTemporarySchema(string catalogName, AdbcStatement statement)
+            public static async ValueTask<TemporarySchema> NewTemporarySchemaAsync(string catalogName, AdbcStatement statement)
             {
                 TemporarySchema schema = new TemporarySchema(catalogName, statement);
                 statement.SqlQuery = $"CREATE SCHEMA IF NOT EXISTS {schema.CatalogName}.{schema.SchemaName}";
-                statement.ExecuteUpdate();
+                await statement.ExecuteUpdateAsync();
                 return schema;
             }
 
             public string CatalogName { get; }
+
             public string SchemaName { get; }
-            private AdbcStatement _statement;
 
             protected virtual void Dispose(bool disposing)
             {

@@ -72,7 +72,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
             public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
             {
-                if (statement == null)
+                if (this.statement == null)
                 {
                     return null;
                 }
