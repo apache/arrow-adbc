@@ -152,6 +152,13 @@ impl From<libloading::Error> for Error {
 struct ManagedDriverInner {
     driver: Mutex<ffi::FFI_AdbcDriver>,
     version: AdbcVersion, // Driver version
+    // The dynamic library must be kept loaded for the entire lifetime of the driver.
+    // To avoid complex lifetimes we prefer to store it as part of this struct.
+    // Besides, the `library` field must always appear after `driver` because of drop order:
+    // `driver` has an implicit dependency on `library` and so it must be droped
+    // before `library` because otherwise `driver` would be full of dangling
+    // function pointers.
+    // See: https://doc.rust-lang.org/std/ops/trait.Drop.html#drop-order
     _library: Option<libloading::Library>,
 }
 
