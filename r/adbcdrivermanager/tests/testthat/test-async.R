@@ -28,7 +28,7 @@ test_that("async tasks can be created and inspected", {
   expect_s3_class(task$error_xptr, "adbc_error")
   expect_identical(task$return_code, NA_integer_)
 
-  expect_identical(adbc_async_task_status(task, 0), "not_started")
+  expect_identical(adbc_async_task_status(task), "not_started")
 })
 
 test_that("async tasks can update R-level user data", {
@@ -48,16 +48,16 @@ test_that("async task methods error for invalid input", {
   )
 
   expect_error(
-    adbc_async_task_status(adbc_async_task(), -1),
+    adbc_async_task_wait_non_cancellable(adbc_async_task(), -1),
     "duration_ms must be >= 0"
   )
 })
 
 test_that("async sleeper test works", {
   sleep_task <- adbc_async_sleep(500)
-  expect_identical(adbc_async_task_status(sleep_task, 0), "timeout")
-  expect_identical(adbc_async_task_status(sleep_task, 1000), "ready")
-  expect_identical(adbc_async_task_status(sleep_task, 0), "ready")
+  expect_identical(adbc_async_task_status(sleep_task), "timeout")
+  expect_identical(adbc_async_task_wait_non_cancellable(sleep_task, 1000), "ready")
+  expect_identical(adbc_async_task_status(sleep_task), "ready")
   expect_identical(sleep_task$return_code, 0L)
   expect_identical(adbc_async_task_result(sleep_task), 500)
 })
