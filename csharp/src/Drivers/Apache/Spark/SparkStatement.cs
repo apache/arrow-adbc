@@ -55,21 +55,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
         }
 
-        public override QueryResult ExecuteQuery()
+        public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
-            ExecuteStatement();
-            PollForResponse();
-            Schema schema = GetSchema();
+            await ExecuteStatementAsync();
+            await PollForResponseAsync();
+            Schema schema = await GetSchemaAsync();
 
             // TODO: Ensure this is set dynamically based on server capabilities
             return new QueryResult(-1, new SparkReader(this, schema));
         }
 
-        public override UpdateResult ExecuteUpdate()
+        public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
             const string NumberOfAffectedRowsColumnName = "num_affected_rows";
 
-            QueryResult queryResult = ExecuteQuery();
+            QueryResult queryResult = await ExecuteQueryAsync();
             if (queryResult.Stream == null)
             {
                 throw new AdbcException("no data found");
@@ -88,7 +88,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             long? affectedRows = null;
             while (true)
             {
-                using RecordBatch nextBatch = stream.ReadNextRecordBatchAsync().Result;
+                using RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync();
                 if (nextBatch == null) { break; }
                 Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(NumberOfAffectedRowsColumnName);
                 // Note: should only have one item, but iterate for completeness
@@ -101,6 +101,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             return new UpdateResult(affectedRows ?? -1);
         }
+
+        public override QueryResult ExecuteQuery() => ExecuteQueryAsync().AsTask().Result;
+
+        public override UpdateResult ExecuteUpdate() => ExecuteUpdateAsync().Result;
 
         public override object? GetValue(IArrowArray arrowArray, int index)
         {
