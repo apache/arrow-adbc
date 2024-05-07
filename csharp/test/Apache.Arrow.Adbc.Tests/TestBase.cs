@@ -65,11 +65,11 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="statement">The ADBC statement to apply the update.</param>
         /// <param name="columns">The columns definition in the native SQL dialect.</param>
         /// <returns>A disposable temporary table object that will drop the table when disposed.</returns>
-        protected virtual TemporaryTable NewTemporaryTable(AdbcStatement statement, string columns)
+        protected virtual async ValueTask<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string columns)
         {
             string tableName = NewTableName();
             string sqlUpdate = string.Format("CREATE TEMPORARY IF NOT EXISTS TABLE {0} ({1})", tableName, columns);
-            return TemporaryTable.NewTemporaryTable(statement, tableName, sqlUpdate);
+            return await TemporaryTable.NewTemporaryTable(statement, tableName, sqlUpdate);
         }
 
         /// <summary>
@@ -195,12 +195,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to insert, select and delete.</param>
         /// <param name="formattedValue">The formated value to insert, select and delete.</param>
         /// <returns></returns>
-        protected async Task ValidateInsertSelectDeleteSingleValue(string selectStatement, string tableName, string columnName, object value, string? formattedValue = null)
+        protected async Task ValidateInsertSelectDeleteSingleValueAsync(string selectStatement, string tableName, string columnName, object value, string? formattedValue = null)
         {
-            InsertSingleValue(tableName, columnName, formattedValue ?? value?.ToString());
-            await SelectAndValidateValues(selectStatement, value, 1);
+            await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
+            await SelectAndValidateValuesAsync(selectStatement, value, 1);
             string whereClause = GetWhereClause(columnName, formattedValue ?? value);
-            DeleteFromTable(tableName, whereClause, 1);
+            await DeleteFromTableAsync(tableName, whereClause, 1);
         }
 
         /// <summary>
@@ -211,12 +211,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to insert, select and delete.</param>
         /// <param name="formattedValue">The formated value to insert, select and delete.</param>
         /// <returns></returns>
-        protected async Task ValidateInsertSelectDeleteSingleValue(string tableName, string columnName, object? value, string? formattedValue = null)
+        protected async Task ValidateInsertSelectDeleteSingleValueAsync(string tableName, string columnName, object? value, string? formattedValue = null)
         {
-            InsertSingleValue(tableName, columnName, formattedValue ?? value?.ToString());
-            await SelectAndValidateValues(tableName, columnName, value, 1, formattedValue);
+            await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
+            await SelectAndValidateValuesAsync(tableName, columnName, value, 1, formattedValue);
             string whereClause = GetWhereClause(columnName, formattedValue ?? value);
-            DeleteFromTable(tableName, whereClause, 1);
+            await DeleteFromTableAsync(tableName, whereClause, 1);
         }
 
         /// <summary>
@@ -225,12 +225,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to insert.</param>
-        protected virtual void InsertSingleValue(string tableName, string columnName, string? value)
+        protected virtual async Task InsertSingleValueAsync(string tableName, string columnName, string? value)
         {
             string insertNumberStatement = GetInsertValueStatement(tableName, columnName, value);
             OutputHelper.WriteLine(insertNumberStatement);
             Statement.SqlQuery = insertNumberStatement;
-            UpdateResult updateResult = Statement.ExecuteUpdate();
+            UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
             Assert.Equal(1, updateResult.AffectedRows);
         }
 
@@ -250,12 +250,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="whereClause">The WHERE clause string.</param>
         /// <param name="expectedRowsAffected">The expected number of affected rows.</param>
-        protected virtual void DeleteFromTable(string tableName, string whereClause, int expectedRowsAffected)
+        protected virtual async Task DeleteFromTableAsync(string tableName, string whereClause, int expectedRowsAffected)
         {
             string deleteNumberStatement = GetDeleteValueStatement(tableName, whereClause);
             OutputHelper.WriteLine(deleteNumberStatement);
             Statement.SqlQuery = deleteNumberStatement;
-            UpdateResult updateResult = Statement.ExecuteUpdate();
+            UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
             Assert.Equal(expectedRowsAffected, updateResult.AffectedRows);
         }
 
@@ -276,10 +276,10 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to select and validate.</param>
         /// <param name="expectedLength">The number of expected results (rows).</param>
         /// <returns></returns>
-        protected virtual async Task SelectAndValidateValues(string table, string columnName, object? value, int expectedLength, string? formattedValue = null)
+        protected virtual async Task SelectAndValidateValuesAsync(string table, string columnName, object? value, int expectedLength, string? formattedValue = null)
         {
             string selectNumberStatement = GetSelectSingleValueStatement(table, columnName, formattedValue ?? value);
-            await SelectAndValidateValues(selectNumberStatement, value, expectedLength);
+            await SelectAndValidateValuesAsync(selectNumberStatement, value, expectedLength);
         }
 
         /// <summary>
@@ -289,11 +289,11 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to select and validate.</param>
         /// <param name="expectedLength">The number of expected results (rows).</param>
         /// <returns></returns>
-        protected virtual async Task SelectAndValidateValues(string selectStatement, object? value, int expectedLength)
+        protected virtual async Task SelectAndValidateValuesAsync(string selectStatement, object? value, int expectedLength)
         {
             Statement.SqlQuery = selectStatement;
             OutputHelper.WriteLine(selectStatement);
-            QueryResult queryResult = Statement.ExecuteQuery();
+            QueryResult queryResult = await Statement.ExecuteQueryAsync();
             int actualLength = 0;
             using (IArrowArrayStream stream = queryResult.Stream ?? throw new InvalidOperationException("stream is null"))
             {
@@ -532,12 +532,10 @@ namespace Apache.Arrow.Adbc.Tests
             /// </summary>
             public string TableName { get; }
 
-            private TemporaryTable(AdbcStatement statement, string tableName, string sqlQuery)
+            private TemporaryTable(AdbcStatement statement, string tableName)
             {
                 TableName = tableName;
                 _statement = statement;
-                statement.SqlQuery = sqlQuery;
-                statement.ExecuteUpdate();
             }
 
             /// <summary>
@@ -547,18 +545,20 @@ namespace Apache.Arrow.Adbc.Tests
             /// <param name="tableName">The name of temporary table to create.</param>
             /// <param name="sqlUpdate">The SQL query to create the table in the native SQL dialect.</param>
             /// <returns></returns>
-            public static TemporaryTable NewTemporaryTable(AdbcStatement statement, string tableName, string sqlUpdate)
+            public static async ValueTask<TemporaryTable> NewTemporaryTable(AdbcStatement statement, string tableName, string sqlUpdate)
             {
-                return new TemporaryTable(statement, tableName, sqlUpdate);
+                statement.SqlQuery = sqlUpdate;
+                await statement.ExecuteUpdateAsync();
+                return new TemporaryTable(statement, tableName);
             }
 
             /// <summary>
             /// Drops the tables.
             /// </summary>
-            protected virtual void Drop()
+            protected virtual async Task DropAsync()
             {
                 _statement.SqlQuery = $"DROP TABLE {TableName}";
-                _statement.ExecuteUpdate();
+                await _statement.ExecuteUpdateAsync();
             }
 
             protected virtual void Dispose(bool disposing)
@@ -567,7 +567,7 @@ namespace Apache.Arrow.Adbc.Tests
                 {
                     if (disposing)
                     {
-                        Drop();
+                        DropAsync().Wait();
                     }
 
                     _disposedValue = true;

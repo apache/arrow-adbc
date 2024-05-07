@@ -49,7 +49,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestArrayData(string projection, string value)
         {
             string selectStatement = $"SELECT {projection};";
-            await SelectAndValidateValues(selectStatement, value, 1);
+            await SelectAndValidateValuesAsync(selectStatement, value, 1);
         }
 
         /// <summary>
@@ -61,7 +61,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestMapData(string projection, string value)
         {
             string selectStatement = $"SELECT {projection};";
-            await SelectAndValidateValues(selectStatement, value, 1);
+            await SelectAndValidateValuesAsync(selectStatement, value, 1);
         }
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestStructData(string projection, string value)
         {
             string selectStatement = $"SELECT {projection};";
-            await SelectAndValidateValues(selectStatement, value, 1);
+            await SelectAndValidateValuesAsync(selectStatement, value, 1);
         }
     }
 }
