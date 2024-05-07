@@ -149,7 +149,7 @@ impl From<libloading::Error> for Error {
     }
 }
 
-struct DriverManagerInner {
+struct ManagedDriverInner {
     driver: Mutex<ffi::FFI_AdbcDriver>,
     version: AdbcVersion, // Driver version
     _library: Option<libloading::Library>,
@@ -158,14 +158,14 @@ struct DriverManagerInner {
 /// Implementation of [Driver].
 #[derive(Clone)]
 pub struct ManagedDriver {
-    inner: Arc<DriverManagerInner>,
+    inner: Arc<ManagedDriverInner>,
 }
 
 impl ManagedDriver {
     /// Load a driver from an initialization function.
     pub fn load_static(init: &ffi::FFI_AdbcDriverInitFunc, version: AdbcVersion) -> Result<Self> {
         let driver = Self::load_impl(init, version)?;
-        let inner = Arc::new(DriverManagerInner {
+        let inner = Arc::new(ManagedDriverInner {
             driver: Mutex::new(driver),
             version,
             _library: None,
@@ -193,7 +193,7 @@ impl ManagedDriver {
         let init: libloading::Symbol<ffi::FFI_AdbcDriverInitFunc> =
             unsafe { library.get(entrypoint)? };
         let driver = Self::load_impl(&init, version)?;
-        let inner = Arc::new(DriverManagerInner {
+        let inner = Arc::new(ManagedDriverInner {
             driver: Mutex::new(driver),
             version,
             _library: Some(library),
@@ -401,7 +401,7 @@ where
 
 struct ManagedDatabaseInner {
     database: Mutex<ffi::FFI_AdbcDatabase>,
-    driver: Arc<DriverManagerInner>,
+    driver: Arc<ManagedDriverInner>,
 }
 
 impl Drop for ManagedDatabaseInner {
