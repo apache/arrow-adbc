@@ -23,14 +23,18 @@ adbc_async_task <- function(subclass = character()) {
   )
 }
 
-adbc_async_task_wait_for <- function(task, duration_ms) {
-  .Call(RAdbcAsyncTaskWaitFor, task, duration_ms)
+adbc_async_task_status <- function(task, duration_ms) {
+  .Call(RAdbcAsyncTaskWaitFor, task, 0)
 }
 
-adbc_async_task_wait <- function(task, resolution_ms = 50) {
-  status <- "started"
-  while (status != "ready") {
-    status <- adbc_async_task_wait_for(task, resolution_ms)
+adbc_async_task_wait <- function(task, resolution = 0.05) {
+  while (adbc_async_task_status(task, 0) != "ready") {
+    withCallingHandlers(
+      Sys.sleep(resolution),
+      interrupt = function(e) {
+        adbc_async_task_cancel(task)
+      }
+    )
   }
 
   adbc_async_task_result(task)
@@ -44,7 +48,7 @@ later_loop_schedule_task_callback <- function(task, resolve, reject,
   force(reject)
 
   later::later(function() {
-    status <- adbc_async_task_wait_for(task, 0)
+    status <- adbc_async_task_status(task, 0)
     if (status == "timeout") {
       later_loop_schedule_task_callback(
         task,
@@ -67,6 +71,15 @@ as.promise.adbc_async_task <- function(task) {
   promises::promise(function(resolve, reject) {
     later_loop_schedule_task_callback(task, resolve, reject)
   })
+}
+
+adbc_async_task_cancel <- function(task) {
+  UseMethod("adbc_async_task_cancel")
+}
+
+#' @export
+adbc_async_task_cancel.default <- function(task) {
+  FALSE
 }
 
 adbc_async_task_result <- function(task) {
@@ -125,6 +138,12 @@ adbc_statement_execute_query_async <- function(statement, stream = NULL) {
   )
 
   task
+}
+
+#' @export
+adbc_async_task_cancel.adbc_async_execute_query <- function(task) {
+  adbc_statement_cancel(task$user_data$statement)
+  TRUE
 }
 
 #' @export
