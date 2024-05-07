@@ -77,31 +77,51 @@ test_that("async task waiter works", {
 test_that("async task can be converted to a promise", {
   skip_if_not_installed("promises")
 
-  expect_output(
-    {
-      adbc_async_sleep(100) %>%
-        promises::as.promise() %>%
-        promises::then(~print(sprintf("waited for %s ms", .x)))
+  # Enough time for most CI runners to handle this
+  max_wait_s <- 5
 
-      Sys.sleep(0.2)
-      later::run_now()
-      later::run_now()
-    },
-    "waited for 100 ms"
-  )
+  # Check successful call
+  async_called <- FALSE
+  adbc_async_sleep(100) %>%
+    promises::as.promise() %>%
+    promises::then(
+      onFulfilled = function(duration_ms) {
+        expect_identical(duration_ms, 100)
+        async_called <<- TRUE
+      }
+    )
 
-  expect_output(
-    {
-      adbc_async_sleep(100, error_message = "errored after 100 ms") %>%
-        promises::as.promise() %>%
-        promises::then(
-          onFulfilled = ~print(sprintf("waited for %s ms", .x)),
-          onRejected = ~print(.x)
-        )
-      Sys.sleep(0.2)
-      later::run_now()
-      later::run_now()
-    },
-    "errored after 100 ms"
-  )
+  # Only wait for so long before bailing on this test
+  for (i in seq_len(max_wait_s * 100)) {
+    later::run_now()
+    if (async_called) {
+      break
+    }
+
+    Sys.sleep(max_wait_s / 100)
+  }
+
+  expect_true(async_called)
+
+  # Check erroring call
+  async_called <- FALSE
+  adbc_async_sleep(100, error_message = "errored after 100 ms") %>%
+    promises::as.promise() %>%
+    promises::then(
+      onRejected = function(reason) {
+        expect_s3_class(reason, "adbc_async_sleep_error")
+        async_called <<- TRUE
+      }
+    )
+
+  for (i in seq_len(max_wait_s * 100)) {
+    later::run_now()
+    if (async_called) {
+      break
+    }
+    Sys.sleep(max_wait_s / 100)
+  }
+
+  expect_true(async_called)
+
 })
