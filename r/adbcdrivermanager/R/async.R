@@ -23,12 +23,16 @@ adbc_async_task <- function(subclass = character()) {
   )
 }
 
-adbc_async_task_status <- function(task, duration_ms) {
+adbc_async_task_status <- function(task) {
   .Call(RAdbcAsyncTaskWaitFor, task, 0)
 }
 
+adbc_async_task_wait_non_cancellable <- function(task, resolution = 0.05) {
+  .Call(RAdbcAsyncTaskWaitFor, task, round(resolution * 1000))
+}
+
 adbc_async_task_wait <- function(task, resolution = 0.05) {
-  while (adbc_async_task_status(task, 0) != "ready") {
+  while (adbc_async_task_status(task) != "ready") {
     withCallingHandlers(
       Sys.sleep(resolution),
       interrupt = function(e) {
@@ -48,7 +52,7 @@ later_loop_schedule_task_callback <- function(task, resolve, reject,
   force(reject)
 
   later::later(function() {
-    status <- adbc_async_task_status(task, 0)
+    status <- adbc_async_task_status(task)
     if (status == "timeout") {
       later_loop_schedule_task_callback(
         task,
