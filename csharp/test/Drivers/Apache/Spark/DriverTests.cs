@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -36,7 +36,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class DriverTests : SparkTestBase
     {
-        public DriverTests(ITestOutputHelper outputHelper) : base(outputHelper)
+        private static List<string> DefaultTableTypes => new() { "BASE TABLE", "VIEW" };
+
+        public DriverTests(ITestOutputHelper? outputHelper) : base(outputHelper)
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));
         }
@@ -81,7 +83,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             AdbcConnection adbcConnection = NewConnection();
 
-            IArrowArrayStream stream = adbcConnection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
+            using IArrowArrayStream stream = adbcConnection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
 
             RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
             UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
@@ -101,46 +103,192 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         /// <summary>
-        /// Validates if the driver can call GetObjects.
+        /// Validates if the driver can call GetObjects with GetObjectsDepth as Catalogs with CatalogPattern as a pattern.
         /// </summary>
-        [SkippableFact, Order(3)]
-        public void CanGetObjects()
+        /// <param name="pattern"></param>
+        [SkippableTheory, Order(3)]
+        [MemberData(nameof(CatalogNamePatternData))]
+        public void GetGetObjectsCatalogs(string pattern)
+        {
+            string? catalogName = TestConfiguration.Metadata.Catalog;
+            string? schemaName = TestConfiguration.Metadata.Schema;
+
+            using IArrowArrayStream stream = Connection.GetObjects(
+                    depth: AdbcConnection.GetObjectsDepth.Catalogs,
+                    catalogPattern: pattern,
+                    dbSchemaPattern: null,
+                    tableNamePattern: null,
+                    tableTypes: DefaultTableTypes,
+                    columnNamePattern: null);
+
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, catalogName, null);
+            AdbcCatalog? catalog = catalogs.Where((catalog) => string.Equals(catalog.Name, catalogName)).FirstOrDefault();
+
+            Assert.True(catalog != null, "catalog should not be null");
+        }
+
+        /// <summary>
+        /// Validates if the driver can call GetObjects with GetObjectsDepth as DbSchemas with DbSchemaName as a pattern.
+        /// </summary>
+        [SkippableTheory, Order(4)]
+        [MemberData(nameof(DbSchemasNamePatternData))]
+        public void CanGetObjectsDbSchemas(string dbSchemaPattern)
         {
             // need to add the database
-            string? catalogName = TestConfiguration.Metadata.Catalog;
+            string? databaseName = TestConfiguration.Metadata.Catalog;
+            string? schemaName = TestConfiguration.Metadata.Schema;
+
+            using IArrowArrayStream stream = Connection.GetObjects(
+                    depth: AdbcConnection.GetObjectsDepth.DbSchemas,
+                    catalogPattern: databaseName,
+                    dbSchemaPattern: dbSchemaPattern,
+                    tableNamePattern: null,
+                    tableTypes: DefaultTableTypes,
+                    columnNamePattern: null);
+
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+
+            List<AdbcDbSchema>? dbSchemas = catalogs
+                .Where(c => string.Equals(c.Name, databaseName))
+                .Select(c => c.DbSchemas)
+                .FirstOrDefault();
+            AdbcDbSchema? dbSchema = dbSchemas?.Where((dbSchema) => string.Equals(dbSchema.Name, schemaName)).FirstOrDefault();
+
+            Assert.True(dbSchema != null, "dbSchema should not be null");
+        }
+
+        /// <summary>
+        /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables with TableName as a pattern.
+        /// </summary>
+        [SkippableTheory, Order(5)]
+        [MemberData(nameof(TableNamePatternData))]
+        public void CanGetObjectsTables(string tableNamePattern)
+        {
+            // need to add the database
+            string? databaseName = TestConfiguration.Metadata.Catalog;
+            string? schemaName = TestConfiguration.Metadata.Schema;
+            string? tableName = TestConfiguration.Metadata.Table;
+
+            using IArrowArrayStream stream = Connection.GetObjects(
+                    depth: AdbcConnection.GetObjectsDepth.Tables,
+                    catalogPattern: databaseName,
+                    dbSchemaPattern: schemaName,
+                    tableNamePattern: tableNamePattern,
+                    tableTypes: DefaultTableTypes,
+                    columnNamePattern: null);
+
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+
+            List<AdbcTable>? tables = catalogs
+                .Where(c => string.Equals(c.Name, databaseName))
+                .Select(c => c.DbSchemas)
+                .FirstOrDefault()
+                ?.Where(s => string.Equals(s.Name, schemaName))
+                .Select(s => s.Tables)
+                .FirstOrDefault();
+
+            AdbcTable? table = tables?.Where((table) => string.Equals(table.Name, tableName)).FirstOrDefault();
+            Assert.True(table != null, "table should not be null");
+            // TODO: Determine why this is returned blank.
+            //Assert.Equal("BASE TABLE", table.Type);
+        }
+
+        /// <summary>
+        /// Validates if the driver can call GetObjects for GetObjectsDepth as All.
+        /// </summary>
+        [SkippableFact, Order(6)]
+        public void CanGetObjectsAll()
+        {
+            // need to add the database
+            string? databaseName = TestConfiguration.Metadata.Catalog;
             string? schemaName = TestConfiguration.Metadata.Schema;
             string? tableName = TestConfiguration.Metadata.Table;
             string? columnName = null;
 
-            AdbcConnection adbcConnection = NewConnection();
-
-            IArrowArrayStream stream = adbcConnection.GetObjects(
+            using IArrowArrayStream stream = Connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.All,
+                    catalogPattern: databaseName,
+                    dbSchemaPattern: schemaName,
+                    tableNamePattern: tableName,
+                    tableTypes: DefaultTableTypes,
+                    columnNamePattern: columnName);
+
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+            AdbcTable? table = catalogs
+                .Where(c => string.Equals(c.Name, databaseName))
+                .Select(c => c.DbSchemas)
+                .FirstOrDefault()
+                ?.Where(s => string.Equals(s.Name, schemaName))
+                .Select(s => s.Tables)
+                .FirstOrDefault()
+                ?.Where(t => string.Equals(t.Name, tableName))
+                .FirstOrDefault();
+
+            Assert.True(table != null, "table should not be null");
+            // TODO: Determine why this is returned blank.
+            //Assert.Equal("BASE TABLE", table.Type);
+            List<AdbcColumn>? columns = table.Columns;
+
+            Assert.True(columns != null, "Columns cannot be null");
+            Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, columns.Count);
+        }
+
+        /// <summary>
+        /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables with TableName as a Special Character.
+        /// </summary>
+        [SkippableTheory, Order(7)]
+        [InlineData("MyIdentifier")]
+        [InlineData("ONE")]
+        [InlineData("mYiDentifier")]
+        [InlineData("3rd_identifier")]
+        // Note: Tables in 'hive_metastore' only support ASCII alphabetic, numeric and underscore.
+        public void CanGetObjectsTablesWithSpecialCharacter(string tableName)
+        {
+            string catalogName = TestConfiguration.Metadata.Catalog;
+            string schemaPrefix = Guid.NewGuid().ToString().Replace("-", "");
+            using TemporarySchema schema = TemporarySchema.NewTemporarySchema(catalogName, Statement);
+            string schemaName = schema.SchemaName;
+            string fullTableName = $"{DelimitIdentifier(catalogName)}.{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
+            using TemporaryTable temporaryTable = TemporaryTable.NewTemporaryTable(Statement, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)");
+
+            using IArrowArrayStream stream = Connection.GetObjects(
+                    depth: AdbcConnection.GetObjectsDepth.Tables,
                     catalogPattern: catalogName,
                     dbSchemaPattern: schemaName,
                     tableNamePattern: tableName,
-                    tableTypes: new List<string> { "BASE TABLE", "VIEW" },
-                    columnNamePattern: columnName);
+                    tableTypes: DefaultTableTypes,
+                    columnNamePattern: null);
 
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, catalogName, schemaName);
 
-            List<AdbcColumn>? columns = catalogs
-                .Select(s => s.DbSchemas)
+            List<AdbcTable>? tables = catalogs
+                .Where(c => string.Equals(c.Name, catalogName))
+                .Select(c => c.DbSchemas)
                 .FirstOrDefault()
-                ?.Select(t => t.Tables)
-                .FirstOrDefault()
-                ?.Select(c => c.Columns)
+                ?.Where(s => string.Equals(s.Name, schemaName))
+                .Select(s => s.Tables)
                 .FirstOrDefault();
 
-            Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, columns?.Count);
+            AdbcTable? table = tables?.FirstOrDefault();
+
+            Assert.True(table != null, "table should not be null");
+            Assert.Equal(tableName, table.Name, true);
         }
 
         /// <summary>
         /// Validates if the driver can call GetTableSchema.
         /// </summary>
-        [SkippableFact, Order(4)]
+        [SkippableFact, Order(8)]
         public void CanGetTableSchema()
         {
             AdbcConnection adbcConnection = NewConnection();
@@ -159,12 +307,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// <summary>
         /// Validates if the driver can call GetTableTypes.
         /// </summary>
-        [SkippableFact, Order(5)]
+        [SkippableFact, Order(9)]
         public void CanGetTableTypes()
         {
             AdbcConnection adbcConnection = NewConnection();
 
-            IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
+            using IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
 
             RecordBatch recordBatch = arrowArrayStream.ReadNextRecordBatchAsync().Result;
 
@@ -194,17 +342,35 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
-        [SkippableFact, Order(6)]
+        [SkippableFact, Order(10)]
         public void CanExecuteQuery()
         {
-            AdbcConnection adbcConnection = NewConnection();
+            using AdbcConnection adbcConnection = NewConnection();
 
-            AdbcStatement statement = adbcConnection.CreateStatement();
+            using AdbcStatement statement = adbcConnection.CreateStatement();
             statement.SqlQuery = TestConfiguration.Query;
 
             QueryResult queryResult = statement.ExecuteQuery();
 
             Tests.DriverTests.CanExecuteQuery(queryResult, TestConfiguration.ExpectedResultsCount);
+        }
+
+        public static IEnumerable<object[]> CatalogNamePatternData()
+        {
+            string? catalogName = new DriverTests(null).TestConfiguration?.Metadata?.Catalog;
+            return GetPatterns(catalogName);
+        }
+
+        public static IEnumerable<object[]> DbSchemasNamePatternData()
+        {
+            string? dbSchemaName = new DriverTests(null).TestConfiguration?.Metadata?.Schema;
+            return GetPatterns(dbSchemaName);
+        }
+
+        public static IEnumerable<object[]> TableNamePatternData()
+        {
+            string? tableName = new DriverTests(null).TestConfiguration?.Metadata?.Table;
+            return GetPatterns(tableName);
         }
     }
 }
