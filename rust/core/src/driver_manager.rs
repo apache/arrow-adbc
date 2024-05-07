@@ -318,24 +318,26 @@ fn set_option_database(
     check_status(status, error)
 }
 
-fn get_option_bytes<F>(
+// Utility function to implement `*GetOption` and `*GetOptionBytes`. Basically,
+// it allocates a fixed-sized buffer to store the option's value, call the driver's
+// `*GetOption`/`*GetOptionBytes` method that will fill this buffer and finally
+// we return the option's value as a `Vec`. Note that if the fixed-size buffer
+// is too small, we retry the same operation with a bigger buffer (the size of
+// which is obtained via the out parameter `length` of `*GetOption`/`*GetOptionBytes`).
+fn get_option_buffer<F, T>(
     key: impl AsRef<str>,
     mut populate: F,
     driver: &ffi::FFI_AdbcDriver,
-) -> Result<Vec<u8>>
+) -> Result<Vec<T>>
 where
-    F: FnMut(
-        *const c_char,
-        *mut u8,
-        *mut usize,
-        *mut ffi::FFI_AdbcError,
-    ) -> ffi::FFI_AdbcStatusCode,
+    F: FnMut(*const c_char, *mut T, *mut usize, *mut ffi::FFI_AdbcError) -> ffi::FFI_AdbcStatusCode,
+    T: Default + Clone,
 {
     const DEFAULT_LENGTH: usize = 128;
     let key = CString::new(key.as_ref())?;
     let mut run = |length| {
-        let mut value = vec![0u8; length];
-        let mut length: usize = value.len();
+        let mut value = vec![T::default(); length];
+        let mut length: usize = core::mem::size_of::<T>() * value.len();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
         (
             populate(key.as_ptr(), value.as_mut_ptr(), &mut length, &mut error),
@@ -357,9 +359,25 @@ where
     }
 }
 
+fn get_option_bytes<F>(
+    key: impl AsRef<str>,
+    populate: F,
+    driver: &ffi::FFI_AdbcDriver,
+) -> Result<Vec<u8>>
+where
+    F: FnMut(
+        *const c_char,
+        *mut u8,
+        *mut usize,
+        *mut ffi::FFI_AdbcError,
+    ) -> ffi::FFI_AdbcStatusCode,
+{
+    get_option_buffer(key, populate, driver)
+}
+
 fn get_option_string<F>(
     key: impl AsRef<str>,
-    mut populate: F,
+    populate: F,
     driver: &ffi::FFI_AdbcDriver,
 ) -> Result<String>
 where
@@ -370,31 +388,7 @@ where
         *mut ffi::FFI_AdbcError,
     ) -> ffi::FFI_AdbcStatusCode,
 {
-    const DEFAULT_LENGTH: usize = 128;
-    let key = CString::new(key.as_ref())?;
-    let mut run = |length| {
-        let mut value: Vec<c_char> = vec![0; length];
-        let mut length: usize = value.len();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
-        (
-            populate(key.as_ptr(), value.as_mut_ptr(), &mut length, &mut error),
-            length,
-            value,
-            error,
-        )
-    };
-
-    let (status, length, value, error) = run(DEFAULT_LENGTH);
-    check_status(status, error)?;
-
-    let value = if length <= DEFAULT_LENGTH {
-        value[..length].to_vec()
-    } else {
-        let (status, _, value, error) = run(length);
-        check_status(status, error)?;
-        value
-    };
-
+    let value = get_option_buffer(key, populate, driver)?;
     let value = unsafe { CStr::from_ptr(value.as_ptr()) };
     Ok(value.to_string_lossy().to_string())
 }
