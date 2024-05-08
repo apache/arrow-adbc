@@ -614,6 +614,15 @@ ensure_source_directory() {
   if [ ! -d "${ARROW_SOURCE_DIR}" ]; then
     git clone --depth=1 https://github.com/$ARROW_REPOSITORY $ARROW_SOURCE_DIR
   fi
+
+  source "${ADBC_SOURCE_DIR}/dev/release/versions.env"
+  echo "Versions:"
+  echo "Release: ${RELEASE} (requested: ${VERSION})"
+  echo "C#: ${VERSION_CSHARP}"
+  echo "Java: ${VERSION_JAVA}"
+  echo "C/C++/GLib/Go/Python/Ruby: ${VERSION_NATIVE}"
+  echo "R: ${VERSION_R}"
+  echo "Rust: ${VERSION_RUST}"
 }
 
 test_source_distribution() {
@@ -693,6 +702,8 @@ test_linux_wheels() {
     local arch="x86_64"
   fi
 
+  local declared_package_version="${VERSION_NATIVE}"
+  local package_version="${TEST_PYARROW_VERSION:-${declared_package_version}}"
   local python_versions="${TEST_PYTHON_VERSIONS:-3.9 3.10 3.11}"
 
   for python in ${python_versions}; do
@@ -701,20 +712,23 @@ test_linux_wheels() {
     CONDA_ENV=wheel-${pyver}-${arch} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
     VENV_ENV=wheel-${pyver}-${arch} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
     pip install --force-reinstall \
-        adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-manylinux*${arch}*.whl \
-        adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-manylinux*${arch}*.whl
+        adbc_*-${package_version}-cp${pyver/.}-cp${python/.}-manylinux*${arch}*.whl \
+        adbc_*-${package_version}-py3-none-manylinux*${arch}*.whl
     ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
   done
 }
 
 test_macos_wheels() {
-  local python_versions="3.9 3.10 3.11"
   # apple silicon processor
   if [ "$(uname -m)" = "arm64" ]; then
     local platform_tags="arm64"
   else
     local platform_tags="x86_64"
   fi
+
+  local declared_package_version="${VERSION_NATIVE}"
+  local package_version="${TEST_PYARROW_VERSION:-${declared_package_version}}"
+  local python_versions="${TEST_PYTHON_VERSIONS:-3.9 3.10 3.11}"
 
   # verify arch-native wheels inside an arch-native conda environment
   for python in ${python_versions}; do
@@ -726,8 +740,8 @@ test_macos_wheels() {
       VENV_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
 
       pip install --force-reinstall \
-          adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-macosx_*_${platform}.whl \
-          adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-macosx_*_${platform}.whl
+          adbc_*-${package_version}-cp${pyver/.}-cp${python/.}-macosx_*_${platform}.whl \
+          adbc_*-${package_version}-py3-none-macosx_*_${platform}.whl
       ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
     done
   done
@@ -765,7 +779,7 @@ test_jars() {
   local -r components=(".jar" "-javadoc.jar" "-sources.jar")
   for package in "${packages[@]}"; do
       for component in "${components[@]}"; do
-          local filename="${BINARY_DIR}/${package}-${VERSION}${component}"
+          local filename="${BINARY_DIR}/${package}-${VERSION_JAVA}${component}"
           if [[ ! -f "${filename}" ]];  then
              echo "ERROR: missing artifact ${filename}"
              return 1
