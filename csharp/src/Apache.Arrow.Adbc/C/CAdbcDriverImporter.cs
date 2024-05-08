@@ -234,6 +234,15 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
+            internal unsafe ref CAdbcDriver DriverUnsafe
+            {
+                get
+                {
+                    Debug.Assert(_references > 0);
+                    return ref _nativeDriver;
+                }
+            }
+
             internal ImportedAdbcDriver AddReference()
             {
                 Interlocked.Increment(ref _references);
@@ -433,7 +442,7 @@ namespace Apache.Arrow.Adbc.C
                         {
                             using (CallHelper caller = new CallHelper())
                             {
-                                caller.Call(_driver.Driver.DatabaseRelease, ref _nativeDatabase);
+                                caller.Call(_driver.DriverUnsafe.DatabaseRelease, ref _nativeDatabase);
                             }
                         }
                     }
@@ -711,7 +720,7 @@ namespace Apache.Arrow.Adbc.C
                         {
                             using (CallHelper caller = new CallHelper())
                             {
-                                caller.Call(_driver.Driver.ConnectionRelease, ref _nativeConnection);
+                                caller.Call(_driver.DriverUnsafe.ConnectionRelease, ref _nativeConnection);
                             }
                         }
                     }
@@ -991,7 +1000,7 @@ namespace Apache.Arrow.Adbc.C
                         {
                             using (CallHelper caller = new CallHelper())
                             {
-                                caller.Call(_driver.Driver.StatementRelease, ref _nativeStatement);
+                                caller.Call(_driver.DriverUnsafe.StatementRelease, ref _nativeStatement);
                             }
                         }
                     }
