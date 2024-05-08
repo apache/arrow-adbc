@@ -27,13 +27,10 @@ namespace Apache.Arrow.Adbc.C
 {
     public class CAdbcDriverExporter
     {
-        internal unsafe delegate void ErrorRelease(CAdbcError* error);
         private static unsafe readonly NativeDelegate<ErrorRelease> s_releaseError = new NativeDelegate<ErrorRelease>(ReleaseError);
-        internal unsafe delegate AdbcStatusCode DatabaseFn(CAdbcDatabase* database, CAdbcError* error);
-        internal unsafe delegate AdbcStatusCode ConnectionFn(CAdbcConnection* connection, CAdbcError* error);
 
 #if NET5_0_OR_GREATER
-        private static unsafe delegate* unmanaged<CAdbcError*, void> ReleaseErrorPtr => (delegate* unmanaged<CAdbcError*, void>)s_releaseError.Pointer;
+        internal static unsafe delegate* unmanaged<CAdbcError*, void> ReleaseErrorPtr => (delegate* unmanaged<CAdbcError*, void>)s_releaseError.Pointer;
         private static unsafe delegate* unmanaged<CAdbcDriver*, CAdbcError*, AdbcStatusCode> ReleaseDriverPtr => &ReleaseDriver;
         private static unsafe delegate* unmanaged<CAdbcPartitions*, void> ReleasePartitionsPtr => &ReleasePartitions;
 
@@ -63,79 +60,35 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, int, CAdbcError*, AdbcStatusCode> StatementSetSubstraitPlanPtr => &SetStatementSubstraitPlan;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementGetParameterSchemaPtr => &GetStatementParameterSchema;
 #else
-        private static IntPtr ReleaseErrorPtr => s_releaseError.Pointer;
-        internal unsafe delegate AdbcStatusCode DriverRelease(CAdbcDriver* driver, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<DriverRelease> s_releaseDriver = new NativeDelegate<DriverRelease>(ReleaseDriver);
-        private static IntPtr ReleaseDriverPtr => s_releaseDriver.Pointer;
-        internal unsafe delegate void PartitionsRelease(CAdbcPartitions* partitions);
-        private static unsafe readonly NativeDelegate<PartitionsRelease> s_releasePartitions = new NativeDelegate<PartitionsRelease>(ReleasePartitions);
-        private static IntPtr ReleasePartitionsPtr => s_releasePartitions.Pointer;
+        internal static unsafe IntPtr ReleaseErrorPtr => s_releaseError.Pointer;
+        private static unsafe IntPtr ReleaseDriverPtr = NativeDelegate<DriverRelease>.AsNativePointer(ReleaseDriver);
+        private static unsafe IntPtr ReleasePartitionsPtr = NativeDelegate<PartitionsRelease>.AsNativePointer(ReleasePartitions);
 
-        private static unsafe readonly NativeDelegate<DatabaseFn> s_databaseInit = new NativeDelegate<DatabaseFn>(InitDatabase);
-        private static IntPtr DatabaseInitPtr => s_databaseInit.Pointer;
-        private static unsafe readonly NativeDelegate<DatabaseFn> s_databaseRelease = new NativeDelegate<DatabaseFn>(ReleaseDatabase);
-        private static IntPtr DatabaseReleasePtr => s_databaseRelease.Pointer;
-        internal unsafe delegate AdbcStatusCode DatabaseSetOption(CAdbcDatabase* database, byte* name, byte* value, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<DatabaseSetOption> s_databaseSetOption = new NativeDelegate<DatabaseSetOption>(SetDatabaseOption);
-        private static IntPtr DatabaseSetOptionPtr => s_databaseSetOption.Pointer;
+        private static unsafe IntPtr DatabaseInitPtr = NativeDelegate<DatabaseFn>.AsNativePointer(InitDatabase);
+        private static unsafe IntPtr DatabaseReleasePtr = NativeDelegate<DatabaseFn>.AsNativePointer(ReleaseDatabase);
+        private static unsafe IntPtr DatabaseSetOptionPtr = NativeDelegate<DatabaseSetOption>.AsNativePointer(SetDatabaseOption);
 
-        internal unsafe delegate AdbcStatusCode ConnectionGetObjects(CAdbcConnection* connection, int depth, byte* catalog, byte* db_schema, byte* table_name, byte** table_type, byte* column_name, CArrowArrayStream* stream, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<ConnectionGetObjects> s_connectionGetObjects = new NativeDelegate<ConnectionGetObjects>(GetConnectionObjects);
-        private static IntPtr ConnectionGetObjectsPtr => s_connectionGetObjects.Pointer;
-        internal unsafe delegate AdbcStatusCode ConnectionGetTableSchema(CAdbcConnection* connection, byte* catalog, byte* db_schema, byte* table_name, CArrowSchema* schema, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<ConnectionGetTableSchema> s_connectionGetTableSchema = new NativeDelegate<ConnectionGetTableSchema>(GetConnectionTableSchema);
-        private static IntPtr ConnectionGetTableSchemaPtr => s_connectionGetTableSchema.Pointer;
-        internal unsafe delegate AdbcStatusCode ConnectionGetTableTypes(CAdbcConnection* connection, CArrowArrayStream* stream, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<ConnectionGetTableTypes> s_connectionGetTableTypes = new NativeDelegate<ConnectionGetTableTypes>(GetConnectionTableTypes);
-        private static IntPtr ConnectionGetTableTypesPtr => s_connectionGetTableTypes.Pointer;
-        internal unsafe delegate AdbcStatusCode ConnectionInit(CAdbcConnection* connection, CAdbcDatabase* database, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<ConnectionInit> s_connectionInit = new NativeDelegate<ConnectionInit>(InitConnection);
-        private static IntPtr ConnectionInitPtr => s_connectionInit.Pointer;
-        private static unsafe readonly NativeDelegate<ConnectionFn> s_connectionRollback = new NativeDelegate<ConnectionFn>(RollbackConnection);
-        private static IntPtr ConnectionRollbackPtr => s_connectionRollback.Pointer;
-        private static unsafe readonly NativeDelegate<ConnectionFn> s_connectionCommit = new NativeDelegate<ConnectionFn>(CommitConnection);
-        private static IntPtr ConnectionCommitPtr => s_connectionCommit.Pointer;
-        private static unsafe readonly NativeDelegate<ConnectionFn> s_connectionRelease = new NativeDelegate<ConnectionFn>(ReleaseConnection);
-        private static IntPtr ConnectionReleasePtr => s_connectionRelease.Pointer;
-        internal unsafe delegate AdbcStatusCode ConnectionGetInfo(CAdbcConnection* connection, int* info_codes, int info_codes_length, CArrowArrayStream* stream, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<ConnectionGetInfo> s_connectionGetInfo = new NativeDelegate<ConnectionGetInfo>(GetConnectionInfo);
-        private static IntPtr ConnectionGetInfoPtr => s_connectionGetInfo.Pointer;
-        private unsafe delegate AdbcStatusCode ConnectionReadPartition(CAdbcConnection* connection, byte* serialized_partition, int serialized_length, CArrowArrayStream* stream, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<ConnectionReadPartition> s_connectionReadPartition = new NativeDelegate<ConnectionReadPartition>(ReadConnectionPartition);
-        private static IntPtr ConnectionReadPartitionPtr => s_connectionReadPartition.Pointer;
-        internal unsafe delegate AdbcStatusCode ConnectionSetOption(CAdbcConnection* connection, byte* name, byte* value, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<ConnectionSetOption> s_connectionSetOption = new NativeDelegate<ConnectionSetOption>(SetConnectionOption);
-        private static IntPtr ConnectionSetOptionPtr => s_connectionSetOption.Pointer;
+        private static unsafe IntPtr ConnectionGetObjectsPtr = NativeDelegate<ConnectionGetObjects>.AsNativePointer(GetConnectionObjects);
+        private static unsafe IntPtr ConnectionGetTableSchemaPtr = NativeDelegate<ConnectionGetTableSchema>.AsNativePointer(GetConnectionTableSchema);
+        private static unsafe IntPtr ConnectionGetTableTypesPtr = NativeDelegate<ConnectionGetTableTypes>.AsNativePointer(GetConnectionTableTypes);
+        private static unsafe IntPtr ConnectionInitPtr = NativeDelegate<ConnectionInit>.AsNativePointer(InitConnection);
+        private static unsafe IntPtr ConnectionRollbackPtr = NativeDelegate<ConnectionFn>.AsNativePointer(RollbackConnection);
+        private static unsafe IntPtr ConnectionCommitPtr = NativeDelegate<ConnectionFn>.AsNativePointer(CommitConnection);
+        private static unsafe IntPtr ConnectionReleasePtr = NativeDelegate<ConnectionFn>.AsNativePointer(ReleaseConnection);
+        private static unsafe IntPtr ConnectionGetInfoPtr = NativeDelegate<ConnectionGetInfo>.AsNativePointer(GetConnectionInfo);
+        private static unsafe IntPtr ConnectionReadPartitionPtr = NativeDelegate<ConnectionReadPartition>.AsNativePointer(ReadConnectionPartition);
+        private static unsafe IntPtr ConnectionSetOptionPtr = NativeDelegate<ConnectionSetOption>.AsNativePointer(SetConnectionOption);
 
-        internal unsafe delegate AdbcStatusCode StatementBind(CAdbcStatement* statement, CArrowArray* array, CArrowSchema* schema, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<StatementBind> s_statementBind = new NativeDelegate<StatementBind>(BindStatement);
-        private static IntPtr StatementBindPtr => s_statementBind.Pointer;
-        internal unsafe delegate AdbcStatusCode StatementBindStream(CAdbcStatement* statement, CArrowArrayStream* stream, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<StatementBindStream> s_statementBindStream = new NativeDelegate<StatementBindStream>(BindStreamStatement);
-        private static IntPtr StatementBindStreamPtr => s_statementBindStream.Pointer;
-        internal unsafe delegate AdbcStatusCode StatementExecuteQuery(CAdbcStatement* statement, CArrowArrayStream* stream, long* rows, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<StatementExecuteQuery> s_statementExecuteQuery = new NativeDelegate<StatementExecuteQuery>(ExecuteStatementQuery);
-        private static IntPtr StatementExecuteQueryPtr = s_statementExecuteQuery.Pointer;
-        internal unsafe delegate AdbcStatusCode StatementExecutePartitions(CAdbcStatement* statement, CArrowSchema* schema, CAdbcPartitions* partitions, long* rows, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<StatementExecutePartitions> s_statementExecutePartitions = new NativeDelegate<StatementExecutePartitions>(ExecuteStatementPartitions);
-        private static IntPtr StatementExecutePartitionsPtr = s_statementExecutePartitions.Pointer;
-        internal unsafe delegate AdbcStatusCode StatementNew(CAdbcConnection* connection, CAdbcStatement* statement, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<StatementNew> s_statementNew = new NativeDelegate<StatementNew>(NewStatement);
-        private static IntPtr StatementNewPtr => s_statementNew.Pointer;
-        internal unsafe delegate AdbcStatusCode StatementFn(CAdbcStatement* statement, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<StatementFn> s_statementRelease = new NativeDelegate<StatementFn>(ReleaseStatement);
-        private static IntPtr StatementReleasePtr => s_statementRelease.Pointer;
-        private static unsafe readonly NativeDelegate<StatementFn> s_statementPrepare = new NativeDelegate<StatementFn>(PrepareStatement);
-        private static IntPtr StatementPreparePtr => s_statementPrepare.Pointer;
-        internal unsafe delegate AdbcStatusCode StatementSetSqlQuery(CAdbcStatement* statement, byte* text, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<StatementSetSqlQuery> s_statementSetSqlQuery = new NativeDelegate<StatementSetSqlQuery>(SetStatementSqlQuery);
-        private static IntPtr StatementSetSqlQueryPtr = s_statementSetSqlQuery.Pointer;
-        internal unsafe delegate AdbcStatusCode StatementSetSubstraitPlan(CAdbcStatement* statement, byte* plan, int length, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<StatementSetSubstraitPlan> s_statementSetSubstraitPlan = new NativeDelegate<StatementSetSubstraitPlan>(SetStatementSubstraitPlan);
-        private static IntPtr StatementSetSubstraitPlanPtr = s_statementSetSubstraitPlan.Pointer;
-        internal unsafe delegate AdbcStatusCode StatementGetParameterSchema(CAdbcStatement* statement, CArrowSchema* schema, CAdbcError* error);
-        private static unsafe readonly NativeDelegate<StatementGetParameterSchema> s_statementGetParameterSchema = new NativeDelegate<StatementGetParameterSchema>(GetStatementParameterSchema);
-        private static IntPtr StatementGetParameterSchemaPtr = s_statementGetParameterSchema.Pointer;
+        private static unsafe IntPtr StatementBindPtr = NativeDelegate<StatementBind>.AsNativePointer(BindStatement);
+        private static unsafe IntPtr StatementBindStreamPtr = NativeDelegate<StatementBindStream>.AsNativePointer(BindStreamStatement);
+        private static unsafe IntPtr StatementExecuteQueryPtr = NativeDelegate<StatementExecuteQuery>.AsNativePointer(ExecuteStatementQuery);
+        private static unsafe IntPtr StatementExecutePartitionsPtr = NativeDelegate<StatementExecutePartitions>.AsNativePointer(ExecuteStatementPartitions);
+        private static unsafe IntPtr StatementNewPtr = NativeDelegate<StatementNew>.AsNativePointer(NewStatement);
+        private static unsafe IntPtr StatementReleasePtr = NativeDelegate<StatementRelease>.AsNativePointer(ReleaseStatement);
+        private static unsafe IntPtr StatementPreparePtr = NativeDelegate<StatementPrepare>.AsNativePointer(PrepareStatement);
+        private static unsafe IntPtr StatementSetSqlQueryPtr = NativeDelegate<StatementSetSqlQuery>.AsNativePointer(SetStatementSqlQuery);
+        private static unsafe IntPtr StatementSetSubstraitPlanPtr = NativeDelegate<StatementSetSubstraitPlan>.AsNativePointer(SetStatementSubstraitPlan);
+        private static unsafe IntPtr StatementGetParameterSchemaPtr = NativeDelegate<StatementGetParameterSchema>.AsNativePointer(GetStatementParameterSchema);
 #endif
 
         public unsafe static AdbcStatusCode AdbcDriverInit(int version, CAdbcDriver* nativeDriver, CAdbcError* error, AdbcDriver driver)
@@ -176,7 +129,7 @@ namespace Apache.Arrow.Adbc.C
             return 0;
         }
 
-        private unsafe static void ReleaseError(CAdbcError* error)
+        internal unsafe static void ReleaseError(CAdbcError* error)
         {
             if (error != null && ((IntPtr)error->message) != IntPtr.Zero)
             {
@@ -226,7 +179,7 @@ namespace Apache.Arrow.Adbc.C
         private static void Dispose(ref IntPtr p)
         {
             GCHandle gch = GCHandle.FromIntPtr(p);
-            ((IDisposable)gch.Target).Dispose();
+            ((IDisposable)gch.Target!).Dispose();
             gch.Free();
             p = IntPtr.Zero;
         }
@@ -239,7 +192,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDriver->private_data);
-                DriverStub stub = (DriverStub)gch.Target;
+                DriverStub stub = (DriverStub)gch.Target!;
                 stub.Dispose();
                 gch.Free();
                 nativeDriver->private_data = null;
@@ -290,7 +243,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDatabase->private_data);
-                DatabaseStub stub = (DatabaseStub)gch.Target;
+                DatabaseStub stub = (DatabaseStub)gch.Target!;
                 stub.Init();
                 return AdbcStatusCode.Success;
             }
@@ -308,7 +261,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDatabase->private_data);
-                DatabaseStub stub = (DatabaseStub)gch.Target;
+                DatabaseStub stub = (DatabaseStub)gch.Target!;
                 stub.Dispose();
                 gch.Free();
                 nativeDatabase->private_data = null;
@@ -328,7 +281,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
-                ConnectionStub stub = (ConnectionStub)gch.Target;
+                ConnectionStub stub = (ConnectionStub)gch.Target!;
                 stub.SetOption(name, value);
                 return AdbcStatusCode.Success;
             }
@@ -346,7 +299,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDatabase->private_data);
-                DatabaseStub stub = (DatabaseStub)gch.Target;
+                DatabaseStub stub = (DatabaseStub)gch.Target!;
                 stub.SetOption(name, value);
                 return AdbcStatusCode.Success;
             }
@@ -364,7 +317,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
-                ConnectionStub stub = (ConnectionStub)gch.Target;
+                ConnectionStub stub = (ConnectionStub)gch.Target!;
                 stub.InitConnection(ref *database);
                 return AdbcStatusCode.Success;
             }
@@ -383,8 +336,8 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
-                ConnectionStub stub = (ConnectionStub)gch.Target;
-                stub.GetObjects(ref *nativeConnection, depth, catalog, db_schema, table_name, table_type, column_name, stream);
+                ConnectionStub stub = (ConnectionStub)gch.Target!;
+                stub.GetObjects(depth, catalog, db_schema, table_name, table_type, column_name, stream);
                 return AdbcStatusCode.Success;
             }
             catch (Exception e)
@@ -401,7 +354,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
-                ConnectionStub stub = (ConnectionStub)gch.Target;
+                ConnectionStub stub = (ConnectionStub)gch.Target!;
                 stub.GetTableTypes(stream);
                 return AdbcStatusCode.Success;
             }
@@ -419,7 +372,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
-                ConnectionStub stub = (ConnectionStub)gch.Target;
+                ConnectionStub stub = (ConnectionStub)gch.Target!;
                 stub.GetTableSchema(catalog, db_schema, table_name, schema);
                 return AdbcStatusCode.Success;
             }
@@ -437,7 +390,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
-                ConnectionStub stub = (ConnectionStub)gch.Target;
+                ConnectionStub stub = (ConnectionStub)gch.Target!;
                 stub.Rollback();
                 return AdbcStatusCode.Success;
             }
@@ -455,7 +408,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
-                ConnectionStub stub = (ConnectionStub)gch.Target;
+                ConnectionStub stub = (ConnectionStub)gch.Target!;
                 stub.Commit();
                 return AdbcStatusCode.Success;
             }
@@ -473,7 +426,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
-                ConnectionStub stub = (ConnectionStub)gch.Target;
+                ConnectionStub stub = (ConnectionStub)gch.Target!;
                 stub.Dispose();
                 gch.Free();
                 nativeConnection->private_data = null;
@@ -493,7 +446,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
-                ConnectionStub stub = (ConnectionStub)gch.Target;
+                ConnectionStub stub = (ConnectionStub)gch.Target!;
                 stub.ReadPartition(serialized_partition, serialized_length, stream);
                 return AdbcStatusCode.Success;
             }
@@ -511,7 +464,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
-                ConnectionStub stub = (ConnectionStub)gch.Target;
+                ConnectionStub stub = (ConnectionStub)gch.Target!;
                 stub.GetInfo(info_codes, info_codes_length, stream);
                 return AdbcStatusCode.Success;
             }
@@ -529,7 +482,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
-                AdbcStatement stub = (AdbcStatement)gch.Target;
+                AdbcStatement stub = (AdbcStatement)gch.Target!;
 
                 stub.SqlQuery = MarshalExtensions.PtrToStringUTF8(text);
 
@@ -549,7 +502,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
-                AdbcStatement stub = (AdbcStatement)gch.Target;
+                AdbcStatement stub = (AdbcStatement)gch.Target!;
 
                 stub.SubstraitPlan = MarshalExtensions.MarshalBuffer(plan, length);
 
@@ -569,7 +522,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
-                AdbcStatement stub = (AdbcStatement)gch.Target;
+                AdbcStatement stub = (AdbcStatement)gch.Target!;
 
                 CArrowSchemaExporter.ExportSchema(stub.GetParameterSchema(), schema);
 
@@ -589,7 +542,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
-                AdbcStatement stub = (AdbcStatement)gch.Target;
+                AdbcStatement stub = (AdbcStatement)gch.Target!;
 
                 Schema schema = CArrowSchemaImporter.ImportSchema(cschema);
                 RecordBatch batch = CArrowArrayImporter.ImportRecordBatch(array, schema);
@@ -610,7 +563,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
-                AdbcStatement stub = (AdbcStatement)gch.Target;
+                AdbcStatement stub = (AdbcStatement)gch.Target!;
 
                 IArrowArrayStream arrayStream = CArrowArrayStreamImporter.ImportArrayStream(stream);
                 stub.BindStream(arrayStream);
@@ -630,7 +583,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
-                AdbcStatement stub = (AdbcStatement)gch.Target;
+                AdbcStatement stub = (AdbcStatement)gch.Target!;
                 var result = stub.ExecuteQuery();
                 if (rows != null)
                 {
@@ -654,7 +607,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
-                AdbcStatement stub = (AdbcStatement)gch.Target;
+                AdbcStatement stub = (AdbcStatement)gch.Target!;
                 var result = stub.ExecutePartitioned();
                 if (rows != null)
                 {
@@ -692,7 +645,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
-                ConnectionStub stub = (ConnectionStub)gch.Target;
+                ConnectionStub stub = (ConnectionStub)gch.Target!;
                 stub.NewStatement(ref *nativeStatement);
                 return AdbcStatusCode.Success;
             }
@@ -710,7 +663,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
-                AdbcStatement stub = (AdbcStatement)gch.Target;
+                AdbcStatement stub = (AdbcStatement)gch.Target!;
                 stub.Dispose();
                 gch.Free();
                 nativeStatement->private_data = null;
@@ -730,7 +683,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
-                AdbcStatement statement = (AdbcStatement)gch.Target;
+                AdbcStatement statement = (AdbcStatement)gch.Target!;
                 statement.Prepare();
                 return AdbcStatusCode.Success;
             }
@@ -807,7 +760,7 @@ namespace Apache.Arrow.Adbc.C
         {
             readonly AdbcDriver _driver;
             readonly Dictionary<string, string> options;
-            AdbcDatabase database;
+            AdbcDatabase? database;
 
             public DatabaseStub(AdbcDriver driver)
             {
@@ -817,21 +770,22 @@ namespace Apache.Arrow.Adbc.C
 
             public void Init()
             {
-                if (database != null)
-                {
-                    throw new InvalidOperationException();
-                }
+                if (database != null) throw new InvalidOperationException("database already initialized");
 
                 database = _driver.Open(options);
             }
 
             public unsafe void SetOption(byte* name, byte* value)
             {
-                options[MarshalExtensions.PtrToStringUTF8(name)] = MarshalExtensions.PtrToStringUTF8(value);
+                if (name == null) throw new ArgumentNullException(nameof(name));
+                if (value == null) throw new ArgumentNullException(nameof(value));
+
+                options[MarshalExtensions.PtrToStringUTF8(name)!] = MarshalExtensions.PtrToStringUTF8(value)!;
             }
 
             public void OpenConnection(IReadOnlyDictionary<string, string> options, out AdbcConnection connection)
             {
+                if (database == null) throw new InvalidOperationException("database not initialized");
                 connection = database.Connect(options);
             }
 
@@ -846,7 +800,7 @@ namespace Apache.Arrow.Adbc.C
         {
             readonly AdbcDriver _driver;
             readonly Dictionary<string, string> options;
-            AdbcConnection connection;
+            AdbcConnection? connection;
 
             public ConnectionStub(AdbcDriver driver)
             {
@@ -854,13 +808,44 @@ namespace Apache.Arrow.Adbc.C
                 options = new Dictionary<string, string>();
             }
 
+            internal AdbcConnection Connection => connection == null ? throw new InvalidOperationException("connection is not open") : connection;
+
             public unsafe void SetOption(byte* name, byte* value)
             {
-                options[MarshalExtensions.PtrToStringUTF8(name)] = MarshalExtensions.PtrToStringUTF8(value);
+                if (name == null) throw new ArgumentNullException(nameof(name));
+                if (value == null) throw new ArgumentNullException(nameof(value));
+
+                string stringName = MarshalExtensions.PtrToStringUTF8(name)!;
+                string stringValue = MarshalExtensions.PtrToStringUTF8(value)!;
+
+                if (connection == null)
+                {
+                    options[stringName] = stringValue;
+                }
+                else
+                {
+                    // TODO: how best to normalize this?
+                    if (StringComparer.OrdinalIgnoreCase.Equals(stringName, AdbcOptions.Autocommit))
+                    {
+                        connection.AutoCommit = AdbcOptions.GetEnabled(stringValue);
+                    }
+                    else if (StringComparer.OrdinalIgnoreCase.Equals(stringName, AdbcOptions.IsolationLevel))
+                    {
+                        connection.IsolationLevel = AdbcOptions.GetIsolationLevel(stringValue);
+                    }
+                    else if (StringComparer.OrdinalIgnoreCase.Equals(stringName, AdbcOptions.ReadOnly))
+                    {
+                        connection.ReadOnly = AdbcOptions.GetEnabled(stringValue);
+                    }
+                    else
+                    {
+                        connection.SetOption(stringName, stringValue);
+                    }
+                }
             }
 
-            public void Rollback() { this.connection.Rollback(); }
-            public void Commit() { this.connection.Commit(); }
+            public void Rollback() { Connection.Rollback(); }
+            public void Commit() { Connection.Commit(); }
 
             public void Dispose()
             {
@@ -868,14 +853,14 @@ namespace Apache.Arrow.Adbc.C
                 connection = null;
             }
 
-            public unsafe void GetObjects(ref CAdbcConnection nativeConnection, int depth, byte* catalog, byte* db_schema, byte* table_name, byte** table_type, byte* column_name, CArrowArrayStream* cstream)
+            public unsafe void GetObjects(int depth, byte* catalog, byte* db_schema, byte* table_name, byte** table_type, byte* column_name, CArrowArrayStream* cstream)
             {
-                string catalogPattern = MarshalExtensions.PtrToStringUTF8(catalog);
-                string dbSchemaPattern = MarshalExtensions.PtrToStringUTF8(db_schema);
-                string tableNamePattern = MarshalExtensions.PtrToStringUTF8(table_name);
-                string columnNamePattern = MarshalExtensions.PtrToStringUTF8(column_name);
+                string? catalogPattern = MarshalExtensions.PtrToStringUTF8(catalog);
+                string? dbSchemaPattern = MarshalExtensions.PtrToStringUTF8(db_schema);
+                string? tableNamePattern = MarshalExtensions.PtrToStringUTF8(table_name);
+                string? columnNamePattern = MarshalExtensions.PtrToStringUTF8(column_name);
 
-                string[] tableTypes = null;
+                string[]? tableTypes = null;
                 const int maxTableTypeCount = 100;
                 if (table_type != null)
                 {
@@ -893,31 +878,31 @@ namespace Apache.Arrow.Adbc.C
                     tableTypes = new string[count];
                     for (int i = 0; i < count; i++)
                     {
-                        tableTypes[i] = MarshalExtensions.PtrToStringUTF8((IntPtr)table_type[i]);
+                        tableTypes[i] = MarshalExtensions.PtrToStringUTF8((IntPtr)table_type[i])!;
                     }
                 }
 
                 AdbcConnection.GetObjectsDepth goDepth = (AdbcConnection.GetObjectsDepth)depth;
 
-                IArrowArrayStream stream = connection.GetObjects(goDepth, catalogPattern, dbSchemaPattern, tableNamePattern, tableTypes, columnNamePattern);
+                IArrowArrayStream stream = Connection.GetObjects(goDepth, catalogPattern, dbSchemaPattern, tableNamePattern, tableTypes, columnNamePattern);
 
                 CArrowArrayStreamExporter.ExportArrayStream(stream, cstream);
             }
 
             public unsafe void GetTableSchema(byte* catalog, byte* db_schema, byte* table_name, CArrowSchema* cschema)
             {
-                string sCatalog = MarshalExtensions.PtrToStringUTF8(catalog);
-                string sDbSchema = MarshalExtensions.PtrToStringUTF8(db_schema);
-                string sTableName = MarshalExtensions.PtrToStringUTF8(table_name);
+                string? sCatalog = MarshalExtensions.PtrToStringUTF8(catalog);
+                string? sDbSchema = MarshalExtensions.PtrToStringUTF8(db_schema);
+                string sTableName = MarshalExtensions.PtrToStringUTF8(table_name)!;
 
-                Schema schema = connection.GetTableSchema(sCatalog, sDbSchema, sTableName);
+                Schema schema = Connection.GetTableSchema(sCatalog, sDbSchema, sTableName);
 
                 CArrowSchemaExporter.ExportSchema(schema, cschema);
             }
 
             public unsafe void GetTableTypes(CArrowArrayStream* cArrayStream)
             {
-                CArrowArrayStreamExporter.ExportArrayStream(connection.GetTableTypes(), cArrayStream);
+                CArrowArrayStreamExporter.ExportArrayStream(Connection.GetTableTypes(), cArrayStream);
             }
 
             public unsafe void ReadPartition(byte* serializedPartition, int serialized_length, CArrowArrayStream* stream)
@@ -928,7 +913,7 @@ namespace Apache.Arrow.Adbc.C
                     Buffer.MemoryCopy(serializedPartition, partitionPtr, serialized_length, serialized_length);
                 }
 
-                CArrowArrayStreamExporter.ExportArrayStream(connection.ReadPartition(new PartitionDescriptor(partition)), stream);
+                CArrowArrayStreamExporter.ExportArrayStream(Connection.ReadPartition(new PartitionDescriptor(partition)), stream);
             }
 
             public unsafe void GetInfo(int* info_codes, int info_codes_length, CArrowArrayStream* stream)
@@ -940,19 +925,19 @@ namespace Apache.Arrow.Adbc.C
                     Buffer.MemoryCopy(info_codes, infoCodesPtr, length, length);
                 }
 
-                CArrowArrayStreamExporter.ExportArrayStream(connection.GetInfo(infoCodes.ToList()), stream);
+                CArrowArrayStreamExporter.ExportArrayStream(Connection.GetInfo(infoCodes.ToList()), stream);
             }
 
             public unsafe void InitConnection(ref CAdbcDatabase nativeDatabase)
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDatabase.private_data);
-                DatabaseStub stub = (DatabaseStub)gch.Target;
+                DatabaseStub stub = (DatabaseStub)gch.Target!;
                 stub.OpenConnection(options, out connection);
             }
 
             public unsafe void NewStatement(ref CAdbcStatement nativeStatement)
             {
-                AdbcStatement statement = connection.CreateStatement();
+                AdbcStatement statement = Connection.CreateStatement();
                 GCHandle handle = GCHandle.Alloc(statement);
                 nativeStatement.private_data = (void*)GCHandle.ToIntPtr(handle);
             }

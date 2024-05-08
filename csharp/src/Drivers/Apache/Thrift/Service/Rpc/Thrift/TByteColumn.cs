@@ -15,6 +15,7 @@ using Thrift.Protocol;
 using Thrift.Protocol.Entities;
 using Thrift.Protocol.Utilities;
 
+#nullable disable
 
 #pragma warning disable IDE0079  // remove unnecessary pragmas
 #pragma warning disable IDE0017  // object init can be simplified

@@ -16,18 +16,30 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace Apache.Arrow.Adbc.C
 {
     internal readonly struct NativeDelegate<T> where T : Delegate
     {
-        private readonly T _managedDelegate; // For lifetime management
+        // Lifetime management
+        private static readonly List<Delegate> _managedDelegates = new List<Delegate>();
+        private readonly T _managedDelegate;
 
         public NativeDelegate(T managedDelegate)
         {
             _managedDelegate = managedDelegate;
             Pointer = Marshal.GetFunctionPointerForDelegate(managedDelegate);
+        }
+
+        public static IntPtr AsNativePointer(T managedDelegate)
+        {
+            lock (_managedDelegates)
+            {
+                _managedDelegates.Add(managedDelegate);
+            }
+            return Marshal.GetFunctionPointerForDelegate(managedDelegate);
         }
 
         public IntPtr Pointer { get; }

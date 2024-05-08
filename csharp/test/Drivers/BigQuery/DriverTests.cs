@@ -87,7 +87,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             for (int i = 0; i < infoNameArray.Length; i++)
             {
-                AdbcInfoCode value = (AdbcInfoCode)infoNameArray.GetValue(i);
+                AdbcInfoCode value = (AdbcInfoCode)infoNameArray.GetValue(i)!.Value;
                 DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
 
                 Assert.Contains(value.ToString(), expectedValues);
@@ -104,10 +104,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         public void CanGetObjects()
         {
             // need to add the database
-            string catalogName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
-            string tableName = _testConfiguration.Metadata.Table;
-            string columnName = null;
+            string? catalogName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
+            string? tableName = _testConfiguration.Metadata.Table;
+            string? columnName = null;
 
             AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(_testConfiguration);
 
@@ -123,15 +123,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, catalogName, schemaName);
 
-            List<AdbcColumn> columns = catalogs
+            List<AdbcColumn>? columns = catalogs
                 .Select(s => s.DbSchemas)
                 .FirstOrDefault()
-                .Select(t => t.Tables)
+                ?.Select(t => t.Tables)
                 .FirstOrDefault()
-                .Select(c => c.Columns)
+                ?.Select(c => c.Columns)
                 .FirstOrDefault();
 
-            Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
+            Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns?.Count);
         }
 
         /// <summary>
@@ -142,8 +142,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(_testConfiguration);
 
-            string catalogName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
+            string? catalogName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
             string tableName = _testConfiguration.Metadata.Table;
 
             Schema schema = adbcConnection.GetTableSchema(catalogName, schemaName, tableName);

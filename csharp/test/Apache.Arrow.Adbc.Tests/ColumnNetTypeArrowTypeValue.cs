@@ -24,7 +24,7 @@ namespace Apache.Arrow.Adbc.Tests
     /// </summary>
     public class ColumnNetTypeArrowTypeValue
     {
-        public ColumnNetTypeArrowTypeValue(string name, Type expectedNetType, Type expectedArrowArrayType, object expectedValue)
+        public ColumnNetTypeArrowTypeValue(string name, Type expectedNetType, Type expectedArrowArrayType, object? expectedValue)
         {
             this.Name = name;
             this.ExpectedNetType = expectedNetType;
@@ -38,6 +38,6 @@ namespace Apache.Arrow.Adbc.Tests
 
         public Type ExpectedArrowArrayType { get; set; }
 
-        public object ExpectedValue { get; set; }
+        public object? ExpectedValue { get; set; }
     }
 }

@@ -92,6 +92,7 @@ class DremioFlightSqlStatementTest : public ::testing::Test,
   void TestSqlIngestColumnEscaping() {
     GTEST_SKIP() << "Column escaping not implemented";
   }
+  void TestSqlQueryEmpty() { GTEST_SKIP() << "Dremio doesn't support 'acceptPut'"; }
   void TestSqlQueryRowsAffectedDelete() {
     GTEST_SKIP() << "Cannot query rows affected in delete (not implemented)";
   }

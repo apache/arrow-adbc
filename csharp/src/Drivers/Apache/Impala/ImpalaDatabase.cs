@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             this.properties = properties;
         }
 
-        public override AdbcConnection Connect(IReadOnlyDictionary<string, string> properties)
+        public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? properties)
         {
             ImpalaConnection connection = new ImpalaConnection(this.properties);
             connection.Open();

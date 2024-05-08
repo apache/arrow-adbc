@@ -23,7 +23,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     public abstract class HiveServer2Statement : AdbcStatement
     {
         protected HiveServer2Connection connection;
-        protected TOperationHandle operationHandle;
+        protected TOperationHandle? operationHandle;
 
         protected HiveServer2Statement(HiveServer2Connection connection)
         {
@@ -38,7 +38,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             TExecuteStatementReq executeRequest = new TExecuteStatementReq(this.connection.sessionHandle, this.SqlQuery);
             SetStatementProperties(executeRequest);
-            var executeResponse = this.connection.client.ExecuteStatement(executeRequest).Result;
+            var executeResponse = this.connection.Client.ExecuteStatement(executeRequest).Result;
             if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)
@@ -50,19 +50,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected void PollForResponse()
         {
-            TGetOperationStatusResp statusResponse = null;
+            TGetOperationStatusResp? statusResponse = null;
             do
             {
                 if (statusResponse != null) { Thread.Sleep(500); }
                 TGetOperationStatusReq request = new TGetOperationStatusReq(this.operationHandle);
-                statusResponse = this.connection.client.GetOperationStatus(request).Result;
+                statusResponse = this.connection.Client.GetOperationStatus(request).Result;
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
         }
 
         protected Schema GetSchema()
         {
             TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
-            TGetResultSetMetadataResp response = this.connection.client.GetResultSetMetadata(request).Result;
+            TGetResultSetMetadataResp response = this.connection.Client.GetResultSetMetadata(request).Result;
             return SchemaParser.GetArrowSchema(response.Schema);
         }
 
@@ -71,7 +71,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             if (this.operationHandle != null)
             {
                 TCloseOperationReq request = new TCloseOperationReq(this.operationHandle);
-                this.connection.client.CloseOperation(request).Wait();
+                this.connection.Client.CloseOperation(request).Wait();
                 this.operationHandle = null;
             }
 

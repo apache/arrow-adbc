@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
     /// </summary>
     internal class FlightSqlResult : IArrowArrayStream
     {
-        private FlightClientRecordBatchStreamReader _recordBatchStreamReader;
+        private FlightClientRecordBatchStreamReader? _recordBatchStreamReader;
 
         private readonly FlightInfo _flightInfo;
         private readonly FlightSqlConnection _flightSqlConnection;
@@ -44,14 +44,14 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
 
         public Schema Schema { get { return _flightInfo.Schema; } }
 
-        public async ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
             if (_recordBatchStreamReader is null)
             {
                 RefreshRecordBatchStreamReader();
             }
 
-            if (await _recordBatchStreamReader.MoveNext(cancellationToken))
+            if (await _recordBatchStreamReader!.MoveNext(cancellationToken))
             {
                 return _recordBatchStreamReader.Current;
             }

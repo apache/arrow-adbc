@@ -38,10 +38,10 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v16/arrow"
-	"github.com/apache/arrow/go/v16/arrow/array"
-	"github.com/apache/arrow/go/v16/arrow/decimal128"
-	"github.com/apache/arrow/go/v16/arrow/memory"
+	"github.com/apache/arrow/go/v17/arrow"
+	"github.com/apache/arrow/go/v17/arrow/array"
+	"github.com/apache/arrow/go/v17/arrow/decimal128"
+	"github.com/apache/arrow/go/v17/arrow/memory"
 	"github.com/google/uuid"
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/stretchr/testify/require"
@@ -515,7 +515,7 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 	suite.NoError(err)
 
 	suite.Require().NoError(suite.stmt.BindStream(suite.ctx, stream))
-	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_bind_stream\""))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_bind_stream"))
 	n, err = suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.EqualValues(3, n)
@@ -2005,4 +2005,48 @@ func (suite *SnowflakeTests) TestJwtPrivateKey() {
 	binKey := writeKey("key.bin", block.Bytes)
 	defer os.Remove(binKey)
 	verifyKey(binKey)
+}
+
+func (suite *SnowflakeTests) TestMetadataOnlyQuery() {
+	// force more than one chunk for `SHOW FUNCTIONS` which will return
+	// JSON data instead of arrow, even though we ask for Arrow
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`ALTER SESSION SET CLIENT_RESULT_CHUNK_SIZE = 50`))
+	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+
+	// since we lowered the CLIENT_RESULT_CHUNK_SIZE this will return at least
+	// 1 chunk in addition to the first one. Metadata queries will return JSON
+	// no matter what currently.
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SHOW FUNCTIONS`))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	recv := int64(0)
+	for rdr.Next() {
+		recv += rdr.Record().NumRows()
+	}
+
+	// verify that we got the exepected number of rows if we sum up
+	// all the rows from each record in the stream.
+	suite.Equal(n, recv)
+}
+
+func (suite *SnowflakeTests) TestEmptyResultSet() {
+	// regression test for apache/arrow-adbc#1804
+	// this would previously crash
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`SELECT 42 WHERE 1=0`))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	recv := int64(0)
+	for rdr.Next() {
+		recv += rdr.Record().NumRows()
+	}
+
+	// verify that we got the exepected number of rows if we sum up
+	// all the rows from each record in the stream.
+	suite.Equal(n, recv)
+	suite.Equal(recv, int64(0))
 }

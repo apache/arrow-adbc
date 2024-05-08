@@ -37,6 +37,7 @@ namespace Apache.Arrow.Adbc.Tests.Client
         public void TestDecimalValues(DecimalBehavior decimalBehavior, string value, int precision, int scale, Type expectedType)
         {
             AdbcDataReader rdr = GetMoqDataReader(decimalBehavior, value, precision, scale);
+            Assert.True(rdr.Read());
             object rdrValue = rdr.GetValue(0);
 
             Assert.True(rdrValue.GetType().Equals(expectedType));

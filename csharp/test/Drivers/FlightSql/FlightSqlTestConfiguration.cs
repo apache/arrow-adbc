@@ -22,15 +22,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
     internal class FlightSqlTestConfiguration : TestConfiguration
     {
         [JsonPropertyName("serverAddress")]
-        public string ServerAddress { get; set; }
+        public string ServerAddress { get; set; } = string.Empty;
 
         [JsonPropertyName("routing_tag"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string RoutingTag { get; set; }
+        public string RoutingTag { get; set; } = string.Empty;
 
         [JsonPropertyName("routing_queue"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string RoutingQueue { get; set; }
+        public string RoutingQueue { get; set; } = string.Empty;
 
         [JsonPropertyName("authorization")]
-        public string Authorization { get; set; }
+        public string Authorization { get; set; } = string.Empty;
     }
 }

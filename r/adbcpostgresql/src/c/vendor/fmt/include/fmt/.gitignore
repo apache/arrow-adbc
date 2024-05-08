@@ -16,6 +16,7 @@
 # under the License.
 
 args.h
+base.h
 chrono.h
 color.h
 compile.h

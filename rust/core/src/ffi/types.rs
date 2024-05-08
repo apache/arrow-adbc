@@ -17,7 +17,7 @@
 
 #![allow(non_camel_case_types, non_snake_case)]
 
-use std::ffi::{CStr, CString};
+use std::ffi::{CStr, CString, NulError};
 use std::mem::ManuallyDrop;
 use std::os::raw::{c_char, c_int, c_void};
 use std::ptr::{null, null_mut};
@@ -558,8 +558,26 @@ pub(crate) struct ErrorPrivateData {
     pub(crate) values: Vec<Vec<u8>>,
 }
 
+impl From<NulError> for FFI_AdbcError {
+    fn from(value: NulError) -> Self {
+        let message = CString::new(format!(
+            "Interior null byte was found at position {}",
+            value.nul_position()
+        ))
+        .unwrap();
+        FFI_AdbcError {
+            message: message.into_raw(),
+            vendor_code: constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA,
+            sqlstate: [0; 5],
+            release: Some(release_ffi_error),
+            private_data: null_mut(),
+            private_driver: null(),
+        }
+    }
+}
+
 impl TryFrom<Error> for FFI_AdbcError {
-    type Error = Error;
+    type Error = NulError;
 
     fn try_from(mut value: Error) -> Result<Self, Self::Error> {
         let message = CString::new(value.message)?;

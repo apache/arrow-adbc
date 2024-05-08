@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -24,15 +25,13 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
-
-using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
-using System.Diagnostics;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
@@ -77,11 +76,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             DECIMAL_TYPE = 3,
             DATE_TYPE = 91,
             CHAR_TYPE = 1,
-        }
-
-        public SparkConnection() : this(null)
-        {
-
         }
 
         internal SparkConnection(IReadOnlyDictionary<string, string> properties)
@@ -287,7 +281,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return new SparkInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
         }
 
-        public override Schema GetTableSchema(string catalog, string dbSchema, string tableName)
+        public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
         {
             TGetColumnsReq getColumnsReq = new TGetColumnsReq(this.sessionHandle);
             getColumnsReq.CatalogName = catalog;
@@ -295,7 +289,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             getColumnsReq.TableName = tableName;
             getColumnsReq.GetDirectResults = sparkGetDirectResults;
 
-            var columnsResponse = this.client.GetColumns(getColumnsReq).Result;
+            var columnsResponse = this.Client.GetColumns(getColumnsReq).Result;
             if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new Exception(columnsResponse.Status.ErrorMessage);
@@ -313,13 +307,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 int? columnType = columns[4].I32Val.Values.GetValue(i);
                 string typeName = columns[5].StringVal.Values.GetString(i);
                 bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
-                IArrowType dataType = SparkConnection.GetArrowType((ColumnTypeId)columnType, typeName);
+                IArrowType dataType = SparkConnection.GetArrowType((ColumnTypeId)columnType!.Value, typeName);
                 fields[i] = new Field(columnName, dataType, nullable);
             }
             return new Schema(fields, null);
         }
 
-        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, IReadOnlyList<string> tableTypes, string columnNamePattern)
+        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
             Trace.TraceError($"getting objects with depth={depth.ToString()}, catalog = {catalogPattern}, dbschema = {dbSchemaPattern}, tablename = {tableNamePattern}");
 
@@ -329,7 +323,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(this.sessionHandle);
                 getCatalogsReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetCatalogsResp getCatalogsResp = this.client.GetCatalogs(getCatalogsReq).Result;
+                TGetCatalogsResp getCatalogsResp = this.Client.GetCatalogs(getCatalogsReq).Result;
                 if (getCatalogsResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getCatalogsResp.Status.ErrorMessage);
@@ -357,7 +351,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 getSchemasReq.SchemaName = dbSchemaPattern;
                 getSchemasReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetSchemasResp getSchemasResp = this.client.GetSchemas(getSchemasReq).Result;
+                TGetSchemasResp getSchemasResp = this.Client.GetSchemas(getSchemasReq).Result;
                 if (getSchemasResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getSchemasResp.Status.ErrorMessage);
@@ -384,7 +378,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 getTablesReq.TableName = tableNamePattern;
                 getTablesReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetTablesResp getTablesResp = this.client.GetTables(getTablesReq).Result;
+                TGetTablesResp getTablesResp = this.Client.GetTables(getTablesReq).Result;
                 if (getTablesResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getTablesResp.Status.ErrorMessage);
@@ -406,7 +400,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     tableInfo.Type = tableType;
                     tableInfo.Columns = new List<string>();
                     tableInfo.ColType = new List<int>();
-                    catalogMap.GetValueOrDefault(catalog).GetValueOrDefault(schemaDb).Add(tableName, tableInfo);
+                    catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.Add(tableName, tableInfo);
                 }
             }
 
@@ -421,7 +415,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 if (!string.IsNullOrEmpty(columnNamePattern))
                     columnsReq.ColumnName = columnNamePattern;
 
-                var columnsResponse = this.client.GetColumns(columnsReq).Result;
+                var columnsResponse = this.Client.GetColumns(columnsReq).Result;
                 if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(columnsResponse.Status.ErrorMessage);
@@ -442,9 +436,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     string tableName = tableList[i];
                     string column = columnList[i];
                     int colType = columnTypeList[i];
-                    TableInfoPair tableInfo = catalogMap.GetValueOrDefault(catalog).GetValueOrDefault(schemaDb).GetValueOrDefault(tableName);
-                    tableInfo.Columns.Add(column);
-                    tableInfo.ColType.Add(colType);
+                    TableInfoPair? tableInfo = catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.GetValueOrDefault(tableName);
+                    tableInfo?.Columns.Add(column);
+                    tableInfo?.ColType.Add(colType);
                 }
             }
 
@@ -498,7 +492,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case ColumnTypeId.STRING_TYPE:
                     return StringType.Default;
                 case ColumnTypeId.TIMESTAMP_TYPE:
-                    return new TimestampType(TimeUnit.Microsecond, timezone: (string)null);
+                    return new TimestampType(TimeUnit.Microsecond, timezone: (string?)null);
                 case ColumnTypeId.BINARY_TYPE:
                     return BinaryType.Default;
                 case ColumnTypeId.DATE_TYPE:
@@ -701,7 +695,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 nullBitmapBuffer.Build());
         }
 
-        private string PatternToRegEx(string pattern)
+        private string PatternToRegEx(string? pattern)
         {
             if (pattern == null)
                 return ".*";

@@ -64,20 +64,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            List<AdbcTable> tables = catalogs
+            List<AdbcTable>? tables = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
                 .FirstOrDefault()
-                .Where(s => string.Equals(s.Name, schemaName))
+                ?.Where(s => string.Equals(s.Name, schemaName))
                 .Select(s => s.Tables)
                 .FirstOrDefault();
 
-            AdbcTable table = tables.Where((table) => string.Equals(table.Name, _fixture._tableName1, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            AdbcTable? table = tables?.Where((table) => string.Equals(table.Name, _fixture._tableName1, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             Assert.True(table != null, "table should not be null");
             Assert.True(table.Constraints != null, "table constraints should not be null");
 
 
-            AdbcConstraint adbcConstraint = table.Constraints.Where((constraint) => string.Equals(constraint.Type, constraintType)).FirstOrDefault();
+            AdbcConstraint? adbcConstraint = table?.Constraints.Where((constraint) => string.Equals(constraint.Type, constraintType)).FirstOrDefault();
             Assert.True(adbcConstraint != null, $"{constraintType} should be present");
             Assert.StartsWith(constraintNameStart, adbcConstraint.Name);
             Assert.True(adbcConstraint.ColumnNames.Count == columnNames.Length, "constraint column count doesn't match");
@@ -112,20 +112,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            List<AdbcTable> tables = catalogs
+            List<AdbcTable>? tables = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
                 .FirstOrDefault()
-                .Where(s => string.Equals(s.Name, schemaName))
+                ?.Where(s => string.Equals(s.Name, schemaName))
                 .Select(s => s.Tables)
                 .FirstOrDefault();
 
-            AdbcTable table = tables.Where((table) => string.Equals(table.Name, _fixture._tableName2, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            AdbcTable? table = tables?.Where((table) => string.Equals(table.Name, _fixture._tableName2, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             Assert.True(table != null, "table should not be null");
             Assert.True(table.Constraints != null, "table constraints should not be null");
 
 
-            AdbcConstraint adbcConstraint = table.Constraints.Where((constraint) => string.Equals(constraint.Type, constraintType)).FirstOrDefault();
+            AdbcConstraint? adbcConstraint = table.Constraints?.Where((constraint) => string.Equals(constraint.Type, constraintType)).FirstOrDefault();
             Assert.True(adbcConstraint != null, $"{constraintType} should be present");
             Assert.StartsWith(constraintNameStart, adbcConstraint.Name);
             Assert.True(adbcConstraint.ColumnNames.Count == columnNames.Length, "constraint column count doesn't match");

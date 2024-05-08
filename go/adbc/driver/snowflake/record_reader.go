@@ -18,9 +18,12 @@
 package snowflake
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"strconv"
 	"strings"
@@ -28,11 +31,11 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v16/arrow"
-	"github.com/apache/arrow/go/v16/arrow/array"
-	"github.com/apache/arrow/go/v16/arrow/compute"
-	"github.com/apache/arrow/go/v16/arrow/ipc"
-	"github.com/apache/arrow/go/v16/arrow/memory"
+	"github.com/apache/arrow/go/v17/arrow"
+	"github.com/apache/arrow/go/v17/arrow/array"
+	"github.com/apache/arrow/go/v17/arrow/compute"
+	"github.com/apache/arrow/go/v17/arrow/ipc"
+	"github.com/apache/arrow/go/v17/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
 	"golang.org/x/sync/errgroup"
 )
@@ -300,7 +303,7 @@ func integerToDecimal128(ctx context.Context, a arrow.Array, dt *arrow.Decimal12
 	return result, err
 }
 
-func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool) (*arrow.Schema, error) {
+func rowTypesToArrowSchema(_ context.Context, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool) (*arrow.Schema, error) {
 	var loc *time.Location
 
 	metadata := ld.RowTypes()
@@ -360,8 +363,7 @@ func extractTimestamp(src *string) (sec, nsec int64, err error) {
 	return
 }
 
-func jsonDataToArrow(ctx context.Context, bldr *array.RecordBuilder, ld gosnowflake.ArrowStreamLoader) (arrow.Record, error) {
-	rawData := ld.JSONData()
+func jsonDataToArrow(_ context.Context, bldr *array.RecordBuilder, rawData [][]*string) (arrow.Record, error) {
 	fieldBuilders := bldr.Fields()
 	for _, rec := range rawData {
 		for i, col := range rec {
@@ -471,7 +473,12 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		return nil, errToAdbcErr(adbc.StatusInternal, err)
 	}
 
-	if len(batches) == 0 {
+	// if the first chunk was JSON, that means this was a metadata query which
+	// is only returning JSON data rather than Arrow
+	rawData := ld.JSONData()
+	if len(rawData) > 0 {
+		// construct an Arrow schema based on reading the JSON metadata description of the
+		// result type schema
 		schema, err := rowTypesToArrowSchema(ctx, ld, useHighPrecision)
 		if err != nil {
 			return nil, adbc.Error{
@@ -480,23 +487,118 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 			}
 		}
 
+		if ld.TotalRows() == 0 {
+			return array.NewRecordReader(schema, []arrow.Record{})
+		}
+
 		bldr := array.NewRecordBuilder(alloc, schema)
 		defer bldr.Release()
 
-		rec, err := jsonDataToArrow(ctx, bldr, ld)
+		rec, err := jsonDataToArrow(ctx, bldr, rawData)
 		if err != nil {
 			return nil, err
 		}
 		defer rec.Release()
 
-		if ld.TotalRows() != 0 {
-			return array.NewRecordReader(schema, []arrow.Record{rec})
-		} else {
-			return array.NewRecordReader(schema, []arrow.Record{})
+		results := []arrow.Record{rec}
+		for _, b := range batches {
+			rdr, err := b.GetStream(ctx)
+			if err != nil {
+				return nil, adbc.Error{
+					Msg:  err.Error(),
+					Code: adbc.StatusInternal,
+				}
+			}
+			defer rdr.Close()
+
+			// the "JSON" data returned isn't valid JSON. Instead it is a list of
+			// comma-delimited JSON lists containing every value as a string, except
+			// for a JSON null to represent nulls. Thus we can't just use the existing
+			// JSON parsing code in Arrow.
+			data, err := io.ReadAll(rdr)
+			if err != nil {
+				return nil, adbc.Error{
+					Msg:  err.Error(),
+					Code: adbc.StatusInternal,
+				}
+			}
+
+			if cap(rawData) >= int(b.NumRows()) {
+				rawData = rawData[:b.NumRows()]
+			} else {
+				rawData = make([][]*string, b.NumRows())
+			}
+			bldr.Reserve(int(b.NumRows()))
+
+			// we grab the entire JSON message and create a bytes reader
+			offset, buf := int64(0), bytes.NewReader(data)
+			for i := 0; i < int(b.NumRows()); i++ {
+				// we construct a decoder from the bytes.Reader to read the next JSON list
+				// of columns (one row) from the input
+				dec := json.NewDecoder(buf)
+				if err = dec.Decode(&rawData[i]); err != nil {
+					return nil, adbc.Error{
+						Msg:  err.Error(),
+						Code: adbc.StatusInternal,
+					}
+				}
+
+				// dec.InputOffset() now represents the index of the ',' so we skip the comma
+				offset += dec.InputOffset() + 1
+				// then seek the buffer to that spot. we have to seek based on the start
+				// because json.Decoder can read from the buffer more than is necessary to
+				// process the JSON data.
+				if _, err = buf.Seek(offset, 0); err != nil {
+					return nil, adbc.Error{
+						Msg:  err.Error(),
+						Code: adbc.StatusInternal,
+					}
+				}
+			}
+
+			// now that we have our [][]*string of JSON data, we can pass it to get converted
+			// to an Arrow record batch and appended to our slice of batches
+			rec, err := jsonDataToArrow(ctx, bldr, rawData)
+			if err != nil {
+				return nil, err
+			}
+			defer rec.Release()
+
+			results = append(results, rec)
 		}
+
+		return array.NewRecordReader(schema, results)
 	}
 
 	ch := make(chan arrow.Record, bufferSize)
+	group, ctx := errgroup.WithContext(compute.WithAllocator(ctx, alloc))
+	ctx, cancelFn := context.WithCancel(ctx)
+	group.SetLimit(prefetchConcurrency)
+
+	defer func() {
+		if err != nil {
+			close(ch)
+			cancelFn()
+		}
+	}()
+
+	chs := make([]chan arrow.Record, len(batches))
+	rdr := &reader{
+		refCount: 1,
+		chs:      chs,
+		err:      nil,
+		cancelFn: cancelFn,
+	}
+
+	if len(batches) == 0 {
+		schema, err := rowTypesToArrowSchema(ctx, ld, useHighPrecision)
+		if err != nil {
+			return nil, err
+		}
+		rdr.schema, _ = getTransformer(schema, ld, useHighPrecision)
+		return rdr, nil
+	}
+
 	r, err := batches[0].GetStream(ctx)
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
@@ -510,19 +612,9 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		}
 	}
 
-	group, ctx := errgroup.WithContext(compute.WithAllocator(ctx, alloc))
-	ctx, cancelFn := context.WithCancel(ctx)
+	var recTransform recordTransformer
+	rdr.schema, recTransform = getTransformer(rr.Schema(), ld, useHighPrecision)
 
-	schema, recTransform := getTransformer(rr.Schema(), ld, useHighPrecision)
-
-	defer func() {
-		if err != nil {
-			close(ch)
-			cancelFn()
-		}
-	}()
-
-	group.SetLimit(prefetchConcurrency)
 	group.Go(func() error {
 		defer rr.Release()
 		defer r.Close()
@@ -541,15 +633,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		return rr.Err()
 	})
 
-	chs := make([]chan arrow.Record, len(batches))
 	chs[0] = ch
-	rdr := &reader{
-		refCount: 1,
-		chs:      chs,
-		err:      nil,
-		cancelFn: cancelFn,
-		schema:   schema,
-	}
 
 	lastChannelIndex := len(chs) - 1
 	go func() {

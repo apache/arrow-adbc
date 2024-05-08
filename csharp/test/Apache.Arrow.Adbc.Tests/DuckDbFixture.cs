@@ -20,18 +20,23 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using Apache.Arrow.Adbc.C;
+using DbClient = Apache.Arrow.Adbc.Client;
 
 namespace Apache.Arrow.Adbc.Tests
 {
     public class DuckDbFixture : IDisposable
     {
         readonly string _dataDirectory;
-        AdbcDriver _driver;
+        readonly Dictionary<string, AdbcDatabase> _databases;
+        readonly AdbcDriver _driver;
+        bool _disposed;
 
         public DuckDbFixture()
         {
             _dataDirectory = Path.Combine(Path.GetTempPath(), "AdbcTest_DuckDb", Guid.NewGuid().ToString("D"));
             Directory.CreateDirectory(_dataDirectory);
+
+            _databases = new Dictionary<string, AdbcDatabase>(StringComparer.OrdinalIgnoreCase);
 
             string root = Directory.GetCurrentDirectory();
             string file;
@@ -52,12 +57,25 @@ namespace Apache.Arrow.Adbc.Tests
             return _driver.Open(new Dictionary<string, string> { { "path", Path.Combine(_dataDirectory, name) } });
         }
 
+        public DbClient.AdbcConnection CreateConnection(string name, IReadOnlyDictionary<string, string>? connectionOptions)
+        {
+            AdbcDatabase? database;
+            if (!_databases.TryGetValue(name, out database))
+            {
+                database = OpenDatabase(name);
+                _databases[name] = database;
+            }
+
+            var connection = database.Connect(connectionOptions);
+            return new DbClient.AdbcConnection(_driver, database, connection);
+        }
+
         public void Dispose()
         {
-            if (_driver != null)
+            if (!_disposed)
             {
                 _driver.Dispose();
-                _driver = null;
+                _disposed = true;
 
                 try
                 {

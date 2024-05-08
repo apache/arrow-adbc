@@ -21,7 +21,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     public class HiveServer2Exception : AdbcException
     {
-        private string _sqlState;
+        private string? _sqlState;
         private int _nativeError;
 
         public HiveServer2Exception()
@@ -44,7 +44,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
         }
 
-        public override string SqlState
+        public override string? SqlState
         {
             get { return _sqlState; }
         }

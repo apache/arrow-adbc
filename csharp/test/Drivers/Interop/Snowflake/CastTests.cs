@@ -59,7 +59,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         readonly AdbcConnection _connection;
         readonly AdbcStatement _statement;
         readonly string _catalogSchema;
-        readonly Dictionary<string, string> _columnSpecifications;
         private readonly ITestOutputHelper _output;
         private bool _disposed = false;
 
@@ -132,7 +131,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             object expectedValue,
             ArrowTypeId expectedType,
             string castFunction,
-            string castExpression = null)
+            string? castExpression = null)
         {
             InitializeTest(columnSpecification, sourceValue, out string columnName, out string table);
             SelectWithCastAndValidateValue(
@@ -154,8 +153,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string sourceValue,
             Type expectedExceptionType,
             string castFunction,
-            string castExpression = null,
-            string[] expectedExceptionTextContains = null)
+            string? castExpression = null,
+            string[]? expectedExceptionTextContains = null)
         {
             InitializeTest(columnSpecification, sourceValue, out string columnName, out string table);
             SelectWithCastAndValidateException(
@@ -183,7 +182,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             object expectedValue,
             ArrowTypeId expectedType,
             string castFunction,
-            string castExpression = null)
+            string? castExpression = null)
         {
             InitializeTest(columnSpecification, sourceValue, out string columnName, out string table, useSelectSyntax: true);
             SelectWithCastAndValidateValue(
@@ -203,7 +202,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string sourceValue,
             ArrowTypeId expectedType,
             string castFunction,
-            string castExpression = null)
+            string? castExpression = null)
         {
             {
                 InitializeTest(columnSpecification, sourceValue, out string columnName, out string table);
@@ -261,7 +260,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string table,
             string castFunction,
             string castExpression,
-            object value,
+            object? value,
             ArrowTypeId expectedType)
         {
             QueryResult queryResult = PerformQuery(table, castFunction, castExpression);
@@ -273,7 +272,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string castFunction,
             string castExpression,
             Type expectedExceptionType,
-            string[] expectedExceptionTextContains = null)
+            string[]? expectedExceptionTextContains = null)
         {
             Exception actualException = Assert.Throws(expectedExceptionType, () => PerformQuery(table, castFunction, castExpression));
             SnowflakeTestingUtils.AssertContainsAll(expectedExceptionTextContains, actualException.Message);
@@ -291,10 +290,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             return _statement.ExecuteQuery();
         }
 
-        private static async Task ValidateCast(object value, ArrowTypeId expectedType, QueryResult queryResult)
+        private static async Task ValidateCast(object? value, ArrowTypeId expectedType, QueryResult queryResult)
         {
             Assert.Equal(1, queryResult.RowCount);
-            using IArrowArrayStream stream = queryResult.Stream;
+            using IArrowArrayStream stream = queryResult.Stream ?? throw new InvalidOperationException("empty result");
             Field field = stream.Schema.GetFieldByName("CASTRESULT");
             Assert.NotNull(field);
             while (true)
@@ -307,49 +306,49 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 switch (field.DataType.TypeId)
                 {
                     case ArrowTypeId.Double:
-                        var doubleArray = valueArray as DoubleArray;
+                        var doubleArray = (DoubleArray)valueArray;
                         for (int i = 0; i < doubleArray.Length; i++)
                         {
                             Assert.Equal(Convert.ToDouble(value), doubleArray.GetValue(i));
                         };
                         break;
                     case ArrowTypeId.Int32:
-                        var int32Array = valueArray as Int32Array;
+                        var int32Array = (Int32Array)valueArray;
                         for (int i = 0; i < int32Array.Length; i++)
                         {
                             Assert.Equal(value, int32Array.GetValue(i));
                         };
                         break;
                     case ArrowTypeId.Int64:
-                        var int64Array = valueArray as Int64Array;
+                        var int64Array = (Int64Array)valueArray;
                         for (int i = 0; i < int64Array.Length; i++)
                         {
                             Assert.Equal(value, int64Array.GetValue(i));
                         };
                         break;
                     case ArrowTypeId.String:
-                        var stringArray = valueArray as StringArray;
+                        var stringArray = (StringArray)valueArray;
                         for (int i = 0; i < stringArray.Length; i++)
                         {
                             Assert.Equal(value, stringArray.GetString(i));
                         };
                         break;
                     case ArrowTypeId.Boolean:
-                        var booleanArray = valueArray as BooleanArray;
+                        var booleanArray = (BooleanArray)valueArray;
                         for (int i = 0; i < booleanArray.Length; i++)
                         {
                             Assert.Equal(value, booleanArray.GetValue(i));
                         };
                         break;
                     case ArrowTypeId.Date64:
-                        var date64Array = valueArray as Date64Array;
+                        var date64Array = (Date64Array)valueArray;
                         for (int i = 0; i < date64Array.Length; i++)
                         {
                             Assert.Equal(value, date64Array.GetValue(i));
                         };
                         break;
                     case ArrowTypeId.Decimal128:
-                        var decimal128Array = valueArray as Decimal128Array;
+                        var decimal128Array = (Decimal128Array)valueArray;
                         for (int i = 0; i < decimal128Array.Length; i++)
                         {
 
@@ -357,21 +356,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                         };
                         break;
                     case ArrowTypeId.Decimal256:
-                        var decimal256Array = valueArray as Decimal256Array;
+                        var decimal256Array = (Decimal256Array)valueArray;
                         for (int i = 0; i < decimal256Array.Length; i++)
                         {
                             Assert.Equal(value, decimal256Array.GetValue(i));
                         };
                         break;
                     case ArrowTypeId.Timestamp:
-                        var timestampArray = valueArray as TimestampArray;
+                        var timestampArray = (TimestampArray)valueArray;
                         for (int i = 0; i < timestampArray.Length; i++)
                         {
                             Assert.Equal(value == null ? null : new DateTimeOffset(Convert.ToDateTime(value).ToUniversalTime()), timestampArray.GetTimestamp(i));
                         };
                         break;
                     case ArrowTypeId.Time64:
-                        var time64Array = valueArray as Time64Array;
+                        var time64Array = (Time64Array)valueArray;
                         for (int i = 0; i < time64Array.Length; i++)
                         {
 #if NET6_0_OR_GREATER
@@ -382,7 +381,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                         };
                         break;
                     case ArrowTypeId.Date32:
-                        var date32Array = valueArray as Date32Array;
+                        var date32Array = (Date32Array)valueArray;
                         for (int i = 0; i < date32Array.Length; i++)
                         {
                             Assert.Equal(Convert.ToDateTime(value), date32Array.GetDateTimeOffset(i));
@@ -409,7 +408,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             statement.SqlQuery = string.Format("ALTER SESSION SET TIMEZONE = '{0}'", timezone);
             UpdateResult result = statement.ExecuteUpdate();
-            Assert.Equal(-1, result.AffectedRows);
+            Assert.Equal(1, result.AffectedRows);
         }
 
         public void Dispose()

@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Apache.Arrow.Ipc;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests
@@ -78,7 +79,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             string pattern = "#define " + adbcName;
 
-            string line = File.ReadAllLines(path).Where(x => x.StartsWith(pattern)).FirstOrDefault();
+            string? line = File.ReadAllLines(path).Where(x => x.StartsWith(pattern)).FirstOrDefault();
 
             Assert.False(string.IsNullOrEmpty(line));
 
@@ -90,7 +91,7 @@ namespace Apache.Arrow.Adbc.Tests
         // C# is designed to match Java's AdbcDriver
         [Theory]
         [InlineData("Open", new string[] { "parameters" }, new Type[] { typeof(IReadOnlyDictionary<string, string>) })]
-        public void ValidateAdbcDriverMethods(string name, string[] parameterNames = null, Type[] parameterTypes = null)
+        public void ValidateAdbcDriverMethods(string name, string[]? parameterNames = null, Type[]? parameterTypes = null)
         {
             ValidateMethod(typeof(AdbcDriver), name, parameterNames, parameterTypes);
         }
@@ -98,7 +99,7 @@ namespace Apache.Arrow.Adbc.Tests
         // C# is designed to match Java's AdbcDatabase
         [Theory]
         [InlineData("Connect", new string[] { "options" }, new Type[] { typeof(IReadOnlyDictionary<string, string>) })]
-        public void ValidateAdbcDatabaseMethods(string name, string[] parameterNames = null, Type[] parameterTypes = null)
+        public void ValidateAdbcDatabaseMethods(string name, string[]? parameterNames = null, Type[]? parameterTypes = null)
         {
             ValidateMethod(typeof(AdbcDatabase), name, parameterNames, parameterTypes);
         }
@@ -106,10 +107,10 @@ namespace Apache.Arrow.Adbc.Tests
         [Theory]
         [InlineData("Commit")]
         [InlineData("CreateStatement")]
-        [InlineData("GetInfo", new string[]{ "codes" }, new Type[] { typeof(List<int>) })]
+        [InlineData("GetInfo", new string[] { "codes" }, new Type[] { typeof(IReadOnlyList<AdbcInfoCode>) })]
         [InlineData("GetObjects",
                     new string[] { "depth", "catalogPattern", "dbSchemaPattern", "tableNamePattern", "tableTypes", "columnNamePattern" },
-                    new Type[] { typeof(AdbcConnection.GetObjectsDepth), typeof(string), typeof(string), typeof(string), typeof(List<string>), typeof(string) })]
+                    new Type[] { typeof(AdbcConnection.GetObjectsDepth), typeof(string), typeof(string), typeof(string), typeof(IReadOnlyList<string>), typeof(string) })]
         [InlineData("GetTableSchema",
                     new string[] { "catalog", "dbSchema", "tableName" },
                     new Type[] { typeof(string), typeof(string), typeof(string) })]
@@ -117,7 +118,7 @@ namespace Apache.Arrow.Adbc.Tests
         [InlineData("ReadPartition", new string[] { "partition" }, new Type[] { typeof(PartitionDescriptor) })]
         [InlineData("Rollback")]
         [InlineData("SetOption", new string[] { "key", "value" }, new Type[] { typeof(string), typeof(string) })]
-        public void ValidateAdbcConnectionMethods(string name, string[] parameterNames = null, Type[] parameterTypes = null)
+        public void ValidateAdbcConnectionMethods(string name, string[]? parameterNames = null, Type[]? parameterTypes = null)
         {
             ValidateMethod(typeof(AdbcConnection), name, parameterNames, parameterTypes);
         }
@@ -132,14 +133,15 @@ namespace Apache.Arrow.Adbc.Tests
 
         [Theory]
         // TODO: Bind is defined differently to take a batch rather than an array
-        [InlineData("Bind", new string[] { "batch", "schema"}, new Type[] { typeof(RecordBatch), typeof(Schema) })]
+        [InlineData("Bind", new string[] { "batch", "schema" }, new Type[] { typeof(RecordBatch), typeof(Schema) })]
+        [InlineData("BindStream", new string[] { "stream" }, new Type[] { typeof(IArrowArrayStream) })]
         [InlineData("ExecuteQuery")]
         [InlineData("ExecuteUpdate")]
         [InlineData("ExecutePartitioned")] // C# matches Java here
         [InlineData("GetParameterSchema")]
         [InlineData("Prepare")]
         [InlineData("SetOption", new string[] { "key", "value" }, new Type[] { typeof(string), typeof(string) })]
-        public void ValidateAdbcStatementMethods(string name, string[] parameterNames = null, Type[] parameterTypes = null)
+        public void ValidateAdbcStatementMethods(string name, string[]? parameterNames = null, Type[]? parameterTypes = null)
         {
             ValidateMethod(typeof(AdbcStatement), name, parameterNames, parameterTypes);
         }
@@ -159,9 +161,9 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="methodName">The name of the method</param>
         /// <param name="parameterNames">The parameter names (in order)</param>
         /// <param name="parameterTypes">The parameter types (in order)</param>
-        private void ValidateMethod(Type t, string methodName, string[] parameterNames = null, Type[] parameterTypes = null)
+        private void ValidateMethod(Type t, string methodName, string[]? parameterNames = null, Type[]? parameterTypes = null)
         {
-            MethodInfo mi;
+            MethodInfo? mi;
 
             if (parameterTypes != null)
                 mi = t.GetMethod(methodName, parameterTypes);
@@ -170,13 +172,14 @@ namespace Apache.Arrow.Adbc.Tests
 
             if (parameterNames != null)
             {
+                Assert.NotNull(mi);
                 Assert.True(parameterNames.Length > 0);
                 Assert.True(parameterTypes != null);
                 Assert.Equal(parameterNames.Length, parameterTypes.Length);
 
                 ParameterInfo[] parameters = mi.GetParameters();
 
-                for(int i=0;i<parameters.Length;i++)
+                for (int i = 0; i < parameters.Length; i++)
                 {
                     ParameterInfo parameter = parameters[i];
 
@@ -195,7 +198,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="parameterTypes">The parameter types (in order)</param>
         private void ValidateProperty(Type t, string propertyName, Type propertyType)
         {
-            PropertyInfo pi = t.GetProperty(propertyName, propertyType);
+            PropertyInfo? pi = t.GetProperty(propertyName, propertyType);
 
             Assert.NotNull(pi);
         }

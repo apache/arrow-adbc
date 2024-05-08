@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             this.properties = properties;
         }
 
-        public override AdbcConnection Connect(IReadOnlyDictionary<string, string> properties)
+        public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? properties)
         {
             SparkConnection connection = new SparkConnection(this.properties);
             connection.Open();

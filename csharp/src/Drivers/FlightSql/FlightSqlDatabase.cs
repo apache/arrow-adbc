@@ -25,20 +25,20 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
     /// </summary>
     public class FlightSqlDatabase : AdbcDatabase
     {
-        private readonly IReadOnlyDictionary<string, string> _metadata;
+        private readonly IReadOnlyDictionary<string, string>? _metadata;
 
-        public FlightSqlDatabase(IReadOnlyDictionary<string, string> metadata)
+        public FlightSqlDatabase(IReadOnlyDictionary<string, string>? metadata)
         {
             _metadata = metadata;
         }
 
-        public override AdbcConnection Connect(IReadOnlyDictionary<string, string> options)
+        public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
             if (options == null) throw new ArgumentNullException("options");
 
             string flightSqlServerAddress = string.Empty;
 
-            if (options.TryGetValue(FlightSqlParameters.ServerAddress, out flightSqlServerAddress))
+            if (options.TryGetValue(FlightSqlParameters.ServerAddress, out flightSqlServerAddress!))
             {
                 FlightSqlConnection connection = new FlightSqlConnection(_metadata);
                 connection.Open(flightSqlServerAddress);

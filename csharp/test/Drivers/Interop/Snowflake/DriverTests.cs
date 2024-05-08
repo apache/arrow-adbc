@@ -16,12 +16,12 @@
 */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
+using Apache.Arrow.Types;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
@@ -42,34 +42,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         readonly AdbcConnection _connection;
         readonly List<string> _tableTypes;
 
-        public static IEnumerable<object[]> GetPatterns(string name)
+        public static IEnumerable<object[]> GetPatterns(string? name)
         {
             if (string.IsNullOrEmpty(name)) yield break;
 
-            yield return new object[] { name };
-            yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name)}%" };
-            yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name).ToLower()}%" };
-            yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name).ToUpper()}%" };
-            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name)}" };
-            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name).ToLower()}" };
-            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name).ToUpper()}" };
+            yield return new object[] { name! };
+            yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name!)}%" };
+            yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name!).ToLower()}%" };
+            yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name!).ToUpper()}%" };
+            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name!)}" };
+            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name!).ToLower()}" };
+            yield return new object[] { $"_{DriverTests.GetNameWithoutFirstChatacter(name!).ToUpper()}" };
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()
         {
-            string databaseName = SnowflakeTestingUtils.TestConfiguration?.Metadata.Catalog;
+            string? databaseName = SnowflakeTestingUtils.TestConfiguration?.Metadata.Catalog;
             return GetPatterns(databaseName);
         }
 
         public static IEnumerable<object[]> DbSchemasNamePatternData()
         {
-            string dbSchemaName = SnowflakeTestingUtils.TestConfiguration?.Metadata.Schema;
+            string? dbSchemaName = SnowflakeTestingUtils.TestConfiguration?.Metadata.Schema;
             return GetPatterns(dbSchemaName);
         }
 
         public static IEnumerable<object[]> TableNamePatternData()
         {
-            string tableName = SnowflakeTestingUtils.TestConfiguration?.Metadata.Table;
+            string? tableName = SnowflakeTestingUtils.TestConfiguration?.Metadata.Table;
             return GetPatterns(tableName);
         }
 
@@ -125,7 +125,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             for (int i = 0; i < infoNameArray.Length; i++)
             {
-                AdbcInfoCode value = (AdbcInfoCode)infoNameArray.GetValue(i);
+                AdbcInfoCode value = (AdbcInfoCode)infoNameArray.GetValue(i)!.Value;
                 DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
 
                 Assert.Contains(value.ToString(), expectedValues);
@@ -142,8 +142,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [MemberData(nameof(CatalogNamePatternData))]
         public void CanGetObjectsCatalogs(string catalogPattern)
         {
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
+            string? databaseName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Catalogs,
@@ -156,7 +156,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, null);
-            AdbcCatalog catalog = catalogs.Where((catalog) => string.Equals(catalog.Name, databaseName)).FirstOrDefault();
+            AdbcCatalog? catalog = catalogs.Where((catalog) => string.Equals(catalog.Name, databaseName)).FirstOrDefault();
 
             Assert.True(catalog != null, "catalog should not be null");
         }
@@ -169,8 +169,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public void CanGetObjectsDbSchemas(string dbSchemaPattern)
         {
             // need to add the database
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
+            string? databaseName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.DbSchemas,
@@ -184,11 +184,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            List<AdbcDbSchema> dbSchemas = catalogs
+            List<AdbcDbSchema>? dbSchemas = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
                 .FirstOrDefault();
-            AdbcDbSchema dbSchema = dbSchemas.Where((dbSchema) => string.Equals(dbSchema.Name, schemaName)).FirstOrDefault();
+            AdbcDbSchema? dbSchema = dbSchemas?.Where((dbSchema) => string.Equals(dbSchema.Name, schemaName)).FirstOrDefault();
 
             Assert.True(dbSchema != null, "dbSchema should not be null");
         }
@@ -201,9 +201,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public void CanGetObjectsTables(string tableNamePattern)
         {
             // need to add the database
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
-            string tableName = _testConfiguration.Metadata.Table;
+            string? databaseName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
+            string? tableName = _testConfiguration.Metadata.Table;
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Tables,
@@ -217,15 +217,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            List<AdbcTable> tables = catalogs
+            List<AdbcTable>? tables = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
                 .FirstOrDefault()
-                .Where(s => string.Equals(s.Name, schemaName))
+                ?.Where(s => string.Equals(s.Name, schemaName))
                 .Select(s => s.Tables)
                 .FirstOrDefault();
 
-            AdbcTable table = tables.Where((table) => string.Equals(table.Name, tableName)).FirstOrDefault();
+            AdbcTable? table = tables?.Where((table) => string.Equals(table.Name, tableName)).FirstOrDefault();
             Assert.True(table != null, "table should not be null");
             Assert.Equal("BASE TABLE", table.Type);
         }
@@ -237,10 +237,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public void CanGetObjectsAll()
         {
             // need to add the database
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
-            string tableName = _testConfiguration.Metadata.Table;
-            string columnName = null;
+            string? databaseName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
+            string? tableName = _testConfiguration.Metadata.Table;
+            string? columnName = null;
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.All,
@@ -253,20 +253,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
-            AdbcTable table = catalogs
+            AdbcTable? table = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
                 .FirstOrDefault()
-                .Where(s => string.Equals(s.Name, schemaName))
+                ?.Where(s => string.Equals(s.Name, schemaName))
                 .Select(s => s.Tables)
                 .FirstOrDefault()
-                .Where(t => string.Equals(t.Name, tableName))
+                ?.Where(t => string.Equals(t.Name, tableName))
                 .FirstOrDefault();
 
 
             Assert.True(table != null, "table should not be null");
             Assert.Equal("BASE TABLE", table.Type);
-            List<AdbcColumn> columns = table.Columns;
+            List<AdbcColumn>? columns = table.Columns;
 
             Assert.True(columns != null, "Columns cannot be null");
             Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
@@ -320,15 +320,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            List<AdbcTable> tables = catalogs
+            List<AdbcTable>? tables = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
                 .FirstOrDefault()
-                .Where(s => string.Equals(s.Name, schemaName))
+                ?.Where(s => string.Equals(s.Name, schemaName))
                 .Select(s => s.Tables)
                 .FirstOrDefault();
 
-            AdbcTable table = tables.FirstOrDefault();
+            AdbcTable? table = tables?.FirstOrDefault();
 
             Assert.True(table != null, "table should not be null");
             Assert.Equal(tableName, table.Name, true);
@@ -341,8 +341,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(4)]
         public void CanGetTableSchema()
         {
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
+            string? databaseName = _testConfiguration.Metadata.Catalog;
+            string? schemaName = _testConfiguration.Metadata.Schema;
             string tableName = _testConfiguration.Metadata.Table;
 
             Schema schema = _connection.GetTableSchema(databaseName, schemaName, tableName);
@@ -398,6 +398,56 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             Tests.DriverTests.CanExecuteQuery(queryResult, _testConfiguration.ExpectedResultsCount);
         }
+
+        [SkippableFact, Order(7)]
+        public void CanIngestData()
+        {
+            const string tableName = "AdbcIngestTest";
+
+            using var statement = _connection.CreateStatement();
+            statement.SqlQuery = $"USE SCHEMA \"{_testConfiguration.Metadata.Schema}\"";
+            statement.ExecuteUpdate();
+            statement.SqlQuery = $"DROP TABLE IF EXISTS \"{tableName}\"";
+            statement.ExecuteUpdate();
+
+            statement.SqlQuery = null;
+            statement.SetOption("adbc.ingest.target_table", tableName);
+            statement.SetOption("adbc.ingest.mode", "adbc.ingest.mode.create");
+
+            Schema schema = new Schema([new Field("key", Int32Type.Default, false), new Field("value", StringType.Default, false)], null);
+            RecordBatch recordBatch = new RecordBatch(schema, [
+                new Int32Array.Builder().AppendRange([1, 2, 3]).Build(),
+                new StringArray.Builder().AppendRange(["foo", "bar", "baz"]).Build()
+                ], 3);
+            statement.Bind(recordBatch, schema);
+            statement.ExecuteUpdate();
+
+            Schema foundSchema = _connection.GetTableSchema(null, null, tableName);
+            Assert.Equal(schema.FieldsList.Count, foundSchema.FieldsList.Count);
+
+            statement.SqlQuery = $"SELECT * FROM \"{tableName}\"";
+            var result = statement.ExecuteQuery();
+            Assert.Equal(3, result.RowCount);
+            result.Stream?.Dispose();
+
+            using var statement2 = _connection.BulkIngest(tableName, BulkIngestMode.Append);
+
+            recordBatch = new RecordBatch(schema, [
+                new Int32Array.Builder().AppendRange([4, 5]).Build(),
+                new StringArray.Builder().AppendRange(["quux", "zozzle"]).Build()
+                ], 2);
+            statement2.Bind(recordBatch, schema);
+            statement2.ExecuteUpdate();
+
+            statement.SqlQuery = $"SELECT * FROM \"{tableName}\"";
+            result = statement.ExecuteQuery();
+            Assert.Equal(5, result.RowCount);
+            result.Stream?.Dispose();
+
+            statement.SqlQuery = $"DROP TABLE IF EXISTS \"{tableName}\"";
+            statement.ExecuteUpdate();
+        }
+
 
         private void CreateDatabaseAndTable(string databaseName, string schemaName, string tableName)
         {

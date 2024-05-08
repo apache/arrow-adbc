@@ -21,35 +21,27 @@ set -e
 set -u
 set -o pipefail
 
-main() {
-    local -r source_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-    local -r source_top_dir="$( cd "${source_dir}/../../" && pwd )"
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SOURCE_DIR}/utils-common.sh"
+source "${SOURCE_DIR}/utils-prepare.sh"
 
-    if [ "$#" -ne 3 ]; then
-        echo "Usage: $0 <arrow-dir> <version> <rc-num>"
-        echo "Usage: $0 ../arrow 1.0.0 0"
+main() {
+    if [ "$#" -ne 2 ]; then
+        echo "Usage: $0 <arrow-dir> <rc-num>"
+        echo "Usage: $0 ../arrow 0"
         exit 1
     fi
 
     local -r arrow_dir="$(cd "$1" && pwd)"
-    local -r version="$2"
-    local -r rc_number="$3"
+    local -r rc_number="$2"
 
-    : ${REPOSITORY:="apache/arrow-adbc"}
-
-    header "Deploying APT/Yum repositories ${version}"
+    header "Deploying APT/Yum repositories ${RELEASE}"
 
     export DEPLOY_DEFAULT=0
     export DEPLOY_ALMALINUX=${DEPLOY_ALMALINUX:-1}
     export DEPLOY_DEBIAN=${DEPLOY_DEBIAN:-1}
     export DEPLOY_UBUNTU=${DEPLOY_UBUNTU:-1}
-    "${arrow_dir}/dev/release/post-02-binary.sh" "${version}" "${rc_number}"
-}
-
-header() {
-    echo "============================================================"
-    echo "${1}"
-    echo "============================================================"
+    "${arrow_dir}/dev/release/post-02-binary.sh" "${RELEASE}" "${rc_number}"
 }
 
 main "$@"

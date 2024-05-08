@@ -90,7 +90,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new Field(field.Name, TranslateType(field), field.Mode == "NULLABLE");
         }
 
-        public override object GetValue(IArrowArray arrowArray, int index)
+        public override object? GetValue(IArrowArray arrowArray, int index)
         {
             switch (arrowArray)
             {
@@ -165,7 +165,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
             // are internal. (TODO: consider changing Arrow).
-            BigQueryReadClient.ReadRowsStream readRowsStream = readClient.ReadRows(new ReadRowsRequest { ReadStream = streamName  });
+            BigQueryReadClient.ReadRowsStream readRowsStream = readClient.ReadRows(new ReadRowsRequest { ReadStream = streamName });
             IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
 
             ReadRowsStream stream = new ReadRowsStream(enumerator);
@@ -180,7 +180,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             QueryOptions options = new QueryOptions();
 
-            foreach (KeyValuePair<string,string> keyValuePair in this.Options)
+            foreach (KeyValuePair<string, string> keyValuePair in this.Options)
             {
                 if (keyValuePair.Key == BigQueryParameters.AllowLargeResults)
                 {
@@ -226,26 +226,26 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private string SerializeToJson(StructArray structArray, int index)
         {
-            Dictionary<String, object> jsonDictionary = ParseStructArray(structArray, index);
+            Dictionary<String, object?>? jsonDictionary = ParseStructArray(structArray, index);
 
             return JsonSerializer.Serialize(jsonDictionary);
         }
 
-        private Dictionary<String, object> ParseStructArray(StructArray structArray, int index)
+        private Dictionary<String, object?>? ParseStructArray(StructArray structArray, int index)
         {
             if (structArray.IsNull(index))
                 return null;
 
-            Dictionary<String, object> jsonDictionary = new Dictionary<String, object>();
+            Dictionary<String, object?> jsonDictionary = new Dictionary<String, object?>();
             StructType structType = (StructType)structArray.Data.DataType;
             for (int i = 0; i < structArray.Data.Children.Length; i++)
             {
                 string name = structType.Fields[i].Name;
-                object value = GetValue(structArray.Fields[i], index);
+                object? value = GetValue(structArray.Fields[i], index);
 
                 if (value is StructArray structArray1)
                 {
-                    List<Dictionary<string, object>> children = new List<Dictionary<string, object>>();
+                    List<Dictionary<string, object?>?> children = new List<Dictionary<string, object?>?>();
 
                     if (structArray1.Length > 1)
                     {
@@ -371,7 +371,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public Schema Schema { get { return schema; } }
 
-            public async ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
             {
                 if (this.readers == null)
                 {

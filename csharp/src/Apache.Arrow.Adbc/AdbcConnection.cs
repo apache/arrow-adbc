@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc
@@ -116,11 +115,11 @@ namespace Apache.Arrow.Adbc
         /// </param>
         public abstract IArrowArrayStream GetObjects(
             GetObjectsDepth depth,
-            string catalogPattern,
-            string dbSchemaPattern,
-            string tableNamePattern,
-            IReadOnlyList<string> tableTypes,
-            string columnNamePattern);
+            string? catalogPattern,
+            string? dbSchemaPattern,
+            string? tableNamePattern,
+            IReadOnlyList<string>? tableTypes,
+            string? columnNamePattern);
 
         public enum GetObjectsDepth
         {
@@ -158,7 +157,7 @@ namespace Apache.Arrow.Adbc
         /// <param name="tableName">
         /// The table name.
         /// </param>
-        public abstract Schema GetTableSchema(string catalog, string dbSchema, string tableName);
+        public abstract Schema GetTableSchema(string? catalog, string? dbSchema, string tableName);
 
         /// <summary>
         /// Get a list of table types supported by the database.

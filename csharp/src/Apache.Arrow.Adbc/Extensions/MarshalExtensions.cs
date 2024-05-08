@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -24,7 +25,7 @@ namespace Apache.Arrow.Adbc.Extensions
     public static class MarshalExtensions
     {
 #if NETSTANDARD
-        public static unsafe string PtrToStringUTF8(IntPtr intPtr)
+        public static unsafe string? PtrToStringUTF8(IntPtr intPtr)
         {
             if (intPtr == IntPtr.Zero)
             {
@@ -50,7 +51,7 @@ namespace Apache.Arrow.Adbc.Extensions
             return (TDelegate)(object)Marshal.GetDelegateForFunctionPointer(ptr, typeof(TDelegate));
         }
 
-        public static unsafe IntPtr StringToCoTaskMemUTF8(string s)
+        public static unsafe IntPtr StringToCoTaskMemUTF8(string? s)
         {
             if (s is null)
             {
@@ -74,23 +75,23 @@ namespace Apache.Arrow.Adbc.Extensions
             return pMem;
         }
 #else
-        public static unsafe string PtrToStringUTF8(IntPtr intPtr)
+        public static unsafe string? PtrToStringUTF8(IntPtr intPtr)
         {
             return Marshal.PtrToStringUTF8(intPtr);
         }
 
-        public static IntPtr StringToCoTaskMemUTF8(string s)
+        public static IntPtr StringToCoTaskMemUTF8(string? s)
         {
             return Marshal.StringToCoTaskMemUTF8(s);
         }
 #endif
 
-        public static unsafe string PtrToStringUTF8(byte* ptr)
+        public static unsafe string? PtrToStringUTF8(byte* ptr)
         {
             return PtrToStringUTF8((IntPtr)ptr);
         }
 
-        public static unsafe byte[] MarshalBuffer(void* ptr, int size)
+        public static unsafe byte[]? MarshalBuffer(void* ptr, int size)
         {
             if (ptr == null)
             {

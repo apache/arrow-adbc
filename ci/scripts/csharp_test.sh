@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,5 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-sqlite3.c
-sqlite3.h
+set -ex
+
+source_dir=${1}/csharp/test/Apache.Arrow.Adbc.Tests
+
+pushd ${source_dir}
+dotnet test
+# TODO: consider sourcelink
+popd

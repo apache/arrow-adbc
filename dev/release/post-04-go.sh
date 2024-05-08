@@ -16,19 +16,30 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
-set -ue
+
+set -e
+set -u
+set -o pipefail
 
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SOURCE_DIR}/utils-common.sh"
+source "${SOURCE_DIR}/utils-prepare.sh"
 
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <version>"
-    exit
-fi
+main() {
+    if [ "$#" -ne 0 ]; then
+        echo "Usage: $0"
+        exit 1
+    fi
 
-version=$1
-version_tag="apache-arrow-adbc-${version}"
-go_arrow_tag="go/adbc/v${version}"
+    header "Tagging Go release ${RELEASE}"
 
-git tag "${go_arrow_tag}" "${version_tag}"
-git push apache "${go_arrow_tag}"
+    version_tag="apache-arrow-adbc-${VERSION_NATIVE}"
+    go_arrow_tag="go/adbc/v${VERSION_NATIVE}"
+
+    git tag "${go_arrow_tag}" "${version_tag}"
+    echo "Created tag ${go_arrow_tag}"
+    echo "Please verify and push the tag:"
+    echo git push apache "${go_arrow_tag}"
+}
+
+main "$@"

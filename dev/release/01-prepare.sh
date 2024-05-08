@@ -20,60 +20,61 @@
 set -ue
 
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "$SOURCE_DIR/utils-common.sh"
+source "$SOURCE_DIR/utils-prepare.sh"
 
-if [ "$#" -ne 5 ]; then
-  echo "Usage: $0 <arrow-dir> <prev_veresion> <version> <next_version> <rc-num>"
-  echo "Usage: $0 ../arrow 0.1.0 0.2.0 0.3.0 0"
-  exit 1
-fi
+main() {
+    if [ "$#" -ne 2 ]; then
+        echo "Usage: $0 <arrow-dir> <rc_num>"
+        echo "Usage: $0 ../arrow 0"
+        exit 1
+    fi
 
-. $SOURCE_DIR/utils-prepare.sh
+    local -r arrow_dir="$1"
+    local -r rc_number="$2"
+    local -r release_candidate_tag="apache-arrow-adbc-${RELEASE}-rc${rc_number}"
 
-arrow_dir=$1
-prev_version=$2
-version=$3
-next_version=$4
-next_version_snapshot="${next_version}-SNAPSHOT"
-rc_number=$5
+    export ARROW_SOURCE="$(cd "${arrow_dir}" && pwd)"
 
-export ARROW_SOURCE="$(cd "${arrow_dir}" && pwd)"
+    if [[ $(git tag -l "${release_candidate_tag}") ]]; then
+        local -r next_rc_number=$(($rc_number+1))
+        echo "Tag ${release_candidate_tag} already exists, so create a new release candidate:"
+        echo "1. Create or checkout maint-<version>."
+        echo "2. Execute the script again with bumped RC number."
+        echo "Commands:"
+        echo "   git checkout maint-${RELEASE}"
+        echo "   dev/release/01-prepare.sh ${arrow_dir} ${next_rc_number}"
+        exit 1
+    fi
 
-release_candidate_tag="apache-arrow-adbc-${version}-rc${rc_number}"
+    ############################## Pre-Tag Commits ##############################
 
-if [[ $(git tag -l "${release_candidate_tag}") ]]; then
-    next_rc_number=$(($rc_number+1))
-    echo "Tag ${release_candidate_tag} already exists, so create a new release candidate:"
-    echo "1. Create or checkout maint-<version>."
-    echo "2. Execute the script again with bumped RC number."
-    echo "Commands:"
-    echo "   git checkout maint-${version}"
-    echo "   dev/release/01-prepare.sh ${version} ${next_version} ${next_rc_number}"
-    exit 1
-fi
+    header "Updating changelog for ${RELEASE}"
+    # Update changelog
+    # XXX: commitizen doesn't respect --tag-format with --incremental, so mimic
+    # it by hand.
+    (
+        echo ;
+        # Strip trailing blank line
+        printf '%s\n' "$(cz ch --dry-run --unreleased-version "ADBC Libraries ${RELEASE}" --start-rev apache-arrow-adbc-${PREVIOUS_RELEASE})"
+    ) >> ${SOURCE_DIR}/../../CHANGELOG.md
+    git add ${SOURCE_DIR}/../../CHANGELOG.md
+    git commit -m "chore: update CHANGELOG.md for ${RELEASE}"
 
-############################## Pre-Tag Commits ##############################
+    header "Prepare release ${RELEASE} on tag ${release_candidate_tag}"
 
-echo "Updating changelog for $version"
-# Update changelog
-# XXX: commitizen doesn't respect --tag-format with --incremental, so mimic
-# it by hand.
-(
-    echo ;
-    # Strip trailing blank line
-    printf '%s\n' "$(cz ch --dry-run --unreleased-version "ADBC Libraries ${version}" --start-rev apache-arrow-adbc-${prev_version})"
-) >> ${SOURCE_DIR}/../../CHANGELOG.md
-git add ${SOURCE_DIR}/../../CHANGELOG.md
-git commit -m "chore: update CHANGELOG.md for $version"
+    update_versions "release"
+    # --allow-empty required for RCs after the first
+    git commit -m "chore: update versions for ${RELEASE}" --allow-empty
 
-echo "Prepare release ${version} on tag ${release_candidate_tag}"
+    ######################### Tag the Release Candidate #########################
 
-update_versions "${version}" "${next_version}" "release"
-# --allow-empty required for RCs after the first
-git commit -m "chore: update versions for ${version}" --allow-empty
+    header "Tag the release candidate ${release_candidate_tag}"
 
-######################### Tag the Release Candidate #########################
+    git tag -a "${release_candidate_tag}" -m "ADBC Libraries ${RELEASE} RC ${rc_number}"
 
-git tag -a "${release_candidate_tag}" -m "ADBC Libraries ${version} RC ${rc_number}"
+    echo "Created release candidate tag: ${release_candidate_tag}"
+    echo "Push this tag before continuing!"
+}
 
-echo "Created release candidate tag: ${release_candidate_tag}"
-echo "Push this tag before continuing!"
+main "$@"
