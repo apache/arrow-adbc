@@ -356,6 +356,39 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             Tests.DriverTests.CanExecuteQuery(queryResult, TestConfiguration.ExpectedResultsCount);
         }
 
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results using the asynchronous methods.
+        /// </summary>
+        [SkippableFact, Order(11)]
+        public async Task CanExecuteQueryAsync()
+        {
+            using AdbcConnection adbcConnection = NewConnection();
+            using AdbcStatement statement = adbcConnection.CreateStatement();
+
+            statement.SqlQuery = TestConfiguration.Query;
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+
+            await Tests.DriverTests.CanExecuteQueryAsync(queryResult, TestConfiguration.ExpectedResultsCount);
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// perform and update asynchronously.
+        /// </summary>
+        [SkippableFact, Order(12)]
+        public async Task CanExecuteUpdateAsync()
+        {
+            using AdbcConnection adbcConnection = NewConnection();
+            using AdbcStatement statement = adbcConnection.CreateStatement();
+            using TemporaryTable temporaryTable = await NewTemporaryTableAsync(statement, "INDEX INT");
+
+            statement.SqlQuery = GetInsertValueStatement(temporaryTable.TableName, "INDEX", "1");
+            UpdateResult updateResult = await statement.ExecuteUpdateAsync();
+
+            Assert.Equal(1, updateResult.AffectedRows);
+        }
+
         public static IEnumerable<object[]> CatalogNamePatternData()
         {
             string? catalogName = new DriverTests(null).TestConfiguration?.Metadata?.Catalog;
