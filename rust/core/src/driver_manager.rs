@@ -22,9 +22,9 @@
 //! [`adbc.h`](https://github.com/apache/arrow-adbc/blob/main/adbc.h).
 //!
 //! There are two ways that drivers can be used:
-//! 2. By linking (either statically or dynamically) the driver implementation
+//! 1. By linking (either statically or dynamically) the driver implementation
 //! at link-time and then using [ManagedDriver::load_static].
-//! 3. By loading the driver implementation at run-time (with `dlopen/LoadLibrary`)
+//! 2. By loading the driver implementation at run-time (with `dlopen/LoadLibrary`)
 //! using [ManagedDriver::load_dynamic].
 //!
 //! Drivers are initialized using a function provided by the driver as a main
