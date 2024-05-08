@@ -40,13 +40,20 @@ module Helper
 
     versions_env = top_source_dir / "dev" / "release" / "versions.env"
     version = versions_env.read[/RELEASE="(.+?)"/, 1]
-    adbc_version_cmake = top_source_dir / "c" / "cmake_modules" / "AdbcVersion.cmake"
-    native_version = adbc_version_cmake.read[/ADBC_VERSION "(.+?)"/, 1]
-    if native_version.end_with?("-SNAPSHOT")
+    version_native = detect_version_native
+    if version_native.end_with?("-SNAPSHOT")
       formatted_release_time = release_time.strftime("%Y%m%d")
       version += "-dev#{formatted_release_time}"
     end
     version
+  end
+
+  def detect_version_native
+    version_native_env = ENV["VERSION_NATIVE"]
+    return version_native_env if version_native_env
+
+    adbc_version_cmake = top_source_dir / "c" / "cmake_modules" / "AdbcVersion.cmake"
+    adbc_version_cmake.read[/ADBC_VERSION "(.+?)"/, 1]
   end
 
   def detect_release_time
@@ -136,6 +143,15 @@ class ADBCPackageTask < PackageTask
       "almalinux-9",
       # "almalinux-9-aarch64",
     ]
+  end
+
+  def yum_expand_variable(name)
+    case name
+    when "VERSION_NATIVE"
+      detect_version_native
+    else
+      super
+    end
   end
 
   def github_repository
