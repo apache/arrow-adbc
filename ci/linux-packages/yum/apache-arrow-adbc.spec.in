@@ -319,7 +319,6 @@ Summary:	Libraries and header files for Apache Arrow GLib integration
 License:	Apache-2.0
 Requires:	%{name}-arrow-glib%{major_version}-libs = %{version}-%{release}
 Requires:	%{name}-glib-devel = %{version}-%{release}
-Requires:	arrow-glib-devel
 
 %description arrow-glib-devel
 Libraries and header files for Apache Arrow GLib integration
