@@ -702,8 +702,6 @@ test_linux_wheels() {
     local arch="x86_64"
   fi
 
-  local declared_package_version="${VERSION_NATIVE}"
-  local package_version="${TEST_PYARROW_VERSION:-${declared_package_version}}"
   local python_versions="${TEST_PYTHON_VERSIONS:-3.9 3.10 3.11}"
 
   for python in ${python_versions}; do
@@ -712,8 +710,8 @@ test_linux_wheels() {
     CONDA_ENV=wheel-${pyver}-${arch} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
     VENV_ENV=wheel-${pyver}-${arch} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
     pip install --force-reinstall \
-        adbc_*-${package_version}-cp${pyver/.}-cp${python/.}-manylinux*${arch}*.whl \
-        adbc_*-${package_version}-py3-none-manylinux*${arch}*.whl
+        adbc_*-${VERSION_NATIVE}-cp${pyver/.}-cp${python/.}-manylinux*${arch}*.whl \
+        adbc_*-${VERSION_NATIVE}-py3-none-manylinux*${arch}*.whl
     ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
   done
 }
@@ -726,8 +724,6 @@ test_macos_wheels() {
     local platform_tags="x86_64"
   fi
 
-  local declared_package_version="${VERSION_NATIVE}"
-  local package_version="${TEST_PYARROW_VERSION:-${declared_package_version}}"
   local python_versions="${TEST_PYTHON_VERSIONS:-3.9 3.10 3.11}"
 
   # verify arch-native wheels inside an arch-native conda environment
@@ -740,8 +736,8 @@ test_macos_wheels() {
       VENV_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
 
       pip install --force-reinstall \
-          adbc_*-${package_version}-cp${pyver/.}-cp${python/.}-macosx_*_${platform}.whl \
-          adbc_*-${package_version}-py3-none-macosx_*_${platform}.whl
+          adbc_*-${VERSION_NATIVE}-cp${pyver/.}-cp${python/.}-macosx_*_${platform}.whl \
+          adbc_*-${VERSION_NATIVE}-py3-none-macosx_*_${platform}.whl
       ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
     done
   done
