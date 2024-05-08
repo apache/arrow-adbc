@@ -558,8 +558,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # XXX(lidavidm): disable arm64 build for now while I test things
-        arch: ["amd64"]
+        arch: ["amd64", "arm64v8"]
         manylinux_version: ["2014"]
         is_pr:
           - ${{ startsWith(github.ref, 'refs/pull/') }}
