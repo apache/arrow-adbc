@@ -55,67 +55,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
         }
 
-        public override QueryResult ExecuteQuery()
-        {
-            ExecuteStatement();
-            PollForResponse();
-            Schema schema = GetSchema();
-
-            // TODO: Ensure this is set dynamically based on server capabilities
-            return new QueryResult(-1, new SparkReader(this, schema));
-        }
-
-        public override UpdateResult ExecuteUpdate()
-        {
-            const string NumberOfAffectedRowsColumnName = "num_affected_rows";
-
-            QueryResult queryResult = ExecuteQuery();
-            if (queryResult.Stream == null)
-            {
-                throw new AdbcException("no data found");
-            }
-
-            using IArrowArrayStream stream = queryResult.Stream;
-
-            // Check if the affected rows columns are returned in the result.
-            Field affectedRowsField = stream.Schema.GetFieldByName(NumberOfAffectedRowsColumnName);
-            if (affectedRowsField != null && affectedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
-            {
-                throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
-            }
-
-            // If no altered rows, i.e. DDC statements, then -1 is the default.
-            long? affectedRows = null;
-            while (true)
-            {
-                using RecordBatch nextBatch = stream.ReadNextRecordBatchAsync().Result;
-                if (nextBatch == null) { break; }
-                Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(NumberOfAffectedRowsColumnName);
-                // Note: should only have one item, but iterate for completeness
-                for (int i = 0; i < numOfModifiedArray.Length; i++)
-                {
-                    // Note: handle the case where the affected rows are zero (0).
-                    affectedRows = (affectedRows ?? 0) + numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
-                }
-            }
-
-            return new UpdateResult(affectedRows ?? -1);
-        }
-
-        public override object? GetValue(IArrowArray arrowArray, int index)
-        {
-            return base.GetValue(arrowArray, index);
-        }
+        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkReader(statement, schema);
 
         sealed class SparkReader : IArrowArrayStream
         {
-            SparkStatement? statement;
+            HiveServer2Statement? statement;
             Schema schema;
             List<TSparkArrowBatch>? batches;
             int index;
             IArrowReader? reader;
 
-            public SparkReader(SparkStatement statement, Schema schema)
+            public SparkReader(HiveServer2Statement statement, Schema schema)
             {
                 this.statement = statement;
                 this.schema = schema;
@@ -151,7 +101,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         return null;
                     }
 
-                    TFetchResultsReq request = new TFetchResultsReq(this.statement.operationHandle, TFetchOrientation.FETCH_NEXT, 50000);
+                    TFetchResultsReq request = new TFetchResultsReq(this.statement.operationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
                     TFetchResultsResp response = await this.statement.connection.client!.FetchResults(request, cancellationToken);
                     this.batches = response.Results.ArrowBatches;
 

@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
@@ -79,13 +80,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if the driver can call GetInfo.
         /// </summary>
         [SkippableFact, Order(2)]
-        public void CanGetInfo()
+        public async Task CanGetInfo()
         {
             AdbcConnection adbcConnection = NewConnection();
 
             using IArrowArrayStream stream = adbcConnection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
 
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            RecordBatch recordBatch = await stream.ReadNextRecordBatchAsync();
             UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
 
             List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "VendorName" };
@@ -254,10 +255,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string catalogName = TestConfiguration.Metadata.Catalog;
             string schemaPrefix = Guid.NewGuid().ToString().Replace("-", "");
-            using TemporarySchema schema = TemporarySchema.NewTemporarySchema(catalogName, Statement);
+            using TemporarySchema schema = TemporarySchema.NewTemporarySchemaAsync(catalogName, Statement).Result;
             string schemaName = schema.SchemaName;
             string fullTableName = $"{DelimitIdentifier(catalogName)}.{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
-            using TemporaryTable temporaryTable = TemporaryTable.NewTemporaryTable(Statement, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)");
+            using TemporaryTable temporaryTable = TemporaryTable.NewTemporaryTableAsync(Statement, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)").Result;
 
             using IArrowArrayStream stream = Connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Tables,
@@ -308,13 +309,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if the driver can call GetTableTypes.
         /// </summary>
         [SkippableFact, Order(9)]
-        public void CanGetTableTypes()
+        public async Task CanGetTableTypes()
         {
             AdbcConnection adbcConnection = NewConnection();
 
             using IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
 
-            RecordBatch recordBatch = arrowArrayStream.ReadNextRecordBatchAsync().Result;
+            RecordBatch recordBatch = await arrowArrayStream.ReadNextRecordBatchAsync();
 
             StringArray stringArray = (StringArray)recordBatch.Column("table_type");
 
@@ -353,6 +354,39 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             QueryResult queryResult = statement.ExecuteQuery();
 
             Tests.DriverTests.CanExecuteQuery(queryResult, TestConfiguration.ExpectedResultsCount);
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results using the asynchronous methods.
+        /// </summary>
+        [SkippableFact, Order(11)]
+        public async Task CanExecuteQueryAsync()
+        {
+            using AdbcConnection adbcConnection = NewConnection();
+            using AdbcStatement statement = adbcConnection.CreateStatement();
+
+            statement.SqlQuery = TestConfiguration.Query;
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+
+            await Tests.DriverTests.CanExecuteQueryAsync(queryResult, TestConfiguration.ExpectedResultsCount);
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// perform and update asynchronously.
+        /// </summary>
+        [SkippableFact, Order(12)]
+        public async Task CanExecuteUpdateAsync()
+        {
+            using AdbcConnection adbcConnection = NewConnection();
+            using AdbcStatement statement = adbcConnection.CreateStatement();
+            using TemporaryTable temporaryTable = await NewTemporaryTableAsync(statement, "INDEX INT");
+
+            statement.SqlQuery = GetInsertValueStatement(temporaryTable.TableName, "INDEX", "1");
+            UpdateResult updateResult = await statement.ExecuteUpdateAsync();
+
+            Assert.Equal(1, updateResult.AffectedRows);
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()

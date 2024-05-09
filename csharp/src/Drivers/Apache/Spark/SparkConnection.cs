@@ -37,19 +37,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     public class SparkConnection : HiveServer2Connection
     {
-        const string userAgent = "MicrosoftSparkODBCDriver/2.7.6.1014";
+        const string UserAgent = "MicrosoftSparkODBCDriver/2.7.6.1014";
 
-        readonly AdbcInfoCode[] infoSupportedCodes = new [] {
+        readonly AdbcInfoCode[] infoSupportedCodes = new[] {
             AdbcInfoCode.DriverName,
             AdbcInfoCode.DriverVersion,
             AdbcInfoCode.DriverArrowVersion,
             AdbcInfoCode.VendorName
         };
 
-        const string infoDriverName = "ADBC Spark Driver";
-        const string infoDriverVersion = "1.0.0";
-        const string infoVendorName = "Spark";
-        const string infoDriverArrowVersion = "1.0.0";
+        const string InfoDriverName = "ADBC Spark Driver";
+        const string InfoDriverVersion = "1.0.0";
+        const string InfoVendorName = "Spark";
+        const string InfoDriverArrowVersion = "1.0.0";
 
         internal static TSparkGetDirectResults sparkGetDirectResults = new TSparkGetDirectResults(1000);
 
@@ -83,7 +83,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
         }
 
-        protected override TProtocol CreateProtocol()
+        protected override async ValueTask<TProtocol> CreateProtocolAsync()
         {
             Trace.TraceError($"create protocol with {properties.Count} properties.");
 
@@ -101,12 +101,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             else
                 token = properties["password"];
 
-            string uri = "https://" + hostName + "/" + path;
-
             HttpClient httpClient = new HttpClient();
-            httpClient.BaseAddress = new Uri(uri);
+            httpClient.BaseAddress = new UriBuilder(Uri.UriSchemeHttps, hostName, -1, path).Uri;
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
             httpClient.DefaultRequestHeaders.AcceptEncoding.Clear();
             httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
@@ -116,7 +114,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             ThriftHttpTransport transport = new ThriftHttpTransport(httpClient, config);
             // can switch to the one below if want to use the experimental one with IPeekableTransport
             // ThriftHttpTransport transport = new ThriftHttpTransport(httpClient, config);
-            transport.OpenAsync(CancellationToken.None).Wait();
+            await transport.OpenAsync(CancellationToken.None);
             return new TBinaryProtocol(transport);
         }
 
@@ -132,23 +130,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public override AdbcStatement CreateStatement()
         {
             return new SparkStatement(this);
-        }
-
-        public override void Dispose()
-        {
-            /*
-            if (this.client != null)
-            {
-                TCloseSessionReq r6 = new TCloseSessionReq(this.sessionHandle);
-                this.client.CloseSession(r6).Wait();
-
-                this.transport.Close();
-                this.client.Dispose();
-
-                this.transport = null;
-                this.client = null;
-            }
-            */
         }
 
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
@@ -206,25 +187,25 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
                         offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(infoDriverName);
+                        stringInfoBuilder.Append(InfoDriverName);
                         break;
                     case AdbcInfoCode.DriverVersion:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
                         offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(infoDriverVersion);
+                        stringInfoBuilder.Append(InfoDriverVersion);
                         break;
                     case AdbcInfoCode.DriverArrowVersion:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
                         offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(infoDriverArrowVersion);
+                        stringInfoBuilder.Append(InfoDriverArrowVersion);
                         break;
                     case AdbcInfoCode.VendorName:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
                         offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(infoVendorName);
+                        stringInfoBuilder.Append(InfoVendorName);
                         break;
                     default:
                         infoNameBuilder.Append((UInt32)code);

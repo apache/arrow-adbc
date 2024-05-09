@@ -15,15 +15,19 @@
 * limitations under the License.
 */
 
-using System.Threading;
+using System;
+using System.Threading.Tasks;
+using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     public abstract class HiveServer2Statement : AdbcStatement
     {
-        protected HiveServer2Connection connection;
-        protected TOperationHandle? operationHandle;
+        private const int PollTimeMillisecondsDefault = 500;
+        private const int BatchSizeDefault = 50000;
+        protected internal HiveServer2Connection connection;
+        protected internal TOperationHandle? operationHandle;
 
         protected HiveServer2Statement(HiveServer2Connection connection)
         {
@@ -34,11 +38,64 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
         }
 
-        protected void ExecuteStatement()
+        protected abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
+
+        public override QueryResult ExecuteQuery() => ExecuteQueryAsync().AsTask().Result;
+
+        public override UpdateResult ExecuteUpdate() => ExecuteUpdateAsync().Result;
+
+        public override async ValueTask<QueryResult> ExecuteQueryAsync()
+        {
+            await ExecuteStatementAsync();
+            await PollForResponseAsync();
+            Schema schema = await GetSchemaAsync();
+
+            // TODO: Ensure this is set dynamically based on server capabilities
+            return new QueryResult(-1, NewReader(this, schema));
+        }
+
+        public override async Task<UpdateResult> ExecuteUpdateAsync()
+        {
+            const string NumberOfAffectedRowsColumnName = "num_affected_rows";
+
+            QueryResult queryResult = await ExecuteQueryAsync();
+            if (queryResult.Stream == null)
+            {
+                throw new AdbcException("no data found");
+            }
+
+            using IArrowArrayStream stream = queryResult.Stream;
+
+            // Check if the affected rows columns are returned in the result.
+            Field affectedRowsField = stream.Schema.GetFieldByName(NumberOfAffectedRowsColumnName);
+            if (affectedRowsField != null && affectedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
+            {
+                throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
+            }
+
+            // If no altered rows, i.e. DDC statements, then -1 is the default.
+            long? affectedRows = null;
+            while (true)
+            {
+                using RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync();
+                if (nextBatch == null) { break; }
+                Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(NumberOfAffectedRowsColumnName);
+                // Note: should only have one item, but iterate for completeness
+                for (int i = 0; i < numOfModifiedArray.Length; i++)
+                {
+                    // Note: handle the case where the affected rows are zero (0).
+                    affectedRows = (affectedRows ?? 0) + numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
+                }
+            }
+
+            return new UpdateResult(affectedRows ?? -1);
+        }
+
+        protected async Task ExecuteStatementAsync()
         {
             TExecuteStatementReq executeRequest = new TExecuteStatementReq(this.connection.sessionHandle, this.SqlQuery);
             SetStatementProperties(executeRequest);
-            var executeResponse = this.connection.Client.ExecuteStatement(executeRequest).Result;
+            TExecuteStatementResp executeResponse = await this.connection.Client.ExecuteStatement(executeRequest);
             if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)
@@ -48,23 +105,27 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             this.operationHandle = executeResponse.OperationHandle;
         }
 
-        protected void PollForResponse()
+        protected async Task PollForResponseAsync()
         {
             TGetOperationStatusResp? statusResponse = null;
             do
             {
-                if (statusResponse != null) { Thread.Sleep(500); }
+                if (statusResponse != null) { await Task.Delay(PollTimeMilliseconds); }
                 TGetOperationStatusReq request = new TGetOperationStatusReq(this.operationHandle);
-                statusResponse = this.connection.Client.GetOperationStatus(request).Result;
+                statusResponse = await this.connection.Client.GetOperationStatus(request);
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
         }
 
-        protected Schema GetSchema()
+        protected async ValueTask<Schema> GetSchemaAsync()
         {
             TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
-            TGetResultSetMetadataResp response = this.connection.Client.GetResultSetMetadata(request).Result;
+            TGetResultSetMetadataResp response = await this.connection.Client.GetResultSetMetadata(request);
             return SchemaParser.GetArrowSchema(response.Schema);
         }
+
+        protected internal int PollTimeMilliseconds { get; } = PollTimeMillisecondsDefault;
+
+        protected internal int BatchSize { get; } = BatchSizeDefault;
 
         public override void Dispose()
         {
@@ -77,7 +138,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             base.Dispose();
         }
-
-
     }
 }

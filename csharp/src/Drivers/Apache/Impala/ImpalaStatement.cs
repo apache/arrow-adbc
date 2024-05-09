@@ -35,62 +35,48 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
         }
 
-        public override QueryResult ExecuteQuery()
-        {
-            ExecuteStatement();
-            PollForResponse();
-
-            Schema schema = GetSchema();
-
-            return new QueryResult(-1, new HiveServer2Reader(this, schema));
-        }
-
-        public override UpdateResult ExecuteUpdate()
-        {
-            throw new NotImplementedException();
-        }
-
         public override object GetValue(IArrowArray arrowArray, int index)
         {
             throw new NotSupportedException();
         }
 
+        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema);
+
         class HiveServer2Reader : IArrowArrayStream
         {
-            ImpalaStatement? statement;
-            Schema schema;
+            HiveServer2Statement? statement;
             int counter;
 
-            public HiveServer2Reader(ImpalaStatement statement, Schema schema)
+            public HiveServer2Reader(HiveServer2Statement statement, Schema schema)
             {
                 this.statement = statement;
-                this.schema = schema;
+                this.Schema = schema;
             }
 
-            public Schema Schema { get { return schema; } }
+            public Schema Schema { get; }
 
-            public ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
             {
                 if (this.statement == null)
                 {
-                    return new ValueTask<RecordBatch?>((RecordBatch?)null);
+                    return null;
                 }
 
                 TFetchResultsReq request = new TFetchResultsReq(this.statement.operationHandle, TFetchOrientation.FETCH_NEXT, 50000);
-                TFetchResultsResp response = this.statement.connection.Client.FetchResults(request).Result;
+                TFetchResultsResp response = await this.statement.connection.Client.FetchResults(request, cancellationToken);
 
                 var buffer = new System.IO.MemoryStream();
-                response.WriteAsync(new TBinaryProtocol(new TStreamTransport(null, buffer, new TConfiguration())), cancellationToken).Wait();
+                await response.WriteAsync(new TBinaryProtocol(new TStreamTransport(null, buffer, new TConfiguration())), cancellationToken);
                 System.IO.File.WriteAllBytes(string.Format("d:/src/buffer{0}.bin", this.counter++), buffer.ToArray());
 
-                RecordBatch result = new RecordBatch(this.schema, response.Results.Columns.Select(GetArray), GetArray(response.Results.Columns[0]).Length);
+                RecordBatch result = new RecordBatch(this.Schema, response.Results.Columns.Select(GetArray), GetArray(response.Results.Columns[0]).Length);
 
                 if (!response.HasMoreRows)
                 {
                     this.statement = null;
                 }
 
-                return new ValueTask<RecordBatch?>(result);
+                return result;
             }
 
             public void Dispose()

@@ -46,17 +46,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             get { return this.client ?? throw new InvalidOperationException("connection not open"); }
         }
 
-        public void Open()
+        internal async Task OpenAsync()
         {
-            TProtocol protocol = CreateProtocol();
+            TProtocol protocol = await CreateProtocolAsync();
             this.transport = protocol.Transport;
             this.client = new TCLIService.Client(protocol);
 
-            var s0 = this.client.OpenSession(CreateSessionRequest()).Result;
+            var s0 = await this.client.OpenSession(CreateSessionRequest());
             this.sessionHandle = s0.SessionHandle;
         }
 
-        protected abstract TProtocol CreateProtocol();
+        protected abstract ValueTask<TProtocol> CreateProtocolAsync();
+
         protected abstract TOpenSessionReq CreateSessionRequest();
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)

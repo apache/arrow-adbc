@@ -16,6 +16,7 @@
 */
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -32,7 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
         }
 
-        protected override TProtocol CreateProtocol()
+        protected override ValueTask<TProtocol> CreateProtocolAsync()
         {
             string hostName = properties["HostName"];
             string? tmp;
@@ -44,7 +45,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
             TConfiguration config = new TConfiguration();
             TTransport transport = new ThriftSocketTransport(hostName, port, config);
-            return new TBinaryProtocol(transport);
+            return new ValueTask<TProtocol>(new TBinaryProtocol(transport));
         }
 
         protected override TOpenSessionReq CreateSessionRequest()

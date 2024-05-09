@@ -55,8 +55,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestStringData(string? value)
         {
             string columnName = "STRINGTYPE";
-            using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, "STRING"));
-            await ValidateInsertSelectDeleteSingleValue(
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "STRING"));
+            await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 value,
@@ -75,8 +75,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestVarcharData(string? value)
         {
             string columnName = "VARCHARTYPE";
-            using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, "VARCHAR(100)"));
-            await ValidateInsertSelectDeleteSingleValue(
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "VARCHAR(100)"));
+            await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 value,
@@ -96,15 +96,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "CHARTYPE";
             int fieldLength = 100;
-            using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, $"CHAR({fieldLength})"));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, $"CHAR({fieldLength})"));
 
             string? formattedValue = value != null ? QuoteValue(value.PadRight(fieldLength)) : value;
             string? paddedValue = value != null ? value.PadRight(fieldLength) : value;
 
-            InsertSingleValue(table.TableName, columnName, formattedValue);
-            await SelectAndValidateValues(table.TableName, columnName, paddedValue, 1, formattedValue);
+            await InsertSingleValueAsync(table.TableName, columnName, formattedValue);
+            await SelectAndValidateValuesAsync(table.TableName, columnName, paddedValue, 1, formattedValue);
             string whereClause = GetWhereClause(columnName, formattedValue ?? paddedValue);
-            DeleteFromTable(table.TableName, whereClause, 1);
+            await DeleteFromTableAsync(table.TableName, whereClause, 1);
         }
 
         /// <summary>
@@ -115,8 +115,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestVarcharExceptionData(string value)
         {
             string columnName = "VARCHARTYPE";
-            using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, "VARCHAR(10)"));
-            AdbcException exception = await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValue(
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "VARCHAR(10)"));
+            AdbcException exception = await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 value,
