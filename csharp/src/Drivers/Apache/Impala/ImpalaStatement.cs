@@ -35,34 +35,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
         }
 
-        public override async ValueTask<QueryResult> ExecuteQueryAsync()
-        {
-            await ExecuteStatementAsync();
-            await PollForResponseAsync();
-
-            Schema schema = await GetSchemaAsync();
-
-            return new QueryResult(-1, new HiveServer2Reader(this, schema));
-        }
-
-        public override QueryResult ExecuteQuery() => ExecuteQueryAsync().AsTask().Result;
-
-        public override UpdateResult ExecuteUpdate()
-        {
-            throw new NotImplementedException();
-        }
-
         public override object GetValue(IArrowArray arrowArray, int index)
         {
             throw new NotSupportedException();
         }
 
+        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema);
+
         class HiveServer2Reader : IArrowArrayStream
         {
-            ImpalaStatement? statement;
+            HiveServer2Statement? statement;
             int counter;
 
-            public HiveServer2Reader(ImpalaStatement statement, Schema schema)
+            public HiveServer2Reader(HiveServer2Statement statement, Schema schema)
             {
                 this.statement = statement;
                 this.Schema = schema;

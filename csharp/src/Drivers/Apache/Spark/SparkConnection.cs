@@ -101,10 +101,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             else
                 token = properties["password"];
 
-            string uri = "https://" + hostName + "/" + path;
-
             HttpClient httpClient = new HttpClient();
-            httpClient.BaseAddress = new Uri(uri);
+            httpClient.BaseAddress = new UriBuilder(Uri.UriSchemeHttps, hostName, -1, path).Uri;
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
             httpClient.DefaultRequestHeaders.AcceptEncoding.Clear();

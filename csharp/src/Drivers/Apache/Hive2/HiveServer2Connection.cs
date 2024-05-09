@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             get { return this.client ?? throw new InvalidOperationException("connection not open"); }
         }
 
-        public async Task OpenAsync()
+        internal async Task OpenAsync()
         {
             TProtocol protocol = await CreateProtocolAsync();
             this.transport = protocol.Transport;
