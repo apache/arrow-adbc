@@ -19,6 +19,12 @@
 Driver Implementation Status
 ============================
 
+.. warning:: There is a known problem on macOS x86_64 when using two drivers
+             written in Go in the same process (unless working in a pure-Go
+             application), where using the second driver may crash.  For more
+             details, see `GH-1841
+             <https://github.com/apache/arrow-adbc/issues/1841>`_.
+
 Implementation Status
 =====================
 
