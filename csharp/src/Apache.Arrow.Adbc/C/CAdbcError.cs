@@ -92,5 +92,26 @@ namespace Apache.Arrow.Adbc.C
 #else
         internal IntPtr release;
 #endif
+
+        /// <summary>
+        /// Opaque implementation-defined state.
+        /// </summary>
+        /// <remarks>
+        /// This field may not be used unless vendor_code is ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.
+        /// When it is, this field is null iff the error is uninitialized/freed
+        ///
+        /// Added in ADBC 1.1.0.
+        /// </remarks>
+        public void* private_data;
+
+        /// <summary>
+        /// The associated driver, used by the driver manager to help track state.
+        /// </summary>
+        /// <remarks>
+        /// This field may not be used unless vendor_code is ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.
+        ///
+        /// Added in ADBC 1.1.0.
+        /// </remarks>
+        public CAdbcDriver* private_driver;
     };
 }

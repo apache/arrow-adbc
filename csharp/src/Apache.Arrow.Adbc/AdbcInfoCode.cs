@@ -23,33 +23,63 @@ namespace Apache.Arrow.Adbc
     public enum AdbcInfoCode
     {
         /// <summary>
-        /// The database vendor/product name (e.g. the server name).
+        /// The database vendor/product name (e.g. the server name). Type: string.
         /// </summary>
         VendorName = 0,
 
         /// <summary>
-        /// The database vendor/product version
+        /// The database vendor/product version. Type: string.
         /// </summary>
         VendorVersion = 1,
 
         /// <summary>
-        /// The database vendor/product Arrow library version
+        /// The database vendor/product Arrow library version. Type: string.
         /// </summary>
         VendorArrowVersion = 2,
 
         /// <summary>
-        /// The driver name
+        /// Whether or not SQL queries are supported. Type: bool.
+        /// </summary>
+        VendorSql = 3,
+
+        /// <summary>
+        /// Whether or not Substrait queries are supported. Type: bool.
+        /// </summary>
+        VendorSubstrait = 4,
+
+        /// <summary>
+        /// The minimum supported Substrait version, or null if not supported. Type: string.
+        /// </summary>
+        VendorSubstraitMinVersion = 5,
+
+        /// <summary>
+        /// The maximum supported Substrait version, or null if not supported. Type: string.
+        /// </summary>
+        VendorSubstraitMaxVersion = 6,
+
+        /// <summary>
+        /// The driver name. Type: string.
         /// </summary>
         DriverName = 100,
 
         /// <summary>
-        /// The driver version
+        /// The driver version. Type: string.
         /// </summary>
         DriverVersion = 101,
 
         /// <summary>
-        /// The driver Arrow library version
+        /// The driver Arrow library version. Type: string.
         /// </summary>
-        DriverArrowVersion = 102
+        DriverArrowVersion = 102,
+
+        /// <summary>
+        /// The driver ADBC API version. Type: int64.
+        /// </summary>
+        /// <remarks>
+        /// The value should be one of the ADBC_VERSION...
+        ///
+        /// Added in ADBC 1.1.0.
+        /// </remarks>
+        DriverAdbcVersion = 103,
     }
 }
