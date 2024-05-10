@@ -26,6 +26,8 @@ namespace Apache.Arrow.Adbc
     /// </summary>
     public abstract class AdbcDriver : IDisposable
     {
+        public virtual int DriverVersion => AdbcVersion.Version_1_0_0;
+
         /// <summary>
         /// Open a database via this driver.
         /// </summary>
@@ -33,6 +35,17 @@ namespace Apache.Arrow.Adbc
         /// Driver-specific parameters.
         /// </param>
         public abstract AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters);
+
+        /// <summary>
+        /// Open a database via this driver.
+        /// </summary>
+        /// <param name="parameters">
+        /// Driver-specific parameters.
+        /// </param>
+        public virtual AdbcDatabase Open(IReadOnlyDictionary<string, object> parameters)
+        {
+            throw AdbcException.NotImplemented("Driver does not support non-string parameters");
+        }
 
         public virtual void Dispose()
         {

@@ -20,9 +20,3 @@
 # Apache Arrow ADBC
 
 An implementation of Arrow ADBC targeting .NET Standard 2.0 and .NET 6 or later.
-
-# Arrow Submodule
-
-This library uses the Arrow C Data API that is published in the [Arrow repo](https://github.com/apache/arrow/).
-
-This change has not been published to NuGet, so a submodule is currently used to obtain the Arrow project. Be sure to download the submodule so the solution loads and correctly.
