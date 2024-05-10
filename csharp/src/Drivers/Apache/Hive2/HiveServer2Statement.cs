@@ -104,7 +104,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 default:
                     throw AdbcException.NotImplemented($"Option '{key}' is not implemented.");
             }
-
         }
 
         protected async Task ExecuteStatementAsync()

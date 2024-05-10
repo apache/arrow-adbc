@@ -104,7 +104,5 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             using TemporaryTable temporaryTable = await NewTemporaryTableAsync(Statement, $"{columnName} INT");
             await ValidateInsertSelectDeleteSingleValueAsync(temporaryTable.TableName, columnName, 1);
         }
-
-
     }
 }
