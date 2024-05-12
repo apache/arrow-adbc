@@ -27,23 +27,35 @@ adbc_async_task_status <- function(task) {
   .Call(RAdbcAsyncTaskWaitFor, task, 0)
 }
 
-adbc_async_task_set_callback <- function(task, callback, loop = later::current_loop()) {
+adbc_async_task_set_callback <- function(task, resolve, reject = NULL,
+                                         loop = later::current_loop()) {
   # If the task is completed, run the callback (or else the callback
   # will not run)
   if (adbc_async_task_status(task) == "ready") {
-    result <- adbc_async_task_result(task)
-    callback(result)
+    adbc_async_task_run_callback(task, resolve, reject)
   } else {
-    .Call(RAdbcAsyncTaskSetCallback, task, callback, loop$id)
+    .Call(RAdbcAsyncTaskSetCallback, task, resolve, reject, loop$id)
   }
 
   invisible(task)
 }
 
-adbc_async_task_run_callback <- function(task) {
-  callback <- task$callback
-  result <- adbc_async_task_result(task)
-  callback(result)
+adbc_async_task_run_callback <- function(task, resolve = task$resolve,
+                                         reject = task$reject) {
+  tryCatch({
+      result <- adbc_async_task_result(task)
+      resolve(result)
+    },
+    error = function(e) {
+      if (is.null(reject)) {
+        stop(e)
+      } else {
+        reject(e)
+      }
+    }
+  )
+
+  invisible(task)
 }
 
 adbc_async_task_wait_non_cancellable <- function(task, resolution = 0.05) {
@@ -63,36 +75,10 @@ adbc_async_task_wait <- function(task, resolution = 0.05) {
   adbc_async_task_result(task)
 }
 
-later_loop_schedule_task_callback <- function(task, resolve, reject,
-                                              loop = later::current_loop(),
-                                              delay = 0) {
-  force(task)
-  force(resolve)
-  force(reject)
-
-  later::later(function() {
-    status <- adbc_async_task_status(task)
-    if (status == "timeout") {
-      later_loop_schedule_task_callback(
-        task,
-        resolve,
-        reject,
-        loop = loop,
-        delay = delay
-      )
-    } else {
-      tryCatch(
-        resolve(adbc_async_task_result(task)),
-        error = function(e) reject(e)
-      )
-    }
-  }, delay = delay, loop = loop)
-}
-
 as.promise.adbc_async_task <- function(task) {
   force(task)
   promises::promise(function(resolve, reject) {
-    later_loop_schedule_task_callback(task, resolve, reject)
+    adbc_async_task_set_callback(task, resolve, reject)
   })
 }
 

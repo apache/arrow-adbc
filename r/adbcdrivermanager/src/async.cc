@@ -99,7 +99,8 @@ static void error_for_started_task(RAdbcAsyncTask* task) {
 }
 
 extern "C" SEXP RAdbcAsyncTaskNew(SEXP error_xptr) {
-  const char* names[] = {"error_xptr", "return_code", "user_data", "callback", ""};
+  const char* names[] = {"error_xptr", "return_code", "user_data",
+                         "resolve",    "reject",      ""};
   SEXP task_prot = PROTECT(Rf_mkNamed(VECSXP, names));
 
   SET_VECTOR_ELT(task_prot, 0, error_xptr);
@@ -125,13 +126,14 @@ extern "C" SEXP RAdbcAsyncTaskNew(SEXP error_xptr) {
   return task_xptr;
 }
 
-extern "C" SEXP RAdbcAsyncTaskSetCallback(SEXP task_xptr, SEXP callback_sexp,
-                                          SEXP loop_id_sexp) {
+extern "C" SEXP RAdbcAsyncTaskSetCallback(SEXP task_xptr, SEXP callback_resolve_sexp,
+                                          SEXP callback_reject_sexp, SEXP loop_id_sexp) {
   auto task = adbc_from_xptr<RAdbcAsyncTask>(task_xptr);
   SEXP task_prot = R_ExternalPtrProtected(task_xptr);
   int loop_id = adbc_as_int(loop_id_sexp);
 
-  SET_VECTOR_ELT(task_prot, 3, callback_sexp);
+  SET_VECTOR_ELT(task_prot, 3, callback_resolve_sexp);
+  SET_VECTOR_ELT(task_prot, 4, callback_reject_sexp);
   task->SetCallback(task_xptr, loop_id);
   return R_NilValue;
 }
