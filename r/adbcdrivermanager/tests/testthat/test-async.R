@@ -22,7 +22,7 @@ test_that("async tasks can be created and inspected", {
 
   expect_identical(
     names(task),
-    c("error_xptr", "return_code", "user_data")
+    c("error_xptr", "return_code", "user_data", "callback")
   )
 
   expect_s3_class(task$error_xptr, "adbc_error")
