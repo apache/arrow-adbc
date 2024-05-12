@@ -74,6 +74,24 @@ test_that("async task waiter works", {
   )
 })
 
+test_that("async tasks can set an R callback", {
+  skip_if_not_installed("later")
+
+  async_called <- FALSE
+  sleep_task <- adbc_async_sleep(200)
+  adbc_async_task_set_callback(sleep_task, function(x) { async_called <<- TRUE })
+  Sys.sleep(0.4)
+  later::run_now()
+  expect_true(async_called)
+
+  # Ensure the callback runs even if the task is already finished
+  async_called <- FALSE
+  sleep_task <- adbc_async_sleep(0)
+  adbc_async_task_set_callback(sleep_task, function(x) { async_called <<- TRUE })
+  Sys.sleep(0.1)
+  expect_true(async_called)
+})
+
 test_that("async task can be converted to a promise", {
   skip_if_not_installed("promises")
 

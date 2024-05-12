@@ -27,6 +27,25 @@ adbc_async_task_status <- function(task) {
   .Call(RAdbcAsyncTaskWaitFor, task, 0)
 }
 
+adbc_async_task_set_callback <- function(task, callback, loop = later::current_loop()) {
+  # If the task is completed, run the callback (or else the callback
+  # will not run)
+  if (adbc_async_task_status(task) == "ready") {
+    result <- adbc_async_task_result(task)
+    callback(result)
+  } else {
+    .Call(RAdbcAsyncTaskSetCallback, task, callback, loop$id)
+  }
+
+  invisible(task)
+}
+
+adbc_async_task_run_callback <- function(task) {
+  callback <- task$callback
+  result <- adbc_async_task_result(task)
+  callback(result)
+}
+
 adbc_async_task_wait_non_cancellable <- function(task, resolution = 0.05) {
   .Call(RAdbcAsyncTaskWaitFor, task, round(resolution * 1000))
 }

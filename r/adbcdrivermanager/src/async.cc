@@ -45,30 +45,23 @@ static void later_task_callback_wrapper(void* data);
 enum class RAdbcAsyncTaskStatus { NOT_STARTED, STARTED, READY };
 
 struct RAdbcAsyncTask {
-  RAdbcAsyncTask() : callback_sexp(R_NilValue), callback_data_sexp(R_NilValue) {}
+  RAdbcAsyncTask() : callback_data_sexp(R_NilValue) {}
 
-  void SetCallback(SEXP callback, SEXP data, int loop_id) {
-    if (callback_sexp != R_NilValue) {
-      return;
-    }
-
-    callback_sexp = callback;
+  void SetCallback(SEXP data, int loop_id) {
     callback_data_sexp = data;
     later_loop_id = loop_id;
     later_ensure_initialized();
   }
 
   void ScheduleCallbackIfSet() {
-    if (callback_sexp != R_NilValue) {
+    if (callback_data_sexp != R_NilValue) {
       later_execLaterNative2(&later_task_callback_wrapper, this, 0, later_loop_id);
-      callback_sexp = R_NilValue;
     }
   }
 
   AdbcError* return_error{nullptr};
   int* return_code{nullptr};
 
-  SEXP callback_sexp;
   SEXP callback_data_sexp;
   int later_loop_id{-1};
 
@@ -79,9 +72,8 @@ struct RAdbcAsyncTask {
 static void later_task_callback_wrapper(void* data) {
   auto task = reinterpret_cast<RAdbcAsyncTask*>(data);
 
-  SEXP func_sym = PROTECT(Rf_install("adbc_async_run_callback"));
-  SEXP func_call =
-      PROTECT(Rf_lang3(func_sym, task->callback_sexp, task->callback_data_sexp));
+  SEXP func_sym = PROTECT(Rf_install("adbc_async_task_run_callback"));
+  SEXP func_call = PROTECT(Rf_lang2(func_sym, task->callback_data_sexp));
   SEXP pkg_chr = PROTECT(Rf_mkString("adbcdrivermanager"));
   SEXP pkg_ns = PROTECT(R_FindNamespace(pkg_chr));
   Rf_eval(func_call, pkg_ns);
@@ -140,7 +132,7 @@ extern "C" SEXP RAdbcAsyncTaskSetCallback(SEXP task_xptr, SEXP callback_sexp,
   int loop_id = adbc_as_int(loop_id_sexp);
 
   SET_VECTOR_ELT(task_prot, 3, callback_sexp);
-  task->SetCallback(callback_sexp, task_xptr, loop_id);
+  task->SetCallback(task_xptr, loop_id);
   return R_NilValue;
 }
 
