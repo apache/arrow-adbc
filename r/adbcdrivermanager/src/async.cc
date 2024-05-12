@@ -31,15 +31,62 @@
 
 #include "radbc.h"
 
+typedef void (*ExcecLaterNativeFn)(void (*func)(void*), void*, double, int);
+
+static ExcecLaterNativeFn later_execLaterNative2 = NULL;
+
+static inline void later_ensure_initialized() {
+  later_execLaterNative2 =
+      (ExcecLaterNativeFn)R_GetCCallable("later", "execLaterNative2");
+}
+
+static void later_task_callback_wrapper(void* data);
+
 enum class RAdbcAsyncTaskStatus { NOT_STARTED, STARTED, READY };
 
 struct RAdbcAsyncTask {
+  RAdbcAsyncTask() : callback_sexp(R_NilValue), callback_data_sexp(R_NilValue) {}
+
+  void SetCallback(SEXP callback, SEXP data, int loop_id) {
+    if (callback_sexp != R_NilValue) {
+      return;
+    }
+
+    callback_sexp = callback;
+    callback_data_sexp = data;
+    later_loop_id = loop_id;
+    later_ensure_initialized();
+  }
+
+  void ScheduleCallbackIfSet() {
+    if (callback_sexp != R_NilValue) {
+      later_execLaterNative2(&later_task_callback_wrapper, this, 0, later_loop_id);
+      callback_sexp = R_NilValue;
+    }
+  }
+
   AdbcError* return_error{nullptr};
   int* return_code{nullptr};
 
-  RAdbcAsyncTaskStatus status;
+  SEXP callback_sexp;
+  SEXP callback_data_sexp;
+  int later_loop_id{-1};
+
+  RAdbcAsyncTaskStatus status{RAdbcAsyncTaskStatus::NOT_STARTED};
   std::future<void> result;
 };
+
+static void later_task_callback_wrapper(void* data) {
+  auto task = reinterpret_cast<RAdbcAsyncTask*>(data);
+
+  SEXP func_sym = PROTECT(Rf_install("adbc_async_run_callback"));
+  SEXP func_call =
+      PROTECT(Rf_lang3(func_sym, task->callback_sexp, task->callback_data_sexp));
+  SEXP pkg_chr = PROTECT(Rf_mkString("adbcdrivermanager"));
+  SEXP pkg_ns = PROTECT(R_FindNamespace(pkg_chr));
+  Rf_eval(func_call, pkg_ns);
+  UNPROTECT(4);
+}
 
 template <>
 inline const char* adbc_xptr_class<RAdbcAsyncTask>() {
@@ -60,7 +107,7 @@ static void error_for_started_task(RAdbcAsyncTask* task) {
 }
 
 extern "C" SEXP RAdbcAsyncTaskNew(SEXP error_xptr) {
-  const char* names[] = {"error_xptr", "return_code", "user_data", ""};
+  const char* names[] = {"error_xptr", "return_code", "user_data", "callback", ""};
   SEXP task_prot = PROTECT(Rf_mkNamed(VECSXP, names));
 
   SET_VECTOR_ELT(task_prot, 0, error_xptr);
@@ -81,10 +128,20 @@ extern "C" SEXP RAdbcAsyncTaskNew(SEXP error_xptr) {
   task->return_code = INTEGER(VECTOR_ELT(task_prot, 1));
 
   *(task->return_code) = NA_INTEGER;
-  task->status = RAdbcAsyncTaskStatus::NOT_STARTED;
 
   UNPROTECT(2);
   return task_xptr;
+}
+
+extern "C" SEXP RAdbcAsyncTaskSetCallback(SEXP task_xptr, SEXP callback_sexp,
+                                          SEXP loop_id_sexp) {
+  auto task = adbc_from_xptr<RAdbcAsyncTask>(task_xptr);
+  SEXP task_prot = R_ExternalPtrProtected(task_xptr);
+  int loop_id = adbc_as_int(loop_id_sexp);
+
+  SET_VECTOR_ELT(task_prot, 3, callback_sexp);
+  task->SetCallback(callback_sexp, task_xptr, loop_id);
+  return R_NilValue;
 }
 
 extern "C" SEXP RAdbcAsyncTaskData(SEXP task_xptr) {
@@ -115,7 +172,7 @@ extern "C" SEXP RAdbcAsyncTaskWaitFor(SEXP task_xptr, SEXP duration_ms_sexp) {
     case std::future_status::timeout:
       return Rf_mkString("timeout");
     case std::future_status::ready:
-
+      task->status = RAdbcAsyncTaskStatus::READY;
       return Rf_mkString("ready");
     default:
       Rf_error("Unknown status returned from future::wait_for()");
@@ -131,6 +188,7 @@ extern "C" SEXP RAdbcAsyncTaskLaunchSleep(SEXP task_xptr, SEXP duration_ms_sexp)
   task->result = std::async(std::launch::async, [task, duration_ms] {
     std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
     *(task->return_code) = ADBC_STATUS_OK;
+    task->ScheduleCallbackIfSet();
   });
 
   task->status = RAdbcAsyncTaskStatus::STARTED;
@@ -157,6 +215,7 @@ extern "C" SEXP RAdbcAsyncTaskLaunchExecuteQuery(SEXP task_xptr, SEXP statement_
         *(task->return_code) = AdbcStatementExecuteQuery(
             statement, stream, &rows_affected, task->return_error);
         *rows_affected_dbl = static_cast<double>(rows_affected);
+        task->ScheduleCallbackIfSet();
       });
 
   task->status = RAdbcAsyncTaskStatus::STARTED;
@@ -174,6 +233,7 @@ extern "C" SEXP RAdbcAsyncTaskLaunchStreamGetNext(SEXP task_xptr, SEXP stream_xp
 
   task->result = std::async(std::launch::async, [task, stream, array] {
     *(task->return_code) = stream->get_next(stream, array);
+    task->ScheduleCallbackIfSet();
   });
 
   task->status = RAdbcAsyncTaskStatus::STARTED;
