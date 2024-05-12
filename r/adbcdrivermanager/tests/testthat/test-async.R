@@ -22,7 +22,7 @@ test_that("async tasks can be created and inspected", {
 
   expect_identical(
     names(task),
-    c("error_xptr", "return_code", "user_data", "callback")
+    c("error_xptr", "return_code", "user_data", "resolve", "reject")
   )
 
   expect_s3_class(task$error_xptr, "adbc_error")
@@ -88,6 +88,17 @@ test_that("async tasks can set an R callback", {
   async_called <- FALSE
   sleep_task <- adbc_async_sleep(0)
   adbc_async_task_set_callback(sleep_task, function(x) { async_called <<- TRUE })
+  Sys.sleep(0.1)
+  expect_true(async_called)
+
+  # Ensure this also works on error
+  async_called <- FALSE
+  sleep_task <- adbc_async_sleep(0, error_message = "some error")
+  adbc_async_task_set_callback(
+    sleep_task,
+    resolve = function(x) NULL,
+    reject = function(x) { async_called <<- TRUE }
+  )
   Sys.sleep(0.1)
   expect_true(async_called)
 })
