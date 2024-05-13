@@ -464,7 +464,16 @@ func (s *stmt) Prepare(context.Context) error {
 }
 
 func (s *stmt) SetSubstraitPlan(plan []byte) error {
-	return &adbc.Error{Code: adbc.StatusNotImplemented}
+	var err C.struct_AdbcError
+	cplan := C.CBytes(plan)
+	defer C.free(cplan)
+
+	length := uint64(len(plan))
+
+	if code := adbc.Status(C.AdbcStatementSetSubstraitPlan(s.st, (*C.uchar)(cplan), (C.ulong)(length), &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+	return nil
 }
 
 func (s *stmt) Bind(_ context.Context, values arrow.Record) error {
