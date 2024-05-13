@@ -57,6 +57,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkReader(statement, schema);
 
+        /// <summary>
+        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
+        /// </summary>
+        public new sealed class Options : HiveServer2Statement.Options
+        {
+            // options specific to Spark go here
+        }
+
         sealed class SparkReader : IArrowArrayStream
         {
             HiveServer2Statement? statement;
