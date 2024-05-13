@@ -50,8 +50,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         const string InfoDriverVersion = "1.0.0";
         const string InfoVendorName = "Spark";
         const string InfoDriverArrowVersion = "1.0.0";
-        private const int DecimalPrecisionDefault = 10;
-        private const int DecimalScaleDefault = 0;
+        const int DecimalPrecisionDefault = 10;
+        const int DecimalScaleDefault = 0;
+
         internal static TSparkGetDirectResults sparkGetDirectResults = new TSparkGetDirectResults(1000);
 
         internal static readonly Dictionary<string, string> timestampConfig = new Dictionary<string, string>
@@ -288,11 +289,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 string columnName = columns[3].StringVal.Values.GetString(i);
                 int? columnType = columns[4].I32Val.Values.GetValue(i);
                 string typeName = columns[5].StringVal.Values.GetString(i);
-                bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
                 // Note: the following two columns do not seem to be set correctly for DECIMAL types.
                 //int? columnSize = columns[6].I32Val.Values.GetValue(i);
                 //int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
-
+                bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
                 IArrowType dataType = SparkConnection.GetArrowType((ColumnTypeId)columnType!.Value, typeName);
                 fields[i] = new Field(columnName, dataType, nullable);
             }
