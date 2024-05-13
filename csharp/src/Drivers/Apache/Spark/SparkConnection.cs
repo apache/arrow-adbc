@@ -50,7 +50,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         const string InfoDriverVersion = "1.0.0";
         const string InfoVendorName = "Spark";
         const string InfoDriverArrowVersion = "1.0.0";
-
+        private const int DecimalPrecisionDefault = 10;
+        private const int DecimalScaleDefault = 0;
         internal static TSparkGetDirectResults sparkGetDirectResults = new TSparkGetDirectResults(1000);
 
         internal static readonly Dictionary<string, string> timestampConfig = new Dictionary<string, string>
@@ -288,6 +289,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 int? columnType = columns[4].I32Val.Values.GetValue(i);
                 string typeName = columns[5].StringVal.Values.GetString(i);
                 bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
+                // Note: the following two columns do not seem to be set correctly for DECIMAL types.
+                //int? columnSize = columns[6].I32Val.Values.GetValue(i);
+                //int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
+
                 IArrowType dataType = SparkConnection.GetArrowType((ColumnTypeId)columnType!.Value, typeName);
                 fields[i] = new Field(columnName, dataType, nullable);
             }
@@ -481,8 +486,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case ColumnTypeId.CHAR_TYPE:
                     return StringType.Default;
                 case ColumnTypeId.DECIMAL_TYPE:
-                    // TODO: Parse typeName for precision and scale, because not available in other metadata.
-                    return new Decimal128Type(38, 38);
+                    // Note: parsing the type definition is only viable at the table level. Won't
+                    // work for statement results.
+                    return SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
                 case ColumnTypeId.ARRAY_TYPE:
                 case ColumnTypeId.MAP_TYPE:
                 case ColumnTypeId.STRUCT_TYPE:
@@ -520,7 +526,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 }
 
             }
-
 
             IReadOnlyList<Field> schema = StandardSchemas.DbSchemaSchema;
             IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
@@ -688,9 +693,63 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             return builder.ToString();
         }
+
+        /// <summary>
+        /// Provides a parser for SQL DECIMAL type definitions.
+        /// </summary>
+        private static class SqlDecimalTypeParser
+        {
+            // Pattern is based on this definition
+            // https://docs.databricks.com/en/sql/language-manual/data-types/decimal-value.html#syntax
+            // { DECIMAL | DEC | NUMERIC } [ (  p [ , s ] ) ]
+            private static readonly Regex s_expression = new(
+                @"^\s*(?<typeName>((DECIMAL)|(DEC)|(NUMERIC)))(\s*\(\s*((?<precision>\d+)(\s*\,\s*(?<scale>\d+))?)\s*\))?\s*$",
+                RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+            /// <summary>
+            /// Parses the input string for a valid SQL DECIMAL type definition and returns a new <see cref="Decimal128Type"/> or returns the <c>defaultValue</c>, if invalid.
+            /// </summary>
+            /// <param name="input">The SQL type defintion string to parse.</param>
+            /// <param name="defaultValue">If input string is an invalid SQL DECIMAL type definition, this value is returned instead.</param>
+            /// <returns>If input string is a valid SQL DECIMAL type definition, it returns a new <see cref="Decimal128Type"/>; otherwise <c>defaultValue</c>.</returns>
+            public static Decimal128Type ParseOrDefault(string input, Decimal128Type defaultValue)
+            {
+                return TryParse(input, out Decimal128Type? candidate) ? candidate! : defaultValue;
+            }
+
+            /// <summary>
+            /// Tries to parse the input string for a valid SQL DECIMAL type definition.
+            /// </summary>
+            /// <param name="input">The SQL type defintion string to parse.</param>
+            /// <param name="value">If successful, an new <see cref="Decimal128Type"/> with the precision and scale set; otherwise <c>null</c>.</param>
+            /// <returns>True if it can successfully parse the type definition input string; otherwise false.</returns>
+            private static bool TryParse(string input, out Decimal128Type? value)
+            {
+                // Ensure defaults are set, in case not provided in precision/scale clause.
+                int precision = 10;
+                int scale = 0;
+
+                Match match = s_expression.Match(input);
+                if (!match.Success)
+                {
+                    value = null;
+                    return false;
+                }
+
+                GroupCollection groups = match.Groups;
+                Group precisionGroup = groups["precision"];
+                Group scaleGroup = groups["scale"];
+
+                precision = precisionGroup.Success ? int.Parse(precisionGroup.Value) : precision;
+                scale = scaleGroup.Success ? int.Parse(scaleGroup.Value) : scale;
+
+                value = new Decimal128Type(precision, scale);
+                return true;
+            }
+        }
     }
 
-    public struct TableInfoPair
+    internal struct TableInfoPair
     {
         public string Type { get; set; }
 
