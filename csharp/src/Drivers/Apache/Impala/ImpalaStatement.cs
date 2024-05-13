@@ -42,6 +42,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema);
 
+        /// <summary>
+        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
+        /// </summary>
+        public new sealed class Options : HiveServer2Statement.Options
+        {
+            // options specific to Impala go here
+        }
+
         class HiveServer2Reader : IArrowArrayStream
         {
             HiveServer2Statement? statement;

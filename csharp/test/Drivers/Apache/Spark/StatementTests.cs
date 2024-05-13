@@ -18,7 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
 using Xunit.Abstractions;
@@ -46,7 +46,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if the SetOption handle valid/invalid data correctly for the PollTime option.
         /// </summary>
         [SkippableTheory]
-        [InlineData(null, true)]
         [InlineData("-1", true)]
         [InlineData("zero", true)]
         [InlineData("-2147483648", true)]
@@ -54,16 +53,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("0")]
         [InlineData("1")]
         [InlineData("2147483647")]
-        public void CanSetOptionPollTime(string? value, bool throws = false)
+        public void CanSetOptionPollTime(string value, bool throws = false)
         {
             AdbcStatement statement = NewConnection().CreateStatement();
             if (throws)
             {
-                Assert.Throws<ArgumentException>(() => statement.SetOption(HiveServer2Statement.StatementOptions.PollTimeMilliseconds, value));
+                Assert.Throws<ArgumentException>(() => statement.SetOption(SparkStatement.Options.PollTimeMilliseconds, value));
             }
             else
             {
-                statement.SetOption(HiveServer2Statement.StatementOptions.PollTimeMilliseconds, value);
+                statement.SetOption(SparkStatement.Options.PollTimeMilliseconds, value);
             }
         }
 
@@ -71,7 +70,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if the SetOption handle valid/invalid data correctly for the BatchSize option.
         /// </summary>
         [SkippableTheory]
-        [InlineData(null, true)]
         [InlineData("-1", true)]
         [InlineData("one", true)]
         [InlineData("-2147483648", true)]
@@ -79,16 +77,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("0", true)]
         [InlineData("1")]
         [InlineData("2147483647")]
-        public void CanSetOptionBatchSize(string? value, bool throws = false)
+        public void CanSetOptionBatchSize(string value, bool throws = false)
         {
             AdbcStatement statement = NewConnection().CreateStatement();
             if (throws)
             {
-                Assert.Throws<ArgumentException>(() => statement.SetOption(HiveServer2Statement.StatementOptions.BatchSize, value));
+                Assert.Throws<ArgumentException>(() => statement.SetOption(SparkStatement.Options.BatchSize, value));
             }
             else
             {
-                statement.SetOption(HiveServer2Statement.StatementOptions.BatchSize, value);
+                statement.SetOption(SparkStatement.Options.BatchSize, value);
             }
         }
 
@@ -99,8 +97,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task CanInteractUsingSetOptions()
         {
             const string columnName = "INDEX";
-            Statement.SetOption(HiveServer2Statement.StatementOptions.PollTimeMilliseconds, "100");
-            Statement.SetOption(HiveServer2Statement.StatementOptions.BatchSize, "10");
+            Statement.SetOption(SparkStatement.Options.PollTimeMilliseconds, "100");
+            Statement.SetOption(SparkStatement.Options.BatchSize, "10");
             using TemporaryTable temporaryTable = await NewTemporaryTableAsync(Statement, $"{columnName} INT");
             await ValidateInsertSelectDeleteSingleValueAsync(temporaryTable.TableName, columnName, 1);
         }

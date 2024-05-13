@@ -95,10 +95,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             switch (key)
             {
-                case StatementOptions.PollTimeMilliseconds:
+                case Options.PollTimeMilliseconds:
                     UpdatePollTimeIfValid(key, value);
                     break;
-                case StatementOptions.BatchSize:
+                case Options.BatchSize:
                     UpdateBatchSizeIfValid(key, value);
                     break;
                 default:
@@ -142,8 +142,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal int BatchSize { get; private set; } = BatchSizeDefault;
 
-        public static class StatementOptions
+        /// <summary>
+        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
+        /// </summary>
+        public class Options
         {
+            // Options common to all HiveServer2Statement-derived drivers go here
             public const string PollTimeMilliseconds = "adbc.statement.polltime_milliseconds";
             public const string BatchSize = "adbc.statement.batch_size";
         }
