@@ -25,8 +25,8 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/drivermgr"
-	"github.com/apache/arrow/go/v16/arrow"
-	"github.com/apache/arrow/go/v16/arrow/array"
+	"github.com/apache/arrow/go/v17/arrow"
+	"github.com/apache/arrow/go/v17/arrow/array"
 	"github.com/stretchr/testify/suite"
 	"github.com/substrait-io/substrait-go/extensions"
 	"github.com/substrait-io/substrait-go/plan"
