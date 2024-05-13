@@ -30,7 +30,7 @@ on:
       - ".github/workflows/rust.yml"
 
 concurrency:
-  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}-toplevel
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}-rust
   cancel-in-progress: true
 
 permissions:
