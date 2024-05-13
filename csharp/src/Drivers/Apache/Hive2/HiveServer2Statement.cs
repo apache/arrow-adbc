@@ -91,6 +91,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return new UpdateResult(affectedRows ?? -1);
         }
 
+        public override void SetOption(string key, string value)
+        {
+            switch (key)
+            {
+                case Options.PollTimeMilliseconds:
+                    UpdatePollTimeIfValid(key, value);
+                    break;
+                case Options.BatchSize:
+                    UpdateBatchSizeIfValid(key, value);
+                    break;
+                default:
+                    throw AdbcException.NotImplemented($"Option '{key}' is not implemented.");
+            }
+        }
+
         protected async Task ExecuteStatementAsync()
         {
             TExecuteStatementReq executeRequest = new TExecuteStatementReq(this.connection.sessionHandle, this.SqlQuery);
@@ -123,9 +138,27 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return SchemaParser.GetArrowSchema(response.Schema);
         }
 
-        protected internal int PollTimeMilliseconds { get; } = PollTimeMillisecondsDefault;
+        protected internal int PollTimeMilliseconds { get; private set; } = PollTimeMillisecondsDefault;
 
-        protected internal int BatchSize { get; } = BatchSizeDefault;
+        protected internal int BatchSize { get; private set; } = BatchSizeDefault;
+
+        /// <summary>
+        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
+        /// </summary>
+        public class Options
+        {
+            // Options common to all HiveServer2Statement-derived drivers go here
+            public const string PollTimeMilliseconds = "adbc.statement.polltime_milliseconds";
+            public const string BatchSize = "adbc.statement.batch_size";
+        }
+
+        private void UpdatePollTimeIfValid(string key, string value) => PollTimeMilliseconds = !string.IsNullOrEmpty(key) && int.TryParse(value, result: out int pollTimeMilliseconds) && pollTimeMilliseconds >= 0
+            ? pollTimeMilliseconds
+            : throw new ArgumentException($"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than or equal to zero.", nameof(value));
+
+        private void UpdateBatchSizeIfValid(string key, string value) => BatchSize = !string.IsNullOrEmpty(value) && int.TryParse(value, out int batchSize) && batchSize > 0
+            ? batchSize
+            : throw new ArgumentException($"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.", nameof(value));
 
         public override void Dispose()
         {
