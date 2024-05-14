@@ -53,6 +53,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         const string InfoDriverVersion = "1.0.0";
         const string InfoVendorName = "Spark SQL";
         const string InfoDriverArrowVersion = "1.0.0";
+        const bool InfoVendorSql = true;
         const int DecimalPrecisionDefault = 10;
         const int DecimalScaleDefault = 0;
 
