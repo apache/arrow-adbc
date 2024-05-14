@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -35,6 +36,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal TTransport? transport;
         internal TCLIService.Client? client;
         internal TSessionHandle? sessionHandle;
+        private string? _vendorVersion;
+        private string? _vendorName;
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
@@ -44,6 +47,30 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal TCLIService.Client Client
         {
             get { return this.client ?? throw new InvalidOperationException("connection not open"); }
+        }
+
+        protected string? VendorVersion
+        {
+            get
+            {
+                if (_vendorVersion == null && TryGetInfoType(TGetInfoType.CLI_DBMS_VER, out string? value))
+                {
+                    _vendorVersion = value;
+                }
+                return _vendorVersion;
+            }
+        }
+
+        protected string? VendorName
+        {
+            get
+            {
+                if (_vendorName == null && TryGetInfoType(TGetInfoType.CLI_DBMS_NAME, out string? value))
+                {
+                    _vendorName = value;
+                }
+                return _vendorName;
+            }
         }
 
         internal async Task OpenAsync()
@@ -101,6 +128,29 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
             TGetResultSetMetadataResp response = this.Client.GetResultSetMetadata(request).Result;
             return SchemaParser.GetArrowSchema(response.Schema);
+        }
+
+        private bool TryGetInfoType(TGetInfoType infoType, out string? value)
+        {
+            TGetInfoReq req = new()
+            {
+                SessionHandle = this.sessionHandle ?? throw new InvalidOperationException("session not created"),
+                InfoType = infoType,
+            };
+
+            TGetInfoResp getInfoResp = Client.GetInfo(req).Result;
+            if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+            {
+                Trace.TraceWarning("{0}, Error Code={1}, SQLState={2}",
+                    getInfoResp.Status.ErrorMessage,
+                    getInfoResp.Status.ErrorCode,
+                    getInfoResp.Status.SqlState);
+                value = null;
+                return false;
+            }
+
+            value = getInfoResp.InfoValue.StringValue;
+            return true;
         }
 
         sealed class GetObjectsReader : IArrowArrayStream

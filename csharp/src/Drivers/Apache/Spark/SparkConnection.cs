@@ -43,13 +43,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             AdbcInfoCode.DriverName,
             AdbcInfoCode.DriverVersion,
             AdbcInfoCode.DriverArrowVersion,
-            AdbcInfoCode.VendorName
+            AdbcInfoCode.VendorName,
+            AdbcInfoCode.VendorSql,
+            AdbcInfoCode.VendorVersion,
         };
 
         const string InfoDriverName = "ADBC Spark Driver";
+        // TODO: Make this dynamically return current version
         const string InfoDriverVersion = "1.0.0";
-        const string InfoVendorName = "Spark";
+        const string InfoVendorName = "Spark SQL";
         const string InfoDriverArrowVersion = "1.0.0";
+        const bool InfoVendorSql = true;
+        const int DecimalPrecisionDefault = 10;
+        const int DecimalScaleDefault = 0;
 
         internal static TSparkGetDirectResults sparkGetDirectResults = new TSparkGetDirectResults(1000);
 
@@ -135,6 +141,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
             const int strValTypeID = 0;
+            const int boolValTypeId = 1;
 
             UnionType infoUnionType = new UnionType(
                 new Field[]
@@ -176,8 +183,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             ArrowBuffer.Builder<byte> typeBuilder = new ArrowBuffer.Builder<byte>();
             ArrowBuffer.Builder<int> offsetBuilder = new ArrowBuffer.Builder<int>();
             StringArray.Builder stringInfoBuilder = new StringArray.Builder();
+            BooleanArray.Builder booleanInfoBuilder = new BooleanArray.Builder();
+
             int nullCount = 0;
             int arrayLength = codes.Count;
+            int offset = 0;
 
             foreach (AdbcInfoCode code in codes)
             {
@@ -186,32 +196,53 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     case AdbcInfoCode.DriverName:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
+                        offsetBuilder.Append(offset++);
                         stringInfoBuilder.Append(InfoDriverName);
+                        booleanInfoBuilder.AppendNull();
                         break;
                     case AdbcInfoCode.DriverVersion:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
+                        offsetBuilder.Append(offset++);
                         stringInfoBuilder.Append(InfoDriverVersion);
+                        booleanInfoBuilder.AppendNull();
                         break;
                     case AdbcInfoCode.DriverArrowVersion:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
+                        offsetBuilder.Append(offset++);
                         stringInfoBuilder.Append(InfoDriverArrowVersion);
+                        booleanInfoBuilder.AppendNull();
                         break;
                     case AdbcInfoCode.VendorName:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(InfoVendorName);
+                        offsetBuilder.Append(offset++);
+                        string vendorName = VendorName ?? InfoVendorName;
+                        stringInfoBuilder.Append(vendorName);
+                        booleanInfoBuilder.AppendNull();
+                        break;
+                    case AdbcInfoCode.VendorVersion:
+                        infoNameBuilder.Append((UInt32)code);
+                        typeBuilder.Append(strValTypeID);
+                        offsetBuilder.Append(offset++);
+                        string? vendorVersion = VendorVersion;
+                        stringInfoBuilder.Append(vendorVersion);
+                        booleanInfoBuilder.AppendNull();
+                        break;
+                    case AdbcInfoCode.VendorSql:
+                        infoNameBuilder.Append((UInt32)code);
+                        typeBuilder.Append(boolValTypeId);
+                        offsetBuilder.Append(offset++);
+                        stringInfoBuilder.AppendNull();
+                        booleanInfoBuilder.Append(InfoVendorSql);
                         break;
                     default:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
+                        offsetBuilder.Append(offset++);
                         stringInfoBuilder.AppendNull();
+                        booleanInfoBuilder.AppendNull();
                         nullCount++;
                         break;
                 }
@@ -229,7 +260,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             IArrowArray[] childrenArrays = new IArrowArray[]
             {
                 stringInfoBuilder.Build(),
-                new BooleanArray.Builder().Build(),
+                booleanInfoBuilder.Build(),
                 new Int64Array.Builder().Build(),
                 new Int32Array.Builder().Build(),
                 new ListArray.Builder(StringType.Default).Build(),
