@@ -486,8 +486,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case ColumnTypeId.CHAR_TYPE:
                     return StringType.Default;
                 case ColumnTypeId.DECIMAL_TYPE:
-                    // Note: parsing the type definition is only viable at the table level. Won't
-                    // work for statement results.
+                    // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
+                    // are not returned in the Thrift call to GetColumns
                     return SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
                 case ColumnTypeId.ARRAY_TYPE:
                 case ColumnTypeId.MAP_TYPE:
@@ -700,10 +700,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private static class SqlDecimalTypeParser
         {
             // Pattern is based on this definition
-            // https://docs.databricks.com/en/sql/language-manual/data-types/decimal-value.html#syntax
+            // https://docs.databricks.com/en/sql/language-manual/data-types/decimal-type.html#syntax
             // { DECIMAL | DEC | NUMERIC } [ (  p [ , s ] ) ]
+            // p: Optional maximum precision (total number of digits) of the number between 1 and 38. The default is 10.
+            // s: Optional scale of the number between 0 and p. The number of digits to the right of the decimal point. The default is 0.
             private static readonly Regex s_expression = new(
-                @"^\s*(?<typeName>((DECIMAL)|(DEC)|(NUMERIC)))(\s*\(\s*((?<precision>\d+)(\s*\,\s*(?<scale>\d+))?)\s*\))?\s*$",
+                @"^\s*(?<typeName>((DECIMAL)|(DEC)|(NUMERIC)))(\s*\(\s*((?<precision>\d{1,2})(\s*\,\s*(?<scale>\d{1,2}))?)\s*\))?\s*$",
                 RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
             /// <summary>
@@ -726,8 +728,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             private static bool TryParse(string input, out Decimal128Type? value)
             {
                 // Ensure defaults are set, in case not provided in precision/scale clause.
-                int precision = 10;
-                int scale = 0;
+                int precision = DecimalPrecisionDefault;
+                int scale = DecimalScaleDefault;
 
                 Match match = s_expression.Match(input);
                 if (!match.Success)
@@ -740,8 +742,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 Group precisionGroup = groups["precision"];
                 Group scaleGroup = groups["scale"];
 
-                precision = precisionGroup.Success ? int.Parse(precisionGroup.Value) : precision;
-                scale = scaleGroup.Success ? int.Parse(scaleGroup.Value) : scale;
+                precision = precisionGroup.Success && int.TryParse(precisionGroup.Value, out int candidatePrecision) ? candidatePrecision : precision;
+                scale = scaleGroup.Success && int.TryParse(scaleGroup.Value, out int candidateScale) ? candidateScale : scale;
 
                 value = new Decimal128Type(precision, scale);
                 return true;
