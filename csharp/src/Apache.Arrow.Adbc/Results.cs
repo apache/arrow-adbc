@@ -43,7 +43,7 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// The number of records in the result.
         /// </summary>
-        public long RowCount { get; set; }
+        public long RowCount { get; }
 
         /// <summary>
         /// The <see cref="IArrowArrayStream"/> for reading.
