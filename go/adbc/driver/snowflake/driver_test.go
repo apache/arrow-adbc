@@ -2050,3 +2050,41 @@ func (suite *SnowflakeTests) TestEmptyResultSet() {
 	suite.Equal(n, recv)
 	suite.Equal(recv, int64(0))
 }
+
+func (suite *SnowflakeTests) TestIngestEmptyChunk() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_empty_chunk"))
+
+	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
+	defer mem.AssertSize(suite.T(), 0)
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(mem, sc)
+	defer bldr.Release()
+
+	emptyRec := bldr.NewRecord()
+	defer emptyRec.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	// Reproduce https://github.com/apache/arrow-adbc/issues/1847
+	// The more records there are the more often the condition tends to occur.
+	rdr, err := array.NewRecordReader(sc, []arrow.Record{emptyRec, rec, rec, rec, rec, rec, rec, rec, rec, rec, rec})
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.Require().NoError(suite.stmt.BindStream(suite.ctx, rdr))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_empty_chunk"))
+
+	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(int64(30), n)
+}
