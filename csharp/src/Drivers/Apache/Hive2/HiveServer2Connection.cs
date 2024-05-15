@@ -36,12 +36,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal TTransport? transport;
         internal TCLIService.Client? client;
         internal TSessionHandle? sessionHandle;
-        private string? _vendorVersion;
-        private string? _vendorName;
+        private Lazy<string> _vendorVersion;
+        private Lazy<string> _vendorName;
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
             this.properties = properties;
+            // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
+            // the first successful thread sets the value. If an exception is thrown, initialization
+            // will retry until it successfully returns a value without an exception.
+            // https://learn.microsoft.com/en-us/dotnet/framework/performance/lazy-initialization#exceptions-in-lazy-objects
+            _vendorVersion = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_VER), LazyThreadSafetyMode.PublicationOnly);
+            _vendorName = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_NAME), LazyThreadSafetyMode.PublicationOnly);
         }
 
         internal TCLIService.Client Client
@@ -49,29 +55,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             get { return this.client ?? throw new InvalidOperationException("connection not open"); }
         }
 
-        protected string? VendorVersion
-        {
-            get
-            {
-                if (_vendorVersion == null && TryGetInfoType(TGetInfoType.CLI_DBMS_VER, out string? value))
-                {
-                    _vendorVersion = value;
-                }
-                return _vendorVersion;
-            }
-        }
+        protected string VendorVersion => _vendorVersion.Value;
 
-        protected string? VendorName
-        {
-            get
-            {
-                if (_vendorName == null && TryGetInfoType(TGetInfoType.CLI_DBMS_NAME, out string? value))
-                {
-                    _vendorName = value;
-                }
-                return _vendorName;
-            }
-        }
+        protected string VendorName => _vendorName.Value;
 
         internal async Task OpenAsync()
         {
@@ -130,7 +116,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return SchemaParser.GetArrowSchema(response.Schema);
         }
 
-        private bool TryGetInfoType(TGetInfoType infoType, out string? value)
+        private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
             TGetInfoReq req = new()
             {
@@ -141,76 +127,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TGetInfoResp getInfoResp = Client.GetInfo(req).Result;
             if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
-                Trace.TraceWarning("{0}, Error Code={1}, SQLState={2}",
-                    getInfoResp.Status.ErrorMessage,
-                    getInfoResp.Status.ErrorCode,
-                    getInfoResp.Status.SqlState);
-                value = null;
-                return false;
+                throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
+                    .SetNativeError(getInfoResp.Status.ErrorCode)
+                    .SetSqlState(getInfoResp.Status.SqlState);
             }
 
-            value = getInfoResp.InfoValue.StringValue;
-            return true;
-        }
-
-        sealed class GetObjectsReader : IArrowArrayStream
-        {
-            HiveServer2Connection? connection;
-            Schema schema;
-            List<TSparkArrowBatch>? batches;
-            int index;
-            IArrowReader? reader;
-
-            public GetObjectsReader(HiveServer2Connection connection, Schema schema)
-            {
-                this.connection = connection;
-                this.schema = schema;
-            }
-
-            public Schema Schema { get { return schema; } }
-
-            public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
-            {
-                while (true)
-                {
-                    if (this.reader != null)
-                    {
-                        RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
-                        if (next != null)
-                        {
-                            return next;
-                        }
-                        this.reader = null;
-                    }
-
-                    if (this.batches != null && this.index < this.batches.Count)
-                    {
-                        this.reader = new ArrowStreamReader(new ChunkStream(this.schema, this.batches[this.index++].Batch));
-                        continue;
-                    }
-
-                    this.batches = null;
-                    this.index = 0;
-
-                    if (this.connection == null)
-                    {
-                        return null;
-                    }
-
-                    TFetchResultsReq request = new TFetchResultsReq(this.connection.operationHandle, TFetchOrientation.FETCH_NEXT, 50000);
-                    TFetchResultsResp response = await this.connection.Client.FetchResults(request, cancellationToken);
-                    this.batches = response.Results.ArrowBatches;
-
-                    if (!response.HasMoreRows)
-                    {
-                        this.connection = null;
-                    }
-                }
-            }
-
-            public void Dispose()
-            {
-            }
+            return getInfoResp.InfoValue.StringValue;
         }
     }
 }

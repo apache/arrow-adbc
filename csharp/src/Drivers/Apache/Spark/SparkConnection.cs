@@ -51,7 +51,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         const string InfoDriverName = "ADBC Spark Driver";
         // TODO: Make this dynamically return current version
         const string InfoDriverVersion = "1.0.0";
-        const string InfoVendorName = "Spark SQL";
         const string InfoDriverArrowVersion = "1.0.0";
         const bool InfoVendorSql = true;
         const int DecimalPrecisionDefault = 10;
@@ -218,7 +217,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
                         offsetBuilder.Append(offset++);
-                        string vendorName = VendorName ?? InfoVendorName;
+                        string vendorName = VendorName;
                         stringInfoBuilder.Append(vendorName);
                         booleanInfoBuilder.AppendNull();
                         break;
