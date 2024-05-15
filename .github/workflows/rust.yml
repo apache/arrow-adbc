@@ -81,6 +81,11 @@ jobs:
         if: matrix.os == 'macos-13'
         run: |
           echo "DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib:${{ github.workspace }}/build/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
+      - name: Debug print
+        if: matrix.os == 'windows-latest'
+        run: |
+          cp ../build/driver/sqlite/Debug/*.dll "/C/Windows/System32/"
+          cp ../build/driver/postgresql/Debug/*.dll "/C/Windows/System32/"
       - name: Clippy
         run: cargo clippy --workspace --all-targets --all-features -- -Dwarnings
       - name: Test
