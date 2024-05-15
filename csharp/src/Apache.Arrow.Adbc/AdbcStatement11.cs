@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -33,6 +32,8 @@ namespace Apache.Arrow.Adbc
         , IAsyncDisposable
 #endif
     {
+        ~AdbcStatement11() => Dispose(false);
+
         /// <summary>
         /// Gets or sets a SQL query to be executed on this statement.
         /// </summary>
