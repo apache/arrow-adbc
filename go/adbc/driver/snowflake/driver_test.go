@@ -36,6 +36,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow/go/v17/arrow"
@@ -2075,16 +2076,17 @@ func (suite *SnowflakeTests) TestIngestEmptyChunk() {
 	rec := bldr.NewRecord()
 	defer rec.Release()
 
-	// Reproduce https://github.com/apache/arrow-adbc/issues/1847
-	// The more records there are the more often the condition tends to occur.
-	rdr, err := array.NewRecordReader(sc, []arrow.Record{emptyRec, rec, rec, rec, rec, rec, rec, rec, rec, rec, rec})
+	// See https://github.com/apache/arrow-adbc/issues/1847
+	// Snowflake does not properly handle empty row groups, so need to make sure we don't send any.
+	rdr, err := array.NewRecordReader(sc, []arrow.Record{emptyRec, rec})
 	suite.Require().NoError(err)
 	defer rdr.Release()
 
 	suite.Require().NoError(suite.stmt.BindStream(suite.ctx, rdr))
 	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_empty_chunk"))
+	suite.Require().NoError(suite.stmt.SetOption(snowflake.OptionStatementIngestWriterConcurrency, "1"))
 
 	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
-	suite.EqualValues(int64(30), n)
+	suite.EqualValues(int64(3), n)
 }
