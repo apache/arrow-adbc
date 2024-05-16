@@ -34,10 +34,10 @@ namespace Apache.Arrow.Adbc
         public virtual int Version => AdbcVersion.Version_1_0_0;
 
         /// <summary>
-        /// Open a database via this driver.
+        /// Creates a database reference via this driver.
         /// </summary>
         /// <param name="parameters">Driver-specific parameters.</param>
-        public abstract AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters);
+        public abstract AdbcDatabase Create(IReadOnlyDictionary<string, string> parameters);
 
         /// <inheritdoc />
         public void Dispose()

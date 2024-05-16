@@ -104,7 +104,7 @@ namespace Apache.Arrow.Adbc
         public virtual IArrowArrayStream GetInfo(ReadOnlySpan<AdbcInfoCode> codes)
         {
             var codesArray = codes.ToArray();
-            return Task.Run(() => GetInfo(codesArray)).GetAwaiter().GetResult();
+            return Task.Run(() => GetInfoAsync(codesArray)).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -112,7 +112,7 @@ namespace Apache.Arrow.Adbc
         /// </summary>
         /// <param name="codes">The metadata items to fetch.</param>
         /// <returns>Metadata about the driver and/or database</returns>
-        public virtual Task<IArrowArrayStream> GetInfo(ReadOnlySpan<AdbcInfoCode> codes, CancellationToken cancellationToken = default)
+        public virtual Task<IArrowArrayStream> GetInfoAsync(ReadOnlySpan<AdbcInfoCode> codes, CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Connection does not support GetInfo");
         }
@@ -365,17 +365,22 @@ namespace Apache.Arrow.Adbc
             throw AdbcException.NotImplemented("Connection does not support statistics");
         }
 
+        /// <inheritdoc />
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-
         protected virtual void Dispose(bool disposing)
         {
         }
 
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting
+        /// unmanaged resources asynchronously.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous dispose operation.</returns>
         public ValueTask DisposeAsync()
         {
             return DisposeAsyncCore();
