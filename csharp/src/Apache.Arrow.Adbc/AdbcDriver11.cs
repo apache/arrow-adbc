@@ -31,13 +31,13 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Returns the version of the ADBC spec supported by this driver.
         /// </summary>
-        public virtual int Version => AdbcVersion.Version_1_0_0;
+        public virtual int AdbcVersion => Adbc.AdbcVersion.Version_1_0_0;
 
         /// <summary>
         /// Creates a database reference via this driver.
         /// </summary>
         /// <param name="parameters">Driver-specific parameters.</param>
-        public abstract AdbcDatabase Create(IReadOnlyDictionary<string, string> parameters);
+        public abstract AdbcDatabase11 Create(IReadOnlyDictionary<string, string> parameters);
 
         /// <inheritdoc />
         public void Dispose()

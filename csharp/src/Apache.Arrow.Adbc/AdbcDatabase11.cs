@@ -37,7 +37,7 @@ namespace Apache.Arrow.Adbc
         /// </summary>
         /// <param name="options">Additional options to use when connecting.</param>
         /// <returns>The database connection.</returns>
-        public virtual AdbcConnection Connect(IReadOnlyDictionary<string, object>? options = default)
+        public virtual AdbcConnection11 Connect(IReadOnlyDictionary<string, object>? options = default)
         {
             return Task.Run(() => Connect(options)).GetAwaiter().GetResult();
         }
@@ -47,7 +47,7 @@ namespace Apache.Arrow.Adbc
         /// </summary>
         /// <param name="options">Additional options to use when connecting.</param>
         /// <returns>The database connection.</returns>
-        public abstract Task<AdbcConnection> ConnectAsync(IReadOnlyDictionary<string, object>? options = default);
+        public abstract Task<AdbcConnection11> ConnectAsync(IReadOnlyDictionary<string, object>? options = default);
 
         /// <summary>
         /// Options are generally set before opening a database.

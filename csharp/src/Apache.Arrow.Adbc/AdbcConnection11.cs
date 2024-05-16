@@ -70,7 +70,7 @@ namespace Apache.Arrow.Adbc
         /// <param name="targetTableName">The table name</param>
         /// <param name="mode">The ingest mode</param>
         /// <param name="isTemporary">True for a temporary table. Catalog and Schema must be null when true.</param>
-        public virtual AdbcStatement BulkIngest(string? targetCatalog, string? targetDbSchema, string targetTableName, BulkIngestMode mode, bool isTemporary)
+        public virtual AdbcStatement11 BulkIngest(string? targetCatalog, string? targetDbSchema, string targetTableName, BulkIngestMode mode, bool isTemporary)
         {
             throw AdbcException.NotImplemented("Connection does not support BulkIngest");
         }
@@ -94,7 +94,7 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Create a new statement that can be executed.
         /// </summary>
-        public abstract AdbcStatement CreateStatement(IReadOnlyDictionary<string, object>? options = default);
+        public abstract AdbcStatement11 CreateStatement(IReadOnlyDictionary<string, object>? options = default);
 
         /// <summary>
         /// Get metadata about the driver/database.
