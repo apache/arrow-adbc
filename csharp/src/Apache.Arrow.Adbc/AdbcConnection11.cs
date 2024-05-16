@@ -57,6 +57,12 @@ namespace Apache.Arrow.Adbc
             Task.Run(() => BeginTransactionAsync(isolationLevel)).GetAwaiter().GetResult();
         }
 
+        /// <summary>
+        /// Starts a new transactionwith the given isolation level
+        /// </summary>
+        /// <param name="isolationLevel">The isolation level for the new transaction.</param>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public virtual Task BeginTransactionAsync(IsolationLevel? isolationLevel = default, CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Connection does not support transactions");
@@ -70,6 +76,8 @@ namespace Apache.Arrow.Adbc
         /// <param name="targetTableName">The table name</param>
         /// <param name="mode">The ingest mode</param>
         /// <param name="isTemporary">True for a temporary table. Catalog and Schema must be null when true.</param>
+        /// <returns>A statement object which can be used to bind the data to be inserted and then executed using
+        /// <see cref="AdbcStatement11.ExecuteQuery" /> or <see cref="AdbcStatement11.ExecuteUpdate" /></returns>
         public virtual AdbcStatement11 BulkIngest(string? targetCatalog, string? targetDbSchema, string targetTableName, BulkIngestMode mode, bool isTemporary)
         {
             throw AdbcException.NotImplemented("Connection does not support BulkIngest");
@@ -86,6 +94,8 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Commit the pending transaction.
         /// </summary>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public virtual Task CommitAsync(CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Connection does not support transactions");
@@ -100,7 +110,7 @@ namespace Apache.Arrow.Adbc
         /// Get metadata about the driver/database.
         /// </summary>
         /// <param name="codes">The metadata items to fetch.</param>
-        /// <returns>Metadata about the driver and/or database</returns>
+        /// <returns>Metadata about the driver and/or database.</returns>
         public virtual IArrowArrayStream GetInfo(ReadOnlySpan<AdbcInfoCode> codes)
         {
             var codesArray = codes.ToArray();
@@ -111,7 +121,8 @@ namespace Apache.Arrow.Adbc
         /// Get metadata about the driver/database.
         /// </summary>
         /// <param name="codes">The metadata items to fetch.</param>
-        /// <returns>Metadata about the driver and/or database</returns>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property contains metadata about the driver and/or database.</returns>
         public virtual Task<IArrowArrayStream> GetInfoAsync(ReadOnlySpan<AdbcInfoCode> codes, CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Connection does not support GetInfo");
@@ -125,7 +136,7 @@ namespace Apache.Arrow.Adbc
         /// The level of nesting to display.
         /// If ALL, display all levels (up through columns).
         /// If CATALOGS, display only catalogs (i.e., catalog_schemas will be
-        /// null), and so on. May be a* search pattern.
+        /// null), and so on. May be a search pattern.
         /// </param>
         /// <param name="catalogPattern">
         /// Only show tables in the given catalog.
@@ -150,6 +161,7 @@ namespace Apache.Arrow.Adbc
         /// Only show columns with the given name.
         /// If null, do not filter by name.May be a search pattern.
         /// </param>
+        /// <returns>A table containing the requested information.</returns>
         public virtual IArrowArrayStream GetObjects(
             AdbcConnection.GetObjectsDepth depth,
             string? catalogPattern,
@@ -169,7 +181,7 @@ namespace Apache.Arrow.Adbc
         /// The level of nesting to display.
         /// If ALL, display all levels (up through columns).
         /// If CATALOGS, display only catalogs (i.e., catalog_schemas will be
-        /// null), and so on. May be a* search pattern.
+        /// null), and so on. May be a search pattern.
         /// </param>
         /// <param name="catalogPattern">
         /// Only show tables in the given catalog.
@@ -194,6 +206,8 @@ namespace Apache.Arrow.Adbc
         /// Only show columns with the given name.
         /// If null, do not filter by name.May be a search pattern.
         /// </param>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is a table containing the requested information.</returns>
         public virtual Task<IArrowArrayStream> GetObjectsAsync(
             AdbcConnection.GetObjectsDepth depth,
             string? catalogPattern,
@@ -222,6 +236,8 @@ namespace Apache.Arrow.Adbc
         /// </summary>
         /// <param name="key">Option name</param>
         /// <returns>The option value</returns>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is the requested value.</returns>
         public virtual ValueTask<object> GetOptionAsync(string key, CancellationToken cancellationToken = default)
         {
             return new ValueTask<object>(GetOption(key));
@@ -232,6 +248,7 @@ namespace Apache.Arrow.Adbc
         /// <param name="catalog">The catalog of the table (or null).</param>
         /// <param name="dbSchema">The database schema of the table (or null).</param>
         /// <param name="tableName">The table name.</param>
+        /// <returns>The requested table schema.</returns>
         public virtual Schema GetTableSchema(string? catalog, string? dbSchema, string tableName)
         {
             return Task.Run(() => GetTableSchemaAsync(catalog, dbSchema, tableName)).GetAwaiter().GetResult();
@@ -243,6 +260,8 @@ namespace Apache.Arrow.Adbc
         /// <param name="catalog">The catalog of the table (or null).</param>
         /// <param name="dbSchema">The database schema of the table (or null).</param>
         /// <param name="tableName">The table name.</param>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is the requested schema.</returns>
         public virtual Task<Schema> GetTableSchemaAsync(string? catalog, string? dbSchema, string tableName, CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Connection does not support GetTableSchema");
@@ -251,6 +270,7 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Get a list of table types supported by the database.
         /// </summary>
+        /// <returns>The list of table types.</returns>
         public virtual IArrowArrayStream GetTableTypes()
         {
             return Task.Run(() => GetTableTypesAsync()).GetAwaiter().GetResult();
@@ -259,6 +279,8 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Get a list of table types supported by the database.
         /// </summary>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is the list of table types.</returns>
         public virtual Task<IArrowArrayStream> GetTableTypesAsync(CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Connection does not support GetTableTypes");
@@ -281,6 +303,8 @@ namespace Apache.Arrow.Adbc
         /// </summary>
         /// <param name="key">Option name</param>
         /// <param name="value">Option value</param>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public virtual ValueTask SetOptionAsync(string key, object value, CancellationToken cancellationToken = default)
         {
             SetOption(key, value);
@@ -300,6 +324,8 @@ namespace Apache.Arrow.Adbc
         /// Create a result set from a serialized PartitionDescriptor.
         /// </summary>
         /// <param name="partition">The partition descriptor.</param>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is the requested data.</returns>
         public virtual Task<IArrowArrayStream> ReadPartitionAsync(PartitionDescriptor partition, CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Connection does not support partitions");
@@ -316,24 +342,27 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Rollback the pending transaction.
         /// </summary>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public virtual Task RollbackAsync(CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Connection does not support transactions");
         }
 
         /// <summary>
-        /// Gets the names of statistics specific to this driver.
+        /// Gets the names of the statistics returned by this driver.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The names of the statistcs.</returns>
         public virtual IArrowArrayStream GetStatisticsNames()
         {
             throw AdbcException.NotImplemented("Connection does not support statistics");
         }
 
         /// <summary>
-        /// Gets the names of statistics specific to this driver.
+        /// Gets the names of the statistics returned by this driver.
         /// </summary>
-        /// <returns></returns>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is the names of the statistics.</returns>
         public virtual ValueTask<IArrowArrayStream> GetStatisticsNamesAsync(CancellationToken cancellationToken = default)
         {
             return new ValueTask<IArrowArrayStream>(GetStatisticsNames());
@@ -346,7 +375,7 @@ namespace Apache.Arrow.Adbc
         /// <param name="schemaPattern">The schema or null. May be a search pattern.</param>
         /// <param name="tableName">The table name or null. May be a search pattern.</param>
         /// <param name="approximate">If false, consumer desires exact statistics regardless of cost</param>
-        /// <returns>A result describing the statistics for the table(s)</returns>
+        /// <returns>A table describing the requested statistics.</returns>
         public virtual IArrowArrayStream GetStatistics(string? catalogPattern, string? schemaPattern, string tableNamePattern, bool approximate)
         {
             return Task.Run(() => GetStatisticsAsync(catalogPattern, schemaPattern, tableNamePattern, approximate)).GetAwaiter().GetResult();
@@ -360,6 +389,8 @@ namespace Apache.Arrow.Adbc
         /// <param name="tableName">The table name or null. May be a search pattern.</param>
         /// <param name="approximate">If false, consumer desires exact statistics regardless of cost</param>
         /// <returns>A result describing the statistics for the table(s)</returns>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is a table describing the requested statistics.</returns>
         public virtual Task<IArrowArrayStream> GetStatisticsAsync(string? catalogPattern, string? schemaPattern, string tableNamePattern, bool approximate)
         {
             throw AdbcException.NotImplemented("Connection does not support statistics");

@@ -37,6 +37,7 @@ namespace Apache.Arrow.Adbc
         /// Creates a database reference via this driver.
         /// </summary>
         /// <param name="parameters">Driver-specific parameters.</param>
+        /// <returns>An object representing a reference to a specific database.</returns>
         public abstract AdbcDatabase11 Create(IReadOnlyDictionary<string, string> parameters);
 
         /// <inheritdoc />

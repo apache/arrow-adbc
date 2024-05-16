@@ -81,7 +81,8 @@ namespace Apache.Arrow.Adbc
         /// Executes the statement and returns a structure containing the number
         /// of records and the <see cref="IArrowArrayStream"/>.
         /// </summary>
-        /// <returns>A <see cref="QueryResult"/>.</returns>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is a <see cref="QueryResult"/>.</returns>
         public abstract Task<QueryResult> ExecuteQueryAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -98,7 +99,8 @@ namespace Apache.Arrow.Adbc
         /// Analyzes the statement and returns the schema of the result set that would
         /// be expected if the statement were to be executed.
         /// </summary>
-        /// <returns>An Arrow <see cref="Schema"/> describing the result set.</returns>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is an Arrow <see cref="Schema"/> describing the result set.</returns>
         public virtual Task<Schema> ExecuteSchemaAsync(CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Statement does not support ExecuteSchema");
@@ -108,7 +110,7 @@ namespace Apache.Arrow.Adbc
         /// Executes an update command and returns the number of
         /// records effected.
         /// </summary>
-        /// <exception cref="NotImplementedException"></exception>
+        /// <returns>An <see cref="UpdateResult"/>.</returns>
         public virtual UpdateResult ExecuteUpdate()
         {
             return Task.Run(() => ExecuteUpdateAsync()).GetAwaiter().GetResult();
@@ -118,7 +120,8 @@ namespace Apache.Arrow.Adbc
         /// Executes an update command and returns the number of
         /// records effected.
         /// </summary>
-        /// <exception cref="NotImplementedException"></exception>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is a <see cref="QueryResult"/>.</returns>
         public virtual Task<UpdateResult> ExecuteUpdateAsync(CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Statement does not support ExecuteUpdate");
@@ -128,6 +131,7 @@ namespace Apache.Arrow.Adbc
         /// Execute a result set-generating query and get a list of
         /// partitions of the result set.
         /// </summary>
+        /// <returns>A list of partitions of the result set. These can be fetched using <seealso cref="AdbcConnection11.ReadPartition"/></returns>
         public virtual PartitionedResult ExecutePartitioned()
         {
             return Task.Run(() => ExecutePartitionedAsync()).GetAwaiter().GetResult();
@@ -137,6 +141,9 @@ namespace Apache.Arrow.Adbc
         /// Execute a result set-generating query and get a list of
         /// partitions of the result set.
         /// </summary>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is a list of partitions of the result set. These can be
+        /// fetched using <seealso cref="AdbcConnection11.ReadPartitionAsync"/></returns>
         public virtual Task<PartitionedResult> ExecutePartitionedAsync(CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Statement does not support ExecutePartitioned");
@@ -156,23 +163,27 @@ namespace Apache.Arrow.Adbc
         /// Gets an option from a statement.
         /// </summary>
         /// <param name="key">Option name</param>
-        /// <returns>The option value</returns>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is the requested value.</returns>
         public virtual ValueTask<object> GetOptionAsync(string key, CancellationToken cancellationToken = default)
         {
             return new ValueTask<object>(GetOption(key));
         }
 
         /// <summary>
-        /// Get the schema for bound parameters.
+        /// Gets the schema for bound parameters.
         /// </summary>
+        /// <returns>The schema for parameters bound to the statement.</returns>
         public virtual Schema GetParameterSchema()
         {
             return Task.Run(() => GetParameterSchemaAsync()).GetAwaiter().GetResult();
         }
 
         /// <summary>
-        /// Get the schema for bound parameters.
+        /// Gets the schema for bound parameters.
         /// </summary>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task whose Result property is the schema for parameters bound to the statement.</returns>
         public virtual Task<Schema> GetParameterSchemaAsync(CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Statement does not support GetParameterSchema");
@@ -191,6 +202,8 @@ namespace Apache.Arrow.Adbc
         /// Turn this statement into a prepared statement to be
         /// executed multiple times.
         /// </summary>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public virtual Task PrepareAsync(CancellationToken cancellationToken = default)
         {
             throw AdbcException.NotImplemented("Statement does not support Prepare");
@@ -211,6 +224,8 @@ namespace Apache.Arrow.Adbc
         /// </summary>
         /// <param name="key">Option name</param>
         /// <param name="value">Option value</param>
+        /// <param name="cancellationToken">An optional cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public virtual ValueTask SetOptionAsync(string key, object value, CancellationToken cancellationToken = default)
         {
             SetOption(key, value);
