@@ -342,7 +342,7 @@ func writeParquet(
 	defer pqWriter.Close()
 
 	for rec := range in {
-		err = pqWriter.Write(rec)
+		err = pqWriter.WriteBuffered(rec)
 		rec.Release()
 		if err != nil {
 			return err
