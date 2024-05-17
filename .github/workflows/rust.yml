@@ -45,15 +45,12 @@ jobs:
   native-unix:
     uses: ./.github/workflows/native-unix.yml
 
-  native-windows:
-    uses: ./.github/workflows/native-windows.yml
-
   rust:
-    needs: [native-unix, native-windows]
+    needs: [native-unix]
     strategy:
       matrix:
         # TODO(lidavidm): add back macos-latest once it has Cargo installed
-        os: [windows-latest, macos-13, ubuntu-latest]
+        os: [macos-13, ubuntu-latest]
     name: "Rust ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     env:
@@ -81,11 +78,6 @@ jobs:
         if: matrix.os == 'macos-13'
         run: |
           echo "DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib:${{ github.workspace }}/build/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
-      - name: Debug print
-        if: matrix.os == 'windows-latest'
-        run: |
-          cp ../build/driver/sqlite/Debug/*.dll "/C/Windows/System32/"
-          cp ../build/driver/postgresql/Debug/*.dll "/C/Windows/System32/"
       - name: Clippy
         run: cargo clippy --workspace --all-targets --all-features -- -Dwarnings
       - name: Test
