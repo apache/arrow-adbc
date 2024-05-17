@@ -325,26 +325,26 @@ type SnowflakeTests struct {
 	stmt   adbc.Statement
 }
 
-func (s *SnowflakeTests) SetupTest() {
+func (suite *SnowflakeTests) SetupTest() {
 	var err error
-	s.driver = s.Quirks.SetupDriver(s.T())
-	s.db, err = s.driver.NewDatabase(s.Quirks.DatabaseOptions())
-	s.Require().NoError(err)
-	s.ctx = context.Background()
-	s.cnxn, err = s.db.Open(s.ctx)
-	s.Require().NoError(err)
-	s.stmt, err = s.cnxn.NewStatement()
-	s.Require().NoError(err)
+	suite.driver = suite.Quirks.SetupDriver(suite.T())
+	suite.db, err = suite.driver.NewDatabase(suite.Quirks.DatabaseOptions())
+	suite.Require().NoError(err)
+	suite.ctx = context.Background()
+	suite.cnxn, err = suite.db.Open(suite.ctx)
+	suite.Require().NoError(err)
+	suite.stmt, err = suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
 }
 
-func (s *SnowflakeTests) TearDownTest() {
-	s.Require().NoError(s.stmt.Close())
-	s.Require().NoError(s.cnxn.Close())
-	s.Quirks.TearDownDriver(s.T(), s.driver)
-	s.cnxn = nil
-	s.NoError(s.db.Close())
-	s.db = nil
-	s.driver = nil
+func (suite *SnowflakeTests) TearDownTest() {
+	suite.Require().NoError(suite.stmt.Close())
+	suite.Require().NoError(suite.cnxn.Close())
+	suite.Quirks.TearDownDriver(suite.T(), suite.driver)
+	suite.cnxn = nil
+	suite.NoError(suite.db.Close())
+	suite.db = nil
+	suite.driver = nil
 }
 
 func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
