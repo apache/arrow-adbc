@@ -76,7 +76,7 @@ jobs:
         run: |
           echo "LD_LIBRARY_PATH=${{ github.workspace }}/build/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
       - name: Set dynamic linker path
-        if: matrix.os == 'macos-13'
+        if: matrix.os == 'macos-latest'
         run: |
           echo "DYLD_LIBRARY_PATH=/opt/homebrew/opt/sqlite/lib:${{ github.workspace }}/build/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
       - name: Clippy
