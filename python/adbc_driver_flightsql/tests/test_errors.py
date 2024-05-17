@@ -186,7 +186,7 @@ def test_query_error_getflightinfo(test_dbapi):
             cur.adbc_execute_partitions("error_get_flight_info")
 
 
-# TODO: fix this flaky test: `E   adbc_driver_manager.OperationalError: UNKNOWN: [FlightSQL] EOF (Unknown; ExecuteQuery)`
+# TODO: fix this flaky test (EOF error)
 # def test_stateless_prepared_statement(test_dbapi) -> None:
 #     with test_dbapi.cursor() as cur:
 #         cur.adbc_prepare("stateless_prepared_statement")
