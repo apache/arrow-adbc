@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -48,13 +49,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             AdbcInfoCode.VendorVersion,
         };
 
+        const string ProductVersionDefault = "1.0.0";
         const string InfoDriverName = "ADBC Spark Driver";
-        // TODO: Make this dynamically return current version
-        const string InfoDriverVersion = "1.0.0";
         const string InfoDriverArrowVersion = "1.0.0";
         const bool InfoVendorSql = true;
         const int DecimalPrecisionDefault = 10;
         const int DecimalScaleDefault = 0;
+
+        private readonly Lazy<string> _productVersion;
 
         internal static TSparkGetDirectResults sparkGetDirectResults = new TSparkGetDirectResults(1000);
 
@@ -86,7 +88,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal SparkConnection(IReadOnlyDictionary<string, string> properties)
             : base(properties)
         {
+            _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
         }
+
+        protected string ProductVersion => _productVersion.Value;
 
         protected override async ValueTask<TProtocol> CreateProtocolAsync()
         {
@@ -203,7 +208,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
                         offsetBuilder.Append(offset++);
-                        stringInfoBuilder.Append(InfoDriverVersion);
+                        stringInfoBuilder.Append(ProductVersion);
                         booleanInfoBuilder.AppendNull();
                         break;
                     case AdbcInfoCode.DriverArrowVersion:
@@ -776,6 +781,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 value = new Decimal128Type(precision, scale);
                 return true;
             }
+        }
+
+        private string GetProductVersion()
+        {
+            FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+            return fileVersionInfo.ProductVersion ?? ProductVersionDefault;
         }
     }
 

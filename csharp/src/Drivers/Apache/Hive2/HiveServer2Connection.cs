@@ -36,8 +36,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal TTransport? transport;
         internal TCLIService.Client? client;
         internal TSessionHandle? sessionHandle;
-        private Lazy<string> _vendorVersion;
-        private Lazy<string> _vendorName;
+        private readonly Lazy<string> _vendorVersion;
+        private readonly Lazy<string> _vendorName;
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
@@ -93,7 +93,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 statusResponse = this.Client.GetOperationStatus(request).Result;
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
         }
-
 
         public override void Dispose()
         {
