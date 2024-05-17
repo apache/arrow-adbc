@@ -186,7 +186,6 @@ def test_query_error_getflightinfo(test_dbapi):
             cur.adbc_execute_partitions("error_get_flight_info")
 
 
-@pytest.mark.skip(reason="flaky test")
 def test_stateless_prepared_statement(test_dbapi) -> None:
     with test_dbapi.cursor() as cur:
         cur.adbc_prepare("stateless_prepared_statement")
