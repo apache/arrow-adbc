@@ -49,6 +49,8 @@ jobs:
     needs: [native-unix]
     strategy:
       matrix:
+        # TODO(alexandreyc): add `windows-latest`
+        # See: https://github.com/apache/arrow-adbc/pull/1803#issuecomment-2117669300
         os: [macos-latest, ubuntu-latest]
     name: "Rust ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
