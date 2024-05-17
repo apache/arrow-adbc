@@ -108,13 +108,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        protected Schema GetSchema()
-        {
-            TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
-            TGetResultSetMetadataResp response = this.Client.GetResultSetMetadata(request).Result;
-            return SchemaParser.GetArrowSchema(response.Schema);
-        }
-
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
             TGetInfoReq req = new()
@@ -132,6 +125,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             return getInfoResp.InfoValue.StringValue;
+        }
+
+        protected Schema GetSchema()
+        {
+            TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
+            TGetResultSetMetadataResp response = this.Client.GetResultSetMetadata(request).Result;
+            return SchemaParser.GetArrowSchema(response.Schema);
         }
     }
 }
