@@ -327,19 +327,19 @@ type SnowflakeTests struct {
 
 func (suite *SnowflakeTests) SetupTest() {
 	var err error
+	suite.ctx = context.Background()
 	suite.driver = suite.Quirks.SetupDriver(suite.T())
 	suite.db, err = suite.driver.NewDatabase(suite.Quirks.DatabaseOptions())
-	suite.Require().NoError(err)
-	suite.ctx = context.Background()
+	suite.NoError(err)
 	suite.cnxn, err = suite.db.Open(suite.ctx)
-	suite.Require().NoError(err)
+	suite.NoError(err)
 	suite.stmt, err = suite.cnxn.NewStatement()
-	suite.Require().NoError(err)
+	suite.NoError(err)
 }
 
 func (suite *SnowflakeTests) TearDownTest() {
-	suite.Require().NoError(suite.stmt.Close())
-	suite.Require().NoError(suite.cnxn.Close())
+	suite.NoError(suite.stmt.Close())
+	suite.NoError(suite.cnxn.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.driver)
 	suite.cnxn = nil
 	suite.NoError(suite.db.Close())
