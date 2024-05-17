@@ -94,20 +94,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
         }
 
-        public override void Dispose()
-        {
-            if (this.client != null)
-            {
-                TCloseSessionReq r6 = new TCloseSessionReq(this.sessionHandle);
-                this.client.CloseSession(r6).Wait();
-
-                this.transport?.Close();
-                this.client.Dispose();
-                this.transport = null;
-                this.client = null;
-            }
-        }
-
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
             TGetInfoReq req = new()
@@ -125,6 +111,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             return getInfoResp.InfoValue.StringValue;
+        }
+
+        public override void Dispose()
+        {
+            if (this.client != null)
+            {
+                TCloseSessionReq r6 = new TCloseSessionReq(this.sessionHandle);
+                this.client.CloseSession(r6).Wait();
+
+                this.transport?.Close();
+                this.client.Dispose();
+                this.transport = null;
+                this.client = null;
+            }
         }
 
         protected Schema GetSchema()
