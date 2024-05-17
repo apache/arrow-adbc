@@ -49,8 +49,7 @@ jobs:
     needs: [native-unix]
     strategy:
       matrix:
-        # TODO(lidavidm): add back macos-latest once it has Cargo installed
-        os: [macos-13, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest]
     name: "Rust ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     env:
