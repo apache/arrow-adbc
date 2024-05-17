@@ -84,12 +84,30 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             AdbcConnection adbcConnection = NewConnection();
 
-            using IArrowArrayStream stream = adbcConnection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
+            // Test the supported info codes
+            List<AdbcInfoCode> handledCodes = new List<AdbcInfoCode>()
+            {
+                AdbcInfoCode.DriverName,
+                AdbcInfoCode.DriverVersion,
+                AdbcInfoCode.VendorName,
+                AdbcInfoCode.DriverArrowVersion,
+                AdbcInfoCode.VendorVersion,
+                AdbcInfoCode.VendorSql
+            };
+            using IArrowArrayStream stream = adbcConnection.GetInfo(handledCodes);
 
             RecordBatch recordBatch = await stream.ReadNextRecordBatchAsync();
             UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
 
-            List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "VendorName" };
+            List<string> expectedValues = new List<string>()
+            {
+                "DriverName",
+                "DriverVersion",
+                "VendorName",
+                "DriverArrowVersion",
+                "VendorVersion",
+                "VendorSql"
+            };
 
             for (int i = 0; i < infoNameArray.Length; i++)
             {
@@ -98,8 +116,59 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
                 Assert.Contains(value.ToString(), expectedValues);
 
-                StringArray stringArray = (StringArray)valueArray.Fields[0];
-                Console.WriteLine($"{value}={stringArray.GetString(i)}");
+                switch (value)
+                {
+                    case AdbcInfoCode.VendorSql:
+                        // TODO: How does external developer know the second field is the boolean field?
+                        BooleanArray booleanArray = (BooleanArray)valueArray.Fields[1];
+                        bool? boolValue = booleanArray.GetValue(i);
+                        OutputHelper?.WriteLine($"{value}={boolValue}");
+                        Assert.True(boolValue);
+                        break;
+                    default:
+                        StringArray stringArray = (StringArray)valueArray.Fields[0];
+                        string stringValue = stringArray.GetString(i);
+                        OutputHelper?.WriteLine($"{value}={stringValue}");
+                        Assert.NotNull(stringValue);
+                        break;
+                }
+            }
+
+            // Test the unhandled info codes.
+            List<AdbcInfoCode> unhandledCodes = new List<AdbcInfoCode>()
+            {
+                AdbcInfoCode.VendorArrowVersion,
+                AdbcInfoCode.VendorSubstrait,
+                AdbcInfoCode.VendorSubstraitMaxVersion
+            };
+            using IArrowArrayStream stream2 = adbcConnection.GetInfo(unhandledCodes);
+
+            recordBatch = await stream2.ReadNextRecordBatchAsync();
+            infoNameArray = (UInt32Array)recordBatch.Column("info_name");
+
+            List<string> unexpectedValues = new List<string>()
+            {
+                "VendorArrowVersion",
+                "VendorSubstrait",
+                "VendorSubstraitMaxVersion"
+            };
+            for (int i = 0; i < infoNameArray.Length; i++)
+            {
+                AdbcInfoCode? value = (AdbcInfoCode?)infoNameArray.GetValue(i);
+                DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
+
+                Assert.Contains(value.ToString(), unexpectedValues);
+                switch (value)
+                {
+                    case AdbcInfoCode.VendorSql:
+                        BooleanArray booleanArray = (BooleanArray)valueArray.Fields[1];
+                        Assert.Null(booleanArray.GetValue(i));
+                        break;
+                    default:
+                        StringArray stringArray = (StringArray)valueArray.Fields[0];
+                        Assert.Null(stringArray.GetString(i));
+                        break;
+                }
             }
         }
 
