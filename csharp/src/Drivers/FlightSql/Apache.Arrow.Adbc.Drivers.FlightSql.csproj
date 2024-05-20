@@ -4,7 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Net.Http.WinHttpHandler" Version="7.0.0" Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'" />
-    <PackageReference Include="Apache.Arrow.Flight" Version="15.0.2" />
+    <PackageReference Include="Apache.Arrow.Flight" Version="16.1.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
