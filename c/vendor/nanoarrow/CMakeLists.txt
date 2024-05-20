@@ -24,3 +24,5 @@ add_library(
 set_target_properties(
   nanoarrow PROPERTIES POSITION_INDEPENDENT_CODE ON
 )
+
+target_compile_definitions(nanoarrow PUBLIC "-DNANOARROW_DEBUG=1")
