@@ -19,9 +19,9 @@
 #define NANOARROW_BUILD_ID_H_INCLUDED
 
 #define NANOARROW_VERSION_MAJOR 0
-#define NANOARROW_VERSION_MINOR 4
+#define NANOARROW_VERSION_MINOR 5
 #define NANOARROW_VERSION_PATCH 0
-#define NANOARROW_VERSION "0.4.0"
+#define NANOARROW_VERSION "0.5.0-SNAPSHOT"
 
 #define NANOARROW_VERSION_INT                                        \
   (NANOARROW_VERSION_MAJOR * 10000 + NANOARROW_VERSION_MINOR * 100 + \
@@ -345,7 +345,7 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
 
 #define NANOARROW_DCHECK(EXPR) _NANOARROW_DCHECK_IMPL(EXPR, #EXPR)
 #else
-#define NANOARROW_ASSERT_OK(EXPR) EXPR
+#define NANOARROW_ASSERT_OK(EXPR) (void)(EXPR)
 #define NANOARROW_DCHECK(EXPR)
 #endif
 
@@ -720,6 +720,9 @@ struct ArrowBufferAllocator {
   /// \brief Opaque data specific to the allocator
   void* private_data;
 };
+
+typedef void (*ArrowBufferDeallocatorCallback)(struct ArrowBufferAllocator* allocator,
+                                               uint8_t* ptr, int64_t size);
 
 /// \brief An owning mutable view of a buffer
 /// \ingroup nanoarrow-buffer
@@ -1168,10 +1171,8 @@ struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void);
 /// attach a custom deallocator to an ArrowBuffer. This may be used to
 /// avoid copying an existing buffer that was not allocated using the
 /// infrastructure provided here (e.g., by an R or Python object).
-struct ArrowBufferAllocator ArrowBufferDeallocator(
-    void (*custom_free)(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
-                        int64_t size),
-    void* private_data);
+struct ArrowBufferAllocator ArrowBufferDeallocator(ArrowBufferDeallocatorCallback,
+                                                   void* private_data);
 
 /// @}
 
@@ -1280,6 +1281,14 @@ ArrowErrorCode ArrowDecimalSetDigits(struct ArrowDecimal* decimal,
 ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decimal,
                                                 struct ArrowBuffer* buffer);
 
+/// \brief Resolve a chunk index from increasing int64_t offsets
+///
+/// Given a buffer of increasing int64_t offsets that begin with 0 (e.g., offset buffer
+/// of a large type, run ends of a chunked array implementation), resolve a value v
+/// where lo <= v < hi such that offsets[v] <= index < offsets[v + 1].
+static inline int64_t ArrowResolveChunk64(int64_t index, const int64_t* offsets,
+                                          int64_t lo, int64_t hi);
+
 /// @}
 
 /// \defgroup nanoarrow-schema Creating schemas
@@ -1360,7 +1369,7 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema, enum Arrow
                                           enum ArrowTimeUnit time_unit,
                                           const char* timezone);
 
-/// \brief Seet the format field of a union schema
+/// \brief Set the format field of a union schema
 ///
 /// Returns EINVAL for a type that is not NANOARROW_TYPE_DENSE_UNION
 /// or NANOARROW_TYPE_SPARSE_UNION. The specified number of children are
@@ -1603,14 +1612,12 @@ static inline void ArrowBufferReset(struct ArrowBuffer* buffer);
 /// address and resets buffer.
 static inline void ArrowBufferMove(struct ArrowBuffer* src, struct ArrowBuffer* dst);
 
-/// \brief Grow or shrink a buffer to a given capacity
+/// \brief Grow or shrink a buffer to a given size
 ///
-/// When shrinking the capacity of the buffer, the buffer is only reallocated
-/// if shrink_to_fit is non-zero. Calling ArrowBufferResize() does not
-/// adjust the buffer's size member except to ensure that the invariant
-/// capacity >= size remains true.
+/// When shrinking the size of the buffer, the buffer is only reallocated
+/// if shrink_to_fit is non-zero.
 static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
-                                               int64_t new_capacity_bytes,
+                                               int64_t new_size_bytes,
                                                char shrink_to_fit);
 
 /// \brief Ensure a buffer has at least a given additional capacity
@@ -1740,15 +1747,12 @@ static inline void ArrowBitmapMove(struct ArrowBitmap* src, struct ArrowBitmap* 
 static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
                                                 int64_t additional_size_bits);
 
-/// \brief Grow or shrink a bitmap to a given capacity
+/// \brief Grow or shrink a bitmap to a given size
 ///
-/// When shrinking the capacity of the bitmap, the bitmap is only reallocated
-/// if shrink_to_fit is non-zero. Calling ArrowBitmapResize() does not
-/// adjust the buffer's size member except when shrinking new_capacity_bits
-/// to a value less than the current number of bits in the bitmap.
+/// When shrinking the size of the bitmap, the bitmap is only reallocated
+/// if shrink_to_fit is non-zero.
 static inline ArrowErrorCode ArrowBitmapResize(struct ArrowBitmap* bitmap,
-                                               int64_t new_capacity_bits,
-                                               char shrink_to_fit);
+                                               int64_t new_size_bits, char shrink_to_fit);
 
 /// \brief Reserve space for and append zero or more of the same boolean value to a bitmap
 static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
@@ -2177,6 +2181,49 @@ ArrowErrorCode ArrowBasicArrayStreamValidate(const struct ArrowArrayStream* arra
 extern "C" {
 #endif
 
+// Modified from Arrow C++ (1eb46f76) cpp/src/arrow/chunk_resolver.h#L133-L162
+static inline int64_t ArrowResolveChunk64(int64_t index, const int64_t* offsets,
+                                          int64_t lo, int64_t hi) {
+  // Similar to std::upper_bound(), but slightly different as our offsets
+  // array always starts with 0.
+  int64_t n = hi - lo;
+  // First iteration does not need to check for n > 1
+  // (lo < hi is guaranteed by the precondition).
+  NANOARROW_DCHECK(n > 1);
+  do {
+    const int64_t m = n >> 1;
+    const int64_t mid = lo + m;
+    if (index >= offsets[mid]) {
+      lo = mid;
+      n -= m;
+    } else {
+      n = m;
+    }
+  } while (n > 1);
+  return lo;
+}
+
+static inline int64_t ArrowResolveChunk32(int32_t index, const int32_t* offsets,
+                                          int32_t lo, int32_t hi) {
+  // Similar to std::upper_bound(), but slightly different as our offsets
+  // array always starts with 0.
+  int32_t n = hi - lo;
+  // First iteration does not need to check for n > 1
+  // (lo < hi is guaranteed by the precondition).
+  NANOARROW_DCHECK(n > 1);
+  do {
+    const int32_t m = n >> 1;
+    const int32_t mid = lo + m;
+    if (index >= offsets[mid]) {
+      lo = mid;
+      n -= m;
+    } else {
+      n = m;
+    }
+  } while (n > 1);
+  return lo;
+}
+
 static inline int64_t _ArrowGrowByFactor(int64_t current_capacity, int64_t new_capacity) {
   int64_t doubled_capacity = current_capacity * 2;
   if (doubled_capacity > new_capacity) {
@@ -2195,6 +2242,8 @@ static inline void ArrowBufferInit(struct ArrowBuffer* buffer) {
 
 static inline ArrowErrorCode ArrowBufferSetAllocator(
     struct ArrowBuffer* buffer, struct ArrowBufferAllocator allocator) {
+  // This is not a perfect test for "has a buffer already been allocated"
+  // but is likely to catch most cases.
   if (buffer->data == NULL) {
     buffer->allocator = allocator;
     return NANOARROW_OK;
@@ -2204,46 +2253,41 @@ static inline ArrowErrorCode ArrowBufferSetAllocator(
 }
 
 static inline void ArrowBufferReset(struct ArrowBuffer* buffer) {
-  if (buffer->data != NULL) {
-    buffer->allocator.free(&buffer->allocator, (uint8_t*)buffer->data,
-                           buffer->capacity_bytes);
-    buffer->data = NULL;
-  }
-
-  buffer->capacity_bytes = 0;
-  buffer->size_bytes = 0;
+  buffer->allocator.free(&buffer->allocator, (uint8_t*)buffer->data,
+                         buffer->capacity_bytes);
+  ArrowBufferInit(buffer);
 }
 
 static inline void ArrowBufferMove(struct ArrowBuffer* src, struct ArrowBuffer* dst) {
   memcpy(dst, src, sizeof(struct ArrowBuffer));
   src->data = NULL;
-  ArrowBufferReset(src);
+  ArrowBufferInit(src);
 }
 
 static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
-                                               int64_t new_capacity_bytes,
+                                               int64_t new_size_bytes,
                                                char shrink_to_fit) {
-  if (new_capacity_bytes < 0) {
+  if (new_size_bytes < 0) {
     return EINVAL;
   }
 
-  if (new_capacity_bytes > buffer->capacity_bytes || shrink_to_fit) {
-    buffer->data = buffer->allocator.reallocate(
-        &buffer->allocator, buffer->data, buffer->capacity_bytes, new_capacity_bytes);
-    if (buffer->data == NULL && new_capacity_bytes > 0) {
+  int needs_reallocation = new_size_bytes > buffer->capacity_bytes ||
+                           (shrink_to_fit && new_size_bytes < buffer->capacity_bytes);
+
+  if (needs_reallocation) {
+    buffer->data = buffer->allocator.reallocate(&buffer->allocator, buffer->data,
+                                                buffer->capacity_bytes, new_size_bytes);
+
+    if (buffer->data == NULL && new_size_bytes > 0) {
       buffer->capacity_bytes = 0;
       buffer->size_bytes = 0;
       return ENOMEM;
     }
 
-    buffer->capacity_bytes = new_capacity_bytes;
+    buffer->capacity_bytes = new_size_bytes;
   }
 
-  // Ensures that when shrinking that size <= capacity
-  if (new_capacity_bytes < buffer->size_bytes) {
-    buffer->size_bytes = new_capacity_bytes;
-  }
-
+  buffer->size_bytes = new_size_bytes;
   return NANOARROW_OK;
 }
 
@@ -2254,8 +2298,19 @@ static inline ArrowErrorCode ArrowBufferReserve(struct ArrowBuffer* buffer,
     return NANOARROW_OK;
   }
 
-  return ArrowBufferResize(
-      buffer, _ArrowGrowByFactor(buffer->capacity_bytes, min_capacity_bytes), 0);
+  int64_t new_capacity_bytes =
+      _ArrowGrowByFactor(buffer->capacity_bytes, min_capacity_bytes);
+  buffer->data = buffer->allocator.reallocate(&buffer->allocator, buffer->data,
+                                              buffer->capacity_bytes, new_capacity_bytes);
+
+  if (buffer->data == NULL && new_capacity_bytes > 0) {
+    buffer->capacity_bytes = 0;
+    buffer->size_bytes = 0;
+    return ENOMEM;
+  }
+
+  buffer->capacity_bytes = new_capacity_bytes;
+  return NANOARROW_OK;
 }
 
 static inline void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const void* data,
@@ -2598,32 +2653,38 @@ static inline void ArrowBitmapMove(struct ArrowBitmap* src, struct ArrowBitmap* 
 static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
                                                 int64_t additional_size_bits) {
   int64_t min_capacity_bits = bitmap->size_bits + additional_size_bits;
-  if (min_capacity_bits <= (bitmap->buffer.capacity_bytes * 8)) {
+  int64_t min_capacity_bytes = _ArrowBytesForBits(min_capacity_bits);
+  int64_t current_size_bytes = bitmap->buffer.size_bytes;
+  int64_t current_capacity_bytes = bitmap->buffer.capacity_bytes;
+
+  if (min_capacity_bytes <= current_capacity_bytes) {
     return NANOARROW_OK;
   }
 
-  NANOARROW_RETURN_NOT_OK(
-      ArrowBufferReserve(&bitmap->buffer, _ArrowBytesForBits(additional_size_bits)));
+  int64_t additional_capacity_bytes = min_capacity_bytes - current_size_bytes;
+  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(&bitmap->buffer, additional_capacity_bytes));
 
+  // Zero out the last byte for deterministic output in the common case
+  // of reserving a known remaining size. We should have returned above
+  // if there was not at least one additional byte to allocate; however,
+  // DCHECK() just to be sure.
+  NANOARROW_DCHECK(bitmap->buffer.capacity_bytes > current_capacity_bytes);
   bitmap->buffer.data[bitmap->buffer.capacity_bytes - 1] = 0;
   return NANOARROW_OK;
 }
 
 static inline ArrowErrorCode ArrowBitmapResize(struct ArrowBitmap* bitmap,
-                                               int64_t new_capacity_bits,
+                                               int64_t new_size_bits,
                                                char shrink_to_fit) {
-  if (new_capacity_bits < 0) {
+  if (new_size_bits < 0) {
     return EINVAL;
   }
 
-  int64_t new_capacity_bytes = _ArrowBytesForBits(new_capacity_bits);
+  int64_t new_size_bytes = _ArrowBytesForBits(new_size_bits);
   NANOARROW_RETURN_NOT_OK(
-      ArrowBufferResize(&bitmap->buffer, new_capacity_bytes, shrink_to_fit));
+      ArrowBufferResize(&bitmap->buffer, new_size_bytes, shrink_to_fit));
 
-  if (new_capacity_bits < bitmap->size_bits) {
-    bitmap->size_bits = new_capacity_bits;
-  }
-
+  bitmap->size_bits = new_size_bits;
   return NANOARROW_OK;
 }
 

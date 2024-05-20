@@ -201,7 +201,9 @@ static void ArrowBufferAllocatorMallocFree(struct ArrowBufferAllocator* allocato
                                            uint8_t* ptr, int64_t size) {
   NANOARROW_UNUSED(allocator);
   NANOARROW_UNUSED(size);
-  ArrowFree(ptr);
+  if (ptr != NULL) {
+    ArrowFree(ptr);
+  }
 }
 
 static struct ArrowBufferAllocator ArrowBufferAllocatorMalloc = {
@@ -211,13 +213,24 @@ struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void) {
   return ArrowBufferAllocatorMalloc;
 }
 
-static uint8_t* ArrowBufferAllocatorNeverReallocate(
-    struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
-    int64_t new_size) {
-  NANOARROW_UNUSED(allocator);
-  NANOARROW_UNUSED(ptr);
-  NANOARROW_UNUSED(old_size);
+static uint8_t* ArrowBufferDeallocatorReallocate(struct ArrowBufferAllocator* allocator,
+                                                 uint8_t* ptr, int64_t old_size,
+                                                 int64_t new_size) {
   NANOARROW_UNUSED(new_size);
+
+  // Attempting to reallocate a buffer with a custom deallocator is
+  // a programming error. In debug mode, crash here.
+#if defined(NANOARROW_DEBUG)
+  NANOARROW_PRINT_AND_DIE(ENOMEM,
+                          "It is an error to reallocate a buffer whose allocator is "
+                          "ArrowBufferDeallocator()");
+#endif
+
+  // In release mode, ensure the the deallocator is called exactly
+  // once using the pointer it was given and return NULL, which
+  // will trigger the caller to return ENOMEM.
+  allocator->free(allocator, ptr, old_size);
+  *allocator = ArrowBufferAllocatorDefault();
   return NULL;
 }
 
@@ -226,7 +239,7 @@ struct ArrowBufferAllocator ArrowBufferDeallocator(
                         int64_t size),
     void* private_data) {
   struct ArrowBufferAllocator allocator;
-  allocator.reallocate = &ArrowBufferAllocatorNeverReallocate;
+  allocator.reallocate = &ArrowBufferDeallocatorReallocate;
   allocator.free = custom_free;
   allocator.private_data = private_data;
   return allocator;
@@ -417,6 +430,13 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
   // The most significant segment should have no leading zeroes
   int n_chars = snprintf((char*)buffer->data + buffer->size_bytes, 21, "%lu",
                          (unsigned long)segments[num_segments - 1]);
+
+  // Ensure that an encoding error from snprintf() does not result
+  // in an out-of-bounds access.
+  if (n_chars < 0) {
+    return ERANGE;
+  }
+
   buffer->size_bytes += n_chars;
 
   // Subsequent output needs to be left-padded with zeroes such that each segment
@@ -665,6 +685,10 @@ ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
       return EINVAL;
   }
 
+  if (((size_t)n_chars) >= sizeof(buffer) || n_chars < 0) {
+    return ERANGE;
+  }
+
   buffer[n_chars] = '\0';
   NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(schema, buffer));
 
@@ -695,6 +719,10 @@ ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowT
       break;
     default:
       return EINVAL;
+  }
+
+  if (((size_t)n_chars) >= sizeof(buffer) || n_chars < 0) {
+    return ERANGE;
   }
 
   buffer[n_chars] = '\0';
@@ -773,7 +801,7 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema, enum Arrow
       return EINVAL;
   }
 
-  if (((size_t)n_chars) >= sizeof(buffer)) {
+  if (((size_t)n_chars) >= sizeof(buffer) || n_chars < 0) {
     return ERANGE;
   }
 
@@ -810,6 +838,12 @@ ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema, enum ArrowTyp
       return EINVAL;
   }
 
+  // Ensure that an encoding error from snprintf() does not result
+  // in an out-of-bounds access.
+  if (n_chars < 0) {
+    return ERANGE;
+  }
+
   if (n_children > 0) {
     n_chars = snprintf(format_cursor, format_out_size, "0");
     format_cursor += n_chars;
@@ -820,6 +854,12 @@ ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema, enum ArrowTyp
       format_cursor += n_chars;
       format_out_size -= n_chars;
     }
+  }
+
+  // Ensure that an encoding error from snprintf() does not result
+  // in an out-of-bounds access.
+  if (n_chars < 0) {
+    return ERANGE;
   }
 
   NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(schema, format_out));
@@ -1688,6 +1728,12 @@ static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_vi
 // among multiple sprintf calls.
 static inline void ArrowToStringLogChars(char** out, int64_t n_chars_last,
                                          int64_t* n_remaining, int64_t* n_chars) {
+  // In the unlikely snprintf() returning a negative value (encoding error),
+  // ensure the result won't cause an out-of-bounds access.
+  if (n_chars_last < 0) {
+    n_chars = 0;
+  }
+
   *n_chars += n_chars_last;
   *n_remaining -= n_chars_last;
 
@@ -1783,7 +1829,12 @@ int64_t ArrowSchemaToString(const struct ArrowSchema* schema, char* out, int64_t
     n_chars += snprintf(out, n, ">");
   }
 
-  return n_chars;
+  // Ensure that we always return a positive result
+  if (n_chars > 0) {
+    return n_chars;
+  } else {
+    return 0;
+  }
 }
 
 ArrowErrorCode ArrowMetadataReaderInit(struct ArrowMetadataReader* reader,
@@ -2410,19 +2461,16 @@ static ArrowErrorCode ArrowArrayFinalizeBuffers(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  // The only buffer finalizing this currently does is make sure the data
-  // buffer for (Large)String|Binary is never NULL
-  switch (private_data->storage_type) {
-    case NANOARROW_TYPE_BINARY:
-    case NANOARROW_TYPE_STRING:
-    case NANOARROW_TYPE_LARGE_BINARY:
-    case NANOARROW_TYPE_LARGE_STRING:
-      if (ArrowArrayBuffer(array, 2)->data == NULL) {
-        NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(ArrowArrayBuffer(array, 2), 0));
-      }
-      break;
-    default:
-      break;
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+    if (private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY ||
+        private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
+      continue;
+    }
+
+    struct ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
+    if (buffer->data == NULL) {
+      NANOARROW_RETURN_NOT_OK((ArrowBufferReserve(buffer, 1)));
+    }
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
@@ -2458,7 +2506,8 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         struct ArrowError* error) {
   // Even if the data buffer is size zero, the pointer value needed to be non-null
   // in some implementations (at least one version of Arrow C++ at the time this
-  // was added). Only do this fix if we can assume CPU data access.
+  // was added and C# as later discovered). Only do this fix if we can assume
+  // CPU data access.
   if (validation_level >= NANOARROW_VALIDATION_LEVEL_DEFAULT) {
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayFinalizeBuffers(array), error);
   }
@@ -2906,6 +2955,10 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
                         (long)array_view->buffer_views[2].size_bytes);
           return EINVAL;
         }
+      } else if (array_view->buffer_views[2].size_bytes == -1) {
+        // If the data buffer size is unknown and there are no bytes in the offset buffer,
+        // set the data buffer size to 0.
+        array_view->buffer_views[2].size_bytes = 0;
       }
       break;
 
@@ -2932,6 +2985,10 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
                         (long)array_view->buffer_views[2].size_bytes);
           return EINVAL;
         }
+      } else if (array_view->buffer_views[2].size_bytes == -1) {
+        // If the data buffer size is unknown and there are no bytes in the offset
+        // buffer, set the data buffer size to 0.
+        array_view->buffer_views[2].size_bytes = 0;
       }
       break;
 
