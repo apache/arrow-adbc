@@ -61,12 +61,22 @@ std::string ToString(struct ArrowArrayStream* stream);
 // Helper to manage C Data Interface/Nanoarrow resources with RAII
 
 template <typename T>
+struct Initializer {
+  static void Initialize(T* value) { memset(value, 0, sizeof(T)); }
+};
+
+template <typename T>
 struct Releaser {
   static void Release(T* value) {
     if (value->release) {
       value->release(value);
     }
   }
+};
+
+template <>
+struct Initializer<struct ArrowBuffer> {
+  static void Initialize(struct ArrowBuffer* value) { ArrowBufferInit(value); }
 };
 
 template <>
@@ -126,7 +136,7 @@ template <typename Resource>
 struct Handle {
   Resource value;
 
-  Handle() { std::memset(&value, 0, sizeof(value)); }
+  Handle() { Initializer<Resource>::Initialize(&value); }
 
   ~Handle() { Releaser<Resource>::Release(&value); }
 
@@ -232,8 +242,12 @@ struct GetObjectsReader {
   }
   ~GetObjectsReader() { AdbcGetObjectsDataDelete(get_objects_data_); }
 
-  struct AdbcGetObjectsData* operator*() { return get_objects_data_; }
-  struct AdbcGetObjectsData* operator->() { return get_objects_data_; }
+  struct AdbcGetObjectsData* operator*() {
+    return get_objects_data_;
+  }
+  struct AdbcGetObjectsData* operator->() {
+    return get_objects_data_;
+  }
 
  private:
   struct AdbcGetObjectsData* get_objects_data_;
