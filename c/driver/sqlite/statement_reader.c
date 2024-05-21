@@ -771,7 +771,7 @@ AdbcStatusCode StatementReaderInitializeInfer(int num_columns, size_t infer_rows
     CHECK_NA(INTERNAL, ArrowBitmapReserve(&validity[i], infer_rows), error);
     ArrowBufferInit(&data[i]);
     CHECK_NA(INTERNAL, ArrowBufferReserve(&data[i], infer_rows * sizeof(int64_t)), error);
-    memset(&binary[i], 0, sizeof(struct ArrowBuffer));
+    ArrowBufferInit(&binary[i]);
     current_type[i] = NANOARROW_TYPE_INT64;
   }
   return ADBC_STATUS_OK;
@@ -1193,7 +1193,7 @@ AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
   }
 
   if (status != ADBC_STATUS_OK) {
-    // Free the individual buffers
+    // Free the individual buffers if they were initialized
     // This is OK, since InferFinalize either moves all buffers or no buffers
     for (int i = 0; i < num_columns; i++) {
       ArrowBitmapReset(&validity[i]);
