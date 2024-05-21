@@ -109,7 +109,7 @@ or the [Arrow mailing lists][5].
 
 [1]: ${MILESTONE_URL}
 [2]: #contributors
-[3]: https://github.com/apache/arrow-adbc/blob/apache-arrow-adbc-${version}/CHANGELOG.md
+[3]: https://github.com/apache/arrow-adbc/blob/apache-arrow-adbc-${RELEASE}/CHANGELOG.md
 [4]: https://github.com/apache/arrow-adbc/issues
 [5]: {% link community.md %}
 EOF
