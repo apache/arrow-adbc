@@ -23,6 +23,10 @@ set -e
 set -u
 set -o pipefail
 
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SOURCE_DIR}/utils-common.sh"
+source "${SOURCE_DIR}/utils-prepare.sh"
+
 main() {
   if [ "$#" -ne 0 ]; then
     echo "Usage: $0"
