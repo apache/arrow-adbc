@@ -1193,7 +1193,7 @@ AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
   }
 
   if (status != ADBC_STATUS_OK) {
-    // Free the individual buffers if they were initialized
+    // Free the individual buffers
     // This is OK, since InferFinalize either moves all buffers or no buffers
     for (int i = 0; i < num_columns; i++) {
       ArrowBitmapReset(&validity[i]);
