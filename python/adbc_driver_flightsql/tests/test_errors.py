@@ -186,8 +186,7 @@ def test_query_error_getflightinfo(test_dbapi):
             cur.adbc_execute_partitions("error_get_flight_info")
 
 
-# TODO: fix this flaky test (EOF error)
-# def test_stateless_prepared_statement(test_dbapi) -> None:
-#     with test_dbapi.cursor() as cur:
-#         cur.adbc_prepare("stateless_prepared_statement")
-#         cur.execute("stateless_prepared_statement", parameters=[(1,)])
+def test_stateless_prepared_statement(test_dbapi) -> None:
+    with test_dbapi.cursor() as cur:
+        cur.adbc_prepare("stateless_prepared_statement")
+        cur.execute("stateless_prepared_statement", parameters=[(1,)])
