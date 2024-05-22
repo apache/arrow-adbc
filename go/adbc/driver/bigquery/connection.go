@@ -58,6 +58,8 @@ type connectionImpl struct {
 	// dbSchema is the same as the dataset id in BigQuery
 	dbSchema string
 
+	resultRecordBufferSize int
+
 	client *bigquery.Client
 }
 
@@ -281,6 +283,25 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 		return c.tableID, nil
 	default:
 		return c.ConnectionImplBase.GetOption(key)
+	}
+}
+
+func (c *connectionImpl) GetOptionInt(key string) (int64, error) {
+	switch key {
+	case OptionIntQueryResultBufferSize:
+		return int64(c.resultRecordBufferSize), nil
+	default:
+		return c.ConnectionImplBase.GetOptionInt(key)
+	}
+}
+
+func (c *connectionImpl) SetOptionInt(key string, value int64) error {
+	switch key {
+	case OptionIntQueryResultBufferSize:
+		c.resultRecordBufferSize = int(value)
+		return nil
+	default:
+		return c.ConnectionImplBase.SetOptionInt(key, value)
 	}
 }
 
@@ -569,7 +590,7 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 	}
 	// pass `nil` to `boundParameter` because we don't need to read from any `array.Record` --
 	// it's already set in `query`
-	reader, _, err := newRecordReader(ctx, query, nil, OptionValueQueryParameterModeNamed, c.Alloc)
+	reader, _, err := newRecordReader(ctx, query, nil, OptionValueQueryParameterModeNamed, c.Alloc, c.resultRecordBufferSize)
 	if err != nil {
 		return nil, err
 	}

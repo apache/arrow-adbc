@@ -68,6 +68,8 @@ const (
 	OptionBoolQueryCreateSession       = "adbc.bigquery.sql.query.create_session"
 	OptionIntQueryJobTimeout           = "adbc.bigquery.sql.query.job_timeout"
 
+	OptionIntQueryResultBufferSize = "adbc.bigquery.sql.query.result_buffer_size"
+
 	AccessTokenEndpoint   = "https://accounts.google.com/o/oauth2/token"
 	AccessTokenServerName = "google.com"
 )

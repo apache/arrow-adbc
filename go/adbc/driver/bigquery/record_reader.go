@@ -92,7 +92,7 @@ func getQueryParameter(values arrow.Record, row int, parameterMode string) ([]bi
 	return parameters, nil
 }
 
-func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allocator) (bigqueryRdr *reader, totalRows int64, err error) {
+func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allocator, resultRecordBufferSize int) (bigqueryRdr *reader, totalRows int64, err error) {
 	arrowIterator, totalRows, err := runQuery(ctx, query)
 	if err != nil {
 		return nil, -1, err
@@ -102,7 +102,7 @@ func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allo
 		return nil, -1, err
 	}
 
-	ch := make(chan arrow.Record, 4096)
+	ch := make(chan arrow.Record, resultRecordBufferSize)
 	ctx, cancelFn := context.WithCancel(ctx)
 
 	defer func() {
@@ -137,11 +137,11 @@ func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allo
 
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
-func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters array.RecordReader, parameterMode string, alloc memory.Allocator) (bigqueryRdr *reader, totalRows int64, err error) {
+func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters array.RecordReader, parameterMode string, alloc memory.Allocator, resultRecordBufferSize int) (bigqueryRdr *reader, totalRows int64, err error) {
 	if boundParameters == nil {
-		return runPlainQuery(ctx, query, alloc)
+		return runPlainQuery(ctx, query, alloc, resultRecordBufferSize)
 	} else {
-		ch := make(chan arrow.Record, 4096)
+		ch := make(chan arrow.Record, resultRecordBufferSize)
 		ctx, cancelFn := context.WithCancel(ctx)
 
 		defer func() {

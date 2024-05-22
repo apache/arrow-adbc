@@ -252,7 +252,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 		return nil, -1, err
 	}
 
-	return newRecordReader(ctx, st.query, rdr, st.parameterMode, st.connectionImpl.Alloc)
+	return newRecordReader(ctx, st.query, rdr, st.parameterMode, st.connectionImpl.Alloc, st.connectionImpl.resultRecordBufferSize)
 }
 
 // ExecuteUpdate executes a statement that does not generate a result
