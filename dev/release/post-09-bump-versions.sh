@@ -48,10 +48,6 @@ main() {
 
     ########################## Update Snapshot Version ##########################
 
-    git fetch --all --prune --tags --force -j$(nproc)
-    git switch main
-    git rebase apache/main
-
     echo "Updating versions for ${RELEASE}-SNAPSHOT"
     update_versions "snapshot"
     git commit -m "chore: update versions for ${RELEASE}-SNAPSHOT"
@@ -64,8 +60,7 @@ main() {
     echo "Updated changelog on branch."
 
     echo "Review the commits just made."
-    echo "Then, push changes to apache/arrow-adbc:main with:"
-    echo git push apache main
+    echo "Then, create a new pull request."
 }
 
 main "$@"
