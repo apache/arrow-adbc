@@ -20,7 +20,7 @@ members = ["core", "drivers/*"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.13.0"
 description = "Rust implementation of Arrow Database Connectivity (ADBC)"
 edition = "2021"
 authors = ["Apache Arrow <dev@arrow.apache.org>"]

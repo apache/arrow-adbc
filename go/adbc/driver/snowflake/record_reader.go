@@ -123,6 +123,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 								if err != nil {
 									return nil, err
 								}
+								defer result.Release()
 								return compute.CastArray(ctx, result, compute.UnsafeCastOptions(f.Type))
 							}
 						} else {

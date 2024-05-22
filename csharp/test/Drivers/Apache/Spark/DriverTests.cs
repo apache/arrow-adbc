@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
@@ -79,16 +80,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if the driver can call GetInfo.
         /// </summary>
         [SkippableFact, Order(2)]
-        public void CanGetInfo()
+        public async Task CanGetInfo()
         {
             AdbcConnection adbcConnection = NewConnection();
 
-            using IArrowArrayStream stream = adbcConnection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
+            // Test the supported info codes
+            List<AdbcInfoCode> handledCodes = new List<AdbcInfoCode>()
+            {
+                AdbcInfoCode.DriverName,
+                AdbcInfoCode.DriverVersion,
+                AdbcInfoCode.VendorName,
+                AdbcInfoCode.DriverArrowVersion,
+                AdbcInfoCode.VendorVersion,
+                AdbcInfoCode.VendorSql
+            };
+            using IArrowArrayStream stream = adbcConnection.GetInfo(handledCodes);
 
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            RecordBatch recordBatch = await stream.ReadNextRecordBatchAsync();
             UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
 
-            List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "VendorName" };
+            List<string> expectedValues = new List<string>()
+            {
+                "DriverName",
+                "DriverVersion",
+                "VendorName",
+                "DriverArrowVersion",
+                "VendorVersion",
+                "VendorSql"
+            };
 
             for (int i = 0; i < infoNameArray.Length; i++)
             {
@@ -97,8 +116,59 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
                 Assert.Contains(value.ToString(), expectedValues);
 
-                StringArray stringArray = (StringArray)valueArray.Fields[0];
-                Console.WriteLine($"{value}={stringArray.GetString(i)}");
+                switch (value)
+                {
+                    case AdbcInfoCode.VendorSql:
+                        // TODO: How does external developer know the second field is the boolean field?
+                        BooleanArray booleanArray = (BooleanArray)valueArray.Fields[1];
+                        bool? boolValue = booleanArray.GetValue(i);
+                        OutputHelper?.WriteLine($"{value}={boolValue}");
+                        Assert.True(boolValue);
+                        break;
+                    default:
+                        StringArray stringArray = (StringArray)valueArray.Fields[0];
+                        string stringValue = stringArray.GetString(i);
+                        OutputHelper?.WriteLine($"{value}={stringValue}");
+                        Assert.NotNull(stringValue);
+                        break;
+                }
+            }
+
+            // Test the unhandled info codes.
+            List<AdbcInfoCode> unhandledCodes = new List<AdbcInfoCode>()
+            {
+                AdbcInfoCode.VendorArrowVersion,
+                AdbcInfoCode.VendorSubstrait,
+                AdbcInfoCode.VendorSubstraitMaxVersion
+            };
+            using IArrowArrayStream stream2 = adbcConnection.GetInfo(unhandledCodes);
+
+            recordBatch = await stream2.ReadNextRecordBatchAsync();
+            infoNameArray = (UInt32Array)recordBatch.Column("info_name");
+
+            List<string> unexpectedValues = new List<string>()
+            {
+                "VendorArrowVersion",
+                "VendorSubstrait",
+                "VendorSubstraitMaxVersion"
+            };
+            for (int i = 0; i < infoNameArray.Length; i++)
+            {
+                AdbcInfoCode? value = (AdbcInfoCode?)infoNameArray.GetValue(i);
+                DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
+
+                Assert.Contains(value.ToString(), unexpectedValues);
+                switch (value)
+                {
+                    case AdbcInfoCode.VendorSql:
+                        BooleanArray booleanArray = (BooleanArray)valueArray.Fields[1];
+                        Assert.Null(booleanArray.GetValue(i));
+                        break;
+                    default:
+                        StringArray stringArray = (StringArray)valueArray.Fields[0];
+                        Assert.Null(stringArray.GetString(i));
+                        break;
+                }
             }
         }
 
@@ -254,10 +324,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string catalogName = TestConfiguration.Metadata.Catalog;
             string schemaPrefix = Guid.NewGuid().ToString().Replace("-", "");
-            using TemporarySchema schema = TemporarySchema.NewTemporarySchema(catalogName, Statement);
+            using TemporarySchema schema = TemporarySchema.NewTemporarySchemaAsync(catalogName, Statement).Result;
             string schemaName = schema.SchemaName;
             string fullTableName = $"{DelimitIdentifier(catalogName)}.{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
-            using TemporaryTable temporaryTable = TemporaryTable.NewTemporaryTable(Statement, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)");
+            using TemporaryTable temporaryTable = TemporaryTable.NewTemporaryTableAsync(Statement, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)").Result;
 
             using IArrowArrayStream stream = Connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Tables,
@@ -308,13 +378,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if the driver can call GetTableTypes.
         /// </summary>
         [SkippableFact, Order(9)]
-        public void CanGetTableTypes()
+        public async Task CanGetTableTypes()
         {
             AdbcConnection adbcConnection = NewConnection();
 
             using IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
 
-            RecordBatch recordBatch = arrowArrayStream.ReadNextRecordBatchAsync().Result;
+            RecordBatch recordBatch = await arrowArrayStream.ReadNextRecordBatchAsync();
 
             StringArray stringArray = (StringArray)recordBatch.Column("table_type");
 
@@ -353,6 +423,39 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             QueryResult queryResult = statement.ExecuteQuery();
 
             Tests.DriverTests.CanExecuteQuery(queryResult, TestConfiguration.ExpectedResultsCount);
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results using the asynchronous methods.
+        /// </summary>
+        [SkippableFact, Order(11)]
+        public async Task CanExecuteQueryAsync()
+        {
+            using AdbcConnection adbcConnection = NewConnection();
+            using AdbcStatement statement = adbcConnection.CreateStatement();
+
+            statement.SqlQuery = TestConfiguration.Query;
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+
+            await Tests.DriverTests.CanExecuteQueryAsync(queryResult, TestConfiguration.ExpectedResultsCount);
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// perform and update asynchronously.
+        /// </summary>
+        [SkippableFact, Order(12)]
+        public async Task CanExecuteUpdateAsync()
+        {
+            using AdbcConnection adbcConnection = NewConnection();
+            using AdbcStatement statement = adbcConnection.CreateStatement();
+            using TemporaryTable temporaryTable = await NewTemporaryTableAsync(statement, "INDEX INT");
+
+            statement.SqlQuery = GetInsertValueStatement(temporaryTable.TableName, "INDEX", "1");
+            UpdateResult updateResult = await statement.ExecuteUpdateAsync();
+
+            Assert.Equal(1, updateResult.AffectedRows);
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()

@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-%define major_version %(echo @VERSION@ | grep -o '^[0-9]*')
+%define major_version_native %(echo @VERSION_NATIVE@ | grep -o '^[0-9]*')
 
 %if %{rhel} >= 9
 %define adbc_cmake_builddir %{__cmake_builddir}
@@ -95,14 +95,14 @@ cd glib
 DESTDIR=%{buildroot} meson install -C build
 cd -
 
-%package driver-manager%{major_version}-libs
+%package driver-manager%{major_version_native}-libs
 Summary:	Runtime libraries for ADBC driver manager
 License:	Apache-2.0
 
-%description driver-manager%{major_version}-libs
+%description driver-manager%{major_version_native}-libs
 This package contains the libraries for ADBC driver manager.
 
-%files driver-manager%{major_version}-libs
+%files driver-manager%{major_version_native}-libs
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
@@ -111,7 +111,7 @@ This package contains the libraries for ADBC driver manager.
 %package driver-manager-devel
 Summary:	Libraries and header files for ADBC driver manager
 License:	Apache-2.0
-Requires:	%{name}-driver-manager%{major_version}-libs = %{version}-%{release}
+Requires:	%{name}-driver-manager%{major_version_native}-libs = %{version}-%{release}
 
 %description driver-manager-devel
 Libraries and header files for ADBC driver manager.
@@ -127,15 +127,15 @@ Libraries and header files for ADBC driver manager.
 %{_libdir}/libadbc_driver_manager.so
 %{_libdir}/pkgconfig/adbc-driver-manager.pc
 
-%package driver-postgresql%{major_version}-libs
+%package driver-postgresql%{major_version_native}-libs
 Summary:	ADBC PostgreSQL driver
 License:	Apache-2.0
 Requires:	libpq
 
-%description driver-postgresql%{major_version}-libs
+%description driver-postgresql%{major_version_native}-libs
 This package provides an ADBC driver for PostgreSQL.
 
-%files driver-postgresql%{major_version}-libs
+%files driver-postgresql%{major_version_native}-libs
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
@@ -144,7 +144,7 @@ This package provides an ADBC driver for PostgreSQL.
 %package driver-postgresql-devel
 Summary:	Libraries and header files for ADBC PostgreSQL driver
 License:	Apache-2.0
-Requires:	%{name}-driver-postgresql%{major_version}-libs = %{version}-%{release}
+Requires:	%{name}-driver-postgresql%{major_version_native}-libs = %{version}-%{release}
 
 %description driver-postgresql-devel
 Libraries and header files for ADBC PostgreSQL driver.
@@ -158,15 +158,15 @@ Libraries and header files for ADBC PostgreSQL driver.
 %{_libdir}/libadbc_driver_postgresql.so
 %{_libdir}/pkgconfig/adbc-driver-postgresql.pc
 
-%package driver-sqlite%{major_version}-libs
+%package driver-sqlite%{major_version_native}-libs
 Summary:	ADBC SQLite driver
 License:	Apache-2.0
 Requires:	libpq
 
-%description driver-sqlite%{major_version}-libs
+%description driver-sqlite%{major_version_native}-libs
 This package provides an ADBC driver for SQLite
 
-%files driver-sqlite%{major_version}-libs
+%files driver-sqlite%{major_version_native}-libs
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
@@ -175,7 +175,7 @@ This package provides an ADBC driver for SQLite
 %package driver-sqlite-devel
 Summary:	Libraries and header files for ADBC SQLite driver
 License:	Apache-2.0
-Requires:	%{name}-driver-sqlite%{major_version}-libs = %{version}-%{release}
+Requires:	%{name}-driver-sqlite%{major_version_native}-libs = %{version}-%{release}
 
 %description driver-sqlite-devel
 Libraries and header files for ADBC SQLite driver.
@@ -189,14 +189,14 @@ Libraries and header files for ADBC SQLite driver.
 %{_libdir}/libadbc_driver_sqlite.so
 %{_libdir}/pkgconfig/adbc-driver-sqlite.pc
 
-%package driver-flightsql%{major_version}-libs
+%package driver-flightsql%{major_version_native}-libs
 Summary:	ADBC Flight SQL driver
 License:	Apache-2.0
 
-%description driver-flightsql%{major_version}-libs
+%description driver-flightsql%{major_version_native}-libs
 This package provides an ADBC driver for Flight SQL.
 
-%files driver-flightsql%{major_version}-libs
+%files driver-flightsql%{major_version_native}-libs
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
@@ -205,7 +205,7 @@ This package provides an ADBC driver for Flight SQL.
 %package driver-flightsql-devel
 Summary:	Libraries and header files for ADBC Flight SQL driver
 License:	Apache-2.0
-Requires:	%{name}-driver-flightsql%{major_version}-libs = %{version}-%{release}
+Requires:	%{name}-driver-flightsql%{major_version_native}-libs = %{version}-%{release}
 
 %description driver-flightsql-devel
 Libraries and header files for ADBC Flight SQL driver.
@@ -218,14 +218,14 @@ Libraries and header files for ADBC Flight SQL driver.
 %{_libdir}/libadbc_driver_flightsql.so
 %{_libdir}/pkgconfig/adbc-driver-flightsql.pc
 
-%package driver-snowflake%{major_version}-libs
+%package driver-snowflake%{major_version_native}-libs
 Summary: ADBC Snowflake driver
 License: Apache-2.0
 
-%description driver-snowflake%{major_version}-libs
+%description driver-snowflake%{major_version_native}-libs
 This package provides an ADBC driver for Snowflake
 
-%files driver-snowflake%{major_version}-libs
+%files driver-snowflake%{major_version_native}-libs
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
@@ -234,7 +234,7 @@ This package provides an ADBC driver for Snowflake
 %package driver-snowflake-devel
 Summary:  Libraries and header files for ADBC Snowflake driver
 License:  Apache-2.0
-Requires: %{name}-driver-snowflake%{major_version}-libs = %{version}-%{release}
+Requires: %{name}-driver-snowflake%{major_version_native}-libs = %{version}-%{release}
 
 %description driver-snowflake-devel
 Libraries and header files for ADBC Snowflake driver
@@ -247,16 +247,16 @@ Libraries and header files for ADBC Snowflake driver
 %{_libdir}/libadbc_driver_snowflake.so
 %{_libdir}/pkgconfig/adbc-driver-snowflake.pc
 
-%package glib%{major_version}-libs
+%package glib%{major_version_native}-libs
 Summary:	Runtime libraries for ADBC GLib
 License:	Apache-2.0
-Requires:	%{name}-driver-manager%{major_version}-libs = %{version}-%{release}
+Requires:	%{name}-driver-manager%{major_version_native}-libs = %{version}-%{release}
 Requires:	glib2
 
-%description glib%{major_version}-libs
+%description glib%{major_version_native}-libs
 This package contains the libraries for ADBC GLib.
 
-%files glib%{major_version}-libs
+%files glib%{major_version_native}-libs
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
@@ -267,7 +267,7 @@ This package contains the libraries for ADBC GLib.
 Summary:	Libraries and header files for ADBC GLib
 License:	Apache-2.0
 Requires:	%{name}-driver-manager-devel = %{version}-%{release}
-Requires:	%{name}-glib%{major_version}-libs = %{version}-%{release}
+Requires:	%{name}-glib%{major_version_native}-libs = %{version}-%{release}
 Requires:	glib2-devel
 Requires:	gobject-introspection-devel
 
@@ -299,15 +299,15 @@ Documentation for ADBC GLib.
 %{_datadir}/adbc-glib/example/
 %{_docdir}/adbc-glib/
 
-%package arrow-glib%{major_version}-libs
+%package arrow-glib%{major_version_native}-libs
 Summary:	Runtime libraries for Apache Arrow GLib integration
 License:	Apache-2.0
-Requires:	%{name}-glib%{major_version}-libs = %{version}-%{release}
+Requires:	%{name}-glib%{major_version_native}-libs = %{version}-%{release}
 
-%description arrow-glib%{major_version}-libs
+%description arrow-glib%{major_version_native}-libs
 This package contains the libraries for Apache Arrow GLib integration.
 
-%files arrow-glib%{major_version}-libs
+%files arrow-glib%{major_version_native}-libs
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
@@ -317,9 +317,8 @@ This package contains the libraries for Apache Arrow GLib integration.
 %package arrow-glib-devel
 Summary:	Libraries and header files for Apache Arrow GLib integration
 License:	Apache-2.0
-Requires:	%{name}-arrow-glib%{major_version}-libs = %{version}-%{release}
+Requires:	%{name}-arrow-glib%{major_version_native}-libs = %{version}-%{release}
 Requires:	%{name}-glib-devel = %{version}-%{release}
-Requires:	arrow-glib-devel
 
 %description arrow-glib-devel
 Libraries and header files for Apache Arrow GLib integration

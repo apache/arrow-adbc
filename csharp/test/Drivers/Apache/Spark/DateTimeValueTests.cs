@@ -58,12 +58,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestTimestampData(DateTimeOffset value, string columnType)
         {
             string columnName = "TIMESTAMPTYPE";
-            using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, columnType));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
 
             string formattedValue = $"{value.ToString(DateTimeZoneFormat, CultureInfo.InvariantCulture)}";
             DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, DateTimeZoneFormat, CultureInfo.InvariantCulture);
 
-            await ValidateInsertSelectDeleteSingleValue(
+            await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 truncatedValue,
@@ -81,12 +81,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             Skip.If(value == DateTimeOffset.MinValue);
 
             string columnName = "TIMESTAMPTYPE";
-            using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, columnType));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
 
             string formattedValue = $"{value.ToString(DateFormat, CultureInfo.InvariantCulture)}";
             DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, DateFormat, CultureInfo.InvariantCulture);
 
-            await ValidateInsertSelectDeleteSingleValue(
+            await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 // Remove timezone offset
@@ -102,12 +102,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestDateData(DateTimeOffset value, string columnType)
         {
             string columnName = "DATETYPE";
-            using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, columnType));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
 
             string formattedValue = $"{value.ToString(DateFormat, CultureInfo.InvariantCulture)}";
             DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, DateFormat, CultureInfo.InvariantCulture);
 
-            await ValidateInsertSelectDeleteSingleValue(
+            await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 // Remove timezone offset
@@ -148,7 +148,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestIntervalData(string intervalClause, string value)
         {
             string selectStatement = $"SELECT {intervalClause} AS INTERVAL_VALUE;";
-            await SelectAndValidateValues(selectStatement, value, 1);
+            await SelectAndValidateValuesAsync(selectStatement, value, 1);
         }
 
         public static IEnumerable<object[]> TimestampData(string columnType)

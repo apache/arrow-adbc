@@ -33,10 +33,9 @@ namespace Apache.Arrow.Adbc.C
     /// <summary>
     /// Class for working with imported drivers from files
     /// </summary>
-    public static class CAdbcDriverImporter
+    public static partial class CAdbcDriverImporter
     {
         private const string driverInit = "AdbcDriverInit";
-        private const int ADBC_VERSION_1_0_0 = 1000000;
 
         /// <summary>
         /// Loads an <see cref="AdbcDriver"/> from the file system.
@@ -73,13 +72,23 @@ namespace Apache.Arrow.Adbc.C
 
                 AdbcDriverInit init = Marshal.GetDelegateForFunctionPointer<AdbcDriverInit>(export);
                 CAdbcDriver driver = new CAdbcDriver();
+                int version;
                 using (CallHelper caller = new CallHelper())
                 {
-                    caller.Call(init, ADBC_VERSION_1_0_0, ref driver);
+                    try
+                    {
+                        caller.Call(init, AdbcVersion.Version_1_1_0, ref driver);
+                        version = AdbcVersion.Version_1_1_0;
+                    }
+                    catch (AdbcException e) when (e.Status == AdbcStatusCode.NotImplemented)
+                    {
+                        caller.Call(init, AdbcVersion.Version_1_0_0, ref driver);
+                        version = AdbcVersion.Version_1_0_0;
+                    }
 
-                    ValidateDriver(ref driver, ADBC_VERSION_1_0_0);
+                    ValidateDriver(ref driver, version);
 
-                    ImportedAdbcDriver result = new ImportedAdbcDriver(library, driver);
+                    ImportedAdbcDriver result = new ImportedAdbcDriver(library, driver, version);
                     library = IntPtr.Zero;
                     return result;
                 }
@@ -125,193 +134,41 @@ namespace Apache.Arrow.Adbc.C
             if (driver.StatementSetOption == empty) { driver.StatementSetOption = StatementSetOptionDefault; }
             if (driver.StatementSetSqlQuery == empty) { driver.StatementSetSqlQuery = StatementSetSqlQueryDefault; }
             if (driver.StatementSetSubstraitPlan == empty) { driver.StatementSetSubstraitPlan = StatementSetSubstraitPlanDefault; }
-        }
 
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr DatabaseSetOptionDefault = NativeDelegate<DatabaseSetOption>.AsNativePointer(DatabaseSetOptionDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcDatabase*, byte*, byte*, CAdbcError*, AdbcStatusCode> DatabaseSetOptionDefault => &DatabaseSetOptionDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode DatabaseSetOptionDefaultImpl(CAdbcDatabase* database, byte* key, byte* value, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.DatabaseSetOption));
-        }
+            if (version < AdbcVersion.Version_1_1_0) { return; }
 
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr ConnectionCommitDefault = NativeDelegate<ConnectionCommit>.AsNativePointer(ConnectionCommitDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionCommitDefault => &ConnectionCommitDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode ConnectionCommitDefaultImpl(CAdbcConnection* connection, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.ConnectionCommit));
-        }
+            if (driver.ErrorGetDetailCount == empty) { driver.ErrorGetDetailCount = ErrorGetDetailCountDefault; }
+            if (driver.ErrorGetDetail == empty) { driver.ErrorGetDetail = ErrorGetDetailDefault; }
+            if (driver.ErrorFromArrayStream == empty) { driver.ErrorFromArrayStream = ErrorFromArrayStreamDefault; }
 
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr ConnectionGetInfoDefault = NativeDelegate<ConnectionGetInfo>.AsNativePointer(ConnectionGetInfoDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcConnection*, int*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetInfoDefault => &ConnectionGetInfoDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode ConnectionGetInfoDefaultImpl(CAdbcConnection* connection, int* info_codes, int info_codes_length, CArrowArrayStream* stream, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.ConnectionGetInfo));
-        }
+            if (driver.DatabaseGetOption == empty) { driver.DatabaseGetOption = DatabaseGetOptionDefault; }
+            if (driver.DatabaseGetOptionBytes == empty) { driver.DatabaseGetOptionBytes = DatabaseGetOptionBytesDefault; }
+            if (driver.DatabaseGetOptionDouble == empty) { driver.DatabaseGetOptionDouble = DatabaseGetOptionDoubleDefault; }
+            if (driver.DatabaseGetOptionInt == empty) { driver.DatabaseGetOptionInt = DatabaseGetOptionIntDefault; }
+            if (driver.DatabaseSetOptionBytes == empty) { driver.DatabaseSetOptionBytes = DatabaseSetOptionBytesDefault; }
+            if (driver.DatabaseSetOptionDouble == empty) { driver.DatabaseSetOptionDouble = DatabaseSetOptionDoubleDefault; }
+            if (driver.DatabaseSetOptionInt == empty) { driver.DatabaseSetOptionInt = DatabaseSetOptionIntDefault; }
 
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr ConnectionGetObjectsDefault = NativeDelegate<ConnectionGetObjects>.AsNativePointer(ConnectionGetObjectsDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcConnection*, int, byte*, byte*, byte*, byte**, byte*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetObjectsDefault => &ConnectionGetObjectsDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode ConnectionGetObjectsDefaultImpl(CAdbcConnection* connection, int depth, byte* catalog, byte* db_schema, byte* table_name, byte** table_type, byte* column_name, CArrowArrayStream* stream, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.ConnectionGetObjects));
-        }
+            if (driver.ConnectionCancel == empty) { driver.ConnectionCancel = ConnectionCancelDefault; }
+            if (driver.ConnectionGetOption == empty) { driver.ConnectionGetOption = ConnectionGetOptionDefault; }
+            if (driver.ConnectionGetOptionBytes == empty) { driver.ConnectionGetOptionBytes = ConnectionGetOptionBytesDefault; }
+            if (driver.ConnectionGetOptionDouble == empty) { driver.ConnectionGetOptionDouble = ConnectionGetOptionDoubleDefault; }
+            if (driver.ConnectionGetOptionInt == empty) { driver.ConnectionGetOptionInt = ConnectionGetOptionIntDefault; }
+            if (driver.ConnectionGetStatistics == empty) { driver.ConnectionGetStatistics = ConnectionGetStatisticsDefault; }
+            if (driver.ConnectionGetStatisticNames == empty) { driver.ConnectionGetStatisticNames = ConnectionGetStatisticNamesDefault; }
+            if (driver.ConnectionSetOptionBytes == empty) { driver.ConnectionSetOptionBytes = ConnectionSetOptionBytesDefault; }
+            if (driver.ConnectionSetOptionDouble == empty) { driver.ConnectionSetOptionDouble = ConnectionSetOptionDoubleDefault; }
+            if (driver.ConnectionSetOptionInt == empty) { driver.ConnectionSetOptionInt = ConnectionSetOptionIntDefault; }
 
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr ConnectionGetTableSchemaDefault = NativeDelegate<ConnectionGetTableSchema>.AsNativePointer(ConnectionGetTableSchemaDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcConnection*, byte*, byte*, byte*, CArrowSchema*, CAdbcError*, AdbcStatusCode> ConnectionGetTableSchemaDefault => &ConnectionGetTableSchemaDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode ConnectionGetTableSchemaDefaultImpl(CAdbcConnection* connection, byte* catalog, byte* db_schema, byte* table_name, CArrowSchema* schema, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.ConnectionGetTableSchema));
-        }
-
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr ConnectionGetTableTypesDefault = NativeDelegate<ConnectionGetTableTypes>.AsNativePointer(ConnectionGetTableTypesDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcConnection*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetTableTypesDefault => &ConnectionGetTableTypesDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode ConnectionGetTableTypesDefaultImpl(CAdbcConnection* connection, CArrowArrayStream* stream, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.ConnectionGetTableTypes));
-        }
-
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr ConnectionReadPartitionDefault = NativeDelegate<ConnectionReadPartition>.AsNativePointer(ConnectionReadPartitionDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcConnection*, byte*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionReadPartitionDefault => &ConnectionReadPartitionDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode ConnectionReadPartitionDefaultImpl(CAdbcConnection* connection, byte* serialized_partition, int serialized_length, CArrowArrayStream* stream, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.ConnectionReadPartition));
-        }
-
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr ConnectionRollbackDefault = NativeDelegate<ConnectionRollback>.AsNativePointer(ConnectionRollbackDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionRollbackDefault => &ConnectionRollbackDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode ConnectionRollbackDefaultImpl(CAdbcConnection* connection, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.ConnectionRollback));
-        }
-
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr ConnectionSetOptionDefault = NativeDelegate<ConnectionSetOption>.AsNativePointer(ConnectionSetOptionDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcConnection*, byte*, byte*, CAdbcError*, AdbcStatusCode> ConnectionSetOptionDefault => &ConnectionSetOptionDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode ConnectionSetOptionDefaultImpl(CAdbcConnection* connection, byte* name, byte* value, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.ConnectionSetOption));
-        }
-
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr StatementExecutePartitionsDefault = NativeDelegate<StatementExecutePartitions>.AsNativePointer(StatementExecutePartitionsDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcPartitions*, long*, CAdbcError*, AdbcStatusCode> StatementExecutePartitionsDefault => &StatementExecutePartitionsDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode StatementExecutePartitionsDefaultImpl(CAdbcStatement* statement, CArrowSchema* schema, CAdbcPartitions* partitions, long* rows, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.StatementExecutePartitions));
-        }
-
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr StatementBindDefault = NativeDelegate<StatementBind>.AsNativePointer(StatementBindDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowArray*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementBindDefault => &StatementBindDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode StatementBindDefaultImpl(CAdbcStatement* statement, CArrowArray* array, CArrowSchema* schema, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.StatementBind));
-        }
-
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr StatementBindStreamDefault = NativeDelegate<StatementBindStream>.AsNativePointer(StatementBindStreamDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> StatementBindStreamDefault => &StatementBindStreamDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode StatementBindStreamDefaultImpl(CAdbcStatement* statement, CArrowArrayStream* stream, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.StatementBindStream));
-        }
-
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr StatementGetParameterSchemaDefault = NativeDelegate<StatementGetParameterSchema>.AsNativePointer(StatementGetParameterSchemaDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementGetParameterSchemaDefault => &StatementGetParameterSchemaDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode StatementGetParameterSchemaDefaultImpl(CAdbcStatement* statement, CArrowSchema* schema, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.StatementGetParameterSchema));
-        }
-
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr StatementPrepareDefault = NativeDelegate<StatementPrepare>.AsNativePointer(StatementPrepareDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementPrepareDefault => &StatementPrepareDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode StatementPrepareDefaultImpl(CAdbcStatement* statement, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.StatementPrepare));
-        }
-
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr StatementSetOptionDefault = NativeDelegate<StatementSetOption>.AsNativePointer(StatementSetOptionDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, byte*, CAdbcError*, AdbcStatusCode> StatementSetOptionDefault => &StatementSetOptionDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode StatementSetOptionDefaultImpl(CAdbcStatement* statement, byte* name, byte* value, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.StatementSetOption));
-        }
-
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr StatementSetSqlQueryDefault = NativeDelegate<StatementSetSqlQuery>.AsNativePointer(StatementSetSqlQueryDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, CAdbcError*, AdbcStatusCode> StatementSetSqlQueryDefault => &StatementSetSqlQueryDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode StatementSetSqlQueryDefaultImpl(CAdbcStatement* statement, byte* text, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.StatementSetSqlQuery));
-        }
-
-#if !NET5_0_OR_GREATER
-        private static unsafe IntPtr StatementSetSubstraitPlanDefault = NativeDelegate<StatementSetSubstraitPlan>.AsNativePointer(StatementSetSubstraitPlanDefaultImpl);
-#else
-        private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, int, CAdbcError*, AdbcStatusCode> StatementSetSubstraitPlanDefault => &StatementSetSubstraitPlanDefaultImpl;
-        [UnmanagedCallersOnly]
-#endif
-        private static unsafe AdbcStatusCode StatementSetSubstraitPlanDefaultImpl(CAdbcStatement* statement, byte* plan, int length, CAdbcError* error)
-        {
-            return NotImplemented(error, nameof(CAdbcDriver.StatementSetSubstraitPlan));
+            if (driver.StatementCancel == empty) { driver.StatementCancel = StatementCancelDefault; }
+            if (driver.StatementExecuteSchema == empty) { driver.StatementExecuteSchema = StatementExecuteSchemaDefault; }
+            if (driver.StatementGetOption == empty) { driver.StatementGetOption = StatementGetOptionDefault; }
+            if (driver.StatementGetOptionBytes == empty) { driver.StatementGetOptionBytes = StatementGetOptionBytesDefault; }
+            if (driver.StatementGetOptionDouble == empty) { driver.StatementGetOptionDouble = StatementGetOptionDoubleDefault; }
+            if (driver.StatementGetOptionInt == empty) { driver.StatementGetOptionInt = StatementGetOptionIntDefault; }
+            if (driver.StatementSetOptionBytes == empty) { driver.StatementSetOptionBytes = StatementSetOptionBytesDefault; }
+            if (driver.StatementSetOptionDouble == empty) { driver.StatementSetOptionDouble = StatementSetOptionDoubleDefault; }
+            if (driver.StatementSetOptionInt == empty) { driver.StatementSetOptionInt = StatementSetOptionIntDefault; }
         }
 
         private static unsafe AdbcStatusCode NotImplemented(CAdbcError* error, string name)
@@ -340,13 +197,15 @@ namespace Apache.Arrow.Adbc.C
         {
             private IntPtr _library;
             private CAdbcDriver _nativeDriver;
+            private int _version;
             private int _references;
             private bool _disposed;
 
-            public ImportedAdbcDriver(IntPtr library, CAdbcDriver nativeDriver)
+            public ImportedAdbcDriver(IntPtr library, CAdbcDriver nativeDriver, int version)
             {
                 _library = library;
                 _nativeDriver = nativeDriver;
+                _version = version;
                 _references = 1;
             }
 
@@ -360,6 +219,26 @@ namespace Apache.Arrow.Adbc.C
                 get
                 {
                     if (_disposed) { throw new ObjectDisposedException(nameof(ImportedAdbcDriver)); }
+                    return ref _nativeDriver;
+                }
+            }
+
+            public override int DriverVersion => _version;
+
+            internal ref CAdbcDriver Driver11
+            {
+                get
+                {
+                    if (_version < AdbcVersion.Version_1_1_0) { throw AdbcException.NotImplemented("This driver does not support ADBC 1.1.0"); }
+                    return ref Driver;
+                }
+            }
+
+            internal unsafe ref CAdbcDriver DriverUnsafe
+            {
+                get
+                {
+                    Debug.Assert(_references > 0);
                     return ref _nativeDriver;
                 }
             }
@@ -387,12 +266,7 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
-            /// <summary>
-            /// Opens a database
-            /// </summary>
-            /// <param name="parameters">
-            /// Parameters to use when calling DatabaseNew.
-            /// </param>
+            /// <inheritdoc />
             public unsafe override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
             {
                 if (parameters == null) throw new ArgumentNullException(nameof(parameters));
@@ -427,6 +301,33 @@ namespace Apache.Arrow.Adbc.C
                 }
 
                 return result;
+            }
+
+            /// <inheritdoc />
+            public unsafe override AdbcDatabase Open(IReadOnlyDictionary<string, object> parameters)
+            {
+                if (parameters == null) throw new ArgumentNullException(nameof(parameters));
+
+                CAdbcDatabase nativeDatabase = new CAdbcDatabase();
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(Driver.DatabaseNew, ref nativeDatabase);
+
+                    foreach (KeyValuePair<string, object> pair in parameters)
+                    {
+                        switch (pair.Value)
+                        {
+                            case int intValue:
+                            case long longValue:
+                                // TODO!
+                                break;
+                        }
+                    }
+
+                    caller.Call(Driver.DatabaseInit, ref nativeDatabase);
+                }
+
+                return new ImportedAdbcDatabase(this, nativeDatabase);
             }
 
             public unsafe override void Dispose()
@@ -541,7 +442,7 @@ namespace Apache.Arrow.Adbc.C
                         {
                             using (CallHelper caller = new CallHelper())
                             {
-                                caller.Call(_driver.Driver.DatabaseRelease, ref _nativeDatabase);
+                                caller.Call(_driver.DriverUnsafe.DatabaseRelease, ref _nativeDatabase);
                             }
                         }
                     }
@@ -595,7 +496,7 @@ namespace Apache.Arrow.Adbc.C
                 get => _autoCommit ?? throw AdbcException.NotImplemented("no value has been set for AutoCommit");
                 set
                 {
-                    SetOption(AdbcOptions.Autocommit, AdbcOptions.GetEnabled(value));
+                    SetOption(AdbcOptions.Connection.Autocommit, AdbcOptions.GetEnabled(value));
                     _autoCommit = value;
                 }
             }
@@ -605,7 +506,7 @@ namespace Apache.Arrow.Adbc.C
                 get => _isolationLevel ?? IsolationLevel.Default;
                 set
                 {
-                    SetOption(AdbcOptions.IsolationLevel, AdbcOptions.GetIsolationLevel(value));
+                    SetOption(AdbcOptions.Connection.IsolationLevel, AdbcOptions.GetIsolationLevel(value));
                     _isolationLevel = value;
                 }
             }
@@ -615,7 +516,7 @@ namespace Apache.Arrow.Adbc.C
                 get => _readOnly ?? throw AdbcException.NotImplemented("no value has been set for ReadOnly");
                 set
                 {
-                    SetOption(AdbcOptions.ReadOnly, AdbcOptions.GetEnabled(value));
+                    SetOption(AdbcOptions.Connection.ReadOnly, AdbcOptions.GetEnabled(value));
                     _readOnly = value;
                 }
             }
@@ -819,7 +720,7 @@ namespace Apache.Arrow.Adbc.C
                         {
                             using (CallHelper caller = new CallHelper())
                             {
-                                caller.Call(_driver.Driver.ConnectionRelease, ref _nativeConnection);
+                                caller.Call(_driver.DriverUnsafe.ConnectionRelease, ref _nativeConnection);
                             }
                         }
                     }
@@ -863,6 +764,15 @@ namespace Apache.Arrow.Adbc.C
                 {
                     if (_disposed) { throw new ObjectDisposedException(nameof(ImportedAdbcStatement)); }
                     return ref _driver.Driver;
+                }
+            }
+
+            private unsafe ref CAdbcDriver Driver11
+            {
+                get
+                {
+                    if (_disposed) { throw new ObjectDisposedException(nameof(ImportedAdbcStatement)); }
+                    return ref _driver.Driver11;
                 }
             }
 
@@ -956,6 +866,31 @@ namespace Apache.Arrow.Adbc.C
                             (statement, caller.CreateStream(), &rows, &caller._error));
 
                         return new QueryResult(rows, caller.ImportStream());
+                    }
+                }
+            }
+
+            public override unsafe Schema ExecuteSchema()
+            {
+                if (SqlQuery != null)
+                {
+                    // TODO: Consider moving this to the setter
+                    SetSqlQuery(SqlQuery);
+                }
+
+                using (CallHelper caller = new CallHelper())
+                {
+                    fixed (CAdbcStatement* statement = &_nativeStatement)
+                    {
+                        caller.TranslateCode(
+#if NET5_0_OR_GREATER
+                            Driver11.StatementExecuteSchema
+#else
+                            Marshal.GetDelegateForFunctionPointer<StatementExecuteSchema>(Driver11.StatementExecuteSchema)
+#endif
+                            (statement, caller.CreateSchema(), &caller._error));
+
+                        return caller.ImportSchema();
                     }
                 }
             }
@@ -1065,7 +1000,7 @@ namespace Apache.Arrow.Adbc.C
                         {
                             using (CallHelper caller = new CallHelper())
                             {
-                                caller.Call(_driver.Driver.StatementRelease, ref _nativeStatement);
+                                caller.Call(_driver.DriverUnsafe.StatementRelease, ref _nativeStatement);
                             }
                         }
                     }
@@ -1143,6 +1078,62 @@ namespace Apache.Arrow.Adbc.C
                 {
                     Marshal.FreeCoTaskMem(_s);
                     _s = IntPtr.Zero;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Assists with fetching values of arbitrary length
+        /// </summary>
+        private struct GetBufferHelper : IDisposable
+        {
+            const int DefaultLength = 256;
+
+            private IntPtr _buffer;
+            public IntPtr Length;
+
+            public GetBufferHelper()
+            {
+                Length = (IntPtr)DefaultLength;
+                _buffer = Marshal.AllocHGlobal(Length);
+            }
+
+            public bool RequiresRetry()
+            {
+                if (checked((uint)Length) <= DefaultLength)
+                {
+                    return false;
+                }
+
+                Marshal.FreeHGlobal(_buffer);
+                _buffer = IntPtr.Zero;
+                _buffer = Marshal.AllocHGlobal(Length);
+                return true;
+            }
+
+            public unsafe string AsString()
+            {
+                return Encoding.UTF8.GetString((byte*)_buffer, checked((int)Length));
+            }
+
+            public unsafe byte[] AsBytes()
+            {
+                byte[] result = new byte[checked((int)Length)];
+                fixed (byte* ptr = result)
+                {
+                    Buffer.MemoryCopy((byte*)_buffer, ptr, result.Length, result.Length);
+                }
+                return result;
+            }
+
+            public static unsafe implicit operator byte*(GetBufferHelper s) { return (byte*)s._buffer; }
+
+            public void Dispose()
+            {
+                if (_buffer != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(_buffer);
+                    _buffer = IntPtr.Zero;
                 }
             }
         }
@@ -1267,19 +1258,9 @@ namespace Apache.Arrow.Adbc.C
 
 #if NET5_0_OR_GREATER
             public unsafe void Call(delegate* unmanaged<CAdbcDatabase*, byte*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDatabase nativeDatabase, string key, string? value)
-            {
-                fixed (CAdbcDatabase* db = &nativeDatabase)
-                fixed (CAdbcError* e = &_error)
-                {
-                    using (Utf8Helper utf8Key = new Utf8Helper(key))
-                    using (Utf8Helper utf8Value = new Utf8Helper(value))
-                    {
-                        TranslateCode(fn(db, utf8Key, utf8Value, e));
-                    }
-                }
-            }
 #else
             public unsafe void Call(IntPtr fn, ref CAdbcDatabase nativeDatabase, string key, string? value)
+#endif
             {
                 fixed (CAdbcDatabase* db = &nativeDatabase)
                 fixed (CAdbcError* e = &_error)
@@ -1287,11 +1268,45 @@ namespace Apache.Arrow.Adbc.C
                     using (Utf8Helper utf8Key = new Utf8Helper(key))
                     using (Utf8Helper utf8Value = new Utf8Helper(value))
                     {
+#if NET5_0_OR_GREATER
+                        TranslateCode(fn(db, utf8Key, utf8Value, e));
+#else
                         TranslateCode(Marshal.GetDelegateForFunctionPointer<DatabaseSetOption>(fn)(db, utf8Key, utf8Value, e));
+#endif
                     }
                 }
             }
+
+#if NET5_0_OR_GREATER
+            public unsafe string Call(delegate* unmanaged<CAdbcDatabase*, byte*, byte*, nint*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDatabase nativeDatabase, string key)
+#else
+            public unsafe string Call(IntPtr fn, ref CAdbcDatabase nativeDatabase, string key)
 #endif
+            {
+                fixed (CAdbcDatabase* db = &nativeDatabase)
+                fixed (CAdbcError* e = &_error)
+                {
+                    using (Utf8Helper utf8Key = new Utf8Helper(key))
+                    using (GetBufferHelper value = new GetBufferHelper())
+                    {
+#if NET5_0_OR_GREATER
+                        TranslateCode(fn(db, utf8Key, value, &value.Length, e));
+#else
+                        TranslateCode(Marshal.GetDelegateForFunctionPointer<DatabaseGetOption>(fn)(db, utf8Key, value, &value.Length, e));
+#endif
+                        if (value.RequiresRetry())
+                        {
+#if NET5_0_OR_GREATER
+                            TranslateCode(fn(db, utf8Key, value, &value.Length, e));
+#else
+                            TranslateCode(Marshal.GetDelegateForFunctionPointer<DatabaseGetOption>(fn)(db, utf8Key, value, &value.Length, e));
+#endif
+                        }
+
+                        return value.AsString();
+                    }
+                }
+            }
 
 #if NET5_0_OR_GREATER
             public unsafe void Call(delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeConnection)

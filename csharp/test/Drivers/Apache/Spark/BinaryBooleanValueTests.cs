@@ -52,9 +52,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestBinaryData(byte[] value)
         {
             string columnName = "BINARYTYPE";
-            using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, "BINARY"));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "BINARY"));
             string formattedValue = $"X'{BitConverter.ToString(value).Replace("-", "")}'";
-            await ValidateInsertSelectDeleteSingleValue(
+            await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 value,
@@ -71,9 +71,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestBooleanData(bool? value)
         {
             string columnName = "BOOLEANTYPE";
-            using TemporaryTable table = NewTemporaryTable(Statement, string.Format("{0} {1}", columnName, "BOOLEAN"));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "BOOLEAN"));
             string? formattedValue =  value == null ? null : QuoteValue($"{value?.ToString(CultureInfo.InvariantCulture)}");
-            await ValidateInsertSelectDeleteSingleValue(
+            await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 value,
@@ -102,7 +102,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string selectStatement = $"SELECT {projectionClause};";
             // Note: by default, this returns as String type, not NULL type.
-            await SelectAndValidateValues(selectStatement, null, 1);
+            await SelectAndValidateValuesAsync(selectStatement, null, 1);
         }
     }
 }

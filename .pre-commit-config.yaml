@@ -40,7 +40,7 @@ repos:
     - id: trailing-whitespace
       exclude: "^r/.*?/_snaps/.*?.md$"
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: "v18.1.4"
+    rev: "v18.1.5"
     hooks:
       - id: clang-format
         types_or: [c, c++]
@@ -59,7 +59,7 @@ repos:
         - "--linelength=90"
         - "--verbose=2"
   - repo: https://github.com/golangci/golangci-lint
-    rev: v1.57.2
+    rev: v1.58.2
     hooks:
     - id: golangci-lint
       entry: bash -c 'cd go/adbc && golangci-lint run --fix --timeout 5m'

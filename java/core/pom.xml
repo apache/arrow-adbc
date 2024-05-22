@@ -14,7 +14,7 @@
   <parent>
     <artifactId>arrow-adbc-java-root</artifactId>
     <groupId>org.apache.arrow.adbc</groupId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>0.13.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>adbc-core</artifactId>

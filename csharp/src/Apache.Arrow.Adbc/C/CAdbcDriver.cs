@@ -33,6 +33,8 @@ namespace Apache.Arrow.Adbc.C
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct CAdbcDriver
     {
+        #region ADBC API Revision 1.0.0
+
         /// <summary>
         /// Opaque driver-defined state.
         /// This field is NULL if the driver is unintialized/freed (but
@@ -87,7 +89,7 @@ namespace Apache.Arrow.Adbc.C
 #endif
 
         /// <summary>
-        /// Set a byte* option.
+        /// Set a byte* option on the database.
         ///
         /// Options may be set before AdbcDatabaseInit.  Some drivers may
         /// support setting options after initialization as well.
@@ -239,7 +241,7 @@ namespace Apache.Arrow.Adbc.C
 #endif
 
         /// <summary>
-        /// Set a byte* option.
+        /// Set a byte* option on the connection.
         ///
         /// Options may be set before AdbcConnectionInit.  Some  drivers may
         /// support setting options after initialization as well.
@@ -415,5 +417,293 @@ namespace Apache.Arrow.Adbc.C
 #else
         internal IntPtr StatementSetSubstraitPlan;
 #endif
+        #endregion
+
+        #region ADBC API Revision 1.1.0
+
+        /// <summary>
+        /// Get the number of metadata values available in an error.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcError*, int> ErrorGetDetailCount;
+#else
+        internal IntPtr ErrorGetDetailCount;
+#endif
+
+        /// <summary>
+        /// Get a metadata value in an error by index.
+        /// </summary>
+        /// <remarks>
+        /// If an index is invalid, returns an AdbcErrorDetail initialized with null/0 fields.
+        /// </remarks>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcError*, int, CAdbcErrorDetail> ErrorGetDetail;
+#else
+        internal IntPtr ErrorGetDetail;
+#endif
+
+        /// <summary>
+        /// Get an ADBC error from an ArrowArrayStream created by a driver.
+        /// </summary>
+        /// <remarks>
+        /// This allows retrieving error details and other metadata that would normally be
+        /// suppressed by the Arrow C Stream Interface.
+        ///
+        /// The caller MUST NOT release the error; it is managed by the release callback
+        /// in the stream itself.
+        /// </remarks>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CArrowArrayStream*, AdbcStatusCode*, CAdbcError*> ErrorFromArrayStream;
+#else
+        internal IntPtr ErrorFromArrayStream;
+#endif
+
+        /// <summary>
+        /// Get a string option of the database.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcDatabase*, byte*, byte*, nint*, CAdbcError*, AdbcStatusCode> DatabaseGetOption;
+#else
+        internal IntPtr DatabaseGetOption;
+#endif
+
+        /// <summary>
+        /// Get a byte* option of the database.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcDatabase*, byte*, byte*, nint*, CAdbcError*, AdbcStatusCode> DatabaseGetOptionBytes;
+#else
+        internal IntPtr DatabaseGetOptionBytes;
+#endif
+
+        /// <summary>
+        /// Get a double option of the database.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcDatabase*, byte*, double*, CAdbcError*, AdbcStatusCode> DatabaseGetOptionDouble;
+#else
+        internal IntPtr DatabaseGetOptionDouble;
+#endif
+
+        /// <summary>
+        /// Get an integer option of the database.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcDatabase*, byte*, long*, CAdbcError*, AdbcStatusCode> DatabaseGetOptionInt;
+#else
+        internal IntPtr DatabaseGetOptionInt;
+#endif
+
+        /// <summary>
+        /// Set a byte* option of the database.
+        ///
+        /// Options may be set before AdbcDatabaseInit.  Some drivers may support setting options after initialization as well.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcDatabase*, byte*, byte*, nint, CAdbcError*, AdbcStatusCode> DatabaseSetOptionBytes;
+#else
+        internal IntPtr DatabaseSetOptionBytes;
+#endif
+
+        /// <summary>
+        /// Set a double option of the database.
+        ///
+        /// Options may be set before AdbcDatabaseInit.  Some drivers may support setting options after initialization as well.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcDatabase*, byte*, double, CAdbcError*, AdbcStatusCode> DatabaseSetOptionDouble;
+#else
+        internal IntPtr DatabaseSetOptionDouble;
+#endif
+
+        /// <summary>
+        /// Set an integer option of the database.
+        ///
+        /// Options may be set before AdbcDatabaseInit.  Some drivers may support setting options after initialization as well.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcDatabase*, byte*, long, CAdbcError*, AdbcStatusCode> DatabaseSetOptionInt;
+#else
+        internal IntPtr DatabaseSetOptionInt;
+#endif
+
+        /// <summary>
+        /// Cancel the in-progress operation on a connection.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionCancel;
+#else
+        internal IntPtr ConnectionCancel;
+#endif
+
+        /// <summary>
+        /// Get a string option of the connection.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, byte*, byte*, nint*, CAdbcError*, AdbcStatusCode> ConnectionGetOption;
+#else
+        internal IntPtr ConnectionGetOption;
+#endif
+
+        /// <summary>
+        /// Get a byte* option of the connection.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, byte*, byte*, nint*, CAdbcError*, AdbcStatusCode> ConnectionGetOptionBytes;
+#else
+        internal IntPtr ConnectionGetOptionBytes;
+#endif
+
+        /// <summary>
+        /// Get a double option of the connection.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, byte*, double*, CAdbcError*, AdbcStatusCode> ConnectionGetOptionDouble;
+#else
+        internal IntPtr ConnectionGetOptionDouble;
+#endif
+
+        /// <summary>
+        /// Get an integer option of the connection.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, byte*, long*, CAdbcError*, AdbcStatusCode> ConnectionGetOptionInt;
+#else
+        internal IntPtr ConnectionGetOptionInt;
+#endif
+
+        /// <summary>
+        /// Get statistics about the data distribution of table(s). The result is an Arrow dataset.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, byte*, byte*, byte*, byte, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetStatistics;
+#else
+        internal IntPtr ConnectionGetStatistics;
+#endif
+
+        /// <summary>
+        /// Get the names of statistics specific to this driver. The result is an Arrow dataset.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetStatisticNames;
+#else
+        internal IntPtr ConnectionGetStatisticNames;
+#endif
+
+        /// <summary>
+        /// Set a byte* option on a connection.
+        ///
+        /// Options may be set before AdbcConnectionInit.  Some drivers may support setting options after initialization as well.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, byte*, byte*, nint, CAdbcError*, AdbcStatusCode> ConnectionSetOptionBytes;
+#else
+        internal IntPtr ConnectionSetOptionBytes;
+#endif
+
+        /// <summary>
+        /// Set a double option on a connection.
+        ///
+        /// Options may be set before AdbcConnectionInit.  Some drivers may support setting options after initialization as well.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, byte*, double, CAdbcError*, AdbcStatusCode> ConnectionSetOptionDouble;
+#else
+        internal IntPtr ConnectionSetOptionDouble;
+#endif
+
+        /// <summary>
+        /// Set an integer option on a connection.
+        ///
+        /// Options may be set before AdbcConnectionInit.  Some drivers may support setting options after initialization as well.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, byte*, long, CAdbcError*, AdbcStatusCode> ConnectionSetOptionInt;
+#else
+        internal IntPtr ConnectionSetOptionInt;
+#endif
+
+        /// <summary>
+        /// Cancel execution of an in-progress query.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementCancel;
+#else
+        internal IntPtr StatementCancel;
+#endif
+
+        /// <summary>
+        /// Get the schema of the result set of a query without executing it.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementExecuteSchema;
+#else
+        internal IntPtr StatementExecuteSchema;
+#endif
+
+        /// <summary>
+        /// Get a string option of the statement.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, byte*, byte*, nint*, CAdbcError*, AdbcStatusCode> StatementGetOption;
+#else
+        internal IntPtr StatementGetOption;
+#endif
+
+        /// <summary>
+        /// Get a byte* option of the statement.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, byte*, byte*, nint*, CAdbcError*, AdbcStatusCode> StatementGetOptionBytes;
+#else
+        internal IntPtr StatementGetOptionBytes;
+#endif
+
+        /// <summary>
+        /// Get a double option of the statement.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, byte*, double*, CAdbcError*, AdbcStatusCode> StatementGetOptionDouble;
+#else
+        internal IntPtr StatementGetOptionDouble;
+#endif
+
+        /// <summary>
+        /// Get an integer option of the statement.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, byte*, long*, CAdbcError*, AdbcStatusCode> StatementGetOptionInt;
+#else
+        internal IntPtr StatementGetOptionInt;
+#endif
+
+        /// <summary>
+        /// Set a byte* option on a statement.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, byte*, byte*, nint, CAdbcError*, AdbcStatusCode> StatementSetOptionBytes;
+#else
+        internal IntPtr StatementSetOptionBytes;
+#endif
+
+        /// <summary>
+        /// Set a double option on a statement.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, byte*, double, CAdbcError*, AdbcStatusCode> StatementSetOptionDouble;
+#else
+        internal IntPtr StatementSetOptionDouble;
+#endif
+
+        /// <summary>
+        /// Set an integer option on a statement.
+        /// </summary>
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, byte*, long, CAdbcError*, AdbcStatusCode> StatementSetOptionInt;
+#else
+        internal IntPtr StatementSetOptionInt;
+#endif
+
+        #endregion
     }
 }

@@ -1,13 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
-    <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Net.Http.WinHttpHandler" Version="7.0.0" Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'" />
-    <PackageReference Include="Apache.Arrow.Flight" Version="15.0.2" />
-</ItemGroup>
+    <PackageReference Include="Apache.Arrow.Flight" Version="16.1.0" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
-</ItemGroup>
+  </ItemGroup>
 </Project>

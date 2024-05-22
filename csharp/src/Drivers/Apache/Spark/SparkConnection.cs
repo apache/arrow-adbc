@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -37,19 +38,25 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     public class SparkConnection : HiveServer2Connection
     {
-        const string userAgent = "MicrosoftSparkODBCDriver/2.7.6.1014";
+        const string UserAgent = "MicrosoftSparkODBCDriver/2.7.6.1014";
 
-        readonly AdbcInfoCode[] infoSupportedCodes = new [] {
+        readonly AdbcInfoCode[] infoSupportedCodes = new[] {
             AdbcInfoCode.DriverName,
             AdbcInfoCode.DriverVersion,
             AdbcInfoCode.DriverArrowVersion,
-            AdbcInfoCode.VendorName
+            AdbcInfoCode.VendorName,
+            AdbcInfoCode.VendorSql,
+            AdbcInfoCode.VendorVersion,
         };
 
-        const string infoDriverName = "ADBC Spark Driver";
-        const string infoDriverVersion = "1.0.0";
-        const string infoVendorName = "Spark";
-        const string infoDriverArrowVersion = "1.0.0";
+        const string ProductVersionDefault = "1.0.0";
+        const string InfoDriverName = "ADBC Spark Driver";
+        const string InfoDriverArrowVersion = "1.0.0";
+        const bool InfoVendorSql = true;
+        const int DecimalPrecisionDefault = 10;
+        const int DecimalScaleDefault = 0;
+
+        private readonly Lazy<string> _productVersion;
 
         internal static TSparkGetDirectResults sparkGetDirectResults = new TSparkGetDirectResults(1000);
 
@@ -81,9 +88,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal SparkConnection(IReadOnlyDictionary<string, string> properties)
             : base(properties)
         {
+            _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
         }
 
-        protected override TProtocol CreateProtocol()
+        protected string ProductVersion => _productVersion.Value;
+
+        protected override async ValueTask<TProtocol> CreateProtocolAsync()
         {
             Trace.TraceError($"create protocol with {properties.Count} properties.");
 
@@ -101,12 +111,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             else
                 token = properties["password"];
 
-            string uri = "https://" + hostName + "/" + path;
-
             HttpClient httpClient = new HttpClient();
-            httpClient.BaseAddress = new Uri(uri);
+            httpClient.BaseAddress = new UriBuilder(Uri.UriSchemeHttps, hostName, -1, path).Uri;
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
             httpClient.DefaultRequestHeaders.AcceptEncoding.Clear();
             httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
@@ -116,7 +124,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             ThriftHttpTransport transport = new ThriftHttpTransport(httpClient, config);
             // can switch to the one below if want to use the experimental one with IPeekableTransport
             // ThriftHttpTransport transport = new ThriftHttpTransport(httpClient, config);
-            transport.OpenAsync(CancellationToken.None).Wait();
+            await transport.OpenAsync(CancellationToken.None);
             return new TBinaryProtocol(transport);
         }
 
@@ -134,26 +142,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return new SparkStatement(this);
         }
 
-        public override void Dispose()
-        {
-            /*
-            if (this.client != null)
-            {
-                TCloseSessionReq r6 = new TCloseSessionReq(this.sessionHandle);
-                this.client.CloseSession(r6).Wait();
-
-                this.transport.Close();
-                this.client.Dispose();
-
-                this.transport = null;
-                this.client = null;
-            }
-            */
-        }
-
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
             const int strValTypeID = 0;
+            const int boolValTypeId = 1;
 
             UnionType infoUnionType = new UnionType(
                 new Field[]
@@ -195,8 +187,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             ArrowBuffer.Builder<byte> typeBuilder = new ArrowBuffer.Builder<byte>();
             ArrowBuffer.Builder<int> offsetBuilder = new ArrowBuffer.Builder<int>();
             StringArray.Builder stringInfoBuilder = new StringArray.Builder();
+            BooleanArray.Builder booleanInfoBuilder = new BooleanArray.Builder();
+
             int nullCount = 0;
             int arrayLength = codes.Count;
+            int offset = 0;
 
             foreach (AdbcInfoCode code in codes)
             {
@@ -205,32 +200,53 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     case AdbcInfoCode.DriverName:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(infoDriverName);
+                        offsetBuilder.Append(offset++);
+                        stringInfoBuilder.Append(InfoDriverName);
+                        booleanInfoBuilder.AppendNull();
                         break;
                     case AdbcInfoCode.DriverVersion:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(infoDriverVersion);
+                        offsetBuilder.Append(offset++);
+                        stringInfoBuilder.Append(ProductVersion);
+                        booleanInfoBuilder.AppendNull();
                         break;
                     case AdbcInfoCode.DriverArrowVersion:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(infoDriverArrowVersion);
+                        offsetBuilder.Append(offset++);
+                        stringInfoBuilder.Append(InfoDriverArrowVersion);
+                        booleanInfoBuilder.AppendNull();
                         break;
                     case AdbcInfoCode.VendorName:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(infoVendorName);
+                        offsetBuilder.Append(offset++);
+                        string vendorName = VendorName;
+                        stringInfoBuilder.Append(vendorName);
+                        booleanInfoBuilder.AppendNull();
+                        break;
+                    case AdbcInfoCode.VendorVersion:
+                        infoNameBuilder.Append((UInt32)code);
+                        typeBuilder.Append(strValTypeID);
+                        offsetBuilder.Append(offset++);
+                        string? vendorVersion = VendorVersion;
+                        stringInfoBuilder.Append(vendorVersion);
+                        booleanInfoBuilder.AppendNull();
+                        break;
+                    case AdbcInfoCode.VendorSql:
+                        infoNameBuilder.Append((UInt32)code);
+                        typeBuilder.Append(boolValTypeId);
+                        offsetBuilder.Append(offset++);
+                        stringInfoBuilder.AppendNull();
+                        booleanInfoBuilder.Append(InfoVendorSql);
                         break;
                     default:
                         infoNameBuilder.Append((UInt32)code);
                         typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
+                        offsetBuilder.Append(offset++);
                         stringInfoBuilder.AppendNull();
+                        booleanInfoBuilder.AppendNull();
                         nullCount++;
                         break;
                 }
@@ -248,7 +264,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             IArrowArray[] childrenArrays = new IArrowArray[]
             {
                 stringInfoBuilder.Build(),
-                new BooleanArray.Builder().Build(),
+                booleanInfoBuilder.Build(),
                 new Int64Array.Builder().Build(),
                 new Int32Array.Builder().Build(),
                 new ListArray.Builder(StringType.Default).Build(),
@@ -306,6 +322,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 string columnName = columns[3].StringVal.Values.GetString(i);
                 int? columnType = columns[4].I32Val.Values.GetValue(i);
                 string typeName = columns[5].StringVal.Values.GetString(i);
+                // Note: the following two columns do not seem to be set correctly for DECIMAL types.
+                //int? columnSize = columns[6].I32Val.Values.GetValue(i);
+                //int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
                 bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
                 IArrowType dataType = SparkConnection.GetArrowType((ColumnTypeId)columnType!.Value, typeName);
                 fields[i] = new Field(columnName, dataType, nullable);
@@ -500,8 +519,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case ColumnTypeId.CHAR_TYPE:
                     return StringType.Default;
                 case ColumnTypeId.DECIMAL_TYPE:
-                    // TODO: Parse typeName for precision and scale, because not available in other metadata.
-                    return new Decimal128Type(38, 38);
+                    // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
+                    // are not returned in the Thrift call to GetColumns
+                    return SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
                 case ColumnTypeId.ARRAY_TYPE:
                 case ColumnTypeId.MAP_TYPE:
                 case ColumnTypeId.STRUCT_TYPE:
@@ -539,7 +559,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 }
 
             }
-
 
             IReadOnlyList<Field> schema = StandardSchemas.DbSchemaSchema;
             IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
@@ -707,9 +726,71 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             return builder.ToString();
         }
+
+        /// <summary>
+        /// Provides a parser for SQL DECIMAL type definitions.
+        /// </summary>
+        private static class SqlDecimalTypeParser
+        {
+            // Pattern is based on this definition
+            // https://docs.databricks.com/en/sql/language-manual/data-types/decimal-type.html#syntax
+            // { DECIMAL | DEC | NUMERIC } [ (  p [ , s ] ) ]
+            // p: Optional maximum precision (total number of digits) of the number between 1 and 38. The default is 10.
+            // s: Optional scale of the number between 0 and p. The number of digits to the right of the decimal point. The default is 0.
+            private static readonly Regex s_expression = new(
+                @"^\s*(?<typeName>((DECIMAL)|(DEC)|(NUMERIC)))(\s*\(\s*((?<precision>\d{1,2})(\s*\,\s*(?<scale>\d{1,2}))?)\s*\))?\s*$",
+                RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+            /// <summary>
+            /// Parses the input string for a valid SQL DECIMAL type definition and returns a new <see cref="Decimal128Type"/> or returns the <c>defaultValue</c>, if invalid.
+            /// </summary>
+            /// <param name="input">The SQL type defintion string to parse.</param>
+            /// <param name="defaultValue">If input string is an invalid SQL DECIMAL type definition, this value is returned instead.</param>
+            /// <returns>If input string is a valid SQL DECIMAL type definition, it returns a new <see cref="Decimal128Type"/>; otherwise <c>defaultValue</c>.</returns>
+            public static Decimal128Type ParseOrDefault(string input, Decimal128Type defaultValue)
+            {
+                return TryParse(input, out Decimal128Type? candidate) ? candidate! : defaultValue;
+            }
+
+            /// <summary>
+            /// Tries to parse the input string for a valid SQL DECIMAL type definition.
+            /// </summary>
+            /// <param name="input">The SQL type defintion string to parse.</param>
+            /// <param name="value">If successful, an new <see cref="Decimal128Type"/> with the precision and scale set; otherwise <c>null</c>.</param>
+            /// <returns>True if it can successfully parse the type definition input string; otherwise false.</returns>
+            private static bool TryParse(string input, out Decimal128Type? value)
+            {
+                // Ensure defaults are set, in case not provided in precision/scale clause.
+                int precision = DecimalPrecisionDefault;
+                int scale = DecimalScaleDefault;
+
+                Match match = s_expression.Match(input);
+                if (!match.Success)
+                {
+                    value = null;
+                    return false;
+                }
+
+                GroupCollection groups = match.Groups;
+                Group precisionGroup = groups["precision"];
+                Group scaleGroup = groups["scale"];
+
+                precision = precisionGroup.Success && int.TryParse(precisionGroup.Value, out int candidatePrecision) ? candidatePrecision : precision;
+                scale = scaleGroup.Success && int.TryParse(scaleGroup.Value, out int candidateScale) ? candidateScale : scale;
+
+                value = new Decimal128Type(precision, scale);
+                return true;
+            }
+        }
+
+        private string GetProductVersion()
+        {
+            FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+            return fileVersionInfo.ProductVersion ?? ProductVersionDefault;
+        }
     }
 
-    public struct TableInfoPair
+    internal struct TableInfoPair
     {
         public string Type { get; set; }
 
