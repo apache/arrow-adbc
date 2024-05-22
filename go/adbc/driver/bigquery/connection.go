@@ -381,21 +381,21 @@ var (
 func sanitizeDataset(value string) (string, error) {
 	if value == "" {
 		return value, nil
-	} else {
-		if datasetRegex.MatchString(value) {
-			if len(value) > 1024 {
-				return "", adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  "Dataset name exceeds 1024 characters",
-				}
-			}
-			return value, nil
-		} else {
+	}
+
+	if datasetRegex.MatchString(value) {
+		if len(value) > 1024 {
 			return "", adbc.Error{
 				Code: adbc.StatusInvalidArgument,
-				Msg:  fmt.Sprintf("invalid characters in value `%s`", value),
+				Msg:  "Dataset name exceeds 1024 characters",
 			}
 		}
+		return value, nil
+	}
+
+	return "", adbc.Error{
+		Code: adbc.StatusInvalidArgument,
+		Msg:  fmt.Sprintf("invalid characters in value `%s`", value),
 	}
 }
 
@@ -410,12 +410,11 @@ func buildSchemaField(name string, typeString string) (arrow.Field, error) {
 		}
 	}
 
-	if index == -1 {
-		return buildField(name, typeString, typeString, index)
-	} else {
-		dataType := typeString[:index]
-		return buildField(name, typeString, dataType, index)
+	dataType := typeString
+	if index != -1 {
+		dataType = dataType[:index]
 	}
+	return buildField(name, typeString, dataType, index)
 }
 
 func buildField(name, typeString, dataType string, index int) (arrow.Field, error) {
@@ -568,22 +567,24 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 			Value: tableName,
 		},
 	}
-	reader, _, err := newRecordReader(ctx, query, c.Alloc)
+	// pass `nil` to `boundParameter` because we don't need to read from any `array.Record` --
+	// it's already set in `query`
+	reader, _, err := newRecordReader(ctx, query, nil, OptionValueQueryParameterModeNamed, c.Alloc)
 	if err != nil {
 		return nil, err
 	}
+	defer reader.Release()
 
 	fields := make([]arrow.Field, 0)
 	var columns map[string]int = nil
 
+	columns = make(map[string]int)
+	for i, f := range reader.Schema().Fields() {
+		columns[strings.ToUpper(f.Name)] = i
+	}
+
 	for reader.Next() && ctx.Err() == nil {
 		rec := reader.Record()
-		if columns == nil {
-			columns = make(map[string]int)
-			for i, f := range reader.Schema().Fields() {
-				columns[strings.ToUpper(f.Name)] = i
-			}
-		}
 
 		numRows := int(rec.NumRows())
 		val, ok := columns["COLUMN_NAME"]
@@ -639,10 +640,6 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 			field.Metadata = arrow.MetadataFrom(metadata)
 			fields = append(fields, field)
 		}
-		fieldName.Release()
-		fieldNullable.Release()
-		fieldType.Release()
-		rec.Release()
 	}
 
 	schema := arrow.NewSchema(fields, nil)

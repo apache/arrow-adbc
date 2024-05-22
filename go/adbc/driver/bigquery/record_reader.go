@@ -19,15 +19,14 @@ package bigquery
 
 import (
 	"context"
+	"github.com/apache/arrow/go/v17/arrow/array"
 	"sync/atomic"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v17/arrow"
-	"github.com/apache/arrow/go/v17/arrow/array"
 	"github.com/apache/arrow/go/v17/arrow/ipc"
 	"github.com/apache/arrow/go/v17/arrow/memory"
-	"golang.org/x/sync/errgroup"
 )
 
 type reader struct {
@@ -51,9 +50,7 @@ func checkContext(ctx context.Context, maybeErr error) error {
 	return ctx.Err()
 }
 
-// kicks off a goroutine for each endpoint and returns a reader which
-// gathers all of the records as they come in.
-func newRecordReader(ctx context.Context, query *bigquery.Query, alloc memory.Allocator) (rdr array.RecordReader, totalRows int64, err error) {
+func runQuery(ctx context.Context, query *bigquery.Query) (bigquery.ArrowIterator, int64, error) {
 	job, err := query.Run(ctx)
 	if err != nil {
 		return nil, -1, err
@@ -62,14 +59,50 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, alloc memory.Al
 	if err != nil {
 		return nil, -1, err
 	}
-	totalRows = int64(iter.TotalRows)
 	arrowIterator, err := iter.ArrowIterator()
+	if err != nil {
+		return nil, -1, err
+	}
+	totalRows := int64(iter.TotalRows)
+	return arrowIterator, totalRows, nil
+}
+
+func ipcReaderFromArrowIterator(arrowIterator bigquery.ArrowIterator, alloc memory.Allocator) (*ipc.Reader, error) {
+	arrowItReader := bigquery.NewArrowIteratorReader(arrowIterator)
+	rdr, err := ipc.NewReader(arrowItReader, ipc.WithAllocator(alloc))
+	if err != nil {
+		return nil, err
+	}
+	return rdr, nil
+}
+
+func getQueryParameter(values arrow.Record, row int, parameterMode string) ([]bigquery.QueryParameter, error) {
+	parameters := make([]bigquery.QueryParameter, values.NumCols())
+	includeName := parameterMode == OptionValueQueryParameterModeNamed
+	for i, v := range values.Columns() {
+		pi, err := arrowValueToQueryParameterValue(v, row)
+		if err != nil {
+			return nil, err
+		}
+		parameters[i] = pi
+		if includeName {
+			parameters[i].Name = values.ColumnName(i)
+		}
+	}
+	return parameters, nil
+}
+
+func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allocator) (bigqueryRdr *reader, totalRows int64, err error) {
+	arrowIterator, totalRows, err := runQuery(ctx, query)
+	if err != nil {
+		return nil, -1, err
+	}
+	rdr, err := ipcReaderFromArrowIterator(arrowIterator, alloc)
 	if err != nil {
 		return nil, -1, err
 	}
 
 	ch := make(chan arrow.Record, 4096)
-	group, ctx := errgroup.WithContext(ctx)
 	ctx, cancelFn := context.WithCancel(ctx)
 
 	defer func() {
@@ -79,39 +112,93 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, alloc memory.Al
 		}
 	}()
 
-	reader := &reader{
+	bigqueryRdr = &reader{
 		refCount: 1,
 		ch:       ch,
 		err:      nil,
 		cancelFn: cancelFn,
-		schema:   nil,
+		schema:   rdr.Schema(),
 	}
 
-	group.Go(func() error {
-		arrowItReader := bigquery.NewArrowIteratorReader(arrowIterator)
-		rdr, err := ipc.NewReader(arrowItReader, ipc.WithAllocator(alloc))
-		if err != nil {
-			return err
-		}
-		reader.schema = rdr.Schema()
-
+	go func() {
 		defer rdr.Release()
 		for rdr.Next() && ctx.Err() == nil {
 			rec := rdr.Record()
 			rec.Retain()
 			ch <- rec
 		}
-		if err := checkContext(ctx, rdr.Err()); err != nil {
-			return err
-		}
-		return nil
-	})
 
-	go func() {
-		reader.err = group.Wait()
-		close(ch)
+		err = checkContext(ctx, rdr.Err())
+		defer close(ch)
 	}()
-	return reader, totalRows, nil
+
+	return bigqueryRdr, totalRows, nil
+}
+
+// kicks off a goroutine for each endpoint and returns a reader which
+// gathers all of the records as they come in.
+func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters array.RecordReader, parameterMode string, alloc memory.Allocator) (bigqueryRdr *reader, totalRows int64, err error) {
+	if boundParameters == nil {
+		return runPlainQuery(ctx, query, alloc)
+	} else {
+		ch := make(chan arrow.Record, 4096)
+		ctx, cancelFn := context.WithCancel(ctx)
+
+		defer func() {
+			if err != nil {
+				close(ch)
+				cancelFn()
+			}
+		}()
+
+		bigqueryRdr = &reader{
+			refCount: 1,
+			ch:       ch,
+			err:      nil,
+			cancelFn: cancelFn,
+			schema:   nil,
+		}
+
+		go func() {
+			for boundParameters.Next() {
+				values := boundParameters.Record()
+				for i := 0; i < int(values.NumRows()); i++ {
+					parameters, err := getQueryParameter(values, i, parameterMode)
+					if err != nil {
+						return
+					}
+					if parameters != nil {
+						query.QueryConfig.Parameters = parameters
+					}
+
+					arrowIterator, _, err := runQuery(ctx, query)
+					if err != nil {
+						return
+					}
+					rdr, err := ipcReaderFromArrowIterator(arrowIterator, alloc)
+					if err != nil {
+						return
+					}
+
+					// todo: possible race condition
+					bigqueryRdr.schema = rdr.Schema()
+
+					for rdr.Next() && ctx.Err() == nil {
+						rec := rdr.Record()
+						rec.Retain()
+						ch <- rec
+					}
+					err = checkContext(ctx, rdr.Err())
+					if err != nil {
+						return
+					}
+				}
+			}
+			defer close(ch)
+		}()
+
+		return bigqueryRdr, totalRows, nil
+	}
 }
 
 func (r *reader) Retain() {

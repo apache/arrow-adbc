@@ -247,26 +247,49 @@ func (st *statement) SetSqlQuery(query string) error {
 //
 // This invalidates any prior result sets on this statement.
 func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
-	parameters, err := st.getQueryParameter()
-	if err != nil {
-		return nil, 0, err
-	}
-	if parameters != nil {
-		st.query.QueryConfig.Parameters = parameters
-	}
-	reader, affectedRows, err := newRecordReader(ctx, st.query, st.connectionImpl.Alloc)
+	rdr, err := st.getBoundParameterReader()
 	if err != nil {
 		return nil, -1, err
 	}
-	return reader, affectedRows, nil
+
+	return newRecordReader(ctx, st.query, rdr, st.parameterMode, st.connectionImpl.Alloc)
 }
 
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
-	return -1, adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "ExecuteUpdate not yet implemented for BigQuery driver",
+	boundParameters, err := st.getBoundParameterReader()
+	if err != nil {
+		return -1, err
+	}
+
+	if boundParameters == nil {
+		_, totalRows, err := runQuery(ctx, st.query)
+		if err != nil {
+			return -1, err
+		}
+		return totalRows, nil
+	} else {
+		totalRows := int64(0)
+		for boundParameters.Next() {
+			values := boundParameters.Record()
+			for i := 0; i < int(values.NumRows()); i++ {
+				parameters, err := getQueryParameter(values, i, st.parameterMode)
+				if err != nil {
+					return -1, err
+				}
+				if parameters != nil {
+					st.query.QueryConfig.Parameters = parameters
+				}
+
+				_, currentRows, err := runQuery(ctx, st.query)
+				if err != nil {
+					return -1, err
+				}
+				totalRows += currentRows
+			}
+		}
+		return totalRows, nil
 	}
 }
 
@@ -281,7 +304,10 @@ func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
 func (st *statement) Prepare(_ context.Context) error {
-	return nil
+	return adbc.Error{
+		Code: adbc.StatusNotImplemented,
+		Msg:  "Prepare not yet implemented for BigQuery driver",
+	}
 }
 
 // SetSubstraitPlan allows setting a serialized Substrait execution
@@ -300,16 +326,16 @@ func (st *statement) SetSubstraitPlan(plan []byte) error {
 	}
 }
 
-func arrowValueToQueryParameterValue(value arrow.Array) bigquery.QueryParameter {
+func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryParameter, error) {
 	parameter := bigquery.QueryParameter{}
-	if value.IsNull(0) {
+	if value.IsNull(i) {
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "NULL",
 			},
 			Value: "NULL",
 		}
-		return parameter
+		return parameter, nil
 	}
 
 	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
@@ -321,21 +347,21 @@ func arrowValueToQueryParameterValue(value arrow.Array) bigquery.QueryParameter 
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "BOOL",
 			},
-			Value: value.ValueStr(0),
+			Value: value.ValueStr(i),
 		}
 	case arrow.INT8, arrow.INT16, arrow.INT32, arrow.INT64, arrow.UINT8, arrow.UINT16, arrow.UINT32, arrow.UINT64:
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "INT64",
 			},
-			Value: value.ValueStr(0),
+			Value: value.ValueStr(i),
 		}
 	case arrow.FLOAT32, arrow.FLOAT64:
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "FLOAT64",
 			},
-			Value: value.ValueStr(0),
+			Value: value.ValueStr(i),
 		}
 	case arrow.BINARY, arrow.BINARY_VIEW, arrow.LARGE_BINARY:
 		// todo: Encoded as a base64 string per RFC 4648, section 4.
@@ -343,14 +369,14 @@ func arrowValueToQueryParameterValue(value arrow.Array) bigquery.QueryParameter 
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "BYTES",
 			},
-			Value: value.ValueStr(0),
+			Value: value.ValueStr(i),
 		}
 	case arrow.STRING, arrow.STRING_VIEW, arrow.LARGE_STRING:
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "STRING",
 			},
-			Value: value.ValueStr(0),
+			Value: value.ValueStr(i),
 		}
 	case arrow.DATE32, arrow.DATE64:
 		// todo: Encoded as RFC 3339 full-date format string: 1985-04-12
@@ -358,7 +384,7 @@ func arrowValueToQueryParameterValue(value arrow.Array) bigquery.QueryParameter 
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "DATE",
 			},
-			Value: value.ValueStr(0),
+			Value: value.ValueStr(i),
 		}
 	case arrow.TIMESTAMP:
 		// todo: Encoded as an RFC 3339 timestamp with mandatory "Z" time zone string: 1985-04-12T23:20:50.52Z
@@ -366,7 +392,7 @@ func arrowValueToQueryParameterValue(value arrow.Array) bigquery.QueryParameter 
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "TIMESTAMP",
 			},
-			Value: value.ValueStr(0),
+			Value: value.ValueStr(i),
 		}
 	case arrow.TIME32, arrow.TIME64:
 		// todo: Encoded as RFC 3339 partial-time format string: 23:20:50.52
@@ -374,53 +400,41 @@ func arrowValueToQueryParameterValue(value arrow.Array) bigquery.QueryParameter 
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "TIME",
 			},
-			Value: value.ValueStr(0),
+			Value: value.ValueStr(i),
 		}
 	case arrow.DECIMAL128:
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "NUMERIC",
 			},
-			Value: value.ValueStr(0),
+			Value: value.ValueStr(i),
 		}
 	case arrow.DECIMAL256:
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "BIGNUMERIC",
 			},
-			Value: value.ValueStr(0),
+			Value: value.ValueStr(i),
+		}
+	default:
+		// todo: implement all other types
+		return parameter, adbc.Error{
+			Code: adbc.StatusNotImplemented,
+			Msg:  fmt.Sprintf("Parameter type %v is not yet implemented for BigQuery driver", value.DataType().ID()),
 		}
 	}
 
-	return parameter
+	return parameter, nil
 }
 
-func (st *statement) getQueryParameter() ([]bigquery.QueryParameter, error) {
-	var values arrow.Record
+func (st *statement) getBoundParameterReader() (array.RecordReader, error) {
 	if st.paramBinding != nil {
-		values = st.paramBinding
+		return array.NewRecordReader(st.paramBinding.Schema(), []arrow.Record{st.paramBinding})
 	} else if st.streamBinding != nil {
-		if st.streamBinding.Next() {
-			values = st.streamBinding.Record()
-		} else {
-			return nil, adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  "Cannot bind query parameters: stream has no next record",
-			}
-		}
+		return st.streamBinding, nil
 	} else {
 		return nil, nil
 	}
-
-	parameters := make([]bigquery.QueryParameter, values.NumCols())
-	includeName := st.parameterMode == OptionValueQueryParameterModeNamed
-	for i, v := range values.Columns() {
-		parameters[i] = arrowValueToQueryParameterValue(v)
-		if includeName {
-			parameters[i].Name = values.ColumnName(i)
-		}
-	}
-	return parameters, nil
 }
 
 func (st *statement) clearParameters() {
@@ -458,7 +472,6 @@ func (st *statement) SetParameters(binding arrow.Record) {
 // PreparedStatement.
 func (st *statement) SetRecordReader(binding array.RecordReader) {
 	st.clearParameters()
-	binding.Retain()
 	st.streamBinding = binding
 	st.streamBinding.Retain()
 }
