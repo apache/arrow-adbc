@@ -158,7 +158,6 @@ pub enum InfoCode {
     ///
     /// ADBC API revision 1.1.0
     DriverAdbcVersion,
-    // TODO(alexandreyc): add new codes (see https://github.com/apache/arrow-adbc/commit/aa04aadccd319e6fa3abb07154fa8d87b58d5c21)
 }
 
 impl From<&InfoCode> for u32 {
@@ -557,5 +556,90 @@ impl From<IngestMode> for String {
 impl From<IngestMode> for OptionValue {
     fn from(value: IngestMode) -> Self {
         Self::String(value.into())
+    }
+}
+
+/// Statistics about the data distribution.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub enum Statistics {
+    /// The average byte width statistic. The average size in bytes of a row in
+    /// the column. Value type is `float64`. For example, this is roughly the
+    /// average length of a string for a string column.
+    AverageByteWidth,
+    /// The distinct value count (NDV) statistic. The number of distinct values
+    /// in the column. Value type is `int64` (when not approximate) or `float64`
+    /// (when approximate).
+    DistinctCount,
+    /// The max byte width statistic. The maximum size in bytes of a row in the
+    /// column. Value type is `int64` (when not approximate) or `float64` (when approximate).
+    /// For example, this is the maximum length of a string for a string column.
+    MaxByteWidth,
+    /// The max value statistic. Value type is column-dependent.
+    MaxValue,
+    /// The min value statistic. Value type is column-dependent.
+    MinValue,
+    /// The null count statistic. The number of values that are null in the
+    /// column. Value type is `int64` (when not approximate) or `float64` (when approximate).
+    NullCount,
+    /// The row count statistic. The number of rows in the column or table.
+    /// Value type is `int64` (when not approximate) or `float64` (when approximate).
+    RowCount,
+    /// Driver-specific statistics.
+    Other { key: i16, name: String },
+}
+
+impl TryFrom<i16> for Statistics {
+    type Error = Error;
+    fn try_from(value: i16) -> Result<Self, Self::Error> {
+        match value {
+            constants::ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY => Ok(Self::AverageByteWidth),
+            constants::ADBC_STATISTIC_DISTINCT_COUNT_KEY => Ok(Self::DistinctCount),
+            constants::ADBC_STATISTIC_MAX_BYTE_WIDTH_KEY => Ok(Self::MaxByteWidth),
+            constants::ADBC_STATISTIC_MAX_VALUE_KEY => Ok(Self::MaxValue),
+            constants::ADBC_STATISTIC_MIN_VALUE_KEY => Ok(Self::MinValue),
+            constants::ADBC_STATISTIC_NULL_COUNT_KEY => Ok(Self::NullCount),
+            constants::ADBC_STATISTIC_ROW_COUNT_KEY => Ok(Self::RowCount),
+            _ => Err(Error::with_message_and_status(
+                format!("Unknown standard statistic key: {}", value),
+                Status::InvalidArguments,
+            )),
+        }
+    }
+}
+
+impl From<Statistics> for i16 {
+    fn from(value: Statistics) -> Self {
+        match value {
+            Statistics::AverageByteWidth => constants::ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY,
+            Statistics::DistinctCount => constants::ADBC_STATISTIC_DISTINCT_COUNT_KEY,
+            Statistics::MaxByteWidth => constants::ADBC_STATISTIC_MAX_BYTE_WIDTH_KEY,
+            Statistics::MaxValue => constants::ADBC_STATISTIC_MAX_VALUE_KEY,
+            Statistics::MinValue => constants::ADBC_STATISTIC_MIN_VALUE_KEY,
+            Statistics::NullCount => constants::ADBC_STATISTIC_NULL_COUNT_KEY,
+            Statistics::RowCount => constants::ADBC_STATISTIC_ROW_COUNT_KEY,
+            Statistics::Other { key, name: _ } => key,
+        }
+    }
+}
+
+impl AsRef<str> for Statistics {
+    fn as_ref(&self) -> &str {
+        match self {
+            Statistics::AverageByteWidth => constants::ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_NAME,
+            Statistics::DistinctCount => constants::ADBC_STATISTIC_DISTINCT_COUNT_NAME,
+            Statistics::MaxByteWidth => constants::ADBC_STATISTIC_MAX_BYTE_WIDTH_NAME,
+            Statistics::MaxValue => constants::ADBC_STATISTIC_MAX_VALUE_NAME,
+            Statistics::MinValue => constants::ADBC_STATISTIC_MIN_VALUE_NAME,
+            Statistics::NullCount => constants::ADBC_STATISTIC_NULL_COUNT_NAME,
+            Statistics::RowCount => constants::ADBC_STATISTIC_ROW_COUNT_NAME,
+            Statistics::Other { key: _, name } => name,
+        }
+    }
+}
+
+impl std::fmt::Display for Statistics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref())
     }
 }
