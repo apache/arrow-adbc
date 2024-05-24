@@ -138,6 +138,14 @@ pub enum InfoCode {
     VendorVersion,
     /// The database vendor/product Arrow library version (type: utf8).
     VendorArrowVersion,
+    /// Indicates whether SQL queries are supported (type: bool).
+    VendorSql,
+    /// Indicates whether Substrait queries are supported (type: bool).
+    VendorSubstrait,
+    /// The minimum supported Substrait version, or null if Substrait is not supported (type: utf8).
+    VendorSubstraitMinVersion,
+    /// The maximum supported Substrait version, or null if Substrait is not supported (type: utf8).
+    VendorSubstraitMaxVersion,
     /// The driver name (type: utf8).
     DriverName,
     /// The driver version (type: utf8).
@@ -159,6 +167,14 @@ impl From<&InfoCode> for u32 {
             InfoCode::VendorName => constants::ADBC_INFO_VENDOR_NAME,
             InfoCode::VendorVersion => constants::ADBC_INFO_VENDOR_VERSION,
             InfoCode::VendorArrowVersion => constants::ADBC_INFO_VENDOR_ARROW_VERSION,
+            InfoCode::VendorSql => constants::ADBC_INFO_VENDOR_SQL,
+            InfoCode::VendorSubstrait => constants::ADBC_INFO_VENDOR_SUBSTRAIT,
+            InfoCode::VendorSubstraitMinVersion => {
+                constants::ADBC_INFO_VENDOR_SUBSTRAIT_MIN_VERSION
+            }
+            InfoCode::VendorSubstraitMaxVersion => {
+                constants::ADBC_INFO_VENDOR_SUBSTRAIT_MAX_VERSION
+            }
             InfoCode::DriverName => constants::ADBC_INFO_DRIVER_NAME,
             InfoCode::DriverVersion => constants::ADBC_INFO_DRIVER_VERSION,
             InfoCode::DriverArrowVersion => constants::ADBC_INFO_DRIVER_ARROW_VERSION,
@@ -175,6 +191,14 @@ impl TryFrom<u32> for InfoCode {
             constants::ADBC_INFO_VENDOR_NAME => Ok(InfoCode::VendorName),
             constants::ADBC_INFO_VENDOR_VERSION => Ok(InfoCode::VendorVersion),
             constants::ADBC_INFO_VENDOR_ARROW_VERSION => Ok(InfoCode::VendorArrowVersion),
+            constants::ADBC_INFO_VENDOR_SQL => Ok(InfoCode::VendorSql),
+            constants::ADBC_INFO_VENDOR_SUBSTRAIT => Ok(InfoCode::VendorSubstrait),
+            constants::ADBC_INFO_VENDOR_SUBSTRAIT_MIN_VERSION => {
+                Ok(InfoCode::VendorSubstraitMinVersion)
+            }
+            constants::ADBC_INFO_VENDOR_SUBSTRAIT_MAX_VERSION => {
+                Ok(InfoCode::VendorSubstraitMaxVersion)
+            }
             constants::ADBC_INFO_DRIVER_NAME => Ok(InfoCode::DriverName),
             constants::ADBC_INFO_DRIVER_VERSION => Ok(InfoCode::DriverVersion),
             constants::ADBC_INFO_DRIVER_ARROW_VERSION => Ok(InfoCode::DriverArrowVersion),
@@ -336,6 +360,12 @@ pub enum OptionStatement {
     IngestMode,
     /// The name of the target table for a bulk insert.
     TargetTable,
+    /// The catalog of the table for bulk insert.
+    TargetCatalog,
+    /// The schema of the table for bulk insert.
+    TargetDbSchema,
+    /// Use a temporary table for ingestion.
+    Temporary,
     /// Whether query execution is nonblocking. By default, execution is blocking.
     ///
     /// When enabled, [execute_partitions][crate::Statement::execute_partitions]
@@ -384,6 +414,9 @@ impl AsRef<str> for OptionStatement {
         match self {
             Self::IngestMode => constants::ADBC_INGEST_OPTION_MODE,
             Self::TargetTable => constants::ADBC_INGEST_OPTION_TARGET_TABLE,
+            Self::TargetCatalog => constants::ADBC_INGEST_OPTION_TARGET_CATALOG,
+            Self::TargetDbSchema => constants::ADBC_INGEST_OPTION_TARGET_DB_SCHEMA,
+            Self::Temporary => constants::ADBC_INGEST_OPTION_TEMPORARY,
             Self::Incremental => constants::ADBC_STATEMENT_OPTION_INCREMENTAL,
             Self::Progress => constants::ADBC_STATEMENT_OPTION_PROGRESS,
             Self::MaxProgress => constants::ADBC_STATEMENT_OPTION_MAX_PROGRESS,
@@ -397,6 +430,9 @@ impl From<&str> for OptionStatement {
         match value {
             constants::ADBC_INGEST_OPTION_MODE => Self::IngestMode,
             constants::ADBC_INGEST_OPTION_TARGET_TABLE => Self::TargetTable,
+            constants::ADBC_INGEST_OPTION_TARGET_CATALOG => Self::TargetCatalog,
+            constants::ADBC_INGEST_OPTION_TARGET_DB_SCHEMA => Self::TargetDbSchema,
+            constants::ADBC_INGEST_OPTION_TEMPORARY => Self::Temporary,
             constants::ADBC_STATEMENT_OPTION_INCREMENTAL => Self::Incremental,
             constants::ADBC_STATEMENT_OPTION_PROGRESS => Self::Progress,
             constants::ADBC_STATEMENT_OPTION_MAX_PROGRESS => Self::MaxProgress,
