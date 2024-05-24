@@ -183,7 +183,7 @@ impl Driver for DummyDriver {
     type DatabaseType = DummyDatabase;
 
     fn new_database(&mut self) -> Result<Self::DatabaseType> {
-        self.new_database_with_opts([])
+        self.new_database_with_opts(None)
     }
 
     fn new_database_with_opts(
@@ -232,7 +232,7 @@ impl Database for DummyDatabase {
     type ConnectionType = DummyConnection;
 
     fn new_connection(&mut self) -> Result<Self::ConnectionType> {
-        self.new_connection_with_opts([])
+        self.new_connection_with_opts(None)
     }
 
     fn new_connection_with_opts(
@@ -869,7 +869,7 @@ impl Statement for DummyStatement {
         Ok(Some(0))
     }
 
-    fn get_parameters_schema(&self) -> Result<Schema> {
+    fn get_parameter_schema(&self) -> Result<Schema> {
         Ok(get_table_schema())
     }
 
@@ -877,11 +877,11 @@ impl Statement for DummyStatement {
         Ok(())
     }
 
-    fn set_sql_query(&mut self, _query: &str) -> Result<()> {
+    fn set_sql_query(&mut self, _query: impl AsRef<str>) -> Result<()> {
         Ok(())
     }
 
-    fn set_substrait_plan(&mut self, _plan: &[u8]) -> Result<()> {
+    fn set_substrait_plan(&mut self, _plan: impl AsRef<[u8]>) -> Result<()> {
         Ok(())
     }
 }

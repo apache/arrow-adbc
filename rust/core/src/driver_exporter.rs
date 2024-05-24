@@ -1581,7 +1581,7 @@ unsafe extern "C" fn statement_get_parameter_schema<DriverType: Driver>(
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
     let statement = &exported.0;
 
-    let schema_value = check_err!(statement.get_parameters_schema(), error);
+    let schema_value = check_err!(statement.get_parameter_schema(), error);
     let schema_value: FFI_ArrowSchema = check_err!(schema_value.try_into(), error);
     std::ptr::write_unaligned(schema, schema_value);
 

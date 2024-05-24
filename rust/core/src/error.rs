@@ -136,18 +136,6 @@ impl From<NulError> for Error {
     }
 }
 
-impl From<libloading::Error> for Error {
-    fn from(value: libloading::Error) -> Self {
-        Self {
-            message: format!("Error with dynamic library: {value}"),
-            status: Status::Internal,
-            vendor_code: 0,
-            sqlstate: [0; 5],
-            details: None,
-        }
-    }
-}
-
 impl From<std::str::Utf8Error> for Error {
     fn from(value: std::str::Utf8Error) -> Self {
         Self {

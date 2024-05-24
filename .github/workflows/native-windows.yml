@@ -40,9 +40,10 @@ on:
       - "python/**"
       - "ruby/**"
       - ".github/workflows/native-windows.yml"
+  workflow_call:
 
 concurrency:
-  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}-windows
   cancel-in-progress: true
 
 permissions:
