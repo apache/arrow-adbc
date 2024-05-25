@@ -37,6 +37,59 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class DriverTests : SparkTestBase
     {
+
+        /// JDBC-specific data type definitions.
+        /// Copied from https://github.com/JetBrains/jdk8u_jdk/blob/master/src/share/classes/java/sql/Types.java
+        /// </summary>
+        /// <remarks>
+        /// NOTE: the original of this enumeration in src/Drivers/Apache/Spark/SparkConnection.cs
+        /// Please keep up-to-date.
+        /// </remarks>
+        private enum SupportedColumnTypeId
+        {
+            ARRAY_TYPE = 2003,
+            BIGINT_TYPE = -5,
+            BINARY_TYPE = -2,
+            BOOLEAN_TYPE = 16,
+            CHAR_TYPE = 1,
+            DATE_TYPE = 91,
+            DECIMAL_TYPE = 3,
+            DOUBLE_TYPE = 8,
+            FLOAT_TYPE = 6,
+            INTEGER_TYPE = 4,
+            JAVA_OBJECT_TYPE = 2000,
+            LONGNVARCHAR_TYPE = -16,
+            LONGVARBINARY_TYPE = -4,
+            LONGVARCHAR_TYPE = -1,
+            NCHAR_TYPE = -15,
+            NULL_TYPE = 0,
+            NUMERIC_TYPE = 2,
+            NVARCHAR_TYPE = -9,
+            REAL_TYPE = 7,
+            SMALLINT_TYPE = 5,
+            STRUCT_TYPE = 2002,
+            TIMESTAMP_TYPE = 93,
+            TINYINT_TYPE = -6,
+            VARBINARY_TYPE = -3,
+            VARCHAR_TYPE = 12,
+
+            // Unused/unsupported - throw an error if these are discovered in testing
+            //BIT_TYPE = -7,
+            //BLOB_TYPE = 2004,
+            //CLOB_TYPE = 2005,
+            //DATALINK_TYPE = 70,
+            //DISTINCT_TYPE = 2001,
+            //NCLOB_TYPE = 2011,
+            //OTHER_TYPE = 1111,
+            //REF_CURSOR_TYPE = 2012,
+            //REF_TYPE = 2006,
+            //ROWID_TYPE = -8,
+            //SQLXML_TYPE = 2009,
+            //TIME_TYPE = 92,
+            //TIME_WITH_TIMEZONE_TYPE = 2013,
+            //TIMESTAMP_WITH_TIMEZONE_TYPE = 2014,
+        }
+
         private static List<string> DefaultTableTypes => new() { "BASE TABLE", "VIEW" };
 
         public DriverTests(ITestOutputHelper? outputHelper) : base(outputHelper)
@@ -240,6 +293,39 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
             Assert.True(columns != null, "Columns cannot be null");
             Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, columns.Count);
+
+            for (int i = 0; i < columns.Count; i++)
+            {
+                // Verify column metadata is returned/consistent.
+                AdbcColumn column = columns[i];
+                Assert.Equal(i + 1, column.OrdinalPosition);
+                Assert.NotNull(column.Name);
+                Assert.False(string.IsNullOrEmpty(column.Name));
+                var types = Enum.GetValues(typeof(SupportedColumnTypeId)).Cast<SupportedColumnTypeId>();
+                Assert.Contains((SupportedColumnTypeId)column.XdbcSqlDataType!, types);
+                Assert.NotNull(column.XdbcDataType);
+                Assert.Contains((SupportedColumnTypeId)column.XdbcDataType!, types);
+                Assert.Equal(column.XdbcDataType, column.XdbcSqlDataType);
+                bool isDecimalType = column.XdbcDataType == (short)SupportedColumnTypeId.DECIMAL_TYPE || column.XdbcDataType == (short)SupportedColumnTypeId.NUMERIC_TYPE;
+                Assert.Equal(column.XdbcColumnSize.HasValue, isDecimalType);
+                Assert.Equal(column.XdbcDecimalDigits.HasValue, isDecimalType);
+                Assert.Equal(column.XdbcDataType, column.XdbcSqlDataType);
+                Assert.NotNull(column.Remarks);
+                Assert.True(string.IsNullOrEmpty(column.Remarks));
+                Assert.NotNull(column.XdbcColumnDef);
+                Assert.NotNull(column.XdbcNullable);
+                Assert.Contains(new short[] { 1, 0 }, i => i == column.XdbcNullable);
+                Assert.NotNull(column.XdbcIsNullable);
+                Assert.Contains(new string[] { "YES", "NO" }, i => i.Equals(column.XdbcIsNullable));
+                Assert.NotNull(column.XdbcIsAutoIncrement);
+
+                Assert.Null(column.XdbcCharOctetLength);
+                Assert.Null(column.XdbcDatetimeSub);
+                Assert.Null(column.XdbcNumPrecRadix);
+                Assert.Null(column.XdbcScopeCatalog);
+                Assert.Null(column.XdbcScopeSchema);
+                Assert.Null(column.XdbcScopeTable);
+            }
         }
 
         /// <summary>

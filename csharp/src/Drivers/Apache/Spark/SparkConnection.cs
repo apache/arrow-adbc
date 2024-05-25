@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -60,24 +61,57 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             { "spark.thriftserver.arrowBasedRowSet.timestampAsString", "false" }
         };
 
+        /// <summary>
+        /// JDBC-specific data type definitions.
+        /// Copied from https://github.com/JetBrains/jdk8u_jdk/blob/master/src/share/classes/java/sql/Types.java
+        /// </summary>
+        /// <remarks>
+        /// NOTE: There is a partial copy of this enumeration in test/Drivers/Apache/Spark/DriverTests.cs
+        /// Please keep up-to-date.
+        /// </remarks>
         private enum ColumnTypeId
         {
-            BOOLEAN_TYPE = 16,
-            TINYINT_TYPE = -6,
-            SMALLINT_TYPE = 5,
-            INT_TYPE = 4,
-            BIGINT_TYPE = -5,
-            FLOAT_TYPE = 6,
-            DOUBLE_TYPE = 8,
-            STRING_TYPE = 12,
-            TIMESTAMP_TYPE = 93,
-            BINARY_TYPE = -2,
             ARRAY_TYPE = 2003,
-            MAP_TYPE = 2000,
-            STRUCT_TYPE = 2002,
-            DECIMAL_TYPE = 3,
-            DATE_TYPE = 91,
+            BIGINT_TYPE = -5,
+            BINARY_TYPE = -2,
+            BOOLEAN_TYPE = 16,
             CHAR_TYPE = 1,
+            DATE_TYPE = 91,
+            DECIMAL_TYPE = 3,
+            DOUBLE_TYPE = 8,
+            FLOAT_TYPE = 6,
+            INTEGER_TYPE = 4,
+            JAVA_OBJECT_TYPE = 2000,
+            LONGNVARCHAR_TYPE = -16,
+            LONGVARBINARY_TYPE = -4,
+            LONGVARCHAR_TYPE = -1,
+            NCHAR_TYPE = -15,
+            NULL_TYPE = 0,
+            NUMERIC_TYPE = 2,
+            NVARCHAR_TYPE = -9,
+            REAL_TYPE = 7,
+            SMALLINT_TYPE = 5,
+            STRUCT_TYPE = 2002,
+            TIMESTAMP_TYPE = 93,
+            TINYINT_TYPE = -6,
+            VARBINARY_TYPE = -3,
+            VARCHAR_TYPE = 12,
+
+            // Unused/unsupported
+            BIT_TYPE = -7,
+            BLOB_TYPE = 2004,
+            CLOB_TYPE = 2005,
+            DATALINK_TYPE = 70,
+            DISTINCT_TYPE = 2001,
+            NCLOB_TYPE = 2011,
+            OTHER_TYPE = 1111,
+            REF_CURSOR_TYPE = 2012,
+            REF_TYPE = 2006,
+            ROWID_TYPE = -8,
+            SQLXML_TYPE = 2009,
+            TIME_TYPE = 92,
+            TIME_WITH_TIMEZONE_TYPE = 2013,
+            TIMESTAMP_WITH_TIMEZONE_TYPE = 2014,
         }
 
         internal SparkConnection(IReadOnlyDictionary<string, string> properties)
@@ -303,7 +337,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             Trace.TraceError($"getting objects with depth={depth.ToString()}, catalog = {catalogPattern}, dbschema = {dbSchemaPattern}, tablename = {tableNamePattern}");
 
-            Dictionary<string, Dictionary<string, Dictionary<string, TableInfoPair>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, TableInfoPair>>>();
+            Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>>();
             if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
             {
                 TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(this.sessionHandle);
@@ -314,10 +348,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     throw new Exception(getCatalogsResp.Status.ErrorMessage);
                 }
+                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(getCatalogsResp.DirectResults.ResultSetMetadata.Schema.Columns);
 
                 string catalogRegexp = PatternToRegEx(catalogPattern);
                 TRowSet resp = getCatalogsResp.DirectResults.ResultSet.Results;
-                IReadOnlyList<string> list = resp.Columns[0].StringVal.Values;
+                IReadOnlyList<string> list = resp.Columns[columnMap["TABLE_CAT"]].StringVal.Values;
                 for (int i = 0; i < list.Count; i++)
                 {
                     string col = list[i];
@@ -325,7 +360,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                     if (Regex.IsMatch(catalog, catalogRegexp, RegexOptions.IgnoreCase))
                     {
-                        catalogMap.Add(catalog, new Dictionary<string, Dictionary<string, TableInfoPair>>());
+                        catalogMap.Add(catalog, new Dictionary<string, Dictionary<string, TableInfo>>());
                     }
                 }
             }
@@ -342,17 +377,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     throw new Exception(getSchemasResp.Status.ErrorMessage);
                 }
+                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(getSchemasResp.DirectResults.ResultSetMetadata.Schema.Columns);
                 TRowSet resp = getSchemasResp.DirectResults.ResultSet.Results;
 
-                IReadOnlyList<string> catalogList = resp.Columns[1].StringVal.Values;
-                IReadOnlyList<string> schemaList = resp.Columns[0].StringVal.Values;
+                IReadOnlyList<string> catalogList = resp.Columns[columnMap["TABLE_CATALOG"]].StringVal.Values;
+                IReadOnlyList<string> schemaList = resp.Columns[columnMap["TABLE_SCHEM"]].StringVal.Values;
 
                 for (int i = 0; i < catalogList.Count; i++)
                 {
                     string catalog = catalogList[i];
                     string schemaDb = schemaList[i];
                     // It seems Spark sometimes returns empty string for catalog on some schema (temporary tables).
-                    catalogMap.GetValueOrDefault(catalog)?.Add(schemaDb, new Dictionary<string, TableInfoPair>());
+                    catalogMap.GetValueOrDefault(catalog)?.Add(schemaDb, new Dictionary<string, TableInfo>());
                 }
             }
 
@@ -369,12 +405,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     throw new Exception(getTablesResp.Status.ErrorMessage);
                 }
+
+                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(getTablesResp.DirectResults.ResultSetMetadata.Schema.Columns);
                 TRowSet resp = getTablesResp.DirectResults.ResultSet.Results;
 
-                IReadOnlyList<string> catalogList = resp.Columns[0].StringVal.Values;
-                IReadOnlyList<string> schemaList = resp.Columns[1].StringVal.Values;
-                IReadOnlyList<string> tableList = resp.Columns[2].StringVal.Values;
-                IReadOnlyList<string> tableTypeList = resp.Columns[3].StringVal.Values;
+                IReadOnlyList<string> catalogList = resp.Columns[columnMap["TABLE_CAT"]].StringVal.Values;
+                IReadOnlyList<string> schemaList = resp.Columns[columnMap["TABLE_SCHEM"]].StringVal.Values;
+                IReadOnlyList<string> tableList = resp.Columns[columnMap["TABLE_NAME"]].StringVal.Values;
+                IReadOnlyList<string> tableTypeList = resp.Columns[columnMap["TABLE_TYPE"]].StringVal.Values;
 
                 for (int i = 0; i < catalogList.Count; i++)
                 {
@@ -382,10 +420,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     string schemaDb = schemaList[i];
                     string tableName = tableList[i];
                     string tableType = tableTypeList[i];
-                    TableInfoPair tableInfo = new TableInfoPair();
-                    tableInfo.Type = tableType;
-                    tableInfo.Columns = new List<string>();
-                    tableInfo.ColType = new List<int>();
+                    TableInfo tableInfo = new(tableType);
                     catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.Add(tableName, tableInfo);
                 }
             }
@@ -407,31 +442,53 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     throw new Exception(columnsResponse.Status.ErrorMessage);
                 }
 
+                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsResponse.DirectResults.ResultSetMetadata.Schema.Columns);
                 TRowSet resp = columnsResponse.DirectResults.ResultSet.Results;
 
-                IReadOnlyList<string> catalogList = resp.Columns[0].StringVal.Values;
-                IReadOnlyList<string> schemaList = resp.Columns[1].StringVal.Values;
-                IReadOnlyList<string> tableList = resp.Columns[2].StringVal.Values;
-                IReadOnlyList<string> columnList = resp.Columns[3].StringVal.Values;
-                ReadOnlySpan<int> columnTypeList = resp.Columns[4].I32Val.Values.Values;
+                IReadOnlyList<string> catalogList = resp.Columns[columnMap["TABLE_CAT"]].StringVal.Values;
+                IReadOnlyList<string> schemaList = resp.Columns[columnMap["TABLE_SCHEM"]].StringVal.Values;
+                IReadOnlyList<string> tableList = resp.Columns[columnMap["TABLE_NAME"]].StringVal.Values;
+                IReadOnlyList<string> columnNameList = resp.Columns[columnMap["COLUMN_NAME"]].StringVal.Values;
+                ReadOnlySpan<int> columnTypeList = resp.Columns[columnMap["DATA_TYPE"]].I32Val.Values.Values;
+                IReadOnlyList<string> typeNameList = resp.Columns[columnMap["TYPE_NAME"]].StringVal.Values;
+                ReadOnlySpan<int> nullableList = resp.Columns[columnMap["NULLABLE"]].I32Val.Values.Values;
+                IReadOnlyList<string> columnDefaultList = resp.Columns[columnMap["COLUMN_DEF"]].StringVal.Values;
+                ReadOnlySpan<int> ordinalPosList = resp.Columns[columnMap["ORDINAL_POSITION"]].I32Val.Values.Values;
+                IReadOnlyList<string> isNullableList = resp.Columns[columnMap["IS_NULLABLE"]].StringVal.Values;
+                IReadOnlyList<string> isAutoIncrementList = resp.Columns[columnMap["IS_AUTO_INCREMENT"]].StringVal.Values;
 
                 for (int i = 0; i < catalogList.Count; i++)
                 {
                     string catalog = catalogList[i];
                     string schemaDb = schemaList[i];
                     string tableName = tableList[i];
-                    string column = columnList[i];
-                    int colType = columnTypeList[i];
-                    TableInfoPair? tableInfo = catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.GetValueOrDefault(tableName);
-                    tableInfo?.Columns.Add(column);
+                    string columnName = columnNameList[i];
+                    short colType = (short)columnTypeList[i];
+                    string typeName = typeNameList[i];
+                    short nullable = (short)nullableList[i];
+                    string? isAutoIncrementString = isAutoIncrementList[i];
+                    bool isAutoIncrement = (!string.IsNullOrEmpty(isAutoIncrementString) && (isAutoIncrementString.Equals("YES", StringComparison.InvariantCultureIgnoreCase) || isAutoIncrementString.Equals("TRUE", StringComparison.InvariantCultureIgnoreCase)));
+                    string isNullable = isNullableList[i] ?? "YES";
+                    string columnDefault = columnDefaultList[i] ?? "";
+                    // Spark/Databricks reports ordinal index zero-indexed, instead of one-indexed
+                    int ordinalPos = ordinalPosList[i] + 1;
+                    TableInfo? tableInfo = catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.GetValueOrDefault(tableName);
+                    tableInfo?.ColumnName.Add(columnName);
                     tableInfo?.ColType.Add(colType);
+                    tableInfo?.Nullable.Add(nullable);
+                    tableInfo?.TypeName.Add(typeName);
+                    tableInfo?.IsAutoIncrement.Add(isAutoIncrement);
+                    tableInfo?.IsNullable.Add(isNullable);
+                    tableInfo?.ColumnDefault.Add(columnDefault);
+                    tableInfo?.OrdinalPosition.Add(ordinalPos);
+                    SetPrecisionAndScale(colType, typeName, tableInfo);
                 }
             }
 
             StringArray.Builder catalogNameBuilder = new StringArray.Builder();
             List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>();
 
-            foreach (KeyValuePair<string, Dictionary<string, Dictionary<string, TableInfoPair>>> catalogEntry in catalogMap)
+            foreach (KeyValuePair<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogEntry in catalogMap)
             {
                 catalogNameBuilder.Append(catalogEntry.Key);
 
@@ -457,6 +514,30 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return new SparkInfoArrowStream(schema, dataArrays);
         }
 
+        private static IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
+            .Select(t => new { Index = t.Position - 1, t.ColumnName })
+            .ToDictionary(t => t.ColumnName, t => t.Index);
+
+        private static void SetPrecisionAndScale(short colType, string typeName, TableInfo? tableInfo)
+        {
+            switch (colType)
+            {
+                case (short)ColumnTypeId.DECIMAL_TYPE:
+                case (short)ColumnTypeId.NUMERIC_TYPE:
+                    {
+                        Decimal128Type decimalType = SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
+                        tableInfo?.Precision.Add(decimalType.Precision);
+                        tableInfo?.Scale.Add((short)decimalType.Scale);
+                        break;
+                    }
+
+                default:
+                    tableInfo?.Precision.Add(null);
+                    tableInfo?.Scale.Add(null);
+                    break;
+            }
+        }
+
         private static IArrowType GetArrowType(ColumnTypeId columnTypeId, string typeName)
         {
             switch (columnTypeId)
@@ -467,30 +548,40 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     return Int8Type.Default;
                 case ColumnTypeId.SMALLINT_TYPE:
                     return Int16Type.Default;
-                case ColumnTypeId.INT_TYPE:
+                case ColumnTypeId.INTEGER_TYPE:
                     return Int32Type.Default;
                 case ColumnTypeId.BIGINT_TYPE:
                     return Int64Type.Default;
                 case ColumnTypeId.FLOAT_TYPE:
+                case ColumnTypeId.REAL_TYPE:
                     return FloatType.Default;
                 case ColumnTypeId.DOUBLE_TYPE:
                     return DoubleType.Default;
-                case ColumnTypeId.STRING_TYPE:
+                case ColumnTypeId.VARCHAR_TYPE:
+                case ColumnTypeId.NVARCHAR_TYPE:
+                case ColumnTypeId.LONGVARCHAR_TYPE:
+                case ColumnTypeId.LONGNVARCHAR_TYPE:
                     return StringType.Default;
                 case ColumnTypeId.TIMESTAMP_TYPE:
                     return new TimestampType(TimeUnit.Microsecond, timezone: (string?)null);
                 case ColumnTypeId.BINARY_TYPE:
+                case ColumnTypeId.VARBINARY_TYPE:
+                case ColumnTypeId.LONGVARBINARY_TYPE:
                     return BinaryType.Default;
                 case ColumnTypeId.DATE_TYPE:
                     return Date32Type.Default;
                 case ColumnTypeId.CHAR_TYPE:
+                case ColumnTypeId.NCHAR_TYPE:
                     return StringType.Default;
                 case ColumnTypeId.DECIMAL_TYPE:
+                case ColumnTypeId.NUMERIC_TYPE:
                     // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
                     // are not returned in the Thrift call to GetColumns
                     return SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
+                case ColumnTypeId.NULL_TYPE:
+                    return NullType.Default;
                 case ColumnTypeId.ARRAY_TYPE:
-                case ColumnTypeId.MAP_TYPE:
+                case ColumnTypeId.JAVA_OBJECT_TYPE:
                 case ColumnTypeId.STRUCT_TYPE:
                     return StringType.Default;
                 default:
@@ -500,7 +591,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         private StructArray GetDbSchemas(
             GetObjectsDepth depth,
-            Dictionary<string, Dictionary<string, TableInfoPair>> schemaMap)
+            Dictionary<string, Dictionary<string, TableInfo>> schemaMap)
         {
             StringArray.Builder dbSchemaNameBuilder = new StringArray.Builder();
             List<IArrowArray?> dbSchemaTablesValues = new List<IArrowArray?>();
@@ -508,7 +599,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             int length = 0;
 
 
-            foreach (KeyValuePair<string, Dictionary<string, TableInfoPair>> schemaEntry in schemaMap)
+            foreach (KeyValuePair<string, Dictionary<string, TableInfo>> schemaEntry in schemaMap)
             {
 
                 dbSchemaNameBuilder.Append(schemaEntry.Key);
@@ -544,7 +635,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         private StructArray GetTableSchemas(
             GetObjectsDepth depth,
-            Dictionary<string, TableInfoPair> tableMap)
+            Dictionary<string, TableInfo> tableMap)
         {
             StringArray.Builder tableNameBuilder = new StringArray.Builder();
             StringArray.Builder tableTypeBuilder = new StringArray.Builder();
@@ -554,7 +645,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             int length = 0;
 
 
-            foreach (KeyValuePair<string, TableInfoPair> tableEntry in tableMap)
+            foreach (KeyValuePair<string, TableInfo> tableEntry in tableMap)
             {
                 tableNameBuilder.Append(tableEntry.Key);
                 tableTypeBuilder.Append(tableEntry.Value.Type);
@@ -571,7 +662,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 }
                 else
                 {
-                    tableColumnsValues.Add(GetColumnSchema(tableEntry.Value.Columns, tableEntry.Value.ColType));
+                    tableColumnsValues.Add(GetColumnSchema(tableEntry.Value));
                 }
             }
 
@@ -593,8 +684,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 nullBitmapBuffer.Build());
         }
 
-        private StructArray GetColumnSchema(
-            List<string> columns, List<int> colTypes)
+        private StructArray GetColumnSchema(TableInfo tableInfo)
         {
             StringArray.Builder columnNameBuilder = new StringArray.Builder();
             Int32Array.Builder ordinalPositionBuilder = new Int32Array.Builder();
@@ -619,31 +709,26 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             int length = 0;
 
 
-            for (int i = 0; i < columns.Count; i++)
+            for (int i = 0; i < tableInfo.ColumnName.Count; i++)
             {
-                columnNameBuilder.Append(columns[i]);
-                ordinalPositionBuilder.Append((int)colTypes[i]);
+                columnNameBuilder.Append(tableInfo.ColumnName[i]);
+                ordinalPositionBuilder.Append(tableInfo.OrdinalPosition[i]);
                 remarksBuilder.Append("");
-
-
-
-                xdbcColumnSizeBuilder.AppendNull();
-                xdbcDecimalDigitsBuilder.AppendNull();
-
-
-                xdbcDataTypeBuilder.AppendNull();
-                xdbcTypeNameBuilder.Append("");
+                xdbcColumnSizeBuilder.Append(tableInfo.Precision[i]);
+                xdbcDecimalDigitsBuilder.Append(tableInfo.Scale[i]);
+                xdbcDataTypeBuilder.Append(tableInfo.ColType[i]);
+                xdbcTypeNameBuilder.Append(tableInfo.TypeName[i]);
                 xdbcNumPrecRadixBuilder.AppendNull();
-                xdbcNullableBuilder.AppendNull();
-                xdbcColumnDefBuilder.AppendNull();
-                xdbcSqlDataTypeBuilder.Append((short)colTypes[i]);
+                xdbcNullableBuilder.Append(tableInfo.Nullable[i]);
+                xdbcColumnDefBuilder.Append(tableInfo.ColumnDefault[i]);
+                xdbcSqlDataTypeBuilder.Append(tableInfo.ColType[i]);
                 xdbcDatetimeSubBuilder.AppendNull();
                 xdbcCharOctetLengthBuilder.AppendNull();
-                xdbcIsNullableBuilder.Append("true");
+                xdbcIsNullableBuilder.Append(tableInfo.IsNullable[i]);
                 xdbcScopeCatalogBuilder.AppendNull();
                 xdbcScopeSchemaBuilder.AppendNull();
                 xdbcScopeTableBuilder.AppendNull();
-                xdbcIsAutoincrementBuilder.AppendNull();
+                xdbcIsAutoincrementBuilder.Append(tableInfo.IsAutoIncrement[i]);
                 xdbcIsGeneratedcolumnBuilder.Append(true);
                 nullBitmapBuffer.Append(true);
                 length++;
@@ -751,13 +836,29 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         }
     }
 
-    internal struct TableInfoPair
+    internal struct TableInfo(string type)
     {
-        public string Type { get; set; }
+        public string Type { get; } = type;
 
-        public List<string> Columns { get; set; }
+        public List<string> ColumnName { get; } = new();
 
-        public List<int> ColType { get; set; }
+        public List<short> ColType { get; } = new();
+
+        public List<string> TypeName { get; } = new();
+
+        public List<short> Nullable { get; } = new();
+
+        public List<int?> Precision { get; } = new();
+
+        public List<short?> Scale { get; } = new();
+
+        public List<int> OrdinalPosition { get; } = new();
+
+        public List<string> ColumnDefault { get; } = new();
+
+        public List<string> IsNullable { get; } = new();
+
+        public List<bool> IsAutoIncrement { get; } = new();
     }
 
     internal class SparkInfoArrowStream : IArrowArrayStream
