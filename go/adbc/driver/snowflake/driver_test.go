@@ -325,19 +325,14 @@ type SnowflakeTests struct {
 	stmt   adbc.Statement
 }
 
-func (suite *SnowflakeTests) SetupSuite() {
+func (suite *SnowflakeTests) SetupTest() {
 	var err error
 	suite.ctx = context.Background()
 	suite.driver = suite.Quirks.SetupDriver(suite.T())
 	suite.db, err = suite.driver.NewDatabase(suite.Quirks.DatabaseOptions())
 	suite.NoError(err)
-}
-
-func (suite *SnowflakeTests) SetupTest() {
-	var err error
 	suite.cnxn, err = suite.db.Open(suite.ctx)
 	suite.NoError(err)
-
 	suite.stmt, err = suite.cnxn.NewStatement()
 	suite.NoError(err)
 }
@@ -345,11 +340,11 @@ func (suite *SnowflakeTests) SetupTest() {
 func (suite *SnowflakeTests) TearDownTest() {
 	suite.NoError(suite.stmt.Close())
 	suite.NoError(suite.cnxn.Close())
-}
-
-func (suite *SnowflakeTests) TearDownSuite() {
+	suite.Quirks.TearDownDriver(suite.T(), suite.driver)
+	suite.cnxn = nil
 	suite.NoError(suite.db.Close())
 	suite.db = nil
+	suite.driver = nil
 }
 
 func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
@@ -409,9 +404,6 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_bind"))
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_bind_stream"))
 
-	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
-	defer mem.AssertSize(suite.T(), 0)
-
 	sc := arrow.NewSchema([]arrow.Field{
 		{
 			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
@@ -467,7 +459,7 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 		},
 	}, nil)
 
-	bldr := array.NewRecordBuilder(mem, sc)
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
 	defer bldr.Release()
 
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{-1, 0, 25}, nil)
@@ -538,9 +530,6 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 func (suite *SnowflakeTests) TestSqlIngestRoundtripTypes() {
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_roundtrip"))
 
-	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
-	defer mem.AssertSize(suite.T(), 0)
-
 	sc := arrow.NewSchema([]arrow.Field{
 		{
 			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
@@ -584,7 +573,7 @@ func (suite *SnowflakeTests) TestSqlIngestRoundtripTypes() {
 		},
 	}, nil)
 
-	bldr := array.NewRecordBuilder(mem, sc)
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
 	defer bldr.Release()
 
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{-1, 0, 25}, nil)
@@ -624,9 +613,6 @@ func (suite *SnowflakeTests) TestSqlIngestRoundtripTypes() {
 func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_timestamps"))
 
-	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
-	defer mem.AssertSize(suite.T(), 0)
-
 	sessionTimezone := "America/Phoenix"
 	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf(`ALTER SESSION SET TIMEZONE = "%s"`, sessionTimezone)))
 	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
@@ -663,7 +649,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
 		},
 	}, nil)
 
-	bldr := array.NewRecordBuilder(mem, sc)
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
 	defer bldr.Release()
 
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
@@ -723,7 +709,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
 		},
 	}, nil)
 
-	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	expectedRecord, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), expectedSchema, bytes.NewReader([]byte(`
 	[
 		{
 			"col_int64": 1,
@@ -766,9 +752,6 @@ func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
 func (suite *SnowflakeTests) TestSqlIngestDate64Type() {
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_date64"))
 
-	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
-	defer mem.AssertSize(suite.T(), 0)
-
 	sc := arrow.NewSchema([]arrow.Field{
 		{
 			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
@@ -780,7 +763,7 @@ func (suite *SnowflakeTests) TestSqlIngestDate64Type() {
 		},
 	}, nil)
 
-	bldr := array.NewRecordBuilder(mem, sc)
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
 	defer bldr.Release()
 
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
@@ -815,7 +798,7 @@ func (suite *SnowflakeTests) TestSqlIngestDate64Type() {
 		},
 	}, nil)
 
-	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	expectedRecord, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), expectedSchema, bytes.NewReader([]byte(`
 	[
 		{
 			"col_int64": 1,
@@ -843,9 +826,6 @@ func (suite *SnowflakeTests) TestSqlIngestDate64Type() {
 func (suite *SnowflakeTests) TestSqlIngestHighPrecision() {
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_high_precision"))
 
-	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
-	defer mem.AssertSize(suite.T(), 0)
-
 	sc := arrow.NewSchema([]arrow.Field{
 		{
 			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
@@ -865,7 +845,7 @@ func (suite *SnowflakeTests) TestSqlIngestHighPrecision() {
 		},
 	}, nil)
 
-	bldr := array.NewRecordBuilder(mem, sc)
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
 	defer bldr.Release()
 
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
@@ -920,7 +900,7 @@ func (suite *SnowflakeTests) TestSqlIngestHighPrecision() {
 		},
 	}, nil)
 
-	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	expectedRecord, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), expectedSchema, bytes.NewReader([]byte(`
 	[
 		{
 			"col_int64": 1,
@@ -954,9 +934,6 @@ func (suite *SnowflakeTests) TestSqlIngestHighPrecision() {
 func (suite *SnowflakeTests) TestSqlIngestLowPrecision() {
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_high_precision"))
 
-	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
-	defer mem.AssertSize(suite.T(), 0)
-
 	sc := arrow.NewSchema([]arrow.Field{
 		{
 			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
@@ -976,7 +953,7 @@ func (suite *SnowflakeTests) TestSqlIngestLowPrecision() {
 		},
 	}, nil)
 
-	bldr := array.NewRecordBuilder(mem, sc)
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
 	defer bldr.Release()
 
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
@@ -1028,7 +1005,7 @@ func (suite *SnowflakeTests) TestSqlIngestLowPrecision() {
 		},
 	}, nil)
 
-	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	expectedRecord, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), expectedSchema, bytes.NewReader([]byte(`
 	[
 		{
 			"col_int64": 1,
@@ -1062,9 +1039,6 @@ func (suite *SnowflakeTests) TestSqlIngestLowPrecision() {
 func (suite *SnowflakeTests) TestSqlIngestStructType() {
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_struct"))
 
-	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
-	defer mem.AssertSize(suite.T(), 0)
-
 	sc := arrow.NewSchema([]arrow.Field{
 		{
 			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
@@ -1089,7 +1063,7 @@ func (suite *SnowflakeTests) TestSqlIngestStructType() {
 		},
 	}, nil)
 
-	bldr := array.NewRecordBuilder(mem, sc)
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
 	defer bldr.Release()
 
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
@@ -1141,7 +1115,7 @@ func (suite *SnowflakeTests) TestSqlIngestStructType() {
 		},
 	}, nil)
 
-	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	expectedRecord, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), expectedSchema, bytes.NewReader([]byte(`
 	[
 		{
 			"col_int64": 1,
@@ -1177,9 +1151,6 @@ func (suite *SnowflakeTests) TestSqlIngestStructType() {
 func (suite *SnowflakeTests) TestSqlIngestMapType() {
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_map"))
 
-	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
-	defer mem.AssertSize(suite.T(), 0)
-
 	sc := arrow.NewSchema([]arrow.Field{
 		{
 			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
@@ -1191,7 +1162,7 @@ func (suite *SnowflakeTests) TestSqlIngestMapType() {
 		},
 	}, nil)
 
-	bldr := array.NewRecordBuilder(mem, sc)
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
 	defer bldr.Release()
 
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
@@ -1241,7 +1212,7 @@ func (suite *SnowflakeTests) TestSqlIngestMapType() {
 		},
 	}, nil)
 
-	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	expectedRecord, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), expectedSchema, bytes.NewReader([]byte(`
 	[
 		{
 			"col_int64": 1,
@@ -1272,9 +1243,6 @@ func (suite *SnowflakeTests) TestSqlIngestMapType() {
 func (suite *SnowflakeTests) TestSqlIngestListType() {
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_list"))
 
-	mem := memory.NewCheckedAllocator(memory.NewGoAllocator())
-	defer mem.AssertSize(suite.T(), 0)
-
 	sc := arrow.NewSchema([]arrow.Field{
 		{
 			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
@@ -1286,7 +1254,7 @@ func (suite *SnowflakeTests) TestSqlIngestListType() {
 		},
 	}, nil)
 
-	bldr := array.NewRecordBuilder(mem, sc)
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
 	defer bldr.Release()
 
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
@@ -1330,7 +1298,7 @@ func (suite *SnowflakeTests) TestSqlIngestListType() {
 		},
 	}, nil)
 
-	expectedRecord, _, err := array.RecordFromJSON(mem, expectedSchema, bytes.NewReader([]byte(`
+	expectedRecord, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), expectedSchema, bytes.NewReader([]byte(`
 	[
 		{
 			"col_int64": 1,
@@ -1751,6 +1719,8 @@ func (suite *SnowflakeTests) TestNonIntDecimalLowPrecision() {
 			value := rec.Column(0).(*array.Float64).Value(0)
 			difference := math.Abs(number - value)
 			suite.Truef(difference < 1e-13, "expected %f, got %f", number, value)
+
+			suite.False(rdr.Next())
 		}
 	}
 }
@@ -1807,6 +1777,7 @@ func (suite *SnowflakeTests) TestAdditionalDriverInfo() {
 		},
 	)
 	suite.Require().NoError(err)
+	defer rdr.Release()
 
 	var totalRows int64
 	for rdr.Next() {
@@ -2049,4 +2020,40 @@ func (suite *SnowflakeTests) TestEmptyResultSet() {
 	// all the rows from each record in the stream.
 	suite.Equal(n, recv)
 	suite.Equal(recv, int64(0))
+}
+
+func (suite *SnowflakeTests) TestIngestEmptyChunk() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest_empty_chunk"))
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
+	defer bldr.Release()
+
+	emptyRec := bldr.NewRecord()
+	defer emptyRec.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	// See https://github.com/apache/arrow-adbc/issues/1847
+	// Snowflake does not properly handle empty row groups, so need to make sure we don't send any.
+	rdr, err := array.NewRecordReader(sc, []arrow.Record{emptyRec, rec})
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.Require().NoError(suite.stmt.BindStream(suite.ctx, rdr))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_empty_chunk"))
+	suite.Require().NoError(suite.stmt.SetOption(driver.OptionStatementIngestWriterConcurrency, "1"))
+
+	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(int64(3), n)
 }

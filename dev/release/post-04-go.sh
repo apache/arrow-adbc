@@ -31,9 +31,9 @@ main() {
         exit 1
     fi
 
-    header "Tagging Go release ${RELEASE}"
+    header "Tagging Go release ${VERSION_NATIVE}"
 
-    version_tag="apache-arrow-adbc-${VERSION_NATIVE}"
+    version_tag="apache-arrow-adbc-${RELEASE}"
     go_arrow_tag="go/adbc/v${VERSION_NATIVE}"
 
     git tag "${go_arrow_tag}" "${version_tag}"

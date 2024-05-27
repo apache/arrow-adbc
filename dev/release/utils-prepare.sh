@@ -40,7 +40,7 @@ update_versions() {
       local glib_version="${VERSION_NATIVE}-SNAPSHOT"
       local java_version="${VERSION_JAVA}-SNAPSHOT"
       local py_version="${VERSION_NATIVE}dev"
-      local r_version="${VERSION_R}.9000"
+      local r_version="${PREVIOUS_VERSION_R}.9000"
       ;;
     *)
       echo "Unknown type: ${type}"
@@ -118,12 +118,12 @@ update_versions() {
   else
     so_version() {
       local -r version=$1
-      local -r major_version=$(echo $c_version | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
-      local -r minor_version=$(echo $c_version | sed -E -e 's/^[0-9]+\.([0-9]+)\.[0-9]+$/\1/')
+      local -r major_version=$(echo $version | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
+      local -r minor_version=$(echo $version | sed -E -e 's/^[0-9]+\.([0-9]+)\.[0-9]+$/\1/')
       printf "%0d%02d" ${major_version} ${minor_version}
     }
-    local -r deb_lib_suffix=$(so_version ${base_version})
-    local -r next_deb_lib_suffix=$(so_version ${next_version})
+    local -r deb_lib_suffix=$(so_version ${PREVIOUS_VERSION_NATIVE})
+    local -r next_deb_lib_suffix=$(so_version ${VERSION_NATIVE})
     pushd "${ADBC_DIR}/ci/linux-packages"
     if [ "${deb_lib_suffix}" != "${next_deb_lib_suffix}" ]; then
       for target in debian*/lib*${deb_lib_suffix}.install; do
@@ -137,8 +137,8 @@ update_versions() {
       rm -f debian*/control*.bak
       git add debian*/control*
     fi
-    local -r base_major_version=$(echo ${base_version} | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
-    local -r next_major_version=$(echo ${next_version} | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
+    local -r base_major_version=$(echo ${PREVIOUS_VERSION_NATIVE} | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
+    local -r next_major_version=$(echo ${VERSION_NATIVE} | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
     if [ "${base_major_version}" != "${next_major_version}" ]; then
       for target in debian*/libadbc-*glib${base_major_version}.install; do
         git mv \

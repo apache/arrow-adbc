@@ -48,6 +48,8 @@
 //! The [driver_manager] module allows loading drivers exposing the C API,
 //! either from an initialization function (link-time, either static or dynamic)
 //! or by dynamically finding such a function in a dynamic library (run-time).
+//! The driver manager is gated behind the `driver_manager` feature flag.
+//!
 //! # Driver Exporter
 //!
 //! The driver exporter allows exposing native Rust drivers as C drivers to be
@@ -56,11 +58,11 @@
 //! can build it as an object file implementing the C API with the
 //! [export_driver] macro.
 
-// TODO(alexandreyc): uncomment these lines during follow-up PRs
-// pub mod driver_manager;
 mod driver_exporter;
 #[doc(hidden)]
 pub use driver_exporter::FFIDriver;
+#[cfg(feature = "driver_manager")]
+pub mod driver_manager;
 pub mod error;
 pub mod ffi;
 pub mod options;
@@ -486,7 +488,7 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     /// the corresponding field will be NA (NullType).
     ///
     /// This should be called after [Statement::prepare].
-    fn get_parameters_schema(&self) -> Result<Schema>;
+    fn get_parameter_schema(&self) -> Result<Schema>;
 
     /// Turn this statement into a prepared statement to be executed multiple
     /// times.
@@ -498,13 +500,13 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     ///
     /// The query can then be executed with [Statement::execute]. For queries
     /// expected to be executed repeatedly, call [Statement::prepare] first.
-    fn set_sql_query(&mut self, query: &str) -> Result<()>;
+    fn set_sql_query(&mut self, query: impl AsRef<str>) -> Result<()>;
 
     /// Set the Substrait plan to execute.
     ///
     /// The query can then be executed with [Statement::execute]. For queries
     /// expected to be executed repeatedly, call [Statement::prepare] first.
-    fn set_substrait_plan(&mut self, plan: &[u8]) -> Result<()>;
+    fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> Result<()>;
 
     /// Cancel execution of an in-progress query.
     ///

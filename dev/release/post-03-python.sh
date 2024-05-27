@@ -26,13 +26,12 @@ source "${SOURCE_DIR}/utils-common.sh"
 source "${SOURCE_DIR}/utils-prepare.sh"
 
 main() {
-    if [ "$#" -ne 1 ]; then
-        echo "Usage: $0 <rc-num>"
+    if [ "$#" -ne 0 ]; then
+        echo "Usage: $0"
         exit 1
     fi
-    local -r rc_number="$1"
-    local -r tag="apache-arrow-adbc-${RELEASE}-rc${rc_number}"
 
+    local -r tag="apache-arrow-adbc-${RELEASE}"
     local -r tmp=$(mktemp -d -t "arrow-post-python.XXXXX")
 
     header "Downloading Python packages for ${RELEASE}"

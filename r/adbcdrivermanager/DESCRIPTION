@@ -1,6 +1,6 @@
 Package: adbcdrivermanager
 Title: 'Arrow' Database Connectivity ('ADBC') Driver Manager
-Version: 0.11.0.9000
+Version: 0.12.0.9000
 Authors@R: c(
       person("Dewey", "Dunnington", , "dewey@dunnington.ca", role = c("aut", "cre"),
              comment = c(ORCID = "0000-0002-9415-4582")),
