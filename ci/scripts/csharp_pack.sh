@@ -22,5 +22,11 @@ set -eux
 source_dir=${1}/csharp
 
 pushd ${source_dir}
-dotnet pack -c Release
+
+if [ -z ${2-} ]; then
+    dotnet pack -c Release;
+else
+    dotnet pack -c Release --version-suffix ${2};
+fi
+
 popd

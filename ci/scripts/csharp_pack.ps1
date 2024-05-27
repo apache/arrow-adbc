@@ -19,7 +19,7 @@ param (
     [string]$versionSuffix=$null
 )
 
-$csharpFolder = (Join-Path $PSScriptRoot ".." ".." "csharp") | Resolve-Path
+$csharpFolder = [IO.Path]::Combine($PSScriptRoot, "..", "..", "csharp") | Resolve-Path
 Write-Host "Setting Path: $csharpFolder"
 Set-Location $csharpFolder
 
