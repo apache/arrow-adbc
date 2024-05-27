@@ -62,55 +62,178 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         };
 
         /// <summary>
-        /// JDBC-specific data type definitions.
-        /// Copied from https://github.com/JetBrains/jdk8u_jdk/blob/master/src/share/classes/java/sql/Types.java
+        /// The Spark data type definitions based on the <see href="https://docs.oracle.com/javase/8/docs/api/java/sql/Types.html">JDBC Types</see> constants.
         /// </summary>
         /// <remarks>
-        /// NOTE: There is a partial copy of this enumeration in test/Drivers/Apache/Spark/DriverTests.cs
-        /// Please keep up-to-date.
+        /// This enumeration can be used to determine the Spark-specific data types that are contained in fields <c>xdbc_data_type</c> and <c>xdbc_sql_data_type</c>
+        /// in the column metadata <see cref="StandardSchemas.ColumnSchema"/>. This column metadata is returned as a result of a call to
+        /// <see cref="AdbcConnection.GetObjects(GetObjectsDepth, string?, string?, string?, IReadOnlyList{string}?, string?)"/>
+        /// when <c>depth</c> is set to <see cref="AdbcConnection.GetObjectsDepth.All"/>.
         /// </remarks>
-        private enum ColumnTypeId
+        public enum SparkDataType : short
         {
-            ARRAY_TYPE = 2003,
-            BIGINT_TYPE = -5,
-            BINARY_TYPE = -2,
-            BOOLEAN_TYPE = 16,
-            CHAR_TYPE = 1,
-            DATE_TYPE = 91,
-            DECIMAL_TYPE = 3,
-            DOUBLE_TYPE = 8,
-            FLOAT_TYPE = 6,
-            INTEGER_TYPE = 4,
-            JAVA_OBJECT_TYPE = 2000,
-            LONGNVARCHAR_TYPE = -16,
-            LONGVARBINARY_TYPE = -4,
-            LONGVARCHAR_TYPE = -1,
-            NCHAR_TYPE = -15,
-            NULL_TYPE = 0,
-            NUMERIC_TYPE = 2,
-            NVARCHAR_TYPE = -9,
-            REAL_TYPE = 7,
-            SMALLINT_TYPE = 5,
-            STRUCT_TYPE = 2002,
-            TIMESTAMP_TYPE = 93,
-            TINYINT_TYPE = -6,
-            VARBINARY_TYPE = -3,
-            VARCHAR_TYPE = 12,
+            // NOTE: There is a partial copy of this enumeration in test/Drivers/Apache/Spark/DriverTests.cs
+            // Please keep up-to-date.
+            // Copied from https://github.com/JetBrains/jdk8u_jdk/blob/master/src/share/classes/java/sql/Types.java
 
+            /// <summary>
+            /// Identifies the generic SQL type ARRAY
+            /// </summary>
+            ARRAY_TYPE = 2003,
+            /// <summary>
+            /// Identifies the generic SQL type BIGINT
+            /// </summary>
+            BIGINT_TYPE = -5,
+            /// <summary>
+            /// Identifies the generic SQL type BINARY
+            /// </summary>
+            BINARY_TYPE = -2,
+            /// <summary>
+            /// Identifies the generic SQL type BOOLEAN
+            /// </summary>
+            BOOLEAN_TYPE = 16,
+            /// <summary>
+            /// Identifies the generic SQL type CHAR
+            /// </summary>
+            CHAR_TYPE = 1,
+            /// <summary>
+            /// Identifies the generic SQL type DATE
+            /// </summary>
+            DATE_TYPE = 91,
+            /// <summary>
+            /// Identifies the generic SQL type DECIMAL
+            /// </summary>
+            DECIMAL_TYPE = 3,
+            /// <summary>
+            /// Identifies the generic SQL type DOUBLE
+            /// </summary>
+            DOUBLE_TYPE = 8,
+            /// <summary>
+            /// Identifies the generic SQL type FLOAT
+            /// </summary>
+            FLOAT_TYPE = 6,
+            /// <summary>
+            /// Identifies the generic SQL type INTEGER
+            /// </summary>
+            INTEGER_TYPE = 4,
+            /// <summary>
+            /// Identifies the generic SQL type JAVA_OBJECT (MAP)
+            /// </summary>
+            JAVA_OBJECT_TYPE = 2000,
+            /// <summary>
+            /// identifies the generic SQL type LONGNVARCHAR
+            /// </summary>
+            LONGNVARCHAR_TYPE = -16,
+            /// <summary>
+            /// identifies the generic SQL type LONGVARBINARY
+            /// </summary>
+            LONGVARBINARY_TYPE = -4,
+            /// <summary>
+            /// identifies the generic SQL type LONGVARCHAR
+            /// </summary>
+            LONGVARCHAR_TYPE = -1,
+            /// <summary>
+            /// identifies the generic SQL type NCHAR
+            /// </summary>
+            NCHAR_TYPE = -15,
+            /// <summary>
+            /// identifies the generic SQL value NULL
+            /// </summary>
+            NULL_TYPE = 0,
+            /// <summary>
+            /// identifies the generic SQL type NUMERIC
+            /// </summary>
+            NUMERIC_TYPE = 2,
+            /// <summary>
+            /// identifies the generic SQL type NVARCHAR
+            /// </summary>
+            NVARCHAR_TYPE = -9,
+            /// <summary>
+            /// identifies the generic SQL type REAL
+            /// </summary>
+            REAL_TYPE = 7,
+            /// <summary>
+            /// Identifies the generic SQL type SMALLINT
+            /// </summary>
+            SMALLINT_TYPE = 5,
+            /// <summary>
+            /// Identifies the generic SQL type STRUCT
+            /// </summary>
+            STRUCT_TYPE = 2002,
+            /// <summary>
+            /// Identifies the generic SQL type TIMESTAMP
+            /// </summary>
+            TIMESTAMP_TYPE = 93,
+            /// <summary>
+            /// Identifies the generic SQL type TINYINT
+            /// </summary>
+            TINYINT_TYPE = -6,
+            /// <summary>
+            /// Identifies the generic SQL type VARBINARY
+            /// </summary>
+            VARBINARY_TYPE = -3,
+            /// <summary>
+            /// Identifies the generic SQL type VARCHAR
+            /// </summary>
+            VARCHAR_TYPE = 12,
+            // ======================
             // Unused/unsupported
+            // ======================
+            /// <summary>
+            /// Identifies the generic SQL type BIT
+            /// </summary>
             BIT_TYPE = -7,
+            /// <summary>
+            /// Identifies the generic SQL type BLOB
+            /// </summary>
             BLOB_TYPE = 2004,
+            /// <summary>
+            /// Identifies the generic SQL type CLOB
+            /// </summary>
             CLOB_TYPE = 2005,
+            /// <summary>
+            /// Identifies the generic SQL type DATALINK
+            /// </summary>
             DATALINK_TYPE = 70,
+            /// <summary>
+            /// Identifies the generic SQL type DISTINCT
+            /// </summary>
             DISTINCT_TYPE = 2001,
+            /// <summary>
+            /// identifies the generic SQL type NCLOB
+            /// </summary>
             NCLOB_TYPE = 2011,
+            /// <summary>
+            /// Indicates that the SQL type is database-specific and gets mapped to a Java object
+            /// </summary>
             OTHER_TYPE = 1111,
+            /// <summary>
+            /// Identifies the generic SQL type REF CURSOR
+            /// </summary>
             REF_CURSOR_TYPE = 2012,
+            /// <summary>
+            /// Identifies the generic SQL type REF
+            /// </summary>
             REF_TYPE = 2006,
+            /// <summary>
+            /// Identifies the generic SQL type ROWID
+            /// </summary>
             ROWID_TYPE = -8,
+            /// <summary>
+            /// Identifies the generic SQL type XML
+            /// </summary>
             SQLXML_TYPE = 2009,
+            /// <summary>
+            /// Identifies the generic SQL type TIME
+            /// </summary>
             TIME_TYPE = 92,
+            /// <summary>
+            /// Identifies the generic SQL type TIME WITH TIMEZONE
+            /// </summary>
             TIME_WITH_TIMEZONE_TYPE = 2013,
+            /// <summary>
+            /// Identifies the generic SQL type TIMESTAMP WITH TIMEZONE
+            /// </summary>
             TIMESTAMP_WITH_TIMEZONE_TYPE = 2014,
         }
 
@@ -327,7 +450,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 //int? columnSize = columns[6].I32Val.Values.GetValue(i);
                 //int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
                 bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
-                IArrowType dataType = SparkConnection.GetArrowType((ColumnTypeId)columnType!.Value, typeName);
+                IArrowType dataType = SparkConnection.GetArrowType((SparkDataType)columnType!.Value, typeName);
                 fields[i] = new Field(columnName, dataType, nullable);
             }
             return new Schema(fields, null);
@@ -522,8 +645,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             switch (colType)
             {
-                case (short)ColumnTypeId.DECIMAL_TYPE:
-                case (short)ColumnTypeId.NUMERIC_TYPE:
+                case (short)SparkDataType.DECIMAL_TYPE:
+                case (short)SparkDataType.NUMERIC_TYPE:
                     {
                         Decimal128Type decimalType = SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
                         tableInfo?.Precision.Add(decimalType.Precision);
@@ -538,51 +661,51 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        private static IArrowType GetArrowType(ColumnTypeId columnTypeId, string typeName)
+        private static IArrowType GetArrowType(SparkDataType columnTypeId, string typeName)
         {
             switch (columnTypeId)
             {
-                case ColumnTypeId.BOOLEAN_TYPE:
+                case SparkDataType.BOOLEAN_TYPE:
                     return BooleanType.Default;
-                case ColumnTypeId.TINYINT_TYPE:
+                case SparkDataType.TINYINT_TYPE:
                     return Int8Type.Default;
-                case ColumnTypeId.SMALLINT_TYPE:
+                case SparkDataType.SMALLINT_TYPE:
                     return Int16Type.Default;
-                case ColumnTypeId.INTEGER_TYPE:
+                case SparkDataType.INTEGER_TYPE:
                     return Int32Type.Default;
-                case ColumnTypeId.BIGINT_TYPE:
+                case SparkDataType.BIGINT_TYPE:
                     return Int64Type.Default;
-                case ColumnTypeId.FLOAT_TYPE:
-                case ColumnTypeId.REAL_TYPE:
+                case SparkDataType.FLOAT_TYPE:
+                case SparkDataType.REAL_TYPE:
                     return FloatType.Default;
-                case ColumnTypeId.DOUBLE_TYPE:
+                case SparkDataType.DOUBLE_TYPE:
                     return DoubleType.Default;
-                case ColumnTypeId.VARCHAR_TYPE:
-                case ColumnTypeId.NVARCHAR_TYPE:
-                case ColumnTypeId.LONGVARCHAR_TYPE:
-                case ColumnTypeId.LONGNVARCHAR_TYPE:
+                case SparkDataType.VARCHAR_TYPE:
+                case SparkDataType.NVARCHAR_TYPE:
+                case SparkDataType.LONGVARCHAR_TYPE:
+                case SparkDataType.LONGNVARCHAR_TYPE:
                     return StringType.Default;
-                case ColumnTypeId.TIMESTAMP_TYPE:
+                case SparkDataType.TIMESTAMP_TYPE:
                     return new TimestampType(TimeUnit.Microsecond, timezone: (string?)null);
-                case ColumnTypeId.BINARY_TYPE:
-                case ColumnTypeId.VARBINARY_TYPE:
-                case ColumnTypeId.LONGVARBINARY_TYPE:
+                case SparkDataType.BINARY_TYPE:
+                case SparkDataType.VARBINARY_TYPE:
+                case SparkDataType.LONGVARBINARY_TYPE:
                     return BinaryType.Default;
-                case ColumnTypeId.DATE_TYPE:
+                case SparkDataType.DATE_TYPE:
                     return Date32Type.Default;
-                case ColumnTypeId.CHAR_TYPE:
-                case ColumnTypeId.NCHAR_TYPE:
+                case SparkDataType.CHAR_TYPE:
+                case SparkDataType.NCHAR_TYPE:
                     return StringType.Default;
-                case ColumnTypeId.DECIMAL_TYPE:
-                case ColumnTypeId.NUMERIC_TYPE:
+                case SparkDataType.DECIMAL_TYPE:
+                case SparkDataType.NUMERIC_TYPE:
                     // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
                     // are not returned in the Thrift call to GetColumns
                     return SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
-                case ColumnTypeId.NULL_TYPE:
+                case SparkDataType.NULL_TYPE:
                     return NullType.Default;
-                case ColumnTypeId.ARRAY_TYPE:
-                case ColumnTypeId.JAVA_OBJECT_TYPE:
-                case ColumnTypeId.STRUCT_TYPE:
+                case SparkDataType.ARRAY_TYPE:
+                case SparkDataType.JAVA_OBJECT_TYPE:
+                case SparkDataType.STRUCT_TYPE:
                     return StringType.Default;
                 default:
                     throw new NotImplementedException($"Column type id: {columnTypeId} is not supported.");

@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using SparkDataType = Apache.Arrow.Adbc.Drivers.Apache.Spark.SparkConnection.SparkDataType;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
@@ -37,57 +38,36 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class DriverTests : SparkTestBase
     {
-
-        /// JDBC-specific data type definitions.
-        /// Copied from https://github.com/JetBrains/jdk8u_jdk/blob/master/src/share/classes/java/sql/Types.java
+        /// <summary>
+        /// Supported Spark data types as a subset of <see cref="SparkConnection.SparkDataType"/>
         /// </summary>
-        /// <remarks>
-        /// NOTE: the original of this enumeration in src/Drivers/Apache/Spark/SparkConnection.cs
-        /// Please keep up-to-date.
-        /// </remarks>
-        private enum SupportedColumnTypeId
+        private enum SupportedSparkDataType : short
         {
-            ARRAY_TYPE = 2003,
-            BIGINT_TYPE = -5,
-            BINARY_TYPE = -2,
-            BOOLEAN_TYPE = 16,
-            CHAR_TYPE = 1,
-            DATE_TYPE = 91,
-            DECIMAL_TYPE = 3,
-            DOUBLE_TYPE = 8,
-            FLOAT_TYPE = 6,
-            INTEGER_TYPE = 4,
-            JAVA_OBJECT_TYPE = 2000,
-            LONGNVARCHAR_TYPE = -16,
-            LONGVARBINARY_TYPE = -4,
-            LONGVARCHAR_TYPE = -1,
-            NCHAR_TYPE = -15,
-            NULL_TYPE = 0,
-            NUMERIC_TYPE = 2,
-            NVARCHAR_TYPE = -9,
-            REAL_TYPE = 7,
-            SMALLINT_TYPE = 5,
-            STRUCT_TYPE = 2002,
-            TIMESTAMP_TYPE = 93,
-            TINYINT_TYPE = -6,
-            VARBINARY_TYPE = -3,
-            VARCHAR_TYPE = 12,
-
-            // Unused/unsupported - throw an error if these are discovered in testing
-            //BIT_TYPE = -7,
-            //BLOB_TYPE = 2004,
-            //CLOB_TYPE = 2005,
-            //DATALINK_TYPE = 70,
-            //DISTINCT_TYPE = 2001,
-            //NCLOB_TYPE = 2011,
-            //OTHER_TYPE = 1111,
-            //REF_CURSOR_TYPE = 2012,
-            //REF_TYPE = 2006,
-            //ROWID_TYPE = -8,
-            //SQLXML_TYPE = 2009,
-            //TIME_TYPE = 92,
-            //TIME_WITH_TIMEZONE_TYPE = 2013,
-            //TIMESTAMP_WITH_TIMEZONE_TYPE = 2014,
+            ARRAY_TYPE = SparkDataType.ARRAY_TYPE,
+            BIGINT_TYPE = SparkDataType.BIGINT_TYPE,
+            BINARY_TYPE = SparkDataType.BINARY_TYPE,
+            BOOLEAN_TYPE = SparkDataType.BOOLEAN_TYPE,
+            CHAR_TYPE = SparkDataType.CHAR_TYPE,
+            DATE_TYPE = SparkDataType.DATE_TYPE,
+            DECIMAL_TYPE = SparkDataType.DECIMAL_TYPE,
+            DOUBLE_TYPE = SparkDataType.DOUBLE_TYPE,
+            FLOAT_TYPE = SparkDataType.FLOAT_TYPE,
+            INTEGER_TYPE = SparkDataType.INTEGER_TYPE,
+            JAVA_OBJECT_TYPE = SparkDataType.JAVA_OBJECT_TYPE,
+            LONGNVARCHAR_TYPE = SparkDataType.LONGNVARCHAR_TYPE,
+            LONGVARBINARY_TYPE = SparkDataType.LONGVARBINARY_TYPE,
+            LONGVARCHAR_TYPE = SparkDataType.LONGVARCHAR_TYPE,
+            NCHAR_TYPE = SparkDataType.NCHAR_TYPE,
+            NULL_TYPE = SparkDataType.NULL_TYPE,
+            NUMERIC_TYPE = SparkDataType.NUMERIC_TYPE,
+            NVARCHAR_TYPE = SparkDataType.NVARCHAR_TYPE,
+            REAL_TYPE = SparkDataType.REAL_TYPE,
+            SMALLINT_TYPE = SparkDataType.SMALLINT_TYPE,
+            STRUCT_TYPE = SparkDataType.STRUCT_TYPE,
+            TIMESTAMP_TYPE = SparkDataType.TIMESTAMP_TYPE,
+            TINYINT_TYPE = SparkDataType.TINYINT_TYPE,
+            VARBINARY_TYPE = SparkDataType.VARBINARY_TYPE,
+            VARCHAR_TYPE = SparkDataType.VARCHAR_TYPE,
         }
 
         private static List<string> DefaultTableTypes => new() { "BASE TABLE", "VIEW" };
@@ -301,12 +281,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 Assert.Equal(i + 1, column.OrdinalPosition);
                 Assert.NotNull(column.Name);
                 Assert.False(string.IsNullOrEmpty(column.Name));
-                var types = Enum.GetValues(typeof(SupportedColumnTypeId)).Cast<SupportedColumnTypeId>();
-                Assert.Contains((SupportedColumnTypeId)column.XdbcSqlDataType!, types);
+                var types = Enum.GetValues(typeof(SupportedSparkDataType)).Cast<SupportedSparkDataType>();
+                Assert.Contains((SupportedSparkDataType)column.XdbcSqlDataType!, types);
                 Assert.NotNull(column.XdbcDataType);
-                Assert.Contains((SupportedColumnTypeId)column.XdbcDataType!, types);
+                Assert.Contains((SupportedSparkDataType)column.XdbcDataType!, types);
                 Assert.Equal(column.XdbcDataType, column.XdbcSqlDataType);
-                bool isDecimalType = column.XdbcDataType == (short)SupportedColumnTypeId.DECIMAL_TYPE || column.XdbcDataType == (short)SupportedColumnTypeId.NUMERIC_TYPE;
+                bool isDecimalType = column.XdbcDataType == (short)SupportedSparkDataType.DECIMAL_TYPE || column.XdbcDataType == (short)SupportedSparkDataType.NUMERIC_TYPE;
                 Assert.Equal(column.XdbcColumnSize.HasValue, isDecimalType);
                 Assert.Equal(column.XdbcDecimalDigits.HasValue, isDecimalType);
                 Assert.Equal(column.XdbcDataType, column.XdbcSqlDataType);
