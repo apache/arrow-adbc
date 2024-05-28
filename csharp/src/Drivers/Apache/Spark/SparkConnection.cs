@@ -75,7 +75,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         /// <see cref="AdbcConnection.GetObjects(GetObjectsDepth, string?, string?, string?, IReadOnlyList{string}?, string?)"/>
         /// when <c>depth</c> is set to <see cref="AdbcConnection.GetObjectsDepth.All"/>.
         /// </remarks>
-        public enum SparkDataType : short
+        private enum ColumnTypeId
         {
             // NOTE: There is a partial copy of this enumeration in test/Drivers/Apache/Spark/DriverTests.cs
             // Please keep up-to-date.
@@ -483,7 +483,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 //int? columnSize = columns[6].I32Val.Values.GetValue(i);
                 //int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
                 bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
-                IArrowType dataType = SparkConnection.GetArrowType((SparkDataType)columnType!.Value, typeName);
+                IArrowType dataType = SparkConnection.GetArrowType(columnType!.Value, typeName);
                 fields[i] = new Field(columnName, dataType, nullable);
             }
             return new Schema(fields, null);
@@ -678,8 +678,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             switch (colType)
             {
-                case (short)SparkDataType.DECIMAL_TYPE:
-                case (short)SparkDataType.NUMERIC_TYPE:
+                case (short)ColumnTypeId.DECIMAL_TYPE:
+                case (short)ColumnTypeId.NUMERIC_TYPE:
                     {
                         Decimal128Type decimalType = SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
                         tableInfo?.Precision.Add(decimalType.Precision);
@@ -694,51 +694,51 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        private static IArrowType GetArrowType(SparkDataType columnTypeId, string typeName)
+        private static IArrowType GetArrowType(int columnTypeId, string typeName)
         {
             switch (columnTypeId)
             {
-                case SparkDataType.BOOLEAN_TYPE:
+                case (int)ColumnTypeId.BOOLEAN_TYPE:
                     return BooleanType.Default;
-                case SparkDataType.TINYINT_TYPE:
+                case (int)ColumnTypeId.TINYINT_TYPE:
                     return Int8Type.Default;
-                case SparkDataType.SMALLINT_TYPE:
+                case (int)ColumnTypeId.SMALLINT_TYPE:
                     return Int16Type.Default;
-                case SparkDataType.INTEGER_TYPE:
+                case (int)ColumnTypeId.INTEGER_TYPE:
                     return Int32Type.Default;
-                case SparkDataType.BIGINT_TYPE:
+                case (int)ColumnTypeId.BIGINT_TYPE:
                     return Int64Type.Default;
-                case SparkDataType.FLOAT_TYPE:
-                case SparkDataType.REAL_TYPE:
+                case (int)ColumnTypeId.FLOAT_TYPE:
+                case (int)ColumnTypeId.REAL_TYPE:
                     return FloatType.Default;
-                case SparkDataType.DOUBLE_TYPE:
+                case (int)ColumnTypeId.DOUBLE_TYPE:
                     return DoubleType.Default;
-                case SparkDataType.VARCHAR_TYPE:
-                case SparkDataType.NVARCHAR_TYPE:
-                case SparkDataType.LONGVARCHAR_TYPE:
-                case SparkDataType.LONGNVARCHAR_TYPE:
+                case (int)ColumnTypeId.VARCHAR_TYPE:
+                case (int)ColumnTypeId.NVARCHAR_TYPE:
+                case (int)ColumnTypeId.LONGVARCHAR_TYPE:
+                case (int)ColumnTypeId.LONGNVARCHAR_TYPE:
                     return StringType.Default;
-                case SparkDataType.TIMESTAMP_TYPE:
+                case (int)ColumnTypeId.TIMESTAMP_TYPE:
                     return new TimestampType(TimeUnit.Microsecond, timezone: (string?)null);
-                case SparkDataType.BINARY_TYPE:
-                case SparkDataType.VARBINARY_TYPE:
-                case SparkDataType.LONGVARBINARY_TYPE:
+                case (int)ColumnTypeId.BINARY_TYPE:
+                case (int)ColumnTypeId.VARBINARY_TYPE:
+                case (int)ColumnTypeId.LONGVARBINARY_TYPE:
                     return BinaryType.Default;
-                case SparkDataType.DATE_TYPE:
+                case (int)ColumnTypeId.DATE_TYPE:
                     return Date32Type.Default;
-                case SparkDataType.CHAR_TYPE:
-                case SparkDataType.NCHAR_TYPE:
+                case (int)ColumnTypeId.CHAR_TYPE:
+                case (int)ColumnTypeId.NCHAR_TYPE:
                     return StringType.Default;
-                case SparkDataType.DECIMAL_TYPE:
-                case SparkDataType.NUMERIC_TYPE:
+                case (int)ColumnTypeId.DECIMAL_TYPE:
+                case (int)ColumnTypeId.NUMERIC_TYPE:
                     // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
                     // are not returned in the Thrift call to GetColumns
                     return SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
-                case SparkDataType.NULL_TYPE:
+                case (int)ColumnTypeId.NULL_TYPE:
                     return NullType.Default;
-                case SparkDataType.ARRAY_TYPE:
-                case SparkDataType.JAVA_OBJECT_TYPE:
-                case SparkDataType.STRUCT_TYPE:
+                case (int)ColumnTypeId.ARRAY_TYPE:
+                case (int)ColumnTypeId.JAVA_OBJECT_TYPE:
+                case (int)ColumnTypeId.STRUCT_TYPE:
                     return StringType.Default;
                 default:
                     throw new NotImplementedException($"Column type id: {columnTypeId} is not supported.");
