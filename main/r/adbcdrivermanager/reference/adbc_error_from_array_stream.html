@@ -58,7 +58,7 @@
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
     <dl><dt>stream</dt>
-<dd><p>A <a href="https://rdrr.io/pkg/nanoarrow/man/as_nanoarrow_array_stream.html" class="external-link">nanoarrow_array_stream</a></p></dd>
+<dd><p>A <a href="https://arrow.apache.org/nanoarrow/latest/r/reference/as_nanoarrow_array_stream.html" class="external-link">nanoarrow_array_stream</a></p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -76,7 +76,7 @@ status code and second element is the <code>adbc_error</code> object. The
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">db</span> <span class="op">&lt;-</span> <span class="fu"><a href="adbc_database_init.html">adbc_database_init</a></span><span class="op">(</span><span class="fu"><a href="adbc_driver_monkey.html">adbc_driver_monkey</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">con</span> <span class="op">&lt;-</span> <span class="fu"><a href="adbc_connection_init.html">adbc_connection_init</a></span><span class="op">(</span><span class="va">db</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">stmt</span> <span class="op">&lt;-</span> <span class="fu"><a href="adbc_statement_init.html">adbc_statement_init</a></span><span class="op">(</span><span class="va">con</span>, <span class="va">mtcars</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">stream</span> <span class="op">&lt;-</span> <span class="fu">nanoarrow</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/nanoarrow/man/nanoarrow_pointer_is_valid.html" class="external-link">nanoarrow_allocate_array_stream</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">stream</span> <span class="op">&lt;-</span> <span class="fu">nanoarrow</span><span class="fu">::</span><span class="fu"><a href="https://arrow.apache.org/nanoarrow/latest/r/reference/nanoarrow_pointer_is_valid.html" class="external-link">nanoarrow_allocate_array_stream</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="adbc_statement_set_sql_query.html">adbc_statement_execute_query</a></span><span class="op">(</span><span class="va">stmt</span>, <span class="va">stream</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] -1</span>
 <span class="r-in"><span><span class="fu">adbc_error_from_array_stream</span><span class="op">(</span><span class="va">stream</span><span class="op">)</span></span></span>
