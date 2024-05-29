@@ -70,7 +70,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             VARCHAR = ColumnTypeId.VARCHAR,
         }
 
-        private static List<string> DefaultTableTypes => new() { "BASE TABLE", "VIEW" };
+        private static List<string> DefaultTableTypes => new() { "TABLE", "VIEW" };
 
         public DriverTests(ITestOutputHelper? outputHelper) : base(outputHelper)
         {
@@ -299,7 +299,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             AdbcTable? table = tables?.Where((table) => string.Equals(table.Name, tableName)).FirstOrDefault();
             Assert.True(table != null, "table should not be null");
             // TODO: Determine why this is returned blank.
-            //Assert.Equal("BASE TABLE", table.Type);
+            //Assert.Equal("TABLE", table.Type);
         }
 
         /// <summary>

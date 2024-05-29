@@ -706,8 +706,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             switch (colType)
             {
-                case (short)ColumnTypeId.DECIMAL_TYPE:
-                case (short)ColumnTypeId.NUMERIC_TYPE:
+                case (short)ColumnTypeId.DECIMAL:
+                case (short)ColumnTypeId.NUMERIC:
                     {
                         Decimal128Type decimalType = SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
                         tableInfo?.Precision.Add(decimalType.Precision);
