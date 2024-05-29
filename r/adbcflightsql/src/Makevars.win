@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-PKG_CPPFLAGS=-I$(CURDIR) -DADBC_EXPORT=""
+PKG_CPPFLAGS=-I$(CURDIR)
 PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_flightsql
 
 CGO_CC = `"${R_HOME}/bin${R_ARCH_BIN}/R.exe" CMD config CC`
