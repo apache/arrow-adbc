@@ -56,7 +56,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         const bool InfoVendorSql = true;
         const int DecimalPrecisionDefault = 10;
         const int DecimalScaleDefault = 0;
-
+        const string ColumnDef = "COLUMN_DEF";
+        const string ColumnName = "COLUMN_NAME";
+        const string DataType = "DATA_TYPE";
+        const string IsAutoIncrement = "IS_AUTO_INCREMENT";
+        const string IsNullable = "IS_NULLABLE";
+        const string OrdinalPosition = "ORDINAL_POSITION";
+        const string TableCat = "TABLE_CAT";
+        const string TableCatalog = "TABLE_CATALOG";
+        const string TableName = "TABLE_NAME";
+        const string TableSchem = "TABLE_SCHEM";
+        const string TableType = "TABLE_TYPE";
+        const string TypeName = "TYPE_NAME";
+        const string Nullable = "NULLABLE";
         private readonly Lazy<string> _productVersion;
 
         internal static TSparkGetDirectResults sparkGetDirectResults = new TSparkGetDirectResults(1000);
@@ -67,7 +79,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         };
 
         /// <summary>
-        /// The Spark data type definitions based on the <see href="https://docs.oracle.com/javase/8/docs/api/java/sql/Types.html">JDBC Types</see> constants.
+        /// The Spark data type definitions based on the <see href="https://docs.oracle.com/en%2Fjava%2Fjavase%2F21%2Fdocs%2Fapi%2F%2F/java.sql/java/sql/Types.html">JDBC Types</see> constants.
         /// </summary>
         /// <remarks>
         /// This enumeration can be used to determine the Spark-specific data types that are contained in fields <c>xdbc_data_type</c> and <c>xdbc_sql_data_type</c>
@@ -75,171 +87,171 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         /// <see cref="AdbcConnection.GetObjects(GetObjectsDepth, string?, string?, string?, IReadOnlyList{string}?, string?)"/>
         /// when <c>depth</c> is set to <see cref="AdbcConnection.GetObjectsDepth.All"/>.
         /// </remarks>
-        private enum ColumnTypeId
+        internal enum ColumnTypeId
         {
             // NOTE: There is a partial copy of this enumeration in test/Drivers/Apache/Spark/DriverTests.cs
             // Please keep up-to-date.
-            // Copied from https://github.com/JetBrains/jdk8u_jdk/blob/master/src/share/classes/java/sql/Types.java
+            // Copied from https://docs.oracle.com/en%2Fjava%2Fjavase%2F21%2Fdocs%2Fapi%2F%2F/constant-values.html#java.sql.Types.ARRAY
 
             /// <summary>
             /// Identifies the generic SQL type ARRAY
             /// </summary>
-            ARRAY_TYPE = 2003,
+            ARRAY = 2003,
             /// <summary>
             /// Identifies the generic SQL type BIGINT
             /// </summary>
-            BIGINT_TYPE = -5,
+            BIGINT = -5,
             /// <summary>
             /// Identifies the generic SQL type BINARY
             /// </summary>
-            BINARY_TYPE = -2,
+            BINARY = -2,
             /// <summary>
             /// Identifies the generic SQL type BOOLEAN
             /// </summary>
-            BOOLEAN_TYPE = 16,
+            BOOLEAN = 16,
             /// <summary>
             /// Identifies the generic SQL type CHAR
             /// </summary>
-            CHAR_TYPE = 1,
+            CHAR = 1,
             /// <summary>
             /// Identifies the generic SQL type DATE
             /// </summary>
-            DATE_TYPE = 91,
+            DATE = 91,
             /// <summary>
             /// Identifies the generic SQL type DECIMAL
             /// </summary>
-            DECIMAL_TYPE = 3,
+            DECIMAL = 3,
             /// <summary>
             /// Identifies the generic SQL type DOUBLE
             /// </summary>
-            DOUBLE_TYPE = 8,
+            DOUBLE = 8,
             /// <summary>
             /// Identifies the generic SQL type FLOAT
             /// </summary>
-            FLOAT_TYPE = 6,
+            FLOAT = 6,
             /// <summary>
             /// Identifies the generic SQL type INTEGER
             /// </summary>
-            INTEGER_TYPE = 4,
+            INTEGER = 4,
             /// <summary>
             /// Identifies the generic SQL type JAVA_OBJECT (MAP)
             /// </summary>
-            JAVA_OBJECT_TYPE = 2000,
+            JAVA_OBJECT = 2000,
             /// <summary>
             /// identifies the generic SQL type LONGNVARCHAR
             /// </summary>
-            LONGNVARCHAR_TYPE = -16,
+            LONGNVARCHAR = -16,
             /// <summary>
             /// identifies the generic SQL type LONGVARBINARY
             /// </summary>
-            LONGVARBINARY_TYPE = -4,
+            LONGVARBINARY = -4,
             /// <summary>
             /// identifies the generic SQL type LONGVARCHAR
             /// </summary>
-            LONGVARCHAR_TYPE = -1,
+            LONGVARCHAR = -1,
             /// <summary>
             /// identifies the generic SQL type NCHAR
             /// </summary>
-            NCHAR_TYPE = -15,
+            NCHAR = -15,
             /// <summary>
             /// identifies the generic SQL value NULL
             /// </summary>
-            NULL_TYPE = 0,
+            NULL = 0,
             /// <summary>
             /// identifies the generic SQL type NUMERIC
             /// </summary>
-            NUMERIC_TYPE = 2,
+            NUMERIC = 2,
             /// <summary>
             /// identifies the generic SQL type NVARCHAR
             /// </summary>
-            NVARCHAR_TYPE = -9,
+            NVARCHAR = -9,
             /// <summary>
             /// identifies the generic SQL type REAL
             /// </summary>
-            REAL_TYPE = 7,
+            REAL = 7,
             /// <summary>
             /// Identifies the generic SQL type SMALLINT
             /// </summary>
-            SMALLINT_TYPE = 5,
+            SMALLINT = 5,
             /// <summary>
             /// Identifies the generic SQL type STRUCT
             /// </summary>
-            STRUCT_TYPE = 2002,
+            STRUCT = 2002,
             /// <summary>
             /// Identifies the generic SQL type TIMESTAMP
             /// </summary>
-            TIMESTAMP_TYPE = 93,
+            TIMESTAMP = 93,
             /// <summary>
             /// Identifies the generic SQL type TINYINT
             /// </summary>
-            TINYINT_TYPE = -6,
+            TINYINT = -6,
             /// <summary>
             /// Identifies the generic SQL type VARBINARY
             /// </summary>
-            VARBINARY_TYPE = -3,
+            VARBINARY = -3,
             /// <summary>
             /// Identifies the generic SQL type VARCHAR
             /// </summary>
-            VARCHAR_TYPE = 12,
+            VARCHAR = 12,
             // ======================
             // Unused/unsupported
             // ======================
             /// <summary>
             /// Identifies the generic SQL type BIT
             /// </summary>
-            BIT_TYPE = -7,
+            BIT = -7,
             /// <summary>
             /// Identifies the generic SQL type BLOB
             /// </summary>
-            BLOB_TYPE = 2004,
+            BLOB = 2004,
             /// <summary>
             /// Identifies the generic SQL type CLOB
             /// </summary>
-            CLOB_TYPE = 2005,
+            CLOB = 2005,
             /// <summary>
             /// Identifies the generic SQL type DATALINK
             /// </summary>
-            DATALINK_TYPE = 70,
+            DATALINK = 70,
             /// <summary>
             /// Identifies the generic SQL type DISTINCT
             /// </summary>
-            DISTINCT_TYPE = 2001,
+            DISTINCT = 2001,
             /// <summary>
             /// identifies the generic SQL type NCLOB
             /// </summary>
-            NCLOB_TYPE = 2011,
+            NCLOB = 2011,
             /// <summary>
             /// Indicates that the SQL type is database-specific and gets mapped to a Java object
             /// </summary>
-            OTHER_TYPE = 1111,
+            OTHER = 1111,
             /// <summary>
             /// Identifies the generic SQL type REF CURSOR
             /// </summary>
-            REF_CURSOR_TYPE = 2012,
+            REF_CURSOR = 2012,
             /// <summary>
             /// Identifies the generic SQL type REF
             /// </summary>
-            REF_TYPE = 2006,
+            REF = 2006,
             /// <summary>
             /// Identifies the generic SQL type ROWID
             /// </summary>
-            ROWID_TYPE = -8,
+            ROWID = -8,
             /// <summary>
             /// Identifies the generic SQL type XML
             /// </summary>
-            SQLXML_TYPE = 2009,
+            SQLXML = 2009,
             /// <summary>
             /// Identifies the generic SQL type TIME
             /// </summary>
-            TIME_TYPE = 92,
+            TIME = 92,
             /// <summary>
             /// Identifies the generic SQL type TIME WITH TIMEZONE
             /// </summary>
-            TIME_WITH_TIMEZONE_TYPE = 2013,
+            TIME_WITH_TIMEZONE = 2013,
             /// <summary>
             /// Identifies the generic SQL type TIMESTAMP WITH TIMEZONE
             /// </summary>
-            TIMESTAMP_WITH_TIMEZONE_TYPE = 2014,
+            TIMESTAMP_WITH_TIMEZONE = 2014,
         }
 
         internal SparkConnection(IReadOnlyDictionary<string, string> properties)
@@ -443,8 +455,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override IArrowArrayStream GetTableTypes()
         {
+            TGetTableTypesReq req = new()
+            {
+                SessionHandle = this.sessionHandle ?? throw new InvalidOperationException("session not created"),
+                GetDirectResults = sparkGetDirectResults
+            };
+            TGetTableTypesResp resp = this.Client.GetTableTypes(req).Result;
+            if (resp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+
+            List<TColumn> columns = resp.DirectResults.ResultSet.Results.Columns;
+            StringArray tableTypes = columns[0].StringVal.Values;
+
             StringArray.Builder tableTypesBuilder = new StringArray.Builder();
-            tableTypesBuilder.AppendRange(new string[] { "BASE TABLE", "VIEW" });
+            tableTypesBuilder.AppendRange(tableTypes);
 
             IArrowArray[] dataArrays = new IArrowArray[]
             {
@@ -508,7 +536,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                 string catalogRegexp = PatternToRegEx(catalogPattern);
                 TRowSet resp = getCatalogsResp.DirectResults.ResultSet.Results;
-                IReadOnlyList<string> list = resp.Columns[columnMap["TABLE_CAT"]].StringVal.Values;
+                IReadOnlyList<string> list = resp.Columns[columnMap[TableCat]].StringVal.Values;
                 for (int i = 0; i < list.Count; i++)
                 {
                     string col = list[i];
@@ -536,8 +564,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(getSchemasResp.DirectResults.ResultSetMetadata.Schema.Columns);
                 TRowSet resp = getSchemasResp.DirectResults.ResultSet.Results;
 
-                IReadOnlyList<string> catalogList = resp.Columns[columnMap["TABLE_CATALOG"]].StringVal.Values;
-                IReadOnlyList<string> schemaList = resp.Columns[columnMap["TABLE_SCHEM"]].StringVal.Values;
+                IReadOnlyList<string> catalogList = resp.Columns[columnMap[TableCatalog]].StringVal.Values;
+                IReadOnlyList<string> schemaList = resp.Columns[columnMap[TableSchem]].StringVal.Values;
 
                 for (int i = 0; i < catalogList.Count; i++)
                 {
@@ -565,10 +593,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(getTablesResp.DirectResults.ResultSetMetadata.Schema.Columns);
                 TRowSet resp = getTablesResp.DirectResults.ResultSet.Results;
 
-                IReadOnlyList<string> catalogList = resp.Columns[columnMap["TABLE_CAT"]].StringVal.Values;
-                IReadOnlyList<string> schemaList = resp.Columns[columnMap["TABLE_SCHEM"]].StringVal.Values;
-                IReadOnlyList<string> tableList = resp.Columns[columnMap["TABLE_NAME"]].StringVal.Values;
-                IReadOnlyList<string> tableTypeList = resp.Columns[columnMap["TABLE_TYPE"]].StringVal.Values;
+                IReadOnlyList<string> catalogList = resp.Columns[columnMap[TableCat]].StringVal.Values;
+                IReadOnlyList<string> schemaList = resp.Columns[columnMap[TableSchem]].StringVal.Values;
+                IReadOnlyList<string> tableList = resp.Columns[columnMap[TableName]].StringVal.Values;
+                IReadOnlyList<string> tableTypeList = resp.Columns[columnMap[TableType]].StringVal.Values;
 
                 for (int i = 0; i < catalogList.Count; i++)
                 {
@@ -601,17 +629,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsResponse.DirectResults.ResultSetMetadata.Schema.Columns);
                 TRowSet resp = columnsResponse.DirectResults.ResultSet.Results;
 
-                IReadOnlyList<string> catalogList = resp.Columns[columnMap["TABLE_CAT"]].StringVal.Values;
-                IReadOnlyList<string> schemaList = resp.Columns[columnMap["TABLE_SCHEM"]].StringVal.Values;
-                IReadOnlyList<string> tableList = resp.Columns[columnMap["TABLE_NAME"]].StringVal.Values;
-                IReadOnlyList<string> columnNameList = resp.Columns[columnMap["COLUMN_NAME"]].StringVal.Values;
-                ReadOnlySpan<int> columnTypeList = resp.Columns[columnMap["DATA_TYPE"]].I32Val.Values.Values;
-                IReadOnlyList<string> typeNameList = resp.Columns[columnMap["TYPE_NAME"]].StringVal.Values;
-                ReadOnlySpan<int> nullableList = resp.Columns[columnMap["NULLABLE"]].I32Val.Values.Values;
-                IReadOnlyList<string> columnDefaultList = resp.Columns[columnMap["COLUMN_DEF"]].StringVal.Values;
-                ReadOnlySpan<int> ordinalPosList = resp.Columns[columnMap["ORDINAL_POSITION"]].I32Val.Values.Values;
-                IReadOnlyList<string> isNullableList = resp.Columns[columnMap["IS_NULLABLE"]].StringVal.Values;
-                IReadOnlyList<string> isAutoIncrementList = resp.Columns[columnMap["IS_AUTO_INCREMENT"]].StringVal.Values;
+                IReadOnlyList<string> catalogList = resp.Columns[columnMap[TableCat]].StringVal.Values;
+                IReadOnlyList<string> schemaList = resp.Columns[columnMap[TableSchem]].StringVal.Values;
+                IReadOnlyList<string> tableList = resp.Columns[columnMap[TableName]].StringVal.Values;
+                IReadOnlyList<string> columnNameList = resp.Columns[columnMap[ColumnName]].StringVal.Values;
+                ReadOnlySpan<int> columnTypeList = resp.Columns[columnMap[DataType]].I32Val.Values.Values;
+                IReadOnlyList<string> typeNameList = resp.Columns[columnMap[TypeName]].StringVal.Values;
+                ReadOnlySpan<int> nullableList = resp.Columns[columnMap[Nullable]].I32Val.Values.Values;
+                IReadOnlyList<string> columnDefaultList = resp.Columns[columnMap[ColumnDef]].StringVal.Values;
+                ReadOnlySpan<int> ordinalPosList = resp.Columns[columnMap[OrdinalPosition]].I32Val.Values.Values;
+                IReadOnlyList<string> isNullableList = resp.Columns[columnMap[IsNullable]].StringVal.Values;
+                IReadOnlyList<string> isAutoIncrementList = resp.Columns[columnMap[IsAutoIncrement]].StringVal.Values;
 
                 for (int i = 0; i < catalogList.Count; i++)
                 {
@@ -698,47 +726,47 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             switch (columnTypeId)
             {
-                case (int)ColumnTypeId.BOOLEAN_TYPE:
+                case (int)ColumnTypeId.BOOLEAN:
                     return BooleanType.Default;
-                case (int)ColumnTypeId.TINYINT_TYPE:
+                case (int)ColumnTypeId.TINYINT:
                     return Int8Type.Default;
-                case (int)ColumnTypeId.SMALLINT_TYPE:
+                case (int)ColumnTypeId.SMALLINT:
                     return Int16Type.Default;
-                case (int)ColumnTypeId.INTEGER_TYPE:
+                case (int)ColumnTypeId.INTEGER:
                     return Int32Type.Default;
-                case (int)ColumnTypeId.BIGINT_TYPE:
+                case (int)ColumnTypeId.BIGINT:
                     return Int64Type.Default;
-                case (int)ColumnTypeId.FLOAT_TYPE:
-                case (int)ColumnTypeId.REAL_TYPE:
+                case (int)ColumnTypeId.FLOAT:
+                case (int)ColumnTypeId.REAL:
                     return FloatType.Default;
-                case (int)ColumnTypeId.DOUBLE_TYPE:
+                case (int)ColumnTypeId.DOUBLE:
                     return DoubleType.Default;
-                case (int)ColumnTypeId.VARCHAR_TYPE:
-                case (int)ColumnTypeId.NVARCHAR_TYPE:
-                case (int)ColumnTypeId.LONGVARCHAR_TYPE:
-                case (int)ColumnTypeId.LONGNVARCHAR_TYPE:
+                case (int)ColumnTypeId.VARCHAR:
+                case (int)ColumnTypeId.NVARCHAR:
+                case (int)ColumnTypeId.LONGVARCHAR:
+                case (int)ColumnTypeId.LONGNVARCHAR:
                     return StringType.Default;
-                case (int)ColumnTypeId.TIMESTAMP_TYPE:
+                case (int)ColumnTypeId.TIMESTAMP:
                     return new TimestampType(TimeUnit.Microsecond, timezone: (string?)null);
-                case (int)ColumnTypeId.BINARY_TYPE:
-                case (int)ColumnTypeId.VARBINARY_TYPE:
-                case (int)ColumnTypeId.LONGVARBINARY_TYPE:
+                case (int)ColumnTypeId.BINARY:
+                case (int)ColumnTypeId.VARBINARY:
+                case (int)ColumnTypeId.LONGVARBINARY:
                     return BinaryType.Default;
-                case (int)ColumnTypeId.DATE_TYPE:
+                case (int)ColumnTypeId.DATE:
                     return Date32Type.Default;
-                case (int)ColumnTypeId.CHAR_TYPE:
-                case (int)ColumnTypeId.NCHAR_TYPE:
+                case (int)ColumnTypeId.CHAR:
+                case (int)ColumnTypeId.NCHAR:
                     return StringType.Default;
-                case (int)ColumnTypeId.DECIMAL_TYPE:
-                case (int)ColumnTypeId.NUMERIC_TYPE:
+                case (int)ColumnTypeId.DECIMAL:
+                case (int)ColumnTypeId.NUMERIC:
                     // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
                     // are not returned in the Thrift call to GetColumns
                     return SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
-                case (int)ColumnTypeId.NULL_TYPE:
+                case (int)ColumnTypeId.NULL:
                     return NullType.Default;
-                case (int)ColumnTypeId.ARRAY_TYPE:
-                case (int)ColumnTypeId.JAVA_OBJECT_TYPE:
-                case (int)ColumnTypeId.STRUCT_TYPE:
+                case (int)ColumnTypeId.ARRAY:
+                case (int)ColumnTypeId.JAVA_OBJECT:
+                case (int)ColumnTypeId.STRUCT:
                     return StringType.Default;
                 default:
                     throw new NotImplementedException($"Column type id: {columnTypeId} is not supported.");

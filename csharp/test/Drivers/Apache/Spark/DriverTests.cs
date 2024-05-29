@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ColumnTypeId = Apache.Arrow.Adbc.Drivers.Apache.Spark.SparkConnection.ColumnTypeId;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
@@ -42,31 +43,31 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// </summary>
         private enum SupportedSparkDataType : short
         {
-            ARRAY_TYPE = 2003,
-            BIGINT_TYPE = -5,
-            BINARY_TYPE = -2,
-            BOOLEAN_TYPE = 16,
-            CHAR_TYPE = 1,
-            DATE_TYPE = 91,
-            DECIMAL_TYPE = 3,
-            DOUBLE_TYPE = 8,
-            FLOAT_TYPE = 6,
-            INTEGER_TYPE = 4,
-            JAVA_OBJECT_TYPE = 2000,
-            LONGNVARCHAR_TYPE = -16,
-            LONGVARBINARY_TYPE = -4,
-            LONGVARCHAR_TYPE = -1,
-            NCHAR_TYPE = -15,
-            NULL_TYPE = 0,
-            NUMERIC_TYPE = 2,
-            NVARCHAR_TYPE = -9,
-            REAL_TYPE = 7,
-            SMALLINT_TYPE = 5,
-            STRUCT_TYPE = 2002,
-            TIMESTAMP_TYPE = 93,
-            TINYINT_TYPE = -6,
-            VARBINARY_TYPE = -3,
-            VARCHAR_TYPE = 12,
+            ARRAY = ColumnTypeId.ARRAY,
+            BIGINT = ColumnTypeId.BIGINT,
+            BINARY = ColumnTypeId.BINARY,
+            BOOLEAN = ColumnTypeId.BOOLEAN,
+            CHAR = ColumnTypeId.CHAR,
+            DATE = ColumnTypeId.DATE,
+            DECIMAL = ColumnTypeId.DECIMAL,
+            DOUBLE = ColumnTypeId.DOUBLE,
+            FLOAT = ColumnTypeId.FLOAT,
+            INTEGER = ColumnTypeId.INTEGER,
+            JAVA_OBJECT = ColumnTypeId.JAVA_OBJECT,
+            LONGNVARCHAR = ColumnTypeId.LONGNVARCHAR,
+            LONGVARBINARY = ColumnTypeId.LONGVARBINARY,
+            LONGVARCHAR = ColumnTypeId.LONGVARCHAR,
+            NCHAR = ColumnTypeId.NCHAR,
+            NULL = ColumnTypeId.NULL,
+            NUMERIC = ColumnTypeId.NUMERIC,
+            NVARCHAR = ColumnTypeId.NVARCHAR,
+            REAL = ColumnTypeId.REAL,
+            SMALLINT = ColumnTypeId.SMALLINT,
+            STRUCT = ColumnTypeId.STRUCT,
+            TIMESTAMP = ColumnTypeId.TIMESTAMP,
+            TINYINT = ColumnTypeId.TINYINT,
+            VARBINARY = ColumnTypeId.VARBINARY,
+            VARCHAR = ColumnTypeId.VARCHAR,
         }
 
         private static List<string> DefaultTableTypes => new() { "BASE TABLE", "VIEW" };
@@ -347,24 +348,30 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 // Verify column metadata is returned/consistent.
                 AdbcColumn column = columns[i];
                 Assert.Equal(i + 1, column.OrdinalPosition);
-                Assert.NotNull(column.Name);
                 Assert.False(string.IsNullOrEmpty(column.Name));
+
                 var types = Enum.GetValues(typeof(SupportedSparkDataType)).Cast<SupportedSparkDataType>();
                 Assert.Contains((SupportedSparkDataType)column.XdbcSqlDataType!, types);
+                Assert.Equal(column.XdbcDataType, column.XdbcSqlDataType);
+
                 Assert.NotNull(column.XdbcDataType);
                 Assert.Contains((SupportedSparkDataType)column.XdbcDataType!, types);
-                Assert.Equal(column.XdbcDataType, column.XdbcSqlDataType);
-                bool isDecimalType = column.XdbcDataType == (short)SupportedSparkDataType.DECIMAL_TYPE || column.XdbcDataType == (short)SupportedSparkDataType.NUMERIC_TYPE;
+
+                bool isDecimalType = column.XdbcDataType == (short)SupportedSparkDataType.DECIMAL || column.XdbcDataType == (short)SupportedSparkDataType.NUMERIC;
                 Assert.Equal(column.XdbcColumnSize.HasValue, isDecimalType);
                 Assert.Equal(column.XdbcDecimalDigits.HasValue, isDecimalType);
-                Assert.Equal(column.XdbcDataType, column.XdbcSqlDataType);
+
                 Assert.NotNull(column.Remarks);
                 Assert.True(string.IsNullOrEmpty(column.Remarks));
+
                 Assert.NotNull(column.XdbcColumnDef);
+
                 Assert.NotNull(column.XdbcNullable);
                 Assert.Contains(new short[] { 1, 0 }, i => i == column.XdbcNullable);
+
                 Assert.NotNull(column.XdbcIsNullable);
                 Assert.Contains(new string[] { "YES", "NO" }, i => i.Equals(column.XdbcIsNullable));
+
                 Assert.NotNull(column.XdbcIsAutoIncrement);
 
                 Assert.Null(column.XdbcCharOctetLength);
@@ -455,7 +462,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
             List<string> known_types = new List<string>
             {
-                "BASE TABLE", "VIEW"
+                "TABLE", "VIEW"
             };
 
             int results = 0;
