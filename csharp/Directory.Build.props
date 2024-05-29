@@ -29,7 +29,8 @@
     <Product>Apache Arrow ADBC library</Product>
     <Copyright>Copyright 2022-2024 The Apache Software Foundation</Copyright>
     <Company>The Apache Software Foundation</Company>
-    <Version>0.13.0</Version>
+    <VersionPrefix>0.13.0</VersionPrefix>
+    <VersionSuffix>SNAPSHOT</VersionSuffix>
   </PropertyGroup>
 
   <PropertyGroup>
