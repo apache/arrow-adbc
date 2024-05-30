@@ -337,7 +337,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
             Assert.True(table != null, "table should not be null");
             // TODO: Determine why this is returned blank.
-            //Assert.Equal("BASE TABLE", table.Type);
+            //Assert.Equal("TABLE", table.Type);
             List<AdbcColumn>? columns = table.Columns;
 
             Assert.True(columns != null, "Columns cannot be null");
