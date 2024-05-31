@@ -55,7 +55,7 @@ test_that("async task methods error for invalid input", {
 
 test_that("async sleeper test works", {
   sleep_task <- adbc_async_sleep(500)
-  expect_identical(adbc_async_task_status(sleep_task), "timeout")
+  expect_identical(adbc_async_task_status(sleep_task), "started")
   expect_identical(adbc_async_task_wait_non_cancellable(sleep_task, 1000), "ready")
   expect_identical(adbc_async_task_status(sleep_task), "ready")
   expect_identical(sleep_task$return_code, 0L)

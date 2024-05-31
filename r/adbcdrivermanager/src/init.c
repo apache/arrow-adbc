@@ -25,6 +25,7 @@ SEXP RAdbcAsyncTaskSetCallback(SEXP task_xptr, SEXP callback_resolve_sexp,
                                SEXP callback_reject_sexp, SEXP loop_id_sexp);
 SEXP RAdbcAsyncTaskData(SEXP task_xptr);
 SEXP RAdbcAsyncTaskWaitFor(SEXP task_xptr, SEXP duration_ms_sexp);
+SEXP RAdbcAsyncTaskWait(SEXP task_xptr, SEXP resolution_ms_sexp);
 SEXP RAdbcAsyncTaskLaunchSleep(SEXP task_xptr, SEXP duration_ms_sexp);
 SEXP RAdbcAsyncTaskLaunchExecuteQuery(SEXP task_xptr, SEXP statement_xptr,
                                       SEXP stream_xptr);
@@ -115,6 +116,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"RAdbcAsyncTaskSetCallback", (DL_FUNC)&RAdbcAsyncTaskSetCallback, 4},
     {"RAdbcAsyncTaskData", (DL_FUNC)&RAdbcAsyncTaskData, 1},
     {"RAdbcAsyncTaskWaitFor", (DL_FUNC)&RAdbcAsyncTaskWaitFor, 2},
+    {"RAdbcAsyncTaskWait", (DL_FUNC)&RAdbcAsyncTaskWait, 2},
     {"RAdbcAsyncTaskLaunchSleep", (DL_FUNC)&RAdbcAsyncTaskLaunchSleep, 2},
     {"RAdbcAsyncTaskLaunchExecuteQuery", (DL_FUNC)&RAdbcAsyncTaskLaunchExecuteQuery, 3},
     {"RAdbcAsyncTaskLaunchStreamGetNext", (DL_FUNC)&RAdbcAsyncTaskLaunchStreamGetNext, 3},

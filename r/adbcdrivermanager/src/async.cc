@@ -164,7 +164,35 @@ extern "C" SEXP RAdbcAsyncTaskWaitFor(SEXP task_xptr, SEXP duration_ms_sexp) {
       task->result.wait_for(std::chrono::milliseconds(duration_ms));
   switch (status) {
     case std::future_status::timeout:
-      return Rf_mkString("timeout");
+      return Rf_mkString("started");
+    case std::future_status::ready:
+      task->status = RAdbcAsyncTaskStatus::READY;
+      return Rf_mkString("ready");
+    default:
+      Rf_error("Unknown status returned from future::wait_for()");
+  }
+}
+
+extern "C" SEXP RAdbcAsyncTaskWait(SEXP task_xptr, SEXP resolution_ms_sexp) {
+  auto task = adbc_from_xptr<RAdbcAsyncTask>(task_xptr);
+  int resolution_ms = adbc_as_int(resolution_ms_sexp);
+
+  switch (task->status) {
+    case RAdbcAsyncTaskStatus::NOT_STARTED:
+      return Rf_mkString("not_started");
+    case RAdbcAsyncTaskStatus::READY:
+      return Rf_mkString("ready");
+    default:
+      break;
+  }
+
+  std::future_status status;
+  do {
+    status = task->result.wait_for(std::chrono::milliseconds(resolution_ms));
+    R_CheckUserInterrupt();
+  } while (status == std::future_status::timeout);
+
+  switch (status) {
     case std::future_status::ready:
       task->status = RAdbcAsyncTaskStatus::READY;
       return Rf_mkString("ready");
