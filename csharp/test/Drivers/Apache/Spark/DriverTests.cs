@@ -19,12 +19,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using ColumnTypeId = Apache.Arrow.Adbc.Drivers.Apache.Spark.SparkConnection.ColumnTypeId;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
 using Xunit;
 using Xunit.Abstractions;
+using ColumnTypeId = Apache.Arrow.Adbc.Drivers.Apache.Spark.SparkConnection.ColumnTypeId;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
