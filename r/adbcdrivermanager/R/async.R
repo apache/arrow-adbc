@@ -134,8 +134,37 @@ adbc_async_task_result.adbc_async_sleep <- function(task) {
   task$user_data$duration_ms
 }
 
+#' @export
+adbc_async_task_cancel.adbc_async_statement_cancellable <- function(task) {
+  adbc_statement_cancel(task$user_data$statement)
+  TRUE
+}
+
+adbc_statement_prepare_async <- function(statement) {
+  task <- adbc_async_task(
+    c("adbc_async_prepare", "adbc_async_statement_cancellable")
+  )
+
+  user_data <- task$user_data
+  user_data$statement <- statement
+  .Call(RAdbcAsyncTaskLaunchPrepare, task, statement)
+
+  task
+}
+
+#' @export
+adbc_async_task_result.adbc_async_prepare <- function(task) {
+  if (!identical(task$return_code, 0L)) {
+    stop_for_error(task$return_code, task$error_xptr)
+  }
+
+  task$user_data$statement
+}
+
 adbc_statement_execute_query_async <- function(statement, stream = NULL) {
-  task <- adbc_async_task("adbc_async_execute_query")
+  task <- adbc_async_task(
+    c("adbc_async_execute_query", "adbc_async_statement_cancellable")
+  )
 
   user_data <- task$user_data
   user_data$statement <- statement
@@ -152,12 +181,6 @@ adbc_statement_execute_query_async <- function(statement, stream = NULL) {
 }
 
 #' @export
-adbc_async_task_cancel.adbc_async_execute_query <- function(task) {
-  adbc_statement_cancel(task$user_data$statement)
-  TRUE
-}
-
-#' @export
 adbc_async_task_result.adbc_async_execute_query <- function(task) {
   if (!identical(task$return_code, 0L)) {
     stop_for_error(task$return_code, task$error_xptr)
@@ -170,8 +193,44 @@ adbc_async_task_result.adbc_async_execute_query <- function(task) {
   )
 }
 
+adbc_statement_stream_get_schema_async <- function(statement, stream) {
+  task <- adbc_async_task(
+    c("adbc_async_statement_stream_get_next", "adbc_async_statement_cancellable")
+  )
+
+  user_data <- task$user_data
+  user_data$statement <- statement
+  user_data$stream <- stream
+  user_data$schema <- nanoarrow::nanoarrow_allocate_schema()
+
+  user_data$rows_affected <- .Call(
+    RAdbcAsyncTaskLaunchStreamGetSchema,
+    task,
+    stream,
+    user_data$schema
+  )
+
+  task
+}
+
+
+#' @export
+adbc_async_task_result.adbc_async_statement_stream_schema <- function(task) {
+  if (!identical(task$return_code, 0L)) {
+    adbc_statement_release(task$user_data$statement)
+    stop(task$user_data$stream$get_last_error())
+  }
+
+  list(
+    statement = task$user_data$statement,
+    array = task$user_data$schema
+  )
+}
+
 adbc_statement_stream_get_next_async <- function(statement, stream) {
-  task <- adbc_async_task("adbc_async_statement_stream_get_next")
+  task <- adbc_async_task(
+    c("adbc_async_statement_stream_get_next", "adbc_async_statement_cancellable")
+  )
 
   user_data <- task$user_data
   user_data$statement <- statement
