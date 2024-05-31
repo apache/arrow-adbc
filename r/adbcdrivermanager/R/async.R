@@ -58,18 +58,20 @@ adbc_async_task_run_callback <- function(task, resolve = task$resolve,
   invisible(task)
 }
 
-adbc_async_task_wait_non_cancellable <- function(task, resolution = 0.05) {
+adbc_async_task_wait_non_cancellable <- function(task, resolution = 0.1) {
   .Call(RAdbcAsyncTaskWaitFor, task, round(resolution * 1000))
 }
 
-adbc_async_task_wait <- function(task, resolution = 0.05) {
-  while (adbc_async_task_status(task) != "ready") {
-    withCallingHandlers(
-      Sys.sleep(resolution),
-      interrupt = function(e) {
-        adbc_async_task_cancel(task)
-      }
-    )
+adbc_async_task_wait <- function(task, resolution = 0.1) {
+  withCallingHandlers(
+    status <- .Call(RAdbcAsyncTaskWait, task, round(resolution * 1000)),
+    interrupt = function(e) {
+      adbc_async_task_cancel(task)
+    }
+  )
+
+  if (status != "ready") {
+    stop(sprintf("Expected status ready but got %s", status))
   }
 
   adbc_async_task_result(task)
