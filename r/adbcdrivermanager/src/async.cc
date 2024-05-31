@@ -22,6 +22,7 @@
 
 #include <deque>
 #include <future>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -41,6 +42,17 @@ static inline void later_ensure_initialized() {
 }
 
 static void later_task_callback_wrapper(void* data);
+
+struct ArrowArrayCustomDeleter {
+  void operator()(ArrowArray* array) const {
+    if (array->release != nullptr) {
+      array->release(array);
+    }
+    delete array;
+  }
+};
+
+using UniqueArrowArrayPtr = std::unique_ptr<ArrowArray, ArrowArrayCustomDeleter>;
 
 enum class RAdbcAsyncTaskStatus { NOT_STARTED, STARTED, READY };
 
@@ -217,6 +229,22 @@ extern "C" SEXP RAdbcAsyncTaskLaunchSleep(SEXP task_xptr, SEXP duration_ms_sexp)
   return R_NilValue;
 }
 
+extern "C" SEXP RAdbcAsyncTaskLaunchPrepare(SEXP task_xptr, SEXP statement_xptr) {
+  auto task = adbc_from_xptr<RAdbcAsyncTask>(task_xptr);
+  error_for_started_task(task);
+
+  auto statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
+
+  task->result = std::async(std::launch::async, [task, statement] {
+    *(task->return_code) = AdbcStatementPrepare(statement, task->return_error);
+    task->ScheduleCallbackIfSet();
+  });
+
+  task->status = RAdbcAsyncTaskStatus::STARTED;
+  UNPROTECT(1);
+  return R_NilValue;
+}
+
 extern "C" SEXP RAdbcAsyncTaskLaunchExecuteQuery(SEXP task_xptr, SEXP statement_xptr,
                                                  SEXP stream_xptr) {
   auto task = adbc_from_xptr<RAdbcAsyncTask>(task_xptr);
@@ -243,6 +271,23 @@ extern "C" SEXP RAdbcAsyncTaskLaunchExecuteQuery(SEXP task_xptr, SEXP statement_
   task->status = RAdbcAsyncTaskStatus::STARTED;
   UNPROTECT(1);
   return rows_affected_sexp;
+}
+
+extern "C" SEXP RAdbcAsyncTaskLaunchStreamGetSchema(SEXP task_xptr, SEXP stream_xptr,
+                                                    SEXP schema_xptr) {
+  auto task = adbc_from_xptr<RAdbcAsyncTask>(task_xptr);
+  error_for_started_task(task);
+
+  auto stream = adbc_from_xptr<ArrowArrayStream>(stream_xptr);
+  auto schema = adbc_from_xptr<ArrowSchema>(schema_xptr);
+
+  task->result = std::async(std::launch::async, [task, stream, schema] {
+    *(task->return_code) = stream->get_schema(stream, schema);
+    task->ScheduleCallbackIfSet();
+  });
+
+  task->status = RAdbcAsyncTaskStatus::STARTED;
+  return R_NilValue;
 }
 
 extern "C" SEXP RAdbcAsyncTaskLaunchStreamGetNext(SEXP task_xptr, SEXP stream_xptr,
