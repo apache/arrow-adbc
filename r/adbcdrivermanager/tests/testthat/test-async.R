@@ -86,14 +86,14 @@ test_that("async tasks can set an R callback", {
 
   # Ensure the callback runs even if the task is already finished
   async_called <- FALSE
-  sleep_task <- adbc_async_sleep(0)
+  sleep_task <- adbc_async_sleep(1)
   adbc_async_task_set_callback(sleep_task, function(x) { async_called <<- TRUE })
   Sys.sleep(0.1)
   expect_true(async_called)
 
   # Ensure this also works on error
   async_called <- FALSE
-  sleep_task <- adbc_async_sleep(0, error_message = "some error")
+  sleep_task <- adbc_async_sleep(1, error_message = "some error")
   adbc_async_task_set_callback(
     sleep_task,
     resolve = function(x) NULL,
