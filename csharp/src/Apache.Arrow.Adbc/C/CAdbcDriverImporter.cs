@@ -579,18 +579,20 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
             {
-                tableTypes = tableTypes ?? [];
                 byte** utf8TableTypes = null;
                 try
                 {
-                    // need to terminate with a null entry per https://github.com/apache/arrow-adbc/blob/b97e22c4d6524b60bf261e1970155500645be510/adbc.h#L909-L911
-                    utf8TableTypes = (byte**)Marshal.AllocHGlobal(IntPtr.Size * (tableTypes.Count + 1));
-                    utf8TableTypes[tableTypes.Count] = null;
-
-                    for (int i = 0; i < tableTypes.Count; i++)
+                    if (tableTypes != null)
                     {
-                        string tableType = tableTypes[i];
-                        utf8TableTypes[i] = (byte*)MarshalExtensions.StringToCoTaskMemUTF8(tableType);
+                        // need to terminate with a null entry per https://github.com/apache/arrow-adbc/blob/b97e22c4d6524b60bf261e1970155500645be510/adbc.h#L909-L911
+                        utf8TableTypes = (byte**)Marshal.AllocHGlobal(IntPtr.Size * (tableTypes.Count + 1));
+                        utf8TableTypes[tableTypes.Count] = null;
+
+                        for (int i = 0; i < tableTypes.Count; i++)
+                        {
+                            string tableType = tableTypes[i];
+                            utf8TableTypes[i] = (byte*)MarshalExtensions.StringToCoTaskMemUTF8(tableType);
+                        }
                     }
 
                     using (Utf8Helper utf8Catalog = new Utf8Helper(catalogPattern))
@@ -614,11 +616,14 @@ namespace Apache.Arrow.Adbc.C
                 }
                 finally
                 {
-                    for (int i = 0; i < tableTypes.Count; i++)
+                    if (utf8TableTypes != null)
                     {
-                        Marshal.FreeCoTaskMem((IntPtr)utf8TableTypes[i]);
+                        for (int i = 0; i < tableTypes!.Count; i++)
+                        {
+                            Marshal.FreeCoTaskMem((IntPtr)utf8TableTypes[i]);
+                        }
+                        Marshal.FreeHGlobal((IntPtr)utf8TableTypes);
                     }
-                    Marshal.FreeHGlobal((IntPtr)utf8TableTypes);
                 }
             }
 

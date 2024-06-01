@@ -80,6 +80,8 @@ pub struct FFI_AdbcConnection {
     pub(crate) private_driver: *const FFI_AdbcDriver,
 }
 
+unsafe impl Send for FFI_AdbcConnection {}
+
 #[repr(C)]
 #[derive(Debug)]
 pub struct FFI_AdbcStatement {
@@ -89,6 +91,8 @@ pub struct FFI_AdbcStatement {
     /// The associated driver (used by the driver manager to help track state).
     pub(crate) private_driver: *const FFI_AdbcDriver,
 }
+
+unsafe impl Send for FFI_AdbcStatement {}
 
 #[repr(C)]
 #[derive(Debug)]
@@ -190,7 +194,6 @@ pub struct FFI_AdbcDriver {
 }
 
 unsafe impl Send for FFI_AdbcDriver {}
-unsafe impl Sync for FFI_AdbcDriver {}
 
 macro_rules! driver_method {
     ($driver:expr, $method:ident) => {

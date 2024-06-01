@@ -9,15 +9,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
     <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="System.Text.Json" Version="7.0.4" />
-    <PackageReference Include="xunit" Version="2.8.0" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.0">
+    <PackageReference Include="xunit" Version="2.8.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="DuckDB.NET.Bindings.Full" Version="0.10.2" GeneratePathProperty="true" />
+    <PackageReference Include="DuckDB.NET.Bindings.Full" Version="0.10.3" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>

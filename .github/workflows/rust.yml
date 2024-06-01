@@ -30,7 +30,7 @@ on:
       - ".github/workflows/rust.yml"
 
 concurrency:
-  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}-rust
   cancel-in-progress: true
 
 permissions:
@@ -42,11 +42,16 @@ defaults:
     working-directory: rust
 
 jobs:
+  native-unix:
+    uses: ./.github/workflows/native-unix.yml
+
   rust:
+    needs: [native-unix]
     strategy:
       matrix:
-        # TODO(lidavidm): add back macos-latest once it has Cargo installed
-        os: [windows-latest, macos-13, ubuntu-latest]
+        # TODO(alexandreyc): add `windows-latest`
+        # See: https://github.com/apache/arrow-adbc/pull/1803#issuecomment-2117669300
+        os: [macos-13, macos-latest, ubuntu-latest]
     name: "Rust ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     env:
@@ -60,21 +65,24 @@ jobs:
       - name: Use stable Rust
         id: rust
         run: |
-          rustup update stable
+          rustup toolchain install stable --no-self-update
           rustup default stable
-          VERSION=$(rustup show active-toolchain -v | tail -1 | tr -d "[:space:]")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
+      - uses: actions/download-artifact@v4
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            rust/target/
-          key: ${{ runner.os }}-cargo-${{ steps.rust.outputs.version }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ steps.rust.outputs.version }}-
+          name: driver-manager-${{ matrix.os }}
+          path: ${{ github.workspace }}/build
+      - name: Set dynamic linker path
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "LD_LIBRARY_PATH=${{ github.workspace }}/build/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+      - name: Set dynamic linker path
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "DYLD_LIBRARY_PATH=/opt/homebrew/opt/sqlite/lib:${{ github.workspace }}/build/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
+      - name: Set dynamic linker path
+        if: matrix.os == 'macos-13'
+        run: |
+          echo "DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib:${{ github.workspace }}/build/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
       - name: Clippy
         run: cargo clippy --workspace --all-targets --all-features -- -Dwarnings
       - name: Test

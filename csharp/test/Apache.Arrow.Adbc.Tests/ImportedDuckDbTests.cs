@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Apache.Arrow.Types;
 using Xunit;
@@ -194,6 +195,48 @@ namespace Apache.Arrow.Adbc.Tests
             statement2.ExecuteUpdate();
 
             Assert.Equal(5, GetResultCount(statement2, "SELECT * from ingested"));
+        }
+
+        [Fact]
+        public async Task GetTableTypes()
+        {
+            using var database = _duckDb.OpenDatabase("tabletypes.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            var types = connection.GetTableTypes();
+            Assert.Single(types.Schema.FieldsList);
+            var data = await types.ReadNextRecordBatchAsync();
+            Assert.Null(data); // Not yet supported in DuckDB
+        }
+
+        [Fact]
+        public async Task GetCatalogs()
+        {
+            using var database = _duckDb.OpenDatabase("tablecatalogs.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "CREATE TABLE test(column1 INTEGER);";
+            statement.ExecuteUpdate();
+
+            var catalogs = connection.GetObjects(AdbcConnection.GetObjectsDepth.Catalogs, null, null, null, null, null);
+            Assert.NotNull(catalogs);
+            Assert.Equal(2, catalogs.Schema.FieldsList.Count);
+
+            var found = new HashSet<string>();
+            RecordBatch? group;
+            do
+            {
+                group = await catalogs.ReadNextRecordBatchAsync();
+                if (group != null && group.Column(0) is StringArray column1)
+                {
+                    found.UnionWith(column1);
+                }
+            } while (group != null);
+            Assert.Equal(3, found.Count);
+            found.ExceptWith(["system", "tablecatalogs", "temp"]);
+            Assert.Empty(found);
         }
 
         private static long GetResultCount(AdbcStatement statement, string query)

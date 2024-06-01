@@ -14,7 +14,6 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
 [package]
 name = "adbc_core"
 description = "Public abstract API, driver manager and driver exporter"
@@ -25,5 +24,8 @@ license = { workspace = true }
 
 [dependencies]
 arrow = { workspace = true }
-libloading = "0.8"
+libloading = { version = "0.8", optional = true }
 once_cell = "1.19.0"
+
+[features]
+driver_manager = ["dep:libloading"]
