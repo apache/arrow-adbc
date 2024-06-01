@@ -597,43 +597,42 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 	defer reader.Release()
 
 	fields := make([]arrow.Field, 0)
-	var columns map[string]int = nil
-
-	columns = make(map[string]int)
+	columns := make(map[string]int)
 	for i, f := range reader.Schema().Fields() {
 		columns[strings.ToUpper(f.Name)] = i
+	}
+
+	columnNameIndex, ok := columns["COLUMN_NAME"]
+	if !ok {
+		return nil, adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  "Column `COLUMN_NAME` does not exist in response",
+		}
+	}
+
+	isNullableIndex, ok := columns["IS_NULLABLE"]
+	if !ok {
+		return nil, adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  "Column `IS_NULLABLE` does not exist in response",
+		}
+	}
+
+	dataTypeIndex, ok := columns["DATA_TYPE"]
+	if !ok {
+		return nil, adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  "Column `DATA_TYPE` does not exist in response",
+		}
 	}
 
 	for reader.Next() && ctx.Err() == nil {
 		rec := reader.Record()
 
 		numRows := int(rec.NumRows())
-		val, ok := columns["COLUMN_NAME"]
-		if !ok {
-			return nil, adbc.Error{
-				Code: adbc.StatusInternal,
-				Msg:  "Column `COLUMN_NAME` does not exist in response",
-			}
-		}
-		fieldName := rec.Column(val)
-
-		val, ok = columns["IS_NULLABLE"]
-		if !ok {
-			return nil, adbc.Error{
-				Code: adbc.StatusInternal,
-				Msg:  "Column `IS_NULLABLE` does not exist in response",
-			}
-		}
-		fieldNullable := rec.Column(val)
-
-		val, ok = columns["DATA_TYPE"]
-		if !ok {
-			return nil, adbc.Error{
-				Code: adbc.StatusInternal,
-				Msg:  "Column `DATA_TYPE` does not exist in response",
-			}
-		}
-		fieldType := rec.Column(val)
+		fieldName := rec.Column(columnNameIndex)
+		fieldNullable := rec.Column(isNullableIndex)
+		fieldType := rec.Column(dataTypeIndex)
 
 		for i := 0; i < numRows; i++ {
 			metadata := make(map[string]string)
