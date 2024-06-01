@@ -597,34 +597,32 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 	defer reader.Release()
 
 	fields := make([]arrow.Field, 0)
-	columns := make(map[string]int)
-	for i, f := range reader.Schema().Fields() {
-		columns[strings.ToUpper(f.Name)] = i
-	}
-
-	columnNameIndex, ok := columns["COLUMN_NAME"]
-	if !ok {
+	columnNameIndices := reader.Schema().FieldIndices("COLUMN_NAME")
+	if columnNameIndices == nil || len(columnNameIndices) != 1 {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
-			Msg:  "Column `COLUMN_NAME` does not exist in response",
+			Msg:  "Column `COLUMN_NAME` not exists in response or appears more than once",
 		}
 	}
+	columnNameIndex := columnNameIndices[0]
 
-	isNullableIndex, ok := columns["IS_NULLABLE"]
-	if !ok {
+	isNullableIndices := reader.Schema().FieldIndices("IS_NULLABLE")
+	if isNullableIndices == nil || len(isNullableIndices) != 1 {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
-			Msg:  "Column `IS_NULLABLE` does not exist in response",
+			Msg:  "Column `IS_NULLABLE` not exists in response or appears more than once",
 		}
 	}
+	isNullableIndex := isNullableIndices[0]
 
-	dataTypeIndex, ok := columns["DATA_TYPE"]
-	if !ok {
+	dataTypeIndices := reader.Schema().FieldIndices("DATA_TYPE")
+	if dataTypeIndices == nil || len(dataTypeIndices) != 1 {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
-			Msg:  "Column `DATA_TYPE` does not exist in response",
+			Msg:  "Column `DATA_TYPE` not exists in response or appears more than once",
 		}
 	}
+	dataTypeIndex := dataTypeIndices[0]
 
 	for reader.Next() && ctx.Err() == nil {
 		rec := reader.Record()
