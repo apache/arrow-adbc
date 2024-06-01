@@ -68,7 +68,11 @@ const (
 	OptionBoolQueryCreateSession       = "adbc.bigquery.sql.query.create_session"
 	OptionIntQueryJobTimeout           = "adbc.bigquery.sql.query.job_timeout"
 
-	OptionIntQueryResultBufferSize = "adbc.bigquery.sql.query.result_buffer_size"
+	OptionIntQueryResultBufferSize    = "adbc.bigquery.sql.query.result_buffer_size"
+	OptionIntQueryPrefetchConcurrency = "adbc.bigquery.sql.query.prefetch_concurrency"
+
+	defaultQueryResultBufferSize    = 200
+	defaultQueryPrefetchConcurrency = 10
 
 	AccessTokenEndpoint   = "https://accounts.google.com/o/oauth2/token"
 	AccessTokenServerName = "google.com"

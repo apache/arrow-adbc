@@ -20,6 +20,7 @@ package bigquery
 import (
 	"context"
 	"github.com/apache/arrow/go/v17/arrow/array"
+	"golang.org/x/sync/errgroup"
 	"sync/atomic"
 
 	"cloud.google.com/go/bigquery"
@@ -30,11 +31,12 @@ import (
 )
 
 type reader struct {
-	refCount int64
-	schema   *arrow.Schema
-	ch       chan arrow.Record
-	rec      arrow.Record
-	err      error
+	refCount   int64
+	schema     *arrow.Schema
+	chs        []chan arrow.Record
+	curChIndex int
+	rec        arrow.Record
+	err        error
 
 	cancelFn context.CancelFunc
 }
@@ -102,8 +104,10 @@ func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allo
 		return nil, -1, err
 	}
 
-	ch := make(chan arrow.Record, resultRecordBufferSize)
+	chs := make([]chan arrow.Record, 1)
 	ctx, cancelFn := context.WithCancel(ctx)
+	ch := make(chan arrow.Record, resultRecordBufferSize)
+	chs[0] = ch
 
 	defer func() {
 		if err != nil {
@@ -113,11 +117,12 @@ func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allo
 	}()
 
 	bigqueryRdr = &reader{
-		refCount: 1,
-		ch:       ch,
-		err:      nil,
-		cancelFn: cancelFn,
-		schema:   rdr.Schema(),
+		refCount:   1,
+		chs:        chs,
+		curChIndex: 0,
+		err:        nil,
+		cancelFn:   cancelFn,
+		schema:     rdr.Schema(),
 	}
 
 	go func() {
@@ -137,12 +142,23 @@ func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allo
 
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
-func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters array.RecordReader, parameterMode string, alloc memory.Allocator, resultRecordBufferSize int) (bigqueryRdr *reader, totalRows int64, err error) {
+func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters array.RecordReader, parameterMode string, alloc memory.Allocator, resultRecordBufferSize, prefetchConcurrency int) (bigqueryRdr *reader, totalRows int64, err error) {
 	if boundParameters == nil {
 		return runPlainQuery(ctx, query, alloc, resultRecordBufferSize)
 	} else {
+		recs := make([]arrow.Record, 0)
+		for boundParameters.Next() {
+			rec := boundParameters.Record()
+			recs = append(recs, rec)
+		}
+		batches := int64(len(recs))
+		chs := make([]chan arrow.Record, batches)
+
 		ch := make(chan arrow.Record, resultRecordBufferSize)
+		group, ctx := errgroup.WithContext(ctx)
+		group.SetLimit(prefetchConcurrency)
 		ctx, cancelFn := context.WithCancel(ctx)
+		chs[0] = ch
 
 		defer func() {
 			if err != nil {
@@ -153,48 +169,94 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters
 
 		bigqueryRdr = &reader{
 			refCount: 1,
-			ch:       ch,
+			chs:      chs,
 			err:      nil,
 			cancelFn: cancelFn,
 			schema:   nil,
 		}
 
-		go func() {
-			for boundParameters.Next() {
-				values := boundParameters.Record()
-				for i := 0; i < int(values.NumRows()); i++ {
-					parameters, err := getQueryParameter(values, i, parameterMode)
-					if err != nil {
-						return
-					}
-					if parameters != nil {
-						query.QueryConfig.Parameters = parameters
-					}
-
-					arrowIterator, _, err := runQuery(ctx, query)
-					if err != nil {
-						return
-					}
-					rdr, err := ipcReaderFromArrowIterator(arrowIterator, alloc)
-					if err != nil {
-						return
-					}
-
-					// todo: possible race condition
-					bigqueryRdr.schema = rdr.Schema()
-
-					for rdr.Next() && ctx.Err() == nil {
-						rec := rdr.Record()
-						rec.Retain()
-						ch <- rec
-					}
-					err = checkContext(ctx, rdr.Err())
-					if err != nil {
-						return
-					}
-				}
+		rec := recs[0]
+		for i := 0; i < int(rec.NumRows()); i++ {
+			parameters, err := getQueryParameter(rec, i, parameterMode)
+			if err != nil {
+				return nil, -1, err
 			}
-			defer close(ch)
+			if parameters != nil {
+				query.QueryConfig.Parameters = parameters
+			}
+
+			arrowIterator, _, err := runQuery(ctx, query)
+			if err != nil {
+				return nil, -1, err
+			}
+			rdr, err := ipcReaderFromArrowIterator(arrowIterator, alloc)
+			if err != nil {
+				return nil, -1, err
+			}
+			bigqueryRdr.schema = rdr.Schema()
+
+			group.Go(func() error {
+				defer rdr.Release()
+				for rdr.Next() && ctx.Err() == nil {
+					rec := rdr.Record()
+					rec.Retain()
+					ch <- rec
+				}
+				return checkContext(ctx, rdr.Err())
+			})
+		}
+
+		lastChannelIndex := len(chs) - 1
+		go func() {
+			for index, values := range recs[1:] {
+				batchIndex := index + 1
+				record := values
+				chs[batchIndex] = make(chan arrow.Record, resultRecordBufferSize)
+				group.Go(func() error {
+					if batchIndex != lastChannelIndex {
+						defer close(chs[batchIndex])
+					}
+					for i := 0; i < int(record.NumRows()); i++ {
+						parameters, err := getQueryParameter(record, i, parameterMode)
+						if err != nil {
+							return err
+						}
+						if parameters != nil {
+							query.QueryConfig.Parameters = parameters
+						}
+
+						arrowIterator, _, err := runQuery(ctx, query)
+						if err != nil {
+							return err
+						}
+						rdr, err := ipcReaderFromArrowIterator(arrowIterator, alloc)
+						if err != nil {
+							return err
+						}
+						defer rdr.Release()
+
+						for rdr.Next() && ctx.Err() == nil {
+							rec := rdr.Record()
+							rec.Retain()
+							chs[batchIndex] <- rec
+						}
+						err = checkContext(ctx, rdr.Err())
+						if err != nil {
+							return err
+						}
+					}
+					return nil
+				})
+			}
+
+			// place this here so that we always clean up, but they can't be in a
+			// separate goroutine. Otherwise we'll have a race condition between
+			// the call to wait and the calls to group.Go to kick off the jobs
+			// to perform the pre-fetching (GH-1283).
+			bigqueryRdr.err = group.Wait()
+			// don't close the last channel until after the group is finished,
+			// so that Next() can only return after reader.err may have been set
+			close(chs[lastChannelIndex])
 		}()
 
 		return bigqueryRdr, totalRows, nil
@@ -211,8 +273,10 @@ func (r *reader) Release() {
 			r.rec.Release()
 		}
 		r.cancelFn()
-		for rec := range r.ch {
-			rec.Release()
+		for _, ch := range r.chs {
+			for rec := range ch {
+				rec.Release()
+			}
 		}
 	}
 }
@@ -227,7 +291,16 @@ func (r *reader) Next() bool {
 		r.rec = nil
 	}
 
-	r.rec = <-r.ch
+	if r.curChIndex >= len(r.chs) {
+		return false
+	}
+	var ok bool
+	for r.curChIndex < len(r.chs) {
+		if r.rec, ok = <-r.chs[r.curChIndex]; ok {
+			break
+		}
+		r.curChIndex++
+	}
 	return r.rec != nil
 }
 

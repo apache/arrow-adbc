@@ -41,11 +41,13 @@ import (
 // - ConnectionProperties
 
 type statement struct {
-	connectionImpl *connectionImpl
-	query          *bigquery.Query
-	parameterMode  string
-	paramBinding   arrow.Record
-	streamBinding  array.RecordReader
+	connectionImpl         *connectionImpl
+	query                  *bigquery.Query
+	parameterMode          string
+	paramBinding           arrow.Record
+	streamBinding          array.RecordReader
+	resultRecordBufferSize int
+	prefetchConcurrency    int
 }
 
 // Close releases any relevant resources associated with this statement
@@ -109,6 +111,10 @@ func (st *statement) GetOptionInt(key string) (int64, error) {
 		return st.query.QueryConfig.MaxBytesBilled, nil
 	case OptionIntQueryJobTimeout:
 		return st.query.QueryConfig.JobTimeout.Milliseconds(), nil
+	case OptionIntQueryResultBufferSize:
+		return int64(st.resultRecordBufferSize), nil
+	case OptionIntQueryPrefetchConcurrency:
+		return int64(st.prefetchConcurrency), nil
 	default:
 		val, err := st.connectionImpl.GetOptionInt(key)
 		if err == nil {
@@ -222,6 +228,12 @@ func (st *statement) SetOptionInt(key string, value int64) error {
 		st.query.QueryConfig.MaxBytesBilled = value
 	case OptionIntQueryJobTimeout:
 		st.query.QueryConfig.JobTimeout = time.Duration(value) * time.Millisecond
+	case OptionIntQueryResultBufferSize:
+		st.resultRecordBufferSize = int(value)
+		return nil
+	case OptionIntQueryPrefetchConcurrency:
+		st.prefetchConcurrency = int(value)
+		return nil
 	default:
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -252,7 +264,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 		return nil, -1, err
 	}
 
-	return newRecordReader(ctx, st.query, rdr, st.parameterMode, st.connectionImpl.Alloc, st.connectionImpl.resultRecordBufferSize)
+	return newRecordReader(ctx, st.query, rdr, st.parameterMode, st.connectionImpl.Alloc, st.resultRecordBufferSize, st.prefetchConcurrency)
 }
 
 // ExecuteUpdate executes a statement that does not generate a result

@@ -59,6 +59,7 @@ type connectionImpl struct {
 	dbSchema string
 
 	resultRecordBufferSize int
+	prefetchConcurrency    int
 
 	client *bigquery.Client
 }
@@ -257,9 +258,11 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 // NewStatement initializes a new statement object tied to this connection
 func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	return &statement{
-		connectionImpl: c,
-		query:          c.client.Query(""),
-		parameterMode:  OptionValueQueryParameterModePositional,
+		connectionImpl:         c,
+		query:                  c.client.Query(""),
+		parameterMode:          OptionValueQueryParameterModePositional,
+		resultRecordBufferSize: c.resultRecordBufferSize,
+		prefetchConcurrency:    c.prefetchConcurrency,
 	}, nil
 }
 
@@ -290,6 +293,8 @@ func (c *connectionImpl) GetOptionInt(key string) (int64, error) {
 	switch key {
 	case OptionIntQueryResultBufferSize:
 		return int64(c.resultRecordBufferSize), nil
+	case OptionIntQueryPrefetchConcurrency:
+		return int64(c.prefetchConcurrency), nil
 	default:
 		return c.ConnectionImplBase.GetOptionInt(key)
 	}
@@ -299,6 +304,9 @@ func (c *connectionImpl) SetOptionInt(key string, value int64) error {
 	switch key {
 	case OptionIntQueryResultBufferSize:
 		c.resultRecordBufferSize = int(value)
+		return nil
+	case OptionIntQueryPrefetchConcurrency:
+		c.prefetchConcurrency = int(value)
 		return nil
 	default:
 		return c.ConnectionImplBase.SetOptionInt(key, value)
@@ -590,7 +598,7 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 	}
 	// pass `nil` to `boundParameter` because we don't need to read from any `array.Record` --
 	// it's already set in `query`
-	reader, _, err := newRecordReader(ctx, query, nil, OptionValueQueryParameterModeNamed, c.Alloc, c.resultRecordBufferSize)
+	reader, _, err := newRecordReader(ctx, query, nil, OptionValueQueryParameterModeNamed, c.Alloc, c.resultRecordBufferSize, c.prefetchConcurrency)
 	if err != nil {
 		return nil, err
 	}

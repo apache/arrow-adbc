@@ -40,17 +40,19 @@ type databaseImpl struct {
 
 func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	conn := &connectionImpl{
-		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
-		authType:           d.authType,
-		credentials:        d.credentials,
-		clientID:           d.clientID,
-		clientSecret:       d.clientSecret,
-		refreshToken:       d.refreshToken,
-		projectID:          d.projectID,
-		datasetID:          d.datasetID,
-		tableID:            d.tableID,
-		catalog:            d.projectID,
-		dbSchema:           d.datasetID,
+		ConnectionImplBase:     driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+		authType:               d.authType,
+		credentials:            d.credentials,
+		clientID:               d.clientID,
+		clientSecret:           d.clientSecret,
+		refreshToken:           d.refreshToken,
+		projectID:              d.projectID,
+		datasetID:              d.datasetID,
+		tableID:                d.tableID,
+		catalog:                d.projectID,
+		dbSchema:               d.datasetID,
+		resultRecordBufferSize: defaultQueryResultBufferSize,
+		prefetchConcurrency:    defaultQueryPrefetchConcurrency,
 	}
 
 	err := conn.newClient(ctx)
