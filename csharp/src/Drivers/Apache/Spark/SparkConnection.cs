@@ -39,7 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     public class SparkConnection : HiveServer2Connection
     {
-        const string UserAgent = "MicrosoftSparkODBCDriver/2.7.6.1014";
+        private readonly string UserAgent = $"{InfoDriverName.Replace(" ", "")}/{ProductVersionDefault}";
 
         readonly AdbcInfoCode[] infoSupportedCodes = new[] {
             AdbcInfoCode.DriverName,
@@ -271,14 +271,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 Trace.TraceError($"key = {property} value = {properties[property]}");
             }
 
-            string hostName = properties["hostname"];
-            string path = properties["path"];
+            string hostName = properties[SparkParameters.HostName];
+            string path = properties[SparkParameters.Path];
             string token;
 
-            if (properties.ContainsKey("token"))
-                token = properties["token"];
+            if (properties.ContainsKey(SparkParameters.Token))
+                token = properties[SparkParameters.Token];
             else
-                token = properties["password"];
+                token = properties[SparkParameters.Password];
 
             HttpClient httpClient = new HttpClient();
             httpClient.BaseAddress = new UriBuilder(Uri.UriSchemeHttps, hostName, -1, path).Uri;
