@@ -39,7 +39,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     public class DriverTests : SparkTestBase
     {
         /// <summary>
-        /// Supported Spark data supportedTypes as a subset of <see cref="SparkConnection.ColumnTypeId"/>
+        /// Supported Spark data types as a subset of <see cref="SparkConnection.ColumnTypeId"/>
         /// </summary>
         private enum SupportedSparkDataType : short
         {
