@@ -56,6 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         const bool InfoVendorSql = true;
         const int DecimalPrecisionDefault = 10;
         const int DecimalScaleDefault = 0;
+        const int VarcharColumnSizeDefault = int.MaxValue;
         const string ColumnDef = "COLUMN_DEF";
         const string ColumnName = "COLUMN_NAME";
         const string DataType = "DATA_TYPE";
@@ -154,7 +155,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             /// </summary>
             NCHAR = -15,
             /// <summary>
-            /// identifies the generic SQL value NULL
+            /// identifies the generic SQL type NULL
             /// </summary>
             NULL = 0,
             /// <summary>
@@ -660,12 +661,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     tableInfo?.ColumnName.Add(columnName);
                     tableInfo?.ColType.Add(colType);
                     tableInfo?.Nullable.Add(nullable);
-                    tableInfo?.TypeName.Add(typeName);
                     tableInfo?.IsAutoIncrement.Add(isAutoIncrement);
                     tableInfo?.IsNullable.Add(isNullable);
                     tableInfo?.ColumnDefault.Add(columnDefault);
                     tableInfo?.OrdinalPosition.Add(ordinalPos);
-                    SetPrecisionAndScale(colType, typeName, tableInfo);
+                    SetPrecisionScaleAndTypeName(colType, typeName, tableInfo);
                 }
             }
 
@@ -702,22 +702,45 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             .Select(t => new { Index = t.Position - 1, t.ColumnName })
             .ToDictionary(t => t.ColumnName, t => t.Index);
 
-        private static void SetPrecisionAndScale(short colType, string typeName, TableInfo? tableInfo)
+        private static void SetPrecisionScaleAndTypeName(short colType, string typeName, TableInfo? tableInfo)
         {
             switch (colType)
             {
                 case (short)ColumnTypeId.DECIMAL:
                 case (short)ColumnTypeId.NUMERIC:
                     {
-                        Decimal128Type decimalType = SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
-                        tableInfo?.Precision.Add(decimalType.Precision);
-                        tableInfo?.Scale.Add((short)decimalType.Scale);
+                        SqlDecimalParserResult result = new SqlDecimalTypeParser().ParseOrDefault(typeName, new SqlDecimalParserResult(typeName));
+                        tableInfo?.Precision.Add(result.Precision);
+                        tableInfo?.Scale.Add((short)result.Scale);
+                        tableInfo?.TypeName.Add(result.BaseTypeName);
+                        break;
+                    }
+
+                case (short)ColumnTypeId.CHAR:
+                case (short)ColumnTypeId.NCHAR:
+                    {
+                        bool success = new SqlCharTypeParser().TryParse(typeName, out SqlCharVarcharParserResult? result);
+                        tableInfo?.Precision.Add(success ? result!.ColumnSize : VarcharColumnSizeDefault);
+                        tableInfo?.Scale.Add(null);
+                        tableInfo?.TypeName.Add(success ? result!.BaseTypeName : "CHAR");
+                        break;
+                    }
+                case (short)ColumnTypeId.VARCHAR:
+                case (short)ColumnTypeId.LONGVARCHAR:
+                case (short)ColumnTypeId.LONGNVARCHAR:
+                case (short)ColumnTypeId.NVARCHAR:
+                    {
+                        bool success = new SqlVarcharTypeParser().TryParse(typeName, out SqlCharVarcharParserResult? result);
+                        tableInfo?.Precision.Add(success ? result!.ColumnSize : VarcharColumnSizeDefault);
+                        tableInfo?.Scale.Add(null);
+                        tableInfo?.TypeName.Add(success ? result!.BaseTypeName : "STRING");
                         break;
                     }
 
                 default:
                     tableInfo?.Precision.Add(null);
                     tableInfo?.Scale.Add(null);
+                    tableInfo?.TypeName.Add(typeName);
                     break;
             }
         }
@@ -761,7 +784,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case (int)ColumnTypeId.NUMERIC:
                     // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
                     // are not returned in the Thrift call to GetColumns
-                    return SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
+                    return new SqlDecimalTypeParser()
+                        .ParseOrDefault(typeName, new SqlDecimalParserResult(typeName))
+                        .Decimal128Type;
                 case (int)ColumnTypeId.NULL:
                     return NullType.Default;
                 case (int)ColumnTypeId.ARRAY:
@@ -964,58 +989,201 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         }
 
         /// <summary>
+        /// An result for parsing a SQL data type.
+        /// </summary>
+        /// <param name="typeName">The original SQL type name to parse</param>
+        /// <param name="baseTypeName">The 'base' type name to use which is typically more simple without sub-clauses</param>
+        private class ParserResult(string typeName, string baseTypeName)
+        {
+            /// <summary>
+            /// The original SQL type name
+            /// </summary>
+            public string TypeName { get; } = typeName;
+
+            /// <summary>
+            /// The 'base' type name to use which is typically more simple without sub-clauses
+            /// </summary>
+            public string BaseTypeName { get; } = baseTypeName;
+        }
+
+        /// <summary>
+        /// An result for parsing the SQL CHAR/NCHAR/STRING/VARCHAR/NVARCHAR/LONGVARCHAR/LONGNVARCHAR data types.
+        /// </summary>
+        /// <param name="typeName">The original SQL type name to parse</param>
+        /// <param name="baseTypeName">The 'base' type name without the length clause</param>
+        /// <param name="columnSize">The length of the column for this type name</param>
+        private class SqlCharVarcharParserResult(string typeName, string baseTypeName, int columnSize) : ParserResult(typeName, baseTypeName)
+        {
+            /// <summary>
+            /// The length of the column for this type name
+            /// </summary>
+            public int ColumnSize { get; } = columnSize;
+        }
+
+        /// <summary>
+        /// An result for parsing the SQL DECIMAL/DEC/NUMERIC data types.
+        /// </summary>
+        /// <param name="typeName">The original SQL type name to parse</param>
+        /// <param name="baseTypeName">The 'base' type name without the precision or scale clause</param>
+        /// <param name="precision">The precision of the decimal type</param>
+        /// <param name="scale">The scale (decimal digits) of the decimal type</param>
+        private class SqlDecimalParserResult(string typeName, string baseTypeName, int precision, int scale) : ParserResult(typeName, baseTypeName)
+        {
+            /// <summary>
+            /// Constructs a new default result given the original type name.
+            /// </summary>
+            /// <param name="typeName">The original SQL type name to parse</param>
+            public SqlDecimalParserResult(string typeName) : this(typeName, "DECIMAL", DecimalPrecisionDefault, DecimalScaleDefault) { }
+
+            /// <summary>
+            /// The precision of the decimal type
+            /// </summary>
+            public int Precision { get; } = precision;
+
+            /// <summary>
+            /// The scale (decimal digits) of the decimal type
+            /// </summary>
+            public int Scale { get; } = scale;
+
+            /// <summary>
+            /// The <see cref='Types.Decimal128Type'/> representing the parsed type name
+            /// </summary>
+            public Decimal128Type Decimal128Type { get; } = new Decimal128Type(precision, scale);
+        }
+
+        /// <summary>
+        /// Abstract and generic SQL data type name parser.
+        /// </summary>
+        /// <typeparam name="T">The <see cref="ParserResult"/> type when returning a successful parse</typeparam>
+        private abstract class SqlTypeParser<T> where T : ParserResult
+        {
+            /// <summary>
+            /// Gets the <see cref="Regex"/> expression to parse the SQL type name
+            /// </summary>
+            public abstract Regex Expression { get; }
+
+            /// <summary>
+            /// Generates the successful result of a matching parse
+            /// </summary>
+            /// <param name="input">The original SQL type name</param>
+            /// <param name="match">The successful <see cref="Match"/> result</param>
+            /// <returns></returns>
+            public abstract T GenerateResult(string input, Match match);
+
+            /// <summary>
+            /// Tries to parse the input string for a valid SQL type definition.
+            /// </summary>
+            /// <param name="input">The SQL type defintion string to parse.</param>
+            /// <param name="result">If successful, the result; otherwise <c>null</c>.</param>
+            /// <returns>True if it can successfully parse the type definition input string; otherwise false.</returns>
+            public bool TryParse(string input, out T? result)
+            {
+                Match match = Expression.Match(input);
+                if (!match.Success)
+                {
+                    result = default;
+                    return false;
+                }
+
+                result = GenerateResult(input, match);
+                return match.Success;
+            }
+
+            /// <summary>
+            /// Parses the input string for a valid SQL type definition and returns the result or returns the <c>defaultValue</c>, if invalid.
+            /// </summary>
+            /// <param name="input">The SQL type defintion string to parse.</param>
+            /// <param name="defaultValue">If input string is an invalid type definition, this result is returned instead.</param>
+            /// <returns>If input string is a valid SQL type definition, it returns the result; otherwise <c>defaultValue</c>.</returns>
+            public T ParseOrDefault(string input, T defaultValue)
+            {
+                return TryParse(input, out T? result) ? result! : defaultValue;
+            }
+        }
+
+        /// <summary>
+        /// Provides a parser for CHAR type definitions.
+        /// </summary>
+        private class SqlCharTypeParser : SqlTypeParser<SqlCharVarcharParserResult>
+        {
+            private const string BaseTypeName = "CHAR";
+
+            private static readonly Regex s_expression = new(
+                @"^\s*(?<typeName>((CHAR)|(NCHAR)))(\s*\(\s*(?<precision>\d{1,10})\s*\))\s*$",
+                RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+            public override Regex Expression => s_expression;
+
+            public override SqlCharVarcharParserResult GenerateResult(string input, Match match)
+            {
+                GroupCollection groups = match.Groups;
+                Group precisionGroup = groups["precision"];
+
+                int precision = int.TryParse(precisionGroup.Value, out int candidatePrecision)
+                    ? candidatePrecision
+                    : throw new ArgumentException($"Unable to parse length: '{precisionGroup.Value}'", nameof(input));
+                return new SqlCharVarcharParserResult(input, BaseTypeName, precision);
+            }
+        }
+
+        /// <summary>
+        /// Provides a parser for SQL VARCHAR/STRING type definitions.
+        /// </summary>
+        private class SqlVarcharTypeParser : SqlTypeParser<SqlCharVarcharParserResult>
+        {
+            private const string VarcharBaseTypeName = "VARCHAR";
+            private const string StringBaseTypeName = "STRING";
+
+            private static readonly Regex s_expression = new(
+                @"^\s*(?<typeName>((STRING)|(VARCHAR)|(LONGVARCHAR)|(LONGNVARCHAR)|(NVARCHAR)))(\s*\(\s*(?<precision>\d{1,10})\s*\))?\s*$",
+                RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+            public override Regex Expression => s_expression;
+
+            public override SqlCharVarcharParserResult GenerateResult(string input, Match match)
+            {
+                GroupCollection groups = match.Groups;
+                Group precisionGroup = groups["precision"];
+                Group typeNameGroup = groups["typeName"];
+
+                string baseTypeName = typeNameGroup.Value.Equals(StringBaseTypeName, StringComparison.InvariantCultureIgnoreCase)
+                    ? StringBaseTypeName
+                    : VarcharBaseTypeName;
+                int precision = precisionGroup.Success && int.TryParse(precisionGroup.Value, out int candidatePrecision)
+                    ? candidatePrecision
+                    : VarcharColumnSizeDefault;
+                return new SqlCharVarcharParserResult(input, baseTypeName, precision);
+            }
+        }
+
+        /// <summary>
         /// Provides a parser for SQL DECIMAL type definitions.
         /// </summary>
-        private static class SqlDecimalTypeParser
+        private class SqlDecimalTypeParser : SqlTypeParser<SqlDecimalParserResult>
         {
+            private const string BaseTypeName = "DECIMAL";
+
             // Pattern is based on this definition
             // https://docs.databricks.com/en/sql/language-manual/data-types/decimal-type.html#syntax
             // { DECIMAL | DEC | NUMERIC } [ (  p [ , s ] ) ]
-            // p: Optional maximum precision (total number of digits) of the number between 1 and 38. The default is 10.
+            // p: Optional maximum result (total number of digits) of the number between 1 and 38. The default is 10.
             // s: Optional scale of the number between 0 and p. The number of digits to the right of the decimal point. The default is 0.
             private static readonly Regex s_expression = new(
                 @"^\s*(?<typeName>((DECIMAL)|(DEC)|(NUMERIC)))(\s*\(\s*((?<precision>\d{1,2})(\s*\,\s*(?<scale>\d{1,2}))?)\s*\))?\s*$",
                 RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-            /// <summary>
-            /// Parses the input string for a valid SQL DECIMAL type definition and returns a new <see cref="Decimal128Type"/> or returns the <c>defaultValue</c>, if invalid.
-            /// </summary>
-            /// <param name="input">The SQL type defintion string to parse.</param>
-            /// <param name="defaultValue">If input string is an invalid SQL DECIMAL type definition, this value is returned instead.</param>
-            /// <returns>If input string is a valid SQL DECIMAL type definition, it returns a new <see cref="Decimal128Type"/>; otherwise <c>defaultValue</c>.</returns>
-            public static Decimal128Type ParseOrDefault(string input, Decimal128Type defaultValue)
+            public override Regex Expression => s_expression;
+
+            public override SqlDecimalParserResult GenerateResult(string input, Match match)
             {
-                return TryParse(input, out Decimal128Type? candidate) ? candidate! : defaultValue;
-            }
-
-            /// <summary>
-            /// Tries to parse the input string for a valid SQL DECIMAL type definition.
-            /// </summary>
-            /// <param name="input">The SQL type defintion string to parse.</param>
-            /// <param name="value">If successful, an new <see cref="Decimal128Type"/> with the precision and scale set; otherwise <c>null</c>.</param>
-            /// <returns>True if it can successfully parse the type definition input string; otherwise false.</returns>
-            private static bool TryParse(string input, out Decimal128Type? value)
-            {
-                // Ensure defaults are set, in case not provided in precision/scale clause.
-                int precision = DecimalPrecisionDefault;
-                int scale = DecimalScaleDefault;
-
-                Match match = s_expression.Match(input);
-                if (!match.Success)
-                {
-                    value = null;
-                    return false;
-                }
-
                 GroupCollection groups = match.Groups;
                 Group precisionGroup = groups["precision"];
                 Group scaleGroup = groups["scale"];
 
-                precision = precisionGroup.Success && int.TryParse(precisionGroup.Value, out int candidatePrecision) ? candidatePrecision : precision;
-                scale = scaleGroup.Success && int.TryParse(scaleGroup.Value, out int candidateScale) ? candidateScale : scale;
+                int precision = precisionGroup.Success && int.TryParse(precisionGroup.Value, out int candidatePrecision) ? candidatePrecision : DecimalPrecisionDefault;
+                int scale = scaleGroup.Success && int.TryParse(scaleGroup.Value, out int candidateScale) ? candidateScale : DecimalScaleDefault;
 
-                value = new Decimal128Type(precision, scale);
-                return true;
+                return new SqlDecimalParserResult(input, BaseTypeName, precision, scale);
             }
         }
 
