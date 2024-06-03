@@ -17,6 +17,11 @@
 
 sqlite3_dep = dependency('sqlite3')
 
+time_t_size = meson.get_compiler('c').sizeof(
+    'time_t',
+    prefix : '#include <sys/types.h>',
+)
+
 adbc_sqlite3_driver_lib = library(
     'adbc_driver_sqlite',
     sources: [
@@ -26,6 +31,7 @@ adbc_sqlite3_driver_lib = library(
     include_directories: [root_dir],
     link_with: [adbc_common_lib, adbc_framework_lib],
     dependencies: [nanoarrow_dep, fmt_dep, sqlite3_dep],
+    c_args: ['-DSIZEOF_TIME_T=' + time_t_size.to_string()],
 )
 
 if get_option('tests')
@@ -35,7 +41,6 @@ if get_option('tests')
         include_directories: [root_dir, driver_dir],
         link_with: [
             adbc_common_lib,
-            adbc_driver_manager_lib,
             adbc_sqlite3_driver_lib,
             adbc_validation_lib,
             adbc_validation_util_lib

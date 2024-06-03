@@ -23,7 +23,7 @@ project(
     meson_version: '>=1.3.0',
     default_options: [
         'buildtype=release',
-        'c_std=c99',
+        'c_std=gnu99',  # TODO: gmtime_r is gnu99 - likely unintentional std
         'warning_level=2',
         'cpp_std=c++17',
     ]
@@ -36,6 +36,9 @@ fmt_dep = dependency('fmt')
 
 if get_option('tests')
     gtest_main_dep = dependency('gtest_main')
+    # Seems to be some kind of bug with meson test
+    # gtest-port.h:1770 pthread_key_delete(key_)failed with error 22
+    # https://github.com/google/googletest/pull/4536 ???
     gtest_dep = dependency('gtest')
     gmock_dep = dependency('gmock')
 else

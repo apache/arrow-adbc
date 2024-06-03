@@ -17,7 +17,7 @@
 
 libpq_dep = dependency('libpq')
 
-postgres_driver_lib = library(
+adbc_postgres_driver_lib = library(
     'adbc_driver_postgresql',
     sources: [
         'connection.cc',
@@ -50,20 +50,19 @@ if get_option('tests')
         },
     }
 
-    parent_dir = include_directories('..')
     foreach nm, conf : postgres_tests
         exc = executable(
-            nm + '-test',
+            'adbc-' + nm + '-test',
             sources: conf['sources'],
-            include_directories: [root_dir, parent_dir],
+            include_directories: [root_dir, driver_dir],
             link_with: [
                 adbc_common_lib,
+                adbc_postgres_driver_lib,
                 adbc_validation_lib,
                 adbc_validation_util_lib,
-                postgres_driver_lib,
             ],
             dependencies: [nanoarrow_dep, gtest_main_dep, gmock_dep, libpq_dep],
         )
-        test(nm, exc)
+        test('adbc-' + nm, exc)
     endforeach
 endif
