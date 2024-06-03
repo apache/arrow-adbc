@@ -306,9 +306,8 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteNumeric) {
 
   ArrowSchemaInit(&schema.value);
   ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
-  ASSERT_EQ(
-      PrivateArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
-      0);
+  ASSERT_EQ(ArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
+            0);
   ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
   ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
                                                       &na_error, values),

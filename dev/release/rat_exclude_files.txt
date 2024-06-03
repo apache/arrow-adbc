@@ -1,6 +1,9 @@
 *.json
 *.Rproj
 *.Rd
+c/subprojects/fmt*
+c/subprojects/gtest*
+c/subprojects/sqlite3*
 c/vendor/backward/*
 c/vendor/fmt/*
 c/vendor/sqlite3/sqlite3.c
