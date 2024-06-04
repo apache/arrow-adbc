@@ -18,19 +18,19 @@
 
 golang = find_program('go')
 
-adbc_driver_snowflake_name = 'libadbc_driver_snowflake.so'
-adbc_driver_snowflake_lib = custom_target(
-    'adbc_driver_snowflake',
-    output: adbc_driver_snowflake_name,
+adbc_driver_flightsql_name = 'libadbc_driver_flightsql.so'
+adbc_driver_flightsql_lib = custom_target(
+    'adbc_driver_flightsql',
+    output: adbc_driver_flightsql_name,
     command : [
         golang,
         'build',
         '-C',
-        meson.project_source_root() + '/../go/adbc/pkg/snowflake',
+        meson.project_source_root() + '/../go/adbc/pkg/flightsql',
         '-tags=driverlib',
         '-buildmode=c-shared',
         '-o',
-        meson.current_build_dir() + '/' + adbc_driver_snowflake_name,
+        meson.current_build_dir() + '/' + adbc_driver_flightsql_name,
     ],
     install : true,
     install_dir : '.',
@@ -38,16 +38,17 @@ adbc_driver_snowflake_lib = custom_target(
 
 if get_option('tests')
     exc = executable(
-        'adbc-driver-snowflake-test',
-        'snowflake_test.cc',
+        'adbc-driver-flightsql-test',
+        'dremio_flightsql_test.cc',
+        'sqlite_flightsql_test.cc',
         include_directories: [root_dir, driver_dir],
         link_with: [
             adbc_common_lib,
             adbc_validation_lib,
             adbc_validation_util_lib,
-            adbc_driver_snowflake_lib
+            adbc_driver_flightsql_lib
         ],
         dependencies: [nanoarrow_dep, gmock_dep, gtest_main_dep],
     )
-    test('adbc-driver-snowflake', exc)
+    test('adbc-driver-flightsql', exc)
 endif

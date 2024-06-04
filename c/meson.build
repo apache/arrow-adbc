@@ -79,10 +79,7 @@ if get_option('tests')
 endif
 
 if get_option('flightsql')
-  error(
-      '''Meson does not yet support Golang - see
-      https://github.com/mesonbuild/meson/issues?q=golang+'''
-  )
+  subdir('driver/flightsql')
 endif
 
 if get_option('postgresql')
@@ -94,10 +91,7 @@ if get_option('sqlite')
 endif
 
 if get_option('snowflake')
-  error(
-      '''Meson does not yet support Golang - see
-      https://github.com/mesonbuild/meson/issues?q=golang+'''
-  )
+  subdir('driver/snowflake')
 endif
 
 if get_option('duckdb')
