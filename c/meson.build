@@ -49,7 +49,7 @@ endif
 if get_option('duckdb')
     cmake = import('cmake')
     opt_var = cmake.subproject_options()
-    # Doesn't appear duckdb properly builds PIC shared libraries
+    # Doesn't appear duckdb properly builds PIC shared libraries as a subproject
     # https://github.com/mesonbuild/meson/issues/10764
     # Adding these args is a dirty hack
     compiler_id = meson.get_compiler('c').get_id()

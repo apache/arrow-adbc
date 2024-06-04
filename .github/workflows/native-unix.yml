@@ -206,6 +206,29 @@ jobs:
         run: |
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
+  drivers-test-meson:
+    name: "Meson - C/C++ (Conda/${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build
+        shell: bash -l {0}
+        run: |
+          meson setup -Dpostgresql=true -Dsqlite=true -Ddriver_manager=true builddir
+          meson compile
+          meson test
+      - name: Test
+        shell: bash -l {0}
+        run: |
+          meson test
+
   clang-tidy-conda:
     name: "clang-tidy"
     runs-on: ubuntu-latest
