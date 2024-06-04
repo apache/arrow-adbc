@@ -227,6 +227,7 @@ jobs:
         run: |
           cd c
           meson setup -Dpostgresql=true -Dsqlite=true -Ddriver_manager=true builddir
+          cd builddir
           meson compile
       - name: Test
         run: meson test
