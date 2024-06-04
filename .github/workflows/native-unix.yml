@@ -211,16 +211,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest"]
+        os: ["ubuntu-latest"]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
       - name: Install Dependencies
         run: |
           sudo apt update
