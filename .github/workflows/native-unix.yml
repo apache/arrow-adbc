@@ -234,7 +234,9 @@ jobs:
           cd builddir
           meson compile
       - name: Test
-        run: meson test
+        run: |
+          cd c/builddir
+          meson test
 
   clang-tidy-conda:
     name: "clang-tidy"
