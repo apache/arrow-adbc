@@ -377,7 +377,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 bool typeHasDecimalDigits = typesHaveDecimalDigits.Contains(column.XdbcDataType.Value);
                 Assert.Equal(column.XdbcDecimalDigits.HasValue, typeHasDecimalDigits);
 
-                Assert.Equal(string.Empty, column.Remarks);
+                Assert.False(string.IsNullOrEmpty(column.Remarks));
 
                 Assert.NotNull(column.XdbcColumnDef);
 

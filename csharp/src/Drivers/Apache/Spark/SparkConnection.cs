@@ -701,6 +701,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         private static void SetPrecisionScaleAndTypeName(short colType, string typeName, TableInfo? tableInfo)
         {
+            // Keep the original type name
+            tableInfo?.TypeName.Add(typeName);
             switch (colType)
             {
                 case (short)ColumnTypeId.DECIMAL:
@@ -709,7 +711,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         SqlDecimalParserResult result = new SqlDecimalTypeParser().ParseOrDefault(typeName, new SqlDecimalParserResult(typeName));
                         tableInfo?.Precision.Add(result.Precision);
                         tableInfo?.Scale.Add((short)result.Scale);
-                        tableInfo?.TypeName.Add(result.BaseTypeName);
+                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
                         break;
                     }
 
@@ -719,7 +721,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         bool success = new SqlCharTypeParser().TryParse(typeName, out SqlCharVarcharParserResult? result);
                         tableInfo?.Precision.Add(success ? result!.ColumnSize : SqlVarcharTypeParser.VarcharColumnSizeDefault);
                         tableInfo?.Scale.Add(null);
-                        tableInfo?.TypeName.Add(success ? result!.BaseTypeName : "CHAR");
+                        tableInfo?.BaseTypeName.Add(success ? result!.BaseTypeName : "CHAR");
                         break;
                     }
                 case (short)ColumnTypeId.VARCHAR:
@@ -730,14 +732,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         bool success = new SqlVarcharTypeParser().TryParse(typeName, out SqlCharVarcharParserResult? result);
                         tableInfo?.Precision.Add(success ? result!.ColumnSize : SqlVarcharTypeParser.VarcharColumnSizeDefault);
                         tableInfo?.Scale.Add(null);
-                        tableInfo?.TypeName.Add(success ? result!.BaseTypeName : "STRING");
+                        tableInfo?.BaseTypeName.Add(success ? result!.BaseTypeName : "STRING");
                         break;
                     }
 
                 default:
                     tableInfo?.Precision.Add(null);
                     tableInfo?.Scale.Add(null);
-                    tableInfo?.TypeName.Add(typeName);
+                    tableInfo?.BaseTypeName.Add(typeName);
                     break;
             }
         }
@@ -919,11 +921,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             {
                 columnNameBuilder.Append(tableInfo.ColumnName[i]);
                 ordinalPositionBuilder.Append(tableInfo.OrdinalPosition[i]);
-                remarksBuilder.Append("");
+                // Use the "remarks" field to store the original type name value
+                remarksBuilder.Append(tableInfo.TypeName[i]);
                 xdbcColumnSizeBuilder.Append(tableInfo.Precision[i]);
                 xdbcDecimalDigitsBuilder.Append(tableInfo.Scale[i]);
                 xdbcDataTypeBuilder.Append(tableInfo.ColType[i]);
-                xdbcTypeNameBuilder.Append(tableInfo.TypeName[i]);
+                // Just the base type name without precision or scale clause
+                xdbcTypeNameBuilder.Append(tableInfo.BaseTypeName[i]);
                 xdbcNumPrecRadixBuilder.AppendNull();
                 xdbcNullableBuilder.Append(tableInfo.Nullable[i]);
                 xdbcColumnDefBuilder.Append(tableInfo.ColumnDefault[i]);
@@ -1000,6 +1004,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public List<string> ColumnName { get; } = new();
 
         public List<short> ColType { get; } = new();
+
+        public List<string> BaseTypeName { get; } = new();
 
         public List<string> TypeName { get; } = new();
 
