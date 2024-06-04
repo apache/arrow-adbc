@@ -3,6 +3,7 @@
 *.Rd
 c/subprojects/fmt*
 c/subprojects/gtest*
+c/subprojects/nanoarrow*
 c/subprojects/sqlite3*
 c/vendor/backward/*
 c/vendor/fmt/*
