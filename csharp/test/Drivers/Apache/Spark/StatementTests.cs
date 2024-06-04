@@ -35,7 +35,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class StatementTests : SparkTestBase
     {
-        private static List<string> DefaultTableTypes => new() { "BASE TABLE", "VIEW" };
+        private static List<string> DefaultTableTypes => new() { "TABLE", "VIEW" };
 
         public StatementTests(ITestOutputHelper? outputHelper) : base(outputHelper)
         {
