@@ -217,17 +217,18 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install Python Dependencies
+        run: pip install meson ninja
       - name: Build
-        shell: bash -l {0}
         run: |
           meson setup -Dpostgresql=true -Dsqlite=true -Ddriver_manager=true builddir
           meson compile
-          meson test
       - name: Test
-        shell: bash -l {0}
-        run: |
-          meson test
+        run: meson test
 
   clang-tidy-conda:
     name: "clang-tidy"
