@@ -225,6 +225,7 @@ jobs:
         run: pip install meson ninja
       - name: Build
         run: |
+          cd c
           meson setup -Dpostgresql=true -Dsqlite=true -Ddriver_manager=true builddir
           meson compile
       - name: Test
