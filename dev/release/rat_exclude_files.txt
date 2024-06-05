@@ -1,10 +1,10 @@
 *.json
 *.Rproj
 *.Rd
-c/subprojects/fmt*
-c/subprojects/gtest*
-c/subprojects/nanoarrow*
-c/subprojects/sqlite3*
+c/subprojects/fmt.wrap
+c/subprojects/gtest.wrap
+c/subprojects/nanoarrow.wrap
+c/subprojects/sqlite3.wrap
 c/vendor/backward/*
 c/vendor/fmt/*
 c/vendor/sqlite3/sqlite3.c
