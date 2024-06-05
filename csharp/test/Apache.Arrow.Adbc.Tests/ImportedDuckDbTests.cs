@@ -69,6 +69,14 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public void GetObjectsTest()
+        {
+            using var database = _duckDb.OpenDatabase("transactions.db");
+            using var connection = database.Connect(null);
+            connection.GetObjects(AdbcConnection.GetObjectsDepth.All, null, null, null, null, null);
+        }
+
+        [Fact]
         public void TransactionsTest()
         {
             using var database = _duckDb.OpenDatabase("transactions.db");
