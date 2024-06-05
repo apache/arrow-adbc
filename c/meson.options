@@ -18,12 +18,6 @@
 option('tests', type: 'boolean', description: 'Build tests', value: false)
 option('benchmarks', type: 'boolean', description: 'Build benchmarks', value: false)
 option(
-  'duckdb',
-  type: 'boolean',
-  description: 'Build ADBC DuckDB Integration',
-  value: false
-)
-option(
   'flightsql',
   type: 'boolean',
   description: 'Build ADBC FlightSQL driver',
@@ -51,11 +45,5 @@ option(
   'snowflake',
   type: 'boolean',
   description: 'Build ADBC Snowflake Driver',
-  value: false
-)
-option(
-  'python',
-  type: 'boolean',
-  description: 'Build Python library',
   value: false
 )

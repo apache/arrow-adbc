@@ -158,7 +158,7 @@ find more readable.
 To use Meson, start at the c directory and run:
 
 ```shell
-$ meson setup builddir && cd builddir
+$ meson setup build
 ```
 
 For a full list of options, ``meson configure`` will bring up a pager
@@ -168,7 +168,7 @@ the form ``-D_option_:_value_``. For example, to build the a debug version of
 the SQLite3 driver along with tests, you would run:
 
 ```shell
-$ meson configure -Dbuildtype=debug -Dsqlite=true -Dtests=true
+$ meson configure -Dbuildtype=debug -Dsqlite=true -Dtests=true build
 ```
 
 With the options set, you can then compile the project. For most dependencies,
@@ -176,13 +176,13 @@ Meson will try to find them on your system and fall back to downloading a copy
 from its WrapDB for you:
 
 ```shell
-$ meson compile
+$ meson compile -C build
 ```
 
 To run the test suite, simply run:
 
 ```shell
-$ meson test
+$ meson test -C build
 ```
 
 ### C#/.NET

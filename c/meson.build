@@ -18,7 +18,7 @@
 project(
     'arrow-adbc',
     'c', 'cpp',
-    version: '0.6.0-SNAPSHOT',  # TODO: can this be dynamic?
+    version: '1.1.0-SNAPSHOT',
     license: 'Apache 2.0',
     meson_version: '>=1.3.0',
     default_options: [
@@ -46,25 +46,7 @@ else
     gmock_dep = disabler()
 endif
 
-if get_option('duckdb')
-    cmake = import('cmake')
-    opt_var = cmake.subproject_options()
-    # Doesn't appear duckdb properly builds PIC shared libraries as a subproject
-    # https://github.com/mesonbuild/meson/issues/10764
-    # Adding these args is a dirty hack
-    compiler_id = meson.get_compiler('c').get_id()
-    if compiler_id == 'gcc' or compiler_id == 'clang'
-        opt_var.append_compile_args('c', '-fPIC')
-        opt_var.append_compile_args('cpp', '-fPIC')
-    endif
-    duckdb_proj = cmake.subproject('duckdb', options: opt_var)
-    duckdb_dep = duckdb_proj.dependency('duckdb')
-else
-    duckdb_dep = disabler()
-endif
-
 needs_driver_manager = get_option('driver_manager') \
-    or get_option('duckdb') \
     or get_option('tests')
 
 if needs_driver_manager
@@ -92,15 +74,4 @@ endif
 
 if get_option('snowflake')
   subdir('driver/snowflake')
-endif
-
-if get_option('duckdb')
-  # TODO: currently broken because #include <adbc.h> conflicts between duckdb /
-  # arrow-adbc includes
-  subdir('integration/duckdb')
-endif
-
-if get_option('python')
-  # TODO: implement (?) or should we make python use meson-python
-  # and install appropriate subproject dependencies? leaning towards latter
 endif

@@ -229,14 +229,11 @@ jobs:
         run: pip install meson
       - name: Build
         run: |
-          cd c
-          meson setup -Dpostgresql=true -Dsqlite=true -Ddriver_manager=true builddir
-          cd builddir
-          meson compile
+          meson setup -Dpostgresql=true -Dsqlite=true -Ddriver_manager=true c c/build
+          meson compile -C c/build
       - name: Test
         run: |
-          cd c/builddir
-          meson test
+          meson test -C c/build
 
   clang-tidy-conda:
     name: "clang-tidy"
