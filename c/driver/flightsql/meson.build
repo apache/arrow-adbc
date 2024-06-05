@@ -18,7 +18,18 @@
 
 golang = find_program('go')
 
-adbc_driver_flightsql_name = 'libadbc_driver_flightsql.so'
+if build_machine.system() == 'windows'
+  prefix = ''
+  suffix = '.lib'
+elif build_machine.system() == 'darwin'
+  prefix = 'lib'
+  suffix = '.dylib'
+else
+  prefix = 'lib'
+  suffix = '.so'
+endif
+
+adbc_driver_flightsql_name = prefix + 'adbc_driver_flightsql' + suffix
 adbc_driver_flightsql_lib = custom_target(
     'adbc_driver_flightsql',
     output: adbc_driver_flightsql_name,

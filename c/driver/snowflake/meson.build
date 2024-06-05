@@ -18,7 +18,18 @@
 
 golang = find_program('go')
 
-adbc_driver_snowflake_name = 'libadbc_driver_snowflake.so'
+if build_machine.system() == 'windows'
+  prefix = ''
+  suffix = '.lib'
+elif build_machine.system() == 'darwin'
+  prefix = 'lib'
+  suffix = '.dylib'
+else
+  prefix = 'lib'
+  suffix = '.so'
+endif
+
+adbc_driver_snowflake_name = prefix + 'adbc_driver_snowflake' + suffix
 adbc_driver_snowflake_lib = custom_target(
     'adbc_driver_snowflake',
     output: adbc_driver_snowflake_name,
