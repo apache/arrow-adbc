@@ -708,7 +708,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case (short)ColumnTypeId.DECIMAL:
                 case (short)ColumnTypeId.NUMERIC:
                     {
-                        SqlDecimalParserResult result = new SqlDecimalTypeParser().ParseOrDefault(typeName, new SqlDecimalParserResult(typeName));
+                        SqlDecimalParserResult result = new SqlDecimalTypeParser().ParseOrDefault(typeName);
                         tableInfo?.Precision.Add(result.Precision);
                         tableInfo?.Scale.Add((short)result.Scale);
                         tableInfo?.BaseTypeName.Add(result.BaseTypeName);
@@ -719,28 +719,31 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case (short)ColumnTypeId.NCHAR:
                     {
                         bool success = new SqlCharTypeParser().TryParse(typeName, out SqlCharVarcharParserResult? result);
-                        tableInfo?.Precision.Add(success ? result!.ColumnSize : SqlVarcharTypeParser.VarcharColumnSizeDefault);
+                        tableInfo?.Precision.Add(success && result != null ? result.ColumnSize : SqlVarcharTypeParser.VarcharColumnSizeDefault);
                         tableInfo?.Scale.Add(null);
-                        tableInfo?.BaseTypeName.Add(success ? result!.BaseTypeName : "CHAR");
+                        tableInfo?.BaseTypeName.Add(success && result != null ? result.BaseTypeName : "CHAR");
                         break;
                     }
+
                 case (short)ColumnTypeId.VARCHAR:
                 case (short)ColumnTypeId.LONGVARCHAR:
                 case (short)ColumnTypeId.LONGNVARCHAR:
                 case (short)ColumnTypeId.NVARCHAR:
                     {
                         bool success = new SqlVarcharTypeParser().TryParse(typeName, out SqlCharVarcharParserResult? result);
-                        tableInfo?.Precision.Add(success ? result!.ColumnSize : SqlVarcharTypeParser.VarcharColumnSizeDefault);
+                        tableInfo?.Precision.Add(success && result != null ? result.ColumnSize : SqlVarcharTypeParser.VarcharColumnSizeDefault);
                         tableInfo?.Scale.Add(null);
-                        tableInfo?.BaseTypeName.Add(success ? result!.BaseTypeName : "STRING");
+                        tableInfo?.BaseTypeName.Add(success && result != null ? result.BaseTypeName : "STRING");
                         break;
                     }
 
                 default:
-                    tableInfo?.Precision.Add(null);
-                    tableInfo?.Scale.Add(null);
-                    tableInfo?.BaseTypeName.Add(typeName);
-                    break;
+                    {
+                        tableInfo?.Precision.Add(null);
+                        tableInfo?.Scale.Add(null);
+                        tableInfo?.BaseTypeName.Add(SqlTypeNameParser<SqlTypeNameParserResult>.Parse(typeName, colType).BaseTypeName);
+                        break;
+                    }
             }
         }
 
@@ -784,7 +787,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
                     // are not returned in the Thrift call to GetColumns
                     return new SqlDecimalTypeParser()
-                        .ParseOrDefault(typeName, new SqlDecimalParserResult(typeName))
+                        .ParseOrDefault(typeName)
                         .Decimal128Type;
                 case (int)ColumnTypeId.NULL:
                     return NullType.Default;
@@ -797,7 +800,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        private StructArray GetDbSchemas(
+        private static StructArray GetDbSchemas(
             GetObjectsDepth depth,
             Dictionary<string, Dictionary<string, TableInfo>> schemaMap)
         {
@@ -841,7 +844,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 nullBitmapBuffer.Build());
         }
 
-        private StructArray GetTableSchemas(
+        private static StructArray GetTableSchemas(
             GetObjectsDepth depth,
             Dictionary<string, TableInfo> tableMap)
         {
@@ -892,7 +895,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 nullBitmapBuffer.Build());
         }
 
-        private StructArray GetColumnSchema(TableInfo tableInfo)
+        private static StructArray GetColumnSchema(TableInfo tableInfo)
         {
             StringArray.Builder columnNameBuilder = new StringArray.Builder();
             Int32Array.Builder ordinalPositionBuilder = new Int32Array.Builder();
@@ -976,7 +979,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 nullBitmapBuffer.Build());
         }
 
-        private string PatternToRegEx(string? pattern)
+        private static string PatternToRegEx(string? pattern)
         {
             if (pattern == null)
                 return ".*";
@@ -984,13 +987,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             StringBuilder builder = new StringBuilder("(?i)^");
             string convertedPattern = pattern.Replace("_", ".").Replace("%", ".*");
             builder.Append(convertedPattern);
-            builder.Append("$");
+            builder.Append('$');
 
             return builder.ToString();
         }
 
 
-        private string GetProductVersion()
+        private static string GetProductVersion()
         {
             FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
             return fileVersionInfo.ProductVersion ?? ProductVersionDefault;
