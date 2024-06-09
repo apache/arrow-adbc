@@ -80,8 +80,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         /// </summary>
         protected abstract Regex Expression { get; }
 
+        /// <summary>
+        /// Gets the base SQL type name without decoration or sub clauses
+        /// </summary>
         public abstract string BaseTypeName { get; }
 
+        /// <summary>
+        /// Gets the default parser return value for the type.
+        /// </summary>
+        /// <param name="input">The SQL type name</param>
+        /// <returns>A parser result</returns>
         protected abstract T DefaultValue(string input);
 
         /// <summary>

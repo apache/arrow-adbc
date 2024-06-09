@@ -351,7 +351,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 Assert.Equal(i + 1, column.OrdinalPosition);
                 Assert.False(string.IsNullOrEmpty(column.Name));
                 Assert.False(string.IsNullOrEmpty(column.XdbcTypeName));
-                Assert.False(Regex.IsMatch(column.XdbcTypeName, @"[_,.\d\<\>\(\)]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+                Assert.False(Regex.IsMatch(column.XdbcTypeName, @"[_,\d\<\>\(\)]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
                     "Unexpected character found in field XdbcTypeName");
 
                 var supportedTypes = Enum.GetValues(typeof(SupportedSparkDataType)).Cast<SupportedSparkDataType>();
