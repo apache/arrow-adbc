@@ -50,9 +50,9 @@ if get_option('tests')
         },
     }
 
-    foreach nm, conf : postgres_tests
+    foreach name, conf : postgres_tests
         exc = executable(
-            'adbc-' + nm + '-test',
+            'adbc-' + name + '-test',
             sources: conf['sources'],
             include_directories: [root_dir, driver_dir],
             link_with: [
@@ -63,6 +63,6 @@ if get_option('tests')
             ],
             dependencies: [nanoarrow_dep, gtest_main_dep, gmock_dep, libpq_dep],
         )
-        test('adbc-' + nm, exc)
+        test('adbc-' + name, exc)
     endforeach
 endif
