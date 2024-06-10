@@ -49,7 +49,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("TIMESTAMP", "TIMESTAMP")]
         [InlineData("TIMESTAMP_LTZ", "TIMESTAMP")]
         [InlineData("TIMESTAMP_NTZ", "TIMESTAMP")]
-        [InlineData("UNEXPECTED_TYPE", "UNEXPECTED_TYPE")]
         internal void CanParseAnyType(string testTypeName, string expectedBaseTypeName)
         {
             SqlTypeNameParserResult result = SqlTypeNameParser<SqlTypeNameParserResult>.Parse(testTypeName);
@@ -65,7 +64,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("DATE", "DATE")]
         [InlineData("DOUBLE", "DOUBLE")]
         [InlineData("FLOAT", "FLOAT")]
-        [InlineData("INTEGER", "INTEGER")]
         [InlineData("SMALLINT", "SMALLINT")]
         [InlineData("TINYINT", "TINYINT")]
         internal void CanParseSimpleTypeName(string testTypeName, string expectedBaseTypeName)
@@ -103,7 +101,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         internal void CanParseChar(string testTypeName, SqlCharVarcharParserResult expected)
         {
             _outputHelper.WriteLine(testTypeName);
-            Assert.True(new SqlCharTypeParser().TryParse(testTypeName, out SqlCharVarcharParserResult? result));
+            Assert.True(SqlCharTypeParser.Default.TryParse(testTypeName, out SqlCharVarcharParserResult? result));
             Assert.NotNull(result);
             Assert.Equal(expected, result);
         }
@@ -117,7 +115,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         internal void CanParseVarchar(string testTypeName, SqlCharVarcharParserResult expected)
         {
             _outputHelper.WriteLine(testTypeName);
-            Assert.True(new SqlVarcharTypeParser().TryParse(testTypeName, out SqlCharVarcharParserResult? result));
+            Assert.True(SqlVarcharTypeParser.Default.TryParse(testTypeName, out SqlCharVarcharParserResult? result));
             Assert.NotNull(result);
             Assert.Equal(expected, result);
         }
@@ -130,7 +128,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         internal void CanParseDecimal(string testTypeName, SqlDecimalParserResult expected)
         {
             _outputHelper.WriteLine(testTypeName);
-            Assert.True(new SqlDecimalTypeParser().TryParse(testTypeName, out SqlDecimalParserResult? result));
+            Assert.True(SqlDecimalTypeParser.Default.TryParse(testTypeName, out SqlDecimalParserResult? result));
             Assert.NotNull(result);
             Assert.Equal(expected.TypeName, result.TypeName);
             Assert.Equal(expected.BaseTypeName, result.BaseTypeName);
@@ -141,16 +139,32 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         [Theory()]
+        [InlineData("INT")]
+        [InlineData("INTEGER")]
+        [InlineData(" INT ")]
+        [InlineData(" INTEGER ")]
+        [InlineData(" iNTeGeR ")]
+        internal void CanParseInteger(string testTypeName)
+        {
+            string baseTypeName = SqlIntegerTypeParser.Default.BaseTypeName;
+            SqlTypeNameParserResult expected = new(testTypeName, baseTypeName);
+            _outputHelper.WriteLine(testTypeName);
+            Assert.True(SqlIntegerTypeParser.Default.TryParse(testTypeName, out SqlTypeNameParserResult? result));
+            Assert.NotNull(result);
+            Assert.Equal(expected, result);
+        }
+
+        [Theory()]
         [InlineData("TIMESTAMP")]
         [InlineData("TIMESTAMP_LTZ")]
         [InlineData("TIMESTAMP_NTZ")]
         [InlineData("TiMeSTaMP")]
         internal void CanParseTimestamp(string testTypeName)
         {
-            var baseTypeName = new SqlTimestampTypeParser().BaseTypeName;
-            var expected = new SqlTypeNameParserResult(testTypeName, baseTypeName);
+            string baseTypeName = SqlTimestampTypeParser.Default.BaseTypeName;
+            SqlTypeNameParserResult expected = new(testTypeName, baseTypeName);
             _outputHelper.WriteLine(testTypeName);
-            Assert.True(new SqlTimestampTypeParser().TryParse(testTypeName, out SqlTypeNameParserResult? result));
+            Assert.True(SqlTimestampTypeParser.Default.TryParse(testTypeName, out SqlTypeNameParserResult? result));
             Assert.NotNull(result);
             Assert.Equal(expected, result);
         }
@@ -163,10 +177,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("aRRaY<iNT>")]
         internal void CanParseArray(string testTypeName)
         {
-            var baseTypeName = new SqlArrayTypeParser().BaseTypeName;
-            var expected = new SqlTypeNameParserResult(testTypeName, baseTypeName);
+            string baseTypeName = SqlArrayTypeParser.Default.BaseTypeName;
+            SqlTypeNameParserResult expected = new(testTypeName, baseTypeName);
             _outputHelper.WriteLine(testTypeName);
-            Assert.True(new SqlArrayTypeParser().TryParse(testTypeName, out SqlTypeNameParserResult? result));
+            Assert.True(SqlArrayTypeParser.Default.TryParse(testTypeName, out SqlTypeNameParserResult? result));
             Assert.NotNull(result);
             Assert.Equal(expected, result);
         }
@@ -178,10 +192,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("MaP<iNT,STRiNG>")]
         internal void CanParseMap(string testTypeName)
         {
-            var baseTypeName = new SqlMapTypeParser().BaseTypeName;
-            var expected = new SqlTypeNameParserResult(testTypeName, baseTypeName);
+            string baseTypeName = SqlMapTypeParser.Default.BaseTypeName;
+            SqlTypeNameParserResult expected = new(testTypeName, baseTypeName);
             _outputHelper.WriteLine(testTypeName);
-            Assert.True(new SqlMapTypeParser().TryParse(testTypeName, out SqlTypeNameParserResult? result));
+            Assert.True(SqlMapTypeParser.Default.TryParse(testTypeName, out SqlTypeNameParserResult? result));
             Assert.NotNull(result);
             Assert.Equal(expected, result);
         }
@@ -194,10 +208,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("STRuCT<F1:iNT>")]
         internal void CanParseStruct(string testTypeName)
         {
-            var baseTypeName = new SqlStructTypeParser().BaseTypeName;
-            var expected = new SqlTypeNameParserResult(testTypeName, baseTypeName);
+            string baseTypeName = SqlStructTypeParser.Default.BaseTypeName;
+            SqlTypeNameParserResult expected = new(testTypeName, baseTypeName);
             _outputHelper.WriteLine(testTypeName);
-            Assert.True(new SqlStructTypeParser().TryParse(testTypeName, out SqlTypeNameParserResult? result));
+            Assert.True(SqlStructTypeParser.Default.TryParse(testTypeName, out SqlTypeNameParserResult? result));
             Assert.NotNull(result);
             Assert.Equal(expected, result);
         }
@@ -215,14 +229,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("TIMESTAMP_ZZZ")]
         internal void CannotParseUnexpectedTypeName(string testTypeName)
         {
-            Assert.False(SqlTypeNameParser<SqlTypeNameParserResult>.TryParse(testTypeName, out SqlTypeNameParserResult? result), $"Expecting type {testTypeName} to fail to parse.");
+            Assert.False(SqlTypeNameParser<SqlTypeNameParserResult>.TryParse(testTypeName, out _), $"Expecting type {testTypeName} to fail to parse.");
         }
 
         public static IEnumerable<object[]> GenerateCharTestData(string typeName)
         {
-            var lengths = new int?[] { 1, 10, int.MaxValue, };
-            string[] spaces = new[] { "", " ", "\t" };
-            string baseTypeName = new SqlCharTypeParser().BaseTypeName;
+            int?[] lengths = [1, 10, int.MaxValue,];
+            string[] spaces = ["", " ", "\t"];
+            string baseTypeName = SqlCharTypeParser.Default.BaseTypeName;
             foreach (int? length in lengths)
             {
                 foreach (string leadingSpace in spaces)
@@ -240,9 +254,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         public static IEnumerable<object[]> GenerateVarcharTestData(string typeName)
         {
-            var lengths = new int?[] { null, 1, 10, int.MaxValue, };
-            string[] spaces = new[] { "", " ", "\t" };
-            string baseTypeName = new SqlVarcharTypeParser().BaseTypeName;
+            int?[] lengths = [null, 1, 10, int.MaxValue,];
+            string[] spaces = ["", " ", "\t"];
+            string baseTypeName = SqlVarcharTypeParser.Default.BaseTypeName;
             foreach (int? length in lengths)
             {
                 foreach (string leadingSpace in spaces)
@@ -261,7 +275,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         public static IEnumerable<object[]> GenerateDecimalTestData(string typeName)
         {
-            string baseTypeName = new SqlDecimalTypeParser().BaseTypeName;
+            string baseTypeName = SqlDecimalTypeParser.Default.BaseTypeName;
             var precisionScales = new[]
             {
                 new { Precision = (int?)null, Scale = (int?)null },
@@ -272,7 +286,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 new { Precision = (int?)99, Scale = (int?)null },
                 new { Precision = (int?)99, Scale = (int?)99 },
             };
-            string[] spaces = new[] { "", " ", "\t" };
+            string[] spaces = ["", " ", "\t"];
             foreach (var precisionScale in precisionScales)
             {
                 foreach (string leadingSpace in spaces)

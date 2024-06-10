@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -45,34 +46,33 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         private static readonly IReadOnlyDictionary<int, ISqlTypeNameParser> s_parserMap = new Dictionary<int, ISqlTypeNameParser>()
         {
-            { (int)SparkConnection.ColumnTypeId.ARRAY, new SqlArrayTypeParser() },
-            { (int)SparkConnection.ColumnTypeId.BIGINT, new SqlSimpleTypeParser(SparkConnection.ColumnTypeId.BIGINT.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.BINARY, new SqlSimpleTypeParser(SparkConnection.ColumnTypeId.BINARY.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.BOOLEAN, new SqlSimpleTypeParser(SparkConnection.ColumnTypeId.BOOLEAN.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.CHAR, new SqlCharTypeParser() },
-            { (int)SparkConnection.ColumnTypeId.DATE, new SqlSimpleTypeParser(SparkConnection.ColumnTypeId.DATE.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.DECIMAL, new SqlDecimalTypeParser() },
-            { (int)SparkConnection.ColumnTypeId.DOUBLE, new SqlSimpleTypeParser(SparkConnection.ColumnTypeId.DOUBLE.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.FLOAT, new SqlSimpleTypeParser(SparkConnection.ColumnTypeId.FLOAT.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.INTEGER, new SqlSimpleTypeParser(SparkConnection.ColumnTypeId.INTEGER.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.JAVA_OBJECT, new SqlMapTypeParser() },
-            { (int)SparkConnection.ColumnTypeId.LONGNVARCHAR, new SqlVarcharTypeParser() },
-            { (int)SparkConnection.ColumnTypeId.LONGVARCHAR, new SqlVarcharTypeParser() },
-            { (int)SparkConnection.ColumnTypeId.NCHAR, new SqlCharTypeParser() },
-            { (int)SparkConnection.ColumnTypeId.NUMERIC, new SqlDecimalTypeParser() },
-            { (int)SparkConnection.ColumnTypeId.NVARCHAR, new SqlVarcharTypeParser() },
-            { (int)SparkConnection.ColumnTypeId.SMALLINT, new SqlSimpleTypeParser(SparkConnection.ColumnTypeId.SMALLINT.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.STRUCT, new SqlStructTypeParser() },
-            { (int)SparkConnection.ColumnTypeId.TIMESTAMP, new SqlTimestampTypeParser() },
-            { (int)SparkConnection.ColumnTypeId.TIMESTAMP_WITH_TIMEZONE, new SqlTimestampTypeParser() },
-            { (int)SparkConnection.ColumnTypeId.TINYINT, new SqlSimpleTypeParser(SparkConnection.ColumnTypeId.TINYINT.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.VARCHAR, new SqlVarcharTypeParser() },
+            { (int)SparkConnection.ColumnTypeId.ARRAY, SqlArrayTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.BIGINT, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.BIGINT.ToString()) },
+            { (int)SparkConnection.ColumnTypeId.BINARY, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.BINARY.ToString()) },
+            { (int)SparkConnection.ColumnTypeId.BOOLEAN, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.BOOLEAN.ToString()) },
+            { (int)SparkConnection.ColumnTypeId.CHAR, SqlCharTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.DATE, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.DATE.ToString()) },
+            { (int)SparkConnection.ColumnTypeId.DECIMAL, SqlDecimalTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.DOUBLE, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.DOUBLE.ToString()) },
+            { (int)SparkConnection.ColumnTypeId.FLOAT, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.FLOAT.ToString()) },
+            { (int)SparkConnection.ColumnTypeId.INTEGER, SqlIntegerTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.JAVA_OBJECT, SqlMapTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.LONGNVARCHAR, SqlVarcharTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.LONGVARCHAR, SqlVarcharTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.NCHAR, SqlCharTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.NUMERIC, SqlDecimalTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.NVARCHAR, SqlVarcharTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.SMALLINT, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.SMALLINT.ToString()) },
+            { (int)SparkConnection.ColumnTypeId.STRUCT, SqlStructTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.TIMESTAMP, SqlTimestampTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.TIMESTAMP_WITH_TIMEZONE, SqlTimestampTypeParser.Default },
+            { (int)SparkConnection.ColumnTypeId.TINYINT, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.TINYINT.ToString()) },
+            { (int)SparkConnection.ColumnTypeId.VARCHAR, SqlVarcharTypeParser.Default },
         };
 
         // Note: the INTERVAL sql type does not have an associated column type id.
         private static readonly HashSet<ISqlTypeNameParser> s_parsers = s_parserMap.Values
-            .Concat(new HashSet<ISqlTypeNameParser>() { new SqlIntervalTypeParser() })
-            .Distinct()
+            .Concat([SqlIntervalTypeParser.Default])
             .ToHashSet();
 
         /// <summary>
@@ -84,13 +84,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         /// Gets the base SQL type name without decoration or sub clauses
         /// </summary>
         public abstract string BaseTypeName { get; }
-
-        /// <summary>
-        /// Gets the default parser return value for the type.
-        /// </summary>
-        /// <param name="input">The SQL type name</param>
-        /// <returns>A parser result</returns>
-        protected abstract T DefaultValue(string input);
 
         /// <summary>
         /// Generates the successful result of a matching parse
@@ -144,41 +137,26 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         }
 
         /// <summary>
-        /// Parses the input string for a valid SQL type definition and returns the result or returns the <c>defaultValue</c>, if invalid.
-        /// </summary>
-        /// <param name="input">The SQL type defintion string to parse.</param>
-        /// <param name="defaultValue">If input string is an invalid type definition, this result is returned instead.</param>
-        /// <returns>If input string is a valid SQL type definition, it returns the result; otherwise <c>defaultValue</c>.</returns>
-        public SqlTypeNameParserResult ParseOrDefault(string input, SqlTypeNameParserResult defaultValue)
-        {
-            defaultValue ??= DefaultValue(input);
-            return TryParse(input, out SqlTypeNameParserResult? result) ? result! : defaultValue;
-        }
-
-        public T ParseOrDefault(string input, T? defaultValue = default)
-        {
-            defaultValue ??= DefaultValue(input);
-            return TryParse(input, out T? result) ? result! : defaultValue;
-        }
-
-        /// <summary>
         /// Parses the input type name string and produces a result.
         /// When a matching parser is found that successfully parses the type name string, the result of that parse is returned.
         /// If no parser is able to successfully match the input type name,
-        /// then a default result is return where the base type name is the same as the original input type name string.
+        /// then a <see cref="AdbcException"/> is thrown.
         /// </summary>
         /// <param name="input">The type name string to parse</param>
         /// <param name="columnTypeIdHint">If provided, the column type id is used as a hint to find the most likely matching parser.</param>
-        /// <returns>A parser result, either from a successful match and parse,
-        /// or a default result where the base type name is the same as the original type name.
+        /// <returns>
+        /// A parser result, from a successful match and parse.
         /// </returns>
-        public static SqlTypeNameParserResult Parse(string input, int? columnTypeIdHint = null)
+        /// <exception cref="AdbcException">
+        /// Thrown when this method is unable to match the input type name string with any supported parser.
+        /// </exception>
+        public static T Parse(string input, int? columnTypeIdHint = null)
         {
             if (TryParse(input, out SqlTypeNameParserResult? result, columnTypeIdHint) && result != null)
             {
-                return result;
+                return (T)result;
             }
-            return new SqlTypeNameParserResult(input, input);
+            throw new AdbcException($"Invalid or unexpected type name: '{input}'");
         }
 
         /// <summary>
@@ -338,7 +316,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     /// </summary>
     internal class SqlCharTypeParser : SqlTypeNameParser<SqlCharVarcharParserResult>
     {
-        protected override SqlCharVarcharParserResult DefaultValue(string input) => new(input, BaseTypeName);
+        public static SqlCharTypeParser Default { get; } = new();
 
         public override string BaseTypeName => "CHAR";
 
@@ -366,15 +344,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     internal class SqlVarcharTypeParser : SqlTypeNameParser<SqlCharVarcharParserResult>
     {
         internal const int VarcharColumnSizeDefault = int.MaxValue;
-
         private const string StringBaseTypeName = "STRING";
+
+        public static SqlVarcharTypeParser Default => new();
+
         public override string BaseTypeName => "VARCHAR";
 
         private static readonly Regex s_expression = new(
             @"^\s*(?<typeName>((STRING)|(VARCHAR)|(LONGVARCHAR)|(LONGNVARCHAR)|(NVARCHAR)))(\s*\(\s*(?<precision>\d{1,10})\s*\))?\s*$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
-        protected override SqlCharVarcharParserResult DefaultValue(string input) => new(input, BaseTypeName);
 
         protected override Regex Expression => s_expression;
 
@@ -402,9 +380,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal const int DecimalPrecisionDefault = 10;
         internal const int DecimalScaleDefault = 0;
 
-        public override string BaseTypeName => "DECIMAL";
+        public static SqlDecimalTypeParser Default => new();
 
-        protected override SqlDecimalParserResult DefaultValue(string input) => new(input);
+        public override string BaseTypeName => "DECIMAL";
 
         // Pattern is based on this definition
         // https://docs.databricks.com/en/sql/language-manual/data-types/decimal-type.html#syntax
@@ -431,13 +409,32 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     }
 
     /// <summary>
+    /// Provides a parser for SQL INTEGER type definitions.
+    /// </summary>
+    internal class SqlIntegerTypeParser : SqlTypeNameParser<SqlTypeNameParserResult>
+    {
+        public static SqlIntegerTypeParser Default => new();
+
+        public override string BaseTypeName => "INTEGER";
+
+        // Pattern is based on this definition
+        // https://docs.databricks.com/en/sql/language-manual/data-types/int-type.html#syntax
+        // { INT | INTEGER }
+        private static readonly Regex s_expression = new(
+            @"^\s*(?<typeName>((INTEGER)|(INT)))\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        protected override Regex Expression => s_expression;
+    }
+
+    /// <summary>
     /// Provides a parser for SQL TIMESTAMP type definitions.
     /// </summary>
     internal class SqlTimestampTypeParser : SqlTypeNameParser<SqlTypeNameParserResult>
     {
-        public override string BaseTypeName => "TIMESTAMP";
+        public static SqlTimestampTypeParser Default => new();
 
-        protected override SqlTypeNameParserResult DefaultValue(string input) => new(input, BaseTypeName);
+        public override string BaseTypeName => "TIMESTAMP";
 
         // Pattern is based on this definition
         // https://docs.databricks.com/en/sql/language-manual/data-types/map-type.html#syntax
@@ -456,9 +453,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     /// </summary>
     internal class SqlStructTypeParser : SqlTypeNameParser<SqlTypeNameParserResult>
     {
-        public override string BaseTypeName => "STRUCT";
+        public static SqlStructTypeParser Default => new();
 
-        protected override SqlTypeNameParserResult DefaultValue(string input) => new(input, BaseTypeName);
+        public override string BaseTypeName => "STRUCT";
 
         // Pattern is based on this definition
         // https://docs.databricks.com/en/sql/language-manual/data-types/struct-type.html#syntax
@@ -468,7 +465,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         // NOT NULL: When specified the struct guarantees that the value of this field is never NULL.
         // COMMENT str: An optional string literal describing the field.
         private static readonly Regex s_expression = new(
-            @"^\s*(?<typeName>STRUCT)(?<structClause>\s*\<(.*)\>)+\s*$",
+            @"^\s*(?<typeName>STRUCT)(?<structClause>\s*\<(.+)\>)\s*$", // STUCT
             RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         protected override Regex Expression => s_expression;
@@ -479,16 +476,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     /// </summary>
     internal class SqlArrayTypeParser : SqlTypeNameParser<SqlTypeNameParserResult>
     {
-        public override string BaseTypeName => "ARRAY";
+        public static SqlArrayTypeParser Default => new();
 
-        protected override SqlTypeNameParserResult DefaultValue(string input) => new(input, BaseTypeName);
+        public override string BaseTypeName => "ARRAY";
 
         // Pattern is based on this definition
         // https://docs.databricks.com/en/sql/language-manual/data-types/array-type.html#syntax
         // ARRAY < elementType >
         // elementType: Any data type defining the type of the elements of the array.
         private static readonly Regex s_expression = new(
-            @"^\s*(?<typeName>ARRAY)(?<arrayClause>\s*\<(.*)\>)+\s*$",
+            @"^\s*(?<typeName>ARRAY)(?<arrayClause>\s*\<(.+)\>)\s*$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         protected override Regex Expression => s_expression;
@@ -499,9 +496,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     /// </summary>
     internal class SqlMapTypeParser : SqlTypeNameParser<SqlTypeNameParserResult>
     {
-        public override string BaseTypeName => "MAP";
+        public static SqlMapTypeParser Default => new();
 
-        protected override SqlTypeNameParserResult DefaultValue(string input) => new(input, BaseTypeName);
+        public override string BaseTypeName => "MAP";
 
         // Pattern is based on this definition
         // https://docs.databricks.com/en/sql/language-manual/data-types/map-type.html#syntax
@@ -509,7 +506,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         // keyType: Any data type other than MAP specifying the keys.
         // valueType: Any data type specifying the values.
         private static readonly Regex s_expression = new(
-            @"^\s*(?<typeName>MAP)(?<mapClause>\s*\<(.*)\>)+\s*$",
+            @"^\s*(?<typeName>MAP)(?<mapClause>\s*\<(.+)\>)\s*$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         protected override Regex Expression => s_expression;
@@ -517,6 +514,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
     internal class SqlIntervalTypeParser : SqlTypeNameParser<SqlTypeNameParserResult>
     {
+        public static SqlIntervalTypeParser Default => new();
+
         public override string BaseTypeName { get; } = "INTERVAL";
 
         // See: https://docs.databricks.com/en/sql/language-manual/data-types/interval-type.html#syntax
@@ -525,18 +524,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         protected override Regex Expression => s_expression;
-
-        protected override SqlTypeNameParserResult DefaultValue(string input) => new SqlTypeNameParserResult(BaseTypeName, BaseTypeName);
     }
 
     internal class SqlSimpleTypeParser(string baseTypeName) : SqlTypeNameParser<SqlTypeNameParserResult>
     {
+        private static readonly ConcurrentDictionary<string, SqlSimpleTypeParser> s_parserMap = new ConcurrentDictionary<string, SqlSimpleTypeParser>();
+
+        public static SqlSimpleTypeParser Default(string baseTypeName)
+        {
+            return s_parserMap.GetOrAdd(baseTypeName, (typeName) => new SqlSimpleTypeParser(typeName));
+        }
+
         public override string BaseTypeName { get; } = baseTypeName;
 
         protected override Regex Expression => new(
             @"^\s*" + Regex.Escape(BaseTypeName) + @"\s*$",
-            RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
-        protected override SqlTypeNameParserResult DefaultValue(string input) => new SqlTypeNameParserResult(BaseTypeName, BaseTypeName);
-    }
+            RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);    }
 }

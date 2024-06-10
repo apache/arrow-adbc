@@ -708,7 +708,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case (short)ColumnTypeId.DECIMAL:
                 case (short)ColumnTypeId.NUMERIC:
                     {
-                        SqlDecimalParserResult result = new SqlDecimalTypeParser().ParseOrDefault(typeName);
+                        SqlDecimalParserResult result = SqlTypeNameParser<SqlDecimalParserResult>.Parse(typeName, colType);
                         tableInfo?.Precision.Add(result.Precision);
                         tableInfo?.Scale.Add((short)result.Scale);
                         tableInfo?.BaseTypeName.Add(result.BaseTypeName);
@@ -718,7 +718,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case (short)ColumnTypeId.CHAR:
                 case (short)ColumnTypeId.NCHAR:
                     {
-                        bool success = new SqlCharTypeParser().TryParse(typeName, out SqlCharVarcharParserResult? result);
+                        bool success = SqlCharTypeParser.Default.TryParse(typeName, out SqlCharVarcharParserResult? result);
                         tableInfo?.Precision.Add(success && result != null ? result.ColumnSize : SqlVarcharTypeParser.VarcharColumnSizeDefault);
                         tableInfo?.Scale.Add(null);
                         tableInfo?.BaseTypeName.Add(success && result != null ? result.BaseTypeName : "CHAR");
@@ -730,7 +730,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case (short)ColumnTypeId.LONGNVARCHAR:
                 case (short)ColumnTypeId.NVARCHAR:
                     {
-                        bool success = new SqlVarcharTypeParser().TryParse(typeName, out SqlCharVarcharParserResult? result);
+                        bool success = SqlVarcharTypeParser.Default.TryParse(typeName, out SqlCharVarcharParserResult? result);
                         tableInfo?.Precision.Add(success && result != null ? result.ColumnSize : SqlVarcharTypeParser.VarcharColumnSizeDefault);
                         tableInfo?.Scale.Add(null);
                         tableInfo?.BaseTypeName.Add(success && result != null ? result.BaseTypeName : "STRING");
@@ -786,8 +786,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case (int)ColumnTypeId.NUMERIC:
                     // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
                     // are not returned in the Thrift call to GetColumns
-                    return new SqlDecimalTypeParser()
-                        .ParseOrDefault(typeName)
+                    return SqlTypeNameParser<SqlDecimalParserResult>
+                        .Parse(typeName, columnTypeId)
                         .Decimal128Type;
                 case (int)ColumnTypeId.NULL:
                     return NullType.Default;
