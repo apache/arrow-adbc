@@ -147,16 +147,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         /// <returns>
         /// A parser result, from a successful match and parse.
         /// </returns>
-        /// <exception cref="AdbcException">
-        /// Thrown when this method is unable to match the input type name string with any supported parser.
-        /// </exception>
         public static T Parse(string input, int? columnTypeIdHint = null)
         {
             if (TryParse(input, out SqlTypeNameParserResult? result, columnTypeIdHint) && result != null)
             {
-                return (T)result;
+                return (result is T typedResult)
+                    ? typedResult
+                    : throw new InvalidCastException($"Cannot cast return type '{result.GetType().Name}' to type '{(typeof(T)).Name}' for input SQL type name: '{input}'.");
             }
-            throw new AdbcException($"Invalid or unexpected type name: '{input}'");
+            throw new NotSupportedException($"Unsupported input SQL type name: '{input}'");
         }
 
         /// <summary>

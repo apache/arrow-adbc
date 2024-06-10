@@ -717,23 +717,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                 case (short)ColumnTypeId.CHAR:
                 case (short)ColumnTypeId.NCHAR:
-                    {
-                        bool success = SqlCharTypeParser.Default.TryParse(typeName, out SqlCharVarcharParserResult? result);
-                        tableInfo?.Precision.Add(success && result != null ? result.ColumnSize : SqlVarcharTypeParser.VarcharColumnSizeDefault);
-                        tableInfo?.Scale.Add(null);
-                        tableInfo?.BaseTypeName.Add(success && result != null ? result.BaseTypeName : "CHAR");
-                        break;
-                    }
-
                 case (short)ColumnTypeId.VARCHAR:
                 case (short)ColumnTypeId.LONGVARCHAR:
                 case (short)ColumnTypeId.LONGNVARCHAR:
                 case (short)ColumnTypeId.NVARCHAR:
                     {
-                        bool success = SqlVarcharTypeParser.Default.TryParse(typeName, out SqlCharVarcharParserResult? result);
-                        tableInfo?.Precision.Add(success && result != null ? result.ColumnSize : SqlVarcharTypeParser.VarcharColumnSizeDefault);
+                        SqlCharVarcharParserResult result = SqlTypeNameParser<SqlCharVarcharParserResult>.Parse(typeName, colType);
+                        tableInfo?.Precision.Add(result.ColumnSize);
                         tableInfo?.Scale.Add(null);
-                        tableInfo?.BaseTypeName.Add(success && result != null ? result.BaseTypeName : "STRING");
+                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
                         break;
                     }
 
