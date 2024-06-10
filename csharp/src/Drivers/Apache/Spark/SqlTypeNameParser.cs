@@ -91,10 +91,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         /// <param name="input">The original SQL type name</param>
         /// <param name="match">The successful <see cref="Match"/> result</param>
         /// <returns></returns>
-        protected virtual SqlTypeNameParserResult GenerateResult(string input, Match match)
-        {
-            return new SqlTypeNameParserResult(input, BaseTypeName);
-        }
+        protected virtual T GenerateResult(string input, Match match) =>
+            CastResultOrThrow(input, new SqlTypeNameParserResult(input, BaseTypeName));
+
+        private static T CastResultOrThrow(string input, SqlTypeNameParserResult result) =>
+            (result is T typedResult)
+                ? typedResult
+                : throw new InvalidCastException($"Cannot cast return type '{result.GetType().Name}' to type '{(typeof(T)).Name}' for input SQL type name: '{input}'.");
 
         /// <summary>
         /// Tries to parse the input string for a valid SQL type definition.
@@ -140,23 +143,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         /// Parses the input type name string and produces a result.
         /// When a matching parser is found that successfully parses the type name string, the result of that parse is returned.
         /// If no parser is able to successfully match the input type name,
-        /// then a <see cref="AdbcException"/> is thrown.
+        /// then a <see cref="NotSupportedException"/> is thrown.
         /// </summary>
         /// <param name="input">The type name string to parse</param>
         /// <param name="columnTypeIdHint">If provided, the column type id is used as a hint to find the most likely matching parser.</param>
         /// <returns>
         /// A parser result, from a successful match and parse.
         /// </returns>
-        public static T Parse(string input, int? columnTypeIdHint = null)
-        {
-            if (TryParse(input, out SqlTypeNameParserResult? result, columnTypeIdHint) && result != null)
-            {
-                return (result is T typedResult)
-                    ? typedResult
-                    : throw new InvalidCastException($"Cannot cast return type '{result.GetType().Name}' to type '{(typeof(T)).Name}' for input SQL type name: '{input}'.");
-            }
-            throw new NotSupportedException($"Unsupported input SQL type name: '{input}'");
-        }
+        public static T Parse(string input, int? columnTypeIdHint = null) =>
+            TryParse(input, out SqlTypeNameParserResult? result, columnTypeIdHint) && result != null
+                ? CastResultOrThrow(input, result)
+                : throw new NotSupportedException($"Unsupported input SQL type name: '{input}'");
 
         /// <summary>
         /// Tries to parse the input SQL type name. If a matching parser is found and can parse the type name, it's result is set in <c>parserResult</c> and <c>true</c> is returned.
@@ -325,7 +322,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override Regex Expression => s_expression;
 
-        protected override SqlTypeNameParserResult GenerateResult(string input, Match match)
+        protected override SqlCharVarcharParserResult GenerateResult(string input, Match match)
         {
             GroupCollection groups = match.Groups;
             Group precisionGroup = groups["precision"];
@@ -355,7 +352,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override Regex Expression => s_expression;
 
-        protected override SqlTypeNameParserResult GenerateResult(string input, Match match)
+        protected override SqlCharVarcharParserResult GenerateResult(string input, Match match)
         {
             GroupCollection groups = match.Groups;
             Group precisionGroup = groups["precision"];
@@ -394,7 +391,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override Regex Expression => s_expression;
 
-        protected override SqlTypeNameParserResult GenerateResult(string input, Match match)
+        protected override SqlDecimalParserResult GenerateResult(string input, Match match)
         {
             GroupCollection groups = match.Groups;
             Group precisionGroup = groups["precision"];

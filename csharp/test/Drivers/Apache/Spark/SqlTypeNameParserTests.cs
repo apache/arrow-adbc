@@ -235,7 +235,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [Fact()]
         internal void CanDetectInvalidReturnType()
         {
-            _outputHelper.WriteLine(Assert.Throws<AdbcException>(() => SqlTypeNameParser<SqlDecimalParserResult>.Parse("INTEGER", (int)SparkConnection.ColumnTypeId.INTEGER)).Message);
+            _outputHelper.WriteLine(Assert.Throws<InvalidCastException>(() => SqlTypeNameParser<SqlDecimalParserResult>.Parse("INTEGER", (int)SparkConnection.ColumnTypeId.INTEGER)).Message);
         }
 
         public static IEnumerable<object[]> GenerateCharTestData(string typeName)
