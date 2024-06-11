@@ -168,29 +168,6 @@ int main(int argc, char** argv) {
         exit(1);
       }
       if (ret == SQL_NO_DATA) break;
-
-      // for (size_t r = 0; r < bulkSize; r++) {
-      //   std::cout << "Row " << r+1 << ": "
-      //     << val_orderkey[r] << "|"
-      //     << val_partkey[r] << "|"
-      //     << val_suppkey[r] << "|"
-      //     << val_linenumber[r] << "|"
-      //     << val_quantity[r] << "|"
-      //     << val_extendedprice[r] << "|"
-      //     << val_discount[r] << "|"
-      //     << val_tax[r] << "|"
-      //     << val_retflag[r] << "|"
-      //     << val_linestatus[r] << "|"
-      //     << val_shipdate[r].month << "-" << val_shipdate[r].day << "-" <<
-      //     val_shipdate[r].year << "|"
-      //     << val_commitdate[r].month << "-" << val_commitdate[r].day << "-" <<
-      //     val_commitdate[r].year << "|"
-      //     << val_receiptdate[r].month << "-" << val_receiptdate[r].day << "-" <<
-      //     val_receiptdate[r].year << "|"
-      //     << val_shipinstruct[r] << "|"
-      //     << val_shipmode[r] << "|"
-      //     << val_comment[r] << std::endl;
-      // }
     }
 
     const auto end{std::chrono::steady_clock::now()};
