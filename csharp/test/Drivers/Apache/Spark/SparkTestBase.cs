@@ -47,18 +47,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             Dictionary<string, string> parameters = new(StringComparer.OrdinalIgnoreCase);
 
-            // TODO: make these parameters that are passed in
             if (!string.IsNullOrEmpty(testConfiguration.HostName))
             {
-                parameters.Add("HostName", testConfiguration.HostName!);
+                parameters.Add(SparkParameters.HostName, testConfiguration.HostName!);
             }
             if (!string.IsNullOrEmpty(testConfiguration.Path))
             {
-                parameters.Add("Path", testConfiguration.Path!);
+                parameters.Add(SparkParameters.Path, testConfiguration.Path!);
             }
             if (!string.IsNullOrEmpty(testConfiguration.Token))
             {
-                parameters.Add("Token", testConfiguration.Token!);
+                parameters.Add(SparkParameters.Token, testConfiguration.Token!);
             }
 
             return parameters;
