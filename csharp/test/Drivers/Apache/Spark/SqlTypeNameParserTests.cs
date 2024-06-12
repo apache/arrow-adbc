@@ -226,6 +226,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("ARRAY>")]
         [InlineData("MAP>")]
         [InlineData("STRUCT>")]
+        [InlineData("INTERVAL")]
         [InlineData("TIMESTAMP_ZZZ")]
         internal void CannotParseUnexpectedTypeName(string testTypeName)
         {
@@ -235,7 +236,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [Fact()]
         internal void CanDetectInvalidReturnType()
         {
-            _outputHelper.WriteLine(Assert.Throws<InvalidCastException>(() => SqlTypeNameParser<SqlDecimalParserResult>.Parse("INTEGER", (int)SparkConnection.ColumnTypeId.INTEGER)).Message);
+            Func<object?> testCode = () => SqlTypeNameParser<SqlDecimalParserResult>.Parse("INTEGER", (int)SparkConnection.ColumnTypeId.INTEGER);
+            _outputHelper.WriteLine(Assert.Throws<InvalidCastException>(testCode).Message);
         }
 
         public static IEnumerable<object[]> GenerateCharTestData(string typeName)

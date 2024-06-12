@@ -731,9 +731,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                 default:
                     {
+                        SqlTypeNameParserResult result = SqlTypeNameParser<SqlTypeNameParserResult>.Parse(typeName, colType);
                         tableInfo?.Precision.Add(null);
                         tableInfo?.Scale.Add(null);
-                        tableInfo?.BaseTypeName.Add(SqlTypeNameParser<SqlTypeNameParserResult>.Parse(typeName, colType).BaseTypeName);
+                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
                         break;
                     }
             }
