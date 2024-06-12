@@ -42,7 +42,6 @@ import (
 
 type dbDialOpts struct {
 	opts       []grpc.DialOption
-	block      bool
 	maxMsgSize int
 	authority  string
 }
@@ -51,9 +50,6 @@ func (d *dbDialOpts) rebuild() {
 	d.opts = []grpc.DialOption{
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(d.maxMsgSize),
 			grpc.MaxCallSendMsgSize(d.maxMsgSize)),
-	}
-	if d.block {
-		d.opts = append(d.opts, grpc.WithBlock())
 	}
 	if d.authority != "" {
 		d.opts = append(d.opts, grpc.WithAuthority(d.authority))
@@ -200,19 +196,8 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		delete(cnOptions, OptionTimeoutConnect)
 	}
 
-	if val, ok := cnOptions[OptionWithBlock]; ok {
-		if val == adbc.OptionValueEnabled {
-			d.dialOpts.block = true
-		} else if val == adbc.OptionValueDisabled {
-			d.dialOpts.block = false
-		} else {
-			return adbc.Error{
-				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionWithBlock, val),
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-		delete(cnOptions, OptionWithBlock)
-	}
+	// gRPC deprecated this and explicitly recommends against it
+	delete(cnOptions, OptionWithBlock)
 
 	if val, ok := cnOptions[OptionWithMaxMsgSize]; ok {
 		var err error
