@@ -175,9 +175,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             // Note: there may be multiple calls that successfully add/set the value in the cache
             // - but the parser will produce the same result in each case.
-            if (s_cache.ContainsKey(input.Trim()))
+            string trimmedInput = input.Trim();
+            if (s_cache.ContainsKey(trimmedInput))
             {
-                parserResult = s_cache[input];
+                parserResult = s_cache[trimmedInput];
                 return true;
             }
 
@@ -185,20 +186,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             if (columnTypeIdHint != null && s_parserMap.ContainsKey(columnTypeIdHint.Value))
             {
                 sqlTypeNameParser = s_parserMap[columnTypeIdHint.Value];
-                if (sqlTypeNameParser.TryParse(input, out SqlTypeNameParserResult? result) && result != null)
+                if (sqlTypeNameParser.TryParse(trimmedInput, out SqlTypeNameParserResult? result) && result != null)
                 {
                     parserResult = result;
-                    s_cache[input.Trim()] = result;
+                    s_cache[trimmedInput] = result;
                     return true;
                 }
             }
             foreach (ISqlTypeNameParser parser in s_parsers)
             {
                 if (parser == sqlTypeNameParser) continue;
-                if (parser.TryParse(input, out SqlTypeNameParserResult? result) && result != null)
+                if (parser.TryParse(trimmedInput, out SqlTypeNameParserResult? result) && result != null)
                 {
                     parserResult = result;
-                    s_cache[input.Trim()] = result;
+                    s_cache[trimmedInput] = result;
                     return true;
                 }
             }
