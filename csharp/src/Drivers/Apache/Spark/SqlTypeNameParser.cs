@@ -186,7 +186,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             if (columnTypeIdHint != null && s_parserMap.ContainsKey(columnTypeIdHint.Value))
             {
                 sqlTypeNameParser = s_parserMap[columnTypeIdHint.Value];
-                if (sqlTypeNameParser.TryParse(trimmedInput, out SqlTypeNameParserResult? result) && result != null)
+                if (sqlTypeNameParser.TryParse(input, out SqlTypeNameParserResult? result) && result != null)
                 {
                     parserResult = result;
                     s_cache[trimmedInput] = result;
@@ -196,7 +196,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             foreach (ISqlTypeNameParser parser in s_parsers)
             {
                 if (parser == sqlTypeNameParser) continue;
-                if (parser.TryParse(trimmedInput, out SqlTypeNameParserResult? result) && result != null)
+                if (parser.TryParse(input, out SqlTypeNameParserResult? result) && result != null)
                 {
                     parserResult = result;
                     s_cache[trimmedInput] = result;
