@@ -276,7 +276,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	}
 
 	if boundParameters == nil {
-		_, totalRows, err := runQuery(ctx, st.query)
+		_, totalRows, err := runQuery(ctx, st.query, true)
 		if err != nil {
 			return -1, err
 		}
@@ -294,7 +294,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 					st.query.QueryConfig.Parameters = parameters
 				}
 
-				_, currentRows, err := runQuery(ctx, st.query)
+				_, currentRows, err := runQuery(ctx, st.query, true)
 				if err != nil {
 					return -1, err
 				}

@@ -38,7 +38,7 @@ const (
 
 	OptionValueAuthTypeJSONCredentialFile   = "adbc.bigquery.sql.auth_type.json_credential_file"
 	OptionValueAuthTypeJSONCredentialString = "adbc.bigquery.sql.auth_type.json_credential_string"
-	OptionStringAuthCredentials             = "adbc.bigquery.sql.auth.credentials"
+	OptionStringAuthCredentials             = "adbc.bigquery.sql.auth_credentials"
 
 	OptionValueAuthTypeUserAuthentication = "adbc.bigquery.sql.auth_type.user_authentication"
 	OptionStringAuthClientID              = "adbc.bigquery.sql.auth.client_id"

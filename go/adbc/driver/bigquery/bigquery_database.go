@@ -33,9 +33,11 @@ type databaseImpl struct {
 	clientID     string
 	clientSecret string
 	refreshToken string
-	projectID    string
-	datasetID    string
-	tableID      string
+	// projectID is the catalog
+	projectID string
+	// datasetID is the schema
+	datasetID string
+	tableID   string
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {

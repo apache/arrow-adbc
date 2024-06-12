@@ -52,21 +52,25 @@ func checkContext(ctx context.Context, maybeErr error) error {
 	return ctx.Err()
 }
 
-func runQuery(ctx context.Context, query *bigquery.Query) (bigquery.ArrowIterator, int64, error) {
+func runQuery(ctx context.Context, query *bigquery.Query, noReturn bool) (bigquery.ArrowIterator, int64, error) {
 	job, err := query.Run(ctx)
 	if err != nil {
 		return nil, -1, err
 	}
-	iter, err := job.Read(ctx)
-	if err != nil {
-		return nil, -1, err
+	if noReturn {
+		return nil, 0, nil
+	} else {
+		iter, err := job.Read(ctx)
+		if err != nil {
+			return nil, -1, err
+		}
+		arrowIterator, err := iter.ArrowIterator()
+		if err != nil {
+			return nil, -1, err
+		}
+		totalRows := int64(iter.TotalRows)
+		return arrowIterator, totalRows, nil
 	}
-	arrowIterator, err := iter.ArrowIterator()
-	if err != nil {
-		return nil, -1, err
-	}
-	totalRows := int64(iter.TotalRows)
-	return arrowIterator, totalRows, nil
 }
 
 func ipcReaderFromArrowIterator(arrowIterator bigquery.ArrowIterator, alloc memory.Allocator) (*ipc.Reader, error) {
@@ -95,7 +99,7 @@ func getQueryParameter(values arrow.Record, row int, parameterMode string) ([]bi
 }
 
 func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allocator, resultRecordBufferSize int) (bigqueryRdr *reader, totalRows int64, err error) {
-	arrowIterator, totalRows, err := runQuery(ctx, query)
+	arrowIterator, totalRows, err := runQuery(ctx, query, false)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -185,7 +189,7 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters
 				query.QueryConfig.Parameters = parameters
 			}
 
-			arrowIterator, _, err := runQuery(ctx, query)
+			arrowIterator, _, err := runQuery(ctx, query, false)
 			if err != nil {
 				return nil, -1, err
 			}
@@ -225,7 +229,7 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters
 							query.QueryConfig.Parameters = parameters
 						}
 
-						arrowIterator, _, err := runQuery(ctx, query)
+						arrowIterator, _, err := runQuery(ctx, query, false)
 						if err != nil {
 							return err
 						}
