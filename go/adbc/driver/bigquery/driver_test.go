@@ -30,6 +30,7 @@ import (
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/bigquery"
 	"github.com/apache/arrow/go/v17/arrow"
 	"github.com/apache/arrow/go/v17/arrow/array"
+	"github.com/apache/arrow/go/v17/arrow/decimal128"
 	"github.com/apache/arrow/go/v17/arrow/memory"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
@@ -946,6 +947,108 @@ func (suite *BigQueryTests) TestSqlIngestDate64Type() {
 	defer expectedRecord.Release()
 
 	suite.Truef(array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
+
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *BigQueryTests) TestSqlIngestDecimal() {
+	tableName := "bulk_ingest_decimal128"
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, tableName))
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_float64", Type: arrow.PrimitiveTypes.Float64,
+			Nullable: true,
+		},
+		{
+			Name: "col_decimal128_whole", Type: &arrow.Decimal128Type{Precision: 38, Scale: 0},
+			Nullable: true,
+		},
+		{
+			Name: "col_decimal128_fractional", Type: &arrow.Decimal128Type{Precision: 38, Scale: 2},
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+	bldr.Field(1).(*array.Float64Builder).AppendValues([]float64{1.2, 2.34, 3.456}, nil)
+	bldr.Field(2).(*array.Decimal128Builder).AppendValues([]decimal128.Num{decimal128.FromI64(123), decimal128.FromI64(456), decimal128.FromI64(789)}, nil)
+	num1, err := decimal128.FromString("123", 38, 2)
+	suite.Require().NoError(err)
+	num2, err := decimal128.FromString("456.7", 38, 2)
+	suite.Require().NoError(err)
+	num3, err := decimal128.FromString("891.01", 38, 2)
+	suite.Require().NoError(err)
+	bldr.Field(3).(*array.Decimal128Builder).AppendValues([]decimal128.Num{num1, num2, num3}, nil)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	err = suite.Quirks.CreateSampleTableWithRecords(tableName, rec)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("SELECT * FROM `%s.%s` ORDER BY `col_int64` ASC", suite.Quirks.schemaName, tableName)))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_float64", Type: arrow.PrimitiveTypes.Float64,
+			Nullable: true,
+		},
+		{
+			Name: "col_decimal128_whole", Type: &arrow.Decimal128Type{Precision: 38, Scale: 9},
+			Nullable: true,
+		},
+		{
+			Name: "col_decimal128_fractional", Type: &arrow.Decimal128Type{Precision: 38, Scale: 9},
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr2 := array.NewRecordBuilder(suite.Quirks.Alloc(), expectedSchema)
+	defer bldr2.Release()
+
+	bldr2.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+	bldr2.Field(1).(*array.Float64Builder).AppendValues([]float64{1.2, 2.34, 3.456}, nil)
+
+	expectedWholeNum1, err := decimal128.FromString("123", 38, 9)
+	suite.Require().NoError(err)
+	expectedWholeNum2, err := decimal128.FromString("456", 38, 9)
+	suite.Require().NoError(err)
+	expectedWholeNum3, err := decimal128.FromString("789", 38, 9)
+	suite.Require().NoError(err)
+	bldr2.Field(2).(*array.Decimal128Builder).AppendValues([]decimal128.Num{expectedWholeNum1, expectedWholeNum2, expectedWholeNum3}, nil)
+
+	expectedNum1, err := decimal128.FromString("123", 38, 9)
+	suite.Require().NoError(err)
+	expectedNum2, err := decimal128.FromString("456.7", 38, 9)
+	suite.Require().NoError(err)
+	expectedNum3, err := decimal128.FromString("891.01", 38, 9)
+	suite.Require().NoError(err)
+	bldr2.Field(3).(*array.Decimal128Builder).AppendValues([]decimal128.Num{expectedNum1, expectedNum2, expectedNum3}, nil)
+
+	expectedRec := bldr2.NewRecord()
+	defer expectedRec.Release()
+
+	suite.Truef(array.RecordEqual(expectedRec, result), "expected: %s\ngot: %s", expectedRec, result)
 
 	suite.False(rdr.Next())
 	suite.Require().NoError(rdr.Err())
