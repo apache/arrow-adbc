@@ -338,7 +338,7 @@ func (st *statement) SetSubstraitPlan(plan []byte) error {
 	}
 }
 
-func arrowDataTypeToTypeKind(value arrow.Array) (bigquery.StandardSQLDataType, error) {
+func arrowDataTypeToTypeKind(field arrow.Field, value arrow.Array) (bigquery.StandardSQLDataType, error) {
 	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
 	// https://cloud.google.com/bigquery/docs/reference/rest/v2/StandardSqlDataType#typekind
 	switch value.DataType().ID() {
@@ -383,13 +383,36 @@ func arrowDataTypeToTypeKind(value arrow.Array) (bigquery.StandardSQLDataType, e
 			TypeKind: "BIGNUMERIC",
 		}, nil
 	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST, arrow.LIST_VIEW, arrow.LARGE_LIST_VIEW:
-		elemType, err := arrowDataTypeToTypeKind(value.(*array.List).ListValues())
+		elemField := field.Type.(*arrow.ListType).ElemField()
+		elemType, err := arrowDataTypeToTypeKind(elemField, value.(*array.List).ListValues())
 		if err != nil {
 			return bigquery.StandardSQLDataType{}, err
 		}
 		return bigquery.StandardSQLDataType{
 			TypeKind:         "ARRAY",
 			ArrayElementType: &elemType,
+		}, nil
+	case arrow.STRUCT:
+		numFields := value.(*array.Struct).NumField()
+		structType := bigquery.StandardSQLStructType{
+			Fields: make([]*bigquery.StandardSQLField, 0),
+		}
+		for i := 0; i < numFields; i++ {
+			currentField := field.Type.(*arrow.StructType).Field(i)
+			currentFieldArray := value.(*array.Struct).Field(i)
+			childType, err := arrowDataTypeToTypeKind(currentField, currentFieldArray)
+			if err != nil {
+				return bigquery.StandardSQLDataType{}, err
+			}
+			sqlField := bigquery.StandardSQLField{
+				Name: currentField.Name,
+				Type: &childType,
+			}
+			structType.Fields = append(structType.Fields, &sqlField)
+		}
+		return bigquery.StandardSQLDataType{
+			TypeKind:   "STRUCT",
+			StructType: &structType,
 		}, nil
 	default:
 		// todo: implement all other types
@@ -400,23 +423,20 @@ func arrowDataTypeToTypeKind(value arrow.Array) (bigquery.StandardSQLDataType, e
 	}
 }
 
-func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryParameter, error) {
+func arrowValueToQueryParameterValue(field arrow.Field, value arrow.Array, i int) (bigquery.QueryParameter, error) {
+	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
+	// https://cloud.google.com/bigquery/docs/reference/rest/v2/StandardSqlDataType#typekind
 	parameter := bigquery.QueryParameter{}
+	sqlDataType, err := arrowDataTypeToTypeKind(field, value)
+	if err != nil {
+		return bigquery.QueryParameter{}, err
+	}
 	if value.IsNull(i) {
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "NULL",
-			},
+			Type:  sqlDataType,
 			Value: "NULL",
 		}
 		return parameter, nil
-	}
-
-	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
-	// https://cloud.google.com/bigquery/docs/reference/rest/v2/StandardSqlDataType#typekind
-	sqlDataType, err := arrowDataTypeToTypeKind(value)
-	if err != nil {
-		return bigquery.QueryParameter{}, err
 	}
 	switch value.DataType().ID() {
 	case arrow.BOOL:
@@ -496,9 +516,10 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 		}
 	case arrow.LIST, arrow.FIXED_SIZE_LIST, arrow.LIST_VIEW:
 		start, end := value.(*array.List).ValueOffsets(i)
+		elemField := field.Type.(*arrow.ListType).ElemField()
 		arrayValues := make([]bigquery.QueryParameterValue, end-start)
 		for row := start; row < end; row++ {
-			pv, err := arrowValueToQueryParameterValue(value.(*array.List).ListValues(), int(row))
+			pv, err := arrowValueToQueryParameterValue(elemField, value.(*array.List).ListValues(), int(row))
 			if err != nil {
 				return bigquery.QueryParameter{}, err
 			}
@@ -511,9 +532,10 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 		}
 	case arrow.LARGE_LIST_VIEW:
 		start, end := value.(*array.LargeListView).ValueOffsets(i)
+		elemField := field.Type.(*arrow.LargeListType).ElemField()
 		arrayValues := make([]bigquery.QueryParameterValue, end-start)
 		for row := start; row < end; row++ {
-			pv, err := arrowValueToQueryParameterValue(value.(*array.LargeListView).ListValues(), int(row))
+			pv, err := arrowValueToQueryParameterValue(elemField, value.(*array.LargeListView).ListValues(), int(row))
 			if err != nil {
 				return bigquery.QueryParameter{}, err
 			}
@@ -523,6 +545,38 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type:       sqlDataType,
 			ArrayValue: arrayValues,
+		}
+	case arrow.STRUCT:
+		numFields := value.(*array.Struct).NumField()
+		childFields := field.Type.(*arrow.StructType).Fields()
+		structValues := make(map[string]bigquery.QueryParameterValue)
+		for j := 0; j < numFields; j++ {
+			currentField := childFields[j]
+			fieldName := currentField.Name
+			if len(fieldName) == 0 {
+				return bigquery.QueryParameter{}, adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  "child field name cannot be empty for structs",
+				}
+			}
+			currentFieldArray := value.(*array.Struct).Field(j)
+			pv, err := arrowValueToQueryParameterValue(currentField, currentFieldArray, i)
+			if err != nil {
+				return bigquery.QueryParameter{}, err
+			}
+			_, found := structValues[fieldName]
+			if found {
+				return bigquery.QueryParameter{}, adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  fmt.Sprintf("duplicated child field `%s` found in structs", fieldName),
+				}
+			}
+			structValues[fieldName] = *pv.Value.(*bigquery.QueryParameterValue)
+		}
+
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type:        sqlDataType,
+			StructValue: structValues,
 		}
 	default:
 		// todo: implement all other types

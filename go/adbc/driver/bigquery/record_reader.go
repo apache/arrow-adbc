@@ -84,8 +84,9 @@ func ipcReaderFromArrowIterator(arrowIterator bigquery.ArrowIterator, alloc memo
 func getQueryParameter(values arrow.Record, row int, parameterMode string) ([]bigquery.QueryParameter, error) {
 	parameters := make([]bigquery.QueryParameter, values.NumCols())
 	includeName := parameterMode == OptionValueQueryParameterModeNamed
+	schema := values.Schema()
 	for i, v := range values.Columns() {
-		pi, err := arrowValueToQueryParameterValue(v, row)
+		pi, err := arrowValueToQueryParameterValue(schema.Field(i), v, row)
 		if err != nil {
 			return nil, err
 		}
