@@ -91,6 +91,13 @@ func getSqlTypeFromArrowField(f arrow.Field) string {
 	case arrow.LIST:
 		elem := getSqlTypeFromArrowField(f.Type.(*arrow.ListType).ElemField())
 		return "ARRAY<" + elem + ">"
+	case arrow.STRUCT:
+		fields := f.Type.(*arrow.StructType).Fields()
+		childTypes := make([]string, len(fields))
+		for i, field := range fields {
+			childTypes[i] = fmt.Sprintf("%s %s", field.Name, getSqlTypeFromArrowField(field))
+		}
+		return fmt.Sprintf("STRUCT<%s>", strings.Join(childTypes, ","))
 	default:
 		return ""
 	}
@@ -1173,6 +1180,125 @@ func (suite *BigQueryTests) TestSqlIngestListType() {
 			"col_int64": 3,
 			"col_list_float64": [300.1, 300.2, 300.3, 300.4],
 			"col_list_str": ["third_row_elem_1", "third_row_elem_2", "third_row_elem_3", "third_row_elem_4"]
+		}
+	]
+	`)))
+	suite.Require().NoError(err)
+	defer expectedRecord.Release()
+
+	suite.Truef(array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
+
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *BigQueryTests) TestSqlIngestStructType() {
+	tableName := "bulk_ingest_struct"
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, tableName))
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_struct", Type: arrow.StructOf([]arrow.Field{
+				{Name: "name", Type: arrow.BinaryTypes.String, Nullable: true},
+				{Name: "age", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+			}...),
+			Nullable: true,
+		},
+		{
+			Name: "col_struct_of_struct", Type: arrow.StructOf([]arrow.Field{
+				{Name: "id", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+				{Name: "nested", Type: arrow.StructOf([]arrow.Field{
+					{Name: "nested_id", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+					{Name: "ready", Type: arrow.FixedWidthTypes.Boolean, Nullable: true},
+				}...),
+					Nullable: true,
+				},
+			}...),
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+
+	struct1bldr := bldr.Field(1).(*array.StructBuilder)
+	struct1bldr.AppendValues([]bool{true, true, true})
+	struct1bldr.FieldBuilder(0).(*array.StringBuilder).AppendValues([]string{"one", "two", "three"}, nil)
+	struct1bldr.FieldBuilder(1).(*array.Int64Builder).AppendValues([]int64{10, 20, 30}, nil)
+
+	struct2bldr := bldr.Field(2).(*array.StructBuilder)
+	struct2bldr.AppendValues([]bool{true, true, true})
+	struct2bldr.FieldBuilder(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+
+	struct3bldr := struct2bldr.FieldBuilder(1).(*array.StructBuilder)
+	struct3bldr.AppendValues([]bool{true, true, true})
+	struct3bldr.FieldBuilder(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+	struct3bldr.FieldBuilder(1).(*array.BooleanBuilder).AppendValues([]bool{true, false, false}, nil)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	err := suite.Quirks.CreateSampleTableWithRecords(tableName, rec)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("SELECT * FROM `%s.%s` ORDER BY `col_int64` ASC", suite.Quirks.schemaName, tableName)))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+
+	expectedRecord, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), sc, bytes.NewReader([]byte(`
+	[
+		{
+			"col_int64": 1,
+			"col_struct": {
+				"age": 10,
+				"name": "one"
+			},
+			"col_struct_of_struct": {
+				"id": 1,
+				"nested": {
+					"nested_id": 1,
+					"ready": true
+				}
+			}
+		},
+		{
+			"col_int64": 2,
+			"col_struct": {
+				"age": 20,
+				"name": "two"
+			},
+			"col_struct_of_struct": {
+				"id": 2,
+				"nested": {
+					"nested_id": 2,
+					"ready": false
+				}
+			}
+		},
+		{
+			"col_int64": 3,
+			"col_struct": {
+				"age": 30,
+	           "name": "three"
+			},
+			"col_struct_of_struct": {
+				"id": 3,
+				"nested": {
+					"nested_id": 3,
+					"ready": false
+				}
+			}
 		}
 	]
 	`)))
