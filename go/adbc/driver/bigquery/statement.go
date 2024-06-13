@@ -416,6 +416,23 @@ func arrowDataTypeToTypeKind(field arrow.Field, value arrow.Array) (bigquery.Sta
 		}, nil
 	default:
 		// todo: implement all other types
+		//
+		// - arrow.DURATION
+		//   For arrow.DURATION, I'm not sure which SQL DataType would be a good
+		//   representation for it. `DATETIME` could be a potential one for it,
+		//   if we count from `0000-01-01T00:00:00.000000Z`
+		//
+		// - arrow.INTERVAL_MONTHS
+		// - arrow.INTERVAL_DAY_TIME
+		// - arrow.INTERVAL_MONTH_DAY_NANO
+		//   `DATETIME` could be a potential fit for all interval types, but
+		//   the issue is there's no rules about how many days are in a month.
+		//
+		// - arrow.RUN_END_ENCODED
+		// - arrow.SPARSE_UNION
+		// - arrow.DENSE_UNION
+		// - arrow.DICTIONARY
+		// - arrow.MAP
 		return bigquery.StandardSQLDataType{}, adbc.Error{
 			Code: adbc.StatusNotImplemented,
 			Msg:  fmt.Sprintf("Parameter type %v is not yet implemented for BigQuery driver", value.DataType().ID()),
