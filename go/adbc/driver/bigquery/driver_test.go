@@ -31,6 +31,7 @@ import (
 	"github.com/apache/arrow/go/v17/arrow"
 	"github.com/apache/arrow/go/v17/arrow/array"
 	"github.com/apache/arrow/go/v17/arrow/decimal128"
+	"github.com/apache/arrow/go/v17/arrow/decimal256"
 	"github.com/apache/arrow/go/v17/arrow/memory"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
@@ -986,7 +987,7 @@ func (suite *BigQueryTests) TestSqlIngestDate64Type() {
 }
 
 func (suite *BigQueryTests) TestSqlIngestDecimal() {
-	tableName := "bulk_ingest_decimal128"
+	tableName := "bulk_ingest_decimal"
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, tableName))
 
 	sc := arrow.NewSchema([]arrow.Field{
@@ -1006,6 +1007,14 @@ func (suite *BigQueryTests) TestSqlIngestDecimal() {
 			Name: "col_decimal128_fractional", Type: &arrow.Decimal128Type{Precision: 38, Scale: 2},
 			Nullable: true,
 		},
+		{
+			Name: "col_decimal256_whole", Type: &arrow.Decimal256Type{Precision: 76, Scale: 0},
+			Nullable: true,
+		},
+		{
+			Name: "col_decimal256_fractional", Type: &arrow.Decimal256Type{Precision: 76, Scale: 4},
+			Nullable: true,
+		},
 	}, nil)
 
 	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
@@ -1021,6 +1030,15 @@ func (suite *BigQueryTests) TestSqlIngestDecimal() {
 	num3, err := decimal128.FromString("891.01", 38, 2)
 	suite.Require().NoError(err)
 	bldr.Field(3).(*array.Decimal128Builder).AppendValues([]decimal128.Num{num1, num2, num3}, nil)
+
+	bldr.Field(4).(*array.Decimal256Builder).AppendValues([]decimal256.Num{decimal256.FromI64(123), decimal256.FromI64(456), decimal256.FromI64(789)}, nil)
+	d256num1, err := decimal256.FromString("123", 76, 4)
+	suite.Require().NoError(err)
+	d256num2, err := decimal256.FromString("456.7", 76, 4)
+	suite.Require().NoError(err)
+	d256num3, err := decimal256.FromString("891.01", 76, 4)
+	suite.Require().NoError(err)
+	bldr.Field(5).(*array.Decimal256Builder).AppendValues([]decimal256.Num{d256num1, d256num2, d256num3}, nil)
 
 	rec := bldr.NewRecord()
 	defer rec.Release()
@@ -1054,6 +1072,14 @@ func (suite *BigQueryTests) TestSqlIngestDecimal() {
 			Name: "col_decimal128_fractional", Type: &arrow.Decimal128Type{Precision: 38, Scale: 9},
 			Nullable: true,
 		},
+		{
+			Name: "col_decimal256_whole", Type: &arrow.Decimal256Type{Precision: 76, Scale: 38},
+			Nullable: true,
+		},
+		{
+			Name: "col_decimal256_fractional", Type: &arrow.Decimal256Type{Precision: 76, Scale: 38},
+			Nullable: true,
+		},
 	}, nil)
 
 	bldr2 := array.NewRecordBuilder(suite.Quirks.Alloc(), expectedSchema)
@@ -1062,21 +1088,37 @@ func (suite *BigQueryTests) TestSqlIngestDecimal() {
 	bldr2.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
 	bldr2.Field(1).(*array.Float64Builder).AppendValues([]float64{1.2, 2.34, 3.456}, nil)
 
-	expectedWholeNum1, err := decimal128.FromString("123", 38, 9)
+	expectedWholeD128Num1, err := decimal128.FromString("123", 38, 9)
 	suite.Require().NoError(err)
-	expectedWholeNum2, err := decimal128.FromString("456", 38, 9)
+	expectedWholeD128Num2, err := decimal128.FromString("456", 38, 9)
 	suite.Require().NoError(err)
-	expectedWholeNum3, err := decimal128.FromString("789", 38, 9)
+	expectedWholeD128Num3, err := decimal128.FromString("789", 38, 9)
 	suite.Require().NoError(err)
-	bldr2.Field(2).(*array.Decimal128Builder).AppendValues([]decimal128.Num{expectedWholeNum1, expectedWholeNum2, expectedWholeNum3}, nil)
+	bldr2.Field(2).(*array.Decimal128Builder).AppendValues([]decimal128.Num{expectedWholeD128Num1, expectedWholeD128Num2, expectedWholeD128Num3}, nil)
 
-	expectedNum1, err := decimal128.FromString("123", 38, 9)
+	expectedD128Num1, err := decimal128.FromString("123", 38, 9)
 	suite.Require().NoError(err)
-	expectedNum2, err := decimal128.FromString("456.7", 38, 9)
+	expectedD128Num2, err := decimal128.FromString("456.7", 38, 9)
 	suite.Require().NoError(err)
-	expectedNum3, err := decimal128.FromString("891.01", 38, 9)
+	expectedD128Num3, err := decimal128.FromString("891.01", 38, 9)
 	suite.Require().NoError(err)
-	bldr2.Field(3).(*array.Decimal128Builder).AppendValues([]decimal128.Num{expectedNum1, expectedNum2, expectedNum3}, nil)
+	bldr2.Field(3).(*array.Decimal128Builder).AppendValues([]decimal128.Num{expectedD128Num1, expectedD128Num2, expectedD128Num3}, nil)
+
+	expectedWholeD256Num1, err := decimal256.FromString("123", 76, 38)
+	suite.Require().NoError(err)
+	expectedWholeD256Num2, err := decimal256.FromString("456", 76, 38)
+	suite.Require().NoError(err)
+	expectedWholeD256Num3, err := decimal256.FromString("789", 76, 38)
+	suite.Require().NoError(err)
+	bldr2.Field(4).(*array.Decimal256Builder).AppendValues([]decimal256.Num{expectedWholeD256Num1, expectedWholeD256Num2, expectedWholeD256Num3}, nil)
+
+	expectedD256Num1, err := decimal256.FromString("123", 76, 38)
+	suite.Require().NoError(err)
+	expectedD256Num2, err := decimal256.FromString("456.7", 76, 38)
+	suite.Require().NoError(err)
+	expectedD256Num3, err := decimal256.FromString("891.01", 76, 38)
+	suite.Require().NoError(err)
+	bldr2.Field(5).(*array.Decimal256Builder).AppendValues([]decimal256.Num{expectedD256Num1, expectedD256Num2, expectedD256Num3}, nil)
 
 	expectedRec := bldr2.NewRecord()
 	defer expectedRec.Release()
