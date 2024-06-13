@@ -878,3 +878,75 @@ func (suite *BigQueryTests) TestSqlIngestTimestampTypes() {
 	suite.False(rdr.Next())
 	suite.Require().NoError(rdr.Err())
 }
+
+func (suite *BigQueryTests) TestSqlIngestDate64Type() {
+	tableName := "bulk_ingest_date64"
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, tableName))
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_date64", Type: arrow.FixedWidthTypes.Date64,
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+	bldr.Field(1).(*array.Date64Builder).AppendValues([]arrow.Date64{86400000, 172800000, 259200000}, nil) // 1,2,3 days of milliseconds
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	err := suite.Quirks.CreateSampleTableWithRecords(tableName, rec)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("SELECT * FROM `%s.%s` ORDER BY `col_int64` ASC", suite.Quirks.schemaName, tableName)))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_date64", Type: arrow.FixedWidthTypes.Date32,
+			Nullable: true,
+		},
+	}, nil)
+
+	expectedRecord, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), expectedSchema, bytes.NewReader([]byte(`
+	[
+		{
+			"col_int64": 1,
+			"col_date64": 1
+		},
+		{
+			"col_int64": 2,
+			"col_date64": 2
+		},
+		{
+			"col_int64": 3,
+			"col_date64": 3
+		}
+	]
+	`)))
+	suite.Require().NoError(err)
+	defer expectedRecord.Release()
+
+	suite.Truef(array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
+
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+}
