@@ -350,11 +350,11 @@ func arrowDataTypeToTypeKind(value arrow.Array) (bigquery.StandardSQLDataType, e
 		return bigquery.StandardSQLDataType{
 			TypeKind: "INT64",
 		}, nil
-	case arrow.FLOAT32, arrow.FLOAT64:
+	case arrow.FLOAT16, arrow.FLOAT32, arrow.FLOAT64:
 		return bigquery.StandardSQLDataType{
 			TypeKind: "FLOAT64",
 		}, nil
-	case arrow.BINARY, arrow.BINARY_VIEW, arrow.LARGE_BINARY:
+	case arrow.BINARY, arrow.BINARY_VIEW, arrow.LARGE_BINARY, arrow.FIXED_SIZE_BINARY:
 		return bigquery.StandardSQLDataType{
 			TypeKind: "BYTES",
 		}, nil
@@ -382,7 +382,7 @@ func arrowDataTypeToTypeKind(value arrow.Array) (bigquery.StandardSQLDataType, e
 		return bigquery.StandardSQLDataType{
 			TypeKind: "BIGNUMERIC",
 		}, nil
-	case arrow.LIST:
+	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST, arrow.LIST_VIEW, arrow.LARGE_LIST_VIEW:
 		elemType, err := arrowDataTypeToTypeKind(value.(*array.List).ListValues())
 		if err != nil {
 			return bigquery.StandardSQLDataType{}, err
@@ -420,7 +420,6 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 	}
 	switch value.DataType().ID() {
 	case arrow.BOOL:
-		// GoogleSQL type: BOOLEAN
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type:  sqlDataType,
 			Value: value.ValueStr(i),
@@ -430,12 +429,12 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 			Type:  sqlDataType,
 			Value: value.ValueStr(i),
 		}
-	case arrow.FLOAT32, arrow.FLOAT64:
+	case arrow.FLOAT16, arrow.FLOAT32, arrow.FLOAT64:
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type:  sqlDataType,
 			Value: value.ValueStr(i),
 		}
-	case arrow.BINARY, arrow.BINARY_VIEW, arrow.LARGE_BINARY:
+	case arrow.BINARY, arrow.BINARY_VIEW, arrow.LARGE_BINARY, arrow.FIXED_SIZE_BINARY:
 		// Encoded as a base64 string per RFC 4648, section 4.
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type:  sqlDataType,
@@ -495,11 +494,26 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 			Type:  sqlDataType,
 			Value: value.ValueStr(i),
 		}
-	case arrow.LIST:
+	case arrow.LIST, arrow.FIXED_SIZE_LIST, arrow.LIST_VIEW:
 		start, end := value.(*array.List).ValueOffsets(i)
 		arrayValues := make([]bigquery.QueryParameterValue, end-start)
 		for row := start; row < end; row++ {
 			pv, err := arrowValueToQueryParameterValue(value.(*array.List).ListValues(), int(row))
+			if err != nil {
+				return bigquery.QueryParameter{}, err
+			}
+			arrayValues[row-start].Value = pv.Value
+		}
+
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type:       sqlDataType,
+			ArrayValue: arrayValues,
+		}
+	case arrow.LARGE_LIST_VIEW:
+		start, end := value.(*array.LargeListView).ValueOffsets(i)
+		arrayValues := make([]bigquery.QueryParameterValue, end-start)
+		for row := start; row < end; row++ {
+			pv, err := arrowValueToQueryParameterValue(value.(*array.LargeListView).ListValues(), int(row))
 			if err != nil {
 				return bigquery.QueryParameter{}, err
 			}
