@@ -64,8 +64,8 @@ func (q *BigQueryQuirks) DatabaseOptions() map[string]string {
 	}
 }
 
-func (q *BigQueryQuirks) getSqlTypeFromArrowType(dt arrow.DataType) string {
-	switch dt.ID() {
+func getSqlTypeFromArrowField(f arrow.Field) string {
+	switch f.Type.ID() {
 	case arrow.BOOL:
 		return "BOOLEAN"
 	case arrow.UINT8, arrow.INT8, arrow.UINT16, arrow.INT16, arrow.UINT32, arrow.INT32, arrow.UINT64, arrow.INT64:
@@ -88,6 +88,9 @@ func (q *BigQueryQuirks) getSqlTypeFromArrowType(dt arrow.DataType) string {
 		return "NUMERIC"
 	case arrow.DECIMAL256:
 		return "BIGNUMERIC"
+	case arrow.LIST:
+		elem := getSqlTypeFromArrowField(f.Type.(*arrow.ListType).ElemField())
+		return "ARRAY<" + elem + ">"
 	default:
 		return ""
 	}
@@ -110,7 +113,7 @@ func (q *BigQueryQuirks) CreateSampleTableWithRecords(tableName string, r arrow.
 		f := r.Schema().Field(i)
 		b.WriteString(f.Name)
 		b.WriteByte(' ')
-		b.WriteString(q.getSqlTypeFromArrowType(f.Type))
+		b.WriteString(getSqlTypeFromArrowField(f))
 	}
 	b.WriteString(")")
 
@@ -188,7 +191,7 @@ func (q *BigQueryQuirks) CreateSampleTableWithStreams(tableName string, rdr arra
 		f := rdr.Schema().Field(i)
 		b.WriteString(f.Name)
 		b.WriteByte(' ')
-		b.WriteString(q.getSqlTypeFromArrowType(f.Type))
+		b.WriteString(getSqlTypeFromArrowField(f))
 	}
 	b.WriteString(")")
 
@@ -1072,6 +1075,111 @@ func (suite *BigQueryTests) TestSqlIngestDecimal() {
 	defer expectedRec.Release()
 
 	suite.Truef(array.RecordEqual(expectedRec, result), "expected: %s\ngot: %s", expectedRec, result)
+
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *BigQueryTests) TestSqlIngestListType() {
+	tableName := "bulk_ingest_list"
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, tableName))
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_list_float64", Type: arrow.ListOf(arrow.PrimitiveTypes.Float64),
+			Nullable: true,
+		},
+		{
+			Name: "col_list_str", Type: arrow.ListOf(arrow.BinaryTypes.String),
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+
+	f64listbldr := bldr.Field(1).(*array.ListBuilder)
+	f64listvalbldr := f64listbldr.ValueBuilder().(*array.Float64Builder)
+	f64Row1 := []float64{100.1, 100.2, 100.3}
+	f64Row2 := []float64{200.1, 200.2}
+	f64Row3 := []float64{300.1, 300.2, 300.3, 300.4}
+	f64listvalbldr.AppendValues(f64Row1, nil)
+	f64listvalbldr.AppendValues(f64Row2, nil)
+	f64listvalbldr.AppendValues(f64Row3, nil)
+	offsets := []int32{0, 3, 5, 9}
+	valid := []bool{true, true, true}
+	f64listbldr.AppendValues(offsets, valid)
+
+	listbldr := bldr.Field(2).(*array.ListBuilder)
+	listvalbldr := listbldr.ValueBuilder().(*array.StringBuilder)
+	strRow1 := []string{"first_row_elem_1", "first_row_elem_2", "first_row_elem_3"}
+	strRow2 := []string{"second_row_elem_1", "second_row_elem_2"}
+	strRow3 := []string{"third_row_elem_1", "third_row_elem_2", "third_row_elem_3", "third_row_elem_4"}
+	listvalbldr.AppendValues(strRow1, nil)
+	listvalbldr.AppendValues(strRow2, nil)
+	listvalbldr.AppendValues(strRow3, nil)
+	listbldr.AppendValues(offsets, valid)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	err := suite.Quirks.CreateSampleTableWithRecords(tableName, rec)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("SELECT * FROM `%s.%s` ORDER BY `col_int64` ASC", suite.Quirks.schemaName, tableName)))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+
+	// Array cannot be NULL
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_list_float64", Type: arrow.ListOf(arrow.PrimitiveTypes.Float64),
+			Nullable: false,
+		},
+		{
+			Name: "col_list_str", Type: arrow.ListOf(arrow.BinaryTypes.String),
+			Nullable: false,
+		},
+	}, nil)
+
+	expectedRecord, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), expectedSchema, bytes.NewReader([]byte(`
+	[
+		{
+			"col_int64": 1,
+			"col_list_float64": [100.1, 100.2, 100.3],
+			"col_list_str": ["first_row_elem_1", "first_row_elem_2", "first_row_elem_3"]
+		},
+		{
+			"col_int64": 2,
+			"col_list_float64": [200.1, 200.2],
+			"col_list_str": ["second_row_elem_1", "second_row_elem_2"]
+		},
+		{
+			"col_int64": 3,
+			"col_list_float64": [300.1, 300.2, 300.3, 300.4],
+			"col_list_str": ["third_row_elem_1", "third_row_elem_2", "third_row_elem_3", "third_row_elem_4"]
+		}
+	]
+	`)))
+	suite.Require().NoError(err)
+	defer expectedRecord.Release()
+
+	suite.Truef(array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
 
 	suite.False(rdr.Next())
 	suite.Require().NoError(rdr.Err())
