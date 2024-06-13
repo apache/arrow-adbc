@@ -189,10 +189,11 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters
 				query.QueryConfig.Parameters = parameters
 			}
 
-			arrowIterator, _, err := runQuery(ctx, query, false)
+			arrowIterator, rows, err := runQuery(ctx, query, false)
 			if err != nil {
 				return nil, -1, err
 			}
+			totalRows = rows
 			rdr, err := ipcReaderFromArrowIterator(arrowIterator, alloc)
 			if err != nil {
 				return nil, -1, err
@@ -229,10 +230,11 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters
 							query.QueryConfig.Parameters = parameters
 						}
 
-						arrowIterator, _, err := runQuery(ctx, query, false)
+						arrowIterator, rows, err := runQuery(ctx, query, false)
 						if err != nil {
 							return err
 						}
+						totalRows = rows
 						rdr, err := ipcReaderFromArrowIterator(arrowIterator, alloc)
 						if err != nil {
 							return err

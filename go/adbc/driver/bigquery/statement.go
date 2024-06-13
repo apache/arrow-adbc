@@ -376,7 +376,7 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 			Value: value.ValueStr(i),
 		}
 	case arrow.BINARY, arrow.BINARY_VIEW, arrow.LARGE_BINARY:
-		// todo: Encoded as a base64 string per RFC 4648, section 4.
+		// Encoded as a base64 string per RFC 4648, section 4.
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "BYTES",
@@ -390,8 +390,16 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 			},
 			Value: value.ValueStr(i),
 		}
-	case arrow.DATE32, arrow.DATE64:
-		// todo: Encoded as RFC 3339 full-date format string: 1985-04-12
+	case arrow.DATE32:
+		// Encoded as RFC 3339 full-date format string: 1985-04-12
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "DATE",
+			},
+			Value: value.ValueStr(i),
+		}
+	case arrow.DATE64:
+		// Encoded as RFC 3339 full-date format string: 1985-04-12
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "DATE",
@@ -399,20 +407,36 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 			Value: value.ValueStr(i),
 		}
 	case arrow.TIMESTAMP:
-		// todo: Encoded as an RFC 3339 timestamp with mandatory "Z" time zone string: 1985-04-12T23:20:50.52Z
+		// Encoded as an RFC 3339 timestamp with mandatory "Z" time zone string: 1985-04-12T23:20:50.52Z
+		toTime, _ := value.DataType().(*arrow.TimestampType).GetToTimeFunc()
+		encoded := toTime(value.(*array.Timestamp).Value(i)).Format(time.RFC3339)
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "TIMESTAMP",
 			},
-			Value: value.ValueStr(i),
+			Value: encoded,
 		}
-	case arrow.TIME32, arrow.TIME64:
-		// todo: Encoded as RFC 3339 partial-time format string: 23:20:50.52
+	case arrow.TIME32:
+		// Encoded as RFC 3339 partial-time format string: 23:20:50.52
+		encoded := value.(*array.Time32).Value(i).FormattedString(value.DataType().(*arrow.Time32Type).Unit)
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "TIME",
 			},
-			Value: value.ValueStr(i),
+			Value: encoded,
+		}
+	case arrow.TIME64:
+		// Encoded as RFC 3339 partial-time format string: 23:20:50.52
+		//
+		// cannot use the default format, which will cause errors like
+		//   googleapi: Error 400: Unparseable query parameter `` in type `TYPE_TIME`,
+		//   Invalid time string "00:00:00.000000001" value: '00:00:00.000000001', invalid
+		encoded := value.(*array.Time64).Value(i).FormattedString(arrow.Microsecond)
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type: bigquery.StandardSQLDataType{
+				TypeKind: "TIME",
+			},
+			Value: encoded,
 		}
 	case arrow.DECIMAL128:
 		parameter.Value = &bigquery.QueryParameterValue{
@@ -441,7 +465,12 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 
 func (st *statement) getBoundParameterReader() (array.RecordReader, error) {
 	if st.paramBinding != nil {
-		return array.NewRecordReader(st.paramBinding.Schema(), []arrow.Record{st.paramBinding})
+		rdr, err := array.NewRecordReader(st.paramBinding.Schema(), []arrow.Record{st.paramBinding})
+		if err != nil {
+			return nil, err
+		}
+		st.streamBinding = rdr
+		return st.streamBinding, nil
 	} else if st.streamBinding != nil {
 		return st.streamBinding, nil
 	} else {

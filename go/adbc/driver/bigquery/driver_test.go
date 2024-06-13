@@ -20,16 +20,18 @@ package bigquery_test
 import (
 	"context"
 	"fmt"
-	"github.com/apache/arrow-adbc/go/adbc"
-	driver "github.com/apache/arrow-adbc/go/adbc/driver/bigquery"
-	"github.com/apache/arrow/go/v17/arrow"
-	"github.com/apache/arrow/go/v17/arrow/memory"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/apache/arrow-adbc/go/adbc"
+	driver "github.com/apache/arrow-adbc/go/adbc/driver/bigquery"
+	"github.com/apache/arrow/go/v17/arrow"
+	"github.com/apache/arrow/go/v17/arrow/array"
+	"github.com/apache/arrow/go/v17/arrow/memory"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
 )
 
 type BigQueryQuirks struct {
@@ -62,27 +64,41 @@ func (q *BigQueryQuirks) DatabaseOptions() map[string]string {
 
 func (q *BigQueryQuirks) getSqlTypeFromArrowType(dt arrow.DataType) string {
 	switch dt.ID() {
-	case arrow.INT8, arrow.INT16, arrow.INT32, arrow.INT64:
+	case arrow.BOOL:
+		return "BOOLEAN"
+	case arrow.UINT8, arrow.INT8, arrow.UINT16, arrow.INT16, arrow.UINT32, arrow.INT32, arrow.UINT64, arrow.INT64:
 		return "INTEGER"
-	case arrow.FLOAT32:
-		return "float64"
-	case arrow.FLOAT64:
-		return "double"
+	case arrow.FLOAT32, arrow.FLOAT64:
+		return "FLOAT64"
 	case arrow.STRING:
-		return "text"
+		return "STRING"
+	case arrow.BINARY, arrow.FIXED_SIZE_BINARY:
+		return "BYTES"
+	case arrow.DATE32, arrow.DATE64:
+		return "DATE"
+	case arrow.TIMESTAMP:
+		return "TIMESTAMP"
+	case arrow.TIME32, arrow.TIME64:
+		return "TIME"
+	case arrow.INTERVAL_MONTHS:
+		return "INTERVAL_MONTHS"
+	case arrow.DECIMAL128:
+		return "NUMERIC"
+	case arrow.DECIMAL256:
+		return "BIGNUMERIC"
 	default:
 		return ""
 	}
 }
 
-func quoteTblName(name string) string {
-	return "\"" + strings.ReplaceAll(name, "\"", "\"\"") + "\""
+func (q *BigQueryQuirks) quoteTblName(name string) string {
+	return fmt.Sprintf("`%s.%s`", q.schemaName, strings.ReplaceAll(name, "\"", "\"\""))
 }
 
-func (q *BigQueryQuirks) CreateSampleTable(tableName string, r arrow.Record) error {
+func (q *BigQueryQuirks) CreateSampleTableWithRecords(tableName string, r arrow.Record) error {
 	var b strings.Builder
 	b.WriteString("CREATE OR REPLACE TABLE ")
-	b.WriteString(quoteTblName(tableName))
+	b.WriteString(q.quoteTblName(tableName))
 	b.WriteString(" (")
 
 	for i := 0; i < int(r.NumCols()); i++ {
@@ -94,27 +110,144 @@ func (q *BigQueryQuirks) CreateSampleTable(tableName string, r arrow.Record) err
 		b.WriteByte(' ')
 		b.WriteString(q.getSqlTypeFromArrowType(f.Type))
 	}
-
 	b.WriteString(")")
 
-	//db := sql.OpenDB(s.connector)
-	//defer db.Close()
-	//
-	//if _, err := db.Exec(b.String()); err != nil {
-	//	return err
-	//}
-	//
-	//insertQuery := "INSERT INTO " + quoteTblName(tableName) + " VALUES ("
-	//bindings := strings.Repeat("?,", int(r.NumCols()))
-	//insertQuery += bindings[:len(bindings)-1] + ")"
-	//
-	//args := make([]interface{}, 0, r.NumCols())
-	//for _, col := range r.Columns() {
-	//	args = append(args, getArr(col))
-	//}
-	//
-	//_, err := db.Exec(insertQuery, args...)
-	//return err
+	ctx := context.Background()
+	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
+	tmpDriver := driver.NewDriver(mem)
+	db, err := tmpDriver.NewDatabase(q.DatabaseOptions())
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	cnxn, err := db.Open(ctx)
+	if err != nil {
+		panic(err)
+	}
+	defer cnxn.Close()
+
+	stmt, err := cnxn.NewStatement()
+	if err != nil {
+		panic(err)
+	}
+	defer stmt.Close()
+
+	err = stmt.SetOption(driver.OptionBoolQueryUseLegacySQL, "false")
+	if err != nil {
+		panic(err)
+	}
+
+	creationQuery := b.String()
+	err = stmt.SetSqlQuery(creationQuery)
+	if err != nil {
+		panic(err)
+	}
+	_, err = stmt.ExecuteUpdate(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	// wait for some time before accessing it
+	// BigQuery needs some time to make the table available
+	// otherwise the query will fail with error saying the table cannot be found
+	time.Sleep(5 * time.Second)
+
+	insertQuery := "INSERT INTO " + q.quoteTblName(tableName) + " VALUES ("
+	bindings := strings.Repeat("?,", int(r.NumCols()))
+	insertQuery += bindings[:len(bindings)-1] + ")"
+	err = stmt.Bind(ctx, r)
+	if err != nil {
+		return err
+	}
+	err = stmt.SetSqlQuery(insertQuery)
+	if err != nil {
+		return err
+	}
+	rdr, _, err := stmt.ExecuteQuery(ctx)
+	if err != nil {
+		return err
+	}
+
+	rdr.Release()
+	return nil
+}
+
+func (q *BigQueryQuirks) CreateSampleTableWithStreams(tableName string, rdr array.RecordReader) error {
+	var b strings.Builder
+	b.WriteString("CREATE OR REPLACE TABLE ")
+	b.WriteString(q.quoteTblName(tableName))
+	b.WriteString(" (")
+
+	for i := 0; i < rdr.Schema().NumFields(); i++ {
+		if i != 0 {
+			b.WriteString(", ")
+		}
+		f := rdr.Schema().Field(i)
+		b.WriteString(f.Name)
+		b.WriteByte(' ')
+		b.WriteString(q.getSqlTypeFromArrowType(f.Type))
+	}
+	b.WriteString(")")
+
+	ctx := context.Background()
+	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
+	tmpDriver := driver.NewDriver(mem)
+	db, err := tmpDriver.NewDatabase(q.DatabaseOptions())
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	cnxn, err := db.Open(ctx)
+	if err != nil {
+		panic(err)
+	}
+	defer cnxn.Close()
+
+	stmt, err := cnxn.NewStatement()
+	if err != nil {
+		panic(err)
+	}
+	defer stmt.Close()
+
+	err = stmt.SetOption(driver.OptionBoolQueryUseLegacySQL, "false")
+	if err != nil {
+		panic(err)
+	}
+
+	creationQuery := b.String()
+	err = stmt.SetSqlQuery(creationQuery)
+	if err != nil {
+		panic(err)
+	}
+	_, err = stmt.ExecuteUpdate(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	// wait for some time before accessing it
+	// BigQuery needs some time to make the table available
+	// otherwise the query will fail with error saying the table cannot be found
+	time.Sleep(5 * time.Second)
+
+	insertQuery := "INSERT INTO " + q.quoteTblName(tableName) + " VALUES ("
+	bindings := strings.Repeat("?,", rdr.Schema().NumFields())
+	insertQuery += bindings[:len(bindings)-1] + ")"
+	err = stmt.BindStream(ctx, rdr)
+	if err != nil {
+		return err
+	}
+	err = stmt.SetSqlQuery(insertQuery)
+	if err != nil {
+		return err
+	}
+	res, _, err := stmt.ExecuteQuery(ctx)
+	if err != nil {
+		return err
+	}
+
+	res.Release()
 	return nil
 }
 
@@ -125,7 +258,7 @@ func (q *BigQueryQuirks) DropTable(cnxn adbc.Connection, tblname string) error {
 	}
 	defer stmt.Close()
 
-	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + quoteTblName(tblname)); err != nil {
+	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + q.quoteTblName(tblname)); err != nil {
 		return err
 	}
 
@@ -185,7 +318,7 @@ func (q *BigQueryQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.Data
 	return arrow.Metadata{}
 }
 
-func createTempSchema(q *BigQueryQuirks, wait time.Duration) string {
+func (q *BigQueryQuirks) createTempSchema(wait time.Duration) string {
 	ctx := context.Background()
 	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
 	tmpDriver := driver.NewDriver(mem)
@@ -276,7 +409,7 @@ func createTempTable(q *BigQueryQuirks, schema string, wait time.Duration) strin
 	return tableName
 }
 
-func dropTempSchema(q *BigQueryQuirks) {
+func (q *BigQueryQuirks) dropTempSchema() {
 	ctx := context.Background()
 	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
 	tmpDriver := driver.NewDriver(mem)
@@ -307,6 +440,131 @@ func dropTempSchema(q *BigQueryQuirks) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func samplePrimitiveTypeFields() []arrow.Field {
+	return []arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_float64", Type: arrow.PrimitiveTypes.Float64,
+			Nullable: true,
+		},
+		{
+			Name: "col_string", Type: arrow.BinaryTypes.String,
+			Nullable: true,
+		},
+		{
+			Name: "col_binary", Type: arrow.BinaryTypes.Binary,
+			Nullable: true,
+		},
+		{
+			Name: "col_boolean", Type: arrow.FixedWidthTypes.Boolean,
+			Nullable: true,
+		},
+		{
+			Name: "col_date32", Type: arrow.FixedWidthTypes.Date32,
+			Nullable: true,
+		},
+		{
+			Name: "col_time64ns", Type: arrow.FixedWidthTypes.Time64ns,
+			Nullable: true,
+		},
+		{
+			Name: "col_time64us", Type: arrow.FixedWidthTypes.Time64us,
+			Nullable: true,
+		},
+		{
+			Name: "col_time32ms", Type: arrow.FixedWidthTypes.Time32ms,
+			Nullable: true,
+		},
+		{
+			Name: "col_time32s", Type: arrow.FixedWidthTypes.Time32s,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_ns", Type: arrow.FixedWidthTypes.Timestamp_ns,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_us", Type: arrow.FixedWidthTypes.Timestamp_us,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s", Type: arrow.FixedWidthTypes.Timestamp_s,
+			Nullable: true,
+		},
+	}
+}
+
+func samplePrimitiveTypeSchema() (*arrow.Schema, *arrow.Schema) {
+	primitiveFields := samplePrimitiveTypeFields()
+	input := arrow.NewSchema(primitiveFields, nil)
+	// BigQuery only has time64[us], timestamp[us, tz=UTC] type
+	primitiveFields[6].Type = arrow.FixedWidthTypes.Time64us
+	primitiveFields[7].Type = arrow.FixedWidthTypes.Time64us
+	primitiveFields[8].Type = arrow.FixedWidthTypes.Time64us
+	primitiveFields[9].Type = arrow.FixedWidthTypes.Time64us
+	primitiveFields[10].Type = arrow.FixedWidthTypes.Timestamp_us
+	primitiveFields[11].Type = arrow.FixedWidthTypes.Timestamp_us
+	primitiveFields[12].Type = arrow.FixedWidthTypes.Timestamp_us
+	expected := arrow.NewSchema(primitiveFields, nil)
+	return input, expected
+}
+
+func buildSamplePrimitiveTypeRecord(mem memory.Allocator, schema, bigquery *arrow.Schema) (arrow.Record, arrow.Record) {
+	bldr := array.NewRecordBuilder(mem, schema)
+	defer bldr.Release()
+
+	bldr2 := array.NewRecordBuilder(mem, bigquery)
+	defer bldr2.Release()
+
+	int64s := []int64{-1, 0, 25}
+	float64s := []float64{-1.1, 0, 25.95}
+	stringData := []string{"first", "second", "third"}
+	bytesData := [][]byte{[]byte("first"), []byte("second"), []byte("third")}
+	booleans := []bool{true, false, true}
+	date32s := []arrow.Date32{1, 2, 3}
+	arrowTime64s := []arrow.Time64{1, 2, 3}
+	arrowTime32s := []arrow.Time32{1, 2, 3}
+	arrowTimestampNs := []arrow.Timestamp{1000000000, 2000000000, 3000000000}
+	arrowTimestampUs := []arrow.Timestamp{1000000, 2000000, 3000000}
+	arrowTimestampS := []arrow.Timestamp{1, 2, 3}
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues(int64s, nil)
+	bldr.Field(1).(*array.Float64Builder).AppendValues(float64s, nil)
+	bldr.Field(2).(*array.StringBuilder).AppendValues(stringData, nil)
+	bldr.Field(3).(*array.BinaryBuilder).AppendValues(bytesData, nil)
+	bldr.Field(4).(*array.BooleanBuilder).AppendValues(booleans, nil)
+	bldr.Field(5).(*array.Date32Builder).AppendValues(date32s, nil)
+	bldr.Field(6).(*array.Time64Builder).AppendValues(arrowTime64s, nil)
+	bldr.Field(7).(*array.Time64Builder).AppendValues(arrowTime64s, nil)
+	bldr.Field(8).(*array.Time32Builder).AppendValues(arrowTime32s, nil)
+	bldr.Field(9).(*array.Time32Builder).AppendValues(arrowTime32s, nil)
+	bldr.Field(10).(*array.TimestampBuilder).AppendValues(arrowTimestampNs, nil)
+	bldr.Field(11).(*array.TimestampBuilder).AppendValues(arrowTimestampUs, nil)
+	bldr.Field(12).(*array.TimestampBuilder).AppendValues(arrowTimestampS, nil)
+
+	bigQueryTime32msAsTime64us := []arrow.Time64{1000, 2000, 3000}
+	bigQueryTime32sAsTime64us := []arrow.Time64{1000000, 2000000, 3000000}
+	bigQueryTimestamps := []arrow.Timestamp{1000000, 2000000, 3000000}
+	bldr2.Field(0).(*array.Int64Builder).AppendValues(int64s, nil)
+	bldr2.Field(1).(*array.Float64Builder).AppendValues(float64s, nil)
+	bldr2.Field(2).(*array.StringBuilder).AppendValues(stringData, nil)
+	bldr2.Field(3).(*array.BinaryBuilder).AppendValues(bytesData, nil)
+	bldr2.Field(4).(*array.BooleanBuilder).AppendValues(booleans, nil)
+	bldr2.Field(5).(*array.Date32Builder).AppendValues(date32s, nil)
+	bldr2.Field(6).(*array.Time64Builder).AppendValues(arrowTime64s, nil)
+	bldr2.Field(7).(*array.Time64Builder).AppendValues(arrowTime64s, nil)
+	bldr2.Field(8).(*array.Time64Builder).AppendValues(bigQueryTime32msAsTime64us, nil)
+	bldr2.Field(9).(*array.Time64Builder).AppendValues(bigQueryTime32sAsTime64us, nil)
+	bldr2.Field(10).(*array.TimestampBuilder).AppendValues(bigQueryTimestamps, nil)
+	bldr2.Field(11).(*array.TimestampBuilder).AppendValues(bigQueryTimestamps, nil)
+	bldr2.Field(12).(*array.TimestampBuilder).AppendValues(bigQueryTimestamps, nil)
+
+	return bldr.NewRecord(), bldr2.NewRecord()
 }
 
 func withQuirks(t *testing.T, fn func(quirks *BigQueryQuirks)) {
@@ -356,9 +614,9 @@ func withQuirks(t *testing.T, fn func(quirks *BigQueryQuirks)) {
 	// avoid multiple runs clashing by operating in a fresh schema and then
 	// dropping that schema when we're done.
 	q := &BigQueryQuirks{authType: authType, authValue: authValue, catalogName: projectID}
-	q.schemaName = createTempSchema(q, 5*time.Second)
+	q.schemaName = q.createTempSchema(5 * time.Second)
 	t.Cleanup(func() {
-		dropTempSchema(q)
+		q.dropTempSchema()
 	})
 	fn(q)
 }
@@ -416,7 +674,7 @@ func (suite *BigQueryTests) TearDownTest() {
 
 func (suite *BigQueryTests) TestEmptyResultSet() {
 	// Google enforces `FROM` when `WHERE` appears in a query
-	tableName := createTempTable(suite.Quirks, "(int64s INT, text STRING)", 1*time.Second)
+	tableName := createTempTable(suite.Quirks, "(int64s INTEGER)", 1*time.Second)
 	query := fmt.Sprintf("SELECT 42 FROM `%s.%s` WHERE 1=0", suite.Quirks.schemaName, tableName)
 	suite.Require().NoError(suite.stmt.SetSqlQuery(query))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
@@ -432,4 +690,58 @@ func (suite *BigQueryTests) TestEmptyResultSet() {
 	// all the rows from each record in the stream.
 	suite.Equal(n, recv)
 	suite.Equal(recv, int64(0))
+}
+
+func (suite *BigQueryTests) TestSqlBulkInsertRecords() {
+	bulkInsertTableName := "bulk_insertions"
+	input, expected := samplePrimitiveTypeSchema()
+	rec, expectedRec := buildSamplePrimitiveTypeRecord(suite.Quirks.Alloc(), input, expected)
+	defer rec.Release()
+	defer expectedRec.Release()
+
+	err := suite.Quirks.CreateSampleTableWithRecords(bulkInsertTableName, rec)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("SELECT * FROM `%s.%s` ORDER BY `col_int64` ASC", suite.Quirks.schemaName, bulkInsertTableName)))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	resultBind := rdr.Record()
+
+	suite.Truef(array.RecordEqual(expectedRec, resultBind), "expected: %s\ngot: %s", expectedRec, resultBind)
+	suite.False(rdr.Next())
+
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *BigQueryTests) TestSqlBulkInsertStreams() {
+	bulkInsertTableName := "bulk_insertions_stream"
+	input, expected := samplePrimitiveTypeSchema()
+	rec, expectedRec := buildSamplePrimitiveTypeRecord(suite.Quirks.Alloc(), input, expected)
+	defer rec.Release()
+	defer expectedRec.Release()
+
+	stream, err := array.NewRecordReader(input, []arrow.Record{rec})
+	suite.Require().NoError(err)
+	defer stream.Release()
+
+	err = suite.Quirks.CreateSampleTableWithStreams(bulkInsertTableName, stream)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("SELECT * FROM `%s.%s` ORDER BY `col_int64` ASC", suite.Quirks.schemaName, bulkInsertTableName)))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	resultBindStream := rdr.Record()
+
+	suite.Truef(array.RecordEqual(expectedRec, resultBindStream), "expected: %s\ngot: %s", expectedRec, resultBindStream)
+	suite.False(rdr.Next())
+
+	suite.Require().NoError(rdr.Err())
 }
