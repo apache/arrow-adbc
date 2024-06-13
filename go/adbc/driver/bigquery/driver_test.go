@@ -18,6 +18,7 @@
 package bigquery_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -743,5 +744,137 @@ func (suite *BigQueryTests) TestSqlBulkInsertStreams() {
 	suite.Truef(array.RecordEqual(expectedRec, resultBindStream), "expected: %s\ngot: %s", expectedRec, resultBindStream)
 	suite.False(rdr.Next())
 
+	suite.Require().NoError(rdr.Err())
+}
+
+func (suite *BigQueryTests) TestSqlIngestTimestampTypes() {
+	tableName := "bulk_ingest_timestamps"
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, tableName))
+
+	sc := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_ns", Type: arrow.FixedWidthTypes.Timestamp_ns,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_us", Type: arrow.FixedWidthTypes.Timestamp_us,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_ms", Type: arrow.FixedWidthTypes.Timestamp_ms,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s", Type: arrow.FixedWidthTypes.Timestamp_s,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s_tz", Type: &arrow.TimestampType{Unit: arrow.Second, TimeZone: "EST"},
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s_ntz", Type: &arrow.TimestampType{Unit: arrow.Second},
+			Nullable: true,
+		},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+	bldr.Field(1).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1000, 2000, 3000}, nil)
+	bldr.Field(2).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+	bldr.Field(3).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+	bldr.Field(4).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+	bldr.Field(5).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+	bldr.Field(6).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	err := suite.Quirks.CreateSampleTableWithRecords(tableName, rec)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("SELECT * FROM `%s.%s` ORDER BY `col_int64` ASC", suite.Quirks.schemaName, tableName)))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{
+			Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_ns", Type: &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: "UTC"},
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_us", Type: &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: "UTC"},
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_ms", Type: &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: "UTC"},
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s", Type: &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: "UTC"},
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s_tz", Type: &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: "UTC"},
+			Nullable: true,
+		},
+		{
+			Name: "col_timestamp_s_ntz", Type: &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: "UTC"},
+			Nullable: true,
+		},
+	}, nil)
+
+	expectedRecord, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), expectedSchema, bytes.NewReader([]byte(`
+	[
+		{
+			"col_int64": 1,
+			"col_timestamp_ns": 1,
+			"col_timestamp_us": 1,
+			"col_timestamp_ms": 1000,
+			"col_timestamp_s": 1000000,
+			"col_timestamp_s_tz": 1000000,
+			"col_timestamp_s_ntz": 1000000
+		},
+		{
+			"col_int64": 2,
+			"col_timestamp_ns": 2,
+			"col_timestamp_us": 2,
+			"col_timestamp_ms": 2000,
+			"col_timestamp_s": 2000000,
+			"col_timestamp_s_tz": 2000000,
+			"col_timestamp_s_ntz": 2000000
+		},
+		{
+			"col_int64": 3,
+			"col_timestamp_ns": 3,
+			"col_timestamp_us": 3,
+			"col_timestamp_ms": 3000,
+			"col_timestamp_s": 3000000,
+			"col_timestamp_s_tz": 3000000,
+			"col_timestamp_s_ntz": 3000000
+		}
+	]
+	`)))
+	suite.Require().NoError(err)
+	defer expectedRecord.Release()
+
+	suite.Truef(array.RecordEqual(expectedRecord, result), "expected: %s\ngot: %s", expectedRecord, result)
+
+	suite.False(rdr.Next())
 	suite.Require().NoError(rdr.Err())
 }

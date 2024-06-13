@@ -18,16 +18,15 @@
 package bigquery
 
 import (
-	"context"
-	"github.com/apache/arrow/go/v17/arrow/array"
-	"golang.org/x/sync/errgroup"
-	"sync/atomic"
-
 	"cloud.google.com/go/bigquery"
+	"context"
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v17/arrow"
+	"github.com/apache/arrow/go/v17/arrow/array"
 	"github.com/apache/arrow/go/v17/arrow/ipc"
 	"github.com/apache/arrow/go/v17/arrow/memory"
+	"golang.org/x/sync/errgroup"
+	"sync/atomic"
 )
 
 type reader struct {
@@ -52,12 +51,12 @@ func checkContext(ctx context.Context, maybeErr error) error {
 	return ctx.Err()
 }
 
-func runQuery(ctx context.Context, query *bigquery.Query, noReturn bool) (bigquery.ArrowIterator, int64, error) {
+func runQuery(ctx context.Context, query *bigquery.Query, executeUpdate bool) (bigquery.ArrowIterator, int64, error) {
 	job, err := query.Run(ctx)
 	if err != nil {
 		return nil, -1, err
 	}
-	if noReturn {
+	if executeUpdate {
 		return nil, 0, nil
 	} else {
 		iter, err := job.Read(ctx)

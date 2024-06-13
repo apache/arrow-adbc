@@ -137,7 +137,7 @@ func (st *statement) SetOption(key string, v string) error {
 			}
 		}
 	case OptionStringQueryDestinationTable:
-		val, err := stringToTable(v)
+		val, err := stringToTable(st.connectionImpl.catalog, st.connectionImpl.dbSchema, v)
 		if err == nil {
 			st.query.QueryConfig.Dst = val
 		} else {
@@ -408,8 +408,9 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 		}
 	case arrow.TIMESTAMP:
 		// Encoded as an RFC 3339 timestamp with mandatory "Z" time zone string: 1985-04-12T23:20:50.52Z
+		// BigQuery can only do microsecond resolution
 		toTime, _ := value.DataType().(*arrow.TimestampType).GetToTimeFunc()
-		encoded := toTime(value.(*array.Timestamp).Value(i)).Format(time.RFC3339)
+		encoded := toTime(value.(*array.Timestamp).Value(i)).Format("2006-01-02T15:04:05.999999Z07:00")
 		parameter.Value = &bigquery.QueryParameterValue{
 			Type: bigquery.StandardSQLDataType{
 				TypeKind: "TIMESTAMP",

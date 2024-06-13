@@ -122,20 +122,29 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 	return driverbase.NewDatabase(db), nil
 }
 
-func stringToTable(value string) (*bigquery.Table, error) {
+func stringToTable(defaultProjectID, defaultDatasetID, value string) (*bigquery.Table, error) {
 	parts := strings.Split(value, ".")
-	if len(parts) != 3 {
+	table := &bigquery.Table{
+		ProjectID: defaultProjectID,
+		DatasetID: defaultDatasetID,
+	}
+	switch len(parts) {
+	case 1:
+		table.TableID = parts[0]
+	case 2:
+		table.DatasetID = parts[0]
+		table.TableID = parts[1]
+	case 3:
+		table.ProjectID = parts[0]
+		table.DatasetID = parts[1]
+		table.TableID = parts[2]
+	default:
 		return nil, adbc.Error{
 			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("Invalid Table Reference format, expected `ProjectId.DatasetId.TableId`, got: `%s`", value),
+			Msg:  fmt.Sprintf("Invalid Table Reference format, expected `[[ProjectId.]DatasetId.]TableId`, got: `%s`", value),
 		}
 	}
-
-	return &bigquery.Table{
-		ProjectID: parts[0],
-		DatasetID: parts[1],
-		TableID:   parts[2],
-	}, nil
+	return table, nil
 }
 
 func stringToTableCreateDisposition(value string) (bigquery.TableCreateDisposition, error) {

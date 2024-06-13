@@ -49,14 +49,13 @@ type connectionImpl struct {
 	clientID     string
 	clientSecret string
 	refreshToken string
-	projectID    string
-	datasetID    string
-	tableID      string
 
 	// catalog is the same as the project id in BigQuery
 	catalog string
 	// dbSchema is the same as the dataset id in BigQuery
 	dbSchema string
+	// tableID is the default table for statement
+	tableID string
 
 	resultRecordBufferSize int
 	prefetchConcurrency    int
@@ -279,9 +278,9 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 	case OptionStringAuthRefreshToken:
 		return c.refreshToken, nil
 	case OptionStringProjectID:
-		return c.projectID, nil
+		return c.catalog, nil
 	case OptionStringDatasetID:
-		return c.datasetID, nil
+		return c.dbSchema, nil
 	case OptionStringTableID:
 		return c.tableID, nil
 	default:
@@ -314,7 +313,7 @@ func (c *connectionImpl) SetOptionInt(key string, value int64) error {
 }
 
 func (c *connectionImpl) newClient(ctx context.Context) error {
-	if c.projectID == "" {
+	if c.catalog == "" {
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
 			Msg:  "ProjectID is empty",
@@ -349,7 +348,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 			credentials = option.WithTokenSource(c)
 		}
 
-		client, err := bigquery.NewClient(ctx, c.projectID, credentials)
+		client, err := bigquery.NewClient(ctx, c.catalog, credentials)
 		if err != nil {
 			return err
 		}
@@ -361,7 +360,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 
 		c.client = client
 	default:
-		client, err := bigquery.NewClient(ctx, c.projectID)
+		client, err := bigquery.NewClient(ctx, c.catalog)
 		if err != nil {
 			return err
 		}

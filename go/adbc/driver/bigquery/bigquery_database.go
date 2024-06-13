@@ -48,8 +48,6 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		clientID:               d.clientID,
 		clientSecret:           d.clientSecret,
 		refreshToken:           d.refreshToken,
-		projectID:              d.projectID,
-		datasetID:              d.datasetID,
 		tableID:                d.tableID,
 		catalog:                d.projectID,
 		dbSchema:               d.datasetID,
