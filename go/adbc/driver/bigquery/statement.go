@@ -338,6 +338,68 @@ func (st *statement) SetSubstraitPlan(plan []byte) error {
 	}
 }
 
+func arrowDataTypeToTypeKind(value arrow.Array) (bigquery.StandardSQLDataType, error) {
+	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
+	// https://cloud.google.com/bigquery/docs/reference/rest/v2/StandardSqlDataType#typekind
+	switch value.DataType().ID() {
+	case arrow.BOOL:
+		return bigquery.StandardSQLDataType{
+			TypeKind: "BOOL",
+		}, nil
+	case arrow.INT8, arrow.INT16, arrow.INT32, arrow.INT64, arrow.UINT8, arrow.UINT16, arrow.UINT32, arrow.UINT64:
+		return bigquery.StandardSQLDataType{
+			TypeKind: "INT64",
+		}, nil
+	case arrow.FLOAT32, arrow.FLOAT64:
+		return bigquery.StandardSQLDataType{
+			TypeKind: "FLOAT64",
+		}, nil
+	case arrow.BINARY, arrow.BINARY_VIEW, arrow.LARGE_BINARY:
+		return bigquery.StandardSQLDataType{
+			TypeKind: "BYTES",
+		}, nil
+	case arrow.STRING, arrow.STRING_VIEW, arrow.LARGE_STRING:
+		return bigquery.StandardSQLDataType{
+			TypeKind: "STRING",
+		}, nil
+	case arrow.DATE32, arrow.DATE64:
+		return bigquery.StandardSQLDataType{
+			TypeKind: "DATE",
+		}, nil
+	case arrow.TIMESTAMP:
+		return bigquery.StandardSQLDataType{
+			TypeKind: "TIMESTAMP",
+		}, nil
+	case arrow.TIME32, arrow.TIME64:
+		return bigquery.StandardSQLDataType{
+			TypeKind: "TIME",
+		}, nil
+	case arrow.DECIMAL128:
+		return bigquery.StandardSQLDataType{
+			TypeKind: "NUMERIC",
+		}, nil
+	case arrow.DECIMAL256:
+		return bigquery.StandardSQLDataType{
+			TypeKind: "BIGNUMERIC",
+		}, nil
+	case arrow.LIST:
+		elemType, err := arrowDataTypeToTypeKind(value.(*array.List).ListValues())
+		if err != nil {
+			return bigquery.StandardSQLDataType{}, err
+		}
+		return bigquery.StandardSQLDataType{
+			TypeKind:         "ARRAY",
+			ArrayElementType: &elemType,
+		}, nil
+	default:
+		// todo: implement all other types
+		return bigquery.StandardSQLDataType{}, adbc.Error{
+			Code: adbc.StatusNotImplemented,
+			Msg:  fmt.Sprintf("Parameter type %v is not yet implemented for BigQuery driver", value.DataType().ID()),
+		}
+	}
+}
+
 func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryParameter, error) {
 	parameter := bigquery.QueryParameter{}
 	if value.IsNull(i) {
@@ -352,58 +414,48 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 
 	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
 	// https://cloud.google.com/bigquery/docs/reference/rest/v2/StandardSqlDataType#typekind
+	sqlDataType, err := arrowDataTypeToTypeKind(value)
+	if err != nil {
+		return bigquery.QueryParameter{}, err
+	}
 	switch value.DataType().ID() {
 	case arrow.BOOL:
 		// GoogleSQL type: BOOLEAN
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "BOOL",
-			},
+			Type:  sqlDataType,
 			Value: value.ValueStr(i),
 		}
 	case arrow.INT8, arrow.INT16, arrow.INT32, arrow.INT64, arrow.UINT8, arrow.UINT16, arrow.UINT32, arrow.UINT64:
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "INT64",
-			},
+			Type:  sqlDataType,
 			Value: value.ValueStr(i),
 		}
 	case arrow.FLOAT32, arrow.FLOAT64:
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "FLOAT64",
-			},
+			Type:  sqlDataType,
 			Value: value.ValueStr(i),
 		}
 	case arrow.BINARY, arrow.BINARY_VIEW, arrow.LARGE_BINARY:
 		// Encoded as a base64 string per RFC 4648, section 4.
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "BYTES",
-			},
+			Type:  sqlDataType,
 			Value: value.ValueStr(i),
 		}
 	case arrow.STRING, arrow.STRING_VIEW, arrow.LARGE_STRING:
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "STRING",
-			},
+			Type:  sqlDataType,
 			Value: value.ValueStr(i),
 		}
 	case arrow.DATE32:
 		// Encoded as RFC 3339 full-date format string: 1985-04-12
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "DATE",
-			},
+			Type:  sqlDataType,
 			Value: value.ValueStr(i),
 		}
 	case arrow.DATE64:
 		// Encoded as RFC 3339 full-date format string: 1985-04-12
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "DATE",
-			},
+			Type:  sqlDataType,
 			Value: value.ValueStr(i),
 		}
 	case arrow.TIMESTAMP:
@@ -412,18 +464,14 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 		toTime, _ := value.DataType().(*arrow.TimestampType).GetToTimeFunc()
 		encoded := toTime(value.(*array.Timestamp).Value(i)).Format("2006-01-02T15:04:05.999999Z07:00")
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "TIMESTAMP",
-			},
+			Type:  sqlDataType,
 			Value: encoded,
 		}
 	case arrow.TIME32:
 		// Encoded as RFC 3339 partial-time format string: 23:20:50.52
 		encoded := value.(*array.Time32).Value(i).FormattedString(value.DataType().(*arrow.Time32Type).Unit)
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "TIME",
-			},
+			Type:  sqlDataType,
 			Value: encoded,
 		}
 	case arrow.TIME64:
@@ -434,24 +482,33 @@ func arrowValueToQueryParameterValue(value arrow.Array, i int) (bigquery.QueryPa
 		//   Invalid time string "00:00:00.000000001" value: '00:00:00.000000001', invalid
 		encoded := value.(*array.Time64).Value(i).FormattedString(arrow.Microsecond)
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "TIME",
-			},
+			Type:  sqlDataType,
 			Value: encoded,
 		}
 	case arrow.DECIMAL128:
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "NUMERIC",
-			},
+			Type:  sqlDataType,
 			Value: value.ValueStr(i),
 		}
 	case arrow.DECIMAL256:
 		parameter.Value = &bigquery.QueryParameterValue{
-			Type: bigquery.StandardSQLDataType{
-				TypeKind: "BIGNUMERIC",
-			},
+			Type:  sqlDataType,
 			Value: value.ValueStr(i),
+		}
+	case arrow.LIST:
+		start, end := value.(*array.List).ValueOffsets(i)
+		arrayValues := make([]bigquery.QueryParameterValue, end-start)
+		for row := start; row < end; row++ {
+			pv, err := arrowValueToQueryParameterValue(value.(*array.List).ListValues(), int(row))
+			if err != nil {
+				return bigquery.QueryParameter{}, err
+			}
+			arrayValues[row-start].Value = pv.Value
+		}
+
+		parameter.Value = &bigquery.QueryParameterValue{
+			Type:       sqlDataType,
+			ArrayValue: arrayValues,
 		}
 	default:
 		// todo: implement all other types
