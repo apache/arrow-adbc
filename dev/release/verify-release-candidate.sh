@@ -239,6 +239,59 @@ setup_tempdir() {
   echo "Working in sandbox ${ARROW_TMPDIR}"
 }
 
+install_dotnet() {
+  # Install C# if doesn't already exist
+  if [ "${DOTNET_ALREADY_INSTALLED:-0}" -gt 0 ]; then
+    show_info ".NET already installed $(which csharp) (.NET $(dotnet --version))"
+    return 0
+  fi
+
+  show_info "Ensuring that .NET is installed..."
+
+  if dotnet --version | grep 8\.0 > /dev/null 2>&1; then
+    local csharp_bin=$(dirname $(which dotnet))
+    show_info "Found C# at $(which csharp) (.NET $(dotnet --version))"
+  else
+    if which dotnet > /dev/null 2>&1; then
+      show_info "dotnet found but it is the wrong version and will be ignored."
+    fi
+    local csharp_bin=${ARROW_TMPDIR}/csharp/bin
+    local dotnet_version=8.0.204
+    local dotnet_platform=
+    case "$(uname)" in
+      Linux)
+        dotnet_platform=linux
+        ;;
+      Darwin)
+        dotnet_platform=macos
+        ;;
+    esac
+    local dotnet_download_thank_you_url=https://dotnet.microsoft.com/download/thank-you/dotnet-sdk-${dotnet_version}-${dotnet_platform}-x64-binaries
+    local dotnet_download_url=$( \
+      curl -sL ${dotnet_download_thank_you_url} | \
+        grep 'directLink' | \
+        grep -E -o 'https://download[^"]+' | \
+        sed -n 2p)
+    mkdir -p ${csharp_bin}
+    curl -sL ${dotnet_download_url} | \
+      tar xzf - -C ${csharp_bin}
+    PATH=${csharp_bin}:${PATH}
+    show_info "Installed C# at $(which csharp) (.NET $(dotnet --version))"
+  fi
+
+  # Ensure to have sourcelink installed
+  if ! dotnet tool list | grep sourcelink > /dev/null 2>&1; then
+    dotnet new tool-manifest
+    dotnet tool install --local sourcelink
+    PATH=${csharp_bin}:${PATH}
+    if ! dotnet tool run sourcelink --help > /dev/null 2>&1; then
+      export DOTNET_ROOT=${csharp_bin}
+    fi
+  fi
+
+  DOTNET_ALREADY_INSTALLED=1
+}
+
 install_go() {
   # Install go
   if [ "${GO_ALREADY_INSTALLED:-0}" -gt 0 ]; then
@@ -345,6 +398,13 @@ maybe_setup_conda() {
     echo "Conda environment is active despite that USE_CONDA is set to 0."
     echo "Deactivate the environment using \`conda deactivate\` before running the verification script."
     return 1
+  fi
+}
+
+maybe_setup_dotnet() {
+  show_info "Ensuring that .NET is installed..."
+  if [ "${USE_CONDA}" -eq 0 ]; then
+    install_dotnet
   fi
 }
 
@@ -538,9 +598,11 @@ test_glib() {
 test_csharp() {
   show_header "Build and test C# libraries"
 
-  install_csharp
+  maybe_setup_dotnet
+  maybe_setup_conda dotnet || exit 1
 
-  echo "C♯ is not implemented"
+  "${ADBC_DIR}/ci/scripts/csharp_build.sh" "${ADBC_SOURCE_DIR}"
+  "${ADBC_DIR}/ci/scripts/csharp_test.sh" "${ADBC_SOURCE_DIR}"
 }
 
 test_js() {
@@ -643,6 +705,9 @@ test_source_distribution() {
 
   if [ ${TEST_CPP} -gt 0 ]; then
     test_cpp
+  fi
+  if [ ${TEST_CSHARP} -gt 0 ]; then
+    test_csharp
   fi
   if [ ${TEST_GLIB} -gt 0 ]; then
     test_glib
