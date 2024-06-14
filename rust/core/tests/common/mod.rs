@@ -51,6 +51,7 @@ impl SingleBatchReader {
 }
 
 impl Iterator for SingleBatchReader {
+    // `RecordBatchReader` requires item to be wrapped within `Result`.
     type Item = std::result::Result<RecordBatch, ArrowError>;
 
     fn next(&mut self) -> Option<Self::Item> {
