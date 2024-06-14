@@ -318,9 +318,7 @@ install_conda() {
 maybe_setup_conda() {
   # Optionally setup conda environment with the passed dependencies
   local env="conda-${CONDA_ENV:-source}"
-  # XXX(https://github.com/apache/arrow-adbc/issues/1247): no duckdb for
-  # python 3.12 on conda-forge right now
-  local pyver=${PYTHON_VERSION:-3.11}
+  local pyver=${PYTHON_VERSION:-3}
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     show_info "Configuring Conda environment..."
