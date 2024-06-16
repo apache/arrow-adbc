@@ -29,4 +29,6 @@ sphinx-autobuild
 sphinx-copybutton
 sphinx-design
 sphinxext-opengraph
+# Used in recipes
+sqlalchemy>2
 r-pkgdown
