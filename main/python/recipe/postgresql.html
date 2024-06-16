@@ -979,6 +979,55 @@ decimals do not map onto Arrow decimals.</p>
 </pre></div>
 </div>
 </section>
+<section id="connection-pooling-with-sqlalchemy">
+<h2>Connection pooling with SQLAlchemy<a class="headerlink" href="#connection-pooling-with-sqlalchemy" title="Permalink to this heading">¶</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_pool.py">postgresql_pool.py</a></p>
+<p>ADBC does not implement connection pooling, as this is not generally a
+feature of DBAPI drivers.  Instead, use a third party connection pool
+like the one built into <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/pooling.html">SQLAlchemy</a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">26</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">27</span>
+<span class="linenos">28</span><span class="kn">import</span> <span class="nn">sqlalchemy.pool</span>
+<span class="linenos">29</span>
+<span class="linenos">30</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">31</span>
+<span class="linenos">32</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
+<span class="linenos">33</span>
+<span class="linenos">34</span><span class="n">source</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="../api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.adbc_clone" title="adbc_driver_manager.dbapi.Connection.adbc_clone"><code class="xref py py-meth docutils literal notranslate"><span class="pre">adbc_driver_manager.dbapi.Connection.adbc_clone()</span></code></a> opens a new
+connection from an existing connection, sharing internal resources where
+possible.  For example, the PostgreSQL driver will share the internal OID
+cache, saving some overhead on connection.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">39</span><span class="n">pool</span> <span class="o">=</span> <span class="n">sqlalchemy</span><span class="o">.</span><span class="n">pool</span><span class="o">.</span><span class="n">QueuePool</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">adbc_clone</span><span class="p">,</span> <span class="n">max_overflow</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">pool_size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can now get connections out of the pool; SQLAlchemy overrides
+<code class="docutils literal notranslate"><span class="pre">close()</span></code> to return the connection to the pool.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>SQLAlchemy’s wrapper does not support the context manager
+protocol, unlike the underlying ADBC connection.</p>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">47</span><span class="n">conn</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+<span class="linenos">48</span>
+<span class="linenos">49</span><span class="k">assert</span> <span class="n">pool</span><span class="o">.</span><span class="n">checkedin</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span>
+<span class="linenos">50</span><span class="k">assert</span> <span class="n">pool</span><span class="o">.</span><span class="n">checkedout</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span>
+<span class="linenos">51</span>
+<span class="linenos">52</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">53</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+<span class="linenos">54</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+<span class="linenos">55</span>
+<span class="linenos">56</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="linenos">57</span>
+<span class="linenos">58</span><span class="k">assert</span> <span class="n">pool</span><span class="o">.</span><span class="n">checkedin</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span>
+<span class="linenos">59</span><span class="k">assert</span> <span class="n">pool</span><span class="o">.</span><span class="n">checkedout</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span>
+<span class="linenos">60</span>
+<span class="linenos">61</span><span class="n">source</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
 </section>
 
         </article>
@@ -1055,6 +1104,7 @@ United States and other countries.
 <li><a class="reference internal" href="#get-the-arrow-schema-of-a-table">Get the Arrow schema of a table</a></li>
 <li><a class="reference internal" href="#get-the-arrow-schema-of-a-query">Get the Arrow schema of a query</a></li>
 <li><a class="reference internal" href="#list-catalogs-schemas-and-tables">List catalogs, schemas, and tables</a></li>
+<li><a class="reference internal" href="#connection-pooling-with-sqlalchemy">Connection pooling with SQLAlchemy</a></li>
 </ul>
 </li>
 </ul>
