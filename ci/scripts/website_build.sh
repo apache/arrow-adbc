@@ -47,7 +47,7 @@ main() {
     fi
 
     # Docs use the ADBC release so it will just be 12, 13, 14, ...
-    local -r regex='^([0-9]+?)$'
+    local -r regex='^[0-9]+$'
     local directory="main"
     if [[ "${new_version}" =~ $regex ]]; then
         echo "Adding docs for version ${new_version}"
