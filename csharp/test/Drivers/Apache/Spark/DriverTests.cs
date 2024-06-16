@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
@@ -350,20 +351,36 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 Assert.Equal(i + 1, column.OrdinalPosition);
                 Assert.False(string.IsNullOrEmpty(column.Name));
                 Assert.False(string.IsNullOrEmpty(column.XdbcTypeName));
+                Assert.False(Regex.IsMatch(column.XdbcTypeName, @"[_,\d\<\>\(\)]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+                    "Unexpected character found in field XdbcTypeName");
 
-                var types = Enum.GetValues(typeof(SupportedSparkDataType)).Cast<SupportedSparkDataType>();
-                Assert.Contains((SupportedSparkDataType)column.XdbcSqlDataType!, types);
+                var supportedTypes = Enum.GetValues(typeof(SupportedSparkDataType)).Cast<SupportedSparkDataType>();
+                Assert.Contains((SupportedSparkDataType)column.XdbcSqlDataType!, supportedTypes);
                 Assert.Equal(column.XdbcDataType, column.XdbcSqlDataType);
 
                 Assert.NotNull(column.XdbcDataType);
-                Assert.Contains((SupportedSparkDataType)column.XdbcDataType!, types);
+                Assert.Contains((SupportedSparkDataType)column.XdbcDataType!, supportedTypes);
 
-                bool isDecimalType = column.XdbcDataType == (short)SupportedSparkDataType.DECIMAL || column.XdbcDataType == (short)SupportedSparkDataType.NUMERIC;
-                Assert.Equal(column.XdbcColumnSize.HasValue, isDecimalType);
-                Assert.Equal(column.XdbcDecimalDigits.HasValue, isDecimalType);
+                HashSet<short> typesHaveColumnSize = new()
+                {
+                    (short)SupportedSparkDataType.DECIMAL,
+                    (short)SupportedSparkDataType.NUMERIC,
+                    (short)SupportedSparkDataType.CHAR,
+                    (short)SupportedSparkDataType.VARCHAR,
+                };
+                HashSet<short> typesHaveDecimalDigits = new()
+                {
+                    (short)SupportedSparkDataType.DECIMAL,
+                    (short)SupportedSparkDataType.NUMERIC,
+                };
 
-                Assert.NotNull(column.Remarks);
-                Assert.True(string.IsNullOrEmpty(column.Remarks));
+                bool typeHasColumnSize = typesHaveColumnSize.Contains(column.XdbcDataType.Value);
+                Assert.Equal(column.XdbcColumnSize.HasValue, typeHasColumnSize);
+
+                bool typeHasDecimalDigits = typesHaveDecimalDigits.Contains(column.XdbcDataType.Value);
+                Assert.Equal(column.XdbcDecimalDigits.HasValue, typeHasDecimalDigits);
+
+                Assert.False(string.IsNullOrEmpty(column.Remarks));
 
                 Assert.NotNull(column.XdbcColumnDef);
 

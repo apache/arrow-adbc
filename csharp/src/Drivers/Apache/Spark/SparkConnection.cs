@@ -39,7 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     public class SparkConnection : HiveServer2Connection
     {
-        const string UserAgent = "MicrosoftSparkODBCDriver/2.7.6.1014";
+        private readonly string UserAgent = $"{InfoDriverName.Replace(" ", "")}/{ProductVersionDefault}";
 
         readonly AdbcInfoCode[] infoSupportedCodes = new[] {
             AdbcInfoCode.DriverName,
@@ -54,8 +54,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         const string InfoDriverName = "ADBC Spark Driver";
         const string InfoDriverArrowVersion = "1.0.0";
         const bool InfoVendorSql = true;
-        const int DecimalPrecisionDefault = 10;
-        const int DecimalScaleDefault = 0;
         const string ColumnDef = "COLUMN_DEF";
         const string ColumnName = "COLUMN_NAME";
         const string DataType = "DATA_TYPE";
@@ -154,7 +152,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             /// </summary>
             NCHAR = -15,
             /// <summary>
-            /// identifies the generic SQL value NULL
+            /// identifies the generic SQL type NULL
             /// </summary>
             NULL = 0,
             /// <summary>
@@ -271,14 +269,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 Trace.TraceError($"key = {property} value = {properties[property]}");
             }
 
-            string hostName = properties["hostname"];
-            string path = properties["path"];
+            string hostName = properties[SparkParameters.HostName];
+            string path = properties[SparkParameters.Path];
             string token;
 
-            if (properties.ContainsKey("token"))
-                token = properties["token"];
+            if (properties.ContainsKey(SparkParameters.Token))
+                token = properties[SparkParameters.Token];
             else
-                token = properties["password"];
+                token = properties[SparkParameters.Password];
 
             HttpClient httpClient = new HttpClient();
             httpClient.BaseAddress = new UriBuilder(Uri.UriSchemeHttps, hostName, -1, path).Uri;
@@ -660,12 +658,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     tableInfo?.ColumnName.Add(columnName);
                     tableInfo?.ColType.Add(colType);
                     tableInfo?.Nullable.Add(nullable);
-                    tableInfo?.TypeName.Add(typeName);
                     tableInfo?.IsAutoIncrement.Add(isAutoIncrement);
                     tableInfo?.IsNullable.Add(isNullable);
                     tableInfo?.ColumnDefault.Add(columnDefault);
                     tableInfo?.OrdinalPosition.Add(ordinalPos);
-                    SetPrecisionAndScale(colType, typeName, tableInfo);
+                    SetPrecisionScaleAndTypeName(colType, typeName, tableInfo);
                 }
             }
 
@@ -702,23 +699,44 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             .Select(t => new { Index = t.Position - 1, t.ColumnName })
             .ToDictionary(t => t.ColumnName, t => t.Index);
 
-        private static void SetPrecisionAndScale(short colType, string typeName, TableInfo? tableInfo)
+        private static void SetPrecisionScaleAndTypeName(short colType, string typeName, TableInfo? tableInfo)
         {
+            // Keep the original type name
+            tableInfo?.TypeName.Add(typeName);
             switch (colType)
             {
                 case (short)ColumnTypeId.DECIMAL:
                 case (short)ColumnTypeId.NUMERIC:
                     {
-                        Decimal128Type decimalType = SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
-                        tableInfo?.Precision.Add(decimalType.Precision);
-                        tableInfo?.Scale.Add((short)decimalType.Scale);
+                        SqlDecimalParserResult result = SqlTypeNameParser<SqlDecimalParserResult>.Parse(typeName, colType);
+                        tableInfo?.Precision.Add(result.Precision);
+                        tableInfo?.Scale.Add((short)result.Scale);
+                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
+                        break;
+                    }
+
+                case (short)ColumnTypeId.CHAR:
+                case (short)ColumnTypeId.NCHAR:
+                case (short)ColumnTypeId.VARCHAR:
+                case (short)ColumnTypeId.LONGVARCHAR:
+                case (short)ColumnTypeId.LONGNVARCHAR:
+                case (short)ColumnTypeId.NVARCHAR:
+                    {
+                        SqlCharVarcharParserResult result = SqlTypeNameParser<SqlCharVarcharParserResult>.Parse(typeName, colType);
+                        tableInfo?.Precision.Add(result.ColumnSize);
+                        tableInfo?.Scale.Add(null);
+                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
                         break;
                     }
 
                 default:
-                    tableInfo?.Precision.Add(null);
-                    tableInfo?.Scale.Add(null);
-                    break;
+                    {
+                        SqlTypeNameParserResult result = SqlTypeNameParser<SqlTypeNameParserResult>.Parse(typeName, colType);
+                        tableInfo?.Precision.Add(null);
+                        tableInfo?.Scale.Add(null);
+                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
+                        break;
+                    }
             }
         }
 
@@ -761,7 +779,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case (int)ColumnTypeId.NUMERIC:
                     // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
                     // are not returned in the Thrift call to GetColumns
-                    return SqlDecimalTypeParser.ParseOrDefault(typeName, new Decimal128Type(DecimalPrecisionDefault, DecimalScaleDefault));
+                    return SqlTypeNameParser<SqlDecimalParserResult>
+                        .Parse(typeName, columnTypeId)
+                        .Decimal128Type;
                 case (int)ColumnTypeId.NULL:
                     return NullType.Default;
                 case (int)ColumnTypeId.ARRAY:
@@ -773,7 +793,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        private StructArray GetDbSchemas(
+        private static StructArray GetDbSchemas(
             GetObjectsDepth depth,
             Dictionary<string, Dictionary<string, TableInfo>> schemaMap)
         {
@@ -817,7 +837,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 nullBitmapBuffer.Build());
         }
 
-        private StructArray GetTableSchemas(
+        private static StructArray GetTableSchemas(
             GetObjectsDepth depth,
             Dictionary<string, TableInfo> tableMap)
         {
@@ -868,7 +888,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 nullBitmapBuffer.Build());
         }
 
-        private StructArray GetColumnSchema(TableInfo tableInfo)
+        private static StructArray GetColumnSchema(TableInfo tableInfo)
         {
             StringArray.Builder columnNameBuilder = new StringArray.Builder();
             Int32Array.Builder ordinalPositionBuilder = new Int32Array.Builder();
@@ -897,11 +917,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             {
                 columnNameBuilder.Append(tableInfo.ColumnName[i]);
                 ordinalPositionBuilder.Append(tableInfo.OrdinalPosition[i]);
-                remarksBuilder.Append("");
+                // Use the "remarks" field to store the original type name value
+                remarksBuilder.Append(tableInfo.TypeName[i]);
                 xdbcColumnSizeBuilder.Append(tableInfo.Precision[i]);
                 xdbcDecimalDigitsBuilder.Append(tableInfo.Scale[i]);
                 xdbcDataTypeBuilder.Append(tableInfo.ColType[i]);
-                xdbcTypeNameBuilder.Append(tableInfo.TypeName[i]);
+                // Just the base type name without precision or scale clause
+                xdbcTypeNameBuilder.Append(tableInfo.BaseTypeName[i]);
                 xdbcNumPrecRadixBuilder.AppendNull();
                 xdbcNullableBuilder.Append(tableInfo.Nullable[i]);
                 xdbcColumnDefBuilder.Append(tableInfo.ColumnDefault[i]);
@@ -950,7 +972,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 nullBitmapBuffer.Build());
         }
 
-        private string PatternToRegEx(string? pattern)
+        private static string PatternToRegEx(string? pattern)
         {
             if (pattern == null)
                 return ".*";
@@ -958,68 +980,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             StringBuilder builder = new StringBuilder("(?i)^");
             string convertedPattern = pattern.Replace("_", ".").Replace("%", ".*");
             builder.Append(convertedPattern);
-            builder.Append("$");
+            builder.Append('$');
 
             return builder.ToString();
         }
 
-        /// <summary>
-        /// Provides a parser for SQL DECIMAL type definitions.
-        /// </summary>
-        private static class SqlDecimalTypeParser
-        {
-            // Pattern is based on this definition
-            // https://docs.databricks.com/en/sql/language-manual/data-types/decimal-type.html#syntax
-            // { DECIMAL | DEC | NUMERIC } [ (  p [ , s ] ) ]
-            // p: Optional maximum precision (total number of digits) of the number between 1 and 38. The default is 10.
-            // s: Optional scale of the number between 0 and p. The number of digits to the right of the decimal point. The default is 0.
-            private static readonly Regex s_expression = new(
-                @"^\s*(?<typeName>((DECIMAL)|(DEC)|(NUMERIC)))(\s*\(\s*((?<precision>\d{1,2})(\s*\,\s*(?<scale>\d{1,2}))?)\s*\))?\s*$",
-                RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-            /// <summary>
-            /// Parses the input string for a valid SQL DECIMAL type definition and returns a new <see cref="Decimal128Type"/> or returns the <c>defaultValue</c>, if invalid.
-            /// </summary>
-            /// <param name="input">The SQL type defintion string to parse.</param>
-            /// <param name="defaultValue">If input string is an invalid SQL DECIMAL type definition, this value is returned instead.</param>
-            /// <returns>If input string is a valid SQL DECIMAL type definition, it returns a new <see cref="Decimal128Type"/>; otherwise <c>defaultValue</c>.</returns>
-            public static Decimal128Type ParseOrDefault(string input, Decimal128Type defaultValue)
-            {
-                return TryParse(input, out Decimal128Type? candidate) ? candidate! : defaultValue;
-            }
-
-            /// <summary>
-            /// Tries to parse the input string for a valid SQL DECIMAL type definition.
-            /// </summary>
-            /// <param name="input">The SQL type defintion string to parse.</param>
-            /// <param name="value">If successful, an new <see cref="Decimal128Type"/> with the precision and scale set; otherwise <c>null</c>.</param>
-            /// <returns>True if it can successfully parse the type definition input string; otherwise false.</returns>
-            private static bool TryParse(string input, out Decimal128Type? value)
-            {
-                // Ensure defaults are set, in case not provided in precision/scale clause.
-                int precision = DecimalPrecisionDefault;
-                int scale = DecimalScaleDefault;
-
-                Match match = s_expression.Match(input);
-                if (!match.Success)
-                {
-                    value = null;
-                    return false;
-                }
-
-                GroupCollection groups = match.Groups;
-                Group precisionGroup = groups["precision"];
-                Group scaleGroup = groups["scale"];
-
-                precision = precisionGroup.Success && int.TryParse(precisionGroup.Value, out int candidatePrecision) ? candidatePrecision : precision;
-                scale = scaleGroup.Success && int.TryParse(scaleGroup.Value, out int candidateScale) ? candidateScale : scale;
-
-                value = new Decimal128Type(precision, scale);
-                return true;
-            }
-        }
-
-        private string GetProductVersion()
+        private static string GetProductVersion()
         {
             FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
             return fileVersionInfo.ProductVersion ?? ProductVersionDefault;
@@ -1033,6 +1000,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public List<string> ColumnName { get; } = new();
 
         public List<short> ColType { get; } = new();
+
+        public List<string> BaseTypeName { get; } = new();
 
         public List<string> TypeName { get; } = new();
 
