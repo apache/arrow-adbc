@@ -84,13 +84,14 @@ int main(int argc, char** argv) {
 
   SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env);
   // we want ODBC3 support, set env handle
-  SQLSetEnvAttr(env, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3_80, 0);
+  SQLSetEnvAttr(env, SQL_ATTR_ODBC_VERSION, reinterpret_cast<void*>(SQL_OV_ODBC3_80), 0);
   // allocate connection handle
   SQLAllocHandle(SQL_HANDLE_DBC, env, &dbc);
 
   // connect to the DSN using dbc handle
-  CHECK_OK(SQLDriverConnectA(dbc, nullptr, (SQLCHAR*)(dsn.c_str()), SQL_NTS, nullptr, 0,
-                             nullptr, SQL_DRIVER_COMPLETE),
+  CHECK_OK(SQLDriverConnectA(dbc, nullptr,
+                             reinterpret_cast<SQLCHAR*>(const_cast<char*>(dsn.c_str())),
+                             SQL_NTS, nullptr, 0, nullptr, SQL_DRIVER_COMPLETE),
            "Error -- Driver Connect failed");
 
   std::ofstream timing_output("odbc_perf_record");
@@ -108,7 +109,8 @@ int main(int argc, char** argv) {
              "Error -- Statement execution failed");
 
     const SQLULEN bulkSize = 10000;
-    CHECK_OK(SQLSetStmtAttr(stmt, SQL_ATTR_ROW_ARRAY_SIZE, (SQLPOINTER)bulkSize, 0),
+    CHECK_OK(SQLSetStmtAttr(stmt, SQL_ATTR_ROW_ARRAY_SIZE,
+                            reinterpret_cast<SQLPOINTER>(bulkSize), 0),
              "Error -- SetStmtAttr failed");
 
     // bind columns to buffers
@@ -129,25 +131,26 @@ int main(int argc, char** argv) {
     SQLCHAR val_shipmode[bulkSize][11];
     SQLCHAR val_comment[bulkSize][45];
 
-    CHECK_OK(SQLBindCol(stmt, 1, SQL_C_LONG, (SQLPOINTER)val_orderkey,
+    CHECK_OK(SQLBindCol(stmt, 1, SQL_C_LONG, reinterpret_cast<SQLPOINTER>(val_orderkey),
                         sizeof(val_orderkey), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 2, SQL_C_LONG, (SQLPOINTER)val_partkey, sizeof(val_partkey),
-                        nullptr),
+    CHECK_OK(SQLBindCol(stmt, 2, SQL_C_LONG, reinterpret_cast<SQLPOINTER>(val_partkey),
+                        sizeof(val_partkey), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 3, SQL_C_LONG, (SQLPOINTER)val_suppkey, sizeof(val_suppkey),
-                        nullptr),
+    CHECK_OK(SQLBindCol(stmt, 3, SQL_C_LONG, reinterpret_cast<SQLPOINTER>(val_suppkey),
+                        sizeof(val_suppkey), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 4, SQL_C_LONG, (SQLPOINTER)val_linenumber,
+    CHECK_OK(SQLBindCol(stmt, 4, SQL_C_LONG, reinterpret_cast<SQLPOINTER>(val_linenumber),
                         sizeof(val_linenumber), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 5, SQL_C_DOUBLE, (SQLPOINTER)val_quantity,
+    CHECK_OK(SQLBindCol(stmt, 5, SQL_C_DOUBLE, reinterpret_cast<SQLPOINTER>(val_quantity),
                         sizeof(val_quantity), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 6, SQL_C_DOUBLE, (SQLPOINTER)val_extendedprice,
-                        sizeof(val_extendedprice), nullptr),
-             "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 7, SQL_C_DOUBLE, (SQLPOINTER)val_discount,
+    CHECK_OK(
+        SQLBindCol(stmt, 6, SQL_C_DOUBLE, reinterpret_cast<SQLPOINTER>(val_extendedprice),
+                   sizeof(val_extendedprice), nullptr),
+        "BindCol failed");
+    CHECK_OK(SQLBindCol(stmt, 7, SQL_C_DOUBLE, reinterpret_cast<SQLPOINTER>(val_discount),
                         sizeof(val_discount), nullptr),
              "BindCol failed");
     CHECK_OK(
