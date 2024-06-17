@@ -1,3 +1,20 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 #include <sql.h>
 #include <sqlext.h>
 #include <sqltypes.h>
@@ -17,16 +34,16 @@ SQLINTEGER checkError(SQLRETURN rc, SQLSMALLINT handleType, SQLHANDLE handle,
   SQLRETURN retcode = SQL_SUCCESS;
 
   SQLSMALLINT errNum = 1;
-  SQLWCHAR sqlState[10];
+  SQLCHAR sqlState[6];  // always exactly 5 characters + NUL
   SQLINTEGER nativeError;
-  SQLWCHAR errMsg[ERRMSG_LEN];
+  SQLCHAR errMsg[ERRMSG_LEN];
   SQLSMALLINT textLengthPtr;
 
   if ((rc != SQL_SUCCESS) && (rc != SQL_SUCCESS_WITH_INFO) && (rc != SQL_NO_DATA)) {
     SQLLEN numRecs = 0;
     SQLGetDiagField(SQL_HANDLE_STMT, handle, 0, SQL_DIAG_NUMBER, &numRecs, 0, 0);
     while (retcode != SQL_NO_DATA) {
-      retcode = SQLGetDiagRecW(handleType, handle, errNum, sqlState, &nativeError, errMsg,
+      retcode = SQLGetDiagRecA(handleType, handle, errNum, sqlState, &nativeError, errMsg,
                                ERRMSG_LEN, &textLengthPtr);
 
       if (retcode == SQL_INVALID_HANDLE) {
@@ -72,8 +89,8 @@ int main(int argc, char** argv) {
   SQLAllocHandle(SQL_HANDLE_DBC, env, &dbc);
 
   // connect to the DSN using dbc handle
-  CHECK_OK(SQLDriverConnect(dbc, nullptr, (SQLCHAR*)(dsn.c_str()), SQL_NTS, nullptr, 0,
-                            nullptr, SQL_DRIVER_COMPLETE),
+  CHECK_OK(SQLDriverConnectA(dbc, nullptr, (SQLCHAR*)(dsn.c_str()), SQL_NTS, nullptr, 0,
+                             nullptr, SQL_DRIVER_COMPLETE),
            "Error -- Driver Connect failed");
 
   std::ofstream timing_output("odbc_perf_record");
@@ -112,52 +129,52 @@ int main(int argc, char** argv) {
     SQLCHAR val_shipmode[bulkSize][11];
     SQLCHAR val_comment[bulkSize][45];
 
-    CHECK_OK(SQLBindCol(stmt, 1, SQL_C_LONG, (SQLPOINTER)&val_orderkey,
+    CHECK_OK(SQLBindCol(stmt, 1, SQL_C_LONG, (SQLPOINTER)val_orderkey,
                         sizeof(val_orderkey), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 2, SQL_C_LONG, (SQLPOINTER)&val_partkey,
-                        sizeof(val_partkey), nullptr),
+    CHECK_OK(SQLBindCol(stmt, 2, SQL_C_LONG, (SQLPOINTER)val_partkey, sizeof(val_partkey),
+                        nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 3, SQL_C_LONG, (SQLPOINTER)&val_suppkey,
-                        sizeof(val_suppkey), nullptr),
+    CHECK_OK(SQLBindCol(stmt, 3, SQL_C_LONG, (SQLPOINTER)val_suppkey, sizeof(val_suppkey),
+                        nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 4, SQL_C_LONG, (SQLPOINTER)&val_linenumber,
+    CHECK_OK(SQLBindCol(stmt, 4, SQL_C_LONG, (SQLPOINTER)val_linenumber,
                         sizeof(val_linenumber), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 5, SQL_C_DOUBLE, (SQLPOINTER)&val_quantity,
+    CHECK_OK(SQLBindCol(stmt, 5, SQL_C_DOUBLE, (SQLPOINTER)val_quantity,
                         sizeof(val_quantity), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 6, SQL_C_DOUBLE, (SQLPOINTER)&val_extendedprice,
+    CHECK_OK(SQLBindCol(stmt, 6, SQL_C_DOUBLE, (SQLPOINTER)val_extendedprice,
                         sizeof(val_extendedprice), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 7, SQL_C_DOUBLE, (SQLPOINTER)&val_discount,
+    CHECK_OK(SQLBindCol(stmt, 7, SQL_C_DOUBLE, (SQLPOINTER)val_discount,
                         sizeof(val_discount), nullptr),
              "BindCol failed");
     CHECK_OK(
-        SQLBindCol(stmt, 8, SQL_C_DOUBLE, (SQLPOINTER)&val_tax, sizeof(val_tax), nullptr),
+        SQLBindCol(stmt, 8, SQL_C_DOUBLE, (SQLPOINTER)val_tax, sizeof(val_tax), nullptr),
         "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 9, SQL_C_CHAR, (SQLPOINTER)&val_retflag,
+    CHECK_OK(SQLBindCol(stmt, 9, SQL_C_CHAR, (SQLPOINTER)val_retflag,
                         sizeof(val_retflag[0]), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 10, SQL_C_CHAR, (SQLPOINTER)&val_linestatus,
+    CHECK_OK(SQLBindCol(stmt, 10, SQL_C_CHAR, (SQLPOINTER)val_linestatus,
                         sizeof(val_linestatus[0]), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 11, SQL_C_DATE, (SQLPOINTER)&val_shipdate,
+    CHECK_OK(SQLBindCol(stmt, 11, SQL_C_DATE, (SQLPOINTER)val_shipdate,
                         sizeof(val_shipdate), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 12, SQL_C_DATE, (SQLPOINTER)&val_commitdate,
+    CHECK_OK(SQLBindCol(stmt, 12, SQL_C_DATE, (SQLPOINTER)val_commitdate,
                         sizeof(val_commitdate), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 13, SQL_C_DATE, (SQLPOINTER)&val_receiptdate,
+    CHECK_OK(SQLBindCol(stmt, 13, SQL_C_DATE, (SQLPOINTER)val_receiptdate,
                         sizeof(val_receiptdate), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 14, SQL_C_CHAR, (SQLPOINTER)&val_shipinstruct,
+    CHECK_OK(SQLBindCol(stmt, 14, SQL_C_CHAR, (SQLPOINTER)val_shipinstruct,
                         sizeof(val_shipinstruct[0]), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 15, SQL_C_CHAR, (SQLPOINTER)&val_shipmode,
+    CHECK_OK(SQLBindCol(stmt, 15, SQL_C_CHAR, (SQLPOINTER)val_shipmode,
                         sizeof(val_shipmode[0]), nullptr),
              "BindCol failed");
-    CHECK_OK(SQLBindCol(stmt, 16, SQL_C_CHAR, (SQLPOINTER)&val_comment,
+    CHECK_OK(SQLBindCol(stmt, 16, SQL_C_CHAR, (SQLPOINTER)val_comment,
                         sizeof(val_comment[0]), nullptr),
              "BindCol failed");
 
@@ -174,6 +191,7 @@ int main(int argc, char** argv) {
     const std::chrono::duration<double> elapsed{end - start};
     timing_output << elapsed.count() << std::endl;
 
+    SQLFreeStmt(stmt, SQL_CLOSE);
     SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     if (iter % 10 == 0) {
       std::cout << "Run " << iter << std::endl;
@@ -181,6 +199,7 @@ int main(int argc, char** argv) {
     }
   }
 
+  SQLDisconnect(dbc);
   SQLFreeHandle(SQL_HANDLE_DBC, dbc);
   SQLFreeHandle(SQL_HANDLE_ENV, env);
 }

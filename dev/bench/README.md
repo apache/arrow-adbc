@@ -34,7 +34,7 @@ charts which can be saved.
 The file odbc/main.cc contains code to utilize an ODBC driver and the
 BindCol interface in order to perform a simple query and retrieve data.
 This was used for benchmarking against Snowflake to compare with the ADBC
-Snowflake driver. 
+Snowflake driver.
 
 It can be built by simply using `cmake` as long as you have unixODBC or
 another ODBC library that can be found by `cmake` for building. After

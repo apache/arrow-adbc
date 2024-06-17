@@ -23,6 +23,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(ODBC)
 add_executable(odbcbench main.cc)
 target_link_libraries(odbcbench ODBC::ODBC)
-set_target_properties(odbcbench
-PROPERTIES BUILD_RPATH "\$ORIGIN"
-           INSTALL_RPATH "\$ORIGIN")
+set_target_properties(odbcbench PROPERTIES BUILD_RPATH "\$ORIGIN" INSTALL_RPATH
+                                                                  "\$ORIGIN")
