@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
 <meta name="description" content="This page provides detailed information on the steps followed to perform a release. It can be used both as a guide to learn the ADBC release process and as a comprehensive checklist for the Release..." />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Nightly Packages" href="nightly.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Versioning" href="versioning.html" />
 
     <!-- Generated with Sphinx 6.2.1 and Furo 2024.05.06 -->
         <title>Release Management Guide - ADBC 13 (dev) documentation</title>
@@ -352,6 +352,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nightly.html">Nightly Packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="versioning.html">Versioning</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Release Management Guide</a></li>
 </ul>
 
@@ -485,7 +486,7 @@ Initial Release Candidate</label><div class="sd-tab-content docutils">
 Follow up Release Candidates</label><div class="sd-tab-content docutils">
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">switch</span> <span class="n">maint</span><span class="o">-</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
 <span class="c1"># Remove the commits that created the changelog and bumped the</span>
-<span class="c1"># versions, since 01-source.sh will redo those steps</span>
+<span class="c1"># versions, since 01-prepare.sh will redo those steps</span>
 <span class="n">git</span> <span class="n">reset</span> <span class="o">--</span><span class="n">hard</span> <span class="n">HEAD</span><span class="o">~</span><span class="mi">2</span>
 <span class="c1"># Cherry-pick any commits by hand.</span>
 <span class="n">git</span> <span class="n">cherry</span><span class="o">-</span><span class="n">pick</span> <span class="o">...</span>
@@ -506,11 +507,11 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 <span class="c1"># on OSX use gnu-sed with homebrew: brew install gnu-sed (and export to $PATH)</span>
 <span class="c1">#</span>
 <span class="c1"># &lt;rc-number&gt; starts at 0 and increments every time the Release Candidate is burned</span>
-<span class="c1"># so for the first RC this would be: dev/release/01-prepare.sh 3.0.0 4.0.0 5.0.0 0</span>
+<span class="c1"># so for the first RC this would be: dev/release/01-prepare.sh 1.0.0 0</span>
 
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">01</span><span class="o">-</span><span class="n">prepare</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">prev</span><span class="o">-</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="nb">next</span><span class="o">-</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">01</span><span class="o">-</span><span class="n">prepare</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
-<span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">u</span> <span class="n">apache</span> <span class="n">apache</span><span class="o">-</span><span class="n">arrow</span><span class="o">-</span><span class="n">adbc</span><span class="o">-&lt;</span><span class="n">version</span><span class="o">&gt;-</span><span class="n">rc</span><span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span> <span class="n">maint</span><span class="o">-&lt;</span><span class="n">version</span><span class="o">&gt;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">u</span> <span class="n">apache</span> <span class="n">apache</span><span class="o">-</span><span class="n">arrow</span><span class="o">-</span><span class="n">adbc</span><span class="o">-&lt;</span><span class="n">release</span><span class="o">&gt;-</span><span class="n">rc</span><span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span> <span class="n">maint</span><span class="o">-&lt;</span><span class="n">release</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 </section>
@@ -522,27 +523,27 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 <span class="c1"># On macOS the only way I could get this to work was running &quot;echo</span>
 <span class="c1"># &quot;UPDATESTARTUPTTY&quot; | gpg-connect-agent&quot; before running this</span>
 <span class="c1"># comment otherwise I got errors referencing &quot;ioctl&quot; errors.</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">02</span><span class="o">-</span><span class="n">sign</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">prev</span><span class="o">-</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">02</span><span class="o">-</span><span class="n">sign</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
 <span class="c1"># Upload the source release tarball and signs to</span>
 <span class="c1"># https://dist.apache.org/repos/dist/dev/arrow .</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">03</span><span class="o">-</span><span class="n">source</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">03</span><span class="o">-</span><span class="n">source</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
 <span class="c1"># Upload the Java artifacts</span>
 <span class="c1">#</span>
 <span class="c1"># Note that you need to press the &quot;Close&quot; button manually by Web interface</span>
 <span class="c1"># after you complete the script:</span>
 <span class="c1">#   https://repository.apache.org/#stagingRepositories</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">04</span><span class="o">-</span><span class="n">java</span><span class="o">-</span><span class="n">upload</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">04</span><span class="o">-</span><span class="n">java</span><span class="o">-</span><span class="n">upload</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
 <span class="c1"># Sign and upload the deb/rpm packages and APT/Yum repositories</span>
 <span class="c1">#</span>
 <span class="c1"># This reuses release scripts in apache/arrow. So you need to</span>
 <span class="c1"># specify cloned apache/arrow directory.</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">05</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">upload</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">05</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">upload</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
 <span class="c1"># Start verifications for binaries and wheels</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">06</span><span class="o">-</span><span class="n">binary</span><span class="o">-</span><span class="n">verify</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">06</span><span class="o">-</span><span class="n">binary</span><span class="o">-</span><span class="n">verify</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 </section>
@@ -607,7 +608,7 @@ See the environment variables below.</p>
 </li>
 <li><p>Run the verification script:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd arrow-adbc
-# Pass the version and the RC number
+# Pass the release and the RC number
 $ ./dev/release/verify-release-candidate.sh 0.1.0 6
 </pre></div>
 </div>
@@ -663,9 +664,9 @@ Upload source release artifacts to Subversion<div class="sd-summary-down docutil
 <svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
 </summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">A PMC member must commit the source release artifacts to Subversion:</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-01-upload.sh 0.1.0 0</span>
-dev/release/post-01-upload.sh<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;rc-number&gt;
-git<span class="w"> </span>push<span class="w"> </span>apache<span class="w"> </span>apache-arrow-adbc-&lt;version&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-01-upload.sh 0</span>
+dev/release/post-01-upload.sh<span class="w"> </span>&lt;rc-number&gt;
+git<span class="w"> </span>push<span class="w"> </span>apache<span class="w"> </span>apache-arrow-adbc-&lt;release&gt;
 </pre></div>
 </div>
 </div>
@@ -677,8 +678,8 @@ Create the final GitHub release<div class="sd-summary-down docutils">
 <svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
 </summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">A committer must create the final GitHub release:</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-02-binary.sh 0.1.0 0</span>
-dev/release/post-02-binary.sh<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;rc-number&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-02-binary.sh 0</span>
+dev/release/post-02-binary.sh<span class="w"> </span>&lt;rc-number&gt;
 </pre></div>
 </div>
 </div>
@@ -700,8 +701,8 @@ Upload wheels/sdist to PyPI<div class="sd-summary-down docutils">
 <svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
 </summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">We use the twine tool to upload wheels to PyPI:</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-03-python.sh 0.1.0 0</span>
-dev/release/post-03-python.sh<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;rc-number&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-03-python.sh 0</span>
+dev/release/post-03-python.sh<span class="w"> </span>&lt;rc-number&gt;
 </pre></div>
 </div>
 </div>
@@ -725,8 +726,8 @@ Update tags for Go modules<div class="sd-summary-down docutils">
 <div class="sd-summary-up docutils">
 <svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
 </summary><div class="sd-summary-content sd-card-body docutils">
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-04-go.sh 10.0.0</span>
-dev/release/post-04-go.sh<span class="w"> </span>&lt;version&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-04-go.sh</span>
+dev/release/post-04-go.sh
 </pre></div>
 </div>
 </div>
@@ -740,8 +741,8 @@ Deploy APT/Yum repositories<div class="sd-summary-down docutils">
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># This reuses release scripts in apache/arrow. So you need to</span>
 <span class="c1"># specify cloned apache/arrow directory.</span>
 <span class="c1">#</span>
-<span class="c1"># dev/release/post-05-linux.sh ../arrow 10.0.0 0</span>
-dev/release/post-05-linux.sh<span class="w"> </span>&lt;arrow-dir&gt;<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;rc-number&gt;
+<span class="c1"># dev/release/post-05-linux.sh ../arrow 0</span>
+dev/release/post-05-linux.sh<span class="w"> </span>&lt;arrow-dir&gt;<span class="w"> </span>&lt;rc-number&gt;
 </pre></div>
 </div>
 </div>
@@ -768,8 +769,8 @@ run the following command line to add you to red-adbc owners:</p>
 </pre></div>
 </div>
 <p class="sd-card-text">An owner of red-adbc can upload:</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-06-ruby.sh 1.0.0</span>
-dev/release/post-06-ruby.sh<span class="w"> </span>&lt;version&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-06-ruby.sh</span>
+dev/release/post-06-ruby.sh
 </pre></div>
 </div>
 </div>
@@ -787,8 +788,8 @@ key](<a class="reference external" href="https://learn.microsoft.com/en-us/nuget
 <p class="sd-card-text">An owner can upload:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">NUGET_API_KEY</span><span class="o">=</span>&lt;your<span class="w"> </span>API<span class="w"> </span>key<span class="w"> </span>here&gt;
 
-<span class="c1"># dev/release/post-07-csharp.sh 1.0.0</span>
-dev/release/post-07-csharp.sh<span class="w"> </span>&lt;version&gt;
+<span class="c1"># dev/release/post-07-csharp.sh</span>
+dev/release/post-07-csharp.sh
 </pre></div>
 </div>
 </div>
@@ -832,10 +833,9 @@ Bump versions<div class="sd-summary-down docutils">
 <div class="sd-summary-up docutils">
 <svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
 </summary><div class="sd-summary-content sd-card-body docutils">
-<p class="sd-card-text">This will bump version numbers embedded in files and filenames.</p>
-<p class="sd-card-text">It will also update the changelog to the newly released changelog.</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-09-bump-versions.sh ../arrow 0.1.0 0.2.0</span>
-dev/release/post-09-bump-versions.sh<span class="w"> </span>&lt;arrow-dir&gt;<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;next_version&gt;
+<p class="sd-card-text">First, update the version numbers in <code class="docutils literal notranslate"><span class="pre">dev/release/versions.env</span></code>.  Then, run this script to apply those version numbers to the versions embedded in files and filenames.  The script will also update the changelog to the newly released changelog.</p>
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-09-bump-versions.sh ../arrow</span>
+dev/release/post-09-bump-versions.sh<span class="w"> </span>&lt;arrow-dir&gt;
 </pre></div>
 </div>
 </div>
@@ -848,8 +848,8 @@ Publish release blog post<div class="sd-summary-down docutils">
 </summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Run the script to generate the blog post outline, then fill out the
 outline and create a PR on <a class="reference external" href="https://github.com/apache/arrow-site">apache/arrow-site</a>.</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-10-website.sh ../arrow-site 0.0.0 0.1.0</span>
-dev/release/post-10-website.sh<span class="w"> </span>&lt;arrow-site-dir&gt;<span class="w"> </span>&lt;prev_version&gt;<span class="w"> </span>&lt;version&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-10-website.sh ../arrow-site</span>
+dev/release/post-10-website.sh<span class="w"> </span>&lt;arrow-site-dir&gt;
 </pre></div>
 </div>
 </div>
@@ -862,14 +862,14 @@ dev/release/post-10-website.sh<span class="w"> </span>&lt;arrow-site-dir&gt;<spa
         
         <div class="related-pages">
           
-          <a class="prev-page" href="nightly.html">
+          <a class="prev-page" href="versioning.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Nightly Packages</div>
+                <div class="title">Versioning</div>
                 
               </div>
             </a>

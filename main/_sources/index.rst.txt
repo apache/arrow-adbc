@@ -254,4 +254,5 @@ Why ADBC?
 
    development/contributing
    development/nightly
+   development/versioning
    development/releasing
