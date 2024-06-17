@@ -80,7 +80,13 @@ int main(int argc, char** argv) {
   SQLHSTMT stmt;
   SQLHSTMT stmt1;
 
-  std::string dsn(argv[0]);
+  if (argc != 2) {
+    std::cerr << "Expected exactly 1 argument: the DSN for connecting, got " << argc - 1
+              << "arguments. exiting...";
+    return 1;
+  }
+
+  std::string dsn(argv[1]);
 
   SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env);
   // we want ODBC3 support, set env handle
