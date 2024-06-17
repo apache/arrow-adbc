@@ -20,7 +20,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=7eec22261a5d8917218cec534344987d69e122f4" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.5ea377869091fd0449014c60fc090103.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
@@ -406,7 +406,7 @@
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h2>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-0">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
 C/C++</label><div class="sd-tab-content docutils">
 <p>For conda-forge users:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>libadbc-driver-snowflake
@@ -414,14 +414,14 @@ C/C++</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-1">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-1">
 Go</label><div class="sd-tab-content docutils">
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc/driver/snowflake
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-2">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-2">
 Python</label><div class="sd-tab-content docutils">
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># For conda-forge</span>
 mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-snowflake
@@ -432,7 +432,7 @@ pip<span class="w"> </span>install<span class="w"> </span>adbc_driver_snowflake
 </div>
 </div>
 <input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" data-sync-id="r" for="sd-tab-item-3">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-3">
 R</label><div class="sd-tab-content docutils">
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># install.packages(&quot;pak&quot;)</span>
 pak::pak<span class="o">(</span><span class="s2">&quot;apache/arrow-adbc/r/adbcsnowflake&quot;</span><span class="o">)</span>
@@ -447,7 +447,7 @@ pak::pak<span class="o">(</span><span class="s2">&quot;apache/arrow-adbc/r/adbcs
 constructing the :cpp:<code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code>.</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-4" name="sd-tab-set-1" type="radio">
-</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-4">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-4">
 C++</label><div class="sd-tab-content docutils">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;adbc.h&quot;</span>
 
@@ -461,7 +461,7 @@ C++</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-5" name="sd-tab-set-1" type="radio">
-</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-5">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-5">
 Python</label><div class="sd-tab-content docutils">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">adbc_driver_snowflake.dbapi</span>
 
@@ -471,7 +471,7 @@ Python</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-6" name="sd-tab-set-1" type="radio">
-</input><label class="sd-tab-label" data-sync-id="r" for="sd-tab-item-6">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-6">
 R</label><div class="sd-tab-content docutils">
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
 
@@ -483,7 +483,7 @@ R</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
-</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-7">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-7">
 Go</label><div class="sd-tab-content docutils">
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
 <span class="w">   </span><span class="s">&quot;context&quot;</span>
@@ -560,7 +560,7 @@ object.  Some users have reported needing other configuration options, such as
 a listing).</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-8" name="sd-tab-set-2" type="radio">
-</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-8">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-8">
 Python</label><div class="sd-tab-content docutils">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">adbc_driver_snowflake.dbapi</span>
 <span class="c1"># This will open a new browser tab, and block until you log in.</span>
@@ -573,7 +573,7 @@ Python</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-9" name="sd-tab-set-2" type="radio">
-</input><label class="sd-tab-label" data-sync-id="r" for="sd-tab-item-9">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-9">
 R</label><div class="sd-tab-content docutils">
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
 <span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span>
@@ -588,7 +588,7 @@ R</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-10" name="sd-tab-set-2" type="radio">
-</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-10">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-10">
 Go</label><div class="sd-tab-content docutils">
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
 <span class="w">   </span><span class="s">&quot;context&quot;</span>

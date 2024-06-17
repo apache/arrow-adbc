@@ -20,7 +20,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=7eec22261a5d8917218cec534344987d69e122f4" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.5ea377869091fd0449014c60fc090103.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
@@ -407,7 +407,7 @@
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h2>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-0">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
 C/C++</label><div class="sd-tab-content docutils">
 <p>For conda-forge users:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>libadbc-driver-flightsql
@@ -415,14 +415,14 @@ C/C++</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-1">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-1">
 Go</label><div class="sd-tab-content docutils">
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" data-sync-id="java" for="sd-tab-item-2">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="java" for="sd-tab-item-2">
 Java</label><div class="sd-tab-content docutils">
 <p>Add a dependency on <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc:adbc-driver-flight-sql</span></code>.</p>
 <p>For Maven users:</p>
@@ -434,7 +434,7 @@ Java</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-3">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-3">
 Python</label><div class="sd-tab-content docutils">
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># For conda-forge</span>
 mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-flightsql
@@ -445,7 +445,7 @@ pip<span class="w"> </span>install<span class="w"> </span>adbc_driver_flightsql
 </div>
 </div>
 <input id="sd-tab-item-4" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" data-sync-id="r" for="sd-tab-item-4">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-4">
 R</label><div class="sd-tab-content docutils">
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="c1"># install.packages(&quot;pak&quot;)</span>
 <span class="n">pak</span><span class="o">::</span><span class="nf">pak</span><span class="p">(</span><span class="s">&quot;apache/arrow-adbc/r/adbcflightsql&quot;</span><span class="p">)</span>
@@ -460,7 +460,7 @@ R</label><div class="sd-tab-content docutils">
 the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-5" name="sd-tab-set-1" type="radio">
-</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-5">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-5">
 C++</label><div class="sd-tab-content docutils">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;adbc.h&quot;</span>
 
@@ -474,7 +474,7 @@ C++</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-6" name="sd-tab-set-1" type="radio">
-</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-6">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-6">
 Python</label><div class="sd-tab-content docutils">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">adbc_driver_flightsql</span> <span class="kn">import</span> <span class="n">DatabaseOptions</span>
 <span class="kn">from</span> <span class="nn">adbc_driver_flightsql.dbapi</span> <span class="kn">import</span> <span class="n">connect</span>
@@ -498,7 +498,7 @@ Python</label><div class="sd-tab-content docutils">
 <p>For more examples, see <a class="reference internal" href="../python/recipe/flight_sql.html"><span class="doc">Flight SQL Recipes</span></a>.</p>
 </div>
 <input id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
-</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-7">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-7">
 Go</label><div class="sd-tab-content docutils">
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
 <span class="w">   </span><span class="s">&quot;context&quot;</span>
