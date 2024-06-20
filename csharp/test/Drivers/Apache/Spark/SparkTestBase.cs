@@ -19,11 +19,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Hive.Service.Rpc.Thrift;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
-    public class SparkTestBase : TestBase<SparkTestConfiguration>
+    public class SparkTestBase : ProxyTestBase<SparkTestConfiguration, TCLIService.IAsync>
     {
         public SparkTestBase(ITestOutputHelper? outputHelper) : base(outputHelper) { }
 

@@ -27,21 +27,21 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    public abstract class HiveServer2Connection : AdbcConnection
+    public abstract class HiveServer2Connection : ProxyConnection<TCLIService.IAsync>
     {
         const string userAgent = "AdbcExperimental/0.0";
 
         protected TOperationHandle? operationHandle;
         protected readonly IReadOnlyDictionary<string, string> properties;
         internal TTransport? transport;
-        internal TCLIService.Client? client;
+        internal TCLIService.IAsync? client;
         internal TSessionHandle? sessionHandle;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
 
-        internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
+        internal HiveServer2Connection(IReadOnlyDictionary<string, string>? properties, MockServerBase<TCLIService.IAsync>? proxy = default) : base(proxy)
         {
-            this.properties = properties;
+            this.properties = properties ?? new Dictionary<string, string>();
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
             // will retry until it successfully returns a value without an exception.
@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             _vendorName = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_NAME), LazyThreadSafetyMode.PublicationOnly);
         }
 
-        internal TCLIService.Client Client
+        internal TCLIService.IAsync Client
         {
             get { return this.client ?? throw new InvalidOperationException("connection not open"); }
         }
@@ -61,12 +61,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
-            TProtocol protocol = await CreateProtocolAsync();
-            this.transport = protocol.Transport;
-            this.client = new TCLIService.Client(protocol);
-
+            this.client = Proxy ?? await NewConnectedServerAsync();
             var s0 = await this.client.OpenSession(CreateSessionRequest());
             this.sessionHandle = s0.SessionHandle;
+        }
+
+        internal override async Task<TCLIService.IAsync> NewConnectedServerAsync()
+        {
+            TProtocol protocol = await CreateProtocolAsync();
+            this.transport = protocol.Transport;
+            return new TCLIService.Client(protocol);
         }
 
         protected abstract ValueTask<TProtocol> CreateProtocolAsync();
@@ -121,7 +125,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 this.client.CloseSession(r6).Wait();
 
                 this.transport?.Close();
-                this.client.Dispose();
+                if (this.client is IDisposable disposable) disposable.Dispose();
                 this.transport = null;
                 this.client = null;
             }

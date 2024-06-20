@@ -16,10 +16,11 @@
 */
 
 using System.Collections.Generic;
+using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
-    public class SparkDatabase : AdbcDatabase
+    public class SparkDatabase : AdbcDatabase, IProxyDatabase<TCLIService.IAsync>
     {
         readonly IReadOnlyDictionary<string, string> properties;
 
@@ -30,9 +31,44 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? properties)
         {
-            SparkConnection connection = new SparkConnection(this.properties);
+            return Connect(properties, proxy: default);
+        }
+
+        //public ProxyConnection<TCLIService.IAsync> Connect<TMock>(IReadOnlyDictionary<string, string>? properties, TMock? proxy = default)
+        //    where TMock : MockServerBase<TCLIService.IAsync>, TCLIService.IAsync
+        //{
+        //    IReadOnlyDictionary<string, string> combinedProperties = MergeDictionaries(this.properties, properties);
+        //    SparkConnection connection = new(combinedProperties, proxy);
+        //    proxy?.SetNewServer(connection.NewLiveServerAsync);
+        //    connection.OpenAsync().Wait();
+        //    return connection;
+        //}
+
+        public ProxyConnection<TCLIService.IAsync> Connect(IReadOnlyDictionary<string, string>? properties, MockServerBase<TCLIService.IAsync>? proxy)
+        {
+            IReadOnlyDictionary<string, string> combinedProperties = MergeDictionaries(this.properties, properties);
+            SparkConnection connection = new(combinedProperties, proxy);
             connection.OpenAsync().Wait();
             return connection;
+        }
+
+        //public ProxyConnection<TCLIService.IAsync> Connect(IReadOnlyDictionary<string, string>? properties, TCLIService.IAsync? proxy)
+        //{
+        //}
+
+        private static IReadOnlyDictionary<TKey, TValue> MergeDictionaries<TKey, TValue>(params IReadOnlyDictionary<TKey, TValue>?[] dictionaries)
+            where TKey : notnull
+        {
+            var mergedDictionary = new Dictionary<TKey, TValue>();
+            foreach (IReadOnlyDictionary<TKey, TValue>? dictionary in dictionaries)
+            {
+                if (dictionary == null) continue;
+                foreach (KeyValuePair<TKey, TValue> kvp in dictionary)
+                {
+                    mergedDictionary[kvp.Key] = kvp.Value;
+                }
+            }
+            return mergedDictionary;
         }
     }
 }

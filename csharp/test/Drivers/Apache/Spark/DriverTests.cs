@@ -76,6 +76,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public DriverTests(ITestOutputHelper? outputHelper) : base(outputHelper)
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));
+
         }
 
         /// <summary>
@@ -546,6 +547,41 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             UpdateResult updateResult = await statement.ExecuteUpdateAsync();
 
             Assert.Equal(1, updateResult.AffectedRows);
+        }
+
+        /// <summary>
+        /// Validates if the driver can call GetTableTypes.
+        /// </summary>
+        [SkippableFact, Order(13)]
+        public async Task CanGetTableTypesViaProxy()
+        {
+            var proxy = ThriftClientAsyncMock.NewInstance();
+            AdbcConnection adbcConnection = NewConnection(proxy: proxy);
+
+            using IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
+
+            RecordBatch recordBatch = await arrowArrayStream.ReadNextRecordBatchAsync();
+
+            StringArray stringArray = (StringArray)recordBatch.Column("table_type");
+
+            List<string> known_types = new List<string>
+            {
+                "TABLE", "VIEW"
+            };
+
+            int results = 0;
+
+            for (int i = 0; i < stringArray.Length; i++)
+            {
+                string value = stringArray.GetString(i);
+
+                if (known_types.Contains(value))
+                {
+                    results++;
+                }
+            }
+
+            Assert.Equal(known_types.Count, results);
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()
