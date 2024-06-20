@@ -165,7 +165,7 @@ void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* 
       return;
     }
 
-    size_t* new_lengths = calloc(new_capacity, sizeof(size_t*));
+    size_t* new_lengths = calloc(new_capacity, sizeof(size_t));
     if (!new_lengths) {
       free(new_keys);
       free(new_values);

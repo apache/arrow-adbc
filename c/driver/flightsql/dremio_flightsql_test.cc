@@ -30,13 +30,18 @@ class DremioFlightSqlQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
-    const char* uri = std::getenv("ADBC_DREMIO_FLIGHTSQL_URI");
-    const char* user = std::getenv("ADBC_DREMIO_FLIGHTSQL_USER");
-    const char* pass = std::getenv("ADBC_DREMIO_FLIGHTSQL_PASS");
-    EXPECT_THAT(AdbcDatabaseSetOption(database, "uri", uri, error), IsOkStatus(error));
-    EXPECT_THAT(AdbcDatabaseSetOption(database, "username", user, error),
+    const char* uri_raw = std::getenv("ADBC_DREMIO_FLIGHTSQL_URI");
+    const char* user_raw = std::getenv("ADBC_DREMIO_FLIGHTSQL_USER");
+    const char* pass_raw = std::getenv("ADBC_DREMIO_FLIGHTSQL_PASS");
+    if (!uri_raw || !user_raw || !pass_raw) {
+      SetError(error, "Missing required environment variables");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    EXPECT_THAT(AdbcDatabaseSetOption(database, "uri", uri_raw, error),
                 IsOkStatus(error));
-    EXPECT_THAT(AdbcDatabaseSetOption(database, "password", pass, error),
+    EXPECT_THAT(AdbcDatabaseSetOption(database, "username", user_raw, error),
+                IsOkStatus(error));
+    EXPECT_THAT(AdbcDatabaseSetOption(database, "password", pass_raw, error),
                 IsOkStatus(error));
     return ADBC_STATUS_OK;
   }
