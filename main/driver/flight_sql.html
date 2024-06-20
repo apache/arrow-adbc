@@ -574,7 +574,7 @@ ingestion as a result.</p>
 <h3>Client Options<a class="headerlink" href="#client-options" title="Permalink to this heading">¶</a></h3>
 <p>The options used for creating the Flight RPC client can be customized.
 These options map 1:1 with the options in FlightClientOptions:</p>
-<dl class="simple">
+<dl>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.mtls_cert_chain</span></code></dt><dd><p>The certificate chain to use for mTLS.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.mtls_private_key</span></code></dt><dd><p>The private key to use for mTLS.</p>
@@ -587,10 +587,13 @@ should be <code class="docutils literal notranslate"><span class="pre">true</spa
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.tls_root_certs</span></code></dt><dd><p>Override the root certificates used to validate the server’s TLS
 certificate.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.with_block</span></code></dt><dd><p>Whether connections should wait until connections are established,
-or connect lazily when used.  The latter is gRPC’s default
-behavior, but the driver defaults to eager connection to surface
-errors earlier.  Value should be <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.with_block</span></code></dt><dd><div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This option is deprecated as gRPC itself has deprecated the
+underlying option.</p>
+</div>
+<p>This option has no effect and will be removed in a future release.
+Value should be <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.with_max_msg_size</span></code></dt><dd><p>The maximum message size to accept from the server.  The driver
 defaults to 16 MiB since Flight services tend to return larger

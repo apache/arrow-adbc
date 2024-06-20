@@ -223,10 +223,11 @@ These options map 1:1 with the options in FlightClientOptions:
     certificate.
 
 ``adbc.flight.sql.client_option.with_block``
-    Whether connections should wait until connections are established,
-    or connect lazily when used.  The latter is gRPC's default
-    behavior, but the driver defaults to eager connection to surface
-    errors earlier.  Value should be ``true`` or ``false``.
+    .. warning:: This option is deprecated as gRPC itself has deprecated the
+                 underlying option.
+
+    This option has no effect and will be removed in a future release.
+    Value should be ``true`` or ``false``.
 
 ``adbc.flight.sql.client_option.with_max_msg_size``
     The maximum message size to accept from the server.  The driver
