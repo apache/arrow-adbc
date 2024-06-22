@@ -41,6 +41,10 @@ pub const ADBC_VERSION_1_1_0: c_int = 1_001_000;
 pub const ADBC_INFO_VENDOR_NAME: u32 = 0;
 pub const ADBC_INFO_VENDOR_VERSION: u32 = 1;
 pub const ADBC_INFO_VENDOR_ARROW_VERSION: u32 = 2;
+pub const ADBC_INFO_VENDOR_SQL: u32 = 3;
+pub const ADBC_INFO_VENDOR_SUBSTRAIT: u32 = 4;
+pub const ADBC_INFO_VENDOR_SUBSTRAIT_MIN_VERSION: u32 = 5;
+pub const ADBC_INFO_VENDOR_SUBSTRAIT_MAX_VERSION: u32 = 6;
 pub const ADBC_INFO_DRIVER_NAME: u32 = 100;
 pub const ADBC_INFO_DRIVER_VERSION: u32 = 101;
 pub const ADBC_INFO_DRIVER_ARROW_VERSION: u32 = 102;
@@ -55,8 +59,11 @@ pub const ADBC_OBJECT_DEPTH_COLUMNS: c_int = ADBC_OBJECT_DEPTH_ALL;
 pub const ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA: i32 = i32::MIN;
 
 pub const ADBC_INGEST_OPTION_TARGET_TABLE: &str = "adbc.ingest.target_table";
-pub const ADBC_INGEST_OPTION_MODE: &str = "adbc.ingest.mode";
+pub const ADBC_INGEST_OPTION_TARGET_CATALOG: &str = "adbc.ingest.target_catalog";
+pub const ADBC_INGEST_OPTION_TARGET_DB_SCHEMA: &str = "adbc.ingest.target_db_schema";
+pub const ADBC_INGEST_OPTION_TEMPORARY: &str = "adbc.ingest.temporary";
 
+pub const ADBC_INGEST_OPTION_MODE: &str = "adbc.ingest.mode";
 pub const ADBC_INGEST_OPTION_MODE_CREATE: &str = "adbc.ingest.mode.create";
 pub const ADBC_INGEST_OPTION_MODE_APPEND: &str = "adbc.ingest.mode.append";
 pub const ADBC_INGEST_OPTION_MODE_REPLACE: &str = "adbc.ingest.mode.replace";

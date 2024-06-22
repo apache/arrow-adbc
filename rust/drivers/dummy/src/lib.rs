@@ -19,6 +19,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
+use adbc_core::options::Statistics;
 use arrow::array::{
     Array, ArrayRef, BinaryArray, BooleanArray, Float64Array, Int16Array, Int32Array, Int64Array,
     ListArray, MapArray, StringArray, StructArray, UInt32Array, UInt64Array, UnionArray,
@@ -690,9 +691,9 @@ impl Connection for DummyConnection {
             ),
             (
                 Arc::new(Field::new("statistic_key", DataType::Int16, false)),
-                Arc::new(Int16Array::from(vec![
-                    constants::ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY,
-                ])) as ArrayRef,
+                Arc::new(Int16Array::from(vec![Into::<i16>::into(
+                    Statistics::AverageByteWidth,
+                )])) as ArrayRef,
             ),
             (
                 Arc::new(Field::new(
