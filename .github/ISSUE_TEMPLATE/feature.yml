@@ -15,8 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: Feature Request
-description: Ask for a feature or improvement.
+name: Enhancement/Feature Request
+description: Suggest something that could be improved, or a new feature.
 labels: ["Type: enhancement"]
 body:
   - type: textarea
