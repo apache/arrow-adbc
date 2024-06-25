@@ -17,7 +17,7 @@
 
 # RECIPE STARTS HERE
 
-#: ADBC is integrated into Pandas_, a popular dataframe library.  Pandas can
+#: ADBC is integrated into pandas_, a popular dataframe library.  Pandas can
 #: use ADBC to read the results of SQL queries against PostgreSQL and other
 #: databases.  Compared to using SQLAlchemy or other options, using ADBC with
 #: Pandas can have better performance, such as by avoiding excess conversions
