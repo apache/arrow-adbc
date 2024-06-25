@@ -206,6 +206,35 @@ jobs:
         run: |
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
+  drivers-test-meson:
+    name: "Meson - C/C++ (Conda/${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-latest"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libpq-dev ninja-build
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install Meson via Python
+        run: pip install meson
+      - name: Build
+        run: |
+          meson setup -Dpostgresql=true -Dsqlite=true -Ddriver_manager=true c c/build
+          meson compile -C c/build
+      - name: Test
+        run: |
+          meson test -C c/build
+
   clang-tidy-conda:
     name: "clang-tidy"
     runs-on: ubuntu-latest
