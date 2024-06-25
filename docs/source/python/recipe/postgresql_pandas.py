@@ -27,7 +27,7 @@
 
 import os
 
-import pandas
+import pandas as pd
 
 import adbc_driver_postgresql.dbapi
 
