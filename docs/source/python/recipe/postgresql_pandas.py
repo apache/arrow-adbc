@@ -20,10 +20,10 @@
 #: ADBC is integrated into pandas_, a popular dataframe library.  Pandas can
 #: use ADBC to exchange data with PostgreSQL and other
 #: databases.  Compared to using SQLAlchemy or other options, using ADBC with
-#: Pandas can have better performance, such as by avoiding excess conversions
+#: pandas can have better performance, such as by avoiding excess conversions
 #: to and from Python objects.
 #:
-#: .. _Pandas: https://pandas.pydata.org/
+#: .. pandas: https://pandas.pydata.org/
 
 import os
 
@@ -34,7 +34,7 @@ import adbc_driver_postgresql.dbapi
 uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
 conn = adbc_driver_postgresql.dbapi.connect(uri)
 
-#: We'll use :external:py:func:`pandas.DataFrame.to_sql` to create a sample
+#: We'll use :external:py:func:`pd.DataFrame.to_sql` to create a sample
 #: table.
 
 data = pd.DataFrame(
@@ -47,14 +47,14 @@ data.to_sql("example", conn, if_exists="replace")
 conn.commit()
 
 #: After creating the table, we can pass an ADBC connection and a SQL query to
-#: :external:py:func:`pandas.read_sql` to get the result set as a Pandas
+#: :external:py:func:`pandas.read_sql` to get the result set as a pandas
 #: DataFrame.
 
-df = pandas.read_sql("SELECT * FROM example WHERE ints > 1", conn)
+df = pd.read_sql("SELECT * FROM example WHERE ints > 1", conn)
 
 assert len(df) == 2
 
 conn.close()
 
-#: Compared to the ADBC interface, Pandas offers a more convenient and higher
-#: level API, especially for those already using Pandas.
+#: Compared to the ADBC interface, pandas offers a more convenient and higher
+#: level API, especially for those already using pandas.
