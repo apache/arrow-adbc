@@ -18,12 +18,12 @@
 # RECIPE STARTS HERE
 
 #: ADBC is integrated into pandas_, a popular dataframe library.  Pandas can
-#: use ADBC to exchange data with PostgreSQL and other
-#: databases.  Compared to using SQLAlchemy or other options, using ADBC with
-#: pandas can have better performance, such as by avoiding excess conversions
-#: to and from Python objects.
+#: use ADBC to exchange data with PostgreSQL and other databases.  Compared to
+#: using SQLAlchemy or other options, using ADBC with pandas can have better
+#: performance, such as by avoiding excess conversions to and from Python
+#: objects.
 #:
-#: .. pandas: https://pandas.pydata.org/
+#: .. _pandas: https://pandas.pydata.org/
 
 import os
 
@@ -34,8 +34,8 @@ import adbc_driver_postgresql.dbapi
 uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
 conn = adbc_driver_postgresql.dbapi.connect(uri)
 
-#: We'll use :external:py:func:`pd.DataFrame.to_sql` to create a sample
-#: table.
+#: We'll use :external:py:meth:`pd.DataFrame.to_sql <pandas.DataFrame.to_sql>`
+#: to create a sample table.
 
 data = pd.DataFrame(
     {
@@ -47,8 +47,8 @@ data.to_sql("example", conn, if_exists="replace")
 conn.commit()
 
 #: After creating the table, we can pass an ADBC connection and a SQL query to
-#: :external:py:func:`pandas.read_sql` to get the result set as a pandas
-#: DataFrame.
+#: :external:py:func:`pd.read_sql <pandas.read_sql>` to get the result set as a
+#: pandas DataFrame.
 
 df = pd.read_sql("SELECT * FROM example WHERE ints > 1", conn)
 
