@@ -20,6 +20,7 @@
 
 #include "statement.h"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cerrno>
@@ -571,6 +572,12 @@ struct BindStream {
 
   AdbcStatusCode ExecuteCopy(PGconn* conn, int64_t* rows_affected,
                              struct AdbcError* error) {
+    // https://github.com/apache/arrow-adbc/issues/1921: PostgreSQL has a max
+    // size for a single message that we need to respect (1 GiB - 1).  Since
+    // the buffer can be chunked up as much as we want, go for 512 MiB as our
+    // limit.
+    // https://github.com/postgres/postgres/blob/23c5a0e7d43bc925c6001538f04a458933a11fc1/src/common/stringinfo.c#L28
+    constexpr int64_t kMaxCopyBufferSize = 0x20000000;
     if (rows_affected) *rows_affected = 0;
 
     PostgresCopyStreamWriter writer;
@@ -606,10 +613,18 @@ struct BindStream {
       }
 
       ArrowBuffer buffer = writer.WriteBuffer();
-      if (PQputCopyData(conn, reinterpret_cast<char*>(buffer.data), buffer.size_bytes) <=
-          0) {
-        SetError(error, "Error writing tuple field data: %s", PQerrorMessage(conn));
-        return ADBC_STATUS_IO;
+      {
+        auto* data = reinterpret_cast<char*>(buffer.data);
+        int64_t remaining = buffer.size_bytes;
+        while (remaining > 0) {
+          int64_t to_write = std::min<int64_t>(remaining, kMaxCopyBufferSize);
+          if (PQputCopyData(conn, data, to_write) <= 0) {
+            SetError(error, "Error writing tuple field data: %s", PQerrorMessage(conn));
+            return ADBC_STATUS_IO;
+          }
+          remaining -= to_write;
+          data += to_write;
+        }
       }
 
       if (rows_affected) *rows_affected += array->length;
