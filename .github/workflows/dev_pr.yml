@@ -66,4 +66,4 @@ jobs:
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          python .github/workflows/dev_pr/body_check.py $(pwd)/pr_checkout "$PR_BODY"
+          python .github/workflows/dev_pr/body_check.py "$PR_BODY"
