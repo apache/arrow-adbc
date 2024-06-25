@@ -102,7 +102,7 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 		return
 	}
 
-	cErrPtr := C.malloc(C.sizeof_struct_SnowflakeError)
+	cErrPtr := C.calloc(C.sizeof_struct_SnowflakeError, C.size_t(1))
 	cErr := (*C.struct_SnowflakeError)(cErrPtr)
 	cErr.message = C.CString(adbcError.Msg)
 	err.message = cErr.message
@@ -212,7 +212,7 @@ func printLoggingHelp() {
 // handle.
 func createHandle(hndl cgo.Handle) unsafe.Pointer {
 	// uintptr_t* hptr = malloc(sizeof(uintptr_t));
-	hptr := (*C.uintptr_t)(C.malloc(C.sizeof_uintptr_t))
+	hptr := (*C.uintptr_t)(C.calloc(C.sizeof_uintptr_t, C.size_t(1)))
 	// *hptr = (uintptr)hndl;
 	*hptr = C.uintptr_t(uintptr(hndl))
 	return unsafe.Pointer(hptr)
