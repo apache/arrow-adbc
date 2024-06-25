@@ -18,48 +18,43 @@
 # RECIPE STARTS HERE
 
 #: ADBC is integrated into Pandas_, a popular dataframe library.  Pandas can
-#: use ADBC to read tables in PostgreSQL databases.  Compared to using
-#: SQLAlchemy or other options, using ADBC with Pandas can have better
-#: performance, such as by avoiding excess conversions to and from Python
-#: objects.
+#: use ADBC to read the results of SQL queries against PostgreSQL and other
+#: databases.  Compared to using SQLAlchemy or other options, using ADBC with
+#: Pandas can have better performance, such as by avoiding excess conversions
+#: to and from Python objects.
 #:
 #: .. _Pandas: https://pandas.pydata.org/
 
 import os
 
 import pandas
-import pyarrow
 
 import adbc_driver_postgresql.dbapi
 
 uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
 conn = adbc_driver_postgresql.dbapi.connect(uri)
 
-#: For the purposes of testing, we'll first make sure the tables we're about
-#: to use don't exist.
-with conn.cursor() as cur:
-    cur.execute("DROP TABLE IF EXISTS example")
+#: We'll use :external:py:func:`pandas.DataFrame.to_sql` to create a sample
+#: table.
 
-#: Then we'll use ADBC to create a sample table.  (ADBC is not currently
-#: integrated into :external:py:meth:`pandas.DataFrame.to_sql`.)
-
-data = pyarrow.Table.from_pydict(
+data = pandas.DataFrame(
     {
         "ints": [1, 2, None, 4],
         "strs": ["a", "b", "c", "d"],
     }
 )
-
-with conn.cursor() as cur:
-    cur.adbc_ingest("example", data, mode="create")
-
+data.to_sql("example", conn, if_exists="replace")
 conn.commit()
 
-#: After creating the table, we can pass an ADBC connection to
-#: :external:py:func:`pandas.read_sql` to fetch the result.
+#: After creating the table, we can pass an ADBC connection and a SQL query to
+#: :external:py:func:`pandas.read_sql` to get the result set as a Pandas
+#: DataFrame.
 
-df = pandas.read_sql("SELECT * FROM example", conn)
+df = pandas.read_sql("SELECT * FROM example WHERE ints > 1", conn)
 
-assert len(df) == 4
+assert len(df) == 2
 
 conn.close()
+
+#: Compared to the ADBC interface, Pandas offers a more convenient and higher
+#: level API, especially for those already using Pandas.
