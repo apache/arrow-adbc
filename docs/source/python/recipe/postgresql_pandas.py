@@ -37,7 +37,7 @@ conn = adbc_driver_postgresql.dbapi.connect(uri)
 #: We'll use :external:py:func:`pandas.DataFrame.to_sql` to create a sample
 #: table.
 
-data = pandas.DataFrame(
+data = pd.DataFrame(
     {
         "ints": [1, 2, None, 4],
         "strs": ["a", "b", "c", "d"],
