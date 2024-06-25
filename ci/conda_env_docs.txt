@@ -24,7 +24,8 @@ make
 nodejs
 numpydoc
 pytest
-sphinx>=5.0
+# XXX: we're stuck until we can get rid of Breathe
+sphinx=6.*
 sphinx-autobuild
 sphinx-copybutton
 sphinx-design
