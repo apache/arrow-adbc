@@ -117,6 +117,9 @@ AdbcStatusCode FlightSQLStatementExecutePartitions(struct AdbcStatement* stmt,
                                                    struct AdbcPartitions* partitions,
                                                    int64_t* affected,
                                                    struct AdbcError* err);
+AdbcStatusCode FlightSQLStatementExecutePartitionsTrampoline(
+    struct AdbcStatement* stmt, struct ArrowSchema* schema,
+    struct AdbcPartitions* partitions, int64_t* affected, struct AdbcError* err);
 AdbcStatusCode FlightSQLStatementExecuteSchema(struct AdbcStatement*, struct ArrowSchema*,
                                                struct AdbcError*);
 AdbcStatusCode FlightSQLStatementGetOption(struct AdbcStatement*, const char*, char*,
