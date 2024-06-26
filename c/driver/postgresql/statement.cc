@@ -574,10 +574,10 @@ struct BindStream {
                              struct AdbcError* error) {
     // https://github.com/apache/arrow-adbc/issues/1921: PostgreSQL has a max
     // size for a single message that we need to respect (1 GiB - 1).  Since
-    // the buffer can be chunked up as much as we want, go for 512 MiB as our
+    // the buffer can be chunked up as much as we want, go for 16 MiB as our
     // limit.
     // https://github.com/postgres/postgres/blob/23c5a0e7d43bc925c6001538f04a458933a11fc1/src/common/stringinfo.c#L28
-    constexpr int64_t kMaxCopyBufferSize = 0x20000000;
+    constexpr int64_t kMaxCopyBufferSize = 0x1000000;
     if (rows_affected) *rows_affected = 0;
 
     PostgresCopyStreamWriter writer;
