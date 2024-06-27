@@ -15,6 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#if !defined(_WIN32)
+#define _POSIX_C_SOURCE 200112L
+#endif
+
 #include "statement_reader.h"
 
 #include <assert.h>
