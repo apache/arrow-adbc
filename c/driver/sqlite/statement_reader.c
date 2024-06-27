@@ -15,6 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#if !defined(_WIN32)
+#define _POSIX_C_SOURCE 200112L
+#endif
+
 #include "statement_reader.h"
 
 #include <assert.h>
@@ -124,7 +128,7 @@ AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
   Allocates to buf on success. Caller is responsible for freeing.
   On failure sets error and contents of buf are undefined.
 */
-static AdbcStatusCode ArrowDate32ToIsoString(sqlite3* conn, int32_t value, char** buf,
+static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
                                              struct AdbcError* error) {
   int strlen = 10;
 
@@ -139,23 +143,21 @@ static AdbcStatusCode ArrowDate32ToIsoString(sqlite3* conn, int32_t value, char*
   time_t time = value * SECONDS_PER_DAY;
 #endif
 
-  struct tm* tmPtr;
   struct tm broken_down_time;
 
-#if HAVE_GMTIME_R
-  NANOARROW_UNUSED(conn);
-  tmPtr = gmtime_r(&time, &broken_down_time);
-#else
-  sqlite3_mutex_enter(sqlite3_db_mutex(conn));
-  tmPtr = gmtime(&time);  // NOLINT(runtime/threadsafe_fn)
-  if (tmPtr) memcpy(&broken_down_time, tmPtr, sizeof(broken_down_time));
-  sqlite3_mutex_leave(sqlite3_db_mutex(conn));
-#endif
-
-  if (!tmPtr) {
+#if defined(_WIN32)
+  if (gmtime_s(&broken_down_time, &time) != 0) {
     SetError(error, "Could not convert date %" PRId32 " to broken down time", value);
+
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
+#else
+  if (gmtime_r(&time, &broken_down_time) != &broken_down_time) {
+    SetError(error, "Could not convert date %" PRId32 " to broken down time", value);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+#endif
 
   char* tsstr = malloc(strlen + 1);
   if (tsstr == NULL) {
@@ -176,9 +178,8 @@ static AdbcStatusCode ArrowDate32ToIsoString(sqlite3* conn, int32_t value, char*
   Allocates to buf on success. Caller is responsible for freeing.
   On failure sets error and contents of buf are undefined.
 */
-static AdbcStatusCode ArrowTimestampToIsoString(sqlite3* conn, int64_t value,
-                                                enum ArrowTimeUnit unit, char** buf,
-                                                struct AdbcError* error) {
+static AdbcStatusCode ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit unit,
+                                                char** buf, struct AdbcError* error) {
   int scale = 1;
   int strlen = 20;
   int rem = 0;
@@ -220,26 +221,25 @@ static AdbcStatusCode ArrowTimestampToIsoString(sqlite3* conn, int64_t value,
   const time_t time = seconds;
 #endif
 
-  struct tm* tmPtr;
   struct tm broken_down_time;
 
-#if HAVE_GMTIME_R
-  NANOARROW_UNUSED(conn);
-  tmPtr = gmtime_r(&time, &broken_down_time);
-#else
-  sqlite3_mutex_enter(sqlite3_db_mutex(conn));
-  tmPtr = gmtime(&time);  // NOLINT(runtime/threadsafe_fn)
-  if (tmPtr) memcpy(&broken_down_time, tmPtr, sizeof(broken_down_time));
-  sqlite3_mutex_leave(sqlite3_db_mutex(conn));
-#endif
-
-  if (!tmPtr) {
+#if defined(_WIN32)
+  if (gmtime_s(&broken_down_time, &time) != 0) {
     SetError(error,
              "Could not convert timestamp %" PRId64 " with unit %d to broken down time",
              value, unit);
 
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
+#else
+  if (gmtime_r(&time, &broken_down_time) != &broken_down_time) {
+    SetError(error,
+             "Could not convert timestamp %" PRId64 " with unit %d to broken down time",
+             value, unit);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+#endif
 
   char* tsstr = malloc(strlen + 1);
   if (tsstr == NULL) {
@@ -410,7 +410,7 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
             return ADBC_STATUS_INVALID_DATA;
           }
 
-          RAISE_ADBC(ArrowDate32ToIsoString(conn, (int32_t)value, &tsstr, error));
+          RAISE_ADBC(ArrowDate32ToIsoString((int32_t)value, &tsstr, error));
           // SQLITE_TRANSIENT ensures the value is copied during bind
           status =
               sqlite3_bind_text(stmt, col + 1, tsstr, strlen(tsstr), SQLITE_TRANSIENT);
@@ -427,7 +427,7 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
               ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
 
           char* tsstr;
-          RAISE_ADBC(ArrowTimestampToIsoString(conn, value, unit, &tsstr, error));
+          RAISE_ADBC(ArrowTimestampToIsoString(value, unit, &tsstr, error));
 
           // SQLITE_TRANSIENT ensures the value is copied during bind
           status =

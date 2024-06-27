@@ -187,6 +187,10 @@ void StatementTest::TestSqlIngestNumericType(ArrowType type) {
     // values. Likely a bug on our side, but for now, avoid them.
     values.push_back(static_cast<CType>(-1.5));
     values.push_back(static_cast<CType>(1.5));
+  } else if (type == ArrowType::NANOARROW_TYPE_DATE32) {
+    // Windows does not seem to support negative date values
+    values.push_back(static_cast<CType>(0));
+    values.push_back(static_cast<CType>(42));
   } else {
     values.push_back(std::numeric_limits<CType>::lowest());
     values.push_back(std::numeric_limits<CType>::max());
