@@ -148,6 +148,43 @@ for details.
 [cmake-prefix-path]: https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
 [gtest]: https://github.com/google/googletest/
 
+### C/C++ with Meson
+
+While CMake is the officially supported build generator, there is limited,
+experimental support for the Meson build system. Meson offers arguably better
+dependency management than CMake, with a syntax that Python developers may
+find more readable.
+
+To use Meson, start at the c directory and run:
+
+```shell
+$ meson setup build
+```
+
+For a full list of options, ``meson configure`` will bring up a pager
+with sections that you can navigate. The "Project Options" section in particular
+will show you what ADBC has to offer, and each option can be provided using
+the form ``-D_option_:_value_``. For example, to build the a debug version of
+the SQLite3 driver along with tests, you would run:
+
+```shell
+$ meson configure -Dbuildtype=debug -Dsqlite=true -Dtests=true build
+```
+
+With the options set, you can then compile the project. For most dependencies,
+Meson will try to find them on your system and fall back to downloading a copy
+from its WrapDB for you:
+
+```shell
+$ meson compile -C build
+```
+
+To run the test suite, simply run:
+
+```shell
+$ meson test -C build
+```
+
 ### C#/.NET
 
 Make sure [.NET Core is installed](https://dotnet.microsoft.com/en-us/download).

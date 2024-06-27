@@ -26,6 +26,7 @@ package drivermgr
 // #endif
 // #include "adbc.h"
 // #include <stdlib.h>
+// #include <string.h>
 //
 // void releaseErr(struct AdbcError* err) {
 //     if (err->release != NULL) {
@@ -34,11 +35,15 @@ package drivermgr
 //     }
 // }
 // struct ArrowArray* allocArr() {
-//     return (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
+//     struct ArrowArray* array = (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
+//     memset(array, 0, sizeof(struct ArrowArray));
+//     return array;
 // }
 //
 // struct ArrowArrayStream* allocArrStream() {
-//     return (struct ArrowArrayStream*)malloc(sizeof(struct ArrowArrayStream));
+//     struct ArrowArrayStream* stream = (struct ArrowArrayStream*)malloc(sizeof(struct ArrowArrayStream));
+//     memset(stream, 0, sizeof(struct ArrowArrayStream));
+//     return stream;
 // }
 //
 import "C"
@@ -84,7 +89,7 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	}
 
 	var err C.struct_AdbcError
-	db.db = (*C.struct_AdbcDatabase)(unsafe.Pointer(C.malloc(C.sizeof_struct_AdbcDatabase)))
+	db.db = (*C.struct_AdbcDatabase)(unsafe.Pointer(C.calloc(C.sizeof_struct_AdbcDatabase, C.size_t(1))))
 	if code := adbc.Status(C.AdbcDatabaseNew(db.db, &err)); code != adbc.StatusOK {
 		return nil, toAdbcError(code, &err)
 	}

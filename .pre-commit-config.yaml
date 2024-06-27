@@ -40,7 +40,7 @@ repos:
     - id: trailing-whitespace
       exclude: "^r/.*?/_snaps/.*?.md$"
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: "v18.1.5"
+    rev: "v18.1.7"
     hooks:
       - id: clang-format
         types_or: [c, c++]
@@ -86,6 +86,10 @@ repos:
     hooks:
     - id: isort
       types_or: [python]
+  - repo: https://github.com/MarcoGorelli/cython-lint
+    rev: v0.16.2
+    hooks:
+    - id: cython-lint
   - repo: https://github.com/vala-lang/vala-lint
     rev: 8ae2bb65fe66458263d94711ae4ddd978faece00
     hooks:

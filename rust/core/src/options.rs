@@ -138,6 +138,14 @@ pub enum InfoCode {
     VendorVersion,
     /// The database vendor/product Arrow library version (type: utf8).
     VendorArrowVersion,
+    /// Indicates whether SQL queries are supported (type: bool).
+    VendorSql,
+    /// Indicates whether Substrait queries are supported (type: bool).
+    VendorSubstrait,
+    /// The minimum supported Substrait version, or null if Substrait is not supported (type: utf8).
+    VendorSubstraitMinVersion,
+    /// The maximum supported Substrait version, or null if Substrait is not supported (type: utf8).
+    VendorSubstraitMaxVersion,
     /// The driver name (type: utf8).
     DriverName,
     /// The driver version (type: utf8).
@@ -150,7 +158,6 @@ pub enum InfoCode {
     ///
     /// ADBC API revision 1.1.0
     DriverAdbcVersion,
-    // TODO(alexandreyc): add new codes (see https://github.com/apache/arrow-adbc/commit/aa04aadccd319e6fa3abb07154fa8d87b58d5c21)
 }
 
 impl From<&InfoCode> for u32 {
@@ -159,6 +166,14 @@ impl From<&InfoCode> for u32 {
             InfoCode::VendorName => constants::ADBC_INFO_VENDOR_NAME,
             InfoCode::VendorVersion => constants::ADBC_INFO_VENDOR_VERSION,
             InfoCode::VendorArrowVersion => constants::ADBC_INFO_VENDOR_ARROW_VERSION,
+            InfoCode::VendorSql => constants::ADBC_INFO_VENDOR_SQL,
+            InfoCode::VendorSubstrait => constants::ADBC_INFO_VENDOR_SUBSTRAIT,
+            InfoCode::VendorSubstraitMinVersion => {
+                constants::ADBC_INFO_VENDOR_SUBSTRAIT_MIN_VERSION
+            }
+            InfoCode::VendorSubstraitMaxVersion => {
+                constants::ADBC_INFO_VENDOR_SUBSTRAIT_MAX_VERSION
+            }
             InfoCode::DriverName => constants::ADBC_INFO_DRIVER_NAME,
             InfoCode::DriverVersion => constants::ADBC_INFO_DRIVER_VERSION,
             InfoCode::DriverArrowVersion => constants::ADBC_INFO_DRIVER_ARROW_VERSION,
@@ -175,6 +190,14 @@ impl TryFrom<u32> for InfoCode {
             constants::ADBC_INFO_VENDOR_NAME => Ok(InfoCode::VendorName),
             constants::ADBC_INFO_VENDOR_VERSION => Ok(InfoCode::VendorVersion),
             constants::ADBC_INFO_VENDOR_ARROW_VERSION => Ok(InfoCode::VendorArrowVersion),
+            constants::ADBC_INFO_VENDOR_SQL => Ok(InfoCode::VendorSql),
+            constants::ADBC_INFO_VENDOR_SUBSTRAIT => Ok(InfoCode::VendorSubstrait),
+            constants::ADBC_INFO_VENDOR_SUBSTRAIT_MIN_VERSION => {
+                Ok(InfoCode::VendorSubstraitMinVersion)
+            }
+            constants::ADBC_INFO_VENDOR_SUBSTRAIT_MAX_VERSION => {
+                Ok(InfoCode::VendorSubstraitMaxVersion)
+            }
             constants::ADBC_INFO_DRIVER_NAME => Ok(InfoCode::DriverName),
             constants::ADBC_INFO_DRIVER_VERSION => Ok(InfoCode::DriverVersion),
             constants::ADBC_INFO_DRIVER_ARROW_VERSION => Ok(InfoCode::DriverArrowVersion),
@@ -336,6 +359,12 @@ pub enum OptionStatement {
     IngestMode,
     /// The name of the target table for a bulk insert.
     TargetTable,
+    /// The catalog of the table for bulk insert.
+    TargetCatalog,
+    /// The schema of the table for bulk insert.
+    TargetDbSchema,
+    /// Use a temporary table for ingestion.
+    Temporary,
     /// Whether query execution is nonblocking. By default, execution is blocking.
     ///
     /// When enabled, [execute_partitions][crate::Statement::execute_partitions]
@@ -384,6 +413,9 @@ impl AsRef<str> for OptionStatement {
         match self {
             Self::IngestMode => constants::ADBC_INGEST_OPTION_MODE,
             Self::TargetTable => constants::ADBC_INGEST_OPTION_TARGET_TABLE,
+            Self::TargetCatalog => constants::ADBC_INGEST_OPTION_TARGET_CATALOG,
+            Self::TargetDbSchema => constants::ADBC_INGEST_OPTION_TARGET_DB_SCHEMA,
+            Self::Temporary => constants::ADBC_INGEST_OPTION_TEMPORARY,
             Self::Incremental => constants::ADBC_STATEMENT_OPTION_INCREMENTAL,
             Self::Progress => constants::ADBC_STATEMENT_OPTION_PROGRESS,
             Self::MaxProgress => constants::ADBC_STATEMENT_OPTION_MAX_PROGRESS,
@@ -397,6 +429,9 @@ impl From<&str> for OptionStatement {
         match value {
             constants::ADBC_INGEST_OPTION_MODE => Self::IngestMode,
             constants::ADBC_INGEST_OPTION_TARGET_TABLE => Self::TargetTable,
+            constants::ADBC_INGEST_OPTION_TARGET_CATALOG => Self::TargetCatalog,
+            constants::ADBC_INGEST_OPTION_TARGET_DB_SCHEMA => Self::TargetDbSchema,
+            constants::ADBC_INGEST_OPTION_TEMPORARY => Self::Temporary,
             constants::ADBC_STATEMENT_OPTION_INCREMENTAL => Self::Incremental,
             constants::ADBC_STATEMENT_OPTION_PROGRESS => Self::Progress,
             constants::ADBC_STATEMENT_OPTION_MAX_PROGRESS => Self::MaxProgress,
@@ -521,5 +556,90 @@ impl From<IngestMode> for String {
 impl From<IngestMode> for OptionValue {
     fn from(value: IngestMode) -> Self {
         Self::String(value.into())
+    }
+}
+
+/// Statistics about the data distribution.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub enum Statistics {
+    /// The average byte width statistic. The average size in bytes of a row in
+    /// the column. Value type is `float64`. For example, this is roughly the
+    /// average length of a string for a string column.
+    AverageByteWidth,
+    /// The distinct value count (NDV) statistic. The number of distinct values
+    /// in the column. Value type is `int64` (when not approximate) or `float64`
+    /// (when approximate).
+    DistinctCount,
+    /// The max byte width statistic. The maximum size in bytes of a row in the
+    /// column. Value type is `int64` (when not approximate) or `float64` (when approximate).
+    /// For example, this is the maximum length of a string for a string column.
+    MaxByteWidth,
+    /// The max value statistic. Value type is column-dependent.
+    MaxValue,
+    /// The min value statistic. Value type is column-dependent.
+    MinValue,
+    /// The null count statistic. The number of values that are null in the
+    /// column. Value type is `int64` (when not approximate) or `float64` (when approximate).
+    NullCount,
+    /// The row count statistic. The number of rows in the column or table.
+    /// Value type is `int64` (when not approximate) or `float64` (when approximate).
+    RowCount,
+    /// Driver-specific statistics.
+    Other { key: i16, name: String },
+}
+
+impl TryFrom<i16> for Statistics {
+    type Error = Error;
+    fn try_from(value: i16) -> Result<Self, Self::Error> {
+        match value {
+            constants::ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY => Ok(Self::AverageByteWidth),
+            constants::ADBC_STATISTIC_DISTINCT_COUNT_KEY => Ok(Self::DistinctCount),
+            constants::ADBC_STATISTIC_MAX_BYTE_WIDTH_KEY => Ok(Self::MaxByteWidth),
+            constants::ADBC_STATISTIC_MAX_VALUE_KEY => Ok(Self::MaxValue),
+            constants::ADBC_STATISTIC_MIN_VALUE_KEY => Ok(Self::MinValue),
+            constants::ADBC_STATISTIC_NULL_COUNT_KEY => Ok(Self::NullCount),
+            constants::ADBC_STATISTIC_ROW_COUNT_KEY => Ok(Self::RowCount),
+            _ => Err(Error::with_message_and_status(
+                format!("Unknown standard statistic key: {}", value),
+                Status::InvalidArguments,
+            )),
+        }
+    }
+}
+
+impl From<Statistics> for i16 {
+    fn from(value: Statistics) -> Self {
+        match value {
+            Statistics::AverageByteWidth => constants::ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY,
+            Statistics::DistinctCount => constants::ADBC_STATISTIC_DISTINCT_COUNT_KEY,
+            Statistics::MaxByteWidth => constants::ADBC_STATISTIC_MAX_BYTE_WIDTH_KEY,
+            Statistics::MaxValue => constants::ADBC_STATISTIC_MAX_VALUE_KEY,
+            Statistics::MinValue => constants::ADBC_STATISTIC_MIN_VALUE_KEY,
+            Statistics::NullCount => constants::ADBC_STATISTIC_NULL_COUNT_KEY,
+            Statistics::RowCount => constants::ADBC_STATISTIC_ROW_COUNT_KEY,
+            Statistics::Other { key, name: _ } => key,
+        }
+    }
+}
+
+impl AsRef<str> for Statistics {
+    fn as_ref(&self) -> &str {
+        match self {
+            Statistics::AverageByteWidth => constants::ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_NAME,
+            Statistics::DistinctCount => constants::ADBC_STATISTIC_DISTINCT_COUNT_NAME,
+            Statistics::MaxByteWidth => constants::ADBC_STATISTIC_MAX_BYTE_WIDTH_NAME,
+            Statistics::MaxValue => constants::ADBC_STATISTIC_MAX_VALUE_NAME,
+            Statistics::MinValue => constants::ADBC_STATISTIC_MIN_VALUE_NAME,
+            Statistics::NullCount => constants::ADBC_STATISTIC_NULL_COUNT_NAME,
+            Statistics::RowCount => constants::ADBC_STATISTIC_ROW_COUNT_NAME,
+            Statistics::Other { key: _, name } => name,
+        }
+    }
+}
+
+impl std::fmt::Display for Statistics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref())
     }
 }

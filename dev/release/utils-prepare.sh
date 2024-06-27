@@ -64,6 +64,10 @@ update_versions() {
   sed -i.bak -E "s/set\(ADBC_VERSION \".+\"\)/set(ADBC_VERSION \"${c_version}\")/g" cmake_modules/AdbcVersion.cmake
   rm cmake_modules/AdbcVersion.cmake.bak
   git add cmake_modules/AdbcVersion.cmake
+
+  sed -i.bak -E "s/version: '.+',/version: '${c_version}',/g" meson.build
+  rm meson.build.bak
+  git add meson.build
   popd
 
   pushd "${ADBC_DIR}/ci/conda/"

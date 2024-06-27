@@ -121,3 +121,7 @@ target/
 /ci/linux-packages/yum/merged/
 /ci/linux-packages/yum/repositories/
 /ci/linux-packages/yum/tmp/
+
+# Meson subproject support
+/c/subprojects/*
+!/c/subprojects/*.wrap

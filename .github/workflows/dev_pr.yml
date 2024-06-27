@@ -23,6 +23,8 @@ on:
       - opened
       - edited
       - synchronize
+      - ready_for_review
+      - review_requested
 
 permissions:
   contents: read
@@ -64,4 +66,4 @@ jobs:
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          [[ "${PR_BODY}" =~ @[a-zA-Z0-9]+ ]] && exit 1 || true
+          python .github/workflows/dev_pr/body_check.py "$PR_BODY"
