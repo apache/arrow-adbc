@@ -1797,7 +1797,7 @@ func FlightSQLStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C
 	for _, p := range part.PartitionIDs {
 		totalLen += len(p)
 	}
-	partitions.private_data = C.malloc(C.size_t(totalLen))
+	partitions.private_data = C.calloc(C.size_t(totalLen), C.size_t(1))
 	dst := fromCArr[byte]((*byte)(partitions.private_data), totalLen)
 
 	partIDs := fromCArr[*C.cuint8_t](partitions.partitions, int(partitions.num_partitions))

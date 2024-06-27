@@ -117,6 +117,9 @@ AdbcStatusCode SnowflakeStatementExecutePartitions(struct AdbcStatement* stmt,
                                                    struct AdbcPartitions* partitions,
                                                    int64_t* affected,
                                                    struct AdbcError* err);
+AdbcStatusCode SnowflakeStatementExecutePartitionsTrampoline(
+    struct AdbcStatement* stmt, struct ArrowSchema* schema,
+    struct AdbcPartitions* partitions, int64_t* affected, struct AdbcError* err);
 AdbcStatusCode SnowflakeStatementExecuteSchema(struct AdbcStatement*, struct ArrowSchema*,
                                                struct AdbcError*);
 AdbcStatusCode SnowflakeStatementGetOption(struct AdbcStatement*, const char*, char*,
