@@ -70,6 +70,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private readonly Lazy<string> _productVersion;
 
         internal static TSparkGetDirectResults sparkGetDirectResults = new TSparkGetDirectResults(1000);
+        HttpClient _httpClient;
+
+        public String TraceId;
 
         internal static readonly Dictionary<string, string> timestampConfig = new Dictionary<string, string>
         {
@@ -256,6 +259,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             : base(properties)
         {
             _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
+            _httpClient = new HttpClient();
+            TraceId = string.Empty;
         }
 
         protected string ProductVersion => _productVersion.Value;
@@ -278,21 +283,51 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             else
                 token = properties[SparkParameters.Password];
 
-            HttpClient httpClient = new HttpClient();
-            httpClient.BaseAddress = new UriBuilder(Uri.UriSchemeHttps, hostName, -1, path).Uri;
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
-            httpClient.DefaultRequestHeaders.AcceptEncoding.Clear();
-            httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
-            httpClient.DefaultRequestHeaders.ExpectContinue = false;
-
             TConfiguration config = new TConfiguration();
-
-            ThriftHttpTransport transport = new ThriftHttpTransport(httpClient, config);
+            _httpClient.BaseAddress = new UriBuilder(Uri.UriSchemeHttps, hostName, -1, path).Uri;
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("SimbaSparkJDBCDriver/2.06.15 Python/PyHive");
+            _httpClient.DefaultRequestHeaders.AcceptEncoding.Clear();
+            _httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
+            _httpClient.DefaultRequestHeaders.ExpectContinue = false;
+            _httpClient.DefaultRequestHeaders.Add("traceparent", Generate());
+            ThriftHttpTransport transport = new ThriftHttpTransport(_httpClient, config);
             // can switch to the one below if want to use the experimental one with IPeekableTransport
             // ThriftHttpTransport transport = new ThriftHttpTransport(httpClient, config);
             await transport.OpenAsync(CancellationToken.None);
             return new TBinaryProtocol(transport);
+        }
+
+        private static readonly char[] Characters = "0123456789abcdef".ToCharArray();
+        private static readonly Random Random = new Random();
+
+        public string Generate()
+        {
+            StringBuilder result = new StringBuilder("00-");
+
+            for (int i = 0; i < 32; i++)
+            {
+                result.Append(Characters[Random.Next(Characters.Length)]);
+            }
+
+            result.Append('-');
+
+            for (int i = 0; i < 16; i++)
+            {
+                result.Append(Characters[Random.Next(Characters.Length)]);
+            }
+
+            result.Append("-01");
+
+            TraceId = result.ToString();
+
+            return TraceId;
+        }
+
+        public void ResetTraceId()
+        {
+            _httpClient.DefaultRequestHeaders.Remove("traceparent");
+            _httpClient.DefaultRequestHeaders.Add("traceparent", Generate());
         }
 
         protected override TOpenSessionReq CreateSessionRequest()

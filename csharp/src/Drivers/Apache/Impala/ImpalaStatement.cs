@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,7 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             throw new NotSupportedException();
         }
 
-        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema);
+        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema, TFetchResultsResp? firstBatch) => new HiveServer2Reader(statement, schema);
 
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.

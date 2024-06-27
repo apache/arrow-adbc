@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -28,6 +29,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const int BatchSizeDefault = 50000;
         protected internal HiveServer2Connection connection;
         protected internal TOperationHandle? operationHandle;
+        protected internal TExecuteStatementResp _statementResp;
 
         protected HiveServer2Statement(HiveServer2Connection connection)
         {
@@ -38,7 +40,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
         }
 
-        protected abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
+        protected abstract IArrowArrayStream NewReader<T>(T statement, Schema schema, TFetchResultsResp? firstResult) where T : HiveServer2Statement;
 
         public override QueryResult ExecuteQuery() => ExecuteQueryAsync().AsTask().Result;
 
@@ -46,12 +48,34 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
-            await ExecuteStatementAsync();
-            await PollForResponseAsync();
-            Schema schema = await GetSchemaAsync();
+            var resp =  await ExecuteStatementAsync();
 
-            // TODO: Ensure this is set dynamically based on server capabilities
-            return new QueryResult(-1, NewReader(this, schema));
+            if (resp.OperationHandle.HasResultSet)
+            {
+                if(resp.DirectResults == null)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                if(resp.DirectResults.ResultSetMetadata == null)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                Schema schema = SchemaParser.GetArrowSchema(resp.DirectResults.ResultSetMetadata.Schema);
+                var firstBatch = resp.DirectResults.ResultSet;
+
+                return new QueryResult(-1, NewReader(this, schema, firstBatch));
+
+            }
+            else
+            {
+                await PollForResponseAsync();
+                Schema schema = await GetSchemaAsync();
+
+                // TODO: Ensure this is set dynamically based on server capabilities
+                return new QueryResult(-1, NewReader(this, schema, null));
+            }
         }
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
@@ -106,10 +130,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        protected async Task ExecuteStatementAsync()
+        protected async Task<TExecuteStatementResp> ExecuteStatementAsync()
         {
             TExecuteStatementReq executeRequest = new TExecuteStatementReq(this.connection.sessionHandle, this.SqlQuery);
             SetStatementProperties(executeRequest);
+            executeRequest.GetDirectResults = new TSparkGetDirectResults(BatchSizeDefault);
             TExecuteStatementResp executeResponse = await this.connection.Client.ExecuteStatement(executeRequest);
             if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
@@ -118,11 +143,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     .SetNativeError(executeResponse.Status.ErrorCode);
             }
             this.operationHandle = executeResponse.OperationHandle;
+
+            return executeResponse;
         }
 
         protected async Task PollForResponseAsync()
         {
             TGetOperationStatusResp? statusResponse = null;
+
             do
             {
                 if (statusResponse != null) { await Task.Delay(PollTimeMilliseconds); }
