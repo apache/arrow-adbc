@@ -61,9 +61,7 @@ main() {
        --skip-existing
 
     header "Adding release notes"
-    # XXX: commitizen likes to include the entire history even if we
-    # give it a tag, so we have to give it both tags explicitly
-    local -r release_notes=$(cz ch --dry-run --unreleased-version "ADBC Libraries ${RELEASE}" --start-rev apache-arrow-adbc-${PREVIOUS_RELEASE})
+    local -r release_notes=$(changelog)
     echo "${release_notes}"
     gh release edit \
        "${tag}" \
