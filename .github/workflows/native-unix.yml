@@ -229,7 +229,7 @@ jobs:
         run: pip install meson
       - name: Build
         run: |
-          meson setup -Dpostgresql=true -Dsqlite=true -Ddriver_manager=true c c/build
+          meson setup -Dtests=true -Dpostgresql=true -Dsqlite=true -Ddriver_manager=true c c/build
           meson compile -C c/build
       - name: Test
         run: |
