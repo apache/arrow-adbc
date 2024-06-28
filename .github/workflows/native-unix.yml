@@ -233,7 +233,7 @@ jobs:
           meson compile -C c/build
       - name: Test
         run: |
-          meson test -C c/build
+          meson test -C c/build --print-errorlogs
 
   clang-tidy-conda:
     name: "clang-tidy"
