@@ -55,8 +55,7 @@ main() {
     # it by hand.
     (
         echo ;
-        # Strip trailing blank line
-        printf '%s\n' "$(cz ch --dry-run --unreleased-version "ADBC Libraries ${RELEASE}" --start-rev apache-arrow-adbc-${PREVIOUS_RELEASE})"
+        changelog
     ) >> ${SOURCE_DIR}/../../CHANGELOG.md
     git add ${SOURCE_DIR}/../../CHANGELOG.md
     git commit -m "chore: update CHANGELOG.md for ${RELEASE}"

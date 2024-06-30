@@ -28,11 +28,30 @@ if [[ ! -f "${SOURCE_DIR}/.env" ]]; then
 fi
 
 source "${SOURCE_DIR}/.env"
+source "${SOURCE_DIR}/versions.env"
 
 header() {
     echo "============================================================"
     echo "${1}"
     echo "============================================================"
+}
+
+changelog() {
+    # Strip trailing blank line
+    local -r changelog=$(printf '%s\n' "$(cz ch --dry-run --unreleased-version "ADBC Libraries ${RELEASE}" --start-rev apache-arrow-adbc-${PREVIOUS_RELEASE})")
+    # Split off header
+    local -r header=$(echo "${changelog}" | head -n 1)
+    local -r trailer=$(echo "${changelog}" | tail -n+2)
+    echo "${header}"
+    echo
+    echo "### Versions"
+    echo
+    echo "- C/C++/GLib/Go/Python/Ruby: ${VERSION_NATIVE}"
+    echo "- C#: ${VERSION_CSHARP}"
+    echo "- Java: ${VERSION_JAVA}"
+    echo "- R: ${VERSION_R}"
+    echo "- Rust: ${VERSION_RUST}"
+    echo "${trailer}"
 }
 
 header "Config"
