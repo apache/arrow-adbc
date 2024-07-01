@@ -66,7 +66,7 @@ update_versions() {
   git add cmake_modules/AdbcVersion.cmake
 
   # Avoid changing meson_version
-  sed -i.bak -E "s/\bversion: '.+',/version: '${c_version}',/g" meson.build
+  sed -i.bak -E "s/ version: '.+',/ version: '${c_version}',/g" meson.build
   rm meson.build.bak
   git add meson.build
   popd
