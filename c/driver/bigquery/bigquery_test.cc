@@ -172,7 +172,7 @@ class BigQueryQuirks : public adbc_validation::DriverQuirks {
   const char* auth_value_;
   const char* catalog_name_;
   bool skip_{false};
-  std::string schema_{"ADBC_TESTING"};
+  std::string schema_;
 };
 
 class BigQueryTest : public ::testing::Test, public adbc_validation::DatabaseTest {
@@ -307,15 +307,14 @@ class BigQueryStatementTest : public ::testing::Test,
     ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
     ASSERT_THAT(AdbcConnectionInit(&connection, &db, &error), IsOkStatus(&error));
 
-    std::string query = "DROP SCHEMA `ADBC_TESTING." + quirks_.schema_ + "`";
+    std::string query = "DROP SCHEMA `" + std::string(quirks_.catalog_name_) + "." +
+                        quirks_.schema_ + "`";
 
     ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
                 IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
                 IsOkStatus(&error));
-
-    quirks_.schema_ = "ADBC_TESTING";
 
     ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
     ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));

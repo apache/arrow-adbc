@@ -20,7 +20,7 @@
 # ADBC Snowflake Driver
 
 This driver provides an interface to
-[Snowflake](https://www.snowflake.com/) using ADBC.
+[BigQuery](https://cloud.google.com/bigquery) using ADBC.
 
 ## Building
 
@@ -28,4 +28,38 @@ See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
 
 ## Testing
 
-Snowflake credentials are required.
+BigQuery credentials and project ID are required.
+
+### Environment Variables
+#### Project ID
+Set `BIGQUERY_PROJECT_ID` to the project ID.
+
+#### Authentication
+Set either one following environment variables for authentication:
+
+##### BIGQUERY_JSON_CREDENTIAL_FILE
+Path to the JSON credential file. This file can be generated using `gcloud`:
+
+```sh
+gcloud auth application-default login
+```
+
+And the default location of the generated JSON credential file is located at
+
+```sh
+$HOME/.config/gcloud/application_default_credentials.json
+```
+
+##### BIGQUERY_JSON_CREDENTIAL_STRING
+Store the whole JSON credential content, something like
+
+```json
+{
+  "account": "",
+  "client_id": "123456789012-1234567890abcdefabcdefabcdefabcd.apps.googleusercontent.com",
+  "client_secret": "d-SECRETSECRETSECRETSECR",
+  "refresh_token": "1//1234567890abcdefabcdefabcdef-abcdefabcd-abcdefabcdefabcdefabcdefab-abcdefabcdefabcdefabcdefabcdef-ab",
+  "type": "authorized_user",
+  "universe_domain": "googleapis.com"
+}
+```

@@ -32,12 +32,11 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/oauth2"
-
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v17/arrow"
+	"golang.org/x/oauth2"
 	"google.golang.org/api/option"
 )
 
@@ -391,12 +390,13 @@ var (
 
 	precisionScaleRegex = regexp.MustCompile(`^(?:BIG)?NUMERIC\((?P<precision>\d+)(?:,(?P<scale>\d+))?\)$`)
 	simpleDataType      = map[string]arrow.DataType{
-		"BOOL":      arrow.FixedWidthTypes.Boolean,
-		"BOOLEAN":   arrow.FixedWidthTypes.Boolean,
-		"FLOAT":     arrow.PrimitiveTypes.Float64,
-		"FLOAT64":   arrow.PrimitiveTypes.Float64,
-		"BYTES":     arrow.BinaryTypes.Binary,
-		"STRING":    arrow.BinaryTypes.String,
+		"BOOL":    arrow.FixedWidthTypes.Boolean,
+		"BOOLEAN": arrow.FixedWidthTypes.Boolean,
+		"FLOAT":   arrow.PrimitiveTypes.Float64,
+		"FLOAT64": arrow.PrimitiveTypes.Float64,
+		"BYTES":   arrow.BinaryTypes.Binary,
+		"STRING":  arrow.BinaryTypes.String,
+		// TODO: potentially we should consider using GeoArrow for this
 		"GEOGRAPHY": arrow.BinaryTypes.String,
 		"JSON":      arrow.BinaryTypes.String,
 		"DATE":      arrow.FixedWidthTypes.Date32,
