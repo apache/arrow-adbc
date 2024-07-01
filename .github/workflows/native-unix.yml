@@ -220,21 +220,16 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y libpq-dev ninja-build
+          sudo apt install -y ninja-build
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       - name: Install Meson via Python
         run: pip install meson
-      - name: Configure Env Vars
-        shell: bash -l {0}
-        run: |
-          pip install python-dotenv[cli]
-          python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
       - name: Build
         run: |
-          meson setup -Dtests=true -Dpostgresql=true -Dsqlite=true -Ddriver_manager=true c c/build
+          meson setup -Dtests=true -Dsqlite=true -Ddriver_manager=true -Db_sanitize=address,undefined c c/build
           meson compile -C c/build
       - name: Test
         run: |
