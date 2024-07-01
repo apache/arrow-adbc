@@ -303,7 +303,7 @@ jobs:
           docker compose down
 
   postgresql-meson:
-    name: "PostgreSQL Integration Tests with Meson build system"
+    name: "PostgreSQL Integration Tests - Meson"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
