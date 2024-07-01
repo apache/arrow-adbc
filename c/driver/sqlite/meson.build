@@ -42,10 +42,8 @@ if get_option('tests')
         link_with: [
             adbc_common_lib,
             adbc_sqlite3_driver_lib,
-            adbc_validation_lib,
-            adbc_validation_util_lib
         ],
-        dependencies: [nanoarrow_dep, gtest_main_dep, gmock_dep, sqlite3_dep],
+        dependencies: [sqlite3_dep, adbc_validation_dep],
         )
     test('adbc-driver-sqlite', exc)
 endif
