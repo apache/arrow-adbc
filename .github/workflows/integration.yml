@@ -191,6 +191,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libpq-dev ninja-build
       - name: Get required Go version
         run: |
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
@@ -449,6 +453,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libpq-dev ninja-build
       - name: Get required Go version
         run: |
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
