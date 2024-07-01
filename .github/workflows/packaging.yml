@@ -559,13 +559,15 @@ jobs:
       fail-fast: false
       matrix:
         arch: ["amd64", "arm64v8"]
-        manylinux_version: ["2014"]
         is_pr:
           - ${{ startsWith(github.ref, 'refs/pull/') }}
         exclude:
           # Don't run arm64v8 build on PRs since the build is excessively slow
           - arch: arm64v8
             is_pr: true
+        include:
+          - {arch: amd64, platform: linux/amd64}
+          - {arch: arm64v8, platform: linux/arm64}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -596,7 +598,6 @@ jobs:
       - name: Build wheel
         env:
           ARCH: ${{ matrix.arch }}
-          MANYLINUX: ${{ matrix.manylinux_version }}
         run: |
           pushd adbc
           docker compose run \
@@ -619,7 +620,7 @@ jobs:
       - name: Test wheel 3.8
         env:
           ARCH: ${{ matrix.arch }}
-          MANYLINUX: ${{ matrix.manylinux_version }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
           pushd adbc
           env PYTHON=3.8 docker compose run python-wheel-manylinux-test
@@ -627,7 +628,7 @@ jobs:
       - name: Test wheel 3.9
         env:
           ARCH: ${{ matrix.arch }}
-          MANYLINUX: ${{ matrix.manylinux_version }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
           pushd adbc
           env PYTHON=3.9 docker compose run python-wheel-manylinux-test
@@ -635,7 +636,7 @@ jobs:
       - name: Test wheel 3.10
         env:
           ARCH: ${{ matrix.arch }}
-          MANYLINUX: ${{ matrix.manylinux_version }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
           pushd adbc
           env PYTHON=3.10 docker compose run python-wheel-manylinux-test
@@ -643,7 +644,7 @@ jobs:
       - name: Test wheel 3.11
         env:
           ARCH: ${{ matrix.arch }}
-          MANYLINUX: ${{ matrix.manylinux_version }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
           pushd adbc
           env PYTHON=3.11 docker compose run python-wheel-manylinux-test
@@ -651,7 +652,7 @@ jobs:
       - name: Test wheel 3.12
         env:
           ARCH: ${{ matrix.arch }}
-          MANYLINUX: ${{ matrix.manylinux_version }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
           pushd adbc
           env PYTHON=3.12 docker compose run python-wheel-manylinux-test

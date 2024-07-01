@@ -116,6 +116,7 @@ services:
 
   python-wheel-manylinux-test:
     image: ${ARCH}/python:${PYTHON}-slim
+    platform: ${PLATFORM}
     volumes:
       - .:/adbc:delegated
     command: /adbc/ci/scripts/python_wheel_unix_test.sh /adbc
