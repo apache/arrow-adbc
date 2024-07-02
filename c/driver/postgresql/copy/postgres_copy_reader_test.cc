@@ -314,6 +314,41 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadDate) {
   ASSERT_EQ(data_buffer[1], 47482);
 }
 
+TEST(PostgresCopyUtilsTest, PostgresCopyReadTime) {
+  ArrowBufferView data;
+  data.data.as_uint8 = kTestPgCopyTime;
+  data.size_bytes = sizeof(kTestPgCopyTime);
+
+  auto col_type = PostgresType(PostgresTypeId::kTime);
+  PostgresType input_type(PostgresTypeId::kRecord);
+  input_type.AppendChild("col", col_type);
+
+  PostgresCopyStreamTester tester;
+  ASSERT_EQ(tester.Init(input_type), NANOARROW_OK);
+  ASSERT_EQ(tester.ReadAll(&data), ENODATA);
+  ASSERT_EQ(data.data.as_uint8 - kTestPgCopyTime, sizeof(kTestPgCopyTime));
+  ASSERT_EQ(data.size_bytes, 0);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 4);
+  ASSERT_EQ(array->n_children, 1);
+
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
+  auto data_buffer = reinterpret_cast<const int64_t*>(array->children[0]->buffers[1]);
+  ASSERT_NE(validity, nullptr);
+  ASSERT_NE(data_buffer, nullptr);
+
+  ASSERT_TRUE(ArrowBitGet(validity, 0));
+  ASSERT_TRUE(ArrowBitGet(validity, 1));
+  ASSERT_TRUE(ArrowBitGet(validity, 2));
+  ASSERT_FALSE(ArrowBitGet(validity, 3));
+
+  ASSERT_EQ(data_buffer[0], 0);
+  ASSERT_EQ(data_buffer[1], 86399000000);
+  ASSERT_EQ(data_buffer[2], 49376123456);
+}
+
 TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
   ArrowBufferView data;
   data.data.as_uint8 = kTestPgCopyNumeric;
