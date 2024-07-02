@@ -58,10 +58,8 @@ if get_option('tests')
             link_with: [
                 adbc_common_lib,
                 adbc_postgres_driver_lib,
-                adbc_validation_lib,
-                adbc_validation_util_lib,
             ],
-            dependencies: [nanoarrow_dep, gtest_main_dep, gmock_dep, libpq_dep],
+            dependencies: [libpq_dep, adbc_validation_dep],
         )
         test('adbc-' + name, exc)
     endforeach
