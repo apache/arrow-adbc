@@ -120,6 +120,9 @@ AdbcStatusCode BigQueryStatementExecutePartitions(struct AdbcStatement* stmt,
                                                   struct AdbcPartitions* partitions,
                                                   int64_t* affected,
                                                   struct AdbcError* err);
+AdbcStatusCode BigQueryStatementExecutePartitionsTrampoline(
+    struct AdbcStatement* stmt, struct ArrowSchema* schema,
+    struct AdbcPartitions* partitions, int64_t* affected, struct AdbcError* err);
 AdbcStatusCode BigQueryStatementExecuteSchema(struct AdbcStatement*, struct ArrowSchema*,
                                               struct AdbcError*);
 AdbcStatusCode BigQueryStatementGetOption(struct AdbcStatement*, const char*, char*,

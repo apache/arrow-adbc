@@ -29,7 +29,6 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -387,23 +386,6 @@ var (
 	// unless one of them has case-sensitivity turned off.
 	// Dataset names cannot contain spaces or special characters such as -, &, @, or %.
 	datasetRegex = regexp.MustCompile("^[a-zA-Z0-9_-]")
-
-	precisionScaleRegex = regexp.MustCompile(`^(?:BIG)?NUMERIC\((?P<precision>\d+)(?:,(?P<scale>\d+))?\)$`)
-	simpleDataType      = map[string]arrow.DataType{
-		"BOOL":    arrow.FixedWidthTypes.Boolean,
-		"BOOLEAN": arrow.FixedWidthTypes.Boolean,
-		"FLOAT":   arrow.PrimitiveTypes.Float64,
-		"FLOAT64": arrow.PrimitiveTypes.Float64,
-		"BYTES":   arrow.BinaryTypes.Binary,
-		"STRING":  arrow.BinaryTypes.String,
-		// TODO: potentially we should consider using GeoArrow for this
-		"GEOGRAPHY": arrow.BinaryTypes.String,
-		"JSON":      arrow.BinaryTypes.String,
-		"DATE":      arrow.FixedWidthTypes.Date32,
-		"DATETIME":  &arrow.TimestampType{Unit: arrow.Microsecond},
-		"TIMESTAMP": &arrow.TimestampType{Unit: arrow.Microsecond},
-		"TIME":      arrow.FixedWidthTypes.Time64us,
-	}
 )
 
 func sanitizeDataset(value string) (string, error) {
@@ -427,152 +409,6 @@ func sanitizeDataset(value string) (string, error) {
 	}
 }
 
-func buildSchemaField(name string, typeString string) (arrow.Field, error) {
-	index := strings.Index(name, "(")
-	if index == -1 {
-		index = strings.Index(name, "<")
-	} else {
-		lIndex := strings.Index(name, "<")
-		if index < lIndex {
-			index = lIndex
-		}
-	}
-
-	dataType := typeString
-	if index != -1 {
-		dataType = dataType[:index]
-	}
-	return buildField(name, typeString, dataType, index)
-}
-
-func buildField(name, typeString, dataType string, index int) (arrow.Field, error) {
-	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
-	field := arrow.Field{
-		Name: strings.Clone(name),
-	}
-	val, ok := simpleDataType[dataType]
-	if ok {
-		field.Type = val
-		return field, nil
-	}
-
-	switch dataType {
-	case "NUMERIC", "DECIMAL":
-		precision, scale, err := parsePrecisionAndScale(name, typeString)
-		if err != nil {
-			return arrow.Field{}, err
-		}
-		field.Type = &arrow.Decimal128Type{
-			Precision: precision,
-			Scale:     scale,
-		}
-	case "BIGNUMERIC", "BIGDECIMAL":
-		precision, scale, err := parsePrecisionAndScale(name, typeString)
-		if err != nil {
-			return arrow.Field{}, err
-		}
-		field.Type = &arrow.Decimal256Type{
-			Precision: precision,
-			Scale:     scale,
-		}
-	case "ARRAY":
-		arrayType := strings.Replace(typeString[:len(dataType)], "<", "", 1)
-		rIndex := strings.LastIndex(arrayType, ">")
-		if rIndex == -1 {
-			return arrow.Field{}, adbc.Error{
-				Code: adbc.StatusInvalidData,
-				Msg:  fmt.Sprintf("Cannot parse array type `%s` for field `%s`: cannot find `>`", typeString, name),
-			}
-		}
-		arrayType = arrayType[:rIndex] + arrayType[rIndex+1:]
-		arrayFieldType, err := buildField(name, typeString, arrayType, rIndex)
-		if err != nil {
-			return arrow.Field{}, err
-		}
-		field.Type = arrow.ListOf(arrayFieldType.Type)
-		field.Metadata = arrayFieldType.Metadata
-		field.Nullable = arrayFieldType.Nullable
-	case "RECORD", "STRUCT":
-		fieldRecords := typeString[index+1:]
-		fieldRecords = fieldRecords[:len(fieldRecords)-1]
-		nestedFields := make([]arrow.Field, 0)
-		for _, record := range strings.Split(fieldRecords, ",") {
-			fieldRecord := strings.TrimSpace(record)
-			recordParts := strings.SplitN(fieldRecord, " ", 2)
-			if len(recordParts) != 2 {
-				return arrow.Field{}, adbc.Error{
-					Code: adbc.StatusInvalidData,
-					Msg:  fmt.Sprintf("invalid field record `%s` for type `%s`", fieldRecord, dataType),
-				}
-			}
-			fieldName := recordParts[0]
-			fieldType := recordParts[1]
-			nestedField, err := buildSchemaField(fieldName, fieldType)
-			if err != nil {
-				return arrow.Field{}, err
-			}
-			nestedFields = append(nestedFields, nestedField)
-		}
-		structType := arrow.StructOf(nestedFields...)
-		if structType == nil {
-			return arrow.Field{}, adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  fmt.Sprintf("Cannot create a struct schema for record `%s`", fieldRecords),
-			}
-		}
-		field.Type = structType
-	default:
-		return arrow.Field{}, adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("Cannot handle data type `%s`, type=`%s`", dataType, typeString),
-		}
-	}
-	return field, nil
-}
-
-func parsePrecisionAndScale(name, typeString string) (int32, int32, error) {
-	typeString = strings.TrimSpace(typeString)
-	if len(typeString) == 0 {
-		return 0, 0, adbc.Error{
-			Code: adbc.StatusInvalidData,
-			Msg:  fmt.Sprintf("Cannot parse data type `%s` for field `%s`", typeString, name),
-		}
-	}
-
-	if typeString == "NUMERIC" {
-		return 38, 9, nil
-	} else if typeString == "BIGNUMERIC" {
-		return 76, 38, nil
-	}
-
-	r := precisionScaleRegex.FindStringSubmatch(typeString)
-	if len(r) != 3 {
-		return 0, 0, adbc.Error{
-			Code: adbc.StatusInvalidData,
-			Msg:  fmt.Sprintf("Cannot parse data type `%s` for field `%s`", typeString, name),
-		}
-	}
-
-	precisionString := r[precisionScaleRegex.SubexpIndex("precision")]
-	precision, err := strconv.ParseInt(precisionString, 10, 32)
-	if err != nil {
-		return 0, 0, adbc.Error{
-			Code: adbc.StatusInvalidData,
-			Msg:  fmt.Sprintf("Cannot parse precision `%s` for field `%s`: %s", precisionString, name, err.Error()),
-		}
-	}
-
-	scaleString := r[precisionScaleRegex.SubexpIndex("scale")]
-	scale, err := strconv.ParseInt(scaleString, 10, 32)
-	if err != nil {
-		return 0, 0, adbc.Error{
-			Code: adbc.StatusInvalidData,
-			Msg:  fmt.Sprintf("Cannot parse scale `%s` for field `%s`: %s", scaleString, name, err.Error()),
-		}
-	}
-	return int32(precision), int32(scale), nil
-}
-
 func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *string, dbSchema *string, tableName string, columnName *string) (*arrow.Schema, error) {
 	if catalog == nil {
 		catalog = &c.catalog
@@ -581,94 +417,165 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 	if dbSchema == nil {
 		dbSchema = &c.dbSchema
 	}
-	sanitizedDbSchema, err := sanitizeDataset(*dbSchema)
+
+	md, err := c.client.DatasetInProject(*catalog, *dbSchema).Table(tableName).Metadata(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// sadly that query parameters cannot be used in place of table names
-	queryString := fmt.Sprintf("SELECT * FROM `%s`.`%s`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = @tableName", *catalog, sanitizedDbSchema)
-	query := c.client.Query(queryString)
-	query.Parameters = []bigquery.QueryParameter{
-		{
-			Name:  "tableName",
-			Value: tableName,
-		},
+	metadata := make(map[string]string)
+	metadata["Name"] = md.Name
+	metadata["Location"] = md.Location
+	metadata["Description"] = md.Description
+	if md.MaterializedView != nil {
+		metadata["MaterializedView.EnableRefresh"] = strconv.FormatBool(md.MaterializedView.EnableRefresh)
+		metadata["MaterializedView.LastRefreshTime"] = md.MaterializedView.LastRefreshTime.Format(time.RFC3339Nano)
+		metadata["MaterializedView.Query"] = md.MaterializedView.Query
+		metadata["MaterializedView.RefreshInterval"] = md.MaterializedView.RefreshInterval.String()
+		metadata["MaterializedView.AllowNonIncrementalDefinition"] = strconv.FormatBool(md.MaterializedView.AllowNonIncrementalDefinition)
+		metadata["MaterializedView.MaxStaleness"] = md.MaterializedView.MaxStaleness.String()
 	}
-	// pass `nil` to `boundParameter` because we don't need to read from any `array.Record` --
-	// it's already set in `query`
-	reader, _, err := newRecordReader(ctx, query, nil, OptionValueQueryParameterModeNamed, c.Alloc, c.resultRecordBufferSize, c.prefetchConcurrency)
+	labels := ""
+	if len(md.Labels) > 0 {
+		encodedLabel, err := json.Marshal(md.Labels)
+		if err == nil {
+			labels = string(encodedLabel)
+		}
+	}
+	metadata["Labels"] = labels
+	metadata["FullID"] = md.FullID
+	metadata["Type"] = string(md.Type)
+	metadata["CreationTime"] = md.CreationTime.Format(time.RFC3339Nano)
+	metadata["LastModifiedTime"] = md.LastModifiedTime.Format(time.RFC3339Nano)
+	metadata["NumBytes"] = strconv.FormatInt(md.NumBytes, 10)
+	metadata["NumLongTermBytes"] = strconv.FormatInt(md.NumLongTermBytes, 10)
+	metadata["NumRows"] = strconv.FormatUint(md.NumRows, 10)
+	if md.SnapshotDefinition != nil {
+		metadata["SnapshotDefinition.BaseTableReference"] = md.SnapshotDefinition.BaseTableReference.FullyQualifiedName()
+		metadata["SnapshotDefinition.SnapshotTime"] = md.SnapshotDefinition.SnapshotTime.Format(time.RFC3339Nano)
+	}
+	if md.CloneDefinition != nil {
+		metadata["CloneDefinition.BaseTableReference"] = md.CloneDefinition.BaseTableReference.FullyQualifiedName()
+		metadata["CloneDefinition.CloneTime"] = md.CloneDefinition.CloneTime.Format(time.RFC3339Nano)
+	}
+	metadata["ETag"] = md.ETag
+	metadata["DefaultCollation"] = md.DefaultCollation
+	tableMetadata := arrow.MetadataFrom(metadata)
+
+	fields := make([]arrow.Field, len(md.Schema))
+	for i, schema := range md.Schema {
+		f, err := buildField(schema, 0)
+		if err != nil {
+			return nil, err
+		}
+		fields[i] = f
+	}
+	schema := arrow.NewSchema(fields, &tableMetadata)
+
+	return schema, nil
+}
+
+func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
+	field := arrow.Field{Name: schema.Name}
+	metadata := make(map[string]string)
+	metadata["Description"] = schema.Description
+	metadata["Repeated"] = strconv.FormatBool(schema.Repeated)
+	metadata["Required"] = strconv.FormatBool(schema.Required)
+	field.Nullable = !schema.Required
+	metadata["Type"] = string(schema.Type)
+	policyTagList, err := json.Marshal(schema.PolicyTags)
 	if err != nil {
-		return nil, err
+		metadata["PolicyTags"] = string(policyTagList)
 	}
-	defer reader.Release()
 
-	fields := make([]arrow.Field, 0)
-	columnNameIndices := reader.Schema().FieldIndices("COLUMN_NAME")
-	if columnNameIndices == nil || len(columnNameIndices) != 1 {
-		return nil, adbc.Error{
-			Code: adbc.StatusInternal,
-			Msg:  "Column `COLUMN_NAME` not exists in response or appears more than once",
-		}
-	}
-	columnNameIndex := columnNameIndices[0]
-
-	isNullableIndices := reader.Schema().FieldIndices("IS_NULLABLE")
-	if isNullableIndices == nil || len(isNullableIndices) != 1 {
-		return nil, adbc.Error{
-			Code: adbc.StatusInternal,
-			Msg:  "Column `IS_NULLABLE` not exists in response or appears more than once",
-		}
-	}
-	isNullableIndex := isNullableIndices[0]
-
-	dataTypeIndices := reader.Schema().FieldIndices("DATA_TYPE")
-	if dataTypeIndices == nil || len(dataTypeIndices) != 1 {
-		return nil, adbc.Error{
-			Code: adbc.StatusInternal,
-			Msg:  "Column `DATA_TYPE` not exists in response or appears more than once",
-		}
-	}
-	dataTypeIndex := dataTypeIndices[0]
-
-	for reader.Next() && ctx.Err() == nil {
-		rec := reader.Record()
-
-		numRows := int(rec.NumRows())
-		fieldName := rec.Column(columnNameIndex)
-		fieldNullable := rec.Column(isNullableIndex)
-		fieldType := rec.Column(dataTypeIndex)
-
-		for i := 0; i < numRows; i++ {
-			metadata := make(map[string]string)
-			metadata["PRIMARY_KEY"] = ""
-			for j := 0; j < int(rec.NumCols()); j++ {
-				col := rec.Column(j)
-				columnName := strings.ToUpper(rec.ColumnName(j))
-				switch columnName {
-				case "COLUMN_NAME", "IS_NULLABLE":
-					continue
-				default:
-					metadata[columnName] = strings.Clone(col.ValueStr(i))
+	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
+	switch schema.Type {
+	case bigquery.StringFieldType:
+		metadata["MaxLength"] = strconv.FormatInt(schema.MaxLength, 10)
+		metadata["Collation"] = schema.Collation
+		field.Type = arrow.BinaryTypes.String
+	case bigquery.BytesFieldType:
+		metadata["MaxLength"] = strconv.FormatInt(schema.MaxLength, 10)
+		field.Type = arrow.BinaryTypes.Binary
+	case bigquery.IntegerFieldType:
+		field.Type = arrow.PrimitiveTypes.Int64
+	case bigquery.FloatFieldType:
+		field.Type = arrow.PrimitiveTypes.Float64
+	case bigquery.BooleanFieldType:
+		field.Type = arrow.FixedWidthTypes.Boolean
+	case bigquery.TimestampFieldType:
+		field.Type = arrow.FixedWidthTypes.Timestamp_ms
+	case bigquery.RecordFieldType:
+		if schema.Repeated {
+			if len(schema.Schema) == 1 {
+				arrayField, err := buildField(schema.Schema[0], level+1)
+				if err != nil {
+					return arrow.Field{}, err
+				}
+				field.Type = arrow.ListOf(arrayField.Type)
+				field.Metadata = arrayField.Metadata
+				field.Nullable = arrayField.Nullable
+			} else {
+				return arrow.Field{}, adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  fmt.Sprintf("Cannot create array schema for filed `%s`: len(schema.Schema) != 1", schema.Name),
 				}
 			}
-
-			name := fieldName.ValueStr(i)
-			nullable := strings.ToUpper(fieldNullable.ValueStr(i))
-			dataType := fieldType.ValueStr(i)
-
-			field, err := buildSchemaField(name, dataType)
-			if err != nil {
-				return nil, err
+		} else {
+			nestedFields := make([]arrow.Field, len(schema.Schema))
+			for i, nestedSchema := range schema.Schema {
+				f, err := buildField(nestedSchema, level+1)
+				if err != nil {
+					return arrow.Field{}, err
+				}
+				nestedFields[i] = f
 			}
-			field.Nullable = nullable == "YES"
-			field.Metadata = arrow.MetadataFrom(metadata)
-			fields = append(fields, field)
+			structType := arrow.StructOf(nestedFields...)
+			if structType == nil {
+				return arrow.Field{}, adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  fmt.Sprintf("Cannot create a struct schema for record `%s`", schema.Name),
+				}
+			}
+			field.Type = structType
+		}
+
+	case bigquery.DateFieldType:
+		field.Type = arrow.FixedWidthTypes.Date32
+	case bigquery.TimeFieldType:
+		field.Type = arrow.FixedWidthTypes.Time64us
+	case bigquery.DateTimeFieldType:
+		field.Type = arrow.FixedWidthTypes.Timestamp_us
+	case bigquery.NumericFieldType:
+		field.Type = &arrow.Decimal128Type{
+			Precision: int32(schema.Precision),
+			Scale:     int32(schema.Scale),
+		}
+	case bigquery.GeographyFieldType:
+		// TODO: potentially we should consider using GeoArrow for this
+		field.Type = arrow.BinaryTypes.String
+	case bigquery.BigNumericFieldType:
+		field.Type = &arrow.Decimal256Type{
+			Precision: int32(schema.Precision),
+			Scale:     int32(schema.Scale),
+		}
+	case bigquery.JSONFieldType:
+		field.Type = arrow.BinaryTypes.String
+	default:
+		// TODO: unsupported ones are:
+		// - bigquery.IntervalFieldType
+		// - bigquery.RangeFieldType
+		return arrow.Field{}, adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  fmt.Sprintf("Google SQL type `%s` is not supported yet", schema.Type),
 		}
 	}
 
-	schema := arrow.NewSchema(fields, nil)
-	return schema, nil
+	if level == 0 {
+		metadata["DefaultValueExpression"] = schema.DefaultValueExpression
+	}
+	field.Metadata = arrow.MetadataFrom(metadata)
+	return field, nil
 }
 
 func (c *connectionImpl) Token() (*oauth2.Token, error) {
