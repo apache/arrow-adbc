@@ -506,12 +506,15 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT8:
     case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_UINT8:
       *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int16_t>>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_UINT16:
       *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int32_t>>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT32:
       *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int64_t>>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_DATE32: {
