@@ -183,53 +183,6 @@ jobs:
         run: |
           docker compose down
 
-  flightsql-meson:
-    name: "FlightSQL Integration Tests (Dremio and SQLite) - Meson"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Install Dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y libpq-dev ninja-build
-      - name: Get required Go version
-        run: |
-          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "${{ env.GO_VERSION }}"
-          check-latest: true
-          cache: true
-          cache-dependency-path: go/adbc/go.sum
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-      - name: Install Meson via Python
-        run: pip install meson
-      - name: Start SQLite server and Dremio
-        shell: bash -l {0}
-        run: |
-          docker compose up --detach flightsql-test flightsql-sqlite-test dremio dremio-init
-          pip install python-dotenv[cli]
-          python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
-
-      - name: Build FlightSQL Driver
-        run: |
-          meson setup -Dtests=true -Dflightsql=true -Db_sanitize=address,undefined c c/build
-          meson compile -C c/build
-      - name: Test FlightSQL Driver against Dremio and SQLite
-        run: |
-          meson test -C c/build --print-errorlogs
-      - name: Stop SQLite server and Dremio
-        shell: bash -l {0}
-        run: |
-          docker compose down
-
-
   postgresql:
     name: "PostgreSQL Integration Tests"
     runs-on: ubuntu-latest
@@ -349,38 +302,6 @@ jobs:
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
           docker compose down
 
-  postgresql-meson:
-    name: "PostgreSQL Integration Tests - Meson"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Install Dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y libpq-dev ninja-build
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-      - name: Install Meson via Python
-        run: pip install meson
-      - name: Build
-        run: |
-          meson setup -Dtests=true -Dpostgresql=true -Db_sanitize=address,undefined c c/build
-          meson compile -C c/build
-      - name: Configure Integration Env Vars
-        shell: bash -l {0}
-        run: |
-          pip install python-dotenv[cli]
-          python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
-      - name: Test
-        run: |
-          env POSTGRES_VERSION=16 docker compose up --wait --detach postgres-test
-          meson test -C c/build --print-errorlogs
-
   snowflake:
     name: "Snowflake Integration Tests"
     runs-on: ubuntu-latest
@@ -443,41 +364,3 @@ jobs:
         run: |
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
           env BUILD_DRIVER_MANAGER=0 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
-
-
-  snowflake-meson:
-    name: "Snowflake Integration Tests - Meson"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Install Dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y libpq-dev ninja-build
-      - name: Get required Go version
-        run: |
-          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "${{ env.GO_VERSION }}"
-          check-latest: true
-          cache: true
-          cache-dependency-path: go/adbc/go.sum
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-      - name: Install Meson via Python
-        run: pip install meson
-      - name: Build
-        run: |
-          meson setup -Dtests=true -Dsnowflake=true -Db_sanitize=address,undefined c c/build
-          meson compile -C c/build
-      - name: Test
-        env:
-          ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
-        run: |
-          meson test -C c/build --print-errorlogs

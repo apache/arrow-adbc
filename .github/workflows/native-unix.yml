@@ -220,20 +220,52 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y ninja-build
+          sudo apt install -y libpq-dev ninja-build
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "${{ env.GO_VERSION }}"
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       - name: Install Meson via Python
         run: pip install meson
+      - name: Start SQLite server, Dremio, and postgresql
+        shell: bash -l {0}
+        run: |
+          env POSTSGRES_VERSION=16 docker compose up --detach \
+            dremio \
+            dremio-init \
+            flightsql-test \
+            flightsql-sqlite-test \
+            postgres-test
+          pip install python-dotenv[cli]
+          python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
       - name: Build
         run: |
-          meson setup -Dtests=true -Dsqlite=true -Ddriver_manager=true -Db_sanitize=address,undefined c c/build
+          meson setup \
+            -Db_sanitize=address,undefined \
+            -Ddriver_manager=true \
+            -Dflightsql=true \
+            -Dpostgresql=true \
+            -Dsnowflake=true \
+            -Dsqlite=true \
+            -Dtests=true \
+            c c/build
           meson compile -C c/build
       - name: Test
         run: |
           meson test -C c/build --print-errorlogs
+      - name: Stop SQLite server, Dremio, and postgresql
+        shell: bash -l {0}
+        run: |
+          docker compose down
 
   clang-tidy-conda:
     name: "clang-tidy"
