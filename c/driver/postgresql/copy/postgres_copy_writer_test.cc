@@ -205,7 +205,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteUInt8) {
             ADBC_STATUS_OK);
   ASSERT_EQ(adbc_validation::MakeBatch<uint8_t>(
                 &schema.value, &array.value, &na_error,
-                {0, std::numeric_limits<uint8_t>::max(), std::nullopt}),
+                {0, (std::numeric_limits<uint8_t>::max()), std::nullopt}),
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
@@ -238,7 +238,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteUInt16) {
             ADBC_STATUS_OK);
   ASSERT_EQ(adbc_validation::MakeBatch<uint16_t>(
                 &schema.value, &array.value, &na_error,
-                {0, std::numeric_limits<uint16_t>::max(), std::nullopt}),
+                {0, (std::numeric_limits<uint16_t>::max()), std::nullopt}),
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
@@ -271,7 +271,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteUInt32) {
             ADBC_STATUS_OK);
   ASSERT_EQ(adbc_validation::MakeBatch<uint32_t>(
                 &schema.value, &array.value, &na_error,
-                {0, std::numeric_limits<uint32_t>::max(), std::nullopt}),
+                {0, (std::numeric_limits<uint32_t>::max()), std::nullopt}),
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
