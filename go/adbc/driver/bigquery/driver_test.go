@@ -281,14 +281,14 @@ func (q *BigQueryQuirks) DropTable(cnxn adbc.Connection, tblname string) error {
 
 func (q *BigQueryQuirks) Alloc() memory.Allocator                     { return q.mem }
 func (q *BigQueryQuirks) BindParameter(_ int) string                  { return "?" }
-func (q *BigQueryQuirks) SupportsBulkIngest(string) bool              { return true }
-func (q *BigQueryQuirks) SupportsConcurrentStatements() bool          { return true }
-func (q *BigQueryQuirks) SupportsCurrentCatalogSchema() bool          { return true }
-func (q *BigQueryQuirks) SupportsExecuteSchema() bool                 { return true }
+func (q *BigQueryQuirks) SupportsBulkIngest(string) bool              { return false }
+func (q *BigQueryQuirks) SupportsConcurrentStatements() bool          { return false }
+func (q *BigQueryQuirks) SupportsCurrentCatalogSchema() bool          { return false }
+func (q *BigQueryQuirks) SupportsExecuteSchema() bool                 { return false }
 func (q *BigQueryQuirks) SupportsGetSetOptions() bool                 { return true }
 func (q *BigQueryQuirks) SupportsPartitionedData() bool               { return false }
 func (q *BigQueryQuirks) SupportsStatistics() bool                    { return false }
-func (q *BigQueryQuirks) SupportsTransactions() bool                  { return true }
+func (q *BigQueryQuirks) SupportsTransactions() bool                  { return false }
 func (q *BigQueryQuirks) SupportsGetParameterSchema() bool            { return false }
 func (q *BigQueryQuirks) SupportsDynamicParameterBinding() bool       { return false }
 func (q *BigQueryQuirks) SupportsErrorIngestIncompatibleSchema() bool { return false }

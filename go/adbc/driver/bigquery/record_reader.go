@@ -153,6 +153,8 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters
 		rec := boundParameters.Record()
 		recs = append(recs, rec)
 	}
+	defer boundParameters.Release()
+
 	batches := int64(len(recs))
 	chs := make([]chan arrow.Record, batches)
 
