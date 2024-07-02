@@ -526,7 +526,7 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
           *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int64_t>>();
           return NANOARROW_OK;
         default:
-          return ADBC_STATUS_INVALID_STATE;
+          return ADBC_STATUS_NOT_IMPLEMENTED;
       }
     }
     case NANOARROW_TYPE_FLOAT:
