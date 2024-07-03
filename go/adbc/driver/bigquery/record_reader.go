@@ -234,30 +234,23 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters
 			batchIndex := index + 1
 			record := values
 			chs[batchIndex] = make(chan arrow.Record, resultRecordBufferSize)
-			if batchIndex != lastChannelIndex {
-				defer close(chs[batchIndex])
-			}
-			totalRows, err = queryRecord(ctx, group, query, record, chs[batchIndex], parameterMode, alloc)
-			// if queryRecord returns an error
-			// then we never enter the `group.Go(func() error {})`
-			// it's safe to break here and assign the error message to bigqueryRdr.err
-			if err != nil {
-				bigqueryRdr.err = err
-			}
+			group.Go(func() error {
+				if batchIndex != lastChannelIndex {
+					defer close(chs[batchIndex])
+				}
+				totalRows, err = queryRecord(ctx, group, query, record, chs[batchIndex], parameterMode, alloc)
+				return err
+			})
 		}
 
-		// if queryRecord never returns an error
-		// we can just wait the last one
-		if err == nil {
-			// place this here so that we always clean up, but they can't be in a
-			// separate goroutine. Otherwise we'll have a race condition between
-			// the call to wait and the calls to group.Go to kick off the jobs
-			// to perform the pre-fetching (GH-1283).
-			bigqueryRdr.err = group.Wait()
-			// don't close the last channel until after the group is finished,
-			// so that Next() can only return after reader.err may have been set
-			close(chs[lastChannelIndex])
-		}
+		// place this here so that we always clean up, but they can't be in a
+		// separate goroutine. Otherwise we'll have a race condition between
+		// the call to wait and the calls to group.Go to kick off the jobs
+		// to perform the pre-fetching (GH-1283).
+		bigqueryRdr.err = group.Wait()
+		// don't close the last channel until after the group is finished,
+		// so that Next() can only return after reader.err may have been set
+		close(chs[lastChannelIndex])
 	}()
 
 	return bigqueryRdr, totalRows, nil
