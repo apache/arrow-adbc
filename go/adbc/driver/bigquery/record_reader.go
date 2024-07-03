@@ -143,7 +143,6 @@ func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allo
 
 func queryRecordWithSchemaCallback(ctx context.Context, group *errgroup.Group, query *bigquery.Query, rec arrow.Record, ch chan arrow.Record, parameterMode string, alloc memory.Allocator, rdrSchema func(schema *arrow.Schema)) (int64, error) {
 	totalRows := int64(-1)
-	defer rec.Release()
 	for i := 0; i < int(rec.NumRows()); i++ {
 		parameters, err := getQueryParameter(rec, i, parameterMode)
 		if err != nil {
@@ -176,27 +175,19 @@ func queryRecordWithSchemaCallback(ctx context.Context, group *errgroup.Group, q
 	return totalRows, nil
 }
 
-func queryRecord(ctx context.Context, group *errgroup.Group, query *bigquery.Query, rec arrow.Record, ch chan arrow.Record, parameterMode string, alloc memory.Allocator) (int64, error) {
-	return queryRecordWithSchemaCallback(ctx, group, query, rec, ch, parameterMode, alloc, func(schema *arrow.Schema) {})
-}
-
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
 func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters array.RecordReader, parameterMode string, alloc memory.Allocator, resultRecordBufferSize, prefetchConcurrency int) (bigqueryRdr *reader, totalRows int64, err error) {
 	if boundParameters == nil {
 		return runPlainQuery(ctx, query, alloc, resultRecordBufferSize)
 	}
-
-	recs := make([]arrow.Record, 0)
-	for boundParameters.Next() {
-		rec := boundParameters.Record()
-		rec.Retain()
-		recs = append(recs, rec)
-	}
 	defer boundParameters.Release()
 
-	batches := int64(len(recs))
-	chs := make([]chan arrow.Record, batches)
+	totalRows = 0
+	// BigQuery can expose result sets as multiple streams when using certain APIs
+	// for now lets keep this and set the number of channels to 1
+	// when we need to adapt to multiple streams we can change the value here
+	chs := make([]chan arrow.Record, 1)
 
 	ch := make(chan arrow.Record, resultRecordBufferSize)
 	group, ctx := errgroup.WithContext(ctx)
@@ -219,40 +210,21 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters
 		schema:   nil,
 	}
 
-	rec := recs[0]
-	totalRows, err = queryRecordWithSchemaCallback(ctx, group, query, rec, ch, parameterMode, alloc, func(schema *arrow.Schema) {
-		// only need to assign once
-		bigqueryRdr.schema = schema
-	})
-	if err != nil {
-		return nil, -1, err
-	}
-
-	lastChannelIndex := len(chs) - 1
-	go func() {
-		for index, values := range recs[1:] {
-			batchIndex := index + 1
-			record := values
-			chs[batchIndex] = make(chan arrow.Record, resultRecordBufferSize)
-			group.Go(func() error {
-				if batchIndex != lastChannelIndex {
-					defer close(chs[batchIndex])
-				}
-				totalRows, err = queryRecord(ctx, group, query, record, chs[batchIndex], parameterMode, alloc)
-				return err
-			})
+	for boundParameters.Next() {
+		rec := boundParameters.Record()
+		// Each call to Record() on the record reader is allowed to release the previous record
+		// and since we're doing this sequentially
+		// we don't need to call rec.Retain() here and call call rec.Release() in queryRecordWithSchemaCallback
+		batchRows, err := queryRecordWithSchemaCallback(ctx, group, query, rec, ch, parameterMode, alloc, func(schema *arrow.Schema) {
+			bigqueryRdr.schema = schema
+		})
+		if err != nil {
+			return nil, -1, err
 		}
-
-		// place this here so that we always clean up, but they can't be in a
-		// separate goroutine. Otherwise we'll have a race condition between
-		// the call to wait and the calls to group.Go to kick off the jobs
-		// to perform the pre-fetching (GH-1283).
-		bigqueryRdr.err = group.Wait()
-		// don't close the last channel until after the group is finished,
-		// so that Next() can only return after reader.err may have been set
-		close(chs[lastChannelIndex])
-	}()
-
+		totalRows += batchRows
+	}
+	bigqueryRdr.err = group.Wait()
+	defer close(ch)
 	return bigqueryRdr, totalRows, nil
 }
 
