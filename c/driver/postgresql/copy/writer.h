@@ -523,6 +523,15 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
           PostgresCopyNetworkEndianFieldWriter<int32_t, kPostgresDateEpoch>>();
       return NANOARROW_OK;
     }
+    case NANOARROW_TYPE_TIME64: {
+      switch (schema_view.time_unit) {
+        case NANOARROW_TIME_UNIT_MICRO:
+          *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int64_t>>();
+          return NANOARROW_OK;
+        default:
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+      }
+    }
     case NANOARROW_TYPE_FLOAT:
       *out = std::make_unique<PostgresCopyFloatFieldWriter>();
       return NANOARROW_OK;
