@@ -457,15 +457,23 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
     const int32_t dim = end - start;
     constexpr int32_t lb = 1;
 
-    // TODO: this works for primitive types where we can calculate the buffer size
-    // in advance for varying types we likely need to create a separate buffer first
-    const int32_t child_record_size =
-        array_view_->children[0]->layout.element_size_bits[1] / 8;
-    const int32_t field_size_bytes =
-        sizeof(ndim) + sizeof(has_null_flags) + sizeof(child_oid_) + sizeof(dim) * ndim +
-        sizeof(lb) * ndim
-        // for each primitive record we send int32_t nbytes + the value itself
-        + sizeof(int32_t) * dim + child_record_size * dim;
+    // for fixed size fields where we know the size of each record we would write to
+    // postgres T, we could avoid the use of a temporary buffer and just write
+    //
+    // const int32_t field_size_bytes =
+    //    sizeof(ndim) + sizeof(has_null_flags) + sizeof(child_oid_) + sizeof(dim) * ndim
+    //    + sizeof(lb) * ndim
+    //    + sizeof(int32_t) * dim + T * dim;
+    //
+    // directly to our buffer
+    nanoarrow::UniqueBuffer tmp;
+    ArrowBufferInit(tmp.get());
+    for (auto i = start; i < end; ++i) {
+      NANOARROW_RETURN_NOT_OK(child_->Write(tmp.get(), i, error));
+    }
+    const int32_t field_size_bytes = sizeof(ndim) + sizeof(has_null_flags) +
+                                     sizeof(child_oid_) + sizeof(dim) * ndim +
+                                     sizeof(lb) * ndim + tmp->size_bytes;
 
     NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
     NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, ndim, error));
@@ -476,9 +484,7 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
       NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, lb, error));
     }
 
-    for (auto i = start; i < end; ++i) {
-      NANOARROW_RETURN_NOT_OK(child_->Write(buffer, i, error));
-    }
+    ArrowBufferAppend(buffer, tmp->data, tmp->size_bytes);
 
     return ADBC_STATUS_OK;
   }
@@ -698,34 +704,22 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       struct ArrowSchemaView child_schema_view;
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaViewInit(&child_schema_view, schema->children[0], error));
-      switch (child_schema_view.type) {
-        case NANOARROW_TYPE_INT16:
-        case NANOARROW_TYPE_INT32:
-        case NANOARROW_TYPE_INT64: {
-          const auto resolver = conn->type_resolver();
-          PostgresType child_type;
-          NANOARROW_RETURN_NOT_OK(PostgresType::FromSchema(*resolver, schema->children[0],
-                                                           &child_type, error));
+      const auto resolver = conn->type_resolver();
+      PostgresType child_type;
+      NANOARROW_RETURN_NOT_OK(
+          PostgresType::FromSchema(*resolver, schema->children[0], &child_type, error));
 
-          auto list_writer =
-              std::make_unique<PostgresCopyListFieldWriter>(child_type.oid());
-          list_writer->Init(array_view);
+      auto list_writer = std::make_unique<PostgresCopyListFieldWriter>(child_type.oid());
+      list_writer->Init(array_view);
 
-          std::unique_ptr<PostgresCopyFieldWriter> child_writer;
-          NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(
-              conn, schema->children[0], array_view->children[0], &child_writer, error));
+      std::unique_ptr<PostgresCopyFieldWriter> child_writer;
+      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(
+          conn, schema->children[0], array_view->children[0], &child_writer, error));
 
-          list_writer->InitChild(std::move(child_writer));
+      list_writer->InitChild(std::move(child_writer));
 
-          *out = std::move(list_writer);
-          return NANOARROW_OK;
-        }
-        default:
-          ArrowErrorSet(
-              error, "COPY Writer not implemented for list types with child type of %d",
-              child_schema_view.type);
-          return EINVAL;
-      }
+      *out = std::move(list_writer);
+      return NANOARROW_OK;
     }
     default:
       break;

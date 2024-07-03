@@ -23,7 +23,6 @@
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.hpp>
 
-#include "nanoarrow_types.h"
 #include "postgres_copy_test_common.h"
 #include "postgresql/copy/writer.h"
 #include "validation/adbc_validation_util.h"
@@ -936,9 +935,6 @@ TEST_P(PostgresCopyListTest, PostgresCopyWriteListInteger) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(ArrowListTypes, PostgresCopyListTest,
-                         testing::Values(NANOARROW_TYPE_LIST, NANOARROW_TYPE_LARGE_LIST));
-
 // COPY (SELECT CAST("col" AS BIGINT ARRAY) AS "col" FROM (  VALUES ('{-123, -1}'), ('{0,
 // 1, 123}'), (NULL)) AS drvd("col")) TO STDOUT WITH (FORMAT binary);
 static const uint8_t kTestPgCopyBigIntegerArray[] = {
@@ -998,6 +994,75 @@ TEST_P(PostgresCopyListTest, PostgresCopyWriteListBigInt) {
     ASSERT_EQ(buf.data[i], kTestPgCopyBigIntegerArray[i]) << "failure at index " << i;
   }
 }
+
+// COPY (SELECT CAST("col" AS TEXT ARRAY) AS "col" FROM (  VALUES ('{"foo", "bar"}'),
+// ('{"baz", "qux", "quux"}'), (NULL)) AS drvd("col")) TO '/tmp/pgout.data' WITH (FORMAT
+// binary);
+static const uint8_t kTestPgCopyTextArray[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x22, 0x00,
+    0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x19, 0x00, 0x00,
+    0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x03, 0x66, 0x6f, 0x6f,
+    0x00, 0x00, 0x00, 0x03, 0x62, 0x61, 0x72, 0x00, 0x01, 0x00, 0x00, 0x00, 0x2a,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x19, 0x00,
+    0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x03, 0x62, 0x61,
+    0x7a, 0x00, 0x00, 0x00, 0x03, 0x71, 0x75, 0x78, 0x00, 0x00, 0x00, 0x04, 0x71,
+    0x75, 0x75, 0x78, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+TEST_P(PostgresCopyListTest, PostgresCopyWriteListVarchar) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema.value, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema.value, 1), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], GetParam()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[0], "col"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0]->children[0], NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array.value, &schema.value, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array.value), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendString(array->children[0]->children[0], ArrowCharView("foo")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array->children[0]->children[0], ArrowCharView("bar")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(array->children[0]), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array.value), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendString(array->children[0]->children[0], ArrowCharView("baz")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array->children[0]->children[0], ArrowCharView("qux")),
+            NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowArrayAppendString(array->children[0]->children[0], ArrowCharView("quux")),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(array->children[0]), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array.value), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendNull(array->children[0], 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array.value), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array.value, &na_error), NANOARROW_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  // The last 2 bytes of a message can be transmitted via PQputCopyData
+  // so no need to test those bytes from the Writer
+  constexpr size_t buf_size = sizeof(kTestPgCopyTextArray) - 2;
+  ASSERT_EQ(buf.size_bytes, buf_size);
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyTextArray[i]) << "failure at index " << i;
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(ArrowListTypes, PostgresCopyListTest,
+                         testing::Values(NANOARROW_TYPE_LIST, NANOARROW_TYPE_LARGE_LIST));
 
 TEST_F(PostgresCopyTest, PostgresCopyWriteMultiBatch) {
   // Regression test for https://github.com/apache/arrow-adbc/issues/1310
