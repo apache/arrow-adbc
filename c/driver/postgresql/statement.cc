@@ -274,33 +274,34 @@ struct BindStream {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode Prepare(PGconn* conn, const std::string& query, struct AdbcError* error,
-                         const bool autocommit) {
+  AdbcStatusCode Prepare(const PostgresConnection* conn, const std::string& query,
+                         struct AdbcError* error, const bool autocommit) {
     // tz-aware timestamps require special handling to set the timezone to UTC
     // prior to sending over the binary protocol; must be reset after execute
+    const auto pg_conn = conn->conn();
     for (int64_t col = 0; col < bind_schema->n_children; col++) {
       if ((bind_schema_fields[col].type == ArrowType::NANOARROW_TYPE_TIMESTAMP) &&
           (strcmp("", bind_schema_fields[col].timezone))) {
         has_tz_field = true;
 
         if (autocommit) {
-          PGresult* begin_result = PQexec(conn, "BEGIN");
+          PGresult* begin_result = PQexec(pg_conn, "BEGIN");
           if (PQresultStatus(begin_result) != PGRES_COMMAND_OK) {
             AdbcStatusCode code =
                 SetError(error, begin_result,
                          "[libpq] Failed to begin transaction for timezone data: %s",
-                         PQerrorMessage(conn));
+                         PQerrorMessage(pg_conn));
             PQclear(begin_result);
             return code;
           }
           PQclear(begin_result);
         }
 
-        PGresult* get_tz_result = PQexec(conn, "SELECT current_setting('TIMEZONE')");
+        PGresult* get_tz_result = PQexec(pg_conn, "SELECT current_setting('TIMEZONE')");
         if (PQresultStatus(get_tz_result) != PGRES_TUPLES_OK) {
           AdbcStatusCode code = SetError(error, get_tz_result,
                                          "[libpq] Could not query current timezone: %s",
-                                         PQerrorMessage(conn));
+                                         PQerrorMessage(pg_conn));
           PQclear(get_tz_result);
           return code;
         }
@@ -308,11 +309,11 @@ struct BindStream {
         tz_setting = std::string(PQgetvalue(get_tz_result, 0, 0));
         PQclear(get_tz_result);
 
-        PGresult* set_utc_result = PQexec(conn, "SET TIME ZONE 'UTC'");
+        PGresult* set_utc_result = PQexec(pg_conn, "SET TIME ZONE 'UTC'");
         if (PQresultStatus(set_utc_result) != PGRES_COMMAND_OK) {
           AdbcStatusCode code = SetError(error, set_utc_result,
                                          "[libpq] Failed to set time zone to UTC: %s",
-                                         PQerrorMessage(conn));
+                                         PQerrorMessage(pg_conn));
           PQclear(set_utc_result);
           return code;
         }
@@ -321,12 +322,12 @@ struct BindStream {
       }
     }
 
-    PGresult* result = PQprepare(conn, /*stmtName=*/"", query.c_str(),
+    PGresult* result = PQprepare(pg_conn, /*stmtName=*/"", query.c_str(),
                                  /*nParams=*/bind_schema->n_children, param_types.data());
     if (PQresultStatus(result) != PGRES_COMMAND_OK) {
       AdbcStatusCode code =
           SetError(error, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
-                   PQerrorMessage(conn), query.c_str());
+                   PQerrorMessage(pg_conn), query.c_str());
       PQclear(result);
       return code;
     }
@@ -334,9 +335,11 @@ struct BindStream {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode Execute(PGconn* conn, int64_t* rows_affected, struct AdbcError* error) {
+  AdbcStatusCode Execute(const PostgresConnection* conn, int64_t* rows_affected,
+                         struct AdbcError* error) {
     if (rows_affected) *rows_affected = 0;
     PGresult* result = nullptr;
+    const auto pg_conn = conn->conn();
 
     while (true) {
       Handle<struct ArrowArray> array;
@@ -526,7 +529,7 @@ struct BindStream {
           }
         }
 
-        result = PQexecPrepared(conn, /*stmtName=*/"",
+        result = PQexecPrepared(pg_conn, /*stmtName=*/"",
                                 /*nParams=*/bind_schema->n_children, param_values.data(),
                                 param_lengths.data(), param_formats.data(),
                                 /*resultFormat=*/0 /*text*/);
@@ -535,7 +538,7 @@ struct BindStream {
         if (pg_status != PGRES_COMMAND_OK) {
           AdbcStatusCode code = SetError(
               error, result, "[libpq] Failed to execute prepared statement: %s %s",
-              PQresStatus(pg_status), PQerrorMessage(conn));
+              PQresStatus(pg_status), PQerrorMessage(pg_conn));
           PQclear(result);
           return code;
         }
@@ -546,21 +549,21 @@ struct BindStream {
 
       if (has_tz_field) {
         std::string reset_query = "SET TIME ZONE '" + tz_setting + "'";
-        PGresult* reset_tz_result = PQexec(conn, reset_query.c_str());
+        PGresult* reset_tz_result = PQexec(pg_conn, reset_query.c_str());
         if (PQresultStatus(reset_tz_result) != PGRES_COMMAND_OK) {
           AdbcStatusCode code =
               SetError(error, reset_tz_result, "[libpq] Failed to reset time zone: %s",
-                       PQerrorMessage(conn));
+                       PQerrorMessage(pg_conn));
           PQclear(reset_tz_result);
           return code;
         }
         PQclear(reset_tz_result);
 
-        PGresult* commit_result = PQexec(conn, "COMMIT");
+        PGresult* commit_result = PQexec(pg_conn, "COMMIT");
         if (PQresultStatus(commit_result) != PGRES_COMMAND_OK) {
           AdbcStatusCode code =
               SetError(error, commit_result, "[libpq] Failed to commit transaction: %s",
-                       PQerrorMessage(conn));
+                       PQerrorMessage(pg_conn));
           PQclear(commit_result);
           return code;
         }
@@ -570,7 +573,7 @@ struct BindStream {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode ExecuteCopy(PGconn* conn, int64_t* rows_affected,
+  AdbcStatusCode ExecuteCopy(const PostgresConnection* conn, int64_t* rows_affected,
                              struct AdbcError* error) {
     // https://github.com/apache/arrow-adbc/issues/1921: PostgreSQL has a max
     // size for a single message that we need to respect (1 GiB - 1).  Since
@@ -579,10 +582,11 @@ struct BindStream {
     // https://github.com/postgres/postgres/blob/23c5a0e7d43bc925c6001538f04a458933a11fc1/src/common/stringinfo.c#L28
     constexpr int64_t kMaxCopyBufferSize = 0x1000000;
     if (rows_affected) *rows_affected = 0;
+    const auto pg_conn = conn->conn();
 
     PostgresCopyStreamWriter writer;
     CHECK_NA(INTERNAL, writer.Init(&bind_schema.value), error);
-    CHECK_NA(INTERNAL, writer.InitFieldWriters(nullptr), error);
+    CHECK_NA(INTERNAL, writer.InitFieldWriters(conn, nullptr), error);
 
     CHECK_NA(INTERNAL, writer.WriteHeader(nullptr), error);
 
@@ -608,7 +612,7 @@ struct BindStream {
 
       // check if not ENODATA at exit
       if (write_result != ENODATA) {
-        SetError(error, "Error occurred writing COPY data: %s", PQerrorMessage(conn));
+        SetError(error, "Error occurred writing COPY data: %s", PQerrorMessage(pg_conn));
         return ADBC_STATUS_IO;
       }
 
@@ -618,8 +622,9 @@ struct BindStream {
         int64_t remaining = buffer.size_bytes;
         while (remaining > 0) {
           int64_t to_write = std::min<int64_t>(remaining, kMaxCopyBufferSize);
-          if (PQputCopyData(conn, data, to_write) <= 0) {
-            SetError(error, "Error writing tuple field data: %s", PQerrorMessage(conn));
+          if (PQputCopyData(pg_conn, data, to_write) <= 0) {
+            SetError(error, "Error writing tuple field data: %s",
+                     PQerrorMessage(pg_conn));
             return ADBC_STATUS_IO;
           }
           remaining -= to_write;
@@ -631,17 +636,18 @@ struct BindStream {
       writer.Rewind();
     }
 
-    if (PQputCopyEnd(conn, NULL) <= 0) {
-      SetError(error, "Error message returned by PQputCopyEnd: %s", PQerrorMessage(conn));
+    if (PQputCopyEnd(pg_conn, NULL) <= 0) {
+      SetError(error, "Error message returned by PQputCopyEnd: %s",
+               PQerrorMessage(pg_conn));
       return ADBC_STATUS_IO;
     }
 
-    PGresult* result = PQgetResult(conn);
+    PGresult* result = PQgetResult(pg_conn);
     ExecStatusType pg_status = PQresultStatus(result);
     if (pg_status != PGRES_COMMAND_OK) {
       AdbcStatusCode code =
           SetError(error, result, "[libpq] Failed to execute COPY statement: %s %s",
-                   PQresStatus(pg_status), PQerrorMessage(conn));
+                   PQresStatus(pg_status), PQerrorMessage(pg_conn));
       PQclear(result);
       return code;
     }
@@ -1163,8 +1169,8 @@ AdbcStatusCode PostgresStatement::ExecutePreparedStatement(
   RAISE_ADBC(bind_stream.Begin([&]() { return ADBC_STATUS_OK; }, error));
   RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
   RAISE_ADBC(
-      bind_stream.Prepare(connection_->conn(), query_, error, connection_->autocommit()));
-  RAISE_ADBC(bind_stream.Execute(connection_->conn(), rows_affected, error));
+      bind_stream.Prepare(connection_.get(), query_, error, connection_->autocommit()));
+  RAISE_ADBC(bind_stream.Execute(connection_.get(), rows_affected, error));
   return ADBC_STATUS_OK;
 }
 
@@ -1319,7 +1325,7 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
   }
 
   PQclear(result);
-  RAISE_ADBC(bind_stream.ExecuteCopy(connection_->conn(), rows_affected, error));
+  RAISE_ADBC(bind_stream.ExecuteCopy(connection_.get(), rows_affected, error));
   return ADBC_STATUS_OK;
 }
 
