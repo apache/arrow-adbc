@@ -239,7 +239,7 @@ jobs:
       - name: Start SQLite server, Dremio, and postgresql
         shell: bash -l {0}
         run: |
-          env POSTSGRES_VERSION=16 docker compose up --detach \
+          env POSTSGRES_VERSION=16 docker compose up --detach --wait \
             dremio \
             dremio-init \
             flightsql-test \
