@@ -21,7 +21,7 @@ add_library(adbc_driver_framework STATIC base_driver.cc catalog.cc objects.cc)
 adbc_configure_target(adbc_driver_framework)
 set_target_properties(adbc_driver_framework PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(adbc_driver_framework
-                           PRIVATE "${REPOSITORY_ROOT}" "${REPOSITORY_ROOT}/c/"
+                           PRIVATE "${REPOSITORY_ROOT}/c/" "${REPOSITORY_ROOT}/c/include"
                                    "${REPOSITORY_ROOT}/c/vendor")
 target_link_libraries(adbc_driver_framework PUBLIC adbc_driver_common fmt::fmt)
 

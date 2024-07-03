@@ -32,7 +32,9 @@ project(
 add_project_arguments('-Wno-int-conversion', '-Wno-unused-parameter', language: 'c')
 add_project_arguments('-Wno-unused-parameter', '-Wno-reorder', language: 'cpp')
 
-root_dir = include_directories('..')
+c_dir = include_directories('.')
+include_dir = include_directories('include')
+install_headers('include/adbc.h', subdir: 'arrow-adbc')
 driver_dir = include_directories('driver')
 nanoarrow_dep = dependency('nanoarrow')
 fmt_dep = dependency('fmt')

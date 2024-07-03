@@ -19,6 +19,8 @@
 adbc_driver_manager_lib = library(
     'adbc_driver_manager',
     'adbc_driver_manager.cc',
-    include_directories: [root_dir],
+    include_directories: [include_dir],
     install: true,
 )
+
+install_headers('adbc_driver_manager.h', subdir: 'arrow-adbc')

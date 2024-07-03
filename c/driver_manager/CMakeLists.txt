@@ -30,8 +30,8 @@ add_arrow_lib(adbc_driver_manager
               ${CMAKE_DL_LIBS}
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS})
-include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/include/)
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver)
 
@@ -39,7 +39,7 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
 
-install(FILES "${REPOSITORY_ROOT}/adbc.h" adbc_driver_manager.h DESTINATION include)
+install(FILES adbc_driver_manager.h DESTINATION include/arrow-adbc)
 
 if(ADBC_BUILD_TESTS)
   if(ADBC_TEST_LINKAGE STREQUAL "shared")
