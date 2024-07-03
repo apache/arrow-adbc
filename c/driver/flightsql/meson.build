@@ -55,11 +55,9 @@ if get_option('tests')
         include_directories: [root_dir, driver_dir],
         link_with: [
             adbc_common_lib,
-            adbc_validation_lib,
-            adbc_validation_util_lib,
             adbc_driver_flightsql_lib
         ],
-        dependencies: [nanoarrow_dep, gmock_dep, gtest_main_dep],
+        dependencies: [adbc_validation_dep],
     )
     test('adbc-driver-flightsql', exc)
 endif

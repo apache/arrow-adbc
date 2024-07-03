@@ -852,8 +852,13 @@ static inline ArrowErrorCode MakeCopyFieldReader(
     }
 
     case NANOARROW_TYPE_TIME64: {
-      *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<int64_t>>();
-      return NANOARROW_OK;
+      switch (pg_type.type_id()) {
+        case PostgresTypeId::kTime:
+          *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<int64_t>>();
+          return NANOARROW_OK;
+        default:
+          return ErrorCantConvert(error, pg_type, schema_view);
+      }
     }
 
     case NANOARROW_TYPE_TIMESTAMP:

@@ -139,7 +139,7 @@
       <dependency>
         <groupId>org.checkerframework</groupId>
         <artifactId>checker-qual</artifactId>
-        <version>3.44.0</version>
+        <version>3.45.0</version>
       </dependency>
 
       <!-- Testing -->
@@ -151,7 +151,7 @@
       <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
-        <version>5.10.2</version>
+        <version>5.10.3</version>
         <scope>import</scope>
         <type>pom</type>
       </dependency>
@@ -319,7 +319,7 @@
                 <path>
                   <groupId>org.checkerframework</groupId>
                   <artifactId>checker</artifactId>
-                  <version>3.44.0</version>
+                  <version>3.45.0</version>
                 </path>
               </annotationProcessorPaths>
               <annotationProcessors>

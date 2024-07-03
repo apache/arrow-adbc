@@ -39,13 +39,9 @@ fmt_dep = dependency('fmt')
 
 if get_option('tests')
     gtest_main_dep = dependency('gtest_main')
-    # Seems to be some kind of bug with meson test
-    # gtest-port.h:1770 pthread_key_delete(key_)failed with error 22
-    # https://github.com/google/googletest/pull/4536 ???
-    gtest_dep = dependency('gtest')
     gmock_dep = dependency('gmock')
 else
-    gtest_dep = disabler()
+    gtest_main_dep = disabler()
     gmock_dep = disabler()
 endif
 

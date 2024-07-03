@@ -16,17 +16,15 @@
 # under the License.
 
 
-adbc_validation_util_lib = library(
+adbc_validation_util_lib = static_library(
     'adbc_validation_util',
     'adbc_validation_util.cc',
     include_directories: [root_dir, driver_dir],
     link_with: [adbc_common_lib, adbc_framework_lib, adbc_driver_manager_lib],
-    dependencies: [nanoarrow_dep, gtest_dep, gmock_dep],
-    install: true,
+    dependencies: [nanoarrow_dep, gtest_main_dep, gmock_dep],
 )
 
-adbc_validation_lib = library(
-    'adbc_validation',
+adbc_validation_dep = declare_dependency(
     sources: [
         'adbc_validation.cc',
         'adbc_validation_connection.cc',
@@ -34,6 +32,11 @@ adbc_validation_lib = library(
         'adbc_validation_statement.cc',
     ],
     include_directories: [root_dir, driver_dir],
-    link_with: [adbc_common_lib, adbc_validation_util_lib, adbc_driver_manager_lib],
-    dependencies: [nanoarrow_dep, gtest_dep, gmock_dep],
+    link_with: [
+        adbc_validation_util_lib,
+        adbc_common_lib,
+        adbc_framework_lib,
+        adbc_driver_manager_lib,
+    ],
+    dependencies: [nanoarrow_dep, gtest_main_dep, gmock_dep],
 )

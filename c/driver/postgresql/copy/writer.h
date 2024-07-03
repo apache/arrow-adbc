@@ -557,14 +557,17 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT8:
     case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_UINT8:
       *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int16_t>>();
       out->get()->Init(array_view);
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_UINT16:
       *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int32_t>>();
       out->get()->Init(array_view);
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT32:
       *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int64_t>>();
       out->get()->Init(array_view);
       return NANOARROW_OK;
@@ -574,6 +577,16 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
           PostgresCopyNetworkEndianFieldWriter<int32_t, kPostgresDateEpoch>>();
       out->get()->Init(array_view);
       return NANOARROW_OK;
+    }
+    case NANOARROW_TYPE_TIME64: {
+      switch (schema_view.time_unit) {
+        case NANOARROW_TIME_UNIT_MICRO:
+          *out = std::make_unique<PostgresCopyNetworkEndianFieldWriter<int64_t>>();
+          out->get()->Init(array_view);
+          return NANOARROW_OK;
+        default:
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+      }
     }
     case NANOARROW_TYPE_FLOAT:
       *out = std::make_unique<PostgresCopyFloatFieldWriter>();
