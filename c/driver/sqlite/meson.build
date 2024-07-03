@@ -28,7 +28,7 @@ adbc_sqlite3_driver_lib = library(
         'sqlite.cc',
         'statement_reader.c',
     ],
-    include_directories: [include_dir],
+    include_directories: [include_dir, c_dir],
     link_with: [adbc_common_lib, adbc_framework_lib],
     dependencies: [nanoarrow_dep, fmt_dep, sqlite3_dep],
     c_args: ['-DSIZEOF_TIME_T=' + time_t_size.to_string()],
@@ -38,7 +38,7 @@ if get_option('tests')
     exc = executable(
         'adbc-driver-sqlite-test',
         sources: ['sqlite_test.cc'],
-        include_directories: [include_dir, driver_dir],
+        include_directories: [include_dir, c_dir, driver_dir],
         link_with: [
             adbc_common_lib,
             adbc_sqlite3_driver_lib,
