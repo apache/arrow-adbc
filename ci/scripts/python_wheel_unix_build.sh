@@ -50,7 +50,7 @@ function check_visibility {
 
 function check_wheels {
     if [[ $(uname) == "Linux" ]]; then
-        echo "=== Tag $component wheel with manylinux${MANYLINUX_VERSION} ==="
+        echo "=== Tag $component wheel with manylinux_${MANYLINUX_VERSION} ==="
         auditwheel repair "$@" -L . -w repaired_wheels
     else # macOS
         echo "=== Tag $component wheel with macOS ==="
