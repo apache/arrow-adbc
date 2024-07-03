@@ -462,8 +462,8 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
     const int32_t child_record_size =
         array_view_->children[0]->layout.element_size_bits[1] / 8;
     const int32_t field_size_bytes =
-        sizeof(ndim) + sizeof(has_null_flags) + sizeof(child_oid_) + sizeof(dim) +
-        sizeof(lb)
+        sizeof(ndim) + sizeof(has_null_flags) + sizeof(child_oid_) + sizeof(dim) * ndim +
+        sizeof(lb) * ndim
         // for each primitive record we send int32_t nbytes + the value itself
         + sizeof(int32_t) * dim + child_record_size * dim;
 
@@ -471,8 +471,10 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
     NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, ndim, error));
     NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, has_null_flags, error));
     NANOARROW_RETURN_NOT_OK(WriteChecked<uint32_t>(buffer, child_oid_, error));
-    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, dim, error));
-    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, lb, error));
+    for (int32_t i = 0; i < ndim; ++i) {
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, dim, error));
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, lb, error));
+    }
 
     for (auto i = start; i < end; ++i) {
       NANOARROW_RETURN_NOT_OK(child_->Write(buffer, i, error));
@@ -689,14 +691,17 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       }
       break;
     }
-    case NANOARROW_TYPE_LIST: {
+    case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_LARGE_LIST: {
       // For now our implementation only supports primitive children types
       // See PostgresCopyListFieldWriter::Write for limtiations
       struct ArrowSchemaView child_schema_view;
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaViewInit(&child_schema_view, schema->children[0], error));
       switch (child_schema_view.type) {
-        case NANOARROW_TYPE_INT32: {
+        case NANOARROW_TYPE_INT16:
+        case NANOARROW_TYPE_INT32:
+        case NANOARROW_TYPE_INT64: {
           const auto resolver = conn->type_resolver();
           PostgresType child_type;
           NANOARROW_RETURN_NOT_OK(PostgresType::FromSchema(*resolver, schema->children[0],
