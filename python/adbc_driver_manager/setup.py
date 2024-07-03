@@ -31,7 +31,7 @@ repo_root = source_root.joinpath("../../")
 # Resolve C++ Sources
 
 sources = [
-    "adbc.h",
+    "c/include/adbc.h",
     "c/driver_manager/adbc_driver_manager.cc",
     "c/driver_manager/adbc_driver_manager.h",
     "c/vendor/backward/backward.hpp",

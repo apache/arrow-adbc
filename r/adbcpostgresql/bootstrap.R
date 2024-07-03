@@ -18,7 +18,7 @@
 # If we are building within the repo, copy the latest adbc.h and driver source
 # into src/
 source_files <- c(
-  "adbc.h",
+  "c/include/adbc.h",
   "c/driver/common/options.h",
   "c/driver/common/utils.c",
   "c/driver/common/utils.h",

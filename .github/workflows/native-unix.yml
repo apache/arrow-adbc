@@ -22,7 +22,6 @@ on:
     branches:
       - main
     paths:
-      - "adbc.h"
       - "c/**"
       - "ci/**"
       - "docs/**"
@@ -33,7 +32,6 @@ on:
       - ".github/workflows/native-unix.yml"
   push:
     paths:
-      - "adbc.h"
       - "c/**"
       - "ci/**"
       - "docs/**"

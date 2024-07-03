@@ -22,7 +22,6 @@ on:
     branches:
       - main
     paths:
-      - "adbc.h"
       - "c/**"
       - "ci/**"
       - "glib/**"
@@ -32,7 +31,6 @@ on:
       - ".github/workflows/native-windows.yml"
   push:
     paths:
-      - "adbc.h"
       - "c/**"
       - "ci/**"
       - "glib/**"
