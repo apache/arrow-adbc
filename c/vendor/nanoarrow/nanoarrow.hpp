@@ -826,7 +826,7 @@ class ViewArrayAsFixedSizeBytes {
 class ViewArrayStream {
  public:
   ViewArrayStream(ArrowArrayStream* stream, ArrowErrorCode* code, ArrowError* error)
-      : range_{Next{this, stream, UniqueArray()}}, error_{error}, code_{code} {}
+      : range_{Next{this, stream, UniqueArray()}}, code_{code}, error_{error} {}
 
   ViewArrayStream(ArrowArrayStream* stream, ArrowError* error)
       : ViewArrayStream{stream, &internal_code_, error} {}
@@ -864,8 +864,8 @@ class ViewArrayStream {
   };
 
   internal::InputRange<Next> range_;
-  ArrowError* error_;
   ArrowErrorCode* code_;
+  ArrowError* error_;
   ArrowError internal_error_ = {};
   ArrowErrorCode internal_code_;
   bool code_was_accessed_ = false;
