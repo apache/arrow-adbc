@@ -20,7 +20,7 @@
 
 #include <memory>
 
-#include "adbc.h"
+#include <arrow-adbc/adbc.h>
 #include "adbc_driver_manager.h"
 #include "adbc_version_100.h"
 #include "validation/adbc_validation_util.h"

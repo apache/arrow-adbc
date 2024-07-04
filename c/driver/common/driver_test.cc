@@ -18,7 +18,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include "driver_base.h"
 
 // Self-contained version of the Handle

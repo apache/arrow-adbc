@@ -20,7 +20,7 @@
 # if we aren't sitting within the repo (e.g., installing a source package from a
 # tarball).
 files_to_vendor <- c(
-  "../../c/include/adbc.h",
+  "../../c/include/arrow-adbc/adbc.h",
   "../../c/driver_manager/adbc_driver_manager.h",
   "../../c/driver_manager/adbc_driver_manager.cc",
   "../../c/driver/common/driver_base.h"

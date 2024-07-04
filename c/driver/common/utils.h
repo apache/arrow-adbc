@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include "nanoarrow/nanoarrow.h"
 
 #ifdef __cplusplus

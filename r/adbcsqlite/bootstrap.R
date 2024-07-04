@@ -18,7 +18,7 @@
 # If we are building within the repo, copy the latest adbc.h and driver source
 # into src/
 source_files <- c(
-  "c/include/adbc.h",
+  "c/include/arrow-adbc/adbc.h",
   "c/driver/sqlite/sqlite.cc",
   "c/driver/sqlite/statement_reader.c",
   "c/driver/sqlite/statement_reader.h",

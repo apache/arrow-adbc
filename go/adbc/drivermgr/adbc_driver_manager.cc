@@ -16,7 +16,7 @@
 // under the License.
 
 #include "adbc_driver_manager.h"
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 
 #include <algorithm>
 #include <array>

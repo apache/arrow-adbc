@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 
 static size_t kErrorBufferSize = 1024;
 

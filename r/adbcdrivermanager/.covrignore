@@ -15,6 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-src/adbc.h
+src/c/include/arrow-adbc/adbc.h
 src/adbc_driver_manager.h
 src/adbc_driver_manager.cc
