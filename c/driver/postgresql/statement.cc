@@ -586,7 +586,7 @@ struct BindStream {
 
     PostgresCopyStreamWriter writer;
     CHECK_NA(INTERNAL, writer.Init(&bind_schema.value), error);
-    CHECK_NA(INTERNAL, writer.InitFieldWriters(conn, nullptr), error);
+    CHECK_NA(INTERNAL, writer.InitFieldWriters(*conn->type_resolver(), nullptr), error);
 
     CHECK_NA(INTERNAL, writer.WriteHeader(nullptr), error);
 

@@ -552,9 +552,9 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
 };
 
 static inline ArrowErrorCode MakeCopyFieldWriter(
-    const PostgresConnection* conn, struct ArrowSchema* schema,
-    struct ArrowArrayView* array_view, std::unique_ptr<PostgresCopyFieldWriter>* out,
-    ArrowError* error) {
+    struct ArrowSchema* schema, struct ArrowArrayView* array_view,
+    const PostgresTypeResolver& type_resolver,
+    std::unique_ptr<PostgresCopyFieldWriter>* out, ArrowError* error) {
   struct ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
 
@@ -704,17 +704,17 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       struct ArrowSchemaView child_schema_view;
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaViewInit(&child_schema_view, schema->children[0], error));
-      const auto resolver = conn->type_resolver();
       PostgresType child_type;
-      NANOARROW_RETURN_NOT_OK(
-          PostgresType::FromSchema(*resolver, schema->children[0], &child_type, error));
+      NANOARROW_RETURN_NOT_OK(PostgresType::FromSchema(type_resolver, schema->children[0],
+                                                       &child_type, error));
 
       auto list_writer = std::make_unique<PostgresCopyListFieldWriter>(child_type.oid());
       list_writer->Init(array_view);
 
       std::unique_ptr<PostgresCopyFieldWriter> child_writer;
-      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(
-          conn, schema->children[0], array_view->children[0], &child_writer, error));
+      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(schema->children[0],
+                                                  array_view->children[0], type_resolver,
+                                                  &child_writer, error));
 
       list_writer->InitChild(std::move(child_writer));
 
@@ -766,15 +766,17 @@ class PostgresCopyStreamWriter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode InitFieldWriters(const PostgresConnection* conn, ArrowError* error) {
+  ArrowErrorCode InitFieldWriters(const PostgresTypeResolver& type_resolver,
+                                  ArrowError* error) {
     if (schema_->release == nullptr) {
       return EINVAL;
     }
 
     for (int64_t i = 0; i < schema_->n_children; i++) {
       std::unique_ptr<PostgresCopyFieldWriter> child_writer;
-      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(
-          conn, schema_->children[i], array_view_->children[i], &child_writer, error));
+      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(schema_->children[i],
+                                                  array_view_->children[i], type_resolver,
+                                                  &child_writer, error));
       root_writer_.AppendChild(std::move(child_writer));
     }
 

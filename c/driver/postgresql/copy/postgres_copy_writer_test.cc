@@ -23,7 +23,9 @@
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.hpp>
 
+#include "database.h"
 #include "postgres_copy_test_common.h"
+#include "postgres_type.h"
 #include "postgresql/copy/writer.h"
 #include "validation/adbc_validation_util.h"
 
@@ -33,12 +35,11 @@ namespace adbcpq {
 
 class PostgresCopyStreamWriteTester {
  public:
-  ArrowErrorCode Init(const AdbcConnection* conn, struct ArrowSchema* schema,
-                      struct ArrowArray* array, struct ArrowError* error = nullptr) {
+  ArrowErrorCode Init(struct ArrowSchema* schema, struct ArrowArray* array,
+                      const PostgresTypeResolver& type_resolver,
+                      struct ArrowError* error = nullptr) {
     NANOARROW_RETURN_NOT_OK(writer_.Init(schema));
-    const auto connection =
-        reinterpret_cast<std::shared_ptr<PostgresConnection>*>(conn->private_data);
-    NANOARROW_RETURN_NOT_OK(writer_.InitFieldWriters(connection->get(), error));
+    NANOARROW_RETURN_NOT_OK(writer_.InitFieldWriters(type_resolver, error));
     NANOARROW_RETURN_NOT_OK(writer_.SetArray(array));
     return NANOARROW_OK;
   }
@@ -89,14 +90,11 @@ class PostgresCopyTest : public ::testing::Test {
     ASSERT_THAT(SetupDatabase(&database_, &error_), IsOkStatus(&error_));
     ASSERT_THAT(AdbcDatabaseInit(&database_, &error_), IsOkStatus(&error_));
 
-    ASSERT_THAT(AdbcConnectionNew(&connection_, &error_), IsOkStatus(&error_));
-    ASSERT_THAT(AdbcConnectionInit(&connection_, &database_, &error_),
-                IsOkStatus(&error_));
+    const auto pg_db =
+        *reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database_.private_data);
+    type_resolver_ = pg_db->type_resolver();
   }
   void TearDown() override {
-    if (connection_.private_data) {
-      ASSERT_THAT(AdbcConnectionRelease(&connection_, &error_), IsOkStatus(&error_));
-    }
     if (database_.private_data) {
       ASSERT_THAT(AdbcDatabaseRelease(&database_, &error_), IsOkStatus(&error_));
     }
@@ -107,7 +105,7 @@ class PostgresCopyTest : public ::testing::Test {
  protected:
   struct AdbcError error_ = {};
   struct AdbcDatabase database_ = {};
-  struct AdbcConnection connection_ = {};
+  std::shared_ptr<PostgresTypeResolver> type_resolver_;
 };
 
 TEST_F(PostgresCopyTest, PostgresCopyWriteBoolean) {
@@ -122,7 +120,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteBoolean) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -146,7 +144,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteInt8) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -170,7 +168,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteInt16) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -194,7 +192,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteInt32) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -218,7 +216,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteInt64) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -251,7 +249,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteUInt8) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -284,7 +282,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteUInt16) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -317,7 +315,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteUInt32) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -341,7 +339,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteReal) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -365,7 +363,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteDoublePrecision) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -389,7 +387,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteDate) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -420,7 +418,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteTime) {
       ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -487,7 +485,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteNumeric) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -510,14 +508,11 @@ class PostgresCopyWriteTimestampTest
     ASSERT_THAT(SetupDatabase(&database_, &error_), IsOkStatus(&error_));
     ASSERT_THAT(AdbcDatabaseInit(&database_, &error_), IsOkStatus(&error_));
 
-    ASSERT_THAT(AdbcConnectionNew(&connection_, &error_), IsOkStatus(&error_));
-    ASSERT_THAT(AdbcConnectionInit(&connection_, &database_, &error_),
-                IsOkStatus(&error_));
+    const auto pg_db =
+        *reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database_.private_data);
+    type_resolver_ = pg_db->type_resolver();
   }
   void TearDown() override {
-    if (connection_.private_data) {
-      ASSERT_THAT(AdbcConnectionRelease(&connection_, &error_), IsOkStatus(&error_));
-    }
     if (database_.private_data) {
       ASSERT_THAT(AdbcDatabaseRelease(&database_, &error_), IsOkStatus(&error_));
     }
@@ -528,7 +523,7 @@ class PostgresCopyWriteTimestampTest
  protected:
   struct AdbcError error_ = {};
   struct AdbcDatabase database_ = {};
-  struct AdbcConnection connection_ = {};
+  std::shared_ptr<PostgresTypeResolver> type_resolver_;
 };
 
 TEST_P(PostgresCopyWriteTimestampTest, WritesProperBufferValues) {
@@ -552,7 +547,7 @@ TEST_P(PostgresCopyWriteTimestampTest, WritesProperBufferValues) {
       ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -629,7 +624,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteInterval) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -662,14 +657,11 @@ class PostgresCopyWriteDurationTest
     ASSERT_THAT(SetupDatabase(&database_, &error_), IsOkStatus(&error_));
     ASSERT_THAT(AdbcDatabaseInit(&database_, &error_), IsOkStatus(&error_));
 
-    ASSERT_THAT(AdbcConnectionNew(&connection_, &error_), IsOkStatus(&error_));
-    ASSERT_THAT(AdbcConnectionInit(&connection_, &database_, &error_),
-                IsOkStatus(&error_));
+    const auto pg_db =
+        *reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database_.private_data);
+    type_resolver_ = pg_db->type_resolver();
   }
   void TearDown() override {
-    if (connection_.private_data) {
-      ASSERT_THAT(AdbcConnectionRelease(&connection_, &error_), IsOkStatus(&error_));
-    }
     if (database_.private_data) {
       ASSERT_THAT(AdbcDatabaseRelease(&database_, &error_), IsOkStatus(&error_));
     }
@@ -680,7 +672,7 @@ class PostgresCopyWriteDurationTest
  protected:
   struct AdbcError error_ = {};
   struct AdbcDatabase database_ = {};
-  struct AdbcConnection connection_ = {};
+  std::shared_ptr<PostgresTypeResolver> type_resolver_;
 };
 
 TEST_P(PostgresCopyWriteDurationTest, WritesProperBufferValues) {
@@ -702,7 +694,7 @@ TEST_P(PostgresCopyWriteDurationTest, WritesProperBufferValues) {
       ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -736,7 +728,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteString) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -761,7 +753,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteLargeString) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -790,7 +782,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteBinary) {
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -810,14 +802,11 @@ class PostgresCopyListTest : public testing::TestWithParam<enum ArrowType> {
     ASSERT_THAT(SetupDatabase(&database_, &error_), IsOkStatus(&error_));
     ASSERT_THAT(AdbcDatabaseInit(&database_, &error_), IsOkStatus(&error_));
 
-    ASSERT_THAT(AdbcConnectionNew(&connection_, &error_), IsOkStatus(&error_));
-    ASSERT_THAT(AdbcConnectionInit(&connection_, &database_, &error_),
-                IsOkStatus(&error_));
+    const auto pg_db =
+        *reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database_.private_data);
+    type_resolver_ = pg_db->type_resolver();
   }
   void TearDown() override {
-    if (connection_.private_data) {
-      ASSERT_THAT(AdbcConnectionRelease(&connection_, &error_), IsOkStatus(&error_));
-    }
     if (database_.private_data) {
       ASSERT_THAT(AdbcDatabaseRelease(&database_, &error_), IsOkStatus(&error_));
     }
@@ -828,7 +817,7 @@ class PostgresCopyListTest : public testing::TestWithParam<enum ArrowType> {
  protected:
   struct AdbcError error_ = {};
   struct AdbcDatabase database_ = {};
-  struct AdbcConnection connection_ = {};
+  std::shared_ptr<PostgresTypeResolver> type_resolver_;
 };
 
 // COPY (SELECT CAST("col" AS SMALLINT ARRAY) AS "col" FROM (  VALUES ('{-123, -1}'),
@@ -876,7 +865,7 @@ TEST_P(PostgresCopyListTest, PostgresCopyWriteListSmallInt) {
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array.value, &na_error), NANOARROW_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -922,7 +911,7 @@ TEST_P(PostgresCopyListTest, PostgresCopyWriteListInteger) {
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array.value, &na_error), NANOARROW_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -982,7 +971,7 @@ TEST_P(PostgresCopyListTest, PostgresCopyWriteListBigInt) {
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array.value, &na_error), NANOARROW_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -1048,7 +1037,7 @@ TEST_P(PostgresCopyListTest, PostgresCopyWriteListVarchar) {
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array.value, &na_error), NANOARROW_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   const struct ArrowBuffer buf = tester.WriteBuffer();
@@ -1076,7 +1065,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteMultiBatch) {
             NANOARROW_OK);
 
   PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&connection_, &schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
   struct ArrowBuffer buf = tester.WriteBuffer();
