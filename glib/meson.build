@@ -47,7 +47,7 @@ pkgconfig_variables = ['girdir=@0@'.format(gir_dir)]
 
 base_include_directories = [
   include_directories('.'),
-  include_directories('..'),
+  include_directories('..' / '/c' / 'include'),
 ]
 
 gi_fatal_warnings = (build_machine.system() != 'windows')
