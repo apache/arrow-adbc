@@ -436,6 +436,7 @@ class PostgresCopyBinaryDictFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
+template <bool IsFixedSize>
 class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
  public:
   explicit PostgresCopyListFieldWriter(uint32_t child_oid) : child_oid_{child_oid} {}
@@ -452,13 +453,21 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
     constexpr int32_t ndim = 1;
     constexpr int32_t has_null_flags = 0;
 
-    const int32_t start = ArrowArrayViewListChildOffset(array_view_, index);
-    const int32_t end = ArrowArrayViewListChildOffset(array_view_, index + 1);
+    // TODO: the LARGE_LIST should use 64 bit indexes
+    int32_t start, end;
+    if constexpr (IsFixedSize) {
+      start = index * array_view_->layout.child_size_elements;
+      end = start + array_view_->layout.child_size_elements;
+    } else {
+      start = ArrowArrayViewListChildOffset(array_view_, index);
+      end = ArrowArrayViewListChildOffset(array_view_, index + 1);
+    }
+
     const int32_t dim = end - start;
     constexpr int32_t lb = 1;
 
-    // for fixed size fields where we know the size of each record we would write to
-    // postgres T, we could avoid the use of a temporary buffer and just write
+    // for children of a fixed size T we could avoid the use of a temporary buffer
+    /// and theoretically just write
     //
     // const int32_t field_size_bytes =
     //    sizeof(ndim) + sizeof(has_null_flags) + sizeof(child_oid_) + sizeof(dim) * ndim
@@ -698,7 +707,8 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       break;
     }
     case NANOARROW_TYPE_LIST:
-    case NANOARROW_TYPE_LARGE_LIST: {
+    case NANOARROW_TYPE_LARGE_LIST:
+    case NANOARROW_TYPE_FIXED_SIZE_LIST: {
       // For now our implementation only supports primitive children types
       // See PostgresCopyListFieldWriter::Write for limtiations
       struct ArrowSchemaView child_schema_view;
@@ -708,17 +718,24 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       NANOARROW_RETURN_NOT_OK(PostgresType::FromSchema(type_resolver, schema->children[0],
                                                        &child_type, error));
 
-      auto list_writer = std::make_unique<PostgresCopyListFieldWriter>(child_type.oid());
-      list_writer->Init(array_view);
-
       std::unique_ptr<PostgresCopyFieldWriter> child_writer;
       NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(schema->children[0],
                                                   array_view->children[0], type_resolver,
                                                   &child_writer, error));
 
-      list_writer->InitChild(std::move(child_writer));
-
-      *out = std::move(list_writer);
+      if (schema_view.type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
+        auto list_writer =
+            std::make_unique<PostgresCopyListFieldWriter<true>>(child_type.oid());
+        list_writer->Init(array_view);
+        list_writer->InitChild(std::move(child_writer));
+        *out = std::move(list_writer);
+      } else {
+        auto list_writer =
+            std::make_unique<PostgresCopyListFieldWriter<false>>(child_type.oid());
+        list_writer->Init(array_view);
+        list_writer->InitChild(std::move(child_writer));
+        *out = std::move(list_writer);
+      }
       return NANOARROW_OK;
     }
     default:
