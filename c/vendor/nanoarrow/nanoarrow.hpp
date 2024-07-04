@@ -864,8 +864,8 @@ class ViewArrayStream {
   };
 
   internal::InputRange<Next> range_;
-  ArrowError* error_;
   ArrowErrorCode* code_;
+  ArrowError* error_;
   ArrowError internal_error_ = {};
   ArrowErrorCode internal_code_;
   bool code_was_accessed_ = false;
