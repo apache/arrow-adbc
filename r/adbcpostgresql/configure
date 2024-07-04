@@ -79,7 +79,7 @@ sed \
   src/Makevars.in > src/Makevars
 
 
-if [ -f "src/c/include/adbc.h" ]; then
+if [ -f "src/adbc.h" ]; then
   echo "Found vendored ADBC"
   exit 0
 fi

@@ -34,7 +34,7 @@ fi
 # manually or with pkgbuild <=1.4.0. This is common (e.g., pak::pkg_install()
 # or remotes::install_github() or any dependency setups that use either method)
 curl -L https://github.com/apache/arrow-adbc/raw/main/adbc.h \
-  --output src/c/include/adbc.h --silent
+  --output src/adbc.h --silent
 curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver_manager/adbc_driver_manager.h \
   --output src/adbc_driver_manager.h --silent
 curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver_manager/adbc_driver_manager.cc \
@@ -42,11 +42,11 @@ curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver_manager/adbc_driv
 curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver/common/driver_base.h \
   --output src/driver_base.h --silent
 
-if [ -f "src/c/include/adbc.h" ] && [ -f "src/adbc_driver_manager.h" ] && [ -f "src/adbc_driver_manager.cc" ]; then
+if [ -f "src/adbc.h" ] && [ -f "src/adbc_driver_manager.h" ] && [ -f "src/adbc_driver_manager.cc" ]; then
   echo "Fetched ADBC from https://github.com/apache/arrow-adbc"
   exit 0
 fi
 
-echo "Vendored src/c/include/adbc.h and/or src/adbc_driver_manager.cc are missing"
+echo "Vendored src/adbc.h and/or src/adbc_driver_manager.cc are missing"
 echo "This source package was probably built incorrectly and it's probably not your fault"
 exit 1
