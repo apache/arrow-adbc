@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <arrow-adbc/adbc.h>
+#include <adbc.h>
 #include <libpq-fe.h>
 
 namespace adbcpq {

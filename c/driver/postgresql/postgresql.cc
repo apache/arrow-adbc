@@ -20,7 +20,7 @@
 #include <cstring>
 #include <memory>
 
-#include <arrow-adbc/adbc.h>
+#include <adbc.h>
 
 #include "connection.h"
 #include "database.h"

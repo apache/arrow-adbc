@@ -17,7 +17,7 @@
 
 #include <cstdlib>
 
-#include <arrow-adbc/adbc.h>
+#include <adbc.h>
 #include <driver_manager/adbc_driver_manager.h>
 #include <duckdb/common/adbc/adbc-init.hpp>
 

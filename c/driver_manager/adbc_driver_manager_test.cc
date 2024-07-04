@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 
-#include <arrow-adbc/adbc.h>
+#include "adbc.h"
 #include "adbc_driver_manager.h"
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"

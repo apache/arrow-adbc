@@ -27,7 +27,7 @@
 #include <utility>
 #include <vector>
 
-#include <arrow-adbc/adbc.h>
+#include <adbc.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>

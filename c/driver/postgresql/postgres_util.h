@@ -33,7 +33,7 @@
 #include <libkern/OSByteOrder.h>
 #endif
 
-#include <arrow-adbc/adbc.h>
+#include "adbc.h"
 
 namespace adbcpq {
 

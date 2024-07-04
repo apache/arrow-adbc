@@ -17,7 +17,7 @@
 
 // A dummy version 1.0.0 ADBC driver to test compatibility.
 
-#include <arrow-adbc/adbc.h>
+#include <adbc.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -18,7 +18,7 @@
 #include <cstdarg>
 #include <limits>
 
-#include <arrow-adbc/adbc.h>
+#include <adbc.h>
 #include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 #include <nanoarrow/nanoarrow.hpp>

@@ -29,7 +29,7 @@
 #include <variant>
 #include <vector>
 
-#include <arrow-adbc/adbc.h>
+#include <adbc.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest.h>

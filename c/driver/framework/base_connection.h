@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-#include <arrow-adbc/adbc.h>
+#include <adbc.h>
 #include <nanoarrow/nanoarrow.h>
 #include <nanoarrow/nanoarrow.hpp>
 

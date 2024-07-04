@@ -21,7 +21,7 @@
 #include <memory>
 #include <string>
 
-#include <arrow-adbc/adbc.h>
+#include <adbc.h>
 #include <libpq-fe.h>
 
 #include "postgres_type.h"

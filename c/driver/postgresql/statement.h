@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 
-#include <arrow-adbc/adbc.h>
+#include <adbc.h>
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.h>
 
