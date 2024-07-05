@@ -605,3 +605,41 @@
 - **rust**: add public abstract API and dummy driver implementation (#1725)
 - **csharp/src/Drivers**: introduce drivers for Apache systems built on Thrift (#1710)
 - **format**: add info codes for supported capabilities (#1649)
+
+## ADBC Libraries 13 (2024-07-01)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.1.0
+- C#: 0.13.0
+- Java: 0.13.0
+- R: 0.13.0
+- Rust: 0.13.0
+
+### Fix
+
+- **c/driver/sqlite**: Make SQLite driver C99 compliant (#1946)
+- **go/adbc/pkg**: clean up potential sites where Go GC may be exposed (#1942)
+- **c/driver/postgresql**: chunk large COPY payloads (#1937)
+- **go/adbc/pkg**: guard against potential crash (#1938)
+- **csharp/src/Drivers/Interop/Snowflake**: Swapping PreBuildEvent to DispatchToInnerBuilds (#1909)
+- **csharp/src/Drivers/Apache/Spark**: fix parameter naming convention (#1895)
+- **csharp/src/Apache.Arrow.Adbc/C**: GetObjects should preserve a null tableTypes parameter value (#1894)
+- **go/adbc/driver/snowflake**: Records dropped on ingestion when empty batch is present (#1866)
+- **csharp**: Fix packing process (#1862)
+- **csharp/src/Drivers/Apache**: set the precision and scale correctly on Decimal128Type (#1858)
+
+### Feat
+
+- Meson Support for ADBC (#1904)
+- **rust**: add integration tests and some improvements (#1883)
+- **csharp/src/Drivers/Apache/Spark**: extend SQL type name parsing for all types (#1911)
+- **csharp/src/Drivers/Apache**: improve type name handling for CHAR/VARCHAR/DECIMAL (#1896)
+- **csharp/src/Drivers/Apache**: improve GetObjects metadata returned for columns (#1884)
+- **rust**: add the driver manager (#1803)
+- **csharp**: redefine C# APIs to prioritize full async support (#1865)
+- **csharp/src/Drivers/Apache**: extend capability of GetInfo for Spark driver (#1863)
+- **csharp/src/Drivers/Apache**: add implementation for AdbcStatement.SetOption on Spark driver (#1849)
+- **csharp**: Move more options to be set centrally and enable TreatWarningsAsErrors (#1852)
+- **csharp**: Initial changes for ADBC 1.1 in C# implementation (#1821)
+- **csharp/src/Drivers/Apache/Spark**: implement async overrides for Spark driver (#1830)
