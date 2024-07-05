@@ -41,7 +41,7 @@ main() {
     export DEPLOY_ALMALINUX=${DEPLOY_ALMALINUX:-1}
     export DEPLOY_DEBIAN=${DEPLOY_DEBIAN:-1}
     export DEPLOY_UBUNTU=${DEPLOY_UBUNTU:-1}
-    "${arrow_dir}/dev/release/post-02-binary.sh" "${RELEASE}" "${rc_number}"
+    "${arrow_dir}/dev/release/post-03-binary.sh" "${RELEASE}" "${rc_number}"
 }
 
 main "$@"
