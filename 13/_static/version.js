@@ -1,20 +1,3 @@
-const versions = `
-0.1.0;0.1.0
-0.2.0;0.2.0
-0.3.0;0.3.0
-0.4.0;0.4.0
-0.5.0;0.5.0
-0.5.1;0.5.1
-0.6.0;0.6.0
-0.7.0;0.7.0
-0.8.0;0.8.0
-0.9.0;0.9.0
-0.10.0;0.10.0
-0.11.0;0.11.0
-13;13
-main;13 (dev)
-current;0.11.0 (current)
-`;
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
