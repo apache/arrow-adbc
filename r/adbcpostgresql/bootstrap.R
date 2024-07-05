@@ -15,10 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
+file.copy("c/include/arrow-adbc/adbc.h", "src/arrow-adbc/adbc.h")
+
 # If we are building within the repo, copy the latest adbc.h and driver source
 # into src/
 source_files <- c(
-  "c/include/adbc.h",
   "c/driver/common/options.h",
   "c/driver/common/utils.c",
   "c/driver/common/utils.h",

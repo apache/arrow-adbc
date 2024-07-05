@@ -30,8 +30,11 @@ repo_root = source_root.joinpath("../../")
 # ------------------------------------------------------------
 # Resolve C++ Sources
 
+incdir = source_root.joinpath("arrow-adbc")
+incdir.mkdir(parents=True, exist_ok=True)
+shutil.copy("c/include/arrow-adbc/adbc.h", incdir / "adbc.h")
+
 sources = [
-    "c/include/adbc.h",
     "c/driver_manager/adbc_driver_manager.cc",
     "c/driver_manager/adbc_driver_manager.h",
     "c/vendor/backward/backward.hpp",

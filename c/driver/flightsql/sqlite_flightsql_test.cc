@@ -20,7 +20,7 @@
 #include <random>
 #include <thread>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest-param-test.h>

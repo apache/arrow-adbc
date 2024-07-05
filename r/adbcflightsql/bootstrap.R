@@ -31,8 +31,8 @@ files_to_vendor_dst <- file.path("src/go/adbc", files_to_vendor)
 # is not a problem for a user install, where this script
 # should not even exist, but the below helps development
 # on Windows.
-is_adbc_h <- basename(files_to_vendor_src) == "adbc.h"
-files_to_vendor_src[is_adbc_h] <- "../../c/include/adbc.h"
+is_adbc_h <- basename(files_to_vendor_src) == "arrow/adbc.h"
+files_to_vendor_src[is_adbc_h] <- "../../c/include/arrow-adbc/adbc.h"
 
 if (all(file.exists(files_to_vendor_src))) {
   unlink("src/go/adbc", recursive = TRUE)

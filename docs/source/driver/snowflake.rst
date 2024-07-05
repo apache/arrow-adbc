@@ -76,7 +76,7 @@ constructing the :cpp::class:`AdbcDatabase`.
 
       .. code-block:: cpp
 
-         #include "adbc.h"
+         #include "arrow-adbc/adbc.h"
 
          // Ignoring error handling
          struct AdbcDatabase database;

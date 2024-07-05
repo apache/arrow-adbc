@@ -20,7 +20,7 @@
 #include <string_view>
 #include <utility>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 
 #include "driver/framework/base_driver.h"
 #include "driver/framework/status.h"

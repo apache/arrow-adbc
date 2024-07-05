@@ -19,8 +19,9 @@
 # implementation from the repo. We also run this from configure, so do nothing
 # if we aren't sitting within the repo (e.g., installing a source package from a
 # tarball).
+file.copy("../../c/include/arrow-adbc/adbc.h", "src/arrow-adbc/adbc.h")
+
 files_to_vendor <- c(
-  "../../c/include/adbc.h",
   "../../c/driver_manager/adbc_driver_manager.h",
   "../../c/driver_manager/adbc_driver_manager.cc",
   "../../c/driver/common/driver_base.h"

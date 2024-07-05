@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 
