@@ -310,8 +310,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-03-python.sh 0
-      dev/release/post-03-python.sh <rc-number>
+      dev/release/post-03-python.sh
 
 .. dropdown:: Publish Maven packages
    :class-title: sd-fs-5
