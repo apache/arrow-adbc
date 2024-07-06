@@ -24,7 +24,7 @@
 #pragma once
 
 #include <stdlib.h>
-#include "../../drivermgr/adbc.h"
+#include "../../drivermgr/arrow-adbc/adbc.h"
 
 struct AdbcError* BigQueryErrorFromArrayStream(struct ArrowArrayStream*, AdbcStatusCode*);
 AdbcStatusCode BigQueryDatabaseGetOption(struct AdbcDatabase*, const char*, char*,

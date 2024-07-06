@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+dir.create("src/arrow-adbc", showWarnings=FALSE)
 file.copy("c/include/arrow-adbc/adbc.h", "src/arrow-adbc/adbc.h")
 
 # If we are building within the repo, copy the latest adbc.h and driver source

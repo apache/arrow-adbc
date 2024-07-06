@@ -21,7 +21,7 @@ dev/release/rat_exclude_files.txt
 docs/source/format/*.drawio
 docs/source/format/*.svg
 filtered_rat.txt
-go/adbc/drivermgr/adbc.h
+go/adbc/drivermgr/arrow-adbc/adbc.h
 go/adbc/drivermgr/adbc_driver_manager.cc
 go/adbc/drivermgr/adbc_driver_manager.h
 go/adbc/status_string.go

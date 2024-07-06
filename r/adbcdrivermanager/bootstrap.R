@@ -19,6 +19,7 @@
 # implementation from the repo. We also run this from configure, so do nothing
 # if we aren't sitting within the repo (e.g., installing a source package from a
 # tarball).
+dir.create("src/arrow-adbc", showWarnings=FALSE)
 file.copy("../../c/include/arrow-adbc/adbc.h", "src/arrow-adbc/adbc.h")
 
 files_to_vendor <- c(
