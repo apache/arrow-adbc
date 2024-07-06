@@ -37,19 +37,21 @@ main() {
 
     set -x
 
-    cmake -S "${source_dir}/c" \
-          -B ${build_dir} \
-          ${ADBC_CMAKE_ARGS} \
-          -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
-          -DADBC_USE_ASAN="${ADBC_USE_ASAN}" \
-          -DADBC_USE_UBSAN="${ADBC_USE_UBSAN}" \
-          -DADBC_DRIVER_MANAGER=${BUILD_DRIVER_MANAGER} \
-          -DADBC_DRIVER_FLIGHTSQL=${BUILD_DRIVER_FLIGHTSQL} \
-          -DADBC_DRIVER_POSTGRESQL=${BUILD_DRIVER_POSTGRESQL} \
-          -DADBC_DRIVER_SQLITE=${BUILD_DRIVER_SQLITE} \
-          -DADBC_DRIVER_SNOWFLAKE=${BUILD_DRIVER_SNOWFLAKE} \
-          -DADBC_BUILD_PYTHON=ON
-    cmake --build ${build_dir} --target python
+    if [ ${BUILD_DRIVER_MANAGER} != 0 ]; then
+        pip install "${source_dir}/python/adbc_driver_manager"
+    fi
+    if [ ${BUILD_DRIVER_FLIGHTSQL} != 0 ]; then
+        pip install "${source_dir}/python/adbc_driver_flightsql"
+    fi
+    if [ ${BUILD_DRIVER_POSTGRESQL} != 0 ]; then
+        pip install "${source_dir}/python/adbc_driver_postgresql"
+    fi
+    if [ ${BUILD_DRIVER_SNOWFLAKE} != 0 ]; then
+        pip install "${source_dir}/python/adbc_driver_snowflake"
+    fi
+    if [ ${BUILD_DRIVER_SQLITE} != 0 ]; then
+        pip install "${source_dir}/python/adbc_driver_sqlite"
+    fi
 
     set +x
 }

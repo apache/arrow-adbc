@@ -22,3 +22,8 @@ adbc_driver_manager_lib = library(
     include_directories: [root_dir],
     install: true,
 )
+
+adbc_driver_manager_dep = declare_dependency(
+    include_directories: [root_dir],
+    link_with: adbc_driver_manager_lib,
+)

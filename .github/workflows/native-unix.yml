@@ -257,11 +257,11 @@ jobs:
             -Dsnowflake=true \
             -Dsqlite=true \
             -Dtests=true \
-            c c/build
-          meson compile -C c/build
+            build
+          meson compile -C build
       - name: Test
         run: |
-          meson test -C c/build --print-errorlogs
+          meson test -C build --print-errorlogs
       - name: Stop SQLite server, Dremio, and postgresql
         shell: bash -l {0}
         run: |
