@@ -28,6 +28,7 @@ update_versions() {
   case ${type} in
     release)
       local c_version="${VERSION_NATIVE}"
+      local csharp_suffix=""
       local docs_version="${RELEASE}"
       local glib_version="${VERSION_NATIVE}"
       local java_version="${VERSION_JAVA}"
@@ -36,6 +37,7 @@ update_versions() {
       ;;
     snapshot)
       local c_version="${VERSION_NATIVE}-SNAPSHOT"
+      local csharp_suffix="SNAPSHOT"
       local docs_version="${RELEASE} (dev)"
       local glib_version="${VERSION_NATIVE}-SNAPSHOT"
       local java_version="${VERSION_JAVA}-SNAPSHOT"
@@ -77,7 +79,10 @@ update_versions() {
   git add meta.yaml
   popd
 
-  sed -i.bak -E "s|<Version>.+</Version>|<Version>${csharp_version}</Version>|" "${ADBC_DIR}/csharp/Directory.Build.props"
+  sed -i.bak \
+    -E "s|<VersionPrefix>.+</VersionPrefix>|<VersionPrefix>${csharp_version}</VersionPrefix>|" \
+    -E "s|<VersionSuffix>.+</VersionSuffix>|<VersionSuffix>${csharp_suffix}</VersionSuffix>|" \
+    "${ADBC_DIR}/csharp/Directory.Build.props"
   rm "${ADBC_DIR}/csharp/Directory.Build.props.bak"
   git add "${ADBC_DIR}/csharp/Directory.Build.props"
 

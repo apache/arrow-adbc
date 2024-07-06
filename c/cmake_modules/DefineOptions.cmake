@@ -236,6 +236,7 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   define_option(ADBC_DRIVER_POSTGRESQL "Build the PostgreSQL driver" OFF)
   define_option(ADBC_DRIVER_SQLITE "Build the SQLite driver" OFF)
   define_option(ADBC_DRIVER_SNOWFLAKE "Build the Snowflake driver" OFF)
+  define_option(ADBC_DRIVER_BIGQUERY "Build the BigQuery driver" OFF)
 
   define_option(ADBC_INTEGRATION_DUCKDB "Build the test suite for DuckDB" OFF)
 endif()
