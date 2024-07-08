@@ -60,9 +60,6 @@ endif
 if adbc_build_dir == ''
   adbc_driver_manager = dependency('adbc-driver-manager')
 else
-  base_include_directories += [
-    include_directories('..' / 'c' / 'driver_manager'),
-  ]
   c_compiler = meson.get_compiler('c')
   adbc_driver_manager = c_compiler.find_library('adbc_driver_manager',
                                                 dirs: [adbc_build_dir])
