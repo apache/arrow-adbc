@@ -39,7 +39,7 @@ if (all(file.exists(headers_to_vendor))) {
     )
   )
 
-  if (all(file.copy(headers_to_vendor, "src"))) {
+  if (all(file.copy(headers_to_vendor, "src/arrow-adbc"))) {
     cat("All files successfully copied to src/arrow-adbc/\n")
   } else {
     stop("Failed to vendor all headers")

@@ -22,8 +22,8 @@
 #include <string>
 #include <vector>
 
-#include "adbc_driver_manager.h"
 #include "arrow-adbc/adbc.h"
+#include "arrow-adbc/adbc_driver_manager.h"
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 

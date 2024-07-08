@@ -39,8 +39,6 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
 
-install(FILES adbc_driver_manager.h DESTINATION include/arrow-adbc)
-
 if(ADBC_BUILD_TESTS)
   if(ADBC_TEST_LINKAGE STREQUAL "shared")
     set(TEST_LINK_LIBS adbc_driver_manager_shared)

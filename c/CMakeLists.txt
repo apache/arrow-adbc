@@ -57,6 +57,8 @@ if(ADBC_DRIVER_FLIGHTSQL)
 endif()
 
 if(ADBC_DRIVER_MANAGER)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/adbc_driver_manager.h"
+          DESTINATION include/arrow-adbc)
   add_subdirectory(driver_manager)
 endif()
 

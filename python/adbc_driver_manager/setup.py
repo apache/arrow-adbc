@@ -35,7 +35,7 @@ FileToCopy = namedtuple("FileToCopy", ["source", "dest_dir"])
 files_to_copy = [
     FileToCopy("c/include/arrow-adbc/adbc.h", "arrow-adbc"),
     FileToCopy("c/driver_manager/adbc_driver_manager.cc", ""),
-    FileToCopy("c/driver_manager/adbc_driver_manager.h", ""),
+    FileToCopy("c/include/arrow-adbc/adbc_driver_manager.h", "arrow-adbc"),
     FileToCopy("c/vendor/backward/backward.hpp", ""),
 ]
 

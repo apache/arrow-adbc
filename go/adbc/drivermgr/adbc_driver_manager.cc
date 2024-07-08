@@ -15,8 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "adbc_driver_manager.h"
-#include <arrow-adbc/adbc.h>
+#include "arrow-adbc/adbc_driver_manager.h"
+#include "arrow-adbc/adbc.h"
 
 #include <algorithm>
 #include <array>
