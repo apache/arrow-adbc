@@ -22,7 +22,7 @@
 dir.create("src/arrow-adbc", showWarnings=FALSE)
 headers_to_vendor <- c(
     "../../c/include/arrow-adbc/adbc.h",
-    "../../c/driver_manager/adbc_driver_manager.h"
+    "../../c/include/arrow-adbc/adbc_driver_manager.h"
 )
 if (all(file.exists(headers_to_vendor))) {
   files_dst <- file.path("src/arrow-adbc", basename(headers_to_vendor))
