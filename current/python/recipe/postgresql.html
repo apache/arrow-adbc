@@ -7,20 +7,20 @@
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 <meta property="og:title" content="PostgreSQL Recipes" />
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://arrow.apache.org/adbc/0.11.0/python/recipe/postgresql.html" />
+<meta property="og:url" content="https://arrow.apache.org/adbc/13/python/recipe/postgresql.html" />
 <meta property="og:site_name" content="ADBC" />
 <meta property="og:description" content="Authenticate with a username and password: Recipe source: postgresql_authenticate.py To connect to a PostgreSQL database, the username and password must be provided in the URI. For example, See the..." />
-<meta property="og:image" content="https://arrow.apache.org/adbc/0.11.0/_static/banner.png" />
+<meta property="og:image" content="https://arrow.apache.org/adbc/13/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
 <meta name="description" content="Authenticate with a username and password: Recipe source: postgresql_authenticate.py To connect to a PostgreSQL database, the username and password must be provided in the URI. For example, See the..." />
 <link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="R" href="../../r/index.html" /><link rel="prev" title="Flight SQL Recipes" href="flight_sql.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
-        <title>PostgreSQL Recipes - ADBC 0.11.0 documentation</title>
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.05.06 -->
+        <title>PostgreSQL Recipes - ADBC 13 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=7eec22261a5d8917218cec534344987d69e122f4" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.5ea377869091fd0449014c60fc090103.min.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
@@ -50,7 +50,7 @@
   }
 </style>
 <script>
-  const currentVersion = "0.11.0";
+  const currentVersion = "13";
   const versionsRoot = "../../..";
 </script>
 <style>
@@ -105,7 +105,7 @@
     </script>
     
 <nav id="version-switcher">
-  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: 0.11.0</button>
+  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: 13</button>
   <div class="versions">
     <ul></ul>
   </div>
@@ -137,7 +137,7 @@
   <symbol id="svg-sun" viewBox="0 0 24 24">
     <title>Light mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
       <circle cx="12" cy="12" r="5"></circle>
       <line x1="12" y1="1" x2="12" y2="3"></line>
       <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -152,7 +152,7 @@
   <symbol id="svg-moon" viewBox="0 0 24 24">
     <title>Dark mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
       <path stroke="none" d="M0 0h24v24H0z" fill="none" />
       <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
     </svg>
@@ -160,7 +160,7 @@
   <symbol id="svg-sun-half" viewBox="0 0 24 24">
     <title>Auto light/dark mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <circle cx="12" cy="12" r="9" />
       <path d="M13 12h5" />
@@ -168,6 +168,60 @@
       <path d="M13 18h1" />
       <path d="M13 9h4" />
       <path d="M13 6h1" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" /
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
     </svg>
   </symbol>
 </svg>
@@ -181,6 +235,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -192,13 +248,14 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">ADBC 0.11.0 documentation</div></a>
+      <a href="../../index.html"><div class="brand">ADBC 13 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
         <button class="theme-toggle">
           <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
-          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
           <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
@@ -219,7 +276,7 @@
     <img class="sidebar-logo only-dark" src="../../_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">ADBC 0.11.0 documentation</span>
+  <span class="sidebar-brand-text">ADBC 13 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -282,6 +339,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../driver/postgresql.html">PostgreSQL Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../driver/snowflake.html">Snowflake Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../driver/sqlite.html">SQLite Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../driver/authoring.html">Writing New Drivers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
@@ -294,6 +352,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../development/contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../development/nightly.html">Nightly Packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../development/versioning.html">Versioning</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../development/releasing.html">Release Management Guide</a></li>
 </ul>
 
@@ -314,19 +373,21 @@
           <span>Back to top</span>
         </a>
         <div class="content-icon-container">
-          <div class="edit-this-page">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
   <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/python/recipe/postgresql.rst" title="Edit this page">
-    <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-      <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
-      <line x1="13.5" y1="6.5" x2="17.5" y2="10.5" />
-    </svg>
+    <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
 </div><div class="theme-toggle-container theme-toggle-content">
             <button class="theme-toggle">
               <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
-              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
               <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
@@ -336,11 +397,11 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="postgresql-recipes">
-<h1>PostgreSQL Recipes<a class="headerlink" href="#postgresql-recipes" title="Permalink to this heading">#</a></h1>
+<h1>PostgreSQL Recipes<a class="headerlink" href="#postgresql-recipes" title="Permalink to this heading">¶</a></h1>
 <section id="authenticate-with-a-username-and-password">
-<h2>Authenticate with a username and password<a class="headerlink" href="#authenticate-with-a-username-and-password" title="Permalink to this heading">#</a></h2>
+<h2>Authenticate with a username and password<a class="headerlink" href="#authenticate-with-a-username-and-password" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_authenticate.py">postgresql_authenticate.py</a></p>
 <p>To connect to a PostgreSQL database, the username and password must
 be provided in the URI.  For example,</p>
@@ -365,7 +426,7 @@ for full details.</p>
 </div>
 </section>
 <section id="create-append-to-a-table-from-an-arrow-dataset">
-<span id="recipe-postgresql-create-append"></span><h2>Create/append to a table from an Arrow dataset<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-dataset" title="Permalink to this heading">#</a></h2>
+<span id="recipe-postgresql-create-append"></span><h2>Create/append to a table from an Arrow dataset<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-dataset" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_dataset_table.py">postgresql_create_dataset_table.py</a></p>
 <p>ADBC makes it easy to load PyArrow datasets into your datastore.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
@@ -398,7 +459,7 @@ to use don’t exist.</p>
 </pre></div>
 </div>
 <section id="generating-sample-data">
-<h3>Generating sample data<a class="headerlink" href="#generating-sample-data" title="Permalink to this heading">#</a></h3>
+<h3>Generating sample data<a class="headerlink" href="#generating-sample-data" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">52</span><span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">(</span>
 <span class="linenos">53</span>    <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;adbc-docs-&quot;</span><span class="p">,</span>
 <span class="linenos">54</span>    <span class="n">ignore_cleanup_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -452,11 +513,11 @@ to use don’t exist.</p>
 </div>
 </section>
 <section id="loading-csv-files-into-postgresql">
-<h3>Loading CSV Files into PostgreSQL<a class="headerlink" href="#loading-csv-files-into-postgresql" title="Permalink to this heading">#</a></h3>
-<p>We can directly pass a <a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader" title="(in Apache Arrow v15.0.2)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pyarrow.RecordBatchReader</span></code></a> (from
+<h3>Loading CSV Files into PostgreSQL<a class="headerlink" href="#loading-csv-files-into-postgresql" title="Permalink to this heading">¶</a></h3>
+<p>We can directly pass a <a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader" title="(in Apache Arrow v16.1.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pyarrow.RecordBatchReader</span></code></a> (from
 <code class="docutils literal notranslate"><span class="pre">open_csv</span></code>) to <code class="docutils literal notranslate"><span class="pre">adbc_ingest</span></code>.  We can also pass a
-<a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.dataset.Dataset.html#pyarrow.dataset.Dataset" title="(in Apache Arrow v15.0.2)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pyarrow.dataset.Dataset</span></code></a>, or a
-<a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.dataset.Scanner.html#pyarrow.dataset.Scanner" title="(in Apache Arrow v15.0.2)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pyarrow.dataset.Scanner</span></code></a>.</p>
+<a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.dataset.Dataset.html#pyarrow.dataset.Dataset" title="(in Apache Arrow v16.1.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pyarrow.dataset.Dataset</span></code></a>, or a
+<a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.dataset.Scanner.html#pyarrow.dataset.Scanner" title="(in Apache Arrow v16.1.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pyarrow.dataset.Scanner</span></code></a>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">110</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">111</span>    <span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">csv</span><span class="o">.</span><span class="n">open_csv</span><span class="p">(</span><span class="n">csv_file</span><span class="p">)</span>
 <span class="linenos">112</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;csvtable&quot;</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
@@ -480,7 +541,7 @@ to use don’t exist.</p>
 </div>
 </section>
 <section id="loading-arrow-ipc-feather-files-into-postgresql">
-<h3>Loading Arrow IPC (Feather) Files into PostgreSQL<a class="headerlink" href="#loading-arrow-ipc-feather-files-into-postgresql" title="Permalink to this heading">#</a></h3>
+<h3>Loading Arrow IPC (Feather) Files into PostgreSQL<a class="headerlink" href="#loading-arrow-ipc-feather-files-into-postgresql" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">133</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">134</span>    <span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">ipc</span><span class="o">.</span><span class="n">RecordBatchFileReader</span><span class="p">(</span><span class="n">ipc_file</span><span class="p">)</span>
 </pre></div>
@@ -511,7 +572,7 @@ PostgreSQL, though.</p>
 </div>
 </section>
 <section id="loading-parquet-files-into-postgresql">
-<h3>Loading Parquet Files into PostgreSQL<a class="headerlink" href="#loading-parquet-files-into-postgresql" title="Permalink to this heading">#</a></h3>
+<h3>Loading Parquet Files into PostgreSQL<a class="headerlink" href="#loading-parquet-files-into-postgresql" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">160</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">161</span>    <span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">parquet</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="n">parquet_file</span><span class="p">)</span>
 <span class="linenos">162</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;pqtable&quot;</span><span class="p">,</span> <span class="n">reader</span><span class="o">.</span><span class="n">iter_batches</span><span class="p">(),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
@@ -535,7 +596,7 @@ PostgreSQL, though.</p>
 </div>
 </section>
 <section id="cleanup">
-<h3>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this heading">#</a></h3>
+<h3>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">183</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 <span class="linenos">184</span><span class="n">tempdir</span><span class="o">.</span><span class="n">cleanup</span><span class="p">()</span>
 </pre></div>
@@ -543,7 +604,7 @@ PostgreSQL, though.</p>
 </section>
 </section>
 <section id="create-append-to-a-table-from-an-arrow-table">
-<h2>Create/append to a table from an Arrow table<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-table" title="Permalink to this heading">#</a></h2>
+<h2>Create/append to a table from an Arrow table<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-table" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_append_table.py">postgresql_create_append_table.py</a></p>
 <p>ADBC allows creating and appending to database tables using Arrow
 tables.</p>
@@ -638,7 +699,7 @@ append.</p>
 </div>
 </section>
 <section id="create-append-to-a-temporary-table">
-<h2>Create/append to a temporary table<a class="headerlink" href="#create-append-to-a-temporary-table" title="Permalink to this heading">#</a></h2>
+<h2>Create/append to a temporary table<a class="headerlink" href="#create-append-to-a-temporary-table" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_temp_table.py">postgresql_create_temp_table.py</a></p>
 <p>ADBC allows creating and appending to temporary tables as well.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">21</span><span class="kn">import</span> <span class="nn">os</span>
@@ -718,7 +779,7 @@ If we reconnect, the table won’t exist; we’ll see only the ‘normal’ tabl
 <a class="reference internal" href="#recipe-postgresql-create-append"><span class="std std-ref">Create/append to a table from an Arrow dataset</span></a> for more examples.</p>
 </section>
 <section id="execute-a-statement-with-bind-parameters">
-<h2>Execute a statement with bind parameters<a class="headerlink" href="#execute-a-statement-with-bind-parameters" title="Permalink to this heading">#</a></h2>
+<h2>Execute a statement with bind parameters<a class="headerlink" href="#execute-a-statement-with-bind-parameters" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_execute_bind.py">postgresql_execute_bind.py</a></p>
 <p>ADBC allows using Python and Arrow values as bind parameters.
 Right now, the PostgreSQL driver only supports bind parameters
@@ -774,7 +835,7 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 </div>
 </section>
 <section id="get-the-arrow-schema-of-a-table">
-<h2>Get the Arrow schema of a table<a class="headerlink" href="#get-the-arrow-schema-of-a-table" title="Permalink to this heading">#</a></h2>
+<h2>Get the Arrow schema of a table<a class="headerlink" href="#get-the-arrow-schema-of-a-table" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_table_schema.py">postgresql_get_table_schema.py</a></p>
 <p>ADBC lets you get the schema of a table as an Arrow schema.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
@@ -833,7 +894,7 @@ decimals do not map onto Arrow decimals.</p>
 </div>
 </section>
 <section id="get-the-arrow-schema-of-a-query">
-<h2>Get the Arrow schema of a query<a class="headerlink" href="#get-the-arrow-schema-of-a-query" title="Permalink to this heading">#</a></h2>
+<h2>Get the Arrow schema of a query<a class="headerlink" href="#get-the-arrow-schema-of-a-query" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_query_schema.py">postgresql_get_query_schema.py</a></p>
 <p>ADBC lets you get the schema of a result set, without executing the query.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
@@ -876,7 +937,7 @@ decimals do not map onto Arrow decimals.</p>
 </div>
 </section>
 <section id="list-catalogs-schemas-and-tables">
-<h2>List catalogs, schemas, and tables<a class="headerlink" href="#list-catalogs-schemas-and-tables" title="Permalink to this heading">#</a></h2>
+<h2>List catalogs, schemas, and tables<a class="headerlink" href="#list-catalogs-schemas-and-tables" title="Permalink to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_list_catalogs.py">postgresql_list_catalogs.py</a></p>
 <p>ADBC allows listing tables, catalogs, and schemas in the database.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
@@ -916,6 +977,138 @@ decimals do not map onto Arrow decimals.</p>
 <span class="linenos">53</span><span class="k">assert</span> <span class="n">example</span><span class="p">[</span><span class="s2">&quot;table_columns&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;column_name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;bigints&quot;</span>
 <span class="linenos">54</span>
 <span class="linenos">55</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="connection-pooling-with-sqlalchemy">
+<h2>Connection pooling with SQLAlchemy<a class="headerlink" href="#connection-pooling-with-sqlalchemy" title="Permalink to this heading">¶</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_pool.py">postgresql_pool.py</a></p>
+<p>ADBC does not implement connection pooling, as this is not generally a
+feature of DBAPI drivers.  Instead, use a third party connection pool
+like the one built into <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/pooling.html">SQLAlchemy</a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">26</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">27</span>
+<span class="linenos">28</span><span class="kn">import</span> <span class="nn">sqlalchemy.pool</span>
+<span class="linenos">29</span>
+<span class="linenos">30</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">31</span>
+<span class="linenos">32</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
+<span class="linenos">33</span>
+<span class="linenos">34</span><span class="n">source</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="../api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.adbc_clone" title="adbc_driver_manager.dbapi.Connection.adbc_clone"><code class="xref py py-meth docutils literal notranslate"><span class="pre">adbc_driver_manager.dbapi.Connection.adbc_clone()</span></code></a> opens a new
+connection from an existing connection, sharing internal resources where
+possible.  For example, the PostgreSQL driver will share the internal OID
+cache, saving some overhead on connection.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">39</span><span class="n">pool</span> <span class="o">=</span> <span class="n">sqlalchemy</span><span class="o">.</span><span class="n">pool</span><span class="o">.</span><span class="n">QueuePool</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">adbc_clone</span><span class="p">,</span> <span class="n">max_overflow</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">pool_size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can now get connections out of the pool; SQLAlchemy overrides
+<code class="docutils literal notranslate"><span class="pre">close()</span></code> to return the connection to the pool.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>SQLAlchemy’s wrapper does not support the context manager
+protocol, unlike the underlying ADBC connection.</p>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">47</span><span class="n">conn</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+<span class="linenos">48</span>
+<span class="linenos">49</span><span class="k">assert</span> <span class="n">pool</span><span class="o">.</span><span class="n">checkedin</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span>
+<span class="linenos">50</span><span class="k">assert</span> <span class="n">pool</span><span class="o">.</span><span class="n">checkedout</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span>
+<span class="linenos">51</span>
+<span class="linenos">52</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">53</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+<span class="linenos">54</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+<span class="linenos">55</span>
+<span class="linenos">56</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="linenos">57</span>
+<span class="linenos">58</span><span class="k">assert</span> <span class="n">pool</span><span class="o">.</span><span class="n">checkedin</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span>
+<span class="linenos">59</span><span class="k">assert</span> <span class="n">pool</span><span class="o">.</span><span class="n">checkedout</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span>
+<span class="linenos">60</span>
+<span class="linenos">61</span><span class="n">source</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="using-pandas-and-adbc">
+<h2>Using Pandas and ADBC<a class="headerlink" href="#using-pandas-and-adbc" title="Permalink to this heading">¶</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_pandas.py">postgresql_pandas.py</a></p>
+<p>ADBC is integrated into <a class="reference external" href="https://pandas.pydata.org/">pandas</a>, a popular dataframe library.  Pandas can
+use ADBC to exchange data with PostgreSQL and other databases.  Compared to
+using SQLAlchemy or other options, using ADBC with pandas can have better
+performance, such as by avoiding excess conversions to and from Python
+objects.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">28</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">29</span>
+<span class="linenos">30</span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="linenos">31</span>
+<span class="linenos">32</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">33</span>
+<span class="linenos">34</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
+<span class="linenos">35</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We’ll use <a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html#pandas.DataFrame.to_sql" title="(in pandas v2.2.2)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pd.DataFrame.to_sql</span></code></a>
+to create a sample table.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">40</span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+<span class="linenos">41</span>    <span class="p">{</span>
+<span class="linenos">42</span>        <span class="s2">&quot;ints&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+<span class="linenos">43</span>        <span class="s2">&quot;strs&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">,</span> <span class="s2">&quot;d&quot;</span><span class="p">],</span>
+<span class="linenos">44</span>    <span class="p">}</span>
+<span class="linenos">45</span><span class="p">)</span>
+<span class="linenos">46</span><span class="n">data</span><span class="o">.</span><span class="n">to_sql</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">conn</span><span class="p">,</span> <span class="n">if_exists</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span>
+<span class="linenos">47</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>After creating the table, we can pass an ADBC connection and a SQL query to
+<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.read_sql.html#pandas.read_sql" title="(in pandas v2.2.2)"><code class="xref py py-func docutils literal notranslate"><span class="pre">pd.read_sql</span></code></a> to get the result set as a
+pandas DataFrame.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">53</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM example WHERE ints &gt; 1&quot;</span><span class="p">,</span> <span class="n">conn</span><span class="p">)</span>
+<span class="linenos">54</span>
+<span class="linenos">55</span><span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+<span class="linenos">56</span>
+<span class="linenos">57</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Compared to the ADBC interface, pandas offers a more convenient and higher
+level API, especially for those already using pandas.</p>
+</section>
+<section id="using-polars-and-adbc">
+<h2>Using Polars and ADBC<a class="headerlink" href="#using-polars-and-adbc" title="Permalink to this heading">¶</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_polars.py">postgresql_polars.py</a></p>
+<p>ADBC can be used with <a class="reference external" href="https://pola.rs/">Polars</a>, a dataframe library written in Rust.  As per
+its documentation:</p>
+<blockquote>
+<div><p>If the backend supports returning Arrow data directly then this facility
+will be used to efficiently instantiate the DataFrame; otherwise, the
+DataFrame is initialised from row-wise data.</p>
+</div></blockquote>
+<p>Obviously, ADBC returns Arrow data directly, making ADBC and Polars a
+natural fit for each other.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">33</span>
+<span class="linenos">34</span><span class="kn">import</span> <span class="nn">polars</span> <span class="k">as</span> <span class="nn">pl</span>
+<span class="linenos">35</span>
+<span class="linenos">36</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>We’ll use Polars to create a sample table with
+<a class="reference external" href="https://docs.pola.rs/api/python/stable/reference/api/polars.DataFrame.write_database.html#polars.DataFrame.write_database" title="(in Polars)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">polars.DataFrame.write_database()</span></code></a>.  We don’t need
+to open an ADBC connection ourselves with Polars.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">42</span><span class="n">data</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+<span class="linenos">43</span>    <span class="p">{</span>
+<span class="linenos">44</span>        <span class="s2">&quot;ints&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+<span class="linenos">45</span>        <span class="s2">&quot;strs&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">,</span> <span class="s2">&quot;d&quot;</span><span class="p">],</span>
+<span class="linenos">46</span>    <span class="p">}</span>
+<span class="linenos">47</span><span class="p">)</span>
+<span class="linenos">48</span><span class="n">data</span><span class="o">.</span><span class="n">write_database</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;adbc&quot;</span><span class="p">,</span> <span class="n">if_table_exists</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>After creating the table, we can use
+<a class="reference external" href="https://docs.pola.rs/api/python/stable/reference/api/polars.read_database.html#polars.read_database" title="(in Polars)"><code class="xref py py-func docutils literal notranslate"><span class="pre">polars.read_database()</span></code></a> to fetch the result.  Again,
+we can just pass the URI and tell Polars to manage ADBC for us.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">54</span><span class="n">df</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">read_database</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM example WHERE ints &gt; 1&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;adbc&quot;</span><span class="p">)</span>
+<span class="linenos">55</span>
+<span class="linenos">56</span><span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
 </pre></div>
 </div>
 </section>
@@ -995,6 +1188,9 @@ United States and other countries.
 <li><a class="reference internal" href="#get-the-arrow-schema-of-a-table">Get the Arrow schema of a table</a></li>
 <li><a class="reference internal" href="#get-the-arrow-schema-of-a-query">Get the Arrow schema of a query</a></li>
 <li><a class="reference internal" href="#list-catalogs-schemas-and-tables">List catalogs, schemas, and tables</a></li>
+<li><a class="reference internal" href="#connection-pooling-with-sqlalchemy">Connection pooling with SQLAlchemy</a></li>
+<li><a class="reference internal" href="#using-pandas-and-adbc">Using Pandas and ADBC</a></li>
+<li><a class="reference internal" href="#using-polars-and-adbc">Using Polars and ADBC</a></li>
 </ul>
 </li>
 </ul>

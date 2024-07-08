@@ -7,20 +7,20 @@
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 <meta property="og:title" content="Release Management Guide" />
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://arrow.apache.org/adbc/0.11.0/development/releasing.html" />
+<meta property="og:url" content="https://arrow.apache.org/adbc/13/development/releasing.html" />
 <meta property="og:site_name" content="ADBC" />
 <meta property="og:description" content="This page provides detailed information on the steps followed to perform a release. It can be used both as a guide to learn the ADBC release process and as a comprehensive checklist for the Release..." />
-<meta property="og:image" content="https://arrow.apache.org/adbc/0.11.0/_static/banner.png" />
+<meta property="og:image" content="https://arrow.apache.org/adbc/13/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
 <meta name="description" content="This page provides detailed information on the steps followed to perform a release. It can be used both as a guide to learn the ADBC release process and as a comprehensive checklist for the Release..." />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Nightly Packages" href="nightly.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Versioning" href="versioning.html" />
 
-    <!-- Generated with Sphinx 6.2.1 and Furo 2024.01.29 -->
-        <title>Release Management Guide - ADBC 0.11.0 documentation</title>
+    <!-- Generated with Sphinx 6.2.1 and Furo 2024.05.06 -->
+        <title>Release Management Guide - ADBC 13 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=369552022d0b975c8e74270ce6eabe0fb7978f24" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=7eec22261a5d8917218cec534344987d69e122f4" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.5ea377869091fd0449014c60fc090103.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
@@ -50,7 +50,7 @@
   }
 </style>
 <script>
-  const currentVersion = "0.11.0";
+  const currentVersion = "13";
   const versionsRoot = "../..";
 </script>
 <style>
@@ -105,7 +105,7 @@
     </script>
     
 <nav id="version-switcher">
-  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: 0.11.0</button>
+  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: 13</button>
   <div class="versions">
     <ul></ul>
   </div>
@@ -137,7 +137,7 @@
   <symbol id="svg-sun" viewBox="0 0 24 24">
     <title>Light mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
       <circle cx="12" cy="12" r="5"></circle>
       <line x1="12" y1="1" x2="12" y2="3"></line>
       <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -152,7 +152,7 @@
   <symbol id="svg-moon" viewBox="0 0 24 24">
     <title>Dark mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
       <path stroke="none" d="M0 0h24v24H0z" fill="none" />
       <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
     </svg>
@@ -160,7 +160,7 @@
   <symbol id="svg-sun-half" viewBox="0 0 24 24">
     <title>Auto light/dark mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <circle cx="12" cy="12" r="9" />
       <path d="M13 12h5" />
@@ -168,6 +168,60 @@
       <path d="M13 18h1" />
       <path d="M13 9h4" />
       <path d="M13 6h1" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" /
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
     </svg>
   </symbol>
 </svg>
@@ -181,6 +235,8 @@
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
 
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
 
 
 <div class="page">
@@ -192,13 +248,14 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">ADBC 0.11.0 documentation</div></a>
+      <a href="../index.html"><div class="brand">ADBC 13 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
         <button class="theme-toggle">
           <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
-          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
           <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
@@ -219,7 +276,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">ADBC 0.11.0 documentation</span>
+  <span class="sidebar-brand-text">ADBC 13 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -282,6 +339,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../driver/postgresql.html">PostgreSQL Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../driver/snowflake.html">Snowflake Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../driver/sqlite.html">SQLite Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../driver/authoring.html">Writing New Drivers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
@@ -294,6 +352,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nightly.html">Nightly Packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="versioning.html">Versioning</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Release Management Guide</a></li>
 </ul>
 
@@ -314,19 +373,21 @@
           <span>Back to top</span>
         </a>
         <div class="content-icon-container">
-          <div class="edit-this-page">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/development/releasing.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
   <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/development/releasing.rst" title="Edit this page">
-    <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-      <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
-      <line x1="13.5" y1="6.5" x2="17.5" y2="10.5" />
-    </svg>
+    <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
 </div><div class="theme-toggle-container theme-toggle-content">
             <button class="theme-toggle">
               <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
-              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
               <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
@@ -336,9 +397,9 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="release-management-guide">
-<h1>Release Management Guide<a class="headerlink" href="#release-management-guide" title="Permalink to this heading">#</a></h1>
+<h1>Release Management Guide<a class="headerlink" href="#release-management-guide" title="Permalink to this heading">¶</a></h1>
 <p>This page provides detailed information on the steps followed to perform
 a release. It can be used both as a guide to learn the ADBC release
 process and as a comprehensive checklist for the Release Manager when
@@ -348,12 +409,12 @@ performing a release.</p>
 <p><a class="reference external" href="https://arrow.apache.org/docs/dev/developers/release.html">Apache Arrow Release Management Guide</a></p>
 </div>
 <section id="principles">
-<h2>Principles<a class="headerlink" href="#principles" title="Permalink to this heading">#</a></h2>
+<h2>Principles<a class="headerlink" href="#principles" title="Permalink to this heading">¶</a></h2>
 <p>The Apache Arrow Release follows the guidelines defined at the
 <a class="reference external" href="https://www.apache.org/legal/release-policy.html">Apache Software Foundation Release Policy</a>.</p>
 </section>
 <section id="preparing-for-the-release">
-<h2>Preparing for the release<a class="headerlink" href="#preparing-for-the-release" title="Permalink to this heading">#</a></h2>
+<h2>Preparing for the release<a class="headerlink" href="#preparing-for-the-release" title="Permalink to this heading">¶</a></h2>
 <p>Some steps of the release require being a committer or a PMC member.</p>
 <ul>
 <li><p>A GPG key in the Apache Web of Trust to sign artifacts. This will have to be cross signed by other Apache committers/PMC members. You must set your GPG key ID in <code class="docutils literal notranslate"><span class="pre">dev/release/.env</span></code> (see <code class="docutils literal notranslate"><span class="pre">dev/release/.env.example</span></code> for a template).</p></li>
@@ -377,7 +438,7 @@ performing a release.</p>
 </ul>
 </section>
 <section id="before-creating-a-release-candidate">
-<h2>Before creating a Release Candidate<a class="headerlink" href="#before-creating-a-release-candidate" title="Permalink to this heading">#</a></h2>
+<h2>Before creating a Release Candidate<a class="headerlink" href="#before-creating-a-release-candidate" title="Permalink to this heading">¶</a></h2>
 <p>Regenerate the LICENSE.txt (see CONTRIBUTING.md) and create a pull request if
 any changes were needed.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Setup gpg agent for signing artifacts</span>
@@ -388,14 +449,14 @@ any changes were needed.</p>
 </pre></div>
 </div>
 <section id="check-nightly-verification-job">
-<h3>Check Nightly Verification Job<a class="headerlink" href="#check-nightly-verification-job" title="Permalink to this heading">#</a></h3>
+<h3>Check Nightly Verification Job<a class="headerlink" href="#check-nightly-verification-job" title="Permalink to this heading">¶</a></h3>
 <p>Ensure that the <a class="reference external" href="https://github.com/apache/arrow-adbc/actions/workflows/nightly-verify.yml">verification job</a>
 is passing.  This simulates part of the release verification workflow
 to detect issues ahead of time.</p>
 </section>
 </section>
 <section id="creating-a-release-candidate">
-<h2>Creating a Release Candidate<a class="headerlink" href="#creating-a-release-candidate" title="Permalink to this heading">#</a></h2>
+<h2>Creating a Release Candidate<a class="headerlink" href="#creating-a-release-candidate" title="Permalink to this heading">¶</a></h2>
 <p>These are the different steps that are required to create a Release Candidate.</p>
 <p>For the initial Release Candidate, we will create a maintenance branch from master.
 Follow up Release Candidates will update the maintenance branch by cherry-picking
@@ -405,10 +466,10 @@ This means that, in general, we should only add bug fixes between Release Candid
 In rare cases, critical features can be added between Release Candidates, if
 there is community consensus.</p>
 <section id="create-or-update-the-corresponding-maintenance-branch">
-<h3>Create or update the corresponding maintenance branch<a class="headerlink" href="#create-or-update-the-corresponding-maintenance-branch" title="Permalink to this heading">#</a></h3>
+<h3>Create or update the corresponding maintenance branch<a class="headerlink" href="#create-or-update-the-corresponding-maintenance-branch" title="Permalink to this heading">¶</a></h3>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" for="sd-tab-item-0">
+<label class="sd-tab-label" for="sd-tab-item-0">
 Initial Release Candidate</label><div class="sd-tab-content docutils">
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Execute the following from an up to date master branch.</span>
 <span class="c1"># This will create a branch locally called maint-X.Y.Z.</span>
@@ -421,11 +482,11 @@ Initial Release Candidate</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" for="sd-tab-item-1">
+<label class="sd-tab-label" for="sd-tab-item-1">
 Follow up Release Candidates</label><div class="sd-tab-content docutils">
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">switch</span> <span class="n">maint</span><span class="o">-</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
 <span class="c1"># Remove the commits that created the changelog and bumped the</span>
-<span class="c1"># versions, since 01-source.sh will redo those steps</span>
+<span class="c1"># versions, since 01-prepare.sh will redo those steps</span>
 <span class="n">git</span> <span class="n">reset</span> <span class="o">--</span><span class="n">hard</span> <span class="n">HEAD</span><span class="o">~</span><span class="mi">2</span>
 <span class="c1"># Cherry-pick any commits by hand.</span>
 <span class="n">git</span> <span class="n">cherry</span><span class="o">-</span><span class="n">pick</span> <span class="o">...</span>
@@ -437,7 +498,7 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 </div>
 </section>
 <section id="create-the-release-candidate-tag-from-the-updated-maintenance-branch">
-<h3>Create the Release Candidate tag from the updated maintenance branch<a class="headerlink" href="#create-the-release-candidate-tag-from-the-updated-maintenance-branch" title="Permalink to this heading">#</a></h3>
+<h3>Create the Release Candidate tag from the updated maintenance branch<a class="headerlink" href="#create-the-release-candidate-tag-from-the-updated-maintenance-branch" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Start from the updated maintenance branch.</span>
 <span class="n">git</span> <span class="n">switch</span> <span class="n">maint</span><span class="o">-</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
 
@@ -446,57 +507,57 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 <span class="c1"># on OSX use gnu-sed with homebrew: brew install gnu-sed (and export to $PATH)</span>
 <span class="c1">#</span>
 <span class="c1"># &lt;rc-number&gt; starts at 0 and increments every time the Release Candidate is burned</span>
-<span class="c1"># so for the first RC this would be: dev/release/01-prepare.sh 3.0.0 4.0.0 5.0.0 0</span>
+<span class="c1"># so for the first RC this would be: dev/release/01-prepare.sh 1.0.0 0</span>
 
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">01</span><span class="o">-</span><span class="n">prepare</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">prev</span><span class="o">-</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="nb">next</span><span class="o">-</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">01</span><span class="o">-</span><span class="n">prepare</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
-<span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">u</span> <span class="n">apache</span> <span class="n">apache</span><span class="o">-</span><span class="n">arrow</span><span class="o">-</span><span class="n">adbc</span><span class="o">-&lt;</span><span class="n">version</span><span class="o">&gt;-</span><span class="n">rc</span><span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span> <span class="n">maint</span><span class="o">-&lt;</span><span class="n">version</span><span class="o">&gt;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">u</span> <span class="n">apache</span> <span class="n">apache</span><span class="o">-</span><span class="n">arrow</span><span class="o">-</span><span class="n">adbc</span><span class="o">-&lt;</span><span class="n">release</span><span class="o">&gt;-</span><span class="n">rc</span><span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span> <span class="n">maint</span><span class="o">-&lt;</span><span class="n">release</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 </section>
 <section id="build-source-and-binaries-and-submit-them">
-<h3>Build source and binaries and submit them<a class="headerlink" href="#build-source-and-binaries-and-submit-them" title="Permalink to this heading">#</a></h3>
+<h3>Build source and binaries and submit them<a class="headerlink" href="#build-source-and-binaries-and-submit-them" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the produced source and binaries, sign them, and add the</span>
 <span class="c1"># signatures to the GitHub release</span>
 <span class="c1">#</span>
 <span class="c1"># On macOS the only way I could get this to work was running &quot;echo</span>
 <span class="c1"># &quot;UPDATESTARTUPTTY&quot; | gpg-connect-agent&quot; before running this</span>
 <span class="c1"># comment otherwise I got errors referencing &quot;ioctl&quot; errors.</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">02</span><span class="o">-</span><span class="n">sign</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">prev</span><span class="o">-</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">02</span><span class="o">-</span><span class="n">sign</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
 <span class="c1"># Upload the source release tarball and signs to</span>
 <span class="c1"># https://dist.apache.org/repos/dist/dev/arrow .</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">03</span><span class="o">-</span><span class="n">source</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">03</span><span class="o">-</span><span class="n">source</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
 <span class="c1"># Upload the Java artifacts</span>
 <span class="c1">#</span>
 <span class="c1"># Note that you need to press the &quot;Close&quot; button manually by Web interface</span>
 <span class="c1"># after you complete the script:</span>
 <span class="c1">#   https://repository.apache.org/#stagingRepositories</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">04</span><span class="o">-</span><span class="n">java</span><span class="o">-</span><span class="n">upload</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">04</span><span class="o">-</span><span class="n">java</span><span class="o">-</span><span class="n">upload</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
 <span class="c1"># Sign and upload the deb/rpm packages and APT/Yum repositories</span>
 <span class="c1">#</span>
 <span class="c1"># This reuses release scripts in apache/arrow. So you need to</span>
 <span class="c1"># specify cloned apache/arrow directory.</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">05</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">upload</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">05</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">upload</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
 <span class="c1"># Start verifications for binaries and wheels</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">06</span><span class="o">-</span><span class="n">binary</span><span class="o">-</span><span class="n">verify</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">06</span><span class="o">-</span><span class="n">binary</span><span class="o">-</span><span class="n">verify</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 </section>
 <section id="verify-the-release">
-<h3>Verify the Release<a class="headerlink" href="#verify-the-release" title="Permalink to this heading">#</a></h3>
+<h3>Verify the Release<a class="headerlink" href="#verify-the-release" title="Permalink to this heading">¶</a></h3>
 <p>Start the vote thread on <a class="reference external" href="mailto:dev&#37;&#52;&#48;arrow&#46;apache&#46;org">dev<span>&#64;</span>arrow<span>&#46;</span>apache<span>&#46;</span>org</a> using the template email from <code class="docutils literal notranslate"><span class="pre">06-binary-verify.sh</span></code>.</p>
 </section>
 </section>
 <section id="voting-and-approval">
-<h2>Voting and approval<a class="headerlink" href="#voting-and-approval" title="Permalink to this heading">#</a></h2>
+<h2>Voting and approval<a class="headerlink" href="#voting-and-approval" title="Permalink to this heading">¶</a></h2>
 <p>Start the vote thread on <a class="reference external" href="mailto:dev&#37;&#52;&#48;arrow&#46;apache&#46;org">dev<span>&#64;</span>arrow<span>&#46;</span>apache<span>&#46;</span>org</a> and supply instructions for verifying the integrity of the release.
 Approval requires a net of 3 +1 votes from PMC members. A release cannot be vetoed.</p>
 <section id="how-to-verify-release-candidates">
-<h3>How to Verify Release Candidates<a class="headerlink" href="#how-to-verify-release-candidates" title="Permalink to this heading">#</a></h3>
+<h3>How to Verify Release Candidates<a class="headerlink" href="#how-to-verify-release-candidates" title="Permalink to this heading">¶</a></h3>
 <ol class="arabic">
 <li><p>Install dependencies.  At minimum, you will need:</p>
 <ul class="simple">
@@ -511,10 +572,29 @@ Roughly, this means:</p>
 <ul class="simple">
 <li><p>C and C++ compilers (or the equivalent of <code class="docutils literal notranslate"><span class="pre">build-essential</span></code> for your platform)</p></li>
 <li><p>Python 3</p></li>
-<li><p>Ruby with headers</p></li>
+<li><dl class="simple">
+<dt>Ruby with headers</dt><dd><ul>
+<li><p>meson is required</p></li>
+</ul>
+</dd>
+</dl>
+</li>
 <li><p>bundler, rake, red-arrow, and test-unit Ruby gems</p></li>
-<li><p>GLib and gobject-introspection with headers</p></li>
-<li><p>Java JRE and JDK (Java 8+)</p></li>
+<li><dl class="simple">
+<dt>GLib and gobject-introspection with headers</dt><dd><ul>
+<li><p>pkg-config or cmake must be able to find libarrow-glib.so</p></li>
+<li><p>GI_TYPELIB_PATH should be set to the path to the girepository-1.0 directory</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Java JRE and JDK (Java 8+)</dt><dd><ul>
+<li><p>the javadoc command must also be accessible</p></li>
+</ul>
+</dd>
+</dl>
+</li>
 <li><p>Go</p></li>
 <li><p>CMake, ninja-build, libpq (with headers), SQLite (with headers)</p></li>
 </ul>
@@ -528,7 +608,7 @@ See the environment variables below.</p>
 </li>
 <li><p>Run the verification script:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd arrow-adbc
-# Pass the version and the RC number
+# Pass the release and the RC number
 $ ./dev/release/verify-release-candidate.sh 0.1.0 6
 </pre></div>
 </div>
@@ -549,16 +629,12 @@ vote thread with a +1 or a -1.</p></li>
 </section>
 </section>
 <section id="post-release-tasks">
-<h2>Post-release tasks<a class="headerlink" href="#post-release-tasks" title="Permalink to this heading">#</a></h2>
+<h2>Post-release tasks<a class="headerlink" href="#post-release-tasks" title="Permalink to this heading">¶</a></h2>
 <p>After the release vote, we must undertake many tasks to update source artifacts, binary builds, and the Arrow website.</p>
 <p>Be sure to go through on the following checklist:</p>
 <details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Close the GitHub milestone/project<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Close the GitHub milestone/project</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <ul class="simple">
 <li><p class="sd-card-text">Open <a class="reference external" href="https://github.com/orgs/apache/projects">https://github.com/orgs/apache/projects</a> and find the project</p></li>
 <li><p class="sd-card-text">Click “…” for the project</p></li>
@@ -569,70 +645,46 @@ Close the GitHub milestone/project<div class="sd-summary-down docutils">
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Add the new release to the Apache Reporter System<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Add the new release to the Apache Reporter System</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Add relevant release data for Arrow to <a class="reference external" href="https://reporter.apache.org/addrelease.html?arrow">Apache reporter</a>.</p>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Upload source release artifacts to Subversion<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Upload source release artifacts to Subversion</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">A PMC member must commit the source release artifacts to Subversion:</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-01-upload.sh 0.1.0 0</span>
-dev/release/post-01-upload.sh<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;rc-number&gt;
-git<span class="w"> </span>push<span class="w"> </span>apache<span class="w"> </span>apache-arrow-adbc-&lt;version&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-01-upload.sh 0</span>
+dev/release/post-01-upload.sh<span class="w"> </span>&lt;rc-number&gt;
+git<span class="w"> </span>push<span class="w"> </span>apache<span class="w"> </span>apache-arrow-adbc-&lt;release&gt;
 </pre></div>
 </div>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Create the final GitHub release<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Create the final GitHub release</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">A committer must create the final GitHub release:</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-02-binary.sh 0.1.0 0</span>
-dev/release/post-02-binary.sh<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;rc-number&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-02-binary.sh 0</span>
+dev/release/post-02-binary.sh<span class="w"> </span>&lt;rc-number&gt;
 </pre></div>
 </div>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Update website<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Update website</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">This is done automatically when the tags are pushed. Please check that the
 <a class="reference external" href="https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml">nightly-website.yml</a> workflow succeeded.</p>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Upload wheels/sdist to PyPI<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Upload wheels/sdist to PyPI</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">We use the twine tool to upload wheels to PyPI:</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-03-python.sh 0.1.0 0</span>
-dev/release/post-03-python.sh<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;rc-number&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-03-python.sh 0</span>
+dev/release/post-03-python.sh<span class="w"> </span>&lt;rc-number&gt;
 </pre></div>
 </div>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Publish Maven packages<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Publish Maven packages</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <ul class="simple">
 <li><p class="sd-card-text">Logon to the Apache repository: <a class="reference external" href="https://repository.apache.org/#stagingRepositories">https://repository.apache.org/#stagingRepositories</a></p></li>
 <li><p class="sd-card-text">Select the Arrow staging repository you created for RC: <code class="docutils literal notranslate"><span class="pre">orgapachearrow-XXXX</span></code></p></li>
@@ -641,47 +693,31 @@ Publish Maven packages<div class="sd-summary-down docutils">
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Update tags for Go modules<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-04-go.sh 10.0.0</span>
-dev/release/post-04-go.sh<span class="w"> </span>&lt;version&gt;
+<span class="sd-summary-text">Update tags for Go modules</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-04-go.sh</span>
+dev/release/post-04-go.sh
 </pre></div>
 </div>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Deploy APT/Yum repositories<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Deploy APT/Yum repositories</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># This reuses release scripts in apache/arrow. So you need to</span>
 <span class="c1"># specify cloned apache/arrow directory.</span>
 <span class="c1">#</span>
-<span class="c1"># dev/release/post-05-linux.sh ../arrow 10.0.0 0</span>
-dev/release/post-05-linux.sh<span class="w"> </span>&lt;arrow-dir&gt;<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;rc-number&gt;
+<span class="c1"># dev/release/post-05-linux.sh ../arrow 0</span>
+dev/release/post-05-linux.sh<span class="w"> </span>&lt;arrow-dir&gt;<span class="w"> </span>&lt;rc-number&gt;
 </pre></div>
 </div>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Update R packages<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Update R packages</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">This is a manual process.  See the process for the <a class="reference external" href="https://arrow.apache.org/docs/dev/developers/release.html#post-release-tasks">Arrow R packages</a>.</p>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Upload Ruby packages to RubyGems<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Upload Ruby packages to RubyGems</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">You must be one of owners of <a class="reference external" href="https://rubygems.org/gems/red-adbc">https://rubygems.org/gems/red-adbc</a>
 . If you aren’t an owner of red-adbc yet, an existing owner must
 run the following command line to add you to red-adbc owners:</p>
@@ -689,18 +725,14 @@ run the following command line to add you to red-adbc owners:</p>
 </pre></div>
 </div>
 <p class="sd-card-text">An owner of red-adbc can upload:</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-06-ruby.sh 1.0.0</span>
-dev/release/post-06-ruby.sh<span class="w"> </span>&lt;version&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-06-ruby.sh</span>
+dev/release/post-06-ruby.sh
 </pre></div>
 </div>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Upload C#/.NET packages to NuGet<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Upload C#/.NET packages to NuGet</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">You must be one of owners of the package.  If you aren’t an owner yet, an
 existing owner can add you at <a class="reference external" href="https://nuget.org">https://nuget.org</a>.</p>
 <p class="sd-card-text">You will need to [create an API
@@ -708,39 +740,27 @@ key](<a class="reference external" href="https://learn.microsoft.com/en-us/nuget
 <p class="sd-card-text">An owner can upload:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">NUGET_API_KEY</span><span class="o">=</span>&lt;your<span class="w"> </span>API<span class="w"> </span>key<span class="w"> </span>here&gt;
 
-<span class="c1"># dev/release/post-07-csharp.sh 1.0.0</span>
-dev/release/post-07-csharp.sh<span class="w"> </span>&lt;version&gt;
+<span class="c1"># dev/release/post-07-csharp.sh</span>
+dev/release/post-07-csharp.sh
 </pre></div>
 </div>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Update conda-forge packages<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Update conda-forge packages</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">File a PR that bumps the version to the feedstock:
 <a class="reference external" href="https://github.com/conda-forge/arrow-adbc-split-feedstock">https://github.com/conda-forge/arrow-adbc-split-feedstock</a></p>
 <p class="sd-card-text">A conda-forge or feedstock maintainer can review and merge.</p>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Announce the new release<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Announce the new release</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Write a release announcement (see <a class="reference external" href="https://lists.apache.org/thread/6rkjwvyjjfodrxffllh66pcqnp729n3k">example</a>) and send to <a class="reference external" href="mailto:announce&#37;&#52;&#48;apache&#46;org">announce<span>&#64;</span>apache<span>&#46;</span>org</a> and <a class="reference external" href="mailto:dev&#37;&#52;&#48;arrow&#46;apache&#46;org">dev<span>&#64;</span>arrow<span>&#46;</span>apache<span>&#46;</span>org</a>.</p>
 <p class="sd-card-text">The announcement to <a class="reference external" href="mailto:announce&#37;&#52;&#48;apache&#46;org">announce<span>&#64;</span>apache<span>&#46;</span>org</a> must be sent from your apache.org e-mail address to be accepted.</p>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Remove old artifacts<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Remove old artifacts</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Remove RC artifacts on <a class="reference external" href="https://dist.apache.org/repos/dist/dev/arrow/">https://dist.apache.org/repos/dist/dev/arrow/</a> and old release artifacts on <a class="reference external" href="https://dist.apache.org/repos/dist/release/arrow">https://dist.apache.org/repos/dist/release/arrow</a> to follow <a class="reference external" href="https://infra.apache.org/release-download-pages.html#current-and-older-releases">the ASF policy</a>:</p>
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span>dev/release/post-08-remove-old-artifacts.sh
 </pre></div>
@@ -748,29 +768,20 @@ Remove old artifacts<div class="sd-summary-down docutils">
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Bump versions<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
-<p class="sd-card-text">This will bump version numbers embedded in files and filenames.</p>
-<p class="sd-card-text">It will also update the changelog to the newly released changelog.</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-09-bump-versions.sh ../arrow 0.1.0 0.2.0</span>
-dev/release/post-09-bump-versions.sh<span class="w"> </span>&lt;arrow-dir&gt;<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;next_version&gt;
+<span class="sd-summary-text">Bump versions</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">First, update the version numbers in <code class="docutils literal notranslate"><span class="pre">dev/release/versions.env</span></code>.  Then, run this script to apply those version numbers to the versions embedded in files and filenames.  The script will also update the changelog to the newly released changelog.</p>
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-09-bump-versions.sh ../arrow</span>
+dev/release/post-09-bump-versions.sh<span class="w"> </span>&lt;arrow-dir&gt;
 </pre></div>
 </div>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-Publish release blog post<div class="sd-summary-down docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-down" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.72a.75.75 0 000 1.06l6.25 6.25a.75.75 0 001.06 0l6.25-6.25a.75.75 0 00-1.06-1.06L12 14.44 6.28 8.72a.75.75 0 00-1.06 0z"></path></svg></div>
-<div class="sd-summary-up docutils">
-<svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
-</summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text">Publish release blog post</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Run the script to generate the blog post outline, then fill out the
 outline and create a PR on <a class="reference external" href="https://github.com/apache/arrow-site">apache/arrow-site</a>.</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-10-website.sh ../arrow-site 0.0.0 0.1.0</span>
-dev/release/post-10-website.sh<span class="w"> </span>&lt;arrow-site-dir&gt;<span class="w"> </span>&lt;prev_version&gt;<span class="w"> </span>&lt;version&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-10-website.sh ../arrow-site</span>
+dev/release/post-10-website.sh<span class="w"> </span>&lt;arrow-site-dir&gt;
 </pre></div>
 </div>
 </div>
@@ -783,14 +794,14 @@ dev/release/post-10-website.sh<span class="w"> </span>&lt;arrow-site-dir&gt;<spa
         
         <div class="related-pages">
           
-          <a class="prev-page" href="nightly.html">
+          <a class="prev-page" href="versioning.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Nightly Packages</div>
+                <div class="title">Versioning</div>
                 
               </div>
             </a>

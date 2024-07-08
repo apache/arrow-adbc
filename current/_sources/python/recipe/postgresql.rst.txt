@@ -60,3 +60,18 @@ List catalogs, schemas, and tables
 ==================================
 
 .. recipe:: postgresql_list_catalogs.py
+
+Connection pooling with SQLAlchemy
+==================================
+
+.. recipe:: postgresql_pool.py
+
+Using Pandas and ADBC
+=====================
+
+.. recipe:: postgresql_pandas.py
+
+Using Polars and ADBC
+=====================
+
+.. recipe:: postgresql_polars.py
