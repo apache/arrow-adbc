@@ -20,6 +20,7 @@
 import os
 import shutil
 import sys
+from collections import namedtuple
 from pathlib import Path
 
 from setuptools import Extension, setup
@@ -30,21 +31,20 @@ repo_root = source_root.joinpath("../../")
 # ------------------------------------------------------------
 # Resolve C++ Sources
 
-target_dir = source_root / "adbc_driver_manager"
-incdir = target_dir / "arrow-adbc"
-incdir.mkdir(parents=True, exist_ok=True)
-shutil.copy(repo_root / "c/include/arrow-adbc/adbc.h", incdir / "adbc.h")
-
-sources = [
-    "c/driver_manager/adbc_driver_manager.cc",
-    "c/driver_manager/adbc_driver_manager.h",
-    "c/vendor/backward/backward.hpp",
+FileToCopy = namedtuple("FileToCopy", ["source", "dest_dir"])
+files_to_copy = [
+    FileToCopy("c/include/arrow-adbc/adbc.h", "arrow-adbc"),
+    FileToCopy("c/driver_manager/adbc_driver_manager.cc", ""),
+    FileToCopy("c/driver_manager/adbc_driver_manager.h", ""),
+    FileToCopy("c/vendor/backward/backward.hpp", ""),
 ]
 
-for source in sources:
-    target_filename = source.split("/")[-1]
-    source = repo_root.joinpath(source).resolve()
-    target = (target_dir / target_filename).resolve()
+for file_to_copy in files_to_copy:
+    target_filename = file_to_copy.source.split("/")[-1]
+    source = repo_root.joinpath(file_to_copy.source).resolve()
+    target = source_root.joinpath(
+        "adbc_driver_manager", file_to_copy.dest_dir, target_filename
+    ).resolve()
     if source.is_file():
         # In-tree build/creating an sdist: copy from project root to local file
         # so that setuptools isn't confused
