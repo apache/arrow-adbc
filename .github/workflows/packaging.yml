@@ -23,7 +23,6 @@ on:
       - main
     paths:
       - ".env"
-      - "adbc.h"
       - "c/**"
       - "ci/**"
       - "glib/**"

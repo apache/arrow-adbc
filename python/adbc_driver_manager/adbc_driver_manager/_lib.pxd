@@ -20,7 +20,7 @@
 from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t
 
 
-cdef extern from "adbc.h" nogil:
+cdef extern from "arrow-adbc/adbc.h" nogil:
     # C ABI
 
     ctypedef void (*CArrowSchemaRelease)(void*)
