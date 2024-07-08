@@ -16,7 +16,7 @@
 # under the License.
 
 dir.create("src/arrow-adbc", showWarnings=FALSE)
-file.copy("c/include/arrow-adbc/adbc.h", "src/arrow-adbc/adbc.h")
+file.copy("../../c/include/arrow-adbc/adbc.h", "src/arrow-adbc/adbc.h")
 
 # If we are building within the repo, copy the latest adbc.h and driver source
 # into src/
