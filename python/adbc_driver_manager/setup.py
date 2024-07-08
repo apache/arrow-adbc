@@ -42,12 +42,14 @@ files_to_copy = [
 for file_to_copy in files_to_copy:
     target_filename = file_to_copy.source.split("/")[-1]
     source = repo_root.joinpath(file_to_copy.source).resolve()
-    target = source_root.joinpath(
-        "adbc_driver_manager", file_to_copy.dest_dir, target_filename
+    target_dir = source_root.joinpath(
+        "adbc_driver_manager", file_to_copy.dest_dir
     ).resolve()
+    target = target_dir.joinpath(target_filename).resolve()
     if source.is_file():
         # In-tree build/creating an sdist: copy from project root to local file
         # so that setuptools isn't confused
+        target_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy(source, target)
     elif not target.is_file():
         # Out-of-tree build missing the C++ source files
