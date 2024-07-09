@@ -214,7 +214,7 @@ class PostgresCopyIntervalFieldWriter : public PostgresCopyFieldWriter {
 template <enum ArrowType T>
 class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
  public:
-  PostgresCopyNumericFieldWriter<T>(int32_t precision, int32_t scale)
+  PostgresCopyNumericFieldWriter(int32_t precision, int32_t scale)
       : precision_{precision}, scale_{scale} {}
 
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
