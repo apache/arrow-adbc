@@ -33,8 +33,10 @@ adbc_postgres_driver_lib = library(
 )
 
 pkg.generate(
-    adbc_postgres_driver_lib,
-    description: 'ADBC Driver for PostgreSQL',
+    name: 'Apache Arrow Database Connectivity (ADBC) PostgreSQL driver',
+    description: 'The ADBC PostgreSQL driver provides an ADBC driver for PostgreSQL.',
+    url: 'https://github.com/apache/arrow-adbc',
+    libraries: [adbc_postgres_driver_lib],
     filebase: 'adbc-driver-postgresql',
 )
 

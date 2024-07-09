@@ -48,8 +48,9 @@ adbc_driver_snowflake_lib = custom_target(
 )
 
 pkg.generate(
-    name: 'adbc_driver_snowflake',
-    description: 'ADBC Driver for Snowflake',
+    name: 'Apache Arrow Database Connectivity (ADBC) Snowflake driver',
+    description: 'The ADBC Snowflake driver provides an ADBC driver for Snowflake.',
+    url: 'https://github.com/apache/arrow-adbc',
     libraries: [adbc_driver_snowflake_lib],
     filebase: 'adbc-driver-snowflake',
 )

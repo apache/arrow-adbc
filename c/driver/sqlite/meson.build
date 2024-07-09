@@ -35,8 +35,10 @@ adbc_sqlite3_driver_lib = library(
 )
 
 pkg.generate(
-    adbc_sqlite3_driver_lib,
-    description: 'ADBC Driver for SQLite',
+    name: 'Apache Arrow Database Connectivity (ADBC) SQLite driver',
+    description: 'The ADBC SQLite driver provides an ADBC driver for SQLite.',
+    url: 'https://github.com/apache/arrow-adbc',
+    libraries: [adbc_sqlite3_driver_lib],
     filebase: 'adbc-driver-sqlite',
 )
 
