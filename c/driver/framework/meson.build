@@ -22,7 +22,7 @@ adbc_framework_lib = library(
         'catalog.cc',
         'objects.cc',
     ],
-    include_directories: [root_dir],
+    include_directories: [root_dir, c_dir],
     link_with: [adbc_common_lib],
     dependencies: [nanoarrow_dep, fmt_dep],
     install: true,

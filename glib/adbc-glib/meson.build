@@ -62,7 +62,7 @@ install_headers(headers, subdir: project_include_sub_dir)
 
 gobject = dependency('gobject-2.0')
 dependencies = [
-  adbc_driver_manager,
+  adbc_driver_manager_dep,
   gobject,
 ]
 libadbc_glib = library('adbc-glib',
@@ -82,7 +82,7 @@ pkgconfig.generate(libadbc_glib,
                    description: 'GLib API for ADBC driver manager',
                    filebase: 'adbc-glib',
                    name: 'ADBC GLib',
-                   requires: ['gobject-2.0', 'adbc-driver-manager'],
+                   requires: ['gobject-2.0', 'adbc_driver_manager'],
                    variables: pkgconfig_variables,
                    version: meson.project_version())
 

@@ -6,7 +6,7 @@
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
 #
-#   http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -15,19 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
+[wrap-git]
+# url should point to the project root with the top-level meson.build file
+url = ../..
+revision = head
 
-adbc_driver_manager_lib = library(
-    'adbc_driver_manager',
-    'adbc_driver_manager.cc',
-    include_directories: [root_dir],
-    install: true,
-)
-
-adbc_driver_manager_dep = declare_dependency(
-    link_with: adbc_driver_manager_lib,
-    include_directories: [
-        root_dir,
-        # TODO: can remove this when header is moved to c/include
-        include_directories('.'),
-    ],
-)
+[provide]
+adbc-driver-manager = adbc_driver_manager_dep

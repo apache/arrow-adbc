@@ -32,8 +32,9 @@ project(
 add_project_arguments('-Wno-int-conversion', '-Wno-unused-parameter', language: 'c')
 add_project_arguments('-Wno-unused-parameter', '-Wno-reorder', language: 'cpp')
 
-root_dir = include_directories('..')
-driver_dir = include_directories('driver')
+root_dir = include_directories('.')
+c_dir = include_directories('c')
+driver_dir = include_directories('c/driver')
 nanoarrow_dep = dependency('nanoarrow')
 fmt_dep = dependency('fmt')
 
@@ -49,28 +50,28 @@ needs_driver_manager = get_option('driver_manager') \
     or get_option('tests')
 
 if needs_driver_manager
-    subdir('driver_manager')
+    subdir('c/driver_manager')
 endif
 
-subdir('driver/common')
-subdir('driver/framework')
+subdir('c/driver/common')
+subdir('c/driver/framework')
 
 if get_option('tests')
-  subdir('validation')
+  subdir('c/validation')
 endif
 
 if get_option('flightsql')
-  subdir('driver/flightsql')
+  subdir('c/driver/flightsql')
 endif
 
 if get_option('postgresql')
-  subdir('driver/postgresql')
+  subdir('c/driver/postgresql')
 endif
 
 if get_option('sqlite')
-  subdir('driver/sqlite')
+  subdir('c/driver/sqlite')
 endif
 
 if get_option('snowflake')
-  subdir('driver/snowflake')
+  subdir('c/driver/snowflake')
 endif

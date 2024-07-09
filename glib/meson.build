@@ -52,21 +52,13 @@ base_include_directories = [
 
 gi_fatal_warnings = (build_machine.system() != 'windows')
 
-adbc_build_dir = get_option('adbc_build_dir')
-if adbc_build_dir != ''
-  adbc_build_dir = meson.source_root() / adbc_build_dir
-endif
-
-if adbc_build_dir == ''
-  adbc_driver_manager = dependency('adbc-driver-manager')
-else
-  base_include_directories += [
-    include_directories('..' / 'c' / 'driver_manager'),
-  ]
-  c_compiler = meson.get_compiler('c')
-  adbc_driver_manager = c_compiler.find_library('adbc_driver_manager',
-                                                dirs: [adbc_build_dir])
-endif
+adbc_driver_manager_dep = dependency(
+    'adbc-driver-manager',
+    default_options: [
+        'driver_manager=true',
+        'default_library=shared',  # Without shared would need to add dl dependency
+    ],
+)
 
 build_example = get_option('example')
 
