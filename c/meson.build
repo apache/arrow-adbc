@@ -48,6 +48,8 @@ endif
 needs_driver_manager = get_option('driver_manager') \
     or get_option('tests')
 
+pkg = import('pkgconfig')
+
 if needs_driver_manager
     subdir('driver_manager')
 endif

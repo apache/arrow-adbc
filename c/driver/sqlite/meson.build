@@ -34,6 +34,12 @@ adbc_sqlite3_driver_lib = library(
     c_args: ['-DSIZEOF_TIME_T=' + time_t_size.to_string()],
 )
 
+pkg.generate(
+    adbc_sqlite3_driver_lib,
+    description: 'ADBC Driver for SQLite',
+    filebase: 'adbc-driver-sqlite',
+)
+
 if get_option('tests')
     exc = executable(
         'adbc-driver-sqlite-test',

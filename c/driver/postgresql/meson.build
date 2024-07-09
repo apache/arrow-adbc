@@ -32,6 +32,12 @@ adbc_postgres_driver_lib = library(
     dependencies: [nanoarrow_dep, fmt_dep, libpq_dep],
 )
 
+pkg.generate(
+    adbc_postgres_driver_lib,
+    description: 'ADBC Driver for PostgreSQL',
+    filebase: 'adbc-driver-postgresql',
+)
+
 if get_option('tests')
     postgres_tests = {
         'driver-postgresql': {

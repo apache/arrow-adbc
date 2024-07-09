@@ -22,3 +22,9 @@ adbc_driver_manager_lib = library(
     include_directories: [root_dir],
     install: true,
 )
+
+pkg.generate(
+    adbc_driver_manager_lib,
+    description: 'ADBC Driver Manager',
+    filebase: 'adbc-driver-manager',
+)

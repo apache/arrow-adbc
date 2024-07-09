@@ -47,6 +47,13 @@ adbc_driver_flightsql_lib = custom_target(
     install_dir : '.',
 )
 
+pkg.generate(
+    name: 'adbc_driver_flightsql',
+    description: 'ADBC Driver for FlightSQL',
+    libraries: [adbc_driver_flightsql_lib],
+    filebase: 'adbc-driver-flightsql',
+)
+
 if get_option('tests')
     exc = executable(
         'adbc-driver-flightsql-test',

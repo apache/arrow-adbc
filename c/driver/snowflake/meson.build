@@ -47,6 +47,13 @@ adbc_driver_snowflake_lib = custom_target(
     install_dir : '.',
 )
 
+pkg.generate(
+    name: 'adbc_driver_snowflake',
+    description: 'ADBC Driver for Snowflake',
+    libraries: [adbc_driver_snowflake_lib],
+    filebase: 'adbc-driver-snowflake',
+)
+
 if get_option('tests')
     exc = executable(
         'adbc-driver-snowflake-test',
