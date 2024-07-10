@@ -225,7 +225,13 @@ func (c *connectionImpl) getSessionOptions(ctx context.Context) (map[string]inte
 
 func (c *connectionImpl) setSessionOptions(ctx context.Context, key string, val interface{}) error {
 	req := flight.SetSessionOptionsRequest{}
-	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
+	hdrs := make([]string, c.hdrs.Len()*2)
+	for k, vv := range c.hdrs {
+		for _, v := range vv {
+			hdrs = append(hdrs, k, v)
+		}
+	}
+	ctx = metadata.AppendToOutgoingContext(ctx, hdrs...)
 
 	var err error
 	req.SessionOptions, err = flight.NewSessionOptionValues(map[string]any{key: val})
