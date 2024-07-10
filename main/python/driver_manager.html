@@ -416,20 +416,34 @@ standard.</p>
 </section>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">¶</a></h2>
-<p>First create a <a class="reference internal" href="api/adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase" title="adbc_driver_manager.AdbcDatabase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>, passing <code class="docutils literal notranslate"><span class="pre">driver</span></code> and
-(optionally) <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>.  <code class="docutils literal notranslate"><span class="pre">driver</span></code> must be the name of a library
-to load, or the path to a library to load.  <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>, if
-provided, should be the name of the symbol that serves as the ADBC
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This API is for low level usage only.  <strong>You almost certainly
+should not use this</strong>, instead use the entrypoints provided by
+driver packages, for example:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api/adbc_driver_sqlite.html#adbc_driver_sqlite.dbapi.connect" title="adbc_driver_sqlite.dbapi.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">adbc_driver_sqlite.dbapi.connect()</span></code></a></p></li>
+<li><p><a class="reference internal" href="api/adbc_driver_sqlite.html#adbc_driver_sqlite.connect" title="adbc_driver_sqlite.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">adbc_driver_sqlite.connect()</span></code></a></p></li>
+</ul>
+</div>
+<p>The Python bindings for each driver abstract the steps here for you behind a
+convenient <code class="docutils literal notranslate"><span class="pre">connect</span></code> function.  For example, prefer
+<a class="reference internal" href="api/adbc_driver_sqlite.html#adbc_driver_sqlite.connect" title="adbc_driver_sqlite.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">adbc_driver_sqlite.connect()</span></code></a> or <a class="reference internal" href="api/adbc_driver_postgresql.html#adbc_driver_postgresql.connect" title="adbc_driver_postgresql.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">adbc_driver_postgresql.connect()</span></code></a>
+to manually constructing the connection as demonstrated here.</p>
+<p>To manually create a connection: first, create a <a class="reference internal" href="api/adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase" title="adbc_driver_manager.AdbcDatabase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>,
+passing <code class="docutils literal notranslate"><span class="pre">driver</span></code> and (optionally) <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>.  <code class="docutils literal notranslate"><span class="pre">driver</span></code> must be the
+name of a library to load, or the path to a library to load.  <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>,
+if provided, should be the name of the symbol that serves as the ADBC
 entrypoint (see <code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">AdbcDriverInitFunc</span></code>).  Then, create a
 <a class="reference internal" href="api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection" title="adbc_driver_manager.AdbcConnection"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">adbc_driver_manager</span>
-<span class="k">with</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcDatabase</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">&quot;adbc_driver_sqlite&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
+
+<span class="c1"># You must build/locate the driver yourself</span>
+<span class="k">with</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcDatabase</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">&quot;PATH/TO/libadbc_driver_sqlite.so&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
     <span class="k">with</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcConnection</span><span class="p">(</span><span class="n">db</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
         <span class="k">pass</span>
 </pre></div>
 </div>
-<p>The Python bindings for each driver abstract these steps for you
-behind a convenient <code class="docutils literal notranslate"><span class="pre">connect</span></code> function.</p>
 </section>
 <section id="api-reference">
 <h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this heading">¶</a></h2>
