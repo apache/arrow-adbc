@@ -34,6 +34,14 @@ adbc_sqlite3_driver_lib = library(
     c_args: ['-DSIZEOF_TIME_T=' + time_t_size.to_string()],
 )
 
+pkg.generate(
+    name: 'Apache Arrow Database Connectivity (ADBC) SQLite driver',
+    description: 'The ADBC SQLite driver provides an ADBC driver for SQLite.',
+    url: 'https://github.com/apache/arrow-adbc',
+    libraries: [adbc_sqlite3_driver_lib],
+    filebase: 'adbc-driver-sqlite',
+)
+
 if get_option('tests')
     exc = executable(
         'adbc-driver-sqlite-test',
