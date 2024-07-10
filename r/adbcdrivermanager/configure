@@ -33,9 +33,9 @@ fi
 # We have a situation where the package has been built via R CMD build
 # manually or with pkgbuild <=1.4.0. This is common (e.g., pak::pkg_install()
 # or remotes::install_github() or any dependency setups that use either method)
-curl -L https://github.com/apache/arrow-adbc/raw/main/c/include/arrow-adbc/adbc.h \
+curl -L https://github.com/WillAyd/arrow-adbc/raw/fix-adbc-include/c/include/arrow-adbc/adbc.h \
   --output src/arrow-adbc/adbc.h --silent
-curl -L https://github.com/apache/arrow-adbc/raw/main/c/include/arrow-adbc/adbc_driver_manager.h \
+curl -L https://github.com/WillAyd/arrow-adbc/raw/fix-adbc-include/c/include/arrow-adbc/adbc_driver_manager.h \
   --output src/arrow-adbc/adbc_driver_manager.h --silent
 curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver_manager/adbc_driver_manager.cc \
   --output src/adbc_driver_manager.cc --silent
