@@ -225,7 +225,7 @@ func (c *connectionImpl) getSessionOptions(ctx context.Context) (map[string]inte
 
 func (c *connectionImpl) setSessionOptions(ctx context.Context, key string, val interface{}) error {
 	req := flight.SetSessionOptionsRequest{}
-	hdrs := make([]string, c.hdrs.Len()*2)
+	hdrs := make([]string, 0)
 	for k, vv := range c.hdrs {
 		for _, v := range vv {
 			hdrs = append(hdrs, k, v)
