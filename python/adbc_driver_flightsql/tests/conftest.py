@@ -69,6 +69,7 @@ def dremio_dbapi(dremio_uri, dremio_user, dremio_pass):
             adbc_driver_manager.DatabaseOptions.USERNAME.value: dremio_user,
             adbc_driver_manager.DatabaseOptions.PASSWORD.value: dremio_pass,
         },
+        autocommit=True,
     ) as conn:
         yield conn
 
@@ -79,5 +80,8 @@ def test_dbapi():
     if not uri:
         pytest.skip("Set ADBC_TEST_FLIGHTSQL_URI to run tests")
 
-    with adbc_driver_flightsql.dbapi.connect(uri) as conn:
+    with adbc_driver_flightsql.dbapi.connect(
+        uri,
+        autocommit=True,
+    ) as conn:
         yield conn
