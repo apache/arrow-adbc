@@ -476,6 +476,10 @@ C++</label><div class="sd-tab-content docutils">
 <input id="sd-tab-item-6" name="sd-tab-set-1" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-6">
 Python</label><div class="sd-tab-content docutils">
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For detailed examples, see <a class="reference internal" href="../python/recipe/flight_sql.html"><span class="doc">Flight SQL Recipes</span></a>.</p>
+</div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">adbc_driver_flightsql</span> <span class="kn">import</span> <span class="n">DatabaseOptions</span>
 <span class="kn">from</span> <span class="nn">adbc_driver_flightsql.dbapi</span> <span class="kn">import</span> <span class="n">connect</span>
 
@@ -495,7 +499,6 @@ Python</label><div class="sd-tab-content docutils">
     <span class="k">pass</span>
 </pre></div>
 </div>
-<p>For more examples, see <a class="reference internal" href="../python/recipe/flight_sql.html"><span class="doc">Flight SQL Recipes</span></a>.</p>
 </div>
 <input id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-7">
@@ -572,20 +575,32 @@ ingestion as a result.</p>
 </section>
 <section id="client-options">
 <h3>Client Options<a class="headerlink" href="#client-options" title="Permalink to this heading">¶</a></h3>
-<p>The options used for creating the Flight RPC client can be customized.
-These options map 1:1 with the options in FlightClientOptions:</p>
+<p>The options used for creating the Flight RPC client can be customized.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Many of these options simply wrap a gRPC option.  For more details
+about what these options do, consult the <a class="reference external" href="https://pkg.go.dev/google.golang.org/grpc">gRPC documentation</a>.</p>
+</div>
 <dl>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.authority</span></code></dt><dd><p>Override gRPC’s <code class="docutils literal notranslate"><span class="pre">:authority</span></code> pseudo-header.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.AUTHORITY" title="adbc_driver_flightsql.DatabaseOptions.AUTHORITY"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.AUTHORITY</span></code></a></p>
+</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.mtls_cert_chain</span></code></dt><dd><p>The certificate chain to use for mTLS.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.MTLS_CERT_CHAIN" title="adbc_driver_flightsql.DatabaseOptions.MTLS_CERT_CHAIN"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.MTLS_CERT_CHAIN</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.mtls_private_key</span></code></dt><dd><p>The private key to use for mTLS.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.MTLS_PRIVATE_KEY" title="adbc_driver_flightsql.DatabaseOptions.MTLS_PRIVATE_KEY"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.MTLS_PRIVATE_KEY</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.tls_override_hostname</span></code></dt><dd><p>Override the hostname used to verify the server’s TLS certificate.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.tls_skip_verify</span></code></dt><dd><p>Disable verification of the server’s TLS certificate.  Value
-should be <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.TLS_OVERRIDE_HOSTNAME" title="adbc_driver_flightsql.DatabaseOptions.TLS_OVERRIDE_HOSTNAME"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.TLS_OVERRIDE_HOSTNAME</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.tls_root_certs</span></code></dt><dd><p>Override the root certificates used to validate the server’s TLS
 certificate.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.TLS_ROOT_CERTS" title="adbc_driver_flightsql.DatabaseOptions.TLS_ROOT_CERTS"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.TLS_ROOT_CERTS</span></code></a></p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.tls_skip_verify</span></code></dt><dd><p>Disable verification of the server’s TLS certificate.  Value
+should be <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.TLS_SKIP_VERIFY" title="adbc_driver_flightsql.DatabaseOptions.TLS_SKIP_VERIFY"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.TLS_SKIP_VERIFY</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.with_block</span></code></dt><dd><div class="admonition warning">
 <p class="admonition-title">Warning</p>
@@ -598,11 +613,17 @@ Value should be <code class="docutils literal notranslate"><span class="pre">tru
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.with_max_msg_size</span></code></dt><dd><p>The maximum message size to accept from the server.  The driver
 defaults to 16 MiB since Flight services tend to return larger
 reponse payloads.  Should be a positive integer number of bytes.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.WITH_MAX_MSG_SIZE" title="adbc_driver_flightsql.DatabaseOptions.WITH_MAX_MSG_SIZE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.WITH_MAX_MSG_SIZE</span></code></a></p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.authorization_header</span></code></dt><dd><p>Directly specify the value of the <code class="docutils literal notranslate"><span class="pre">authorization</span></code> header to send on all
+requests.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.AUTHORIZATION_HEADER" title="adbc_driver_flightsql.DatabaseOptions.AUTHORIZATION_HEADER"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.AUTHORIZATION_HEADER</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.with_cookie_middleware</span></code></dt><dd><p>Enable or disable middleware that processes and handles “set-cookie”
 metadata headers returned from the server and sends “Cookie” headers
 back from the client. Value should be <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>. Default
 is <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.WITH_COOKIE_MIDDLEWARE" title="adbc_driver_flightsql.DatabaseOptions.WITH_COOKIE_MIDDLEWARE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.WITH_COOKIE_MIDDLEWARE</span></code></a></p>
 </dd>
 </dl>
 </section>
@@ -614,6 +635,9 @@ to <a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase
 <dl>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.call_header.&lt;HEADER</span> <span class="pre">NAME&gt;</span></code></dt><dd><p>Add the header <code class="docutils literal notranslate"><span class="pre">&lt;HEADER</span> <span class="pre">NAME&gt;</span></code> to outgoing requests with the given
 value.</p>
+<blockquote>
+<div><p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX" title="adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX</span></code></a></p>
+</div></blockquote>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Header names must be in all lowercase.</p>
@@ -635,10 +659,29 @@ connections.  It also does not retry connections or requests.</p>
 <p>All partitions are fetched in parallel.  A limited number of batches
 are queued per partition.  Data is returned to the client in the order
 of the partitions.</p>
-<p>The queue size can be changed by setting an option on the
-<a class="reference internal" href="../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>:</p>
-<dl class="simple">
+<p>Some behavior can be configured on the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>:</p>
+<dl>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.rpc.result_queue_size</span></code></dt><dd><p>The number of batches to queue per partition.  Defaults to 5.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.StatementOptions.QUEUE_SIZE" title="adbc_driver_flightsql.StatementOptions.QUEUE_SIZE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.StatementOptions.QUEUE_SIZE</span></code></a></p>
+</dd>
+</dl>
+</section>
+<section id="incremental-execution">
+<h3>Incremental Execution<a class="headerlink" href="#incremental-execution" title="Permalink to this heading">¶</a></h3>
+<p>By setting <code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_STATEMENT_OPTION_INCREMENTAL</span></code>, you can use
+nonblocking execution with this driver.  This changes the behavior of
+<code class="xref py py-func docutils literal notranslate"><span class="pre">AdbcStatementExecutePartitions()</span></code> only.  When enabled, ExecutePartitions
+will return every time there are new partitions (in Flight SQL terms, when
+there are new FlightEndpoints) from the server, instead of blocking until the
+query is complete.</p>
+<p>Some behavior can be configured on the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>:</p>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.statement.exec.last_flight_info</span></code></dt><dd><p>Get the serialized bytes for the most recent <code class="docutils literal notranslate"><span class="pre">FlightInfo</span></code> returned by
+the service.  This is a low-level option intended for advanced usage.  It
+is most useful when incremental execution is enabled, for inspecting the
+latest server response without waiting for
+<code class="xref py py-func docutils literal notranslate"><span class="pre">AdbcStatementExecutePartitions()</span></code> to return.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.StatementOptions.LAST_FLIGHT_INFO" title="adbc_driver_flightsql.StatementOptions.LAST_FLIGHT_INFO"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.StatementOptions.LAST_FLIGHT_INFO</span></code></a></p>
 </dd>
 </dl>
 </section>
@@ -660,6 +703,32 @@ by deserializing the contained FlightInfo from the ADBC partitions.
 workers or machines may want to try to take advantage of locality
 information that ADBC does not have.)</p>
 </section>
+<section id="sessions">
+<h3>Sessions<a class="headerlink" href="#sessions" title="Permalink to this heading">¶</a></h3>
+<p>The driver exposes Flight SQL session support via options on the connection.
+There is no explicit command to start a new session; it is expected that the
+server itself will manage this.  (You will most likely need to enable cookie
+support as described above.)  There is no explicit command to close a session;
+this is always issued when the connection is closed.</p>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.session.options</span></code></dt><dd><p>Get all options as a JSON blob.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions.OPTION_SESSION_OPTIONS" title="adbc_driver_flightsql.ConnectionOptions.OPTION_SESSION_OPTIONS"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.ConnectionOptions.OPTION_SESSION_OPTIONS</span></code></a></p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.session.option.</span></code></dt><dd><p>Get or set a string/numeric session option.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions.OPTION_SESSION_OPTION_PREFIX" title="adbc_driver_flightsql.ConnectionOptions.OPTION_SESSION_OPTION_PREFIX"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.ConnectionOptions.OPTION_SESSION_OPTION_PREFIX</span></code></a></p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.session.optionerase.</span></code></dt><dd><p>Erase a session option.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions.OPTION_ERASE_SESSION_OPTION_PREFIX" title="adbc_driver_flightsql.ConnectionOptions.OPTION_ERASE_SESSION_OPTION_PREFIX"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.ConnectionOptions.OPTION_ERASE_SESSION_OPTION_PREFIX</span></code></a></p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.session.optionbool.</span></code></dt><dd><p>Get or set a boolean session option.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions.OPTION_BOOL_SESSION_OPTION_PREFIX" title="adbc_driver_flightsql.ConnectionOptions.OPTION_BOOL_SESSION_OPTION_PREFIX"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.ConnectionOptions.OPTION_BOOL_SESSION_OPTION_PREFIX</span></code></a></p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.session.optionstringlist.</span></code></dt><dd><p>Get or set a string list session option.  The contents should be a
+serialized JSON list.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions.OPTION_STRING_LIST_SESSION_OPTION_PREFIX" title="adbc_driver_flightsql.ConnectionOptions.OPTION_STRING_LIST_SESSION_OPTION_PREFIX"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.ConnectionOptions.OPTION_STRING_LIST_SESSION_OPTION_PREFIX</span></code></a></p>
+</dd>
+</dl>
+</section>
 <section id="timeouts">
 <h3>Timeouts<a class="headerlink" href="#timeouts" title="Permalink to this heading">¶</a></h3>
 <p>By default, timeouts are not used for RPC calls.  They can be set via
@@ -671,17 +740,20 @@ The options are as follows:</p>
 data.  This corresponds to Flight <code class="docutils literal notranslate"><span class="pre">DoGet</span></code> calls.</p>
 <p>For example, this controls the timeout of the underlying Flight
 calls that fetch more data as a result set is consumed.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions.TIMEOUT_FETCH" title="adbc_driver_flightsql.ConnectionOptions.TIMEOUT_FETCH"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.ConnectionOptions.TIMEOUT_FETCH</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.timeout_seconds.query</span></code></dt><dd><p>A timeout (in floating-point seconds) for any API calls that
 execute a query.  This corresponds to Flight <code class="docutils literal notranslate"><span class="pre">GetFlightInfo</span></code>
 calls.</p>
 <p>For example, this controls the timeout of the underlying Flight
 calls that implement <code class="xref py py-func docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery()</span></code>.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions.TIMEOUT_QUERY" title="adbc_driver_flightsql.ConnectionOptions.TIMEOUT_QUERY"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.ConnectionOptions.TIMEOUT_QUERY</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.timeout_seconds.update</span></code></dt><dd><p>A timeout (in floating-point seconds) for any API calls that
 upload data or perform other updates.</p>
 <p>For example, this controls the timeout of the underlying Flight
 calls that implement bulk ingestion, or transaction support.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions.TIMEOUT_UPDATE" title="adbc_driver_flightsql.ConnectionOptions.TIMEOUT_UPDATE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.ConnectionOptions.TIMEOUT_UPDATE</span></code></a></p>
 </dd>
 </dl>
 <p>There is also a timeout that is set on the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>:</p>
@@ -768,8 +840,10 @@ United States and other countries.
 <li><a class="reference internal" href="#client-options">Client Options</a></li>
 <li><a class="reference internal" href="#custom-call-headers">Custom Call Headers</a></li>
 <li><a class="reference internal" href="#distributed-result-sets">Distributed Result Sets</a></li>
+<li><a class="reference internal" href="#incremental-execution">Incremental Execution</a></li>
 <li><a class="reference internal" href="#metadata">Metadata</a></li>
 <li><a class="reference internal" href="#partitioned-result-sets">Partitioned Result Sets</a></li>
+<li><a class="reference internal" href="#sessions">Sessions</a></li>
 <li><a class="reference internal" href="#timeouts">Timeouts</a></li>
 <li><a class="reference internal" href="#transactions">Transactions</a></li>
 </ul>
