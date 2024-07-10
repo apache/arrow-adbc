@@ -47,6 +47,14 @@ adbc_driver_flightsql_lib = custom_target(
     install_dir : '.',
 )
 
+pkg.generate(
+    name: 'Apache Arrow Database Connectivity (ADBC) Flight SQL driver',
+    description: 'The ADBC Flight SQL driver provides an ADBC driver for Flight SQL.',
+    url: 'https://github.com/apache/arrow-adbc',
+    libraries: [adbc_driver_flightsql_lib],
+    filebase: 'adbc-driver-flightsql',
+)
+
 if get_option('tests')
     exc = executable(
         'adbc-driver-flightsql-test',

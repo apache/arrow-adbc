@@ -84,7 +84,7 @@ main() {
     popd
 
     # Determine the latest stable version
-    local -r latest_docs=$(grep -E ';[0-9]+\.[0-9]+\.[0-9]+$' "${site}/versions.txt" | sort -t ';' --version-sort | tail -n1)
+    local -r latest_docs=$(grep -E ';[0-9]+(\.[0-9]+\.[0-9]+)?$' "${site}/versions.txt" | sort -t ';' --version-sort | tail -n1)
     if [[ -z "${latest_docs}" ]]; then
         echo "No stable versions found"
         local -r latest_dir="main"

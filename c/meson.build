@@ -50,6 +50,8 @@ endif
 needs_driver_manager = get_option('driver_manager') \
     or get_option('tests')
 
+pkg = import('pkgconfig')
+
 if needs_driver_manager
     install_headers('include/arrow-adbc/adbc_driver_manager.h', subdir: 'arrow-adbc')
     subdir('driver_manager')

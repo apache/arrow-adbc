@@ -15,7 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import contextlib
 import re
+import secrets
 import threading
 import time
 
@@ -190,3 +192,88 @@ def test_stateless_prepared_statement(test_dbapi) -> None:
     with test_dbapi.cursor() as cur:
         cur.adbc_prepare("stateless_prepared_statement")
         cur.execute("stateless_prepared_statement", parameters=[(1,)])
+
+
+def test_header_propagation(test_dbapi) -> None:
+    header = "x-trace"
+    option = f"adbc.flight.sql.rpc.call_header.{header}"
+
+    @contextlib.contextmanager
+    def _trace(value):
+        test_dbapi.adbc_connection.set_options(**{option: value})
+        yield
+        test_dbapi.adbc_connection.set_options(**{option: ""})
+
+    getobjects = secrets.token_hex(16)
+    with _trace(getobjects):
+        with test_dbapi.adbc_get_objects():
+            pass
+
+    stmt = secrets.token_hex(16)
+    with _trace(stmt):
+        with test_dbapi.cursor() as cur:
+            cur.execute("foo")
+            cur.fetchall()
+
+    prepared = secrets.token_hex(16)
+    with _trace(prepared):
+        with test_dbapi.cursor() as cur:
+            cur.adbc_prepare("stateless_prepared_statement")
+            cur.execute("stateless_prepared_statement", parameters=[(1,)])
+
+    txn = secrets.token_hex(16)
+    with _trace(txn):
+        test_dbapi.adbc_connection.set_autocommit(False)
+        test_dbapi.adbc_connection.set_autocommit(True)
+
+    sess = secrets.token_hex(16)
+    with _trace(sess):
+        test_dbapi.adbc_connection.get_option("adbc.flight.sql.session.options")
+        test_dbapi.adbc_connection.set_options(
+            **{
+                "adbc.flight.sql.session.option.foo": 2,
+            }
+        )
+
+    with test_dbapi.cursor() as cur:
+        cur.execute("recorded_headers")
+        headers = [x for x in cur.fetchall() if x[1] == header]
+
+    for method in [
+        "GetFlightInfoCatalogs",
+        "DoGetCatalogs",
+        "GetFlightInfoDBSchemas",
+        "DoGetDBSchemas",
+        "GetFlightInfoTables",
+        "DoGetTables",
+    ]:
+        assert (method, header, getobjects) in headers
+
+    for method in [
+        "CreatePreparedStatement",
+        "ClosePreparedStatement",
+        "GetFlightInfoPreparedStatement",
+        "DoGetPreparedStatement",
+    ]:
+        assert (method, header, stmt) in headers
+
+    for method in [
+        "CreatePreparedStatement",
+        "ClosePreparedStatement",
+        "GetFlightInfoPreparedStatement",
+        "DoGetPreparedStatement",
+        "DoPutPreparedStatementQuery",
+    ]:
+        assert (method, header, prepared) in headers
+
+    for method in [
+        "BeginTransaction",
+        "EndTransaction",
+    ]:
+        assert (method, header, txn) in headers
+
+    for method in [
+        "GetSessionOptions",
+        "SetSessionOptions",
+    ]:
+        assert (method, header, sess) in headers

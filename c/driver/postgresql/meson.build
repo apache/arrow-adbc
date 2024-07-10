@@ -32,6 +32,14 @@ adbc_postgres_driver_lib = library(
     dependencies: [nanoarrow_dep, fmt_dep, libpq_dep],
 )
 
+pkg.generate(
+    name: 'Apache Arrow Database Connectivity (ADBC) PostgreSQL driver',
+    description: 'The ADBC PostgreSQL driver provides an ADBC driver for PostgreSQL.',
+    url: 'https://github.com/apache/arrow-adbc',
+    libraries: [adbc_postgres_driver_lib],
+    filebase: 'adbc-driver-postgresql',
+)
+
 if get_option('tests')
     postgres_tests = {
         'driver-postgresql': {
