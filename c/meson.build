@@ -61,6 +61,10 @@ if get_option('tests')
   subdir('validation')
 endif
 
+if get_option('bigquery')
+  subdir('driver/bigquery')
+endif
+
 if get_option('flightsql')
   subdir('driver/flightsql')
 endif
