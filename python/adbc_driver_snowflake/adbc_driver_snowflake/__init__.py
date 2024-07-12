@@ -122,13 +122,13 @@ class StatementOptions(enum.Enum):
     #: Maximum number of COPY operations to run concurrently for bulk ingestion.
     #: Bulk ingestion performance is optimized by executing COPY queries as files are
     #: still being uploaded, Snowflake COPY speed scales with warehouse size. So smaller
-    #: warehouses might benefit from a higher setting to prevent a long-running COPY query
-    #: from blocking others from being loaded. Default is 4.
+    #: warehouses might benefit from a higher setting to prevent a long-running COPY
+    #: query from blocking others from being loaded. Default is 4.
     INGEST_COPY_CONCURRENCY = "adbc.snowflake.statement.ingest_copy_concurrency"
     #: Approximate size of Parquet files written during ingestion. Actual size will be
     #: slightly larger due to size of footer/metadata. Does not account for batch size,
-    #: so if the input stream produces very large batches, you'll get similar sized parquet
-    #: files. Default is 10MB
+    #: so if the input stream produces very large batches, you'll get similar sized
+    #: parquet files. Default is 10MB
     INGEST_TARGET_FILE_SIZE = "adbc.snowflake.statement.ingest_target_file_size"
 
 
