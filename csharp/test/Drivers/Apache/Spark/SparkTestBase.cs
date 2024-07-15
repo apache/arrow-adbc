@@ -33,7 +33,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         protected override AdbcDriver NewDriver => new SparkDriver();
 
-        protected override async ValueTask<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string columns) {
+        protected override async ValueTask<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string columns)
+        {
             string tableName = NewTableName();
             // Note: Databricks/Spark doesn't support TEMPORARY table.
             string sqlUpdate = string.Format("CREATE TABLE {0} ({1})", tableName, columns);
@@ -51,6 +52,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             {
                 parameters.Add(SparkParameters.HostName, testConfiguration.HostName!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.Scheme))
+            {
+                parameters.Add(SparkParameters.Scheme, testConfiguration.Scheme!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.Port))
+            {
+                parameters.Add(SparkParameters.Port, testConfiguration.Port!);
+            }
             if (!string.IsNullOrEmpty(testConfiguration.Path))
             {
                 parameters.Add(SparkParameters.Path, testConfiguration.Path!);
@@ -58,6 +67,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             if (!string.IsNullOrEmpty(testConfiguration.Token))
             {
                 parameters.Add(SparkParameters.Token, testConfiguration.Token!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.Username))
+            {
+                parameters.Add(SparkParameters.Username, testConfiguration.Username!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.Password))
+            {
+                parameters.Add(SparkParameters.Password, testConfiguration.Password!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.AuthType))
+            {
+                parameters.Add(SparkParameters.AuthType, testConfiguration.AuthType!);
             }
 
             return parameters;

@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
@@ -255,6 +256,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal SparkConnection(IReadOnlyDictionary<string, string> properties)
             : base(properties)
         {
+            ValidateProperties(properties);
             _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
         }
 
@@ -269,30 +271,56 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 Trace.TraceError($"key = {property} value = {properties[property]}");
             }
 
-            string hostName = properties[SparkParameters.HostName];
-            string path = properties[SparkParameters.Path];
-            string token;
+            properties.TryGetValue(SparkParameters.HostName, out string? hostName);
+            properties.TryGetValue(SparkParameters.Scheme, out string? scheme);
+            properties.TryGetValue(SparkParameters.Path, out string? path);
+            properties.TryGetValue(SparkParameters.AuthType, out string? authType);
+            properties.TryGetValue(SparkParameters.Token, out string? token);
+            properties.TryGetValue(SparkParameters.Username, out string? username);
+            properties.TryGetValue(SparkParameters.Password, out string? password);
+            properties.TryGetValue(SparkParameters.Port, out string? port);
 
-            if (properties.ContainsKey(SparkParameters.Token))
-                token = properties[SparkParameters.Token];
-            else
-                token = properties[SparkParameters.Password];
+            Uri baseAddress = GetBaseAddress(hostName, scheme, path, port);
+            AuthenticationHeaderValue authenticationHeaderValue = GetAuthenticationHeaderValue(authType, token, username, password);
 
-            HttpClient httpClient = new HttpClient();
-            httpClient.BaseAddress = new UriBuilder(Uri.UriSchemeHttps, hostName, -1, path).Uri;
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            HttpClient httpClient = new();
+            httpClient.BaseAddress = baseAddress;
+            httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
             httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
             httpClient.DefaultRequestHeaders.AcceptEncoding.Clear();
             httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
 
-            TConfiguration config = new TConfiguration();
-
-            ThriftHttpTransport transport = new ThriftHttpTransport(httpClient, config);
+            TConfiguration config = new();
+            ThriftHttpTransport transport = new(httpClient, config);
             // can switch to the one below if want to use the experimental one with IPeekableTransport
             // ThriftHttpTransport transport = new ThriftHttpTransport(httpClient, config);
             await transport.OpenAsync(CancellationToken.None);
             return new TBinaryProtocol(transport);
+        }
+
+        private static AuthenticationHeaderValue GetAuthenticationHeaderValue(string? authType, string? token, string? username, string? password) =>
+            !string.IsNullOrEmpty(token)
+            && (string.IsNullOrEmpty(authType) || SparkAuthTypeConstants.AuthTypeToken.Equals(authType, StringComparison.OrdinalIgnoreCase))
+                ? new AuthenticationHeaderValue("Bearer", token)
+                : !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password)
+                  && (string.IsNullOrEmpty(authType) || SparkAuthTypeConstants.AuthTypeBasic.Equals(authType, StringComparison.OrdinalIgnoreCase))
+                    ? new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")))
+                    : throw new AdbcException("Missing connection properties. Must contain 'token' or 'username' and 'password'");
+
+        private static Uri GetBaseAddress(string? hostName, string? scheme, string? path, string? port)
+        {
+            bool isPortSet = !string.IsNullOrEmpty(port);
+            bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
+            bool isDefaultHttpsPort = !isPortSet || (isValidPortNumber && portNumber == 443);
+            string uriScheme = Uri.CheckSchemeName(scheme)
+                ? scheme!
+                : isDefaultHttpsPort
+                    ? Uri.UriSchemeHttps
+                    : Uri.UriSchemeHttp;
+            int uriPort = isValidPortNumber ? portNumber : -1;
+            Uri baseAddress = new UriBuilder(uriScheme, hostName, uriPort, path).Uri;
+            return baseAddress;
         }
 
         protected override TOpenSessionReq CreateSessionRequest()
@@ -990,6 +1018,61 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
             return fileVersionInfo.ProductVersion ?? ProductVersionDefault;
+        }
+
+        private static void ValidateProperties(IReadOnlyDictionary<string, string> properties)
+        {
+            // HostName is required parameter
+            if (!properties.TryGetValue(SparkParameters.HostName, out string? hostName)
+                || Uri.CheckHostName(hostName) == UriHostNameType.Unknown)
+            {
+                throw new ArgumentException(
+                    $"Required parameter '{SparkParameters.HostName}' is missing or invalid. Please provide a valid hostname for the data source.",
+                    nameof(properties));
+            }
+
+            // Validate authentication parameters
+            properties.TryGetValue(SparkParameters.AuthType, out string? authType);
+            properties.TryGetValue(SparkParameters.Token, out string? token);
+            properties.TryGetValue(SparkParameters.Username, out string? username);
+            properties.TryGetValue(SparkParameters.Password, out string? password);
+            switch (authType)
+            {
+                case SparkAuthTypeConstants.AuthTypeToken:
+                    if (string.IsNullOrWhiteSpace(token))
+                        throw new ArgumentException(
+                            $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.AuthTypeToken}' but parameter '{SparkParameters.Token}' is not set. Please provide a value for '{SparkParameters.Token}'.",
+                            nameof(properties));
+                    break;
+                case SparkAuthTypeConstants.AuthTypeBasic:
+                    if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                        throw new ArgumentException(
+                            $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.AuthTypeBasic}' but parameters '{SparkParameters.Username}' or '{SparkParameters.Password}' are not set. Please provide a values for these parameters.",
+                            nameof(properties));
+                    break;
+                default:
+                    if (string.IsNullOrWhiteSpace(token) && (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password)))
+                        throw new ArgumentException(
+                            $"Parameters must include valid authentiation settings. Please provide either '{SparkParameters.Token}'; or '{SparkParameters.Username}' and '{SparkParameters.Password}'.",
+                            nameof(properties));
+                    break;
+            }
+
+            // Validate port range
+            properties.TryGetValue(SparkParameters.Port, out string? port);
+            if (int.TryParse(port, out int portNumber) && (portNumber <= IPEndPoint.MinPort || portNumber > IPEndPoint.MaxPort))
+                throw new ArgumentOutOfRangeException(
+                    nameof(properties),
+                    port,
+                    $"Parameter '{SparkParameters.Port}' value is not in the valid range of 1 .. {IPEndPoint.MaxPort}.");
+
+            // Ensure the parameters will produce a valid address
+            properties.TryGetValue(SparkParameters.Scheme, out string? scheme);
+            properties.TryGetValue(SparkParameters.Path, out string? path);
+            _ = new HttpClient()
+            {
+                BaseAddress = GetBaseAddress(hostName, scheme, path, port)
+            };
         }
     }
 
