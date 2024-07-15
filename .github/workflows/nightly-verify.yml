@@ -174,3 +174,18 @@ jobs:
           VERIFICATION_MOCK_DIST_DIR: ${{ github.workspace }}\apache-arrow-adbc-${{ env.VERSION }}-rc0
         run: |
           .\arrow-adbc\dev\release\verify-release-candidate.ps1 $env:VERSION 0
+
+  source-docker:
+    name: "Run Docker Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: arrow-adbc
+          persist-credentials: false
+
+      - name: Run Test
+        run: |
+          pushd arrow-adbc
+          docker compose run --rm cpp-clang-latest
