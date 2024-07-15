@@ -29,42 +29,42 @@ else
   suffix = '.so'
 endif
 
-adbc_driver_snowflake_name = prefix + 'adbc_driver_snowflake' + suffix
-adbc_driver_snowflake_lib = custom_target(
-    'adbc_driver_snowflake',
-    output: adbc_driver_snowflake_name,
+adbc_driver_bigquery_name = prefix + 'adbc_driver_bigquery' + suffix
+adbc_driver_bigquery_lib = custom_target(
+    'adbc_driver_bigquery',
+    output: adbc_driver_bigquery_name,
     command : [
         golang,
         'build',
         '-C',
-        meson.project_source_root() + '/../go/adbc/pkg/snowflake',
+        meson.project_source_root() + '/../go/adbc/pkg/bigquery',
         '-tags=driverlib',
         '-buildmode=c-shared',
         '-o',
-        meson.current_build_dir() + '/' + adbc_driver_snowflake_name,
+        meson.current_build_dir() + '/' + adbc_driver_bigquery_name,
     ],
     install : true,
     install_dir : '.',
 )
 
 pkg.generate(
-    name: 'Apache Arrow Database Connectivity (ADBC) Snowflake driver',
-    description: 'The ADBC Snowflake driver provides an ADBC driver for Snowflake.',
+    name: 'Apache Arrow Database Connectivity (ADBC) BigQuery driver',
+    description: 'The ADBC BigQuery driver provides an ADBC driver for BigQuery.',
+    libraries: [adbc_driver_bigquery_lib],
     url: 'https://github.com/apache/arrow-adbc',
-    libraries: [adbc_driver_snowflake_lib],
-    filebase: 'adbc-driver-snowflake',
+    filebase: 'adbc-driver-bigquery',
 )
 
 if get_option('tests')
     exc = executable(
-        'adbc-driver-snowflake-test',
-        'snowflake_test.cc',
+        'adbc-driver-bigquery-test',
+        'bigquery_test.cc',
         include_directories: [root_dir, driver_dir],
         link_with: [
             adbc_common_lib,
-            adbc_driver_snowflake_lib,
+            adbc_driver_bigquery_lib
         ],
         dependencies: [adbc_validation_dep],
     )
-    test('adbc-driver-snowflake', exc)
+    test('adbc-driver-bigquery', exc)
 endif

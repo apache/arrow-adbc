@@ -225,6 +225,13 @@ func (c *connectionImpl) getSessionOptions(ctx context.Context) (map[string]inte
 
 func (c *connectionImpl) setSessionOptions(ctx context.Context, key string, val interface{}) error {
 	req := flight.SetSessionOptionsRequest{}
+	hdrs := make([]string, 0)
+	for k, vv := range c.hdrs {
+		for _, v := range vv {
+			hdrs = append(hdrs, k, v)
+		}
+	}
+	ctx = metadata.AppendToOutgoingContext(ctx, hdrs...)
 
 	var err error
 	req.SessionOptions, err = flight.NewSessionOptionValues(map[string]any{key: val})
@@ -238,7 +245,7 @@ func (c *connectionImpl) setSessionOptions(ctx context.Context, key string, val 
 	var header, trailer metadata.MD
 	errors, err := c.cl.SetSessionOptions(ctx, &req, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 	if err != nil {
-		return adbcFromFlightStatusWithDetails(err, header, trailer, "GetSessionOptions")
+		return adbcFromFlightStatusWithDetails(err, header, trailer, "SetSessionOptions")
 	}
 	if len(errors.Errors) > 0 {
 		msg := strings.Builder{}
@@ -635,6 +642,7 @@ func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string
 		header, trailer metadata.MD
 		numCatalogs     int64
 	)
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
 	info, err := c.cl.GetCatalogs(ctx, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 	if err != nil {
@@ -675,6 +683,7 @@ func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.Obj
 	if depth == adbc.ObjectDepthCatalogs {
 		return
 	}
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	result = make(map[string][]string)
 	var header, trailer metadata.MD
 	// Pre-populate the map of which schemas are in which catalogs
@@ -716,6 +725,7 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
 		return
 	}
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	result = make(map[internal.CatalogAndSchema][]internal.TableInfo)
 
 	// Pre-populate the map of which schemas are in which catalogs

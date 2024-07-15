@@ -48,6 +48,8 @@ endif
 needs_driver_manager = get_option('driver_manager') \
     or get_option('tests')
 
+pkg = import('pkgconfig')
+
 if needs_driver_manager
     subdir('driver_manager')
 endif
@@ -57,6 +59,10 @@ subdir('driver/framework')
 
 if get_option('tests')
   subdir('validation')
+endif
+
+if get_option('bigquery')
+  subdir('driver/bigquery')
 endif
 
 if get_option('flightsql')

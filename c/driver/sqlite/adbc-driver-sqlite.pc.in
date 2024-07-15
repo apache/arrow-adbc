@@ -21,6 +21,7 @@ libdir=@ADBC_PKG_CONFIG_LIBDIR@
 
 Name: Apache Arrow Database Connectivity (ADBC) SQLite driver
 Description: The ADBC SQLite driver provides an ADBC driver for SQLite.
+URL: https://github.com/apache/arrow-adbc
 Version: @ADBC_VERSION@
 Libs: -L${libdir} -ladbc_driver_sqlite
 Cflags: -I${includedir}
