@@ -48,9 +48,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             return new ValueTask<TProtocol>(new TBinaryProtocol(transport));
         }
 
-        protected override TOpenSessionReq CreateSessionRequest()
+        protected override TOpenSessionReq CreateSessionRequest(TProtocolVersion protocolVersion)
         {
-            return new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7)
+            return new TOpenSessionReq(protocolVersion)
             {
                 CanUseMultipleCatalogs = true,
             };
@@ -72,5 +72,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         }
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string tableName) => throw new System.NotImplementedException();
+
+        protected override IReadOnlyList<TProtocolVersion> ProtocolVersions => [TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11];
     }
 }

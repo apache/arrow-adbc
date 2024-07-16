@@ -17,11 +17,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
 
@@ -33,6 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected TOperationHandle? operationHandle;
         protected readonly IReadOnlyDictionary<string, string> properties;
+        protected TProtocolVersion? _protocolVersion;
         internal TTransport? transport;
         internal TCLIService.Client? client;
         internal TSessionHandle? sessionHandle;
@@ -59,19 +60,40 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected string VendorName => _vendorName.Value;
 
+        protected abstract IReadOnlyList<TProtocolVersion> ProtocolVersions { get; }
+
         internal async Task OpenAsync()
         {
             TProtocol protocol = await CreateProtocolAsync();
             this.transport = protocol.Transport;
             this.client = new TCLIService.Client(protocol);
+            TOpenSessionResp? s0 = null;
+            Exception? lastException = null;
 
-            var s0 = await this.client.OpenSession(CreateSessionRequest());
+            foreach (TProtocolVersion protocolVersion in ProtocolVersions)
+            {
+                s0 = null;
+                try
+                {
+                    s0 = await this.client.OpenSession(CreateSessionRequest(protocolVersion));
+                    _protocolVersion = protocolVersion;
+                    break;
+                }
+                catch (TApplicationException ex) when (ex.Type == TApplicationException.ExceptionType.ProtocolError)
+                {
+                    lastException = ex;
+                    continue;
+                }
+            }
+
+            if (s0 == null) throw lastException!;
+
             this.sessionHandle = s0.SessionHandle;
         }
 
         protected abstract ValueTask<TProtocol> CreateProtocolAsync();
 
-        protected abstract TOpenSessionReq CreateSessionRequest();
+        protected abstract TOpenSessionReq CreateSessionRequest(TProtocolVersion protocolVersion);
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {

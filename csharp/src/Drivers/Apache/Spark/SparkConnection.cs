@@ -323,9 +323,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return baseAddress;
         }
 
-        protected override TOpenSessionReq CreateSessionRequest()
+        protected override TOpenSessionReq CreateSessionRequest(TProtocolVersion protocolVersion)
         {
-            var req = new TOpenSessionReq(TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7)
+            var req = new TOpenSessionReq(protocolVersion)
             {
                 CanUseMultipleCatalogs = true,
                 Configuration = timestampConfig,
@@ -1096,6 +1096,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 BaseAddress = GetBaseAddress(hostName, scheme, path, port)
             };
         }
+
+        protected override IReadOnlyList<TProtocolVersion> ProtocolVersions =>
+        [
+            TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11,
+        ];
     }
 
     internal struct TableInfo(string type)
