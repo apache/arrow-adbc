@@ -83,14 +83,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             throw new NotImplementedException();
         }
 
-        protected void PollForResponse()
+        static internal async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client)
         {
             TGetOperationStatusResp? statusResponse = null;
             do
             {
-                if (statusResponse != null) { Thread.Sleep(500); }
-                TGetOperationStatusReq request = new TGetOperationStatusReq(this.operationHandle);
-                statusResponse = this.Client.GetOperationStatus(request).Result;
+                if (statusResponse != null) { await Task.Delay(500); }
+                TGetOperationStatusReq request = new(operationHandle);
+                statusResponse = await client.GetOperationStatus(request);
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
         }
 
@@ -132,6 +132,26 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
             TGetResultSetMetadataResp response = this.Client.GetResultSetMetadata(request).Result;
             return SchemaParser.GetArrowSchema(response.Schema);
+        }
+
+        internal static async Task<Schema> GetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
+        {
+            TGetResultSetMetadataResp response = await GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
+            return SchemaParser.GetArrowSchema(response.Schema);
+        }
+
+        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
+        {
+            TGetResultSetMetadataReq request = new(operationHandle);
+            TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
+            return response;
+        }
+
+        internal static async Task<TFetchResultsResp> FetchNextAsync(TOperationHandle operationHandle, TCLIService.IAsync client, long batchSize, CancellationToken cancellationToken = default)
+        {
+            TFetchResultsReq request = new(operationHandle, TFetchOrientation.FETCH_NEXT, batchSize);
+            TFetchResultsResp response = await client.FetchResults(request, cancellationToken);
+            return response;
         }
     }
 }

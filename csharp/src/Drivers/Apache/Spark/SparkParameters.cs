@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+using System.Runtime.Serialization;
+
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     /// <summary>

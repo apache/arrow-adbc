@@ -325,11 +325,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
-            return new TOpenSessionReq(TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7)
+            var req = new TOpenSessionReq(TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7)
             {
                 CanUseMultipleCatalogs = true,
                 Configuration = timestampConfig,
             };
+            return req;
         }
 
         public override AdbcStatement CreateStatement()
@@ -494,8 +495,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     .SetSqlState(resp.Status.SqlState);
             }
 
-            List<TColumn> columns = resp.DirectResults.ResultSet.Results.Columns;
-            StringArray tableTypes = columns[0].StringVal.Values;
+            TRowSet results = resp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(resp.OperationHandle).Result;
+            StringArray tableTypes = results.Columns[0].StringVal.Values;
 
             StringArray.Builder tableTypesBuilder = new StringArray.Builder();
             tableTypesBuilder.AppendRange(tableTypes);
@@ -506,6 +507,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
 
             return new SparkInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
+        }
+
+        private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = HiveServer2Statement.BatchSizeDefault, CancellationToken cancellationToken = default)
+        {
+            await PollForResponseAsync(operationHandle, Client);
+            TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
+            if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+            {
+                throw new HiveServer2Exception(fetchResp.Status.ErrorMessage)
+                    .SetNativeError(fetchResp.Status.ErrorCode)
+                    .SetSqlState(fetchResp.Status.SqlState);
+            }
+            return fetchResp.Results;
         }
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
@@ -522,10 +536,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 throw new Exception(columnsResponse.Status.ErrorMessage);
             }
 
-            var result = columnsResponse.DirectResults;
-            var resultSchema = result.ResultSetMetadata.ArrowSchema;
-            var columns = result.ResultSet.Results.Columns;
-            var rowCount = columns[3].StringVal.Values.Length;
+            TRowSet results = columnsResponse.DirectResults?.ResultSet.Results ?? FetchResultsAsync(columnsResponse.OperationHandle).Result;
+            List<TColumn> columns = results.Columns;
+            int rowCount = results.Columns[3].StringVal.Values.Length;
 
             Field[] fields = new Field[rowCount];
             for (int i = 0; i < rowCount; i++)
@@ -558,10 +571,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     throw new Exception(getCatalogsResp.Status.ErrorMessage);
                 }
-                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(getCatalogsResp.DirectResults.ResultSetMetadata.Schema.Columns);
+                var catalogsMetadata = getCatalogsResp.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(getCatalogsResp.OperationHandle, Client).Result;
+                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(catalogsMetadata.Schema.Columns);
 
                 string catalogRegexp = PatternToRegEx(catalogPattern);
-                TRowSet resp = getCatalogsResp.DirectResults.ResultSet.Results;
+                TRowSet resp = getCatalogsResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getCatalogsResp.OperationHandle).Result;
                 IReadOnlyList<string> list = resp.Columns[columnMap[TableCat]].StringVal.Values;
                 for (int i = 0; i < list.Count; i++)
                 {
@@ -572,6 +586,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     {
                         catalogMap.Add(catalog, new Dictionary<string, Dictionary<string, TableInfo>>());
                     }
+                }
+                if (list.Count == 0)
+                {
+                    catalogMap.Add(string.Empty, []);
                 }
             }
 
@@ -587,8 +605,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     throw new Exception(getSchemasResp.Status.ErrorMessage);
                 }
-                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(getSchemasResp.DirectResults.ResultSetMetadata.Schema.Columns);
-                TRowSet resp = getSchemasResp.DirectResults.ResultSet.Results;
+
+                TGetResultSetMetadataResp schemaMetadata = getSchemasResp.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(getSchemasResp.OperationHandle, Client).Result;
+                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(schemaMetadata.Schema.Columns);
+                TRowSet resp = getSchemasResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getSchemasResp.OperationHandle).Result;
 
                 IReadOnlyList<string> catalogList = resp.Columns[columnMap[TableCatalog]].StringVal.Values;
                 IReadOnlyList<string> schemaList = resp.Columns[columnMap[TableSchem]].StringVal.Values;
@@ -616,8 +636,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     throw new Exception(getTablesResp.Status.ErrorMessage);
                 }
 
-                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(getTablesResp.DirectResults.ResultSetMetadata.Schema.Columns);
-                TRowSet resp = getTablesResp.DirectResults.ResultSet.Results;
+                TGetResultSetMetadataResp tableMetadata = getTablesResp.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(getTablesResp.OperationHandle, Client).Result;
+                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(tableMetadata.Schema.Columns);
+                TRowSet resp = getTablesResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getTablesResp.OperationHandle).Result;
 
                 IReadOnlyList<string> catalogList = resp.Columns[columnMap[TableCat]].StringVal.Values;
                 IReadOnlyList<string> schemaList = resp.Columns[columnMap[TableSchem]].StringVal.Values;
@@ -652,8 +673,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     throw new Exception(columnsResponse.Status.ErrorMessage);
                 }
 
-                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsResponse.DirectResults.ResultSetMetadata.Schema.Columns);
-                TRowSet resp = columnsResponse.DirectResults.ResultSet.Results;
+                TGetResultSetMetadataResp columnsMetadata = columnsResponse.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(columnsResponse.OperationHandle, Client).Result;
+                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsMetadata.Schema.Columns);
+                TRowSet resp = columnsResponse.DirectResults?.ResultSet.Results ?? FetchResultsAsync(columnsResponse.OperationHandle).Result;
 
                 IReadOnlyList<string> catalogList = resp.Columns[columnMap[TableCat]].StringVal.Values;
                 IReadOnlyList<string> schemaList = resp.Columns[columnMap[TableSchem]].StringVal.Values;

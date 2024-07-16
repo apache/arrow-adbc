@@ -25,7 +25,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     public abstract class HiveServer2Statement : AdbcStatement
     {
         private const int PollTimeMillisecondsDefault = 500;
-        private const int BatchSizeDefault = 50000;
+        internal const long BatchSizeDefault = 50000;
         protected internal HiveServer2Connection connection;
         protected internal TOperationHandle? operationHandle;
 
@@ -47,8 +47,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
             await ExecuteStatementAsync();
-            await PollForResponseAsync();
-            Schema schema = await GetSchemaAsync();
+            await HiveServer2Connection.PollForResponseAsync(operationHandle!, connection.Client);
+            Schema schema = await HiveServer2Connection.GetSchemaAsync(operationHandle!, connection.Client);
 
             // TODO: Ensure this is set dynamically based on server capabilities
             return new QueryResult(-1, NewReader(this, schema));
@@ -120,27 +120,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             this.operationHandle = executeResponse.OperationHandle;
         }
 
-        protected async Task PollForResponseAsync()
-        {
-            TGetOperationStatusResp? statusResponse = null;
-            do
-            {
-                if (statusResponse != null) { await Task.Delay(PollTimeMilliseconds); }
-                TGetOperationStatusReq request = new TGetOperationStatusReq(this.operationHandle);
-                statusResponse = await this.connection.Client.GetOperationStatus(request);
-            } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
-        }
-
-        protected async ValueTask<Schema> GetSchemaAsync()
-        {
-            TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
-            TGetResultSetMetadataResp response = await this.connection.Client.GetResultSetMetadata(request);
-            return SchemaParser.GetArrowSchema(response.Schema);
-        }
-
         protected internal int PollTimeMilliseconds { get; private set; } = PollTimeMillisecondsDefault;
 
-        protected internal int BatchSize { get; private set; } = BatchSizeDefault;
+        protected internal long BatchSize { get; private set; } = BatchSizeDefault;
 
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.

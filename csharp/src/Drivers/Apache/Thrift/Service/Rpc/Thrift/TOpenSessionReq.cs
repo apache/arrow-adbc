@@ -430,10 +430,10 @@ namespace Apache.Hive.Service.Rpc.Thrift
         await oprot.WriteStructBeginAsync(tmp291, cancellationToken);
         var tmp292 = new TField();
         tmp292.Name = "client_protocol";
-        tmp292.Type = TType.I32;
+        tmp292.Type = TType.String;
         tmp292.ID = 1;
         await oprot.WriteFieldBeginAsync(tmp292, cancellationToken);
-        await oprot.WriteI32Async((int)Client_protocol, cancellationToken);
+        await oprot.WriteStringAsync(Client_protocol.ToString(), cancellationToken);
         await oprot.WriteFieldEndAsync(cancellationToken);
         if ((Username != null) && __isset.username)
         {

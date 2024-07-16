@@ -55,7 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
         }
 
-        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkReader(statement, schema);
+        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkArrowBatchReader(statement, schema);
 
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
@@ -65,7 +65,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // options specific to Spark go here
         }
 
-        sealed class SparkReader : IArrowArrayStream
+        sealed class SparkArrowBatchReader : IArrowArrayStream
         {
             HiveServer2Statement? statement;
             Schema schema;
@@ -73,7 +73,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             int index;
             IArrowReader? reader;
 
-            public SparkReader(HiveServer2Statement statement, Schema schema)
+            public SparkArrowBatchReader(HiveServer2Statement statement, Schema schema)
             {
                 this.statement = statement;
                 this.schema = schema;
@@ -125,5 +125,59 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
+        //sealed class SparkConventionalReader : IArrowArrayStream
+        //{
+        //    private HiveServer2Statement? _statement;
+        //    private List<TColumn>? _columns;
+        //    private IArrowReader? _reader;
+
+        //    public SparkConventionalReader(HiveServer2Statement statement, Schema schema)
+        //    {
+        //        _statement = statement;
+        //        Schema = schema;
+        //    }
+
+        //    public Schema Schema { get; }
+
+        //    public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        //    {
+        //        while (true)
+        //        {
+        //            if (_reader != null)
+        //            {
+        //                RecordBatch? next = await _reader.ReadNextRecordBatchAsync(cancellationToken);
+        //                if (next != null)
+        //                {
+        //                    return next;
+        //                }
+        //                _reader = null;
+        //            }
+
+        //            if (this.batches != null && this.index < this.batches.Count)
+        //            {
+        //                this.reader = new ArrowStreamReader(new ChunkStream(this.schema, this.batches[this.index++].Batch));
+        //                continue;
+        //            }
+
+        //            if (_statement == null)
+        //            {
+        //                return null;
+        //            }
+
+        //            TFetchResultsReq request = new(_statement.operationHandle, TFetchOrientation.FETCH_NEXT, _statement.BatchSize);
+        //            TFetchResultsResp response = await _statement.connection.client!.FetchResults(request, cancellationToken);
+        //            this._columns = response.Results.Columns;
+
+        //            if (!response.HasMoreRows)
+        //            {
+        //                _statement = null;
+        //            }
+        //        }
+        //    }
+
+        //    public void Dispose()
+        //    {
+        //    }
+        //}
     }
 }
