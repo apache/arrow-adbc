@@ -52,7 +52,7 @@ CMake or other build tool appropriately.  However, we primarily
 develop and support Conda users.
 
 [conda]: https://docs.conda.io/en/latest/
-[mambaforge]: https://mamba.readthedocs.io/en/latest/installation.html
+[mambaforge]: https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html
 
 ### Running Integration Tests
 
