@@ -575,7 +575,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(catalogsMetadata.Schema.Columns);
 
                 string catalogRegexp = PatternToRegEx(catalogPattern);
-                TRowSet rowSet = getCatalogsResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getCatalogsResp.OperationHandle).Result;
+                TRowSet rowSet = GetRowSet(getCatalogsResp);
                 IReadOnlyList<string> list = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
                 for (int i = 0; i < list.Count; i++)
                 {
@@ -608,7 +608,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                 TGetResultSetMetadataResp schemaMetadata = GetResultSetMetadata(getSchemasResp);
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(schemaMetadata.Schema.Columns);
-                TRowSet rowSet = getSchemasResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getSchemasResp.OperationHandle).Result;
+                TRowSet rowSet = GetRowSet(getSchemasResp);
 
                 IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCatalog]].StringVal.Values;
                 IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
@@ -1108,6 +1108,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private TRowSet GetRowSet(TGetColumnsResp response) => response.DirectResults?.ResultSet.Results ?? FetchResultsAsync(response.OperationHandle).Result;
 
         private TRowSet GetRowSet(TGetTablesResp response) => response.DirectResults?.ResultSet.Results ?? FetchResultsAsync(response.OperationHandle).Result;
+
+        private TRowSet GetRowSet(TGetCatalogsResp getCatalogsResp) => getCatalogsResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getCatalogsResp.OperationHandle).Result;
+
+        private TRowSet GetRowSet(TGetSchemasResp getSchemasResp) => getSchemasResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getSchemasResp.OperationHandle).Result;
 
         private TGetResultSetMetadataResp GetResultSetMetadata(TGetSchemasResp response) => response.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(response.OperationHandle, Client).Result;
 
