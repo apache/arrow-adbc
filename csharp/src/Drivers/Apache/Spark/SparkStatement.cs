@@ -55,7 +55,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
         }
 
-        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkArrowBatchReader(statement, schema);
+        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) =>
+            connection.ProtocolVersion is >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V1 and <= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7
+            ? new SparkArrowBatchReader(statement, schema)
+            : new HiveServer2Reader(statement, schema);
 
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.

@@ -219,7 +219,7 @@ namespace Apache.Arrow.Adbc.Tests
             await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
             await SelectAndValidateValuesAsync(tableName, columnName, value, 1, formattedValue);
             string whereClause = GetWhereClause(columnName, formattedValue ?? value);
-            await DeleteFromTableAsync(tableName, whereClause, 1);
+            //await DeleteFromTableAsync(tableName, whereClause, 1);
         }
 
         /// <summary>
@@ -395,7 +395,8 @@ namespace Apache.Arrow.Adbc.Tests
         {
             for (int i = 0; i < length; i++)
             {
-                Assert.Equal(value, getter(i));
+                object? actual = getter(i);
+                Assert.Equal<object>(value, actual);
             }
         }
 

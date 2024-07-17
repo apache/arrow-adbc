@@ -495,8 +495,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     .SetSqlState(resp.Status.SqlState);
             }
 
-            TRowSet results = resp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(resp.OperationHandle).Result;
-            StringArray tableTypes = results.Columns[0].StringVal.Values;
+            TRowSet rowSet = GetRowSet(resp);
+            StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
 
             StringArray.Builder tableTypesBuilder = new StringArray.Builder();
             tableTypesBuilder.AppendRange(tableTypes);
@@ -536,9 +536,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 throw new Exception(columnsResponse.Status.ErrorMessage);
             }
 
-            TRowSet results = columnsResponse.DirectResults?.ResultSet.Results ?? FetchResultsAsync(columnsResponse.OperationHandle).Result;
-            List<TColumn> columns = results.Columns;
-            int rowCount = results.Columns[3].StringVal.Values.Length;
+            TRowSet rowSet = GetRowSet(columnsResponse);
+            List<TColumn> columns = rowSet.Columns;
+            int rowCount = rowSet.Columns[3].StringVal.Values.Length;
 
             Field[] fields = new Field[rowCount];
             for (int i = 0; i < rowCount; i++)
@@ -571,12 +571,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     throw new Exception(getCatalogsResp.Status.ErrorMessage);
                 }
-                var catalogsMetadata = getCatalogsResp.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(getCatalogsResp.OperationHandle, Client).Result;
+                var catalogsMetadata = GetResultSetMetadata(getCatalogsResp);
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(catalogsMetadata.Schema.Columns);
 
                 string catalogRegexp = PatternToRegEx(catalogPattern);
-                TRowSet resp = getCatalogsResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getCatalogsResp.OperationHandle).Result;
-                IReadOnlyList<string> list = resp.Columns[columnMap[TableCat]].StringVal.Values;
+                TRowSet rowSet = getCatalogsResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getCatalogsResp.OperationHandle).Result;
+                IReadOnlyList<string> list = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
                 for (int i = 0; i < list.Count; i++)
                 {
                     string col = list[i];
@@ -606,12 +606,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     throw new Exception(getSchemasResp.Status.ErrorMessage);
                 }
 
-                TGetResultSetMetadataResp schemaMetadata = getSchemasResp.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(getSchemasResp.OperationHandle, Client).Result;
+                TGetResultSetMetadataResp schemaMetadata = GetResultSetMetadata(getSchemasResp);
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(schemaMetadata.Schema.Columns);
-                TRowSet resp = getSchemasResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getSchemasResp.OperationHandle).Result;
+                TRowSet rowSet = getSchemasResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getSchemasResp.OperationHandle).Result;
 
-                IReadOnlyList<string> catalogList = resp.Columns[columnMap[TableCatalog]].StringVal.Values;
-                IReadOnlyList<string> schemaList = resp.Columns[columnMap[TableSchem]].StringVal.Values;
+                IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCatalog]].StringVal.Values;
+                IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
 
                 for (int i = 0; i < catalogList.Count; i++)
                 {
@@ -636,14 +636,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     throw new Exception(getTablesResp.Status.ErrorMessage);
                 }
 
-                TGetResultSetMetadataResp tableMetadata = getTablesResp.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(getTablesResp.OperationHandle, Client).Result;
+                TGetResultSetMetadataResp tableMetadata = GetResultSetMetadata(getTablesResp);
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(tableMetadata.Schema.Columns);
-                TRowSet resp = getTablesResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getTablesResp.OperationHandle).Result;
+                TRowSet rowSet = GetRowSet(getTablesResp);
 
-                IReadOnlyList<string> catalogList = resp.Columns[columnMap[TableCat]].StringVal.Values;
-                IReadOnlyList<string> schemaList = resp.Columns[columnMap[TableSchem]].StringVal.Values;
-                IReadOnlyList<string> tableList = resp.Columns[columnMap[TableName]].StringVal.Values;
-                IReadOnlyList<string> tableTypeList = resp.Columns[columnMap[TableType]].StringVal.Values;
+                IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
+                IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
+                IReadOnlyList<string> tableList = rowSet.Columns[columnMap[TableName]].StringVal.Values;
+                IReadOnlyList<string> tableTypeList = rowSet.Columns[columnMap[TableType]].StringVal.Values;
 
                 for (int i = 0; i < catalogList.Count; i++)
                 {
@@ -673,21 +673,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     throw new Exception(columnsResponse.Status.ErrorMessage);
                 }
 
-                TGetResultSetMetadataResp columnsMetadata = columnsResponse.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(columnsResponse.OperationHandle, Client).Result;
+                TGetResultSetMetadataResp columnsMetadata = GetResultSetMetadata(columnsResponse);
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsMetadata.Schema.Columns);
-                TRowSet resp = columnsResponse.DirectResults?.ResultSet.Results ?? FetchResultsAsync(columnsResponse.OperationHandle).Result;
+                TRowSet rowSet = GetRowSet(columnsResponse);
 
-                IReadOnlyList<string> catalogList = resp.Columns[columnMap[TableCat]].StringVal.Values;
-                IReadOnlyList<string> schemaList = resp.Columns[columnMap[TableSchem]].StringVal.Values;
-                IReadOnlyList<string> tableList = resp.Columns[columnMap[TableName]].StringVal.Values;
-                IReadOnlyList<string> columnNameList = resp.Columns[columnMap[ColumnName]].StringVal.Values;
-                ReadOnlySpan<int> columnTypeList = resp.Columns[columnMap[DataType]].I32Val.Values.Values;
-                IReadOnlyList<string> typeNameList = resp.Columns[columnMap[TypeName]].StringVal.Values;
-                ReadOnlySpan<int> nullableList = resp.Columns[columnMap[Nullable]].I32Val.Values.Values;
-                IReadOnlyList<string> columnDefaultList = resp.Columns[columnMap[ColumnDef]].StringVal.Values;
-                ReadOnlySpan<int> ordinalPosList = resp.Columns[columnMap[OrdinalPosition]].I32Val.Values.Values;
-                IReadOnlyList<string> isNullableList = resp.Columns[columnMap[IsNullable]].StringVal.Values;
-                IReadOnlyList<string> isAutoIncrementList = resp.Columns[columnMap[IsAutoIncrement]].StringVal.Values;
+                IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
+                IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
+                IReadOnlyList<string> tableList = rowSet.Columns[columnMap[TableName]].StringVal.Values;
+                IReadOnlyList<string> columnNameList = rowSet.Columns[columnMap[ColumnName]].StringVal.Values;
+                ReadOnlySpan<int> columnTypeList = rowSet.Columns[columnMap[DataType]].I32Val.Values.Values;
+                IReadOnlyList<string> typeNameList = rowSet.Columns[columnMap[TypeName]].StringVal.Values;
+                ReadOnlySpan<int> nullableList = rowSet.Columns[columnMap[Nullable]].I32Val.Values.Values;
+                IReadOnlyList<string> columnDefaultList = rowSet.Columns[columnMap[ColumnDef]].StringVal.Values;
+                ReadOnlySpan<int> ordinalPosList = rowSet.Columns[columnMap[OrdinalPosition]].I32Val.Values.Values;
+                IReadOnlyList<string> isNullableList = rowSet.Columns[columnMap[IsNullable]].StringVal.Values;
+                IReadOnlyList<string> isAutoIncrementList = rowSet.Columns[columnMap[IsAutoIncrement]].StringVal.Values;
 
                 for (int i = 0; i < catalogList.Count; i++)
                 {
@@ -1102,6 +1102,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
             TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11,
         ];
+
+        private TRowSet GetRowSet(TGetTableTypesResp response) => response.DirectResults?.ResultSet.Results ?? FetchResultsAsync(response.OperationHandle).Result;
+
+        private TRowSet GetRowSet(TGetColumnsResp response) => response.DirectResults?.ResultSet.Results ?? FetchResultsAsync(response.OperationHandle).Result;
+
+        private TRowSet GetRowSet(TGetTablesResp response) => response.DirectResults?.ResultSet.Results ?? FetchResultsAsync(response.OperationHandle).Result;
+
+        private TGetResultSetMetadataResp GetResultSetMetadata(TGetSchemasResp response) => response.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(response.OperationHandle, Client).Result;
+
+        private TGetResultSetMetadataResp GetResultSetMetadata(TGetCatalogsResp response) => response.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(response.OperationHandle, Client).Result;
+
+        private TGetResultSetMetadataResp GetResultSetMetadata(TGetColumnsResp response) => response.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(response.OperationHandle, Client).Result;
+
+        private TGetResultSetMetadataResp GetResultSetMetadata(TGetTablesResp response) => response.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(response.OperationHandle, Client).Result;
     }
 
     internal struct TableInfo(string type)

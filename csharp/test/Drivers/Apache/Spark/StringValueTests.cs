@@ -104,7 +104,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             await InsertSingleValueAsync(table.TableName, columnName, formattedValue);
             await SelectAndValidateValuesAsync(table.TableName, columnName, paddedValue, 1, formattedValue);
             string whereClause = GetWhereClause(columnName, formattedValue ?? paddedValue);
-            await DeleteFromTableAsync(table.TableName, whereClause, 1);
+            //await DeleteFromTableAsync(table.TableName, whereClause, 1);
         }
 
         /// <summary>

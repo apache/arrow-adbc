@@ -75,7 +75,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             // If no altered rows, i.e. DDC statements, then -1 is the default.
             long? affectedRows = null;
-            while (true)
+            while (affectedRowsField != null && true)
             {
                 using RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync();
                 if (nextBatch == null) { break; }

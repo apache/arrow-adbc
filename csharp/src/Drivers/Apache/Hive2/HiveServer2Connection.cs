@@ -33,7 +33,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected TOperationHandle? operationHandle;
         protected readonly IReadOnlyDictionary<string, string> properties;
-        protected TProtocolVersion? _protocolVersion;
         internal TTransport? transport;
         internal TCLIService.Client? client;
         internal TSessionHandle? sessionHandle;
@@ -62,6 +61,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected abstract IReadOnlyList<TProtocolVersion> ProtocolVersions { get; }
 
+        protected internal TProtocolVersion? ProtocolVersion { get; private set; }
+
         internal async Task OpenAsync()
         {
             TProtocol protocol = await CreateProtocolAsync();
@@ -76,7 +77,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 try
                 {
                     s0 = await this.client.OpenSession(CreateSessionRequest(protocolVersion));
-                    _protocolVersion = protocolVersion;
+                    ProtocolVersion = protocolVersion;
                     break;
                 }
                 catch (TApplicationException ex) when (ex.Type == TApplicationException.ExceptionType.ProtocolError)
