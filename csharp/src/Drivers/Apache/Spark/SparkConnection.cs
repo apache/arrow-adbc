@@ -509,9 +509,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return new SparkInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
         }
 
-        private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = HiveServer2Statement.BatchSizeDefault, CancellationToken cancellationToken = default)
+        private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = HiveServer2Connection.BatchSizeDefault, CancellationToken cancellationToken = default)
         {
-            await PollForResponseAsync(operationHandle, Client);
+            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault);
             TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
             if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {

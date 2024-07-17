@@ -57,7 +57,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) =>
             connection.ProtocolVersion is >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V1 and <= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7
-            ? new SparkArrowBatchReader(statement, schema)
+            ? new SparkReader(statement, schema)
             : new HiveServer2Reader(statement, schema);
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // options specific to Spark go here
         }
 
-        sealed class SparkArrowBatchReader : IArrowArrayStream
+        sealed class SparkReader : IArrowArrayStream
         {
             HiveServer2Statement? statement;
             Schema schema;
@@ -76,7 +76,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             int index;
             IArrowReader? reader;
 
-            public SparkArrowBatchReader(HiveServer2Statement statement, Schema schema)
+            public SparkReader(HiveServer2Statement statement, Schema schema)
             {
                 this.statement = statement;
                 this.schema = schema;

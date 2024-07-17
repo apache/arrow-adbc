@@ -33,7 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private readonly long _batchSize;
         //int _counter;
 
-        public HiveServer2Reader(HiveServer2Statement statement, Schema schema, long batchSize = HiveServer2Statement.BatchSizeDefault)
+        public HiveServer2Reader(HiveServer2Statement statement, Schema schema, long batchSize = HiveServer2Connection.BatchSizeDefault)
         {
             _statement = statement;
             Schema = schema;

@@ -24,8 +24,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     public abstract class HiveServer2Statement : AdbcStatement
     {
-        private const int PollTimeMillisecondsDefault = 500;
-        internal const long BatchSizeDefault = 50000;
         protected internal HiveServer2Connection connection;
         protected internal TOperationHandle? operationHandle;
 
@@ -47,7 +45,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
             await ExecuteStatementAsync();
-            await HiveServer2Connection.PollForResponseAsync(operationHandle!, connection.Client);
+            await HiveServer2Connection.PollForResponseAsync(operationHandle!, connection.Client, PollTimeMilliseconds);
             Schema schema = await HiveServer2Connection.GetSchemaAsync(operationHandle!, connection.Client);
 
             // TODO: Ensure this is set dynamically based on server capabilities
@@ -120,9 +118,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             this.operationHandle = executeResponse.OperationHandle;
         }
 
-        protected internal int PollTimeMilliseconds { get; private set; } = PollTimeMillisecondsDefault;
+        protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
 
-        protected internal long BatchSize { get; private set; } = BatchSizeDefault;
+        protected internal long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
 
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.

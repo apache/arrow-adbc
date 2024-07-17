@@ -29,7 +29,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     public abstract class HiveServer2Connection : AdbcConnection
     {
-        const string userAgent = "AdbcExperimental/0.0";
+        internal const long BatchSizeDefault = 50000;
+        internal const int PollTimeMillisecondsDefault = 500;
+        private const string userAgent = "AdbcExperimental/0.0";
 
         protected TOperationHandle? operationHandle;
         protected readonly IReadOnlyDictionary<string, string> properties;
@@ -106,12 +108,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             throw new NotImplementedException();
         }
 
-        static internal async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client)
+        static internal async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds)
         {
             TGetOperationStatusResp? statusResponse = null;
             do
             {
-                if (statusResponse != null) { await Task.Delay(500); }
+                if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds); }
                 TGetOperationStatusReq request = new(operationHandle);
                 statusResponse = await client.GetOperationStatus(request);
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
