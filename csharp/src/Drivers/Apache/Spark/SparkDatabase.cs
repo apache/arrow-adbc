@@ -36,7 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             IReadOnlyDictionary<string, string> mergedProperties = options == null
                 ? properties
                 : options
-                    .Concat(properties.Where(x => !options.Keys.Contains(x.Key)))
+                    .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             SparkConnection connection = new SparkConnection(mergedProperties);
             connection.OpenAsync().Wait();
