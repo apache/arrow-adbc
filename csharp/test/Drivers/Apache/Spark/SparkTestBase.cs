@@ -52,9 +52,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             {
                 parameters.Add(SparkParameters.HostName, testConfiguration.HostName!);
             }
-            if (!string.IsNullOrEmpty(testConfiguration.Scheme))
+            if (!string.IsNullOrEmpty(testConfiguration.Uri))
             {
-                parameters.Add(SparkParameters.Scheme, testConfiguration.Scheme!);
+                parameters.Add(AdbcOptions.Uri, testConfiguration.Uri!);
             }
             if (!string.IsNullOrEmpty(testConfiguration.Port))
             {
@@ -70,11 +70,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             }
             if (!string.IsNullOrEmpty(testConfiguration.Username))
             {
-                parameters.Add(SparkParameters.Username, testConfiguration.Username!);
+                parameters.Add(AdbcOptions.Username, testConfiguration.Username!);
             }
             if (!string.IsNullOrEmpty(testConfiguration.Password))
             {
-                parameters.Add(SparkParameters.Password, testConfiguration.Password!);
+                parameters.Add(AdbcOptions.Password, testConfiguration.Password!);
             }
             if (!string.IsNullOrEmpty(testConfiguration.AuthType))
             {

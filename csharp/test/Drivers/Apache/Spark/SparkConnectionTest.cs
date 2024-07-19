@@ -40,34 +40,47 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// </summary>
         [SkippableTheory]
         [ClassData(typeof(InvalidConnectionParametersTestData))]
-        internal void CanDetectConnectionParameterErrors(IReadOnlyDictionary<string, string> parameters)
+        internal void CanDetectConnectionParameterErrors(ParametersWithExceptions test)
         {
             AdbcDriver driver = NewDriver;
-            AdbcDatabase database = driver.Open(parameters);
-            Exception exeption = Assert.ThrowsAny<ArgumentException>(() => database.Connect(parameters));
+            AdbcDatabase database = driver.Open(test.Parameters);
+            Exception exeption = Assert.Throws(test.ExceptionType, () => database.Connect(test.Parameters));
             OutputHelper?.WriteLine(exeption.Message);
         }
 
-        internal class InvalidConnectionParametersTestData : TheoryData<Dictionary<string, string>>
+        internal class ParametersWithExceptions
+        {
+            public ParametersWithExceptions(Dictionary<string, string> parameters, Type exceptionType)
+            {
+                Parameters = parameters;
+                ExceptionType = exceptionType;
+            }
+
+            public IReadOnlyDictionary<string, string> Parameters { get; }
+            public Type ExceptionType { get; }
+        }
+
+        internal class InvalidConnectionParametersTestData : TheoryData<ParametersWithExceptions>
         {
             public InvalidConnectionParametersTestData()
             {
-                Add([]);
-                Add(new() { [SparkParameters.HostName] = " " });
-                Add(new() { [SparkParameters.HostName] = "invalid!server.com" });
-                Add(new() { [SparkParameters.HostName] = "http://valid.server.com" });
-                Add(new() { [SparkParameters.HostName] = "valid.server.com" });
-                Add(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.AuthTypeBasic}" });
-                Add(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.AuthTypeToken}" });
-                Add(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.AuthTypeBasic}", [SparkParameters.Token] = "abcdef" });
-                Add(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.AuthTypeToken}", [SparkParameters.Username] = "user", [SparkParameters.Password] = "myPassword" });
-                Add(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Username] = "user" });
-                Add(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Password] = "myPassword" });
-                Add(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [SparkParameters.Port] = "-1" });
-                Add(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [SparkParameters.Port] = IPEndPoint.MinPort.ToString(CultureInfo.InvariantCulture) });
-                Add(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [SparkParameters.Port] = (IPEndPoint.MaxPort + 1).ToString(CultureInfo.InvariantCulture) });
-                Add(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [SparkParameters.Scheme] = "http.xxz" });
-                Add(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [SparkParameters.Scheme] = "httpxxz" });
+                Add(new([], typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.HostName] = " " }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.HostName] = "invalid!server.com" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.HostName] = "http://valid.server.com" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.AuthTypeBasic}" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.AuthTypeToken}" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.AuthTypeBasic}", [SparkParameters.Token] = "abcdef" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.AuthTypeToken}", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Password] = "myPassword" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [SparkParameters.Port] = "-1" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [SparkParameters.Port] = IPEndPoint.MinPort.ToString(CultureInfo.InvariantCulture) }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [SparkParameters.Port] = (IPEndPoint.MaxPort + 1).ToString(CultureInfo.InvariantCulture) }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [AdbcOptions.Uri] = "httpxxz://hostname.com" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [AdbcOptions.Uri] = "http-//hostname.com" }, typeof(UriFormatException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [AdbcOptions.Uri] = "httpxxz://hostname.com:1234567890" }, typeof(UriFormatException)));
             }
         }
     }

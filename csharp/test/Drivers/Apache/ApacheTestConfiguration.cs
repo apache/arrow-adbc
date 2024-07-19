@@ -42,8 +42,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
         [JsonPropertyName("auth_type"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string AuthType { get; set; } = string.Empty;
 
-        [JsonPropertyName("scheme"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string Scheme { get; set; } = string.Empty;
+        [JsonPropertyName("uri"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Uri { get; set; } = string.Empty;
 
     }
 }

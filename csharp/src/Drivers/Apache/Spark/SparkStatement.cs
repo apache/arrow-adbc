@@ -15,9 +15,7 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
@@ -31,6 +29,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal SparkStatement(SparkConnection connection)
             : base(connection)
         {
+            foreach (KeyValuePair<string, string> kvp in connection.properties)
+            {
+                switch (kvp.Key)
+                {
+                    case Options.BatchSize:
+                    case Options.PollTimeMilliseconds:
+                        {
+                            SetOption(kvp.Key, kvp.Value);
+                            break;
+                        }
+                }
+            }
         }
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)

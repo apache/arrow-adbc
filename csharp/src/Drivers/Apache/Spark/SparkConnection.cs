@@ -272,15 +272,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
 
             properties.TryGetValue(SparkParameters.HostName, out string? hostName);
-            properties.TryGetValue(SparkParameters.Scheme, out string? scheme);
             properties.TryGetValue(SparkParameters.Path, out string? path);
+            properties.TryGetValue(SparkParameters.Port, out string? port);
             properties.TryGetValue(SparkParameters.AuthType, out string? authType);
             properties.TryGetValue(SparkParameters.Token, out string? token);
-            properties.TryGetValue(SparkParameters.Username, out string? username);
-            properties.TryGetValue(SparkParameters.Password, out string? password);
-            properties.TryGetValue(SparkParameters.Port, out string? port);
+            properties.TryGetValue(AdbcOptions.Username, out string? username);
+            properties.TryGetValue(AdbcOptions.Password, out string? password);
+            properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
-            Uri baseAddress = GetBaseAddress(hostName, scheme, path, port);
+            Uri baseAddress = GetBaseAddress(uri, hostName, path, port);
             AuthenticationHeaderValue authenticationHeaderValue = GetAuthenticationHeaderValue(authType, token, username, password);
 
             HttpClient httpClient = new();
@@ -299,25 +299,40 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return new TBinaryProtocol(transport);
         }
 
-        private static AuthenticationHeaderValue GetAuthenticationHeaderValue(string? authType, string? token, string? username, string? password) =>
-            !string.IsNullOrEmpty(token)
-            && (string.IsNullOrEmpty(authType) || SparkAuthTypeConstants.AuthTypeToken.Equals(authType, StringComparison.OrdinalIgnoreCase))
-                ? new AuthenticationHeaderValue("Bearer", token)
-                : !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password)
-                  && (string.IsNullOrEmpty(authType) || SparkAuthTypeConstants.AuthTypeBasic.Equals(authType, StringComparison.OrdinalIgnoreCase))
-                    ? new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")))
-                    : throw new AdbcException("Missing connection properties. Must contain 'token' or 'username' and 'password'");
-
-        private static Uri GetBaseAddress(string? hostName, string? scheme, string? path, string? port)
+        private static AuthenticationHeaderValue GetAuthenticationHeaderValue(string? authType, string? token, string? username, string? password)
         {
+            bool isValidAuthType = Enum.TryParse(authType, out SparkAuthType authTypeValue);
+            if (!string.IsNullOrEmpty(token) && (!isValidAuthType || authTypeValue == SparkAuthType.Token))
+            {
+                return new AuthenticationHeaderValue("Bearer", token);
+            }
+            else if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password) && (!isValidAuthType || authTypeValue == SparkAuthType.Basic))
+            {
+                return new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")));
+            }
+            else
+            {
+                throw new AdbcException("Missing connection properties. Must contain 'token' or 'username' and 'password'");
+            }
+        }
+
+        private static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port)
+        {
+            // Uri property takes precedent.
+            if (!string.IsNullOrWhiteSpace(uri))
+            {
+                var uriValue = new Uri(uri);
+                if (uriValue.Scheme != Uri.UriSchemeHttp || uriValue.Scheme != Uri.UriSchemeHttps)
+                    throw new ArgumentOutOfRangeException(
+                        $"Unsupported scheme '{uriValue.Scheme}'",
+                        AdbcOptions.Uri);
+                return uriValue;
+            }
+
             bool isPortSet = !string.IsNullOrEmpty(port);
             bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
             bool isDefaultHttpsPort = !isPortSet || (isValidPortNumber && portNumber == 443);
-            string uriScheme = Uri.CheckSchemeName(scheme)
-                ? scheme!
-                : isDefaultHttpsPort
-                    ? Uri.UriSchemeHttps
-                    : Uri.UriSchemeHttp;
+            string uriScheme = isDefaultHttpsPort ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
             int uriPort = isValidPortNumber ? portNumber : -1;
             Uri baseAddress = new UriBuilder(uriScheme, hostName, uriPort, path).Uri;
             return baseAddress;
@@ -1033,29 +1048,32 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             // Validate authentication parameters
             properties.TryGetValue(SparkParameters.AuthType, out string? authType);
+            bool isValidAuthType = SparkAuthTypeConstants.TryParse(authType, out SparkAuthType authTypeValue);
             properties.TryGetValue(SparkParameters.Token, out string? token);
-            properties.TryGetValue(SparkParameters.Username, out string? username);
-            properties.TryGetValue(SparkParameters.Password, out string? password);
-            switch (authType)
+            properties.TryGetValue(AdbcOptions.Username, out string? username);
+            properties.TryGetValue(AdbcOptions.Password, out string? password);
+            switch (authTypeValue)
             {
-                case SparkAuthTypeConstants.AuthTypeToken:
+                case SparkAuthType.Token:
                     if (string.IsNullOrWhiteSpace(token))
                         throw new ArgumentException(
                             $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.AuthTypeToken}' but parameter '{SparkParameters.Token}' is not set. Please provide a value for '{SparkParameters.Token}'.",
                             nameof(properties));
                     break;
-                case SparkAuthTypeConstants.AuthTypeBasic:
+                case SparkAuthType.Basic:
                     if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                         throw new ArgumentException(
-                            $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.AuthTypeBasic}' but parameters '{SparkParameters.Username}' or '{SparkParameters.Password}' are not set. Please provide a values for these parameters.",
+                            $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.AuthTypeBasic}' but parameters '{AdbcOptions.Username}' or '{AdbcOptions.Password}' are not set. Please provide a values for these parameters.",
+                            nameof(properties));
+                    break;
+                case SparkAuthType.Empty:
+                    if (string.IsNullOrWhiteSpace(token) && (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password)))
+                        throw new ArgumentException(
+                            $"Parameters must include valid authentiation settings. Please provide either '{SparkParameters.Token}'; or '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.",
                             nameof(properties));
                     break;
                 default:
-                    if (string.IsNullOrWhiteSpace(token) && (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password)))
-                        throw new ArgumentException(
-                            $"Parameters must include valid authentiation settings. Please provide either '{SparkParameters.Token}'; or '{SparkParameters.Username}' and '{SparkParameters.Password}'.",
-                            nameof(properties));
-                    break;
+                    throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
 
             // Validate port range
@@ -1067,11 +1085,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     $"Parameter '{SparkParameters.Port}' value is not in the valid range of 1 .. {IPEndPoint.MaxPort}.");
 
             // Ensure the parameters will produce a valid address
-            properties.TryGetValue(SparkParameters.Scheme, out string? scheme);
+            properties.TryGetValue(AdbcOptions.Uri, out string? uri);
             properties.TryGetValue(SparkParameters.Path, out string? path);
             _ = new HttpClient()
             {
-                BaseAddress = GetBaseAddress(hostName, scheme, path, port)
+                BaseAddress = GetBaseAddress(uri, hostName, path, port)
             };
         }
     }

@@ -23,18 +23,44 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     public static class SparkParameters
     {
         public const string HostName = "adbc.spark.host";
-        public const string Scheme = "adbc.spark.scheme";
         public const string Port = "adbc.spark.port";
         public const string Path = "adbc.spark.path";
         public const string Token = "adbc.spark.token";
         public const string AuthType = "adbc.spark.auth_type";
-        public const string Password = "password";
-        public const string Username = "username";
     }
 
     public static class SparkAuthTypeConstants
     {
         public const string AuthTypeBasic = "auth_basic";
         public const string AuthTypeToken = "auth_token";
+
+        public static bool TryParse(string? authType, out SparkAuthType authTypeValue)
+        {
+            switch (authType?.Trim().ToLowerInvariant())
+            {
+                case null:
+                case "":
+                    authTypeValue = SparkAuthType.Empty;
+                    return true;
+                case AuthTypeBasic:
+                    authTypeValue = SparkAuthType.Basic;
+                    return true;
+                case AuthTypeToken:
+                    authTypeValue = SparkAuthType.Token;
+                    return true;
+                default:
+                    authTypeValue = SparkAuthType.Invalid;
+                    return false;
+            }
+        }
     }
+
+    public enum SparkAuthType
+    {
+        Invalid,
+        Basic,
+        Token,
+        Empty,
+    }
+
 }

@@ -32,9 +32,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         const string userAgent = "AdbcExperimental/0.0";
 
         protected TOperationHandle? operationHandle;
-        protected readonly IReadOnlyDictionary<string, string> properties;
+        internal readonly IReadOnlyDictionary<string, string> properties;
         internal TTransport? transport;
-        internal TCLIService.Client? client;
+        private TCLIService.Client? client;
         internal TSessionHandle? sessionHandle;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
