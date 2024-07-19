@@ -146,7 +146,7 @@
       <dependency>
         <groupId>org.assertj</groupId>
         <artifactId>assertj-core</artifactId>
-        <version>3.26.0</version>
+        <version>3.26.3</version>
       </dependency>
       <dependency>
         <groupId>org.junit</groupId>
@@ -164,7 +164,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.3.0</version>
+          <version>3.3.1</version>
         </plugin>
       </plugins>
     </pluginManagement>
