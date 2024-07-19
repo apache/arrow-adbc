@@ -29,7 +29,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal SparkStatement(SparkConnection connection)
             : base(connection)
         {
-            foreach (KeyValuePair<string, string> kvp in connection.properties)
+            foreach (KeyValuePair<string, string> kvp in connection.Properties)
             {
                 switch (kvp.Key)
                 {
@@ -120,7 +120,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     }
 
                     TFetchResultsReq request = new TFetchResultsReq(this.statement.operationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
-                    TFetchResultsResp response = await this.statement.connection.client!.FetchResults(request, cancellationToken);
+                    TFetchResultsResp response = await this.statement.connection.Client!.FetchResults(request, cancellationToken);
                     this.batches = response.Results.ArrowBatches;
 
                     if (!response.HasMoreRows)

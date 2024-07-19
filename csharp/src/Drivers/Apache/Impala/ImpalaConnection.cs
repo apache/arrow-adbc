@@ -35,10 +35,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         protected override ValueTask<TProtocol> CreateProtocolAsync()
         {
-            string hostName = properties["HostName"];
+            string hostName = Properties["HostName"];
             string? tmp;
             int port = 21050; // default?
-            if (properties.TryGetValue("Port", out tmp))
+            if (Properties.TryGetValue("Port", out tmp))
             {
                 port = int.Parse(tmp);
             }

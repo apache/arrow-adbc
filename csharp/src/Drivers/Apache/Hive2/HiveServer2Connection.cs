@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -32,7 +31,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         const string userAgent = "AdbcExperimental/0.0";
 
         protected TOperationHandle? operationHandle;
-        internal readonly IReadOnlyDictionary<string, string> properties;
         internal TTransport? transport;
         private TCLIService.Client? client;
         internal TSessionHandle? sessionHandle;
@@ -41,7 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
-            this.properties = properties;
+            this.Properties = properties;
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
             // will retry until it successfully returns a value without an exception.
@@ -58,6 +56,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected string VendorVersion => _vendorVersion.Value;
 
         protected string VendorName => _vendorName.Value;
+
+        internal IReadOnlyDictionary<string, string> Properties { get; }
 
         internal async Task OpenAsync()
         {

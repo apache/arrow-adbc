@@ -264,21 +264,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override async ValueTask<TProtocol> CreateProtocolAsync()
         {
-            Trace.TraceError($"create protocol with {properties.Count} properties.");
+            Trace.TraceError($"create protocol with {Properties.Count} properties.");
 
-            foreach (var property in properties.Keys)
+            foreach (var property in Properties.Keys)
             {
-                Trace.TraceError($"key = {property} value = {properties[property]}");
+                Trace.TraceError($"key = {property} value = {Properties[property]}");
             }
 
-            properties.TryGetValue(SparkParameters.HostName, out string? hostName);
-            properties.TryGetValue(SparkParameters.Path, out string? path);
-            properties.TryGetValue(SparkParameters.Port, out string? port);
-            properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            properties.TryGetValue(SparkParameters.Token, out string? token);
-            properties.TryGetValue(AdbcOptions.Username, out string? username);
-            properties.TryGetValue(AdbcOptions.Password, out string? password);
-            properties.TryGetValue(AdbcOptions.Uri, out string? uri);
+            Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
+            Properties.TryGetValue(SparkParameters.Path, out string? path);
+            Properties.TryGetValue(SparkParameters.Port, out string? port);
+            Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
+            Properties.TryGetValue(SparkParameters.Token, out string? token);
+            Properties.TryGetValue(AdbcOptions.Username, out string? username);
+            Properties.TryGetValue(AdbcOptions.Password, out string? password);
+            Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port);
             AuthenticationHeaderValue authenticationHeaderValue = GetAuthenticationHeaderValue(authType, token, username, password);
@@ -333,7 +333,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
             bool isDefaultHttpsPort = !isPortSet || (isValidPortNumber && portNumber == 443);
             string uriScheme = isDefaultHttpsPort ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
-            int uriPort = isValidPortNumber ? portNumber : -1;
+            int uriPort;
+            if (!isPortSet)
+                uriPort = -1;
+            else if (isValidPortNumber)
+                uriPort = portNumber;
+            else
+                throw new ArgumentOutOfRangeException(nameof(port), portNumber, $"Port number is not in a valid range.");
+
             Uri baseAddress = new UriBuilder(uriScheme, hostName, uriPort, path).Uri;
             return baseAddress;
         }
