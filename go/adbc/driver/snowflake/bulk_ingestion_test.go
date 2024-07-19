@@ -52,7 +52,7 @@ func TestIngestBatchedParquetWithFileLimit(t *testing.T) {
 	defer rdr.Release()
 
 	records := make(chan arrow.Record)
-	go readRecords(ctx, rdr, records)
+	go func() { assert.NoError(t, readRecords(ctx, rdr, records)) }()
 
 	buf.Reset()
 	// Expected to read multiple records but then stop after targetFileSize, indicated by nil error
