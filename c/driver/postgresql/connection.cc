@@ -1161,7 +1161,8 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
       "FROM pg_catalog.pg_class AS cls "
       "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
       "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
-      "WHERE attr.attnum >= 0 AND cls.oid = $1::regclass::oid";
+      "WHERE attr.attnum >= 0 AND cls.oid = $1::regclass::oid "
+      "ORDER BY attr.attnum";
 
   std::vector<std::string> params = {table_name_str};
 
