@@ -1146,6 +1146,16 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
                                                   struct AdbcError* error) {
   AdbcStatusCode final_status = ADBC_STATUS_OK;
 
+  char* quoted = PQescapeIdentifier(conn_, table_name, strlen(table_name));
+  std::string table_name_str(quoted);
+  PQfreemem(quoted);
+
+  if (db_schema != nullptr) {
+    quoted = PQescapeIdentifier(conn_, db_schema, strlen(db_schema));
+    table_name_str = std::string(quoted) + "." + table_name_str;
+    PQfreemem(quoted);
+  }
+
   std::string query =
       "SELECT attname, atttypid "
       "FROM pg_catalog.pg_class AS cls "
@@ -1153,12 +1163,7 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
       "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
       "WHERE attr.attnum >= 0 AND cls.oid = $1::regclass::oid";
 
-  std::vector<std::string> params;
-  if (db_schema != nullptr) {
-    params.push_back(std::string(db_schema) + "." + table_name);
-  } else {
-    params.push_back(table_name);
-  }
+  std::vector<std::string> params = {table_name_str};
 
   PqResultHelper result_helper =
       PqResultHelper{conn_, std::string(query.c_str()), params, error};
