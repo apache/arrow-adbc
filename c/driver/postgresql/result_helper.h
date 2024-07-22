@@ -26,6 +26,8 @@
 #include <arrow-adbc/adbc.h>
 #include <libpq-fe.h>
 
+#include "copy/reader.h"
+
 namespace adbcpq {
 
 /// \brief A single column in a single row of a result set.
@@ -86,11 +88,13 @@ class PqResultHelper {
   ~PqResultHelper();
 
   AdbcStatusCode Prepare();
-  AdbcStatusCode Execute();
+  AdbcStatusCode Execute(int output_format = 0);
 
   int NumRows() const { return PQntuples(result_); }
 
   int NumColumns() const { return PQnfields(result_); }
+
+  Oid FieldType(int column_number) const { return PQftype(result_, column_number); }
 
   class iterator {
     const PqResultHelper& outer_;
@@ -130,4 +134,41 @@ class PqResultHelper {
   std::vector<std::string> param_values_;
   struct AdbcError* error_;
 };
+
+class PqResultArrayReader {
+ public:
+  PqResultArrayReader(PGconn* conn, std::shared_ptr<PostgresTypeResolver> type_resolver,
+                      std::string query)
+      : helper_(conn, std::move(query), &error_), type_resolver_(type_resolver) {
+    ResetErrors();
+  }
+
+  ~PqResultArrayReader() {
+    ResetErrors();
+  }
+
+  int GetSchema(struct ArrowSchema* out);
+  int GetNext(struct ArrowArray* out);
+  const char* GetLastError();
+
+ private:
+  PqResultHelper helper_;
+  std::shared_ptr<PostgresTypeResolver> type_resolver_;
+  std::vector<std::unique_ptr<PostgresCopyFieldReader>> field_readers_;
+  nanoarrow::UniqueSchema schema_;
+  struct AdbcError error_;
+  struct ArrowError na_error_;
+
+  AdbcStatusCode Initialize();
+
+  void ResetErrors() {
+    ArrowErrorInit(&na_error_);
+
+    if (error_.private_data != nullptr) {
+      error_.release(&error_);
+    }
+    error_ = ADBC_ERROR_INIT;
+  }
+};
+
 }  // namespace adbcpq
