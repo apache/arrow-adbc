@@ -140,12 +140,11 @@ class PqResultArrayReader {
   PqResultArrayReader(PGconn* conn, std::shared_ptr<PostgresTypeResolver> type_resolver,
                       std::string query)
       : helper_(conn, std::move(query), &error_), type_resolver_(type_resolver) {
-    ResetErrors();
+    ArrowErrorInit(&na_error_);
+    error_ = ADBC_ERROR_INIT;
   }
 
-  ~PqResultArrayReader() {
-    ResetErrors();
-  }
+  ~PqResultArrayReader() { ResetErrors(); }
 
   int GetSchema(struct ArrowSchema* out);
   int GetNext(struct ArrowArray* out);

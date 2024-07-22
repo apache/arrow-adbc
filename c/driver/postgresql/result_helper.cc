@@ -93,6 +93,7 @@ int PqResultArrayReader::GetNext(struct ArrowArray* out) {
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(tmp.get(), schema_.get(), &na_error_));
   for (int i = 0; i < helper_.NumColumns(); i++) {
     NANOARROW_RETURN_NOT_OK(field_readers_[i]->InitArray(tmp->children[i]));
+    NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(tmp.get()));
   }
 
   // TODO: If we get an EOVERFLOW here (e.g., big string data), we
@@ -142,12 +143,15 @@ AdbcStatusCode PqResultArrayReader::Initialize(struct AdbcError* error) {
                     type_resolver_->Find(helper_.FieldType(i), &child_type, &na_error_),
                     &na_error_, error);
 
+    CHECK_NA(INTERNAL, child_type.SetSchema(schema_->children[i]), error);
+
     std::unique_ptr<PostgresCopyFieldReader> child_reader;
     CHECK_NA_DETAIL(
         INTERNAL,
         MakeCopyFieldReader(child_type, schema_->children[i], &child_reader, &na_error_),
         &na_error_, error);
 
+    child_reader->Init(child_type);
     CHECK_NA_DETAIL(INTERNAL, child_reader->InitSchema(schema_->children[i]), &na_error_,
                     error);
 

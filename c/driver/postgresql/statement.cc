@@ -1153,16 +1153,20 @@ AdbcStatusCode PostgresStatement::ExecutePreparedStatement(
   if (!bind_.release) {
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
     RAISE_ADBC(reader.Initialize(error));
+    if (stream == nullptr) {
+      return ADBC_STATUS_OK;
+    }
 
     nanoarrow::UniqueSchema schema;
-    RAISE_NA(reader.GetSchema(schema.get()));
+    CHECK_NA(INTERNAL, reader.GetSchema(schema.get()), error);
 
     nanoarrow::UniqueArray array;
-    RAISE_NA(reader.GetNext(array.get()));
+    CHECK_NA(INTERNAL, reader.GetNext(array.get()), error);
 
     nanoarrow::VectorArrayStream(schema.get(), array.get()).ToArrayStream(stream);
     return ADBC_STATUS_OK;
   }
+
   if (stream) {
     // TODO:
     SetError(error, "%s",
