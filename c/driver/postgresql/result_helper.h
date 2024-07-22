@@ -151,6 +151,8 @@ class PqResultArrayReader {
   int GetNext(struct ArrowArray* out);
   const char* GetLastError();
 
+  AdbcStatusCode Initialize(struct AdbcError* error);
+
  private:
   PqResultHelper helper_;
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
@@ -158,8 +160,6 @@ class PqResultArrayReader {
   nanoarrow::UniqueSchema schema_;
   struct AdbcError error_;
   struct ArrowError na_error_;
-
-  AdbcStatusCode Initialize();
 
   void ResetErrors() {
     ArrowErrorInit(&na_error_);

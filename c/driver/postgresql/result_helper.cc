@@ -70,7 +70,7 @@ int PqResultArrayReader::GetSchema(struct ArrowSchema* out) {
   ResetErrors();
 
   if (schema_->release == nullptr) {
-    AdbcStatusCode status = Initialize();
+    AdbcStatusCode status = Initialize(&error_);
     if (status != ADBC_STATUS_OK) {
       return EINVAL;
     }
@@ -83,7 +83,7 @@ int PqResultArrayReader::GetNext(struct ArrowArray* out) {
   ResetErrors();
 
   if (schema_->release == nullptr) {
-    AdbcStatusCode status = Initialize();
+    AdbcStatusCode status = Initialize(&error_);
     if (status != ADBC_STATUS_OK) {
       return EINVAL;
     }
@@ -128,28 +128,28 @@ const char* PqResultArrayReader::GetLastError() {
   }
 }
 
-AdbcStatusCode PqResultArrayReader::Initialize() {
+AdbcStatusCode PqResultArrayReader::Initialize(struct AdbcError* error) {
   RAISE_ADBC(helper_.Prepare());
   RAISE_ADBC(helper_.Execute(1));
 
   ArrowSchemaInit(schema_.get());
   CHECK_NA_DETAIL(INTERNAL, ArrowSchemaSetTypeStruct(schema_.get(), helper_.NumColumns()),
-                  &na_error_, &error_);
+                  &na_error_, error);
 
   for (int i = 0; i < helper_.NumColumns(); i++) {
     PostgresType child_type;
     CHECK_NA_DETAIL(INTERNAL,
                     type_resolver_->Find(helper_.FieldType(i), &child_type, &na_error_),
-                    &na_error_, &error_);
+                    &na_error_, error);
 
     std::unique_ptr<PostgresCopyFieldReader> child_reader;
     CHECK_NA_DETAIL(
         INTERNAL,
         MakeCopyFieldReader(child_type, schema_->children[i], &child_reader, &na_error_),
-        &na_error_, &error_);
+        &na_error_, error);
 
     CHECK_NA_DETAIL(INTERNAL, child_reader->InitSchema(schema_->children[i]), &na_error_,
-                    &error_);
+                    error);
 
     field_readers_.push_back(std::move(child_reader));
   }

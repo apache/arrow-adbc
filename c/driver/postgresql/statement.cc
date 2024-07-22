@@ -1151,10 +1151,17 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
 AdbcStatusCode PostgresStatement::ExecutePreparedStatement(
     struct ArrowArrayStream* stream, int64_t* rows_affected, struct AdbcError* error) {
   if (!bind_.release) {
-    // TODO: set an empty stream just to unify the code paths
-    SetError(error, "%s",
-             "[libpq] Prepared statements without parameters are not implemented");
-    return ADBC_STATUS_NOT_IMPLEMENTED;
+    PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
+    RAISE_ADBC(reader.Initialize(error));
+
+    nanoarrow::UniqueSchema schema;
+    RAISE_NA(reader.GetSchema(schema.get()));
+
+    nanoarrow::UniqueArray array;
+    RAISE_NA(reader.GetNext(array.get()));
+
+    nanoarrow::VectorArrayStream(schema.get(), array.get()).ToArrayStream(stream);
+    return ADBC_STATUS_OK;
   }
   if (stream) {
     // TODO:
