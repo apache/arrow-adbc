@@ -64,6 +64,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal TProtocolVersion? ProtocolVersion { get; private set; }
 
+        protected abstract IReadOnlyList<TProtocolVersion> ProtocolVersions { get; }
+
         internal async Task OpenAsync()
         {
             TProtocol protocol = await CreateProtocolAsync();
