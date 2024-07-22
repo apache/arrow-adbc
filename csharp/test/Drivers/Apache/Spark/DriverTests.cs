@@ -212,7 +212,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// <param name="pattern"></param>
         [SkippableTheory, Order(3)]
         [MemberData(nameof(CatalogNamePatternData))]
-        public void GetGetObjectsCatalogs(string pattern)
+        public void GetGetObjectsCatalogs(string? pattern)
         {
             string? catalogName = TestConfiguration.Metadata.Catalog;
             string? schemaName = TestConfiguration.Metadata.Schema;

@@ -322,7 +322,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             if (!string.IsNullOrWhiteSpace(uri))
             {
                 var uriValue = new Uri(uri);
-                if (uriValue.Scheme != Uri.UriSchemeHttp || uriValue.Scheme != Uri.UriSchemeHttps)
+                if (uriValue.Scheme != Uri.UriSchemeHttp && uriValue.Scheme != Uri.UriSchemeHttps)
                     throw new ArgumentOutOfRangeException(
                         $"Unsupported scheme '{uriValue.Scheme}'",
                         AdbcOptions.Uri);
@@ -1066,12 +1066,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         private static void ValidateProperties(IReadOnlyDictionary<string, string> properties)
         {
-            // HostName is required parameter
-            if (!properties.TryGetValue(SparkParameters.HostName, out string? hostName)
-                || Uri.CheckHostName(hostName) == UriHostNameType.Unknown)
+            // HostName or Uri is required parameter
+            properties.TryGetValue(AdbcOptions.Uri, out string? uri);
+            properties.TryGetValue(SparkParameters.HostName, out string? hostName);
+            if ((Uri.CheckHostName(hostName) == UriHostNameType.Unknown)
+                && (string.IsNullOrEmpty(uri) || !Uri.TryCreate(uri, UriKind.Absolute, out Uri? _)))
             {
                 throw new ArgumentException(
-                    $"Required parameter '{SparkParameters.HostName}' is missing or invalid. Please provide a valid hostname for the data source.",
+                    $"Required parameter '{SparkParameters.HostName}' or '{AdbcOptions.Uri}' is missing or invalid. Please provide a valid hostname or URI for the data source.",
                     nameof(properties));
             }
 
@@ -1114,7 +1116,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     $"Parameter '{SparkParameters.Port}' value is not in the valid range of 1 .. {IPEndPoint.MaxPort}.");
 
             // Ensure the parameters will produce a valid address
-            properties.TryGetValue(AdbcOptions.Uri, out string? uri);
             properties.TryGetValue(SparkParameters.Path, out string? path);
             _ = new HttpClient()
             {
