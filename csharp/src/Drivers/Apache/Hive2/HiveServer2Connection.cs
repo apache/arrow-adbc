@@ -34,16 +34,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const string userAgent = "AdbcExperimental/0.0";
 
         protected TOperationHandle? operationHandle;
-        protected readonly IReadOnlyDictionary<string, string> properties;
         internal TTransport? transport;
-        internal TCLIService.Client? client;
+        private TCLIService.Client? client;
         internal TSessionHandle? sessionHandle;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
-            this.properties = properties;
+            this.Properties = properties;
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
             // will retry until it successfully returns a value without an exception.
@@ -61,7 +60,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected string VendorName => _vendorName.Value;
 
-        protected abstract IReadOnlyList<TProtocolVersion> ProtocolVersions { get; }
+        internal IReadOnlyDictionary<string, string> Properties { get; }
 
         protected internal TProtocolVersion? ProtocolVersion { get; private set; }
 
