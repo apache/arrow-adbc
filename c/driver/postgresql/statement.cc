@@ -1160,6 +1160,7 @@ AdbcStatusCode PostgresStatement::ExecutePreparedStatement(
     // TODO:
     SetError(error, "%s",
              "[libpq] Prepared statements returning result sets are not implemented");
+
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
@@ -1214,7 +1215,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     // inferred output columns (e.g. a CREATE or UPDATE), then don't
     // use COPY (which would fail anyways)
     if (!stream || reader_.copy_reader_->pg_type().n_children() == 0) {
-      RAISE_ADBC(ExecuteUpdateQuery(rows_affected, error));
+      RAISE_ADBC(ExecuteNoResultSet(rows_affected, error));
       if (stream) {
         struct ArrowSchema schema;
         std::memset(&schema, 0, sizeof(schema));
@@ -1329,7 +1330,7 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PostgresStatement::ExecuteUpdateQuery(int64_t* rows_affected,
+AdbcStatusCode PostgresStatement::ExecuteNoResultSet(int64_t* rows_affected,
                                                      struct AdbcError* error) {
   // NOTE: must prepare first (used in ExecuteQuery)
   PGresult* result =

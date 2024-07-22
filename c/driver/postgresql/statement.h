@@ -131,7 +131,7 @@ class PostgresStatement {
       std::string* escaped_table, std::string* escaped_field_list,
       struct AdbcError* error);
   AdbcStatusCode ExecuteUpdateBulk(int64_t* rows_affected, struct AdbcError* error);
-  AdbcStatusCode ExecuteUpdateQuery(int64_t* rows_affected, struct AdbcError* error);
+  AdbcStatusCode ExecuteNoResultSet(int64_t* rows_affected, struct AdbcError* error);
   AdbcStatusCode ExecutePreparedStatement(struct ArrowArrayStream* stream,
                                           int64_t* rows_affected,
                                           struct AdbcError* error);
