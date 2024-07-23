@@ -46,6 +46,66 @@ AdbcStatusCode PqResultHelper::Prepare(int n_params) {
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode PqResultHelper::DescribePrepared(PostgresTypeResolver& type_resolver,
+                                                PostgresType* result_types,
+                                                PostgresType* param_types) {
+  PGresult* result = PQdescribePrepared(conn_, /*stmtName=*/"");
+  if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+    AdbcStatusCode code =
+        SetError(error_, result,
+                 "[libpq] Failed  to describe prepared statement: %s\nQuery was:%s",
+                 PQerrorMessage(conn_), query_.c_str());
+    PQclear(result);
+    return code;
+  }
+
+  struct ArrowError na_error;
+  ArrowErrorInit(&na_error);
+
+  if (result_types != nullptr) {
+    const int num_fields = PQnfields(result);
+    PostgresType root_type(PostgresTypeId::kRecord);
+
+    for (int i = 0; i < num_fields; i++) {
+      const Oid pg_oid = PQftype(result, i);
+      PostgresType pg_type;
+      if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
+        SetError(error_, "%s%d%s%s%s%d", "[libpq] Column #", i + 1, " (\"",
+                 PQfname(result, i), "\") has unknown type code ", pg_oid);
+        PQclear(result);
+        return ADBC_STATUS_NOT_IMPLEMENTED;
+      }
+
+      root_type.AppendChild(PQfname(result, i), pg_type);
+    }
+
+    *result_types = root_type;
+  }
+
+  if (param_types != nullptr) {
+    const int num_params = PQnparams(result);
+    PostgresType root_type(PostgresTypeId::kRecord);
+
+    for (int i = 0; i < num_params; i++) {
+      const Oid pg_oid = PQparamtype(result, i);
+      PostgresType pg_type;
+      if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
+        SetError(error_, "%s%d%s%s%s%d", "[libpq] Parameter #", i + 1, " (\"",
+                 PQfname(result, i), "\") has unknown type code ", pg_oid);
+        PQclear(result);
+        return ADBC_STATUS_NOT_IMPLEMENTED;
+      }
+
+      root_type.AppendChild(PQfname(result, i), pg_type);
+    }
+
+    *param_types = root_type;
+  }
+
+  PQclear(result);
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode PqResultHelper::ExecutePrepared(const std::vector<std::string>& params) {
   std::vector<const char*> param_c_strs;
 

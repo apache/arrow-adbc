@@ -81,15 +81,17 @@ class PqResultHelper {
     kBinary = 1,
   };
 
-  explicit PqResultHelper(PGconn* conn, std::string query,
-                          struct AdbcError* error) : conn_(conn),
-      query_(std::move(query)), error_(error) {}
+  explicit PqResultHelper(PGconn* conn, std::string query, struct AdbcError* error)
+      : conn_(conn), query_(std::move(query)), error_(error) {}
 
   ~PqResultHelper();
 
   void set_output_format(Format format) { format_ = format; }
 
   AdbcStatusCode Prepare(int n_params = 0);
+  AdbcStatusCode DescribePrepared(PostgresTypeResolver& type_resolver,
+                                  PostgresType* result_types,
+                                  PostgresType* param_types);
   AdbcStatusCode ExecutePrepared(const std::vector<std::string>& params = {});
 
   int NumRows() const { return PQntuples(result_); }

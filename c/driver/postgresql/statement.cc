@@ -82,30 +82,6 @@ struct OneValueStream {
   }
 };
 
-/// Build an PostgresType object from a PGresult*
-AdbcStatusCode ResolvePostgresType(const PostgresTypeResolver& type_resolver,
-                                   PGresult* result, PostgresType* out,
-                                   struct AdbcError* error) {
-  ArrowError na_error;
-  const int num_fields = PQnfields(result);
-  PostgresType root_type(PostgresTypeId::kRecord);
-
-  for (int i = 0; i < num_fields; i++) {
-    const Oid pg_oid = PQftype(result, i);
-    PostgresType pg_type;
-    if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      SetError(error, "%s%d%s%s%s%d", "[libpq] Column #", i + 1, " (\"",
-               PQfname(result, i), "\") has unknown type code ", pg_oid);
-      return ADBC_STATUS_NOT_IMPLEMENTED;
-    }
-
-    root_type.AppendChild(PQfname(result, i), pg_type);
-  }
-
-  *out = root_type;
-  return ADBC_STATUS_OK;
-}
-
 /// Helper to manage bind parameters with a prepared statement
 struct BindStream {
   Handle<struct ArrowArrayStream> bind;
@@ -1550,47 +1526,20 @@ AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
 }
 
 AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
-  // TODO: we should pipeline here and assume this will succeed
-  PGresult* result = PQprepare(connection_->conn(), /*stmtName=*/"", query_.c_str(),
-                               /*nParams=*/0, nullptr);
-  if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    AdbcStatusCode code =
-        SetError(error, result,
-                 "[libpq] Failed to execute query: could not infer schema: failed to "
-                 "prepare query: %s\nQuery was:%s",
-                 PQerrorMessage(connection_->conn()), query_.c_str());
-    PQclear(result);
-    return code;
-  }
-  PQclear(result);
-  result = PQdescribePrepared(connection_->conn(), /*stmtName=*/"");
-  if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    AdbcStatusCode code =
-        SetError(error, result,
-                 "[libpq] Failed to execute query: could not infer schema: failed to "
-                 "describe prepared statement: %s\nQuery was:%s",
-                 PQerrorMessage(connection_->conn()), query_.c_str());
-    PQclear(result);
-    return code;
-  }
+  PqResultHelper helper(connection_->conn(), query_, error);
+  RAISE_ADBC(helper.Prepare());
 
-  // Resolve the information from the PGresult into a PostgresType
   PostgresType root_type;
-  AdbcStatusCode status = ResolvePostgresType(*type_resolver_, result, &root_type, error);
-  PQclear(result);
-  if (status != ADBC_STATUS_OK) return status;
+  RAISE_ADBC(
+      helper.DescribePrepared(*type_resolver_, &root_type, /*param_types*/ nullptr));
 
   // Initialize the copy reader and infer the output schema (i.e., error for
   // unsupported types before issuing the COPY query)
   reader_.copy_reader_ = std::make_unique<PostgresCopyStreamReader>();
   reader_.copy_reader_->Init(root_type);
   struct ArrowError na_error;
-  int na_res = reader_.copy_reader_->InferOutputSchema(&na_error);
-  if (na_res != NANOARROW_OK) {
-    SetError(error, "[libpq] Failed to infer output schema: (%d) %s: %s", na_res,
-             std::strerror(na_res), na_error.message);
-    return ADBC_STATUS_INTERNAL;
-  }
+  CHECK_NA_DETAIL(INTERNAL, reader_.copy_reader_->InferOutputSchema(&na_error), &na_error,
+                  error);
   return ADBC_STATUS_OK;
 }
 
