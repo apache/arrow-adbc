@@ -84,6 +84,12 @@ class PqResultHelper {
   explicit PqResultHelper(PGconn* conn, std::string query, struct AdbcError* error)
       : conn_(conn), query_(std::move(query)), error_(error) {}
 
+  PqResultHelper(PqResultHelper&& other)
+      : PqResultHelper(other.conn_, std::move(other.query_), other.error_) {
+    result_ = other.result_;
+    other.result_ = nullptr;
+  }
+
   ~PqResultHelper();
 
   void set_param_format(Format format) { param_format_ = format; }
@@ -163,7 +169,8 @@ class PqResultArrayReader {
   int GetNext(struct ArrowArray* out);
   const char* GetLastError();
 
-  AdbcStatusCode ToArrayStream(struct ArrowArrayStream* out, struct AdbcError* error);
+  AdbcStatusCode ToArrayStream(int64_t* affected_rows, struct ArrowArrayStream* out,
+                               struct AdbcError* error);
 
   AdbcStatusCode Initialize(struct AdbcError* error);
 
@@ -174,6 +181,15 @@ class PqResultArrayReader {
   nanoarrow::UniqueSchema schema_;
   struct AdbcError error_;
   struct ArrowError na_error_;
+
+  PqResultArrayReader(PqResultArrayReader* other)
+      : helper_(std::move(other->helper_)),
+        type_resolver_(std::move(other->type_resolver_)),
+        field_readers_(std::move(other->field_readers_)),
+        schema_(std::move(other->schema_)) {
+    ArrowErrorInit(&na_error_);
+    error_ = ADBC_ERROR_INIT;
+  }
 
   void ResetErrors() {
     ArrowErrorInit(&na_error_);
