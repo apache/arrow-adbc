@@ -52,9 +52,10 @@ AdbcStatusCode PqResultHelper::DescribePrepared() {
   if (PQresultStatus(result_) != PGRES_COMMAND_OK) {
     AdbcStatusCode code =
         SetError(error_, result_,
-                 "[libpq] Failed  to describe prepared statement: %s\nQuery was:%s",
+                 "[libpq] Failed to describe prepared statement: %s\nQuery was:%s",
                  PQerrorMessage(conn_), query_.c_str());
     PQclear(result_);
+    result_ = nullptr;
     return code;
   }
 
@@ -62,15 +63,21 @@ AdbcStatusCode PqResultHelper::DescribePrepared() {
 }
 
 AdbcStatusCode PqResultHelper::ExecutePrepared(const std::vector<std::string>& params) {
-  std::vector<const char*> param_c_strs;
+  std::vector<const char*> param_values;
+  std::vector<int> param_lengths;
+  std::vector<int> param_formats;
 
-  for (size_t index = 0; index < params.size(); index++) {
-    param_c_strs.push_back(params[index].c_str());
+  for (const auto& param : params) {
+    param_values.push_back(param.data());
+    param_lengths.push_back(static_cast<int>(param.size()));
+    param_formats.push_back(static_cast<int>(param_format_));
   }
 
   PQclear(result_);
-  result_ = PQexecPrepared(conn_, "", param_c_strs.size(), param_c_strs.data(), NULL,
-                           NULL, static_cast<int>(format_));
+  result_ = nullptr;
+  result_ = PQexecPrepared(conn_, "", param_values.size(), param_values.data(),
+                           param_lengths.data(), param_formats.data(),
+                           static_cast<int>(output_format_));
 
   ExecStatusType status = PQresultStatus(result_);
   if (status != PGRES_TUPLES_OK && status != PGRES_COMMAND_OK) {
@@ -105,7 +112,6 @@ AdbcStatusCode PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_reso
   }
 
   *param_types = root_type;
-
   return ADBC_STATUS_OK;
 }
 

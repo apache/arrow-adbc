@@ -86,7 +86,8 @@ class PqResultHelper {
 
   ~PqResultHelper();
 
-  void set_output_format(Format format) { format_ = format; }
+  void set_param_format(Format format) { param_format_ = format; }
+  void set_output_format(Format format) { output_format_ = format; }
 
   AdbcStatusCode Prepare(int n_params = 0);
   AdbcStatusCode DescribePrepared();
@@ -137,7 +138,8 @@ class PqResultHelper {
   PGresult* result_ = nullptr;
   PGconn* conn_;
   std::string query_;
-  Format format_ = Format::kText;
+  Format param_format_ = Format::kText;
+  Format output_format_ = Format::kText;
   struct AdbcError* error_;
 };
 
