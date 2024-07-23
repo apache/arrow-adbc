@@ -76,20 +76,21 @@ class PqResultRow {
 // prior to iterating
 class PqResultHelper {
  public:
-  explicit PqResultHelper(PGconn* conn, std::string query, struct AdbcError* error)
-      : conn_(conn), query_(std::move(query)), error_(error) {}
+  enum class Format {
+    kText = 0,
+    kBinary = 1,
+  };
 
   explicit PqResultHelper(PGconn* conn, std::string query,
-                          std::vector<std::string> param_values, struct AdbcError* error)
-      : conn_(conn),
-        query_(std::move(query)),
-        param_values_(std::move(param_values)),
-        error_(error) {}
+                          struct AdbcError* error) : conn_(conn),
+      query_(std::move(query)), error_(error) {}
 
   ~PqResultHelper();
 
-  AdbcStatusCode Prepare();
-  AdbcStatusCode Execute(int output_format = 0);
+  void set_output_format(Format format) { format_ = format; }
+
+  AdbcStatusCode Prepare(int n_params = 0);
+  AdbcStatusCode ExecutePrepared(const std::vector<std::string>& params = {});
 
   int NumRows() const { return PQntuples(result_); }
 
@@ -132,7 +133,7 @@ class PqResultHelper {
   PGresult* result_ = nullptr;
   PGconn* conn_;
   std::string query_;
-  std::vector<std::string> param_values_;
+  Format format_ = Format::kText;
   struct AdbcError* error_;
 };
 

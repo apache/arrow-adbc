@@ -31,10 +31,9 @@ PqResultHelper::~PqResultHelper() {
   }
 }
 
-AdbcStatusCode PqResultHelper::Prepare() {
+AdbcStatusCode PqResultHelper::Prepare(int n_params) {
   // TODO: make stmtName a unique identifier?
-  PGresult* result =
-      PQprepare(conn_, /*stmtName=*/"", query_.c_str(), param_values_.size(), NULL);
+  PGresult* result = PQprepare(conn_, /*stmtName=*/"", query_.c_str(), n_params, NULL);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     AdbcStatusCode code =
         SetError(error_, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
@@ -47,15 +46,15 @@ AdbcStatusCode PqResultHelper::Prepare() {
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PqResultHelper::Execute(int output_format) {
+AdbcStatusCode PqResultHelper::ExecutePrepared(const std::vector<std::string>& params) {
   std::vector<const char*> param_c_strs;
 
-  for (size_t index = 0; index < param_values_.size(); index++) {
-    param_c_strs.push_back(param_values_[index].c_str());
+  for (size_t index = 0; index < params.size(); index++) {
+    param_c_strs.push_back(params[index].c_str());
   }
 
-  result_ = PQexecPrepared(conn_, "", param_values_.size(), param_c_strs.data(), NULL,
-                           NULL, output_format);
+  result_ = PQexecPrepared(conn_, "", param_c_strs.size(), param_c_strs.data(), NULL,
+                           NULL, static_cast<int>(format_));
 
   ExecStatusType status = PQresultStatus(result_);
   if (status != PGRES_TUPLES_OK && status != PGRES_COMMAND_OK) {
@@ -132,8 +131,9 @@ const char* PqResultArrayReader::GetLastError() {
 }
 
 AdbcStatusCode PqResultArrayReader::Initialize(struct AdbcError* error) {
+  helper_.set_output_format(PqResultHelper::Format::kBinary);
   RAISE_ADBC(helper_.Prepare());
-  RAISE_ADBC(helper_.Execute(1));
+  RAISE_ADBC(helper_.ExecutePrepared());
 
   ArrowSchemaInit(schema_.get());
   CHECK_NA_DETAIL(INTERNAL, ArrowSchemaSetTypeStruct(schema_.get(), helper_.NumColumns()),

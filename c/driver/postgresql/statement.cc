@@ -1298,9 +1298,9 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
   // This is a little unfortunate; we need another DB roundtrip
   std::string current_schema;
   {
-    PqResultHelper result_helper{connection_->conn(), "SELECT CURRENT_SCHEMA", {}, error};
+    PqResultHelper result_helper{connection_->conn(), "SELECT CURRENT_SCHEMA", error};
     RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    RAISE_ADBC(result_helper.ExecutePrepared());
     auto it = result_helper.begin();
     if (it == result_helper.end()) {
       SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
