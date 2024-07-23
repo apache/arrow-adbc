@@ -1128,25 +1128,13 @@ AdbcStatusCode PostgresStatement::ExecutePreparedStatement(
     struct ArrowArrayStream* stream, int64_t* rows_affected, struct AdbcError* error) {
   if (!bind_.release) {
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
-    RAISE_ADBC(reader.Initialize(error));
-    if (stream == nullptr) {
-      return ADBC_STATUS_OK;
-    }
-
-    nanoarrow::UniqueSchema schema;
-    CHECK_NA(INTERNAL, reader.GetSchema(schema.get()), error);
-
-    nanoarrow::UniqueArray array;
-    CHECK_NA(INTERNAL, reader.GetNext(array.get()), error);
-
-    nanoarrow::VectorArrayStream(schema.get(), array.get()).ToArrayStream(stream);
-    return ADBC_STATUS_OK;
   }
 
   if (stream) {
     // TODO:
     SetError(error, "%s",
-             "[libpq] Prepared statements returning result sets are not implemented");
+             "[libpq] Prepared statements with parameters returning result sets are not "
+             "implemented");
 
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
@@ -1166,6 +1154,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                                                int64_t* rows_affected,
                                                struct AdbcError* error) {
   ClearResult();
+
   if (prepared_) {
     if (bind_.release || !stream) {
       return ExecutePreparedStatement(stream, rows_affected, error);
@@ -1252,14 +1241,32 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
   if (query_.empty()) {
     SetError(error, "%s", "[libpq] Must SetSqlQuery before ExecuteQuery");
     return ADBC_STATUS_INVALID_STATE;
-  } else if (bind_.release) {
-    // TODO: if we have parameters, bind them (since they can affect the output schema)
-    SetError(error, "[libpq] ExecuteSchema with parameters is not implemented");
-    return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
   PqResultHelper helper(connection_->conn(), query_, error);
-  RAISE_ADBC(helper.Prepare());
+  PostgresType param_types;
+  PostgresType* param_types_ptr = nullptr;
+
+  if (bind_.release) {
+    nanoarrow::UniqueSchema schema;
+    struct ArrowError na_error;
+    ArrowErrorInit(&na_error);
+    CHECK_NA_DETAIL(INTERNAL, ArrowArrayStreamGetSchema(&bind_, schema.get(), &na_error),
+                    &na_error, error);
+
+    if (std::string(schema->format) != "+s") {
+      SetError(error, "%s", "[libpq] Bind parameters must have type STRUCT");
+      return ADBC_STATUS_INVALID_STATE;
+    }
+
+    CHECK_NA_DETAIL(
+        INTERNAL,
+        PostgresType::FromSchema(*type_resolver_, schema.get(), &param_types, &na_error),
+        &na_error, error);
+    param_types_ptr = &param_types;
+  }
+
+  RAISE_ADBC(helper.Prepare(param_types.n_children(), param_types_ptr));
   RAISE_ADBC(helper.DescribePrepared());
 
   PostgresType output_type;

@@ -163,6 +163,8 @@ class PqResultArrayReader {
   int GetNext(struct ArrowArray* out);
   const char* GetLastError();
 
+  AdbcStatusCode ToArrayStream(struct ArrowArrayStream* out, struct AdbcError* error);
+
   AdbcStatusCode Initialize(struct AdbcError* error);
 
  private:

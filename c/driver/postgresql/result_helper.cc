@@ -318,4 +318,23 @@ AdbcStatusCode PqResultArrayReader::Initialize(struct AdbcError* error) {
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode PqResultArrayReader::ToArrayStream(struct ArrowArrayStream* out,
+                                                  struct AdbcError* error) {
+  if (out == nullptr) {
+    // If there is no output requested, we still need to execute
+    RAISE_ADBC(helper_.Execute());
+    return ADBC_STATUS_OK;
+  }
+
+  RAISE_ADBC(Initialize(error));
+
+  nanoarrow::UniqueSchema schema;
+  CHECK_NA(INTERNAL, GetSchema(schema.get()), error);
+
+  nanoarrow::UniqueArray array;
+  CHECK_NA(INTERNAL, GetNext(array.get()), error);
+
+  nanoarrow::VectorArrayStream(schema.get(), array.get()).ToArrayStream(out);
+  return ADBC_STATUS_OK;
+}
 }  // namespace adbcpq
