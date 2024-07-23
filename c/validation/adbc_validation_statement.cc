@@ -2065,15 +2065,15 @@ void StatementTest::TestSqlPrepareErrorParamCountMismatch() {
 void StatementTest::TestSqlQueryEmpty() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
-  ASSERT_THAT(quirks()->DropTable(&connection, "QUERYEMPTY", &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "queryempty", &error), IsOkStatus(&error));
   ASSERT_THAT(
-      AdbcStatementSetSqlQuery(&statement, "CREATE TABLE QUERYEMPTY (FOO INT)", &error),
+      AdbcStatementSetSqlQuery(&statement, "CREATE TABLE queryempty (FOO INT)", &error),
       IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
   ASSERT_THAT(
-      AdbcStatementSetSqlQuery(&statement, "SELECT * FROM QUERYEMPTY WHERE 1=0", &error),
+      AdbcStatementSetSqlQuery(&statement, "SELECT * FROM queryempty WHERE 1=0", &error),
       IsOkStatus(&error));
   {
     StreamReader reader;
