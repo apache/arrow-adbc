@@ -100,6 +100,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
         }
 
+        /// <summary>
+        /// Validates if the client can connect to a live server and
+        /// parse the results.
+        /// </summary>
+        [SkippableFact]
+        public void CanClientExecuteQueryWithTimeOutSetting()
+        {
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
+            {
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, _testConfiguration);
+            }
+        }
+
         [SkippableFact]
         public void VerifySchemaTablesWithNoConstraints()
         {
