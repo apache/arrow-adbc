@@ -1258,8 +1258,18 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
-  RAISE_ADBC(SetupReader(error));
-  CHECK_NA(INTERNAL, reader_.copy_reader_->GetSchema(schema), error);
+  PqResultHelper helper(connection_->conn(), query_, error);
+  RAISE_ADBC(helper.Prepare());
+  RAISE_ADBC(helper.DescribePrepared());
+
+  PostgresType output_type;
+  RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &output_type));
+
+  nanoarrow::UniqueSchema tmp;
+  ArrowSchemaInit(tmp.get());
+  CHECK_NA(INTERNAL, output_type.SetSchema(tmp.get()), error);
+
+  tmp.move(schema);
   return ADBC_STATUS_OK;
 }
 
