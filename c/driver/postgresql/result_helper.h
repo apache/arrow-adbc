@@ -89,7 +89,7 @@ class PqResultHelper {
   void set_param_format(Format format) { param_format_ = format; }
   void set_output_format(Format format) { output_format_ = format; }
 
-  AdbcStatusCode Prepare(int n_params = 0);
+  AdbcStatusCode Prepare(int n_params = 0, PostgresType* param_types = nullptr);
   AdbcStatusCode DescribePrepared();
   AdbcStatusCode ExecutePrepared(const std::vector<std::string>& params = {});
   AdbcStatusCode ResolveParamTypes(PostgresTypeResolver& type_resolver,

@@ -31,9 +31,20 @@ PqResultHelper::~PqResultHelper() {
   }
 }
 
-AdbcStatusCode PqResultHelper::Prepare(int n_params) {
+AdbcStatusCode PqResultHelper::Prepare(int n_params, PostgresType* param_types) {
+  std::vector<Oid> param_oids;
+  const Oid* param_oids_ptr = nullptr;
+  if (param_types != nullptr) {
+    param_oids.resize(n_params);
+    for (int i = 0; i < n_params; i++) {
+      param_oids[i] = param_types->child(i).oid();
+    }
+    param_oids_ptr = param_oids.data();
+  }
+
   // TODO: make stmtName a unique identifier?
-  PGresult* result = PQprepare(conn_, /*stmtName=*/"", query_.c_str(), n_params, NULL);
+  PGresult* result =
+      PQprepare(conn_, /*stmtName=*/"", query_.c_str(), n_params, param_oids_ptr);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     AdbcStatusCode code =
         SetError(error_, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
