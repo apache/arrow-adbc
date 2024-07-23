@@ -46,63 +46,18 @@ AdbcStatusCode PqResultHelper::Prepare(int n_params) {
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PqResultHelper::DescribePrepared(PostgresTypeResolver& type_resolver,
-                                                PostgresType* result_types,
-                                                PostgresType* param_types) {
-  PGresult* result = PQdescribePrepared(conn_, /*stmtName=*/"");
-  if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+AdbcStatusCode PqResultHelper::DescribePrepared() {
+  PQclear(result_);
+  result_ = PQdescribePrepared(conn_, /*stmtName=*/"");
+  if (PQresultStatus(result_) != PGRES_COMMAND_OK) {
     AdbcStatusCode code =
-        SetError(error_, result,
+        SetError(error_, result_,
                  "[libpq] Failed  to describe prepared statement: %s\nQuery was:%s",
                  PQerrorMessage(conn_), query_.c_str());
-    PQclear(result);
+    PQclear(result_);
     return code;
   }
 
-  struct ArrowError na_error;
-  ArrowErrorInit(&na_error);
-
-  if (result_types != nullptr) {
-    const int num_fields = PQnfields(result);
-    PostgresType root_type(PostgresTypeId::kRecord);
-
-    for (int i = 0; i < num_fields; i++) {
-      const Oid pg_oid = PQftype(result, i);
-      PostgresType pg_type;
-      if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-        SetError(error_, "%s%d%s%s%s%d", "[libpq] Column #", i + 1, " (\"",
-                 PQfname(result, i), "\") has unknown type code ", pg_oid);
-        PQclear(result);
-        return ADBC_STATUS_NOT_IMPLEMENTED;
-      }
-
-      root_type.AppendChild(PQfname(result, i), pg_type);
-    }
-
-    *result_types = root_type;
-  }
-
-  if (param_types != nullptr) {
-    const int num_params = PQnparams(result);
-    PostgresType root_type(PostgresTypeId::kRecord);
-
-    for (int i = 0; i < num_params; i++) {
-      const Oid pg_oid = PQparamtype(result, i);
-      PostgresType pg_type;
-      if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-        SetError(error_, "%s%d%s%s%s%d", "[libpq] Parameter #", i + 1, " (\"",
-                 PQfname(result, i), "\") has unknown type code ", pg_oid);
-        PQclear(result);
-        return ADBC_STATUS_NOT_IMPLEMENTED;
-      }
-
-      root_type.AppendChild(PQfname(result, i), pg_type);
-    }
-
-    *param_types = root_type;
-  }
-
-  PQclear(result);
   return ADBC_STATUS_OK;
 }
 
@@ -113,6 +68,7 @@ AdbcStatusCode PqResultHelper::ExecutePrepared(const std::vector<std::string>& p
     param_c_strs.push_back(params[index].c_str());
   }
 
+  PQclear(result_);
   result_ = PQexecPrepared(conn_, "", param_c_strs.size(), param_c_strs.data(), NULL,
                            NULL, static_cast<int>(format_));
 
@@ -124,6 +80,57 @@ AdbcStatusCode PqResultHelper::ExecutePrepared(const std::vector<std::string>& p
     return error;
   }
 
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_resolver,
+                                                 PostgresType* param_types) {
+  struct ArrowError na_error;
+  ArrowErrorInit(&na_error);
+
+  const int num_params = PQnparams(result_);
+  PostgresType root_type(PostgresTypeId::kRecord);
+
+  for (int i = 0; i < num_params; i++) {
+    const Oid pg_oid = PQparamtype(result_, i);
+    PostgresType pg_type;
+    if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
+      SetError(error_, "%s%d%s%s%s%d", "[libpq] Parameter #", i + 1, " (\"",
+               PQfname(result_, i), "\") has unknown type code ", pg_oid);
+      PQclear(result_);
+      return ADBC_STATUS_NOT_IMPLEMENTED;
+    }
+
+    root_type.AppendChild(PQfname(result_, i), pg_type);
+  }
+
+  *param_types = root_type;
+
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_resolver,
+                                                  PostgresType* result_types) {
+  struct ArrowError na_error;
+  ArrowErrorInit(&na_error);
+
+  const int num_fields = PQnfields(result_);
+  PostgresType root_type(PostgresTypeId::kRecord);
+
+  for (int i = 0; i < num_fields; i++) {
+    const Oid pg_oid = PQftype(result_, i);
+    PostgresType pg_type;
+    if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
+      SetError(error_, "%s%d%s%s%s%d", "[libpq] Column #", i + 1, " (\"",
+               PQfname(result_, i), "\") has unknown type code ", pg_oid);
+      PQclear(result_);
+      return ADBC_STATUS_NOT_IMPLEMENTED;
+    }
+
+    root_type.AppendChild(PQfname(result_, i), pg_type);
+  }
+
+  *result_types = root_type;
   return ADBC_STATUS_OK;
 }
 

@@ -1528,10 +1528,10 @@ AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
 AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
   PqResultHelper helper(connection_->conn(), query_, error);
   RAISE_ADBC(helper.Prepare());
+  RAISE_ADBC(helper.DescribePrepared());
 
   PostgresType root_type;
-  RAISE_ADBC(
-      helper.DescribePrepared(*type_resolver_, &root_type, /*param_types*/ nullptr));
+  RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &root_type));
 
   // Initialize the copy reader and infer the output schema (i.e., error for
   // unsupported types before issuing the COPY query)

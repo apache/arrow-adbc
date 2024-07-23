@@ -89,10 +89,12 @@ class PqResultHelper {
   void set_output_format(Format format) { format_ = format; }
 
   AdbcStatusCode Prepare(int n_params = 0);
-  AdbcStatusCode DescribePrepared(PostgresTypeResolver& type_resolver,
-                                  PostgresType* result_types,
-                                  PostgresType* param_types);
+  AdbcStatusCode DescribePrepared();
   AdbcStatusCode ExecutePrepared(const std::vector<std::string>& params = {});
+  AdbcStatusCode ResolveParamTypes(PostgresTypeResolver& type_resolver,
+                                   PostgresType* param_types);
+  AdbcStatusCode ResolveOutputTypes(PostgresTypeResolver& type_resolver,
+                                    PostgresType* result_types);
 
   int NumRows() const { return PQntuples(result_); }
 
