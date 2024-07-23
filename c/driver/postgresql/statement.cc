@@ -1224,14 +1224,14 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
 
     // If the caller did not request a result set or if there are no
     // inferred output columns (e.g. a CREATE or UPDATE), then don't
-    // use COPY (which would fail anyways)
+    // use COPY (which would fail in many cases)
     if (!stream || reader_.copy_reader_->pg_type().n_children() == 0) {
       RAISE_ADBC(ExecuteNoResultSet(rows_affected, error));
       if (stream) {
         struct ArrowSchema schema;
         std::memset(&schema, 0, sizeof(schema));
         RAISE_NA(reader_.copy_reader_->GetSchema(&schema));
-        nanoarrow::EmptyArrayStream::MakeUnique(&schema).move(stream);
+        nanoarrow::EmptyArrayStream(&schema).ToArrayStream(stream);
       }
       return ADBC_STATUS_OK;
     }
