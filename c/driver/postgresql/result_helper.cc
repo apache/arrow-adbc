@@ -26,9 +26,7 @@
 namespace adbcpq {
 
 PqResultHelper::~PqResultHelper() {
-  if (result_ != nullptr) {
-    PQclear(result_);
-  }
+  ClearResult();
 }
 
 AdbcStatusCode PqResultHelper::Prepare(int n_params, PostgresType* param_types) {
@@ -58,15 +56,14 @@ AdbcStatusCode PqResultHelper::Prepare(int n_params, PostgresType* param_types) 
 }
 
 AdbcStatusCode PqResultHelper::DescribePrepared() {
-  PQclear(result_);
+  ClearResult();
   result_ = PQdescribePrepared(conn_, /*stmtName=*/"");
   if (PQresultStatus(result_) != PGRES_COMMAND_OK) {
     AdbcStatusCode code =
         SetError(error_, result_,
                  "[libpq] Failed to describe prepared statement: %s\nQuery was:%s",
                  PQerrorMessage(conn_), query_.c_str());
-    PQclear(result_);
-    result_ = nullptr;
+    ClearResult();
     return code;
   }
 
@@ -84,7 +81,7 @@ AdbcStatusCode PqResultHelper::ExecutePrepared(const std::vector<std::string>& p
     param_formats.push_back(static_cast<int>(param_format_));
   }
 
-  PQclear(result_);
+  ClearResult();
   result_ = PQexecPrepared(conn_, "", param_values.size(), param_values.data(),
                            param_lengths.data(), param_formats.data(),
                            static_cast<int>(output_format_));
@@ -103,7 +100,7 @@ AdbcStatusCode PqResultHelper::ExecutePrepared(const std::vector<std::string>& p
 AdbcStatusCode PqResultHelper::Execute(const std::vector<std::string>& params,
                                        PostgresType* param_types) {
   if (params.size() == 0 && param_types == nullptr && output_format_ == Format::kText) {
-    PQclear(result_);
+    ClearResult();
     result_ = PQexec(conn_, query_.c_str());
   } else {
     std::vector<const char*> param_values;
@@ -126,7 +123,7 @@ AdbcStatusCode PqResultHelper::Execute(const std::vector<std::string>& params,
       param_oids_ptr = param_oids.data();
     }
 
-    PQclear(result_);
+    ClearResult();
     result_ = PQexecParams(conn_, query_.c_str(), param_values.size(), param_oids_ptr,
                            param_values.data(), param_lengths.data(),
                            param_formats.data(), static_cast<int>(output_format_));
@@ -150,6 +147,7 @@ AdbcStatusCode PqResultHelper::ExecuteCopy() {
   }
 
   std::string copy_query = "COPY (" + query_ + ") TO STDOUT (FORMAT binary)";
+  ClearResult();
   result_ = PQexecParams(conn_, copy_query.c_str(), /*nParams=*/0,
                          /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                          /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
@@ -160,7 +158,7 @@ AdbcStatusCode PqResultHelper::ExecuteCopy() {
         error_, result_,
         "[libpq] Failed to execute query: could not begin COPY: %s\nQuery was: %s",
         PQerrorMessage(conn_), copy_query.c_str());
-    PQclear(result_);
+    ClearResult();
     return code;
   }
 
@@ -181,7 +179,7 @@ AdbcStatusCode PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_reso
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
       SetError(error_, "%s%d%s%s%s%d", "[libpq] Parameter #", i + 1, " (\"",
                PQfname(result_, i), "\") has unknown type code ", pg_oid);
-      PQclear(result_);
+      ClearResult();
       return ADBC_STATUS_NOT_IMPLEMENTED;
     }
 
@@ -206,7 +204,7 @@ AdbcStatusCode PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_res
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
       SetError(error_, "%s%d%s%s%s%d", "[libpq] Column #", i + 1, " (\"",
                PQfname(result_, i), "\") has unknown type code ", pg_oid);
-      PQclear(result_);
+      ClearResult();
       return ADBC_STATUS_NOT_IMPLEMENTED;
     }
 

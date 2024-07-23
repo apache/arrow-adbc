@@ -1124,12 +1124,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PostgresStatement::ExecutePreparedStatement(
-    struct ArrowArrayStream* stream, int64_t* rows_affected, struct AdbcError* error) {
-  if (!bind_.release) {
-    PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
-  }
-
+AdbcStatusCode PostgresStatement::ExecuteBind(struct ArrowArrayStream* stream,
+                                              int64_t* rows_affected,
+                                              struct AdbcError* error) {
   if (stream) {
     // TODO:
     SetError(error, "%s",
@@ -1155,27 +1152,9 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                                                struct AdbcError* error) {
   ClearResult();
 
-  if (prepared_) {
-    if (bind_.release || !stream) {
-      return ExecutePreparedStatement(stream, rows_affected, error);
-    }
-    // XXX: don't use a prepared statement to execute a no-parameter
-    // result-set-returning query for now, since we can't easily get
-    // access to COPY there. (This might have to become sequential
-    // executions of COPY (EXECUTE ($n, ...)) TO STDOUT which won't
-    // get all the benefits of a prepared statement.) At preparation
-    // time we don't know whether the query will be used with a result
-    // set or not without analyzing the query (we could prepare both?)
-    // and https://stackoverflow.com/questions/69233792 suggests that
-    // you can't PREPARE a query containing COPY.
-  }
-  if (!stream && !ingest_.target.empty()) {
-    return ExecuteUpdateBulk(rows_affected, error);
-  }
-
-  // Remove trailing semicolon(s) from the query before feeding it into COPY
-  while (!query_.empty() && query_.back() == ';') {
-    query_.pop_back();
+  // Use a dedicated path to handle bulk ingest
+  if (!ingest_.target.empty()) {
+    return ExecuteIngest(stream, rows_affected, error);
   }
 
   if (query_.empty()) {
@@ -1183,53 +1162,56 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     return ADBC_STATUS_INVALID_STATE;
   }
 
-  // 1. Prepare the query to get the schema
-  {
-    RAISE_ADBC(SetupReader(error));
-
-    // If the caller did not request a result set or if there are no
-    // inferred output columns (e.g. a CREATE or UPDATE), then don't
-    // use COPY (which would fail in many cases)
-    if (!stream || reader_.copy_reader_->pg_type().n_children() == 0) {
-      RAISE_ADBC(ExecuteNoResultSet(rows_affected, error));
-      if (stream) {
-        struct ArrowSchema schema;
-        std::memset(&schema, 0, sizeof(schema));
-        RAISE_NA(reader_.copy_reader_->GetSchema(&schema));
-        nanoarrow::EmptyArrayStream(&schema).ToArrayStream(stream);
-      }
-      return ADBC_STATUS_OK;
-    }
-
-    // This resolves the reader specific to each PostgresType -> ArrowSchema
-    // conversion. It is unlikely that this will fail given that we have just
-    // inferred these conversions ourselves.
-    struct ArrowError na_error;
-    int na_res = reader_.copy_reader_->InitFieldReaders(&na_error);
-    if (na_res != NANOARROW_OK) {
-      SetError(error, "[libpq] Failed to initialize field readers: %s", na_error.message);
-      return na_res;
-    }
+  // Use a dedicated path to handle parameter binding
+  if (bind_.release != nullptr) {
+    return ExecuteBind(stream, rows_affected, error);
   }
 
-  // 2. Execute the query with COPY to get binary tuples
-  {
-    std::string copy_query = "COPY (" + query_ + ") TO STDOUT (FORMAT binary)";
-    reader_.result_ =
-        PQexecParams(connection_->conn(), copy_query.c_str(), /*nParams=*/0,
-                     /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
-                     /*paramLengths=*/nullptr, /*paramFormats=*/nullptr, kPgBinaryFormat);
-    if (PQresultStatus(reader_.result_) != PGRES_COPY_OUT) {
-      AdbcStatusCode code = SetError(
-          error, reader_.result_,
-          "[libpq] Failed to execute query: could not begin COPY: %s\nQuery was: %s",
-          PQerrorMessage(connection_->conn()), copy_query.c_str());
-      ClearResult();
-      return code;
-    }
-    // Result is read from the connection, not the result, but we won't clear it here
+  // If we have been requested to prepare the query but there are no parameters to bind,
+  // use the PqResultArrayReader to handle the execution of the query. We don't currently
+  // issue an explicit PGprepare(); however, this is the path we would need to take when
+  // we do implement this (because preparing a query that includes COPY is not supported).
+  // Also take this path if no output is requested (e.g., a CREATE or UPDATE).
+  if (!stream || prepared_) {
+    PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
+    RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
+    return ADBC_STATUS_OK;
   }
 
+  PqResultHelper helper(connection_->conn(), query_, error);
+  RAISE_ADBC(helper.Prepare());
+  RAISE_ADBC(helper.DescribePrepared());
+
+  // Initialize the copy reader and infer the output schema (i.e., error for
+  // unsupported types before issuing the COPY query). This could be lazier
+  // (i.e., executed on the first call to GetSchema() or GetNext()).
+  PostgresType root_type;
+  RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &root_type));
+
+  // If there will be no columns in the result, we can also avoid COPY
+  if (root_type.n_children() == 0) {
+    // Could/should move the helper into the reader instead of repreparing
+    PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
+    RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
+    return ADBC_STATUS_OK;
+  }
+
+  struct ArrowError na_error;
+  reader_.copy_reader_ = std::make_unique<PostgresCopyStreamReader>();
+  CHECK_NA(INTERNAL, reader_.copy_reader_->Init(root_type), error);
+  CHECK_NA_DETAIL(INTERNAL, reader_.copy_reader_->InferOutputSchema(&na_error), &na_error,
+                  error);
+
+  CHECK_NA_DETAIL(INTERNAL, reader_.copy_reader_->InitFieldReaders(&na_error), &na_error,
+                  error);
+
+  // Execute the COPY query
+  RAISE_ADBC(helper.ExecuteCopy());
+
+  // We need the PQresult back for the reader
+  reader_.result_ = helper.ReleaseResult();
+
+  // Export to stream
   reader_.ExportTo(stream);
   if (rows_affected) *rows_affected = -1;
   return ADBC_STATUS_OK;
@@ -1280,11 +1262,17 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
-                                                    struct AdbcError* error) {
+AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
+                                                int64_t* rows_affected,
+                                                struct AdbcError* error) {
   if (!bind_.release) {
     SetError(error, "%s", "[libpq] Must Bind() before Execute() for bulk ingestion");
     return ADBC_STATUS_INVALID_STATE;
+  }
+
+  if (stream != nullptr) {
+    SetError(error, "%s", "[libpq] Bulk ingest with result set is not supported");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
   // Need the current schema to avoid being shadowed by temp tables
@@ -1331,37 +1319,6 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
 
   PQclear(result);
   RAISE_ADBC(bind_stream.ExecuteCopy(connection_.get(), rows_affected, error));
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode PostgresStatement::ExecuteNoResultSet(int64_t* rows_affected,
-                                                     struct AdbcError* error) {
-  // NOTE: must prepare first (used in ExecuteQuery)
-  PGresult* result =
-      PQexecPrepared(connection_->conn(), /*stmtName=*/"", /*nParams=*/0,
-                     /*paramValues=*/nullptr, /*paramLengths=*/nullptr,
-                     /*paramFormats=*/nullptr, /*resultFormat=*/kPgBinaryFormat);
-  ExecStatusType status = PQresultStatus(result);
-  if (status != PGRES_COMMAND_OK && status != PGRES_TUPLES_OK) {
-    AdbcStatusCode code =
-        SetError(error, result, "[libpq] Failed to execute query: %s\nQuery was:%s",
-                 PQerrorMessage(connection_->conn()), query_.c_str());
-    PQclear(result);
-    return code;
-  }
-  if (rows_affected) {
-    if (status == PGRES_TUPLES_OK) {
-      *rows_affected = PQntuples(reader_.result_);
-    } else {
-      // In theory, PQcmdTuples would work here, but experimentally it gives
-      // an empty string even for a DELETE.  (Also, why does it return a
-      // string...)  Possibly, it doesn't work because we use PQexecPrepared
-      // but the docstring is careful to specify it works on an EXECUTE of a
-      // prepared statement.
-      *rows_affected = -1;
-    }
-  }
-  PQclear(result);
   return ADBC_STATUS_OK;
 }
 
@@ -1540,24 +1497,6 @@ AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
   }
   SetError(error, "[libpq] Unknown statement option '%s'", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
-  PqResultHelper helper(connection_->conn(), query_, error);
-  RAISE_ADBC(helper.Prepare());
-  RAISE_ADBC(helper.DescribePrepared());
-
-  PostgresType root_type;
-  RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &root_type));
-
-  // Initialize the copy reader and infer the output schema (i.e., error for
-  // unsupported types before issuing the COPY query)
-  reader_.copy_reader_ = std::make_unique<PostgresCopyStreamReader>();
-  reader_.copy_reader_->Init(root_type);
-  struct ArrowError na_error;
-  CHECK_NA_DETAIL(INTERNAL, reader_.copy_reader_->InferOutputSchema(&na_error), &na_error,
-                  error);
-  return ADBC_STATUS_OK;
 }
 
 void PostgresStatement::ClearResult() {

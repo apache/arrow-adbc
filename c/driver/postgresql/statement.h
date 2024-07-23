@@ -130,12 +130,10 @@ class PostgresStatement {
       const std::vector<struct ArrowSchemaView>& source_schema_fields,
       std::string* escaped_table, std::string* escaped_field_list,
       struct AdbcError* error);
-  AdbcStatusCode ExecuteUpdateBulk(int64_t* rows_affected, struct AdbcError* error);
-  AdbcStatusCode ExecuteNoResultSet(int64_t* rows_affected, struct AdbcError* error);
-  AdbcStatusCode ExecutePreparedStatement(struct ArrowArrayStream* stream,
-                                          int64_t* rows_affected,
-                                          struct AdbcError* error);
-  AdbcStatusCode SetupReader(struct AdbcError* error);
+  AdbcStatusCode ExecuteIngest(struct ArrowArrayStream* stream, int64_t* rows_affected,
+                               struct AdbcError* error);
+  AdbcStatusCode ExecuteBind(struct ArrowArrayStream* stream, int64_t* rows_affected,
+                             struct AdbcError* error);
 
  private:
   std::shared_ptr<PostgresTypeResolver> type_resolver_;

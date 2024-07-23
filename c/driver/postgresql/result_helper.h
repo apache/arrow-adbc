@@ -152,6 +152,11 @@ class PqResultHelper {
   Format param_format_ = Format::kText;
   Format output_format_ = Format::kText;
   struct AdbcError* error_;
+
+  void ClearResult() {
+    PQclear(result_);
+    result_ = nullptr;
+  }
 };
 
 class PqResultArrayReader {
