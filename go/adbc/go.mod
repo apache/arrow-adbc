@@ -20,7 +20,7 @@ module github.com/apache/arrow-adbc/go/adbc
 go 1.21
 
 require (
-	cloud.google.com/go/bigquery v1.61.0
+	cloud.google.com/go/bigquery v1.62.0
 	github.com/apache/arrow/go/v17 v17.0.0-20240626234237-6680dcfbef42
 	github.com/bluele/gcache v0.0.2
 	github.com/golang/protobuf v1.5.4
