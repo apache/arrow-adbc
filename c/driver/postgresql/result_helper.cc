@@ -85,7 +85,6 @@ AdbcStatusCode PqResultHelper::ExecutePrepared(const std::vector<std::string>& p
   }
 
   PQclear(result_);
-  result_ = nullptr;
   result_ = PQexecPrepared(conn_, "", param_values.size(), param_values.data(),
                            param_lengths.data(), param_formats.data(),
                            static_cast<int>(output_format_));
@@ -96,6 +95,73 @@ AdbcStatusCode PqResultHelper::ExecutePrepared(const std::vector<std::string>& p
         SetError(error_, result_, "[libpq] Failed to execute query '%s': %s",
                  query_.c_str(), PQerrorMessage(conn_));
     return error;
+  }
+
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PqResultHelper::Execute(const std::vector<std::string>& params,
+                                       PostgresType* param_types) {
+  if (params.size() == 0 && param_types == nullptr && output_format_ == Format::kText) {
+    PQclear(result_);
+    result_ = PQexec(conn_, query_.c_str());
+  } else {
+    std::vector<const char*> param_values;
+    std::vector<int> param_lengths;
+    std::vector<int> param_formats;
+
+    for (const auto& param : params) {
+      param_values.push_back(param.data());
+      param_lengths.push_back(static_cast<int>(param.size()));
+      param_formats.push_back(static_cast<int>(param_format_));
+    }
+
+    std::vector<Oid> param_oids;
+    const Oid* param_oids_ptr = nullptr;
+    if (param_types != nullptr) {
+      param_oids.resize(params.size());
+      for (size_t i = 0; i < params.size(); i++) {
+        param_oids[i] = param_types->child(i).oid();
+      }
+      param_oids_ptr = param_oids.data();
+    }
+
+    PQclear(result_);
+    result_ = PQexecParams(conn_, query_.c_str(), param_values.size(), param_oids_ptr,
+                           param_values.data(), param_lengths.data(),
+                           param_formats.data(), static_cast<int>(output_format_));
+  }
+
+  ExecStatusType status = PQresultStatus(result_);
+  if (status != PGRES_TUPLES_OK && status != PGRES_COMMAND_OK) {
+    AdbcStatusCode error =
+        SetError(error_, result_, "[libpq] Failed to execute query '%s': %s",
+                 query_.c_str(), PQerrorMessage(conn_));
+    return error;
+  }
+
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PqResultHelper::ExecuteCopy() {
+  // Remove trailing semicolon(s) from the query before feeding it into COPY
+  while (!query_.empty() && query_.back() == ';') {
+    query_.pop_back();
+  }
+
+  std::string copy_query = "COPY (" + query_ + ") TO STDOUT (FORMAT binary)";
+  result_ = PQexecParams(conn_, copy_query.c_str(), /*nParams=*/0,
+                         /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
+                         /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
+                         static_cast<int>(Format::kBinary));
+
+  if (PQresultStatus(result_) != PGRES_COPY_OUT) {
+    AdbcStatusCode code = SetError(
+        error_, result_,
+        "[libpq] Failed to execute query: could not begin COPY: %s\nQuery was: %s",
+        PQerrorMessage(conn_), copy_query.c_str());
+    PQclear(result_);
+    return code;
   }
 
   return ADBC_STATUS_OK;
@@ -149,6 +215,12 @@ AdbcStatusCode PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_res
 
   *result_types = root_type;
   return ADBC_STATUS_OK;
+}
+
+PGresult* PqResultHelper::ReleaseResult() {
+  PGresult* out = result_;
+  result_ = nullptr;
+  return out;
 }
 
 int PqResultArrayReader::GetSchema(struct ArrowSchema* out) {
@@ -216,8 +288,7 @@ const char* PqResultArrayReader::GetLastError() {
 
 AdbcStatusCode PqResultArrayReader::Initialize(struct AdbcError* error) {
   helper_.set_output_format(PqResultHelper::Format::kBinary);
-  RAISE_ADBC(helper_.Prepare());
-  RAISE_ADBC(helper_.ExecutePrepared());
+  RAISE_ADBC(helper_.Execute());
 
   ArrowSchemaInit(schema_.get());
   CHECK_NA_DETAIL(INTERNAL, ArrowSchemaSetTypeStruct(schema_.get(), helper_.NumColumns()),
