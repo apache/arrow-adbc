@@ -1167,12 +1167,14 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     return ExecuteBind(stream, rows_affected, error);
   }
 
-  // If we have been requested to prepare the query but there are no parameters to bind,
-  // use the PqResultArrayReader to handle the execution of the query. We don't currently
-  // issue an explicit PGprepare(); however, this is the path we would need to take when
-  // we do implement this (because preparing a query that includes COPY is not supported).
-  // Also take this path if no output is requested (e.g., a CREATE or UPDATE).
-  if (!stream || prepared_) {
+  // Check if we have been explicitly requested to avoid COPY
+  // (make less of a hack before merging)
+  size_t use_copy = 0;
+  GetOption(ADBC_POSTGRESQL_OPTION_USE_COPY, nullptr, &use_copy, nullptr);
+
+  // If we have been requested to avoid COPY or there is no output requested,
+  // execute using the PqResultArrayReader.
+  if (!stream || !use_copy) {
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
     RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
     return ADBC_STATUS_OK;
