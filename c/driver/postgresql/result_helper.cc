@@ -17,6 +17,7 @@
 
 #include "result_helper.h"
 
+#include <charconv>
 #include <memory>
 
 #include "copy/reader.h"
@@ -25,9 +26,7 @@
 
 namespace adbcpq {
 
-PqResultHelper::~PqResultHelper() {
-  ClearResult();
-}
+PqResultHelper::~PqResultHelper() { ClearResult(); }
 
 AdbcStatusCode PqResultHelper::Prepare(int n_params, PostgresType* param_types) {
   std::vector<Oid> param_oids;
@@ -221,6 +220,27 @@ PGresult* PqResultHelper::ReleaseResult() {
   return out;
 }
 
+int64_t PqResultHelper::AffectedRows() {
+  if (result_ == nullptr) {
+    return -1;
+  }
+
+  char* first = PQcmdTuples(result_);
+  char* last = first + strlen(first);
+  if ((last - first) == 0) {
+    return -1;
+  }
+
+  int64_t out;
+  auto result = std::from_chars(first, last, out);
+
+  if (result.ec == std::errc() && result.ptr == last) {
+    return out;
+  } else {
+    return -1;
+  }
+}
+
 int PqResultArrayReader::GetSchema(struct ArrowSchema* out) {
   ResetErrors();
 
@@ -242,6 +262,11 @@ int PqResultArrayReader::GetNext(struct ArrowArray* out) {
     if (status != ADBC_STATUS_OK) {
       return EINVAL;
     }
+  }
+
+  if (!helper_.HasResult()) {
+    out->release = nullptr;
+    return NANOARROW_OK;
   }
 
   nanoarrow::UniqueArray tmp;
@@ -270,7 +295,18 @@ int PqResultArrayReader::GetNext(struct ArrowArray* out) {
     NANOARROW_RETURN_NOT_OK(field_readers_[i]->FinishArray(tmp->children[i], &na_error_));
   }
 
+  tmp->length = helper_.NumRows();
+  tmp->null_count = 0;
   NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuildingDefault(tmp.get(), &na_error_));
+
+  // Ensure that the next call to GetNext() will signal the end of the stream
+  helper_.ClearResult();
+
+  // Canonically return zero-size results as an empty stream
+  if (tmp->length == 0) {
+    out->release = nullptr;
+    return NANOARROW_OK;
+  }
 
   ArrowArrayMove(tmp.get(), out);
   return NANOARROW_OK;
@@ -321,18 +357,26 @@ AdbcStatusCode PqResultArrayReader::ToArrayStream(int64_t* affected_rows,
                                                   struct AdbcError* error) {
   if (out == nullptr) {
     // If there is no output requested, we still need to execute and set
-    // affected_rows if needed.
+    // affected_rows if needed. We don't need an output schema or to set
+    // up a copy reader, so we can skip those steps by going straight
+    // to Execute(). This also enables us to support queries with multiple
+    // statements because we can call PQexec() instead of PQexecParams().
     RAISE_ADBC(helper_.Execute());
 
     if (affected_rows != nullptr) {
-      *affected_rows = helper_.NumRows();
+      *affected_rows = helper_.AffectedRows();
     }
 
     return ADBC_STATUS_OK;
   }
 
+  // Execute eagerly. We need this to provide row counts for DELETE and
+  // CREATE TABLE queries as well as to provide more informative errors
+  // until this reader class is wired up to provide extended AdbcError
+  // information.
+  RAISE_ADBC(Initialize(error));
   if (affected_rows != nullptr) {
-    *affected_rows = helper_.NumRows();
+    *affected_rows = helper_.AffectedRows();
   }
 
   nanoarrow::ArrayStreamFactory<PqResultArrayReader>::InitArrayStream(
@@ -340,4 +384,5 @@ AdbcStatusCode PqResultArrayReader::ToArrayStream(int64_t* affected_rows,
 
   return ADBC_STATUS_OK;
 }
+
 }  // namespace adbcpq

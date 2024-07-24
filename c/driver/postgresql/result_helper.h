@@ -106,7 +106,16 @@ class PqResultHelper {
   AdbcStatusCode ResolveOutputTypes(PostgresTypeResolver& type_resolver,
                                     PostgresType* result_types);
 
+  bool HasResult() { return result_ != nullptr; }
+
   PGresult* ReleaseResult();
+
+  void ClearResult() {
+    PQclear(result_);
+    result_ = nullptr;
+  }
+
+  int64_t AffectedRows();
 
   int NumRows() const { return PQntuples(result_); }
 
@@ -152,11 +161,6 @@ class PqResultHelper {
   Format param_format_ = Format::kText;
   Format output_format_ = Format::kText;
   struct AdbcError* error_;
-
-  void ClearResult() {
-    PQclear(result_);
-    result_ = nullptr;
-  }
 };
 
 class PqResultArrayReader {
