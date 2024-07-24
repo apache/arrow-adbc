@@ -275,9 +275,9 @@ int PqResultArrayReader::GetNext(struct ArrowArray* out) {
 
   nanoarrow::UniqueArray tmp;
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(tmp.get(), schema_.get(), &na_error_));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(tmp.get()));
   for (int i = 0; i < helper_.NumColumns(); i++) {
     NANOARROW_RETURN_NOT_OK(field_readers_[i]->InitArray(tmp->children[i]));
-    NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(tmp.get()));
   }
 
   // TODO: If we get an EOVERFLOW here (e.g., big string data), we
