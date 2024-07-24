@@ -1178,15 +1178,15 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     return ADBC_STATUS_OK;
   }
 
-  PqResultHelper helper(connection_->conn(), query_, error);
-  RAISE_ADBC(helper.Prepare());
-  RAISE_ADBC(helper.DescribePrepared());
+  PqResultHelper helper(connection_->conn(), query_);
+  RAISE_ADBC(helper.Prepare(error));
+  RAISE_ADBC(helper.DescribePrepared(error));
 
   // Initialize the copy reader and infer the output schema (i.e., error for
   // unsupported types before issuing the COPY query). This could be lazier
   // (i.e., executed on the first call to GetSchema() or GetNext()).
   PostgresType root_type;
-  RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &root_type));
+  RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &root_type, error));
 
   // If there will be no columns in the result, we can also avoid COPY
   if (root_type.n_children() == 0) {
@@ -1206,7 +1206,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                   error);
 
   // Execute the COPY query
-  RAISE_ADBC(helper.ExecuteCopy());
+  RAISE_ADBC(helper.ExecuteCopy(error));
 
   // We need the PQresult back for the reader
   reader_.result_ = helper.ReleaseResult();
@@ -1225,7 +1225,7 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
     return ADBC_STATUS_INVALID_STATE;
   }
 
-  PqResultHelper helper(connection_->conn(), query_, error);
+  PqResultHelper helper(connection_->conn(), query_);
   PostgresType param_types;
   PostgresType* param_types_ptr = nullptr;
 
@@ -1248,11 +1248,11 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
     param_types_ptr = &param_types;
   }
 
-  RAISE_ADBC(helper.Prepare(param_types.n_children(), param_types_ptr));
-  RAISE_ADBC(helper.DescribePrepared());
+  RAISE_ADBC(helper.Prepare(error, param_types.n_children(), param_types_ptr));
+  RAISE_ADBC(helper.DescribePrepared(error));
 
   PostgresType output_type;
-  RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &output_type));
+  RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &output_type, error));
 
   nanoarrow::UniqueSchema tmp;
   ArrowSchemaInit(tmp.get());
@@ -1279,9 +1279,9 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   // This is a little unfortunate; we need another DB roundtrip
   std::string current_schema;
   {
-    PqResultHelper result_helper{connection_->conn(), "SELECT CURRENT_SCHEMA", error};
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.ExecutePrepared());
+    PqResultHelper result_helper{connection_->conn(), "SELECT CURRENT_SCHEMA"};
+    RAISE_ADBC(result_helper.Prepare(error));
+    RAISE_ADBC(result_helper.ExecutePrepared(error));
     auto it = result_helper.begin();
     if (it == result_helper.end()) {
       SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");

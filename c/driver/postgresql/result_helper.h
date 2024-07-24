@@ -81,11 +81,11 @@ class PqResultHelper {
     kBinary = 1,
   };
 
-  explicit PqResultHelper(PGconn* conn, std::string query, struct AdbcError* error)
-      : conn_(conn), query_(std::move(query)), error_(error) {}
+  explicit PqResultHelper(PGconn* conn, std::string query)
+      : conn_(conn), query_(std::move(query)) {}
 
   PqResultHelper(PqResultHelper&& other)
-      : PqResultHelper(other.conn_, std::move(other.query_), other.error_) {
+      : PqResultHelper(other.conn_, std::move(other.query_)) {
     result_ = other.result_;
     other.result_ = nullptr;
   }
@@ -95,16 +95,19 @@ class PqResultHelper {
   void set_param_format(Format format) { param_format_ = format; }
   void set_output_format(Format format) { output_format_ = format; }
 
-  AdbcStatusCode Prepare(int n_params = 0, PostgresType* param_types = nullptr);
-  AdbcStatusCode DescribePrepared();
-  AdbcStatusCode ExecutePrepared(const std::vector<std::string>& params = {});
-  AdbcStatusCode Execute(const std::vector<std::string>& params = {},
+  AdbcStatusCode Prepare(struct AdbcError* error, int n_params = 0, PostgresType* param_types = nullptr);
+  AdbcStatusCode DescribePrepared(struct AdbcError* error);
+  AdbcStatusCode ExecutePrepared(struct AdbcError* error, const std::vector<std::string>& params = {});
+  AdbcStatusCode Execute(struct AdbcError* error,
+                         const std::vector<std::string>& params = {},
                          PostgresType* param_types = nullptr);
-  AdbcStatusCode ExecuteCopy();
+  AdbcStatusCode ExecuteCopy(struct AdbcError* error);
   AdbcStatusCode ResolveParamTypes(PostgresTypeResolver& type_resolver,
-                                   PostgresType* param_types);
+                                   PostgresType* param_types,
+                                   struct AdbcError* error);
   AdbcStatusCode ResolveOutputTypes(PostgresTypeResolver& type_resolver,
-                                    PostgresType* result_types);
+                                    PostgresType* result_types,
+                                    struct AdbcError* error);
 
   bool HasResult() { return result_ != nullptr; }
 
@@ -160,14 +163,14 @@ class PqResultHelper {
   std::string query_;
   Format param_format_ = Format::kText;
   Format output_format_ = Format::kText;
-  struct AdbcError* error_;
 };
+
 
 class PqResultArrayReader {
  public:
   PqResultArrayReader(PGconn* conn, std::shared_ptr<PostgresTypeResolver> type_resolver,
                       std::string query)
-      : helper_(conn, std::move(query), &error_), type_resolver_(type_resolver) {
+      : helper_(conn, std::move(query)), type_resolver_(type_resolver) {
     ArrowErrorInit(&na_error_);
     error_ = ADBC_ERROR_INIT;
   }

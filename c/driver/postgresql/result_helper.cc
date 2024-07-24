@@ -28,7 +28,8 @@ namespace adbcpq {
 
 PqResultHelper::~PqResultHelper() { ClearResult(); }
 
-AdbcStatusCode PqResultHelper::Prepare(int n_params, PostgresType* param_types) {
+AdbcStatusCode PqResultHelper::Prepare(struct AdbcError* error, int n_params,
+                                       PostgresType* param_types) {
   std::vector<Oid> param_oids;
   const Oid* param_oids_ptr = nullptr;
   if (param_types != nullptr) {
@@ -44,7 +45,7 @@ AdbcStatusCode PqResultHelper::Prepare(int n_params, PostgresType* param_types) 
       PQprepare(conn_, /*stmtName=*/"", query_.c_str(), n_params, param_oids_ptr);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     AdbcStatusCode code =
-        SetError(error_, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
+        SetError(error, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
                  PQerrorMessage(conn_), query_.c_str());
     PQclear(result);
     return code;
@@ -54,14 +55,13 @@ AdbcStatusCode PqResultHelper::Prepare(int n_params, PostgresType* param_types) 
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PqResultHelper::DescribePrepared() {
+AdbcStatusCode PqResultHelper::DescribePrepared(struct AdbcError* error) {
   ClearResult();
   result_ = PQdescribePrepared(conn_, /*stmtName=*/"");
   if (PQresultStatus(result_) != PGRES_COMMAND_OK) {
-    AdbcStatusCode code =
-        SetError(error_, result_,
-                 "[libpq] Failed to describe prepared statement: %s\nQuery was:%s",
-                 PQerrorMessage(conn_), query_.c_str());
+    AdbcStatusCode code = SetError(
+        error, result_, "[libpq] Failed to describe prepared statement: %s\nQuery was:%s",
+        PQerrorMessage(conn_), query_.c_str());
     ClearResult();
     return code;
   }
@@ -69,7 +69,8 @@ AdbcStatusCode PqResultHelper::DescribePrepared() {
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PqResultHelper::ExecutePrepared(const std::vector<std::string>& params) {
+AdbcStatusCode PqResultHelper::ExecutePrepared(struct AdbcError* error,
+                                               const std::vector<std::string>& params) {
   std::vector<const char*> param_values;
   std::vector<int> param_lengths;
   std::vector<int> param_formats;
@@ -87,16 +88,17 @@ AdbcStatusCode PqResultHelper::ExecutePrepared(const std::vector<std::string>& p
 
   ExecStatusType status = PQresultStatus(result_);
   if (status != PGRES_TUPLES_OK && status != PGRES_COMMAND_OK) {
-    AdbcStatusCode error =
-        SetError(error_, result_, "[libpq] Failed to execute query '%s': %s",
+    AdbcStatusCode status =
+        SetError(error, result_, "[libpq] Failed to execute query '%s': %s",
                  query_.c_str(), PQerrorMessage(conn_));
-    return error;
+    return status;
   }
 
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PqResultHelper::Execute(const std::vector<std::string>& params,
+AdbcStatusCode PqResultHelper::Execute(struct AdbcError* error,
+                                       const std::vector<std::string>& params,
                                        PostgresType* param_types) {
   if (params.size() == 0 && param_types == nullptr && output_format_ == Format::kText) {
     ClearResult();
@@ -130,16 +132,16 @@ AdbcStatusCode PqResultHelper::Execute(const std::vector<std::string>& params,
 
   ExecStatusType status = PQresultStatus(result_);
   if (status != PGRES_TUPLES_OK && status != PGRES_COMMAND_OK) {
-    AdbcStatusCode error =
-        SetError(error_, result_, "[libpq] Failed to execute query '%s': %s",
+    AdbcStatusCode status =
+        SetError(error, result_, "[libpq] Failed to execute query '%s': %s",
                  query_.c_str(), PQerrorMessage(conn_));
-    return error;
+    return status;
   }
 
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PqResultHelper::ExecuteCopy() {
+AdbcStatusCode PqResultHelper::ExecuteCopy(struct AdbcError* error) {
   // Remove trailing semicolon(s) from the query before feeding it into COPY
   while (!query_.empty() && query_.back() == ';') {
     query_.pop_back();
@@ -154,7 +156,7 @@ AdbcStatusCode PqResultHelper::ExecuteCopy() {
 
   if (PQresultStatus(result_) != PGRES_COPY_OUT) {
     AdbcStatusCode code = SetError(
-        error_, result_,
+        error, result_,
         "[libpq] Failed to execute query: could not begin COPY: %s\nQuery was: %s",
         PQerrorMessage(conn_), copy_query.c_str());
     ClearResult();
@@ -165,7 +167,8 @@ AdbcStatusCode PqResultHelper::ExecuteCopy() {
 }
 
 AdbcStatusCode PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_resolver,
-                                                 PostgresType* param_types) {
+                                                 PostgresType* param_types,
+                                                 struct AdbcError* error) {
   struct ArrowError na_error;
   ArrowErrorInit(&na_error);
 
@@ -176,7 +179,7 @@ AdbcStatusCode PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_reso
     const Oid pg_oid = PQparamtype(result_, i);
     PostgresType pg_type;
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      SetError(error_, "%s%d%s%s%s%d", "[libpq] Parameter #", i + 1, " (\"",
+      SetError(error, "%s%d%s%s%s%d", "[libpq] Parameter #", i + 1, " (\"",
                PQfname(result_, i), "\") has unknown type code ", pg_oid);
       ClearResult();
       return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -190,7 +193,8 @@ AdbcStatusCode PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_reso
 }
 
 AdbcStatusCode PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_resolver,
-                                                  PostgresType* result_types) {
+                                                  PostgresType* result_types,
+                                                  struct AdbcError* error) {
   struct ArrowError na_error;
   ArrowErrorInit(&na_error);
 
@@ -201,7 +205,7 @@ AdbcStatusCode PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_res
     const Oid pg_oid = PQftype(result_, i);
     PostgresType pg_type;
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      SetError(error_, "%s%d%s%s%s%d", "[libpq] Column #", i + 1, " (\"",
+      SetError(error, "%s%d%s%s%s%d", "[libpq] Column #", i + 1, " (\"",
                PQfname(result_, i), "\") has unknown type code ", pg_oid);
       ClearResult();
       return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -322,7 +326,7 @@ const char* PqResultArrayReader::GetLastError() {
 
 AdbcStatusCode PqResultArrayReader::Initialize(struct AdbcError* error) {
   helper_.set_output_format(PqResultHelper::Format::kBinary);
-  RAISE_ADBC(helper_.Execute());
+  RAISE_ADBC(helper_.Execute(error));
 
   ArrowSchemaInit(schema_.get());
   CHECK_NA_DETAIL(INTERNAL, ArrowSchemaSetTypeStruct(schema_.get(), helper_.NumColumns()),
@@ -361,7 +365,7 @@ AdbcStatusCode PqResultArrayReader::ToArrayStream(int64_t* affected_rows,
     // up a copy reader, so we can skip those steps by going straight
     // to Execute(). This also enables us to support queries with multiple
     // statements because we can call PQexec() instead of PQexecParams().
-    RAISE_ADBC(helper_.Execute());
+    RAISE_ADBC(helper_.Execute(error));
 
     if (affected_rows != nullptr) {
       *affected_rows = helper_.AffectedRows();
