@@ -95,19 +95,19 @@ class PqResultHelper {
   void set_param_format(Format format) { param_format_ = format; }
   void set_output_format(Format format) { output_format_ = format; }
 
-  AdbcStatusCode Prepare(struct AdbcError* error, int n_params = 0, PostgresType* param_types = nullptr);
+  AdbcStatusCode Prepare(struct AdbcError* error, int n_params = 0,
+                         PostgresType* param_types = nullptr);
   AdbcStatusCode DescribePrepared(struct AdbcError* error);
-  AdbcStatusCode ExecutePrepared(struct AdbcError* error, const std::vector<std::string>& params = {});
+  AdbcStatusCode ExecutePrepared(struct AdbcError* error,
+                                 const std::vector<std::string>& params = {});
   AdbcStatusCode Execute(struct AdbcError* error,
                          const std::vector<std::string>& params = {},
                          PostgresType* param_types = nullptr);
   AdbcStatusCode ExecuteCopy(struct AdbcError* error);
   AdbcStatusCode ResolveParamTypes(PostgresTypeResolver& type_resolver,
-                                   PostgresType* param_types,
-                                   struct AdbcError* error);
+                                   PostgresType* param_types, struct AdbcError* error);
   AdbcStatusCode ResolveOutputTypes(PostgresTypeResolver& type_resolver,
-                                    PostgresType* result_types,
-                                    struct AdbcError* error);
+                                    PostgresType* result_types, struct AdbcError* error);
 
   bool HasResult() { return result_ != nullptr; }
 
@@ -165,7 +165,6 @@ class PqResultHelper {
   Format output_format_ = Format::kText;
 };
 
-
 class PqResultArrayReader {
  public:
   PqResultArrayReader(PGconn* conn, std::shared_ptr<PostgresTypeResolver> type_resolver,
@@ -194,7 +193,7 @@ class PqResultArrayReader {
   struct AdbcError error_;
   struct ArrowError na_error_;
 
-  PqResultArrayReader(PqResultArrayReader* other)
+  explicit PqResultArrayReader(PqResultArrayReader* other)
       : helper_(std::move(other->helper_)),
         type_resolver_(std::move(other->type_resolver_)),
         field_readers_(std::move(other->field_readers_)),
