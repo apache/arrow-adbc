@@ -289,7 +289,13 @@ int PqResultArrayReader::GetNext(struct ArrowArray* out) {
     for (int i = 0; i < helper_.NumColumns(); i++) {
       auto pg_item = row[i];
       item.data.data = pg_item.data;
-      item.size_bytes = pg_item.len;
+
+      if (pg_item.is_null) {
+        item.size_bytes = -1;
+      } else {
+        item.size_bytes = pg_item.len;
+      }
+
       NANOARROW_RETURN_NOT_OK(
           field_readers_[i]->Read(&item, item.size_bytes, tmp->children[i], &na_error_));
     }
