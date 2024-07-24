@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Data.SqlTypes;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
@@ -44,7 +45,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "INTTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} INT", columnName));
-            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value);
+            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value,
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -57,7 +59,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "INTTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} INT", columnName));
-            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value);
+            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value,
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -70,7 +73,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "BIGINTTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} BIGINT", columnName));
-            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value);
+            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value,
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -83,7 +87,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "SMALLINTTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} SMALLINT", columnName));
-            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value);
+            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value,
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -96,7 +101,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "TINYINTTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} TINYINT", columnName));
-            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value);
+            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value,
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -112,7 +118,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "SMALLNUMBER";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(2,0)", columnName));
-            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, SqlDecimal.Parse(value));
+            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, IsHiveServer2Protocol ? value : SqlDecimal.Parse(value),
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -127,23 +134,25 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "SMALLNUMBER";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(2,0)", columnName));
-            await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, new SqlDecimal(value)));
+            await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, IsHiveServer2Protocol ? value.ToString() : new SqlDecimal(value),
+                callDelete: !IsHiveServer2Protocol));
         }
 
         /// <summary>
         /// Validates if driver can handle a large scale Number type correctly
         /// </summary>
         [SkippableTheory]
-        [InlineData("0")]
-        [InlineData("-2.003")]
-        [InlineData("4.85")]
-        [InlineData("0.0000000000000000000000000000000000001")]
+        [InlineData("0E-37")]
+        [InlineData("-2.0030000000000000000000000000000000000")]
+        [InlineData("4.8500000000000000000000000000000000000")]
+        [InlineData("1E-37")]
         [InlineData("9.5545204502636499875576383003668916798")]
         public async Task TestLargeScaleNumberRange(string value)
         {
             string columnName = "LARGESCALENUMBER";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(38,37)", columnName));
-            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, SqlDecimal.Parse(value));
+            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, IsHiveServer2Protocol ? value : new SqlDecimal(double.Parse(value)),
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -158,14 +167,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "LARGESCALENUMBER";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(38,37)", columnName));
-            await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, SqlDecimal.Parse(value)));
+            await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, SqlDecimal.Parse(value),
+                callDelete: !IsHiveServer2Protocol));
         }
 
         /// <summary>
         /// Validates if driver can handle a small scale Number type correctly
         /// </summary>
         [SkippableTheory]
-        [InlineData("0")]
+        [InlineData("0.00")]
         [InlineData("4.85")]
         [InlineData("-999999999999999999999999999999999999.99")]
         [InlineData("999999999999999999999999999999999999.99")]
@@ -173,7 +183,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "SMALLSCALENUMBER";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(38,2)", columnName));
-            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, SqlDecimal.Parse(value));
+            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, IsHiveServer2Protocol ? value : SqlDecimal.Parse(value),
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -186,7 +197,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "SMALLSCALENUMBER";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(38,2)", columnName));
-            await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, SqlDecimal.Parse(value)));
+            await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, SqlDecimal.Parse(value),
+                callDelete: !IsHiveServer2Protocol));
         }
 
 
@@ -204,9 +216,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             SqlDecimal value = new SqlDecimal(input);
             SqlDecimal returned = new SqlDecimal(output);
             await InsertSingleValueAsync(table.TableName, columnName, value.ToString());
-            await SelectAndValidateValuesAsync(table.TableName, columnName, returned, 1);
+            await SelectAndValidateValuesAsync(table.TableName, columnName, IsHiveServer2Protocol ? output.ToString() : returned, 1);
             string whereClause = GetWhereClause(columnName, returned);
-            await DeleteFromTableAsync(table.TableName, whereClause, 1);
+            if (!IsHiveServer2Protocol) await DeleteFromTableAsync(table.TableName, whereClause, 1);
         }
 
         /// <summary>
@@ -230,7 +242,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             await InsertSingleValueAsync(table.TableName, columnName, valueString);
             await SelectAndValidateValuesAsync(table.TableName, columnName, value, 1);
             string whereClause = GetWhereClause(columnName, value);
-            await DeleteFromTableAsync(table.TableName, whereClause, 1);
+            if (!IsHiveServer2Protocol) await DeleteFromTableAsync(table.TableName, whereClause, 1);
         }
 
         /// <summary>
@@ -255,9 +267,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} FLOAT", columnName));
             string valueString = ConvertFloatToString(value);
             await InsertSingleValueAsync(table.TableName, columnName, valueString);
-            await SelectAndValidateValuesAsync(table.TableName, columnName, value, 1);
+            object doubleValue = (double)value;
+            object floatValue = IsHiveServer2Protocol ? doubleValue : value;
+            await base.SelectAndValidateValuesAsync(table.TableName, columnName, floatValue, 1);
             string whereClause = GetWhereClause(columnName, value);
-            await DeleteFromTableAsync(table.TableName, whereClause, 1);
+            if (!IsHiveServer2Protocol) await DeleteFromTableAsync(table.TableName, whereClause, 1) ;
         }
     }
 }

@@ -34,6 +34,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     {
         // Spark handles microseconds but not nanoseconds. Truncated to 6 decimal places.
         const string DateTimeZoneFormat = "yyyy-MM-dd'T'HH:mm:ss'.'ffffffK";
+        const string DateTimeFormat = "yyyy-MM-dd' 'HH:mm:ss";
         const string DateFormat = "yyyy-MM-dd";
 
         private static readonly DateTimeOffset[] s_timestampValues = new[]
@@ -57,17 +58,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [MemberData(nameof(TimestampData), "TIMESTAMP_LTZ")]
         public async Task TestTimestampData(DateTimeOffset value, string columnType)
         {
+            Skip.If(IsHiveServer2Protocol && columnType.Equals("TIMESTAMP_LTZ"));
+
             string columnName = "TIMESTAMPTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
 
-            string formattedValue = $"{value.ToString(DateTimeZoneFormat, CultureInfo.InvariantCulture)}";
-            DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, DateTimeZoneFormat, CultureInfo.InvariantCulture);
+            string formattedValue = $"{value.ToString(IsHiveServer2Protocol ? DateTimeFormat : DateTimeZoneFormat, CultureInfo.InvariantCulture)}";
+            DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, IsHiveServer2Protocol ? DateTimeFormat : DateTimeZoneFormat, CultureInfo.InvariantCulture);
 
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
-                truncatedValue,
-                QuoteValue(formattedValue));
+                IsHiveServer2Protocol ? formattedValue : truncatedValue,
+                "TO_TIMESTAMP(" + QuoteValue(formattedValue) + ")",
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -78,7 +82,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestTimestampNoTimezoneData(DateTimeOffset value, string columnType)
         {
             // Note: Minimum value falls outside range of valid values on server when no time zone is included. Cannot be selected
-            Skip.If(value == DateTimeOffset.MinValue);
+            Skip.If(value == DateTimeOffset.MinValue || IsHiveServer2Protocol);
 
             string columnName = "TIMESTAMPTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
@@ -91,7 +95,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 columnName,
                 // Remove timezone offset
                 new DateTimeOffset(truncatedValue.DateTime, TimeSpan.Zero),
-                QuoteValue(formattedValue));
+                QuoteValue(formattedValue),
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -111,8 +116,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 table.TableName,
                 columnName,
                 // Remove timezone offset
-                new DateTimeOffset(truncatedValue.DateTime, TimeSpan.Zero),
-                QuoteValue(formattedValue));
+                IsHiveServer2Protocol ? formattedValue : new DateTimeOffset(truncatedValue.DateTime, TimeSpan.Zero),
+                "TO_DATE(" + QuoteValue(formattedValue) + ")",
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>

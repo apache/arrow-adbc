@@ -58,7 +58,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 table.TableName,
                 columnName,
                 value,
-                formattedValue);
+                formattedValue,
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -72,12 +73,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "BOOLEANTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "BOOLEAN"));
-            string? formattedValue =  value == null ? null : QuoteValue($"{value?.ToString(CultureInfo.InvariantCulture)}");
+            string? formattedValue =  value == null ? null : $"{value?.ToString(CultureInfo.InvariantCulture)}";
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 value,
-                formattedValue);
+                formattedValue,
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>

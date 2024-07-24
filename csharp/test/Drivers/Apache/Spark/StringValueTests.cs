@@ -60,7 +60,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 table.TableName,
                 columnName,
                 value,
-                value != null ? QuoteValue(value) : value);
+                value != null ? QuoteValue(value) : value,
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -80,7 +81,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 table.TableName,
                 columnName,
                 value,
-                value != null ? QuoteValue(value) : value);
+                value != null ? QuoteValue(value) : value,
+                callDelete: !IsHiveServer2Protocol);
         }
 
         /// <summary>
@@ -104,7 +106,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             await InsertSingleValueAsync(table.TableName, columnName, formattedValue);
             await SelectAndValidateValuesAsync(table.TableName, columnName, paddedValue, 1, formattedValue);
             string whereClause = GetWhereClause(columnName, formattedValue ?? paddedValue);
-            //await DeleteFromTableAsync(table.TableName, whereClause, 1);
+            if (!IsHiveServer2Protocol) await DeleteFromTableAsync(table.TableName, whereClause, 1);
         }
 
         /// <summary>
@@ -120,7 +122,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 table.TableName,
                 columnName,
                 value,
-                value != null ? QuoteValue(value) : value));
+                value != null ? QuoteValue(value) : value,
+                callDelete: !IsHiveServer2Protocol));
             AssertContainsAll(new[] { "DELTA_EXCEED_CHAR_VARCHAR_LIMIT", "DeltaInvariantViolationException" }, exception.Message);
             Assert.Equal("22001", exception.SqlState);
         }

@@ -230,7 +230,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, catalogName, null);
             AdbcCatalog? catalog = catalogs.Where((catalog) => string.Equals(catalog.Name, catalogName)).FirstOrDefault();
 
-            Assert.True(catalog != null, "catalog should not be null");
+            bool isPatternExpectNotNullCatalog = (string.IsNullOrEmpty(pattern) && IsHiveServer2Protocol) || !string.IsNullOrEmpty(pattern);
+            bool isCatalogNull = catalog == null;
+            Assert.True((isPatternExpectNotNullCatalog && !isCatalogNull) || !isCatalogNull, "catalog should not be null");
         }
 
         /// <summary>
@@ -510,6 +512,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
             using AdbcStatement statement = adbcConnection.CreateStatement();
             statement.SqlQuery = TestConfiguration.Query;
+            OutputHelper?.WriteLine(statement.SqlQuery);
 
             QueryResult queryResult = statement.ExecuteQuery();
 

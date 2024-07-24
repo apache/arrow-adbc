@@ -18,7 +18,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Hive.Service.Rpc.Thrift;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
@@ -83,5 +85,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
             return parameters;
         }
+
+        protected TProtocolVersion ProtocolVersion => ((HiveServer2Connection)Connection).ProtocolVersion;
+
+        protected bool IsHiveServer2Protocol => ProtocolVersion <= TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11;
     }
 }

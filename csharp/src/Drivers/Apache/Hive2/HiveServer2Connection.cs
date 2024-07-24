@@ -62,7 +62,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal IReadOnlyDictionary<string, string> Properties { get; }
 
-        protected internal TProtocolVersion? ProtocolVersion { get; private set; }
+        protected internal TProtocolVersion ProtocolVersion { get; private set; }
 
         protected abstract IReadOnlyList<TProtocolVersion> ProtocolVersions { get; }
 
@@ -157,13 +157,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
             TGetResultSetMetadataResp response = this.Client.GetResultSetMetadata(request).Result;
-            return SchemaParser.GetArrowSchema(response.Schema);
+            return SchemaParser.GetArrowSchema(response.Schema, ProtocolVersion);
         }
 
-        internal static async Task<Schema> GetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
+        internal static async Task<Schema> GetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, TProtocolVersion protocolVersion, CancellationToken cancellationToken = default)
         {
             TGetResultSetMetadataResp response = await GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
-            return SchemaParser.GetArrowSchema(response.Schema);
+            return SchemaParser.GetArrowSchema(response.Schema, protocolVersion);
         }
 
         internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)

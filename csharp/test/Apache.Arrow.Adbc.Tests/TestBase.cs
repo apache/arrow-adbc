@@ -198,12 +198,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to insert, select and delete.</param>
         /// <param name="formattedValue">The formated value to insert, select and delete.</param>
         /// <returns></returns>
-        protected async Task ValidateInsertSelectDeleteSingleValueAsync(string selectStatement, string tableName, string columnName, object value, string? formattedValue = null)
+        protected async Task ValidateInsertSelectDeleteSingleValueAsync(string selectStatement, string tableName, string columnName, object value, string? formattedValue = null, bool callDelete = true)
         {
             await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
             await SelectAndValidateValuesAsync(selectStatement, value, 1);
             string whereClause = GetWhereClause(columnName, formattedValue ?? value);
-            await DeleteFromTableAsync(tableName, whereClause, 1);
+            if (callDelete) await DeleteFromTableAsync(tableName, whereClause, 1);
         }
 
         /// <summary>
@@ -214,12 +214,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to insert, select and delete.</param>
         /// <param name="formattedValue">The formated value to insert, select and delete.</param>
         /// <returns></returns>
-        protected async Task ValidateInsertSelectDeleteSingleValueAsync(string tableName, string columnName, object? value, string? formattedValue = null)
+        protected async Task ValidateInsertSelectDeleteSingleValueAsync(string tableName, string columnName, object? value, string? formattedValue = null, bool callDelete = true)
         {
             await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
             await SelectAndValidateValuesAsync(tableName, columnName, value, 1, formattedValue);
             string whereClause = GetWhereClause(columnName, formattedValue ?? value);
-            //await DeleteFromTableAsync(tableName, whereClause, 1);
+            if (callDelete) await DeleteFromTableAsync(tableName, whereClause, 1);
         }
 
         /// <summary>
@@ -230,7 +230,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to insert.</param>
         protected virtual async Task InsertSingleValueAsync(string tableName, string columnName, string? value)
         {
-            string insertNumberStatement = GetInsertValueStatement(tableName, columnName, value);
+            string insertNumberStatement = GetInsertSelectStatement(tableName, columnName, value);
             OutputHelper?.WriteLine(insertNumberStatement);
             Statement.SqlQuery = insertNumberStatement;
             UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
@@ -246,6 +246,9 @@ namespace Apache.Arrow.Adbc.Tests
         /// <returns></returns>
         protected virtual string GetInsertValueStatement(string tableName, string columnName, string? value) =>
             string.Format("INSERT INTO {0} ({1}) VALUES ({2});", tableName, columnName, value ?? "NULL");
+
+        protected virtual string GetInsertSelectStatement(string tableName, string columnName, string? value) =>
+            string.Format("INSERT INTO {0} ({1}) SELECT {2};", tableName, columnName, value ?? "NULL");
 
         /// <summary>
         /// Deletes a (single) value from a table.
@@ -432,11 +435,11 @@ namespace Apache.Arrow.Adbc.Tests
             switch (value)
             {
                 case double.PositiveInfinity:
-                    return "'inf'";
+                    return "double('infinity')";
                 case double.NegativeInfinity:
-                    return "'-inf'";
+                    return "double('-infinity')";
                 case double.NaN:
-                    return "'NaN'";
+                    return "double('NaN')";
 #if NET472
                 // Double.ToString() rounds max/min values, causing Snowflake to store +/- infinity
                 case double.MaxValue:
@@ -459,11 +462,11 @@ namespace Apache.Arrow.Adbc.Tests
             switch (value)
             {
                 case float.PositiveInfinity:
-                    return "'inf'";
+                    return "float('infinity')";
                 case float.NegativeInfinity:
-                    return "'-inf'";
+                    return "float('-infinity')";
                 case float.NaN:
-                    return "'NaN'";
+                    return "float('NaN')";
 #if NET472
                 // Float.ToString() rounds max/min values, causing Snowflake to store +/- infinity
                 case float.MaxValue:

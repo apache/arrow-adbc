@@ -41,6 +41,8 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 
 The following table depicts how the Spark ADBC driver converts a Spark type to an Arrow type and a .NET type:
 
+### Spark on Databricks
+
 | Spark Type           | Arrow Type | C# Type |
 | :---                 | :---:      | :---:   |
 | ARRAY*               | String     | string  |
@@ -61,6 +63,33 @@ The following table depicts how the Spark ADBC driver converts a Spark type to a
 | STRING               | String     | string |
 | STRUCT*              | String     | string |
 | TIMESTAMP            | Timestamp  | DateTimeOffset |
+| TINYINT              | Int8       | sbyte |
+| UNION                | String     | string |
+| USER_DEFINED         | String     | string |
+| VARCHAR              | String     | string |
+
+### Apache Spark
+
+| Spark Type           | Arrow Type | C# Type |
+| :---                 | :---:      | :---:   |
+| ARRAY*               | String     | string  |
+| BIGINT               | Int64      | long |
+| BINARY               | Binary     | byte[] |
+| BOOLEAN              | Boolean    | bool |
+| CHAR                 | String     | string |
+| DATE                 | String     | string |
+| DECIMAL              | String     | string |
+| DOUBLE               | Double     | double |
+| FLOAT                | Double     | double |
+| INT                  | Int32      | int |
+| INTERVAL_DAY_TIME+   | String     | string |
+| INTERVAL_YEAR_MONTH+ | String     | string |
+| MAP*                 | String     | string |
+| NULL                 | Null       | null |
+| SMALLINT             | Int16      | short |
+| STRING               | String     | string |
+| STRUCT*              | String     | string |
+| TIMESTAMP            | String     | string |
 | TINYINT              | Int8       | sbyte |
 | UNION                | String     | string |
 | USER_DEFINED         | String     | string |
