@@ -339,6 +339,8 @@ AdbcStatusCode PqResultArrayReader::Initialize(struct AdbcError* error) {
                     &na_error_, error);
 
     CHECK_NA(INTERNAL, child_type.SetSchema(schema_->children[i]), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(schema_->children[i], helper_.FieldName(i)),
+             error);
 
     std::unique_ptr<PostgresCopyFieldReader> child_reader;
     CHECK_NA_DETAIL(

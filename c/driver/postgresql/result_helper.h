@@ -124,6 +124,9 @@ class PqResultHelper {
 
   int NumColumns() const { return PQnfields(result_); }
 
+  const char* FieldName(int column_number) const {
+    return PQfname(result_, column_number);
+  }
   Oid FieldType(int column_number) const { return PQftype(result_, column_number); }
 
   class iterator {
