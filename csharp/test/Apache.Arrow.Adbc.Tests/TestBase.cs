@@ -223,6 +223,23 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         /// <summary>
+        /// Validates that two inserts, select and delete statement works with the given value.
+        /// </summary>
+        /// <param name="tableName">The name of the table to use.</param>
+        /// <param name="columnName">The name of the column.</param>
+        /// <param name="value">The value to insert, select and delete.</param>
+        /// <param name="formattedValue">The formated value to insert, select and delete.</param>
+        /// <returns></returns>
+        protected async Task ValidateInsertSelectDeleteTwoValuesAsync(string tableName, string columnName, object? value, string? formattedValue = null, bool callDelete = true)
+        {
+            await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
+            await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
+            await SelectAndValidateValuesAsync(tableName, columnName, value, 2, formattedValue);
+            string whereClause = GetWhereClause(columnName, formattedValue ?? value);
+            if (callDelete) await DeleteFromTableAsync(tableName, whereClause, 2);
+        }
+
+        /// <summary>
         /// Inserts a single value into a table.
         /// </summary>
         /// <param name="tableName">The name of the table to use.</param>
@@ -370,7 +387,7 @@ namespace Apache.Arrow.Adbc.Tests
                             case BinaryType:
                                 BinaryArray binaryArray = (BinaryArray)nextBatch.Column(0);
                                 actualLength += binaryArray.Length;
-                                ValidateValue(value, binaryArray.Length, (i) => binaryArray.GetBytes(i).ToArray());
+                                ValidateBinaryArrayValue(value, binaryArray);
                                 break;
                             case NullType:
                                 NullArray nullArray = (NullArray)nextBatch.Column(0);
@@ -385,6 +402,22 @@ namespace Apache.Arrow.Adbc.Tests
                     }
                 }
                 Assert.Equal(expectedLength, actualLength);
+            }
+        }
+
+        /// <summary>
+        /// Validates a single values for all results (in the batch).
+        /// </summary>
+        /// <param name="sexpectedValue">The value to validate.</param>
+        /// <param name="binaryArray">The binary array to validate</param>
+        private static void ValidateBinaryArrayValue(object? sexpectedValue, BinaryArray binaryArray)
+        {
+            for (int i = 0; i < binaryArray.Length; i++)
+            {
+                // Note: null is indicated in output flagk 'isNull'.
+                byte[] byteArray = binaryArray.GetBytes(i, out bool isNull).ToArray();
+                byte[]? nullableByteArray = isNull ? null : byteArray;
+                Assert.Equal<object>(sexpectedValue, nullableByteArray);
             }
         }
 

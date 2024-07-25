@@ -46,14 +46,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if driver can send and receive specific Binary values correctly.
         /// </summary>
         [SkippableTheory]
+        [InlineData(null)]
         [MemberData(nameof(ByteArrayData), 0)]
         [MemberData(nameof(ByteArrayData), 2)]
         [MemberData(nameof(ByteArrayData), 1024)]
-        public async Task TestBinaryData(byte[] value)
+        public async Task TestBinaryData(byte[]? value)
         {
             string columnName = "BINARYTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "BINARY"));
-            string formattedValue = $"X'{BitConverter.ToString(value).Replace("-", "")}'";
+            string? formattedValue = value != null ? $"X'{BitConverter.ToString(value).Replace("-", "")}'" : null;
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
@@ -74,7 +75,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string columnName = "BOOLEANTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "BOOLEAN"));
             string? formattedValue =  value == null ? null : $"{value?.ToString(CultureInfo.InvariantCulture)}";
-            await ValidateInsertSelectDeleteSingleValueAsync(
+            await ValidateInsertSelectDeleteTwoValuesAsync(
                 table.TableName,
                 columnName,
                 value,
@@ -98,8 +99,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("CAST(NULL AS VARCHAR(10))")]
         [InlineData("CAST(NULL AS CHAR(10))")]
         [InlineData("CAST(NULL AS BOOLEAN)")]
-        // TODO: Returns byte[] [] (i.e., empty array) - expecting null value.
-        //[InlineData("CAST(NULL AS BINARY)", Skip = "Returns empty array - expecting null value.")]
+        [InlineData("CAST(NULL AS BINARY)")]
         public async Task TestNullData(string projectionClause)
         {
             string selectStatement = $"SELECT {projectionClause};";

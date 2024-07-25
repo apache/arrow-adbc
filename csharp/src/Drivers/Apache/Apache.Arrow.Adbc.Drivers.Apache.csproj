@@ -12,4 +12,8 @@
     <ProjectReference Include="..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Thrift\Extensions\" />
+  </ItemGroup>
+
 </Project>

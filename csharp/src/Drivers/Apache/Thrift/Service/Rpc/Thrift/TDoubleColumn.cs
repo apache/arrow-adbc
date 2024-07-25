@@ -50,84 +50,85 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       iprot.IncrementRecursionDepth();
       try
-      {
-        bool isset_values = false;
-        bool isset_nulls = false;
-        TField field;
+            {
+                bool isset_values = false;
+                bool isset_nulls = false;
+                TField field;
 
-        byte[] nulls = null;
-        byte[] buffer = null;
-        Stream transport = ((IPeekableTransport)iprot.Transport).Input;
-        int length = -1;
+                byte[] nulls = null;
+                byte[] buffer = null;
+                Stream transport = ((IPeekableTransport)iprot.Transport).Input;
+                int length = -1;
 
-        await iprot.ReadStructBeginAsync(cancellationToken);
-        while (true)
-        {
-          field = await iprot.ReadFieldBeginAsync(cancellationToken);
-          if (field.Type == TType.Stop)
-          {
-            break;
-          }
-
-          switch (field.ID)
-          {
-            case 1:
-              if (field.Type == TType.List)
-              {
+                await iprot.ReadStructBeginAsync(cancellationToken);
+                while (true)
                 {
-                  var _list178 = await iprot.ReadListBeginAsync(cancellationToken);
-                  length = _list178.Count;
+                    field = await iprot.ReadFieldBeginAsync(cancellationToken);
+                    if (field.Type == TType.Stop)
+                    {
+                        break;
+                    }
 
-                  buffer = new byte[length * 8];
-                  var memory = buffer.AsMemory();
-                  var typedMemory = Unsafe.As<Memory<byte>, Memory<long>>(ref memory).Slice(0, length);
-                  iprot.Transport.CheckReadBytesAvailable(buffer.Length);
-                  await transport.ReadExactlyAsync(memory, cancellationToken);
-                  for (int _i179 = 0; _i179 < length; ++_i179)
-                  {
-                    typedMemory.Span[_i179] = BinaryPrimitives.ReverseEndianness(typedMemory.Span[_i179]);
-                  }
-                  await iprot.ReadListEndAsync(cancellationToken);
+                    switch (field.ID)
+                    {
+                        case 1:
+                            if (field.Type == TType.List)
+                            {
+                                {
+                                    var _list178 = await iprot.ReadListBeginAsync(cancellationToken);
+                                    length = _list178.Count;
+
+                                    buffer = new byte[length * 8];
+                                    var memory = buffer.AsMemory();
+                                    var typedMemory = Unsafe.As<Memory<byte>, Memory<long>>(ref memory).Slice(0, length);
+                                    iprot.Transport.CheckReadBytesAvailable(buffer.Length);
+                                    await transport.ReadExactlyAsync(memory, cancellationToken);
+                                    for (int _i179 = 0; _i179 < length; ++_i179)
+                                    {
+                                        typedMemory.Span[_i179] = BinaryPrimitives.ReverseEndianness(typedMemory.Span[_i179]);
+                                    }
+                                    await iprot.ReadListEndAsync(cancellationToken);
+                                }
+                                isset_values = true;
+                            }
+                            else
+                            {
+                                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                            }
+                            break;
+                        case 2:
+                            if (field.Type == TType.String)
+                            {
+                                nulls = await iprot.ReadBinaryAsync(cancellationToken);
+                                isset_nulls = true;
+                            }
+                            else
+                            {
+                                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                            }
+                            break;
+                        default:
+                            await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                            break;
+                    }
+
+                    await iprot.ReadFieldEndAsync(cancellationToken);
                 }
-                isset_values = true;
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 2:
-              if (field.Type == TType.String)
-              {
-                nulls = await iprot.ReadBinaryAsync(cancellationToken);
-                isset_nulls = true;
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            default:
-              await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              break;
-          }
 
-          await iprot.ReadFieldEndAsync(cancellationToken);
-        }
+                await iprot.ReadStructEndAsync(cancellationToken);
+                if (!isset_values)
+                {
+                    throw new TProtocolException(TProtocolException.INVALID_DATA);
+                }
+                if (!isset_nulls)
+                {
+                    throw new TProtocolException(TProtocolException.INVALID_DATA);
+                }
 
-        await iprot.ReadStructEndAsync(cancellationToken);
-        if (!isset_values)
-        {
-          throw new TProtocolException(TProtocolException.INVALID_DATA);
-        }
-        if (!isset_nulls)
-        {
-          throw new TProtocolException(TProtocolException.INVALID_DATA);
-        }
-
-        Values = new DoubleArray(new ArrowBuffer(buffer), new ArrowBuffer(nulls), length, BitUtility.CountBits(nulls), 0);
-      }
-      finally
+                ArrowBuffer validityBitmapBuffer = BitmapUtilities.GetValidityBitmapBuffer(nulls, out int nullCount);
+                Values = new DoubleArray(new ArrowBuffer(buffer), validityBitmapBuffer, length, nullCount, 0);
+            }
+            finally
       {
         iprot.DecrementRecursionDepth();
       }

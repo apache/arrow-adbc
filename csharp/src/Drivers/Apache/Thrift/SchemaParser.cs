@@ -56,7 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                 case TTypeId.DOUBLE_TYPE: return DoubleType.Default;
                 case TTypeId.FLOAT_TYPE: return GetFloatType(protocolVersion);
                 case TTypeId.INT_TYPE: return Int32Type.Default;
-                case TTypeId.NULL_TYPE: return NullType.Default;
+                case TTypeId.NULL_TYPE: return GetNullType(protocolVersion);
                 case TTypeId.SMALLINT_TYPE: return Int16Type.Default;
                 case TTypeId.STRING_TYPE: return StringType.Default;
                 case TTypeId.TIMESTAMP_TYPE: return GetTimestampType(protocolVersion);
@@ -76,26 +76,33 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             }
         }
 
-        private static bool IsHiveServer2Protocol(TProtocolVersion protocolVersion) => protocolVersion <= TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11;
+        private static IArrowType GetNullType(TProtocolVersion protocolVersion) =>
+            IsHiveServer2Protocol(protocolVersion) ? StringType.Default : NullType.Default;
 
-        private static IArrowType GetDateType(TProtocolVersion protocolVersion) => IsHiveServer2Protocol(protocolVersion) ? global::Apache.Arrow.Types.StringType.Default : global::Apache.Arrow.Types.Date32Type.Default;
+        private static IArrowType GetDateType(TProtocolVersion protocolVersion) =>
+            IsHiveServer2Protocol(protocolVersion) ? global::Apache.Arrow.Types.StringType.Default : global::Apache.Arrow.Types.Date32Type.Default;
 
-        private static IArrowType GetFloatType(TProtocolVersion protocolVersion) => IsHiveServer2Protocol(protocolVersion) ? DoubleType.Default : FloatType.Default;
+        private static IArrowType GetFloatType(TProtocolVersion protocolVersion) =>
+            IsHiveServer2Protocol(protocolVersion) ? DoubleType.Default : FloatType.Default;
 
-        private static IArrowType GetTimestampType(TProtocolVersion protocolVersion) => IsHiveServer2Protocol(protocolVersion) ? StringType.Default : new TimestampType(TimeUnit.Microsecond, (string?)null);
+        private static IArrowType GetTimestampType(TProtocolVersion protocolVersion) =>
+            IsHiveServer2Protocol(protocolVersion) ? StringType.Default : new TimestampType(TimeUnit.Microsecond, (string?)null);
 
         private static IArrowType GetDecimal128Type(TPrimitiveTypeEntry thriftType, TProtocolVersion protocolVersion)
         {
-            if (IsHiveServer2Protocol(protocolVersion))
-            {
-                return StringType.Default;
-            }
-            else
+            if (!IsSparkProtocol(protocolVersion))
             {
                 int precision = thriftType.TypeQualifiers.Qualifiers["precision"].I32Value;
                 int scale = thriftType.TypeQualifiers.Qualifiers["scale"].I32Value;
                 return new Decimal128Type(precision, scale);
             }
+            return StringType.Default;
         }
+
+        private static bool IsHiveServer2Protocol(TProtocolVersion protocolVersion) =>
+            protocolVersion is TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V1 and <= TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11;
+
+        private static bool IsSparkProtocol(TProtocolVersion protocolVersion) =>
+            protocolVersion is >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V1 and <= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7;
     }
 }

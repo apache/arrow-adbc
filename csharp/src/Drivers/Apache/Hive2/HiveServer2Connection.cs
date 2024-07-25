@@ -56,7 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             get { return this.client ?? throw new InvalidOperationException("connection not open"); }
         }
 
-        protected string VendorVersion => _vendorVersion.Value;
+        protected internal string VendorVersion => _vendorVersion.Value;
 
         protected string VendorName => _vendorName.Value;
 

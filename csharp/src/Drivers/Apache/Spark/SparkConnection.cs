@@ -609,7 +609,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         catalogMap.Add(catalog, new Dictionary<string, Dictionary<string, TableInfo>>());
                     }
                 }
-                if (list.Count == 0)
+                // Handle the case where server does not support 'catalog' in the namespace.
+                if (list.Count == 0 && string.IsNullOrEmpty(catalogPattern))
                 {
                     catalogMap.Add(string.Empty, []);
                 }
@@ -713,7 +714,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                 for (int i = 0; i < catalogList.Count; i++)
                 {
-                    string catalog = catalogList[i];
+                    // For systems that don't support 'catalog' in the namespace
+                    string catalog = catalogList[i] ?? string.Empty;
                     string schemaDb = schemaList[i];
                     string tableName = tableList[i];
                     string columnName = columnNameList[i];

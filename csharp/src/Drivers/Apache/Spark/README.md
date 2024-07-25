@@ -85,7 +85,7 @@ The following table depicts how the Spark ADBC driver converts a Spark type to a
 | INTERVAL_DAY_TIME+   | String     | string |
 | INTERVAL_YEAR_MONTH+ | String     | string |
 | MAP*                 | String     | string |
-| NULL                 | Null       | null |
+| NULL                 | String     | string |
 | SMALLINT             | Int16      | short |
 | STRING               | String     | string |
 | STRUCT*              | String     | string |
