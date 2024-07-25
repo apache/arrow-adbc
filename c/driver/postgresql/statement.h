@@ -33,8 +33,7 @@
 #define ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES \
   "adbc.postgresql.batch_size_hint_bytes"
 
-#define ADBC_POSTGRESQL_OPTION_USE_COPY \
-  "adbc.postgresql.batch_size_hint_bytes"
+#define ADBC_POSTGRESQL_OPTION_USE_COPY "adbc.postgresql.batch_size_hint_bytes"
 
 namespace adbcpq {
 class PostgresConnection;
