@@ -1238,6 +1238,8 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
       return ADBC_STATUS_INVALID_STATE;
     }
 
+    // This won't work...we'll need to use a std::vector<Oid> for Prepare() instead of
+    // a PostgresType (because arbitrary structs are not valid postgres types)
     CHECK_NA_DETAIL(
         INTERNAL,
         PostgresType::FromSchema(*type_resolver_, schema.get(), &param_types, &na_error),

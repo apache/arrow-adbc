@@ -1276,6 +1276,32 @@ TEST_F(PostgresStatementTest, UpdateInExecuteQuery) {
   }
 }
 
+TEST_F(PostgresStatementTest, ExecuteSchemaParameterizedQuery) {
+  nanoarrow::UniqueSchema schema_bind;
+  ArrowSchemaInit(schema_bind.get());
+  ASSERT_THAT(ArrowSchemaSetTypeStruct(schema_bind.get(), 1),
+              adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetType(schema_bind->children[0], NANOARROW_TYPE_STRING),
+              adbc_validation::IsOkErrno());
+
+  nanoarrow::UniqueArrayStream bind;
+  nanoarrow::EmptyArrayStream(schema_bind.get()).ToArrayStream(bind.get());
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT $1", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBindStream(&statement, bind.get(), &error), IsOkStatus());
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_THAT(AdbcStatementExecuteSchema(&statement, schema.get(), &error),
+              IsOkStatus(&error));
+
+  ASSERT_EQ(1, schema->n_children);
+  ASSERT_STREQ("u", schema->children[0]->format);
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
 TEST_F(PostgresStatementTest, BatchSizeHint) {
   ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "batch_size_hint_test", &error),
               IsOkStatus(&error));
