@@ -1371,16 +1371,13 @@ TEST_F(PostgresStatementTest, AdbcErrorBackwardsCompatibility) {
 TEST_F(PostgresStatementTest, Cancel) {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
-  for (const char* query : {
-           "DROP TABLE IF EXISTS test_cancel",
-           "CREATE TABLE test_cancel (ints INT)",
-           R"(INSERT INTO test_cancel (ints)
-              SELECT g :: INT FROM GENERATE_SERIES(1, 65536) temp(g))",
-       }) {
-    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query, &error), IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
-                IsOkStatus(&error));
-  }
+  const char* query = R"(DROP TABLE IF EXISTS test_cancel;
+            CREATE TABLE test_cancel (ints INT);
+            INSERT INTO test_cancel (ints)
+            SELECT g :: INT FROM GENERATE_SERIES(1, 65536) temp(g);)";
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM test_cancel", &error),
               IsOkStatus(&error));
