@@ -64,7 +64,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal TProtocolVersion ProtocolVersion { get; private set; }
 
-        protected abstract IReadOnlyList<TProtocolVersion> ProtocolVersions { get; }
+        protected abstract IReadOnlyList<TProtocolVersion> SupportedProtocolVersions { get; }
 
         internal async Task OpenAsync()
         {
@@ -74,7 +74,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TOpenSessionResp? s0 = null;
             Exception? lastException = null;
 
-            foreach (TProtocolVersion protocolVersion in ProtocolVersions)
+            if (SupportedProtocolVersions.Count < 1)
+                throw new InvalidOperationException("Invalid driver implementation. Must contain at least one supported Thrift protocol version.");
+
+            // Try each protocol version, until a successful connection is made.
+            // All other exception should be not be caught (i.e., no response, no host, rejected, authentication, etc.
+            foreach (TProtocolVersion protocolVersion in SupportedProtocolVersions)
             {
                 s0 = null;
                 try
@@ -90,6 +95,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
             }
 
+            // If we still don't have a connection after trying all the protocols, raise the last known exception.
             if (s0 == null) throw lastException!;
 
             this.sessionHandle = s0.SessionHandle;
@@ -153,14 +159,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        protected Schema GetSchema()
-        {
-            TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
-            TGetResultSetMetadataResp response = this.Client.GetResultSetMetadata(request).Result;
-            return SchemaParser.GetArrowSchema(response.Schema, ProtocolVersion);
-        }
-
-        internal static async Task<Schema> GetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, TProtocolVersion protocolVersion, CancellationToken cancellationToken = default)
+        internal static async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, TProtocolVersion protocolVersion, CancellationToken cancellationToken = default)
         {
             TGetResultSetMetadataResp response = await GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
             return SchemaParser.GetArrowSchema(response.Schema, protocolVersion);

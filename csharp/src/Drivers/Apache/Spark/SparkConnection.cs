@@ -1125,7 +1125,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
         }
 
-        protected override IReadOnlyList<TProtocolVersion> ProtocolVersions =>
+        protected override IReadOnlyList<TProtocolVersion> SupportedProtocolVersions =>
         [
             TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
             TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11,

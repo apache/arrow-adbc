@@ -49,15 +49,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return null;
             }
 
-            TFetchResultsReq request = new TFetchResultsReq(_statement.operationHandle, TFetchOrientation.FETCH_NEXT, _batchSize);
+            var request = new TFetchResultsReq(_statement.operationHandle, TFetchOrientation.FETCH_NEXT, _batchSize);
             TFetchResultsResp response = await _statement.connection.Client.FetchResults(request, cancellationToken);
 
-            //var buffer = new System.IO.MemoryStream();
-            //await response.WriteAsync(new TBinaryProtocol(new TStreamTransport(null, buffer, new TConfiguration())), cancellationToken);
-            //System.IO.File.WriteAllBytes(string.Format("d:/src/buffer{0}.bin", this.counter++), buffer.ToArray());
-
             int length = response.Results.Columns.Count > 0 ? GetArray(response.Results.Columns[0]).Length : 0;
-            RecordBatch result = new(
+            var result = new RecordBatch(
                 Schema,
                 response.Results.Columns.Select(GetArray),
                 length);
