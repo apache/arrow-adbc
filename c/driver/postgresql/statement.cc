@@ -1167,14 +1167,9 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     return ExecuteBind(stream, rows_affected, error);
   }
 
-  // Check if we have been explicitly requested to avoid COPY
-  // (make less of a hack before merging)
-  size_t use_copy = 0;
-  GetOption(ADBC_POSTGRESQL_OPTION_USE_COPY, nullptr, &use_copy, nullptr);
-
   // If we have been requested to avoid COPY or there is no output requested,
   // execute using the PqResultArrayReader.
-  if (!stream || !use_copy) {
+  if (!stream || !UseCopyIfPossible()) {
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
     RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
     return ADBC_STATUS_OK;
@@ -1505,4 +1500,24 @@ void PostgresStatement::ClearResult() {
   // TODO: we may want to synchronize here for safety
   reader_.Release();
 }
+
+bool PostgresStatement::UseCopyIfPossible() {
+  // Check if we have been explicitly requested to avoid COPY
+  size_t length = 0;
+  AdbcStatusCode status =
+      GetOption(ADBC_POSTGRESQL_OPTION_USE_COPY, nullptr, &length, nullptr);
+  if (status != ADBC_STATUS_OK) {
+    return true;
+  }
+
+  std::string out;
+  out.resize(length);
+  status = GetOption(ADBC_POSTGRESQL_OPTION_USE_COPY, out.data(), &length, nullptr);
+  if (status != ADBC_STATUS_OK) {
+    return true;
+  }
+
+  return out == "true";
+}
+
 }  // namespace adbcpq

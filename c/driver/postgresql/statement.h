@@ -33,7 +33,7 @@
 #define ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES \
   "adbc.postgresql.batch_size_hint_bytes"
 
-#define ADBC_POSTGRESQL_OPTION_USE_COPY "adbc.postgresql.batch_size_hint_bytes"
+#define ADBC_POSTGRESQL_OPTION_USE_COPY "adbc.postgresql.use_copy"
 
 namespace adbcpq {
 class PostgresConnection;
@@ -136,6 +136,7 @@ class PostgresStatement {
                                struct AdbcError* error);
   AdbcStatusCode ExecuteBind(struct ArrowArrayStream* stream, int64_t* rows_affected,
                              struct AdbcError* error);
+  bool UseCopyIfPossible();
 
  private:
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
