@@ -77,14 +77,3 @@ sed \
   -e "s|@cppflags@|$PKG_CPPFLAGS|" \
   -e "s|@libs@|$PKG_LIBS|" \
   src/Makevars.in > src/Makevars
-
-
-if [ -f "src/arrow-adbc/adbc.h" ]; then
-  echo "Found vendored ADBC"
-  exit 0
-fi
-
-
-echo "Vendored ADBC PostgreSQL driver was not found."
-echo "This source package was probably built incorrectly and it's probably not your fault"
-exit 1

@@ -15,53 +15,22 @@
 # specific language governing permissions and limitations
 # under the License.
 
-dir.create("src/arrow-adbc", showWarnings=FALSE)
+dir.create("src/arrow-adbc", showWarnings = FALSE)
 file.copy("../../c/include/arrow-adbc/adbc.h", "src/arrow-adbc/adbc.h")
 
-# If we are building within the repo, copy the latest adbc.h and driver source
-# into src/
-source_files <- c(
-  "c/driver/common/options.h",
-  "c/driver/common/utils.c",
-  "c/driver/common/utils.h",
-  "c/driver/framework/catalog.h",
-  "c/driver/framework/catalog.cc",
-  "c/driver/framework/status.h",
-  "c/driver/postgresql/connection.cc",
-  "c/driver/postgresql/connection.h",
-  "c/driver/postgresql/copy/copy_common.h",
-  "c/driver/postgresql/copy/reader.h",
-  "c/driver/postgresql/copy/writer.h",
-  "c/driver/postgresql/database.cc",
-  "c/driver/postgresql/database.h",
-  "c/driver/postgresql/error.cc",
-  "c/driver/postgresql/error.h",
-  "c/driver/postgresql/postgres_type.h",
-  "c/driver/postgresql/postgres_util.h",
-  "c/driver/postgresql/postgresql.cc",
-  "c/driver/postgresql/result_helper.cc",
-  "c/driver/postgresql/result_helper.h",
-  "c/driver/postgresql/statement.cc",
-  "c/driver/postgresql/statement.h",
-  "c/vendor/fmt/include/fmt/args.h",
-  "c/vendor/fmt/include/fmt/base.h",
-  "c/vendor/fmt/include/fmt/chrono.h",
-  "c/vendor/fmt/include/fmt/color.h",
-  "c/vendor/fmt/include/fmt/compile.h",
-  "c/vendor/fmt/include/fmt/core.h",
-  "c/vendor/fmt/include/fmt/format-inl.h",
-  "c/vendor/fmt/include/fmt/format.h",
-  "c/vendor/fmt/include/fmt/os.h",
-  "c/vendor/fmt/include/fmt/ostream.h",
-  "c/vendor/fmt/include/fmt/printf.h",
-  "c/vendor/fmt/include/fmt/ranges.h",
-  "c/vendor/fmt/include/fmt/std.h",
-  "c/vendor/fmt/include/fmt/xchar.h",
-  "c/vendor/nanoarrow/nanoarrow.c",
-  "c/vendor/nanoarrow/nanoarrow.h",
-  "c/vendor/nanoarrow/nanoarrow.hpp"
-)
-files_to_vendor <- file.path("../..", source_files)
+source_files <- list.files("../../c", "\\.(h|c|cc|hpp)$", recursive = TRUE)
+source_files <- source_files[!grepl("_test\\.cc", source_files)]
+source_files <- source_files[!grepl("^(build|out)/", source_files)]
+source_files <- file.path("c", source_files)
+src <- file.path("../..", source_files)
+dst <- file.path("src", source_files)
+
+unlink("src/c", recursive = TRUE)
+for (dir_name in rev(unique(dirname(dst)))) {
+  dir.create(dir_name, showWarnings = FALSE, recursive = TRUE)
+}
+
+stopifnot(all(file.copy(src, dst)))
 
 if (all(file.exists(files_to_vendor))) {
   files_dst <- file.path("src", basename(files_to_vendor))
