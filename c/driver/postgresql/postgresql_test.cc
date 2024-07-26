@@ -1429,6 +1429,66 @@ TEST_F(PostgresStatementTest, MultipleStatementsSingleQuery) {
   ASSERT_EQ(reader.array->length, 3);
 }
 
+TEST_F(PostgresStatementTest, SetUseCopyFalse) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  const char* query = R"(DROP TABLE IF EXISTS test_query_set_copy_false;
+            CREATE TABLE test_query_set_copy_false (ints INT);
+            INSERT INTO test_query_set_copy_false VALUES((1));
+            INSERT INTO test_query_set_copy_false VALUES((NULL));
+            INSERT INTO test_query_set_copy_false VALUES((3));)";
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  // Check option setting/getting
+  ASSERT_EQ(
+      adbc_validation::StatementGetOption(&statement, "adbc.postgresql.use_copy", &error),
+      "true");
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement, "adbc.postgresql.use_copy",
+                                     "not true or false", &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT));
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement, "adbc.postgresql.use_copy",
+                                     ADBC_OPTION_VALUE_ENABLED, &error),
+              IsOkStatus(&error));
+  ASSERT_EQ(
+      adbc_validation::StatementGetOption(&statement, "adbc.postgresql.use_copy", &error),
+      "true");
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement, "adbc.postgresql.use_copy",
+                                     ADBC_OPTION_VALUE_DISABLED, &error),
+              IsOkStatus(&error));
+  ASSERT_EQ(
+      adbc_validation::StatementGetOption(&statement, "adbc.postgresql.use_copy", &error),
+      "false");
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+                                       "SELECT * FROM test_query_set_copy_false", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+
+  ASSERT_EQ(reader.rows_affected, 3);
+
+  reader.GetSchema();
+  ASSERT_EQ(reader.schema->n_children, 1);
+  ASSERT_STREQ(reader.schema->children[0]->format, "i");
+  ASSERT_STREQ(reader.schema->children[0]->name, "ints");
+
+  ASSERT_THAT(reader.MaybeNext(), adbc_validation::IsOkErrno());
+  ASSERT_EQ(reader.array->length, 3);
+  ASSERT_EQ(reader.array->n_children, 1);
+  ASSERT_EQ(reader.array->children[0]->null_count, 1);
+
+  ASSERT_THAT(reader.MaybeNext(), adbc_validation::IsOkErrno());
+  ASSERT_EQ(reader.array->release, nullptr);
+}
+
 struct TypeTestCase {
   std::string name;
   std::string sql_type;

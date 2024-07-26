@@ -253,7 +253,8 @@ int PqResultArrayReader::GetNext(struct ArrowArray* out) {
 
   // TODO: If we get an EOVERFLOW here (e.g., big string data), we
   // would need to keep track of what row number we're on and start
-  // from there instead of begin() on the next call
+  // from there instead of begin() on the next call. We could also
+  // respect the size hint here to chunk the batches.
   struct ArrowBufferView item;
   for (auto it = helper_.begin(); it != helper_.end(); it++) {
     auto row = *it;

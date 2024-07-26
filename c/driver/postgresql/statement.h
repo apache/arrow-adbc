@@ -92,7 +92,11 @@ class TupleReader final {
 class PostgresStatement {
  public:
   PostgresStatement()
-      : connection_(nullptr), query_(), prepared_(false), reader_(nullptr) {
+      : connection_(nullptr),
+        query_(),
+        prepared_(false),
+        use_copy_(true),
+        reader_(nullptr) {
     std::memset(&bind_, 0, sizeof(bind_));
   }
 
@@ -136,7 +140,6 @@ class PostgresStatement {
                                struct AdbcError* error);
   AdbcStatusCode ExecuteBind(struct ArrowArrayStream* stream, int64_t* rows_affected,
                              struct AdbcError* error);
-  bool UseCopyIfPossible();
 
  private:
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
@@ -154,6 +157,9 @@ class PostgresStatement {
     kReplace,
     kCreateAppend,
   };
+
+  // Options
+  bool use_copy_;
 
   struct {
     std::string db_schema;

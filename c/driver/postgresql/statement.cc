@@ -1169,7 +1169,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
 
   // If we have been requested to avoid COPY or there is no output requested,
   // execute using the PqResultArrayReader.
-  if (!stream || !UseCopyIfPossible()) {
+  if (!stream || !use_copy_) {
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
     RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
     return ADBC_STATUS_OK;
@@ -1347,6 +1347,12 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
     }
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     result = std::to_string(reader_.batch_size_hint_bytes_);
+  } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_USE_COPY) == 0) {
+    if (use_copy_) {
+      result = "true";
+    } else {
+      result = "false";
+    }
   } else {
     SetError(error, "[libpq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_FOUND;
@@ -1466,6 +1472,15 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
     }
 
     this->reader_.batch_size_hint_bytes_ = int_value;
+  } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_USE_COPY) == 0) {
+    if (std::strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      use_copy_ = true;
+    } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
+      use_copy_ = false;
+    } else {
+      SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
   } else {
     SetError(error, "[libpq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -1503,25 +1518,6 @@ AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
 void PostgresStatement::ClearResult() {
   // TODO: we may want to synchronize here for safety
   reader_.Release();
-}
-
-bool PostgresStatement::UseCopyIfPossible() {
-  // Check if we have been explicitly requested to avoid COPY
-  size_t length = 0;
-  AdbcStatusCode status =
-      GetOption(ADBC_POSTGRESQL_OPTION_USE_COPY, nullptr, &length, nullptr);
-  if (status != ADBC_STATUS_OK) {
-    return true;
-  }
-
-  std::string out;
-  out.resize(length);
-  status = GetOption(ADBC_POSTGRESQL_OPTION_USE_COPY, out.data(), &length, nullptr);
-  if (status != ADBC_STATUS_OK) {
-    return true;
-  }
-
-  return out == "true";
 }
 
 }  // namespace adbcpq
