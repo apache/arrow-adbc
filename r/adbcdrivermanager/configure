@@ -30,23 +30,6 @@ if [ -f "src/arrow-adbc/adbc.h" ] && [ -f "src/arrow-adbc/adbc_driver_manager.h"
   exit 0
 fi
 
-# We have a situation where the package has been built via R CMD build
-# manually or with pkgbuild <=1.4.0. This is common (e.g., pak::pkg_install()
-# or remotes::install_github() or any dependency setups that use either method)
-curl -L https://github.com/WillAyd/arrow-adbc/raw/fix-adbc-include/c/include/arrow-adbc/adbc.h \
-  --output src/arrow-adbc/adbc.h --silent
-curl -L https://github.com/WillAyd/arrow-adbc/raw/fix-adbc-include/c/include/arrow-adbc/adbc_driver_manager.h \
-  --output src/arrow-adbc/adbc_driver_manager.h --silent
-curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver_manager/adbc_driver_manager.cc \
-  --output src/adbc_driver_manager.cc --silent
-curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver/common/driver_base.h \
-  --output src/driver_base.h --silent
-
-if [ -f "src/arrow-adbc/adbc.h" ] && [ -f "src/arrow-adbc/adbc_driver_manager.h" ] && [ -f "src/adbc_driver_manager.cc" ]; then
-  echo "Fetched ADBC from https://github.com/apache/arrow-adbc"
-  exit 0
-fi
-
 echo "Vendored src/arrow-adbc/adbc.h and/or src/adbc_driver_manager.cc are missing"
 echo "This source package was probably built incorrectly and it's probably not your fault"
 exit 1
