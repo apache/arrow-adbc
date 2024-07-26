@@ -255,8 +255,8 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 // NewStatement initializes a new statement object tied to this connection
 func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	return &statement{
-		connectionImpl:         c,
-		query:                  c.client.Query(""),
+		alloc:                  c.Alloc,
+		cnxn:                   c,
 		parameterMode:          OptionValueQueryParameterModePositional,
 		resultRecordBufferSize: c.resultRecordBufferSize,
 		prefetchConcurrency:    c.prefetchConcurrency,
