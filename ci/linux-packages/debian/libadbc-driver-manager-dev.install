@@ -1,3 +1,5 @@
+usr/include/adbc.h
+usr/include/adbc_driver_manager.h
 usr/include/arrow-adbc/
 usr/lib/*/cmake/AdbcDriverManager/
 usr/lib/*/libadbc_driver_manager.a
