@@ -1282,8 +1282,7 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   std::string current_schema;
   {
     PqResultHelper result_helper{connection_->conn(), "SELECT CURRENT_SCHEMA"};
-    RAISE_ADBC(result_helper.Prepare(error));
-    RAISE_ADBC(result_helper.ExecutePrepared(error));
+    RAISE_ADBC(result_helper.Execute(error));
     auto it = result_helper.begin();
     if (it == result_helper.end()) {
       SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");

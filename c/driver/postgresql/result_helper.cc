@@ -45,10 +45,6 @@ AdbcStatusCode PqResultHelper::PrepareInternal(int n_params, const Oid* param_oi
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PqResultHelper::Prepare(int n_params, struct AdbcError* error) {
-  return PrepareInternal(n_params, nullptr, error);
-}
-
 AdbcStatusCode PqResultHelper::Prepare(struct AdbcError* error) {
   return PrepareInternal(0, nullptr, error);
 }
@@ -67,34 +63,6 @@ AdbcStatusCode PqResultHelper::DescribePrepared(struct AdbcError* error) {
         PQerrorMessage(conn_), query_.c_str());
     ClearResult();
     return code;
-  }
-
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode PqResultHelper::ExecutePrepared(struct AdbcError* error,
-                                               const std::vector<std::string>& params) {
-  std::vector<const char*> param_values;
-  std::vector<int> param_lengths;
-  std::vector<int> param_formats;
-
-  for (const auto& param : params) {
-    param_values.push_back(param.data());
-    param_lengths.push_back(static_cast<int>(param.size()));
-    param_formats.push_back(static_cast<int>(param_format_));
-  }
-
-  ClearResult();
-  result_ = PQexecPrepared(conn_, "", param_values.size(), param_values.data(),
-                           param_lengths.data(), param_formats.data(),
-                           static_cast<int>(output_format_));
-
-  ExecStatusType status = PQresultStatus(result_);
-  if (status != PGRES_TUPLES_OK && status != PGRES_COMMAND_OK) {
-    AdbcStatusCode status =
-        SetError(error, result_, "[libpq] Failed to execute query '%s': %s",
-                 query_.c_str(), PQerrorMessage(conn_));
-    return status;
   }
 
   return ADBC_STATUS_OK;

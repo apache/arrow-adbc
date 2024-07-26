@@ -96,11 +96,8 @@ class PqResultHelper {
   void set_output_format(Format format) { output_format_ = format; }
 
   AdbcStatusCode Prepare(struct AdbcError* error);
-  AdbcStatusCode Prepare(int n_params, struct AdbcError* error);
   AdbcStatusCode Prepare(const std::vector<Oid>& param_oids, struct AdbcError* error);
   AdbcStatusCode DescribePrepared(struct AdbcError* error);
-  AdbcStatusCode ExecutePrepared(struct AdbcError* error,
-                                 const std::vector<std::string>& params = {});
   AdbcStatusCode Execute(struct AdbcError* error,
                          const std::vector<std::string>& params = {},
                          PostgresType* param_types = nullptr);
