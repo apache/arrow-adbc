@@ -31,30 +31,3 @@ for (dir_name in rev(unique(dirname(dst)))) {
 }
 
 stopifnot(all(file.copy(src, dst)))
-
-if (all(file.exists(files_to_vendor))) {
-  files_dst <- file.path("src", basename(files_to_vendor))
-
-  n_removed <- suppressWarnings(sum(file.remove(files_dst)))
-  if (n_removed > 0) {
-    cat(sprintf("Removed %d previously vendored files from src/\n", n_removed))
-  }
-
-  cat(
-    sprintf(
-      "Vendoring files from arrow-adbc to src/:\n%s\n",
-      paste("-", files_to_vendor, collapse = "\n")
-    )
-  )
-
-  if (!dir.exists("src/copy")) {
-    dir.create("src/copy")
-  }
-
-  if (all(file.copy(files_to_vendor, "src"))) {
-    file.rename(files_dst, file.path("src", source_files))
-    cat("All files successfully copied to src/\n")
-  } else {
-    stop("Failed to vendor all files")
-  }
-}
