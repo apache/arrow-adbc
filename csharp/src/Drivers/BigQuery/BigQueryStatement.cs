@@ -55,7 +55,21 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             QueryOptions? queryOptions = ValidateOptions();
             BigQueryJob job = this.client.CreateQueryJob(SqlQuery, null, queryOptions);
-            BigQueryResults results = job.GetQueryResults();
+
+            GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
+
+            if (this.Options != null && this.Options.ContainsKey(BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes))
+            {
+                if (int.TryParse(this.Options[BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes], out int minutes))
+                {
+                    if (minutes >= 0)
+                    {
+                        getQueryResultsOptions.Timeout = TimeSpan.FromMinutes(minutes);
+                    }
+                }
+            }
+
+            BigQueryResults results = job.GetQueryResults(getQueryResultsOptions);
 
             BigQueryReadClientBuilder readClientBuilder = new BigQueryReadClientBuilder();
             readClientBuilder.Credential = this.credential;

@@ -56,5 +56,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         [JsonPropertyName("includeTableConstraints")]
         public bool IncludeTableConstraints { get; set; }
+
+        [JsonPropertyName("timeoutMinutes")]
+        public int? TimeoutMinutes { get; set; }
     }
 }
