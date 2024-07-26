@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
@@ -546,6 +547,61 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             UpdateResult updateResult = await statement.ExecuteUpdateAsync();
 
             Assert.Equal(1, updateResult.AffectedRows);
+        }
+
+        [SkippableFact, Order(13)]
+        public void CanDetectInvalidAuthentication()
+        {
+            AdbcDriver driver = NewDriver;
+            Assert.NotNull(driver);
+            Dictionary<string, string> parameters = GetDriverParameters(TestConfiguration);
+
+            bool hasToken = parameters.TryGetValue(SparkParameters.Token, out var token) && !string.IsNullOrEmpty(token);
+            bool hasUsername = parameters.TryGetValue(AdbcOptions.Username, out var username) && !string.IsNullOrEmpty(username);
+            bool hasPassword = parameters.TryGetValue(AdbcOptions.Password, out var password) && !string.IsNullOrEmpty(password);
+            if (hasToken)
+            {
+                parameters[SparkParameters.Token] = "invalid-token";
+            }
+            else if (hasUsername && hasPassword)
+            {
+                parameters[AdbcOptions.Password] = "invalid-password";
+            }
+            else
+            {
+                Assert.Fail($"Unexpected configuration. Must provide '{SparkParameters.Token}' or '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.");
+            }
+
+            AdbcDatabase database = driver.Open(parameters);
+            AggregateException exception = Assert.ThrowsAny<AggregateException>(() => database.Connect(parameters));
+            OutputHelper?.WriteLine(exception.Message);
+        }
+
+        [SkippableFact, Order(14)]
+        public void CanDetectInvalidServer()
+        {
+            AdbcDriver driver = NewDriver;
+            Assert.NotNull(driver);
+            Dictionary<string, string> parameters = GetDriverParameters(TestConfiguration);
+
+            bool hasUri = parameters.TryGetValue(AdbcOptions.Uri, out var uri) && !string.IsNullOrEmpty(uri);
+            bool hasHostName = parameters.TryGetValue(SparkParameters.HostName, out var hostName) && !string.IsNullOrEmpty(hostName);
+            if (hasUri)
+            {
+                parameters[AdbcOptions.Uri] = "http://unknownhost.azure.com/cliservice";
+            }
+            else if (hasHostName)
+            {
+                parameters[SparkParameters.HostName] = "unknownhost.azure.com";
+            }
+            else
+            {
+                Assert.Fail($"Unexpected configuration. Must provide '{AdbcOptions.Uri}' or '{SparkParameters.HostName}'.");
+            }
+
+            AdbcDatabase database = driver.Open(parameters);
+            AggregateException exception = Assert.ThrowsAny<AggregateException>(() => database.Connect(parameters));
+            OutputHelper?.WriteLine(exception.Message);
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()
