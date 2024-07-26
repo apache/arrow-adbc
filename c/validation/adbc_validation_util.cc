@@ -37,8 +37,8 @@ std::optional<std::string> ConnectionGetOption(struct AdbcConnection* connection
 }
 
 std::optional<std::string> StatementGetOption(struct AdbcStatement* statement,
-                                               std::string_view option,
-                                               struct AdbcError* error) {
+                                              std::string_view option,
+                                              struct AdbcError* error) {
   char buffer[128];
   size_t buffer_size = sizeof(buffer);
   AdbcStatusCode status =
