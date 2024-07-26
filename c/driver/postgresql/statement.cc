@@ -1223,8 +1223,6 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
   }
 
   PqResultHelper helper(connection_->conn(), query_);
-  PostgresType param_types;
-  PostgresType* param_types_ptr = nullptr;
 
   if (bind_.release) {
     nanoarrow::UniqueSchema schema;
@@ -1238,16 +1236,21 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
       return ADBC_STATUS_INVALID_STATE;
     }
 
-    // This won't work...we'll need to use a std::vector<Oid> for Prepare() instead of
-    // a PostgresType (because arbitrary structs are not valid postgres types)
-    CHECK_NA_DETAIL(
-        INTERNAL,
-        PostgresType::FromSchema(*type_resolver_, schema.get(), &param_types, &na_error),
-        &na_error, error);
-    param_types_ptr = &param_types;
+    std::vector<Oid> param_oids(schema->n_children);
+    for (int64_t i = 0; i < schema->n_children; i++) {
+      PostgresType pg_type;
+      CHECK_NA_DETAIL(INTERNAL,
+                      PostgresType::FromSchema(*type_resolver_, schema->children[i],
+                                               &pg_type, &na_error),
+                      &na_error, error);
+      param_oids[i] = pg_type.oid();
+    }
+
+    RAISE_ADBC(helper.Prepare(param_oids, error));
+  } else {
+    RAISE_ADBC(helper.Prepare(error));
   }
 
-  RAISE_ADBC(helper.Prepare(error, param_types.n_children(), param_types_ptr));
   RAISE_ADBC(helper.DescribePrepared(error));
 
   PostgresType output_type;

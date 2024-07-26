@@ -28,21 +28,11 @@ namespace adbcpq {
 
 PqResultHelper::~PqResultHelper() { ClearResult(); }
 
-AdbcStatusCode PqResultHelper::Prepare(struct AdbcError* error, int n_params,
-                                       PostgresType* param_types) {
-  std::vector<Oid> param_oids;
-  const Oid* param_oids_ptr = nullptr;
-  if (param_types != nullptr) {
-    param_oids.resize(n_params);
-    for (int i = 0; i < n_params; i++) {
-      param_oids[i] = param_types->child(i).oid();
-    }
-    param_oids_ptr = param_oids.data();
-  }
-
+AdbcStatusCode PqResultHelper::PrepareInternal(int n_params, const Oid* param_oids,
+                                               struct AdbcError* error) {
   // TODO: make stmtName a unique identifier?
   PGresult* result =
-      PQprepare(conn_, /*stmtName=*/"", query_.c_str(), n_params, param_oids_ptr);
+      PQprepare(conn_, /*stmtName=*/"", query_.c_str(), n_params, param_oids);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     AdbcStatusCode code =
         SetError(error, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
@@ -53,6 +43,19 @@ AdbcStatusCode PqResultHelper::Prepare(struct AdbcError* error, int n_params,
 
   PQclear(result);
   return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PqResultHelper::Prepare(int n_params, struct AdbcError* error) {
+  return PrepareInternal(n_params, nullptr, error);
+}
+
+AdbcStatusCode PqResultHelper::Prepare(struct AdbcError* error) {
+  return PrepareInternal(0, nullptr, error);
+}
+
+AdbcStatusCode PqResultHelper::Prepare(const std::vector<Oid>& param_oids,
+                                       struct AdbcError* error) {
+  return PrepareInternal(param_oids.size(), param_oids.data(), error);
 }
 
 AdbcStatusCode PqResultHelper::DescribePrepared(struct AdbcError* error) {
