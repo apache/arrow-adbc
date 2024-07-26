@@ -827,6 +827,10 @@ func (c *connectionImpl) getDbSchemasMetadata(ctx context.Context, matchingCatal
 func (c *connectionImpl) getTablesMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, tableType []string) ([]internal.Metadata, error) {
 	metadataRecords := make([]internal.Metadata, 0)
 	query, queryArgs := prepareTablesSQL(matchingCatalogNames, catalog, dbSchema, tableName, tableType)
+	if query == "" {
+		return nil, nil
+	}
+
 	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
@@ -846,6 +850,10 @@ func (c *connectionImpl) getTablesMetadata(ctx context.Context, matchingCatalogN
 func (c *connectionImpl) getColumnsMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) ([]internal.Metadata, error) {
 	metadataRecords := make([]internal.Metadata, 0)
 	query, queryArgs := prepareColumnsSQL(matchingCatalogNames, catalog, dbSchema, tableName, columnName, tableType)
+	if query == "" {
+		return nil, nil
+	}
+
 	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
@@ -987,6 +995,10 @@ func prepareDbSchemasSQL(matchingCatalogNames []string, catalog *string, dbSchem
 
 func prepareTablesSQL(matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, tableType []string) (string, []interface{}) {
 	query := ""
+	if len(matchingCatalogNames) == 0 {
+		return query, nil
+	}
+
 	for _, catalog_name := range matchingCatalogNames {
 		if query != "" {
 			query += " UNION ALL "
@@ -1014,6 +1026,10 @@ func prepareTablesSQL(matchingCatalogNames []string, catalog *string, dbSchema *
 
 func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (string, []interface{}) {
 	prefixQuery := ""
+	if len(matchingCatalogNames) == 0 {
+		return prefixQuery, nil
+	}
+
 	for _, catalogName := range matchingCatalogNames {
 		if prefixQuery != "" {
 			prefixQuery += " UNION ALL "

@@ -20,31 +20,70 @@ package bigquery_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/bigquery"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow/go/v18/arrow"
 	"github.com/apache/arrow/go/v18/arrow/array"
 	"github.com/apache/arrow/go/v18/arrow/decimal128"
 	"github.com/apache/arrow/go/v18/arrow/decimal256"
 	"github.com/apache/arrow/go/v18/arrow/memory"
+	"github.com/apache/arrow/go/v18/parquet"
+	"github.com/apache/arrow/go/v18/parquet/pqarrow"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
 type BigQueryQuirks struct {
-	mem       *memory.CheckedAllocator
-	authType  string
-	authValue string
+	ctx    context.Context
+	mem    *memory.CheckedAllocator
+	client *bigquery.Client
 	// catalogName is the same as projectID
 	catalogName string
 	// schemaName is the same as datasetID
 	schemaName string
+}
+
+func (q *BigQueryQuirks) CreateSampleTable(tableName string, r arrow.Record) error {
+	var buf bytes.Buffer
+
+	w, err := pqarrow.NewFileWriter(
+		r.Schema(),
+		&buf,
+		parquet.NewWriterProperties(parquet.WithAllocator(q.mem)),
+		pqarrow.NewArrowWriterProperties(pqarrow.WithAllocator(q.mem)),
+	)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	if err = w.Write(r); err != nil {
+		return err
+	}
+
+	if err = w.Close(); err != nil {
+		return err
+	}
+
+	src := bigquery.NewReaderSource(&buf)
+	src.SourceFormat = bigquery.Parquet
+
+	loader := q.client.Dataset(q.schemaName).Table(tableName).LoaderFrom(src)
+	job, err := loader.Run(q.ctx)
+	if err != nil {
+		return err
+	}
+
+	status, err := job.Wait(q.ctx)
+	return errors.Join(err, status.Err())
 }
 
 func (q *BigQueryQuirks) SetupDriver(t *testing.T) adbc.Driver {
@@ -58,10 +97,8 @@ func (q *BigQueryQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
 
 func (q *BigQueryQuirks) DatabaseOptions() map[string]string {
 	return map[string]string{
-		driver.OptionStringAuthType:        q.authType,
-		driver.OptionStringAuthCredentials: q.authValue,
-		driver.OptionStringProjectID:       q.catalogName,
-		driver.OptionStringDatasetID:       q.schemaName,
+		driver.OptionStringProjectID: q.catalogName,
+		driver.OptionStringDatasetID: q.schemaName,
 	}
 }
 
@@ -283,7 +320,7 @@ func (q *BigQueryQuirks) Alloc() memory.Allocator                     { return q
 func (q *BigQueryQuirks) BindParameter(_ int) string                  { return "?" }
 func (q *BigQueryQuirks) SupportsBulkIngest(string) bool              { return false }
 func (q *BigQueryQuirks) SupportsConcurrentStatements() bool          { return false }
-func (q *BigQueryQuirks) SupportsCurrentCatalogSchema() bool          { return false }
+func (q *BigQueryQuirks) SupportsCurrentCatalogSchema() bool          { return true }
 func (q *BigQueryQuirks) SupportsExecuteSchema() bool                 { return false }
 func (q *BigQueryQuirks) SupportsGetSetOptions() bool                 { return true }
 func (q *BigQueryQuirks) SupportsPartitionedData() bool               { return false }
@@ -318,139 +355,39 @@ func (q *BigQueryQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 }
 
 func (q *BigQueryQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.DataType) arrow.Metadata {
+	metadata := map[string]string{
+		"DefaultValueExpression": "",
+		"Description":            "",
+		"Repeated":               "false",
+		"Required":               "false",
+	}
+
 	switch dt.ID() {
 	case arrow.STRING:
-		return arrow.MetadataFrom(map[string]string{
-			"DATA_TYPE": "VARCHAR(16777216)", "PRIMARY_KEY": "N",
-		})
+		metadata["Collation"] = ""
+		metadata["MaxLength"] = "0"
+		metadata["Type"] = "STRING"
 	case arrow.INT64:
-		return arrow.MetadataFrom(map[string]string{
-			"DATA_TYPE": "NUMBER(38,0)", "PRIMARY_KEY": "N",
-		})
+		metadata["Type"] = "INTEGER"
 	}
-	return arrow.Metadata{}
+
+	return arrow.MetadataFrom(metadata)
 }
 
-func (q *BigQueryQuirks) createTempSchema(wait time.Duration) string {
-	ctx := context.Background()
-	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
-	tmpDriver := driver.NewDriver(mem)
-	db, err := tmpDriver.NewDatabase(q.DatabaseOptions())
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
-	cnxn, err := db.Open(ctx)
-	if err != nil {
-		panic(err)
-	}
-	defer cnxn.Close()
-
-	stmt, err := cnxn.NewStatement()
-	if err != nil {
-		panic(err)
-	}
-	defer stmt.Close()
-
-	err = stmt.SetOption(driver.OptionBoolQueryUseLegacySQL, "false")
-	if err != nil {
-		panic(err)
-	}
-
+func createTempSchema(ctx context.Context, client *bigquery.Client) string {
 	schemaName := strings.ToUpper("ADBC_TESTING_" + strings.ReplaceAll(uuid.New().String(), "-", "_"))
-	err = stmt.SetSqlQuery(fmt.Sprintf("CREATE SCHEMA %s", schemaName))
-	if err != nil {
-		panic(err)
-	}
-	_, err = stmt.ExecuteUpdate(ctx)
-	if err != nil {
-		panic(err)
-	}
 
-	// wait for some time before accessing it
-	// BigQuery needs some time to make the table available
-	// otherwise the query will fail with error saying the table cannot be found
-	time.Sleep(wait)
+	dataset := client.Dataset(schemaName)
+	err := dataset.Create(ctx, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	return schemaName
 }
 
-func createTempTable(q *BigQueryQuirks, schema string, wait time.Duration) string {
-	ctx := context.Background()
-	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
-	tmpDriver := driver.NewDriver(mem)
-	db, err := tmpDriver.NewDatabase(q.DatabaseOptions())
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
-	cnxn, err := db.Open(ctx)
-	if err != nil {
-		panic(err)
-	}
-	defer cnxn.Close()
-
-	stmt, err := cnxn.NewStatement()
-	if err != nil {
-		panic(err)
-	}
-	defer stmt.Close()
-
-	err = stmt.SetOption(driver.OptionBoolQueryUseLegacySQL, "false")
-	if err != nil {
-		panic(err)
-	}
-
-	tableName := strings.ToUpper("ADBC_TABLE_" + strings.ReplaceAll(uuid.New().String(), "-", "_"))
-	query := fmt.Sprintf("CREATE OR REPLACE TABLE `%s.%s` %s", q.schemaName, tableName, schema)
-	err = stmt.SetSqlQuery(query)
-	if err != nil {
-		panic(err)
-	}
-	_, err = stmt.ExecuteUpdate(ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	// wait for some time before accessing it
-	// BigQuery needs some time to make the table available
-	// otherwise the query will fail with error saying the table cannot be found
-	time.Sleep(wait)
-
-	return tableName
-}
-
-func (q *BigQueryQuirks) dropTempSchema() {
-	ctx := context.Background()
-	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
-	tmpDriver := driver.NewDriver(mem)
-	db, err := tmpDriver.NewDatabase(q.DatabaseOptions())
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
-	cnxn, err := db.Open(ctx)
-	if err != nil {
-		panic(err)
-	}
-	defer cnxn.Close()
-
-	stmt, err := cnxn.NewStatement()
-	if err != nil {
-		panic(err)
-	}
-	defer stmt.Close()
-
-	query := fmt.Sprintf("DROP SCHEMA `%s.%s`", q.catalogName, q.schemaName)
-	err = stmt.SetSqlQuery(query)
-	if err != nil {
-		panic(err)
-	}
-	_, err = stmt.ExecuteUpdate(ctx)
-	if err != nil {
+func dropTempSchema(ctx context.Context, client *bigquery.Client, schemaName string) {
+	if err := client.Dataset(schemaName).DeleteWithContents(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -581,67 +518,40 @@ func buildSamplePrimitiveTypeRecord(mem memory.Allocator, schema, bigquery *arro
 }
 
 func withQuirks(t *testing.T, fn func(quirks *BigQueryQuirks)) {
-	// set either env var for authentication
-	//
-	// - BIGQUERY_JSON_CREDENTIAL_FILE
-	//     Path to the JSON credential file
-	//
-	// - BIGQUERY_JSON_CREDENTIAL_STRING
-	//     Store the whole JSON credential content, something like
-	//
-	//     {
-	//       "account": "",
-	//       "client_id": "123456789012-1234567890abcdefabcdefabcdefabcd.apps.googleusercontent.com",
-	//       "client_secret": "d-SECRETSECRETSECRETSECR",
-	//       "refresh_token": "1//1234567890abcdefabcdefabcdef-abcdefabcd-abcdefabcdefabcdefabcdefab-abcdefabcdefabcdefabcdefabcdef-ab",
-	//       "type": "authorized_user",
-	//       "universe_domain": "googleapis.com"
-	//     }
-	authType := ""
-	authValue := ""
-	jsonCredentialString := os.Getenv("BIGQUERY_JSON_CREDENTIAL_STRING")
-	if len(jsonCredentialString) > 0 {
-		authType = driver.OptionValueAuthTypeJSONCredentialString
-		authValue = jsonCredentialString
-	} else {
-		jsonCredentialFile := os.Getenv("BIGQUERY_JSON_CREDENTIAL_FILE")
-		if len(jsonCredentialFile) > 0 {
-			authType = driver.OptionValueAuthTypeJSONCredentialFile
-			authValue = jsonCredentialFile
-		} else {
-			t.Skip("no BIGQUERY_JSON_CREDENTIAL_STRING or BIGQUERY_JSON_CREDENTIAL_FILE defined, skip bigquery driver tests")
-		}
-	}
+	ctx := context.Background()
 
-	// env var BIGQUERY_PROJECT_ID should be set
-	//
-	// for example, the sample table provide by Google has the following values
-	// https://cloud.google.com/bigquery/public-data#sample_tables
-	//
-	// export BIGQUERY_PROJECT_ID=bigquery-public-data
-	projectID := os.Getenv("BIGQUERY_PROJECT_ID")
-	if projectID == "" {
-		t.Skip("no BIGQUERY_PROJECT_ID defined, skip bigquery driver tests")
+	// Detect ProjectID from Application Default Credentials
+	// See: https://cloud.google.com/docs/authentication/application-default-credentials
+	// Can be overridden by setting env var GOOGLE_CLOUD_PROJECT
+	client, err := bigquery.NewClient(ctx, bigquery.DetectProjectID)
+	if err != nil {
+		panic(err)
 	}
 
 	// avoid multiple runs clashing by operating in a fresh schema and then
 	// dropping that schema when we're done.
-	q := &BigQueryQuirks{authType: authType, authValue: authValue, catalogName: projectID}
-	q.schemaName = q.createTempSchema(5 * time.Second)
+	q := &BigQueryQuirks{
+		ctx:         ctx,
+		client:      client,
+		catalogName: client.Project(),
+		schemaName:  createTempSchema(ctx, client),
+	}
+
 	t.Cleanup(func() {
-		q.dropTempSchema()
+		dropTempSchema(ctx, client, q.schemaName)
 	})
+
 	fn(q)
 }
 
 // todo: finish other callbacks and make this validation test suite pass
-//func TestValidation(t *testing.T) {
-//	withQuirks(t, func(q *BigQueryQuirks) {
-//		suite.Run(t, &validation.DatabaseTests{Quirks: q})
-//		suite.Run(t, &validation.ConnectionTests{Quirks: q})
-//		suite.Run(t, &validation.StatementTests{Quirks: q})
-//	})
-//}
+func TestValidation(t *testing.T) {
+	withQuirks(t, func(q *BigQueryQuirks) {
+		suite.Run(t, &validation.DatabaseTests{Quirks: q})
+		suite.Run(t, &validation.ConnectionTests{Quirks: q})
+		suite.Run(t, &validation.StatementTests{Quirks: q})
+	})
+}
 
 func TestBigQuery(t *testing.T) {
 	withQuirks(t, func(q *BigQueryQuirks) {
@@ -709,10 +619,7 @@ func (suite *BigQueryTests) TestNewDatabaseGetSetOptions() {
 }
 
 func (suite *BigQueryTests) TestEmptyResultSet() {
-	// Google enforces `FROM` when `WHERE` appears in a query
-	tableName := createTempTable(suite.Quirks, "(int64s INTEGER)", 1*time.Second)
-	query := fmt.Sprintf("SELECT 42 FROM `%s.%s` WHERE 1=0", suite.Quirks.schemaName, tableName)
-	suite.Require().NoError(suite.stmt.SetSqlQuery(query))
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM UNNEST([])"))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
@@ -1352,3 +1259,5 @@ func (suite *BigQueryTests) TestSqlIngestStructType() {
 	suite.False(rdr.Next())
 	suite.Require().NoError(rdr.Err())
 }
+
+var _ validation.DriverQuirks = (*BigQueryQuirks)(nil)

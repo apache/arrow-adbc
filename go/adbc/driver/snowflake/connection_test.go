@@ -294,6 +294,20 @@ func TestPrepareTablesSQL(t *testing.T) {
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for Tables is not being generated")
 }
 
+func TestPrepareTablesSQLNoMatchingCatalogs(t *testing.T) {
+	catalogNames := []string{}
+	catalogPattern := "DEMO_DB"
+	schemaPattern := "PUBLIC"
+	tableNamePattern := "ADBC-TABLE"
+	tableType := [2]string{"BASE TABLE", "VIEW"}
+
+	expected := ""
+	actual, queryArgs := prepareTablesSQL(catalogNames, &catalogPattern, &schemaPattern, &tableNamePattern, tableType[:])
+
+	assert.Equal(t, expected, actual)
+	assert.Nil(t, queryArgs)
+}
+
 func TestPrepareColumnsSQLNoFilter(t *testing.T) {
 	catalogNames := [2]string{"DEMO_DB", "DEMOADB"}
 	catalogPattern := ""
@@ -350,6 +364,21 @@ func TestPrepareColumnsSQL(t *testing.T) {
 
 	assert.True(t, areStringsEquivalent(catalogPattern+","+schemaPattern+","+tableNamePattern+","+columnNamePattern, strings.Join(stringqueryArgs, ",")), "The expected SCHEMA_NAME is not being generated")
 	assert.True(t, areStringsEquivalent(expected, actual), "The expected SQL query for Tables is not being generated")
+}
+
+func TestPrepareColumnsSQLNoMatchingCatalogs(t *testing.T) {
+	catalogNames := []string{}
+	catalogPattern := "DEMO_DB"
+	schemaPattern := "PUBLIC"
+	tableNamePattern := "ADBC-TABLE"
+	columnNamePattern := "creationDate"
+	tableType := [2]string{"BASE TABLE", "VIEW"}
+
+	expected := ""
+	actual, queryArgs := prepareColumnsSQL(catalogNames, &catalogPattern, &schemaPattern, &tableNamePattern, &columnNamePattern, tableType[:])
+
+	assert.Equal(t, expected, actual)
+	assert.Nil(t, queryArgs)
 }
 
 func areStringsEquivalent(str1 string, str2 string) bool {
