@@ -1404,6 +1404,31 @@ TEST_F(PostgresStatementTest, Cancel) {
   ASSERT_NE(0, AdbcErrorGetDetailCount(detail));
 }
 
+TEST_F(PostgresStatementTest, MultipleStatementsSingleQuery) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  const char* query = R"(DROP TABLE IF EXISTS test_query_statements;
+            CREATE TABLE test_query_statements (ints INT);
+            INSERT INTO test_query_statements VALUES((1));
+            INSERT INTO test_query_statements VALUES((2));
+            INSERT INTO test_query_statements VALUES((3));)";
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(&statement, "SELECT * FROM test_query_statements", &error),
+      IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+  reader.GetSchema();
+  ASSERT_THAT(reader.MaybeNext(), adbc_validation::IsOkErrno());
+  ASSERT_EQ(reader.array->length, 3);
+}
+
 struct TypeTestCase {
   std::string name;
   std::string sql_type;
