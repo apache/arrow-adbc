@@ -21,6 +21,8 @@ file.copy("../../c/include/arrow-adbc/adbc.h", "src/arrow-adbc/adbc.h")
 source_files <- list.files("../../c", "\\.(h|c|cc|hpp)$", recursive = TRUE)
 source_files <- source_files[!grepl("_test\\.cc", source_files)]
 source_files <- source_files[!grepl("^(build|out)/", source_files)]
+# backward C++ causes CRAN warnings and the drivers do not use it
+source_files <- source_files[!grepl("^vendor/backward", source_files)]
 source_files <- file.path("c", source_files)
 src <- file.path("../..", source_files)
 dst <- file.path("src", source_files)
