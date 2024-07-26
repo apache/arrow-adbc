@@ -77,10 +77,10 @@ The following table depicts how the Spark ADBC driver converts a Spark type to a
 | BINARY               | Binary     | byte[] |
 | BOOLEAN              | Boolean    | bool |
 | CHAR                 | String     | string |
-| DATE                 | String     | string |
-| DECIMAL              | String     | string |
+| DATE*                | *String*   | *string* |
+| DECIMAL*             | *String*   | *string* |
 | DOUBLE               | Double     | double |
-| FLOAT                | Double     | double |
+| FLOAT                | *Double*   | *double* |
 | INT                  | Int32      | int |
 | INTERVAL_DAY_TIME+   | String     | string |
 | INTERVAL_YEAR_MONTH+ | String     | string |
@@ -89,13 +89,13 @@ The following table depicts how the Spark ADBC driver converts a Spark type to a
 | SMALLINT             | Int16      | short |
 | STRING               | String     | string |
 | STRUCT*              | String     | string |
-| TIMESTAMP            | String     | string |
+| TIMESTAMP*           | *String*   | *string* |
 | TINYINT              | Int8       | sbyte |
 | UNION                | String     | string |
 | USER_DEFINED         | String     | string |
 | VARCHAR              | String     | string |
 
-\* Complex types are returned as strings<br>
+\* Types are returned as strings instead of "native" types<br>
 \+ Interval types are returned as strings
 
 ## Supported Variants
