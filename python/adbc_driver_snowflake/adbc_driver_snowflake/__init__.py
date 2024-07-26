@@ -112,6 +112,24 @@ class StatementOptions(enum.Enum):
     #: Number of concurrent streams being prefetched for a result set.
     #: Defaults to 10.
     PREFETCH_CONCURRENCY = "adbc.snowflake.rpc.prefetch_concurrency"
+    #: Number of parquet files to write in parallel for bulk ingestion
+    #: Defaults to NumCPU
+    INGEST_WRITER_CONCURRENCY = "adbc.snowflake.statement.ingest_writer_concurrency"
+    #: Number of parquet files to upload in parallel. Greater concurrency can
+    #: smooth out congestion and make use of available network bandwidth but will
+    #: increase memory utilization. Cannot be negative. Defaults to 8
+    INGEST_UPLOAD_CONCURRENCY = "adbc.snowflake.statement.ingest_upload_concurrency"
+    #: Maximum number of COPY operations to run concurrently for bulk ingestion.
+    #: Bulk ingestion performance is optimized by executing COPY queries as files are
+    #: still being uploaded, Snowflake COPY speed scales with warehouse size. So smaller
+    #: warehouses might benefit from a higher setting to prevent a long-running COPY
+    #: query from blocking others from being loaded. Default is 4.
+    INGEST_COPY_CONCURRENCY = "adbc.snowflake.statement.ingest_copy_concurrency"
+    #: Approximate size of Parquet files written during ingestion. Actual size will be
+    #: slightly larger due to size of footer/metadata. Does not account for batch size,
+    #: so if the input stream produces very large batches, you'll get similar sized
+    #: parquet files. Default is 10MB
+    INGEST_TARGET_FILE_SIZE = "adbc.snowflake.statement.ingest_target_file_size"
 
 
 def connect(

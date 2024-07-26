@@ -673,6 +673,47 @@ TEST_F(PostgresConnectionTest, MetadataSetCurrentDbSchema) {
   ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
 }
 
+TEST_F(PostgresConnectionTest, MetadataGetSchemaCaseSensitiveTable) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  // Create sample table
+  {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value,
+                                         "DROP TABLE IF EXISTS \"Uppercase\"", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement.value, "CREATE TABLE \"Uppercase\" (ints INT, strs TEXT)", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  // Check its schema
+  nanoarrow::UniqueSchema schema;
+  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, nullptr, nullptr, "Uppercase",
+                                           schema.get(), &error),
+              IsOkStatus(&error));
+
+  ASSERT_NE(schema->release, nullptr);
+  ASSERT_STREQ(schema->format, "+s");
+  ASSERT_EQ(schema->n_children, 2);
+  ASSERT_STREQ(schema->children[0]->format, "i");
+  ASSERT_STREQ(schema->children[1]->format, "u");
+  ASSERT_STREQ(schema->children[0]->name, "ints");
+  ASSERT_STREQ(schema->children[1]->name, "strs");
+
+  // Do we have to release the connection here?
+}
+
 TEST_F(PostgresConnectionTest, MetadataGetStatistics) {
   if (!quirks()->supports_statistics()) {
     GTEST_SKIP();

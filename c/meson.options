@@ -18,6 +18,12 @@
 option('tests', type: 'boolean', description: 'Build tests', value: false)
 option('benchmarks', type: 'boolean', description: 'Build benchmarks', value: false)
 option(
+  'bigquery',
+  type: 'boolean',
+  description: 'Build ADBC BigQuery driver',
+  value: false
+)
+option(
   'flightsql',
   type: 'boolean',
   description: 'Build ADBC FlightSQL driver',

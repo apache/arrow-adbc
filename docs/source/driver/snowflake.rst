@@ -285,23 +285,23 @@ The following informal benchmark demonstrates expected performance using default
 The default settings for ingestion should be well balanced for many real-world configurations. If required, performance
 and resource usage may be tuned with the following options on the :cpp:class:`AdbcStatement` object:
 
-``adbc.snowflake.rpc.ingest_writer_concurrency``
+``adbc.snowflake.statement.ingest_writer_concurrency``
     Number of Parquet files to write in parallel. Default attempts to maximize workers based on logical cores detected,
     but may need to be adjusted if running in a constrained environment. If set to 0, default value is used. Cannot be negative.
 
-``adbc.snowflake.rpc.ingest_upload_concurrency``
+``adbc.snowflake.statement.ingest_upload_concurrency``
     Number of Parquet files to upload in parallel. Greater concurrency can smooth out TCP congestion and help make
     use of available network bandwith, but will increase memory utilization. Default is 8. If set to 0, default value is used.
     Cannot be negative.
 
-``adbc.snowflake.rpc.ingest_copy_concurrency``
+``adbc.snowflake.statement.ingest_copy_concurrency``
     Maximum number of COPY operations to run concurrently. Bulk ingestion performance is optimized by executing COPY
     queries as files are still being uploaded. Snowflake COPY speed scales with warehouse size, so smaller warehouses
     may benefit from setting this value higher to ensure long-running COPY queries do not block newly uploaded files
     from being loaded. Default is 4. If set to 0, only a single COPY query will be executed as part of ingestion,
     once all files have finished uploading. Cannot be negative.
 
-``adbc.snowflake.rpc.ingest_target_file_size``
+``adbc.snowflake.statement.ingest_target_file_size``
     Approximate size of Parquet files written during ingestion. Actual size will be slightly larger, depending on
     size of footer/metadata. Default is 10 MB. If set to 0, file size has no limit. Cannot be negative.
 
