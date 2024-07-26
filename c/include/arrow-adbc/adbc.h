@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-/// \file adbc.h ADBC: Arrow Database connectivity
+/// \file arrow-adbc/adbc.h ADBC: Arrow Database connectivity
 ///
 /// An Arrow-based interface between applications and database
 /// drivers.  ADBC aims to provide a vendor-independent API for SQL
