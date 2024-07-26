@@ -59,8 +59,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 table.TableName,
                 columnName,
                 value,
-                formattedValue,
-                callDelete: !IsHiveServer2Protocol);
+                formattedValue);
         }
 
         /// <summary>
@@ -79,8 +78,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 table.TableName,
                 columnName,
                 value,
-                formattedValue,
-                callDelete: !IsHiveServer2Protocol);
+                formattedValue);
         }
 
         /// <summary>

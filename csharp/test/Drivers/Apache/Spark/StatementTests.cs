@@ -100,8 +100,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             Statement.SetOption(SparkStatement.Options.PollTimeMilliseconds, "100");
             Statement.SetOption(SparkStatement.Options.BatchSize, "10");
             using TemporaryTable temporaryTable = await NewTemporaryTableAsync(Statement, $"{columnName} INT");
-            await ValidateInsertSelectDeleteSingleValueAsync(temporaryTable.TableName, columnName, 1,
-                callDelete: !IsHiveServer2Protocol);
+            await ValidateInsertSelectDeleteSingleValueAsync(temporaryTable.TableName, columnName, 1);
         }
     }
 }

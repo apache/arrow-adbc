@@ -58,20 +58,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [MemberData(nameof(TimestampData), "TIMESTAMP_LTZ")]
         public async Task TestTimestampData(DateTimeOffset value, string columnType)
         {
-            Skip.If(IsHiveServer2Protocol && columnType.Equals("TIMESTAMP_LTZ"));
+            Skip.If((VendorVersionAsVersion < Version.Parse("3.4.0")) && (columnType.Equals("TIMESTAMP_LTZ") || value == DateTimeOffset.MaxValue));
 
             string columnName = "TIMESTAMPTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
 
-            string formattedValue = $"{value.ToString(IsHiveServer2Protocol ? DateTimeFormat : DateTimeZoneFormat, CultureInfo.InvariantCulture)}";
-            DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, IsHiveServer2Protocol ? DateTimeFormat : DateTimeZoneFormat, CultureInfo.InvariantCulture);
+            string format = GetValueForProtocolVersion(DateTimeFormat, DateTimeZoneFormat)!;
+            string formattedValue = $"{value.ToString(format, CultureInfo.InvariantCulture)}";
+            DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, format, CultureInfo.InvariantCulture);
 
+            object expectedValue = GetValueForProtocolVersion(formattedValue, truncatedValue)!;
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
-                IsHiveServer2Protocol ? formattedValue : truncatedValue,
-                "TO_TIMESTAMP(" + QuoteValue(formattedValue) + ")",
-                callDelete: !IsHiveServer2Protocol);
+                expectedValue,
+                "TO_TIMESTAMP(" + QuoteValue(formattedValue) + ")");
         }
 
         /// <summary>
@@ -82,7 +83,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestTimestampNoTimezoneData(DateTimeOffset value, string columnType)
         {
             // Note: Minimum value falls outside range of valid values on server when no time zone is included. Cannot be selected
-            Skip.If(value == DateTimeOffset.MinValue || IsHiveServer2Protocol);
+            Skip.If(value == DateTimeOffset.MinValue);
 
             string columnName = "TIMESTAMPTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
@@ -95,8 +96,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 columnName,
                 // Remove timezone offset
                 new DateTimeOffset(truncatedValue.DateTime, TimeSpan.Zero),
-                QuoteValue(formattedValue),
-                callDelete: !IsHiveServer2Protocol);
+                QuoteValue(formattedValue));
         }
 
         /// <summary>
@@ -112,13 +112,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string formattedValue = $"{value.ToString(DateFormat, CultureInfo.InvariantCulture)}";
             DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, DateFormat, CultureInfo.InvariantCulture);
 
+            // Remove timezone offset
+            object expectedValue = GetValueForProtocolVersion(formattedValue, new DateTimeOffset(truncatedValue.DateTime, TimeSpan.Zero))!;
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
-                // Remove timezone offset
-                IsHiveServer2Protocol ? formattedValue : new DateTimeOffset(truncatedValue.DateTime, TimeSpan.Zero),
-                "TO_DATE(" + QuoteValue(formattedValue) + ")",
-                callDelete: !IsHiveServer2Protocol);
+                expectedValue,
+                "TO_DATE(" + QuoteValue(formattedValue) + ")");
         }
 
         /// <summary>

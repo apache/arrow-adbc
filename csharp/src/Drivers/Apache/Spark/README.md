@@ -68,7 +68,7 @@ The following table depicts how the Spark ADBC driver converts a Spark type to a
 | USER_DEFINED         | String     | string |
 | VARCHAR              | String     | string |
 
-### Apache Spark
+### Apache Spark (Native)
 
 | Spark Type           | Arrow Type | C# Type |
 | :---                 | :---:      | :---:   |

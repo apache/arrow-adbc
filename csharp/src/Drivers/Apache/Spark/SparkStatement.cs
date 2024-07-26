@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -65,10 +66,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
         }
 
-        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) =>
-            connection.ProtocolVersion is >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V1 and <= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7
-            ? new SparkReader(statement, schema)
-            : new HiveServer2Reader(statement, schema);
+        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema)
+        {
+            return connection.ProtocolVersion switch
+            {
+                var protocol when protocol >= TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V1 && protocol <= TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11
+                    => new HiveServer2Reader(statement, schema),
+                var protocol when protocol >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V1 && protocol <= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7
+                    => new SparkReader(statement, schema),
+                _ => throw new NotSupportedException($"Unsuppored protocol version '{connection.ProtocolVersion}'"),
+            };
+        }
 
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.

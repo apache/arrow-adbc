@@ -46,11 +46,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             await ExecuteStatementAsync();
             await HiveServer2Connection.PollForResponseAsync(operationHandle!, connection.Client, PollTimeMilliseconds);
-            Schema schema = await HiveServer2Connection.GetResultSetSchemaAsync(operationHandle!, connection.Client, connection.ProtocolVersion);
+            Schema schema = await GetResultSetSchema();
 
             // TODO: Ensure this is set dynamically based on server capabilities
             return new QueryResult(-1, NewReader(this, schema));
         }
+
+        private Task<Schema> GetResultSetSchema() =>
+            HiveServer2Connection.GetResultSetSchemaAsync(operationHandle!, connection.Client, connection.ProtocolVersion);
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {

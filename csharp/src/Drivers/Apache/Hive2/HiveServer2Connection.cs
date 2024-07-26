@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -158,6 +159,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 this.client = null;
             }
         }
+
+        protected internal bool IsHiveServer2Protocol => GetIsHiveServer2Protocol(ProtocolVersion);
+
+        protected internal bool IsSparkProtocol => GetIsSparkProtocol(ProtocolVersion);
+
+        internal static bool GetIsHiveServer2Protocol(TProtocolVersion protocolVersion) =>
+            protocolVersion is >= TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V1 and <= TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11;
+
+        internal static bool GetIsSparkProtocol(TProtocolVersion protocolVersion) =>
+            protocolVersion is >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V1 and <= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7;
 
         internal static async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, TProtocolVersion protocolVersion, CancellationToken cancellationToken = default)
         {

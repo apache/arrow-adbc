@@ -88,15 +88,27 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
             string[] queries = GetQueries();
 
-            List<int> expectedResults = new() {
-                -1, // DROP   TABLE
-                -1, // CREATE TABLE
-                1,  // INSERT
-                1,  // INSERT
-                1,  // INSERT
-                //1,  // UPDATE
-                //1,  // DELETE
-            };
+            List<int> expectedResults = VendorVersionAsVersion < Version.Parse("3.4.0")
+                ? new()
+                {
+                    -1, // DROP   TABLE
+                    -1, // CREATE TABLE
+                    1,  // INSERT
+                    1,  // INSERT
+                    1,  // INSERT
+                    //1,  // UPDATE
+                    //1,  // DELETE
+                }
+                : new List<int>()
+                {
+                    -1, // DROP   TABLE
+                    -1, // CREATE TABLE
+                    1,  // INSERT
+                    1,  // INSERT
+                    1,  // INSERT
+                    1,  // UPDATE
+                    1,  // DELETE
+                };
 
             for (int i = 0; i < queries.Length; i++)
             {
@@ -106,7 +118,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
                 UpdateResult updateResult = statement.ExecuteUpdate();
 
-                //Assert.Equal(expectedResults[i], updateResult.AffectedRows);
+                if (ValidateAffectedRows) Assert.Equal(expectedResults[i], updateResult.AffectedRows);
             }
         }
 
@@ -549,7 +561,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             statement.SqlQuery = GetInsertValueStatement(temporaryTable.TableName, "INDEX", "1");
             UpdateResult updateResult = await statement.ExecuteUpdateAsync();
 
-            //Assert.Equal(1, updateResult.AffectedRows);
+            if (ValidateAffectedRows) Assert.Equal(1, updateResult.AffectedRows);
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()

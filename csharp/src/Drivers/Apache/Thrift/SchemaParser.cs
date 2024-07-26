@@ -16,6 +16,7 @@
 */
 
 using System;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -77,20 +78,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
         }
 
         private static IArrowType GetNullType(TProtocolVersion protocolVersion) =>
-            IsHiveServer2Protocol(protocolVersion) ? StringType.Default : NullType.Default;
+            HiveServer2Connection.GetIsHiveServer2Protocol(protocolVersion) ? StringType.Default : NullType.Default;
 
         private static IArrowType GetDateType(TProtocolVersion protocolVersion) =>
-            IsHiveServer2Protocol(protocolVersion) ? global::Apache.Arrow.Types.StringType.Default : global::Apache.Arrow.Types.Date32Type.Default;
+            HiveServer2Connection.GetIsHiveServer2Protocol(protocolVersion) ? StringType.Default : Date32Type.Default;
 
         private static IArrowType GetFloatType(TProtocolVersion protocolVersion) =>
-            IsHiveServer2Protocol(protocolVersion) ? DoubleType.Default : FloatType.Default;
+            HiveServer2Connection.GetIsHiveServer2Protocol(protocolVersion) ? DoubleType.Default : FloatType.Default;
 
         private static IArrowType GetTimestampType(TProtocolVersion protocolVersion) =>
-            IsHiveServer2Protocol(protocolVersion) ? StringType.Default : new TimestampType(TimeUnit.Microsecond, (string?)null);
+            HiveServer2Connection.GetIsHiveServer2Protocol(protocolVersion) ? StringType.Default : new TimestampType(TimeUnit.Microsecond, (string?)null);
 
         private static IArrowType GetDecimal128Type(TPrimitiveTypeEntry thriftType, TProtocolVersion protocolVersion)
         {
-            if (!IsSparkProtocol(protocolVersion))
+            if (HiveServer2Connection.GetIsSparkProtocol(protocolVersion))
             {
                 int precision = thriftType.TypeQualifiers.Qualifiers["precision"].I32Value;
                 int scale = thriftType.TypeQualifiers.Qualifiers["scale"].I32Value;
@@ -98,11 +99,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             }
             return StringType.Default;
         }
-
-        private static bool IsHiveServer2Protocol(TProtocolVersion protocolVersion) =>
-            protocolVersion is TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V1 and <= TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11;
-
-        private static bool IsSparkProtocol(TProtocolVersion protocolVersion) =>
-            protocolVersion is >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V1 and <= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7;
     }
 }

@@ -31,9 +31,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         protected override string TestConfigVariable => "SPARK_TEST_CONFIG_FILE";
 
-        protected override string SqlDataResourceLocation => "Spark/Resources/SparkData.sql";
+        protected override string SqlDataResourceLocation => VendorVersionAsVersion >= Version.Parse("3.4.0")
+            ? "Spark/Resources/SparkData-3.4.sql"
+            : "Spark/Resources/SparkData.sql";
+
+        protected override int ExpectedColumnCount => VendorVersionAsVersion >= Version.Parse("3.4.0") ? 19 : 17;
 
         protected override AdbcDriver NewDriver => new SparkDriver();
+
+        protected string? GetValueForProtocolVersion(string? hiveValue, string? databrickValue) => IsHiveServer2Protocol ? hiveValue : databrickValue;
+
+        protected object? GetValueForProtocolVersion(object? hiveValue, object? databrickValue) => IsHiveServer2Protocol ? hiveValue : databrickValue;
 
         protected override async ValueTask<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string columns)
         {
@@ -88,11 +96,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         protected TProtocolVersion ProtocolVersion => ((HiveServer2Connection)Connection).ProtocolVersion;
 
-        protected bool IsHiveServer2Protocol =>
-            ProtocolVersion is TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V1 and <= TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11;
+        protected bool IsHiveServer2Protocol => ((HiveServer2Connection)Connection).IsHiveServer2Protocol;
 
-        protected string VendorVersion => ((HiveServer2Connection)Connection).VendorVersion;
+        protected override string VendorVersion => ((HiveServer2Connection)Connection).VendorVersion;
 
-        protected Version VendorVersionAsVersion => new Lazy<Version>(() => new Version(VendorVersion)).Value;
+        protected override bool SupportsDelete => !IsHiveServer2Protocol;
+
+        protected override bool SupportsUpdate => !IsHiveServer2Protocol;
+
+        protected override bool ValidateAffectedRows => !IsHiveServer2Protocol;
     }
 }

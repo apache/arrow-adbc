@@ -50,18 +50,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData(null)]
         [InlineData("")]
         [InlineData("你好")]
-        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.")]
+        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", "3.4.0")]
         [InlineData(" Leading and trailing spaces ")]
-        public async Task TestStringData(string? value)
+        public async Task TestStringData(string? value, string? minVersion = null)
         {
+            Skip.If(IsBelowMinimumVersion(minVersion));
             string columnName = "STRINGTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "STRING"));
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 value,
-                value != null ? QuoteValue(value) : value,
-                callDelete: !IsHiveServer2Protocol);
+                value != null ? QuoteValue(value) : value);
         }
 
         /// <summary>
@@ -71,19 +71,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData(null)]
         [InlineData("")]
         [InlineData("你好")]
-        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.")]
+        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", "3.4.0")]
         [InlineData(" Leading and trailing spaces ")]
-        public async Task TestVarcharData(string? value)
+        public async Task TestVarcharData(string? value, string? minVersion = null)
         {
+            Skip.If(IsBelowMinimumVersion(minVersion));
             string columnName = "VARCHARTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "VARCHAR(100)"));
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 value,
-                value != null ? QuoteValue(value) : value,
-                callDelete: !IsHiveServer2Protocol);
+                value != null ? QuoteValue(value) : value);
         }
+
+        private bool IsBelowMinimumVersion(string? minVersion) => minVersion != null && VendorVersionAsVersion < Version.Parse(minVersion);
 
         /// <summary>
         /// Validates if driver can send and receive specific VARCHAR values correctly.
@@ -92,10 +94,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData(null)]
         [InlineData("")]
         [InlineData("你好")]
-        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.")]
+        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", "3.4.0")]
         [InlineData(" Leading and trailing spaces ")]
-        public async Task TestCharData(string? value)
+        public async Task TestCharData(string? value, string? minVersion = null)
         {
+            Skip.If(IsBelowMinimumVersion(minVersion));
             string columnName = "CHARTYPE";
             int fieldLength = 100;
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, $"CHAR({fieldLength})"));
@@ -106,7 +109,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             await InsertSingleValueAsync(table.TableName, columnName, formattedValue);
             await SelectAndValidateValuesAsync(table.TableName, columnName, paddedValue, 1, formattedValue);
             string whereClause = GetWhereClause(columnName, formattedValue ?? paddedValue);
-            if (!IsHiveServer2Protocol) await DeleteFromTableAsync(table.TableName, whereClause, 1);
+            if (SupportsDelete) await DeleteFromTableAsync(table.TableName, whereClause, 1);
         }
 
         /// <summary>
@@ -122,10 +125,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 table.TableName,
                 columnName,
                 value,
-                value != null ? QuoteValue(value) : value,
-                callDelete: !IsHiveServer2Protocol));
-            AssertContainsAll(new[] { "DELTA_EXCEED_CHAR_VARCHAR_LIMIT", "DeltaInvariantViolationException" }, exception.Message);
-            Assert.Equal("22001", exception.SqlState);
+                value != null ? QuoteValue(value) : value));
+
+            bool version34OrGreater = VendorVersionAsVersion >= Version.Parse("3.4.0");
+            string[] expectedTexts = version34OrGreater
+                ? ["DELTA_EXCEED_CHAR_VARCHAR_LIMIT", "DeltaInvariantViolationException"]
+                : ["Exceeds", "length limitation: 10"];
+            AssertContainsAll(expectedTexts, exception.Message);
+
+            string? expectedSqlState = version34OrGreater ? "22001" : null;
+            Assert.Equal(expectedSqlState, exception.SqlState);
         }
 
     }

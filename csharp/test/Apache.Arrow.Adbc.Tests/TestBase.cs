@@ -59,6 +59,11 @@ namespace Apache.Arrow.Adbc.Tests
         /// </summary>
         protected abstract string TestConfigVariable { get; }
 
+        protected abstract string VendorVersion {  get; }
+
+        protected Version VendorVersionAsVersion => new Lazy<Version>(() => new Version(VendorVersion)).Value;
+
+
         /// <summary>
         /// Creates a temporary table (if possible) using the native SQL dialect.
         /// </summary>
@@ -88,10 +93,18 @@ namespace Apache.Arrow.Adbc.Tests
         /// </summary>
         protected abstract string SqlDataResourceLocation { get; }
 
+        protected abstract int ExpectedColumnCount { get; }
+
         /// <summary>
         /// Creates a new driver.
         /// </summary>
         protected abstract AdbcDriver NewDriver { get; }
+
+        protected abstract bool SupportsDelete {  get; }
+
+        protected abstract bool SupportsUpdate { get; }
+
+        protected abstract bool ValidateAffectedRows { get; }
 
         /// <summary>
         /// Gets the parameters from the test configuration that are passed to the driver as a dictionary.
@@ -198,12 +211,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to insert, select and delete.</param>
         /// <param name="formattedValue">The formated value to insert, select and delete.</param>
         /// <returns></returns>
-        protected async Task ValidateInsertSelectDeleteSingleValueAsync(string selectStatement, string tableName, string columnName, object value, string? formattedValue = null, bool callDelete = true)
+        protected async Task ValidateInsertSelectDeleteSingleValueAsync(string selectStatement, string tableName, string columnName, object value, string? formattedValue = null)
         {
             await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
             await SelectAndValidateValuesAsync(selectStatement, value, 1);
             string whereClause = GetWhereClause(columnName, formattedValue ?? value);
-            if (callDelete) await DeleteFromTableAsync(tableName, whereClause, 1);
+            if (SupportsDelete) await DeleteFromTableAsync(tableName, whereClause, 1);
         }
 
         /// <summary>
@@ -214,12 +227,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to insert, select and delete.</param>
         /// <param name="formattedValue">The formated value to insert, select and delete.</param>
         /// <returns></returns>
-        protected async Task ValidateInsertSelectDeleteSingleValueAsync(string tableName, string columnName, object? value, string? formattedValue = null, bool callDelete = true)
+        protected async Task ValidateInsertSelectDeleteSingleValueAsync(string tableName, string columnName, object? value, string? formattedValue = null)
         {
             await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
             await SelectAndValidateValuesAsync(tableName, columnName, value, 1, formattedValue);
             string whereClause = GetWhereClause(columnName, formattedValue ?? value);
-            if (callDelete) await DeleteFromTableAsync(tableName, whereClause, 1);
+            if (SupportsDelete) await DeleteFromTableAsync(tableName, whereClause, 1);
         }
 
         /// <summary>
@@ -230,13 +243,13 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to insert, select and delete.</param>
         /// <param name="formattedValue">The formated value to insert, select and delete.</param>
         /// <returns></returns>
-        protected async Task ValidateInsertSelectDeleteTwoValuesAsync(string tableName, string columnName, object? value, string? formattedValue = null, bool callDelete = true)
+        protected async Task ValidateInsertSelectDeleteTwoValuesAsync(string tableName, string columnName, object? value, string? formattedValue = null)
         {
             await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
             await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
             await SelectAndValidateValuesAsync(tableName, columnName, value, 2, formattedValue);
             string whereClause = GetWhereClause(columnName, formattedValue ?? value);
-            if (callDelete) await DeleteFromTableAsync(tableName, whereClause, 2);
+            if (SupportsDelete) await DeleteFromTableAsync(tableName, whereClause, 2);
         }
 
         /// <summary>
@@ -251,7 +264,7 @@ namespace Apache.Arrow.Adbc.Tests
             OutputHelper?.WriteLine(insertNumberStatement);
             Statement.SqlQuery = insertNumberStatement;
             UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
-            //Assert.Equal(1, updateResult.AffectedRows);
+            if (ValidateAffectedRows) Assert.Equal(1, updateResult.AffectedRows);
         }
 
         /// <summary>
@@ -279,7 +292,7 @@ namespace Apache.Arrow.Adbc.Tests
             OutputHelper?.WriteLine(deleteNumberStatement);
             Statement.SqlQuery = deleteNumberStatement;
             UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
-            Assert.Equal(expectedRowsAffected, updateResult.AffectedRows);
+            if (ValidateAffectedRows) Assert.Equal(expectedRowsAffected, updateResult.AffectedRows);
         }
 
         /// <summary>
