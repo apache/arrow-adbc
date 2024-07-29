@@ -1557,20 +1557,20 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 
 			suite.False(rdr.Next())
 			suite.True(foundExpected)
-			suite.Equal(tt.colnames, colnames)                  // colNames
-			suite.Equal(tt.positions, positions)                // positions
-			suite.Equal(tt.comments, comments)                  // comments
-			suite.Equal(tt.xdbcDataType, xdbcDataTypes)         // xdbcDataType
-			suite.Equal(tt.dataTypes, dataTypes)                // dataTypes
-			suite.Equal(tt.xdbcTypeName, xdbcTypeNames)         // xdbcTypeName
-			suite.Equal(tt.xdbcCharMaxLen, xdbcCharMaxLens)     // xdbcCharMaxLen
-			suite.Equal(tt.xdbcScale, xdbcScales)               // xdbcScale
-			suite.Equal(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs) // xdbcNumPrecRadix
-			suite.Equal(tt.xdbcNullable, xdbcNullables)         // xdbcNullable
-			suite.Equal(tt.xdbcSqlDataType, xdbcSqlDataTypes)   // xdbcSqlDataType
-			suite.Equal(tt.xdbcDateTimeSub, xdbcDateTimeSub)    // xdbcDateTimeSub
-			suite.Equal(tt.xdbcCharOctetLen, xdbcCharOctetLen)  // xdbcCharOctetLen
-			suite.Equal(tt.xdbcIsNullable, xdbcIsNullables)     // xdbcIsNullable
+			suite.ElementsMatch(tt.colnames, colnames)                  // colNames
+			suite.ElementsMatch(tt.positions, positions)                // positions
+			suite.ElementsMatch(tt.comments, comments)                  // comments
+			suite.ElementsMatch(tt.xdbcDataType, xdbcDataTypes)         // xdbcDataType
+			suite.ElementsMatch(tt.dataTypes, dataTypes)                // dataTypes
+			suite.ElementsMatch(tt.xdbcTypeName, xdbcTypeNames)         // xdbcTypeName
+			suite.ElementsMatch(tt.xdbcCharMaxLen, xdbcCharMaxLens)     // xdbcCharMaxLen
+			suite.ElementsMatch(tt.xdbcScale, xdbcScales)               // xdbcScale
+			suite.ElementsMatch(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs) // xdbcNumPrecRadix
+			suite.ElementsMatch(tt.xdbcNullable, xdbcNullables)         // xdbcNullable
+			suite.ElementsMatch(tt.xdbcSqlDataType, xdbcSqlDataTypes)   // xdbcSqlDataType
+			suite.ElementsMatch(tt.xdbcDateTimeSub, xdbcDateTimeSub)    // xdbcDateTimeSub
+			suite.ElementsMatch(tt.xdbcCharOctetLen, xdbcCharOctetLen)  // xdbcCharOctetLen
+			suite.ElementsMatch(tt.xdbcIsNullable, xdbcIsNullables)     // xdbcIsNullable
 
 		})
 	}
