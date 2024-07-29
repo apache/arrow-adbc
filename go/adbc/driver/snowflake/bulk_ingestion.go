@@ -358,7 +358,7 @@ func writeParquet(
 		}
 
 		bytesWritten += pqWriter.RowGroupTotalBytesWritten()
-		if bytesWritten > int64(targetSize) {
+		if bytesWritten >= int64(targetSize) {
 			return nil
 		}
 	}
