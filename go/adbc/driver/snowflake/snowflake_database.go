@@ -461,6 +461,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		WithCurrentNamespacer(conn).
 		WithTableTypeLister(conn).
 		WithDriverInfoPreparer(conn).
+		WithDbObjectsEnumeratorV2(conn).
 		Connection(), nil
 }
 

@@ -19,6 +19,7 @@ package driverbase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/apache/arrow/go/v18/arrow"
 	"github.com/apache/arrow/go/v18/arrow/array"
 	"github.com/apache/arrow/go/v18/arrow/memory"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -87,6 +89,12 @@ type DbObjectsEnumerator interface {
 	GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error)
 	GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, metadataRecords []internal.Metadata) (map[string][]string, error)
 	GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (map[internal.CatalogAndSchema][]internal.TableInfo, error)
+}
+
+type DbObjectsEnumeratorV2 interface {
+	GetCatalogs(ctx context.Context, catalogFilter *string) ([]string, error)
+	GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) ([]string, error)
+	GetTablesForDBSchemas(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]TableInfo, error)
 }
 
 // Connection is the interface satisfied by the result of the NewConnection constructor,
@@ -258,11 +266,12 @@ func (base *ConnectionImplBase) SetOptionInt(key string, val int64) error {
 type connection struct {
 	ConnectionImpl
 
-	dbObjectsEnumerator DbObjectsEnumerator
-	currentNamespacer   CurrentNamespacer
-	driverInfoPreparer  DriverInfoPreparer
-	tableTypeLister     TableTypeLister
-	autocommitSetter    AutocommitSetter
+	dbObjectsEnumerator   DbObjectsEnumerator
+	dbObjectsEnumeratorV2 DbObjectsEnumeratorV2
+	currentNamespacer     CurrentNamespacer
+	driverInfoPreparer    DriverInfoPreparer
+	tableTypeLister       TableTypeLister
+	autocommitSetter      AutocommitSetter
 }
 
 type ConnectionBuilder struct {
@@ -278,6 +287,14 @@ func (b *ConnectionBuilder) WithDbObjectsEnumerator(helper DbObjectsEnumerator) 
 		panic("nil ConnectionBuilder: cannot reuse after calling Connection()")
 	}
 	b.connection.dbObjectsEnumerator = helper
+	return b
+}
+
+func (b *ConnectionBuilder) WithDbObjectsEnumeratorV2(helper DbObjectsEnumeratorV2) *ConnectionBuilder {
+	if b == nil {
+		panic("nil ConnectionBuilder: cannot reuse after calling Connection()")
+	}
+	b.connection.dbObjectsEnumeratorV2 = helper
 	return b
 }
 
@@ -322,6 +339,99 @@ func (b *ConnectionBuilder) Connection() Connection {
 // GetObjects implements Connection.
 func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	helper := cnxn.dbObjectsEnumerator
+	helper2 := cnxn.dbObjectsEnumeratorV2
+
+	if helper2 != nil {
+		catalogs, err := helper2.GetCatalogs(ctx, catalog)
+		if err != nil {
+			return nil, err
+		}
+
+		addCatalogCh := make(chan GetObjectsInfo, len(catalogs))
+		for _, cat := range catalogs {
+			addCatalogCh <- GetObjectsInfo{CatalogName: cat}
+		}
+
+		close(addCatalogCh) // defer in group
+
+		if depth == adbc.ObjectDepthCatalogs {
+			return buildGetObjectsRecordReader(cnxn.Base().Alloc, addCatalogCh)
+		}
+
+		g, ctxG := errgroup.WithContext(ctx)
+
+		gSchemas, ctxSchemas := errgroup.WithContext(ctxG)
+		addDbSchemasCh := make(chan GetObjectsInfo, len(catalogs))
+		for info := range addCatalogCh {
+			info := info
+			gSchemas.Go(func() error {
+				dbSchemas, err := helper2.GetDBSchemasForCatalog(ctxSchemas, info.CatalogName, dbSchema)
+				if err != nil {
+					return err
+				}
+
+				info.CatalogDbSchemas = make([]DBSchemaInfo, len(dbSchemas))
+				for i, sch := range dbSchemas {
+					info.CatalogDbSchemas[i] = DBSchemaInfo{DbSchemaName: sch}
+				}
+
+				addDbSchemasCh <- info
+
+				return nil
+			})
+		}
+
+		g.Go(func() error { defer close(addDbSchemasCh); return gSchemas.Wait() })
+
+		if depth == adbc.ObjectDepthDBSchemas {
+			rdr, err := buildGetObjectsRecordReader(cnxn.Base().Alloc, addDbSchemasCh)
+			return rdr, errors.Join(err, g.Wait())
+		}
+
+		gTables, ctxTables := errgroup.WithContext(ctxG)
+		addTablesCh := make(chan GetObjectsInfo, len(catalogs))
+		for info := range addDbSchemasCh {
+			info := info
+
+			gTables.Go(func() error {
+				gTablesInner, ctxTablesInner := errgroup.WithContext(ctxTables)
+				dbSchemaInfoCh := make(chan DBSchemaInfo, len(info.CatalogDbSchemas))
+				for _, catalogDbSchema := range info.CatalogDbSchemas {
+					catalogDbSchema := catalogDbSchema
+					gTablesInner.Go(func() error {
+						includeColumns := depth == adbc.ObjectDepthColumns
+						tables, err := helper2.GetTablesForDBSchemas(ctxTablesInner, info.CatalogName, catalogDbSchema.DbSchemaName, tableName, columnName, includeColumns)
+						if err != nil {
+							return err
+						}
+
+						catalogDbSchema.DbSchemaTables = tables
+						dbSchemaInfoCh <- catalogDbSchema
+
+						return nil
+					})
+				}
+
+				gTables.Go(func() error { defer close(dbSchemaInfoCh); return gTablesInner.Wait() })
+
+				var i int
+				for dbSchema := range dbSchemaInfoCh {
+					info.CatalogDbSchemas[i] = dbSchema
+					i++
+				}
+
+				addTablesCh <- info
+
+				return nil
+			})
+		}
+
+		g.Go(func() error { defer close(addTablesCh); return gTables.Wait() })
+
+		rdr, err := buildGetObjectsRecordReader(cnxn.Base().Alloc, addTablesCh)
+		return rdr, errors.Join(err, g.Wait())
+
+	}
 
 	// If the dbObjectsEnumerator has not been set, then the driver implementor has elected to provide their own GetObjects implementation
 	if helper == nil {
@@ -470,6 +580,189 @@ func (cnxn *connection) Close() error {
 	}
 
 	return err
+}
+
+type ConstraintColumnUsage struct {
+	ForeignKeyCatalog  string `json:"fk_catalog"`
+	ForeignKeyDbSchema string `json:"fk_db_schema"`
+	ForeignKeyTable    string `json:"fk_table"`
+	ForeignKeyColumn   string `json:"fk_column_name"`
+}
+
+type ConstraintInfo struct {
+	ConstraintName        string                  `json:"constraint_name"`
+	ConstraintType        string                  `json:"constraint_type"`
+	ConstraintColumnNames []string                `json:"constraint_column_names"`
+	ConstraintColumnUsage []ConstraintColumnUsage `json:"constraint_column_usage"`
+}
+
+type ColumnInfo struct {
+	ColumnName      string `json:"column_name"`
+	OrdinalPosition int32  `json:"ordinal_position"`
+	Remarks         string `json:"remarks"`
+	// TODO: Remaining fields
+}
+
+type TableInfo struct {
+	TableName        string           `json:"table_name"`
+	TableType        string           `json:"table_type"`
+	TableColumns     []ColumnInfo     `json:"table_columns"`
+	TableConstraints []ConstraintInfo `json:"table_constraints"`
+}
+
+type DBSchemaInfo struct {
+	DbSchemaName   string      `json:"db_schema_name"`
+	DbSchemaTables []TableInfo `json:"db_schema_tables"`
+}
+
+type GetObjectsInfo struct {
+	CatalogName      string         `json:"catalog_name"`
+	CatalogDbSchemas []DBSchemaInfo `json:"catalog_db_schemas"`
+}
+
+func buildGetObjectsRecordReader(mem memory.Allocator, in chan GetObjectsInfo) (array.RecordReader, error) {
+	bldr := array.NewRecordBuilder(mem, adbc.GetObjectsSchema)
+	defer bldr.Release()
+
+	var (
+		catalogBldr                       = bldr.Field(0).(*array.StringBuilder)
+		dbSchemasListBldr                 = bldr.Field(1).(*array.ListBuilder)
+		dbSchemasListItemBldr             = dbSchemasListBldr.ValueBuilder().(*array.StructBuilder)
+		dbSchemaNameBldr                  = dbSchemasListItemBldr.FieldBuilder(0).(*array.StringBuilder)
+		dbSchemaTablesListBldr            = dbSchemasListItemBldr.FieldBuilder(1).(*array.ListBuilder)
+		dbSchemaTablesItemBldr            = dbSchemaTablesListBldr.ValueBuilder().(*array.StructBuilder)
+		tableNameBldr                     = dbSchemaTablesItemBldr.FieldBuilder(0).(*array.StringBuilder)
+		tableTypeBldr                     = dbSchemaTablesItemBldr.FieldBuilder(1).(*array.StringBuilder)
+		tableColumnsListBldr              = dbSchemaTablesItemBldr.FieldBuilder(2).(*array.ListBuilder)
+		tableConstraintsListBldr          = dbSchemaTablesItemBldr.FieldBuilder(3).(*array.ListBuilder)
+		tableColumnsListItemBldr          = tableColumnsListBldr.ValueBuilder().(*array.StructBuilder)
+		columnNameBldr                    = tableColumnsListItemBldr.FieldBuilder(0).(*array.StringBuilder)
+		ordinalPositionBldr               = tableColumnsListItemBldr.FieldBuilder(1).(*array.Int32Builder)
+		remarksBldr                       = tableColumnsListItemBldr.FieldBuilder(2).(*array.StringBuilder)
+		xdbcDataTypeBldr                  = tableColumnsListItemBldr.FieldBuilder(3).(*array.Int16Builder)
+		xdbcTypeNameBldr                  = tableColumnsListItemBldr.FieldBuilder(4).(*array.StringBuilder)
+		xdbcColumnSizeBldr                = tableColumnsListItemBldr.FieldBuilder(5).(*array.Int32Builder)
+		xdbcDecimalDigitsBldr             = tableColumnsListItemBldr.FieldBuilder(6).(*array.Int16Builder)
+		xdbcNumPrecRadixBldr              = tableColumnsListItemBldr.FieldBuilder(7).(*array.Int16Builder)
+		xdbcNullableBldr                  = tableColumnsListItemBldr.FieldBuilder(8).(*array.Int16Builder)
+		xdbcColumnDefBldr                 = tableColumnsListItemBldr.FieldBuilder(9).(*array.StringBuilder)
+		xdbcSqlDataTypeBldr               = tableColumnsListItemBldr.FieldBuilder(10).(*array.Int16Builder)
+		xdbcDatetimeSubBldr               = tableColumnsListItemBldr.FieldBuilder(11).(*array.Int16Builder)
+		xdbcCharOctetLengthBldr           = tableColumnsListItemBldr.FieldBuilder(12).(*array.Int32Builder)
+		xdbcIsNullableBldr                = tableColumnsListItemBldr.FieldBuilder(13).(*array.StringBuilder)
+		xdbcScopeCatalogBldr              = tableColumnsListItemBldr.FieldBuilder(14).(*array.StringBuilder)
+		xdbcScopeSchemaBldr               = tableColumnsListItemBldr.FieldBuilder(15).(*array.StringBuilder)
+		xdbcScopeTableBldr                = tableColumnsListItemBldr.FieldBuilder(16).(*array.StringBuilder)
+		xdbcIsAutoincrementBldr           = tableColumnsListItemBldr.FieldBuilder(17).(*array.BooleanBuilder)
+		xdbcIsGeneratedcolumnBldr         = tableColumnsListItemBldr.FieldBuilder(18).(*array.BooleanBuilder)
+		tableConstraintsListItemBldr      = tableConstraintsListBldr.ValueBuilder().(*array.StructBuilder)
+		constraintNameBldr                = tableConstraintsListItemBldr.FieldBuilder(0).(*array.StringBuilder)
+		constraintTypeBldr                = tableConstraintsListItemBldr.FieldBuilder(1).(*array.StringBuilder)
+		constraintColumnNameListBldr      = tableConstraintsListItemBldr.FieldBuilder(2).(*array.ListBuilder)
+		constraintColumnNameListItemBldr  = constraintColumnNameListBldr.ValueBuilder().(*array.StringBuilder)
+		constraintColumnUsageListBldr     = tableConstraintsListItemBldr.FieldBuilder(3).(*array.ListBuilder)
+		constraintColumnUsageListItemBldr = constraintColumnUsageListBldr.ValueBuilder().(*array.StructBuilder)
+		columnUsageCatalogBldr            = constraintColumnUsageListItemBldr.FieldBuilder(0).(*array.StringBuilder)
+		columnUsageSchemaBldr             = constraintColumnUsageListItemBldr.FieldBuilder(1).(*array.StringBuilder)
+		columnUsageTableBldr              = constraintColumnUsageListItemBldr.FieldBuilder(2).(*array.StringBuilder)
+		columnUsageColumnBldr             = constraintColumnUsageListItemBldr.FieldBuilder(3).(*array.StringBuilder)
+	)
+
+	for catalog := range in {
+		catalogBldr.Append(catalog.CatalogName)
+		if len(catalog.CatalogDbSchemas) == 0 {
+			dbSchemasListBldr.AppendNull()
+			continue
+		}
+
+		dbSchemasListBldr.Append(true)
+		for _, schema := range catalog.CatalogDbSchemas {
+			dbSchemasListItemBldr.Append(true)
+			dbSchemaNameBldr.Append(schema.DbSchemaName)
+			if len(schema.DbSchemaTables) == 0 {
+				dbSchemaTablesListBldr.AppendNull()
+				continue
+			}
+
+			dbSchemaTablesListBldr.Append(true)
+			for _, table := range schema.DbSchemaTables {
+				dbSchemaTablesItemBldr.Append(true)
+				tableNameBldr.Append(table.TableName)
+				tableTypeBldr.Append(table.TableType)
+
+				if len(table.TableColumns) == 0 {
+					tableColumnsListBldr.AppendNull()
+				} else {
+					tableColumnsListBldr.Append(true)
+					for _, column := range table.TableColumns {
+						tableColumnsListItemBldr.Append(true)
+						columnNameBldr.Append(column.ColumnName)
+						ordinalPositionBldr.Append(column.OrdinalPosition)
+						remarksBldr.Append(column.Remarks)
+
+						// TODO: XDBC
+						xdbcDataTypeBldr.AppendNull()
+						xdbcTypeNameBldr.AppendNull()
+						xdbcColumnSizeBldr.AppendNull()
+						xdbcDecimalDigitsBldr.AppendNull()
+						xdbcNumPrecRadixBldr.AppendNull()
+						xdbcNullableBldr.AppendNull()
+						xdbcColumnDefBldr.AppendNull()
+						xdbcSqlDataTypeBldr.AppendNull()
+						xdbcDatetimeSubBldr.AppendNull()
+						xdbcCharOctetLengthBldr.AppendNull()
+						xdbcIsNullableBldr.AppendNull()
+						xdbcScopeCatalogBldr.AppendNull()
+						xdbcScopeSchemaBldr.AppendNull()
+						xdbcScopeTableBldr.AppendNull()
+						xdbcIsAutoincrementBldr.AppendNull()
+						xdbcIsGeneratedcolumnBldr.AppendNull()
+					}
+				}
+
+				if len(table.TableConstraints) == 0 {
+					tableConstraintsListBldr.AppendNull()
+					continue
+				}
+
+				tableConstraintsListBldr.Append(true)
+				for _, constraint := range table.TableConstraints {
+					tableConstraintsListItemBldr.Append(true)
+					constraintNameBldr.Append(constraint.ConstraintName)
+					constraintTypeBldr.Append(constraint.ConstraintType)
+
+					if len(constraint.ConstraintColumnNames) == 0 {
+						constraintColumnNameListBldr.AppendNull()
+					} else {
+						constraintColumnNameListBldr.Append(true)
+						for _, column := range constraint.ConstraintColumnNames {
+							constraintColumnNameListItemBldr.Append(column)
+						}
+					}
+
+					if len(constraint.ConstraintColumnUsage) == 0 {
+						constraintColumnUsageListBldr.AppendNull()
+						continue
+					}
+
+					constraintColumnUsageListBldr.Append(true)
+					for _, usage := range constraint.ConstraintColumnUsage {
+						constraintColumnUsageListItemBldr.Append(true)
+						columnUsageCatalogBldr.Append(usage.ForeignKeyCatalog)
+						columnUsageSchemaBldr.Append(usage.ForeignKeyDbSchema)
+						columnUsageTableBldr.Append(usage.ForeignKeyTable)
+						columnUsageColumnBldr.Append(usage.ForeignKeyColumn)
+					}
+				}
+
+			}
+
+		}
+	}
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+	return array.NewRecordReader(adbc.GetObjectsSchema, []arrow.Record{rec})
 }
 
 var _ ConnectionImpl = (*ConnectionImplBase)(nil)

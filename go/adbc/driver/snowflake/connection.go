@@ -22,8 +22,10 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
@@ -63,6 +65,269 @@ type connectionImpl struct {
 
 	activeTransaction bool
 	useHighPrecision  bool
+}
+
+// GetCatalogs implements driverbase.DbObjectsEnumeratorV2.
+func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string) ([]string, error) {
+	var queryBldr strings.Builder
+
+	if _, err := queryBldr.WriteString("SELECT database_name FROM information_schema.databases"); err != nil {
+		return nil, err
+	}
+
+	if catalogFilter != nil {
+		if _, err := fmt.Fprintf(&queryBldr, " WHERE database_name ILIKE '%s'", *catalogFilter); err != nil {
+			return nil, err
+		}
+	}
+
+	query := queryBldr.String()
+
+	rows, err := c.sqldb.QueryContext(ctx, query, nil)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+	defer rows.Close()
+
+	catalogs := make([]string, 0)
+	for rows.Next() {
+		var catalog sql.NullString
+		if err := rows.Scan(&catalog); err != nil {
+			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
+		}
+
+		if catalog.Valid {
+			catalogs = append(catalogs, catalog.String)
+		}
+	}
+
+	return catalogs, nil
+}
+
+// GetDBSchemasForCatalog implements driverbase.DbObjectsEnumeratorV2.
+func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) ([]string, error) {
+	var queryBldr strings.Builder
+
+	if _, err := fmt.Fprintf(&queryBldr, "SELECT schema_name FROM information_schema.schemata WHERE catalog_name = '%s'", catalog); err != nil {
+		return nil, err
+	}
+
+	if schemaFilter != nil {
+		if _, err := fmt.Fprintf(&queryBldr, " AND schema_name ILIKE '%s'", *schemaFilter); err != nil {
+			return nil, err
+		}
+	}
+
+	query := queryBldr.String()
+
+	rows, err := c.sqldb.QueryContext(ctx, query, nil)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+	defer rows.Close()
+
+	dbSchemas := make([]string, 0)
+	for rows.Next() {
+		var dbSchema sql.NullString
+		if err := rows.Scan(&dbSchema); err != nil {
+			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
+		}
+
+		if dbSchema.Valid {
+			dbSchemas = append(dbSchemas, dbSchema.String)
+		}
+	}
+
+	return dbSchemas, nil
+}
+
+// GetTablesForDBSchemas implements driverbase.DbObjectsEnumeratorV2.
+func (c *connectionImpl) GetTablesForDBSchemas(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {
+	var (
+		selectBldr    strings.Builder
+		fromBldr      strings.Builder
+		conditionBldr strings.Builder
+	)
+
+	if _, err := fmt.Fprint(&selectBldr, `
+		SELECT
+			table_name,
+			table_type,
+			ARRAY_AGG({'constraint_name': constraint_name, 'constraint_type': constraint_type}) table_constraints,`,
+	); err != nil {
+		return nil, err
+	}
+
+	if _, err := fmt.Fprint(&fromBldr, `
+		FROM information_schema.tables`,
+	); err != nil {
+		return nil, err
+	}
+
+	if _, err := fmt.Fprintf(&conditionBldr, `
+		WHERE table_catalog = '%s' AND table_schema = '%s'`,
+		catalog, schema); err != nil {
+		return nil, err
+	}
+
+	if includeColumns {
+		if _, err := fmt.Fprint(&selectBldr, `
+			ARRAY_AGG({'column_name': column_name, 'ordinal_position': ordinal_position, 'remarks': comment}) table_columns,`,
+		); err != nil {
+			return nil, err
+		}
+
+		if _, err := fmt.Fprint(&fromBldr, `
+			LEFT JOIN information_schema.columns
+			USING (table_catalog, table_schema, table_name)`,
+		); err != nil {
+			return nil, err
+		}
+
+		if columnFilter != nil {
+			if _, err := fmt.Fprintf(&conditionBldr, `
+				AND column_name ILIKE '%s'`,
+				*columnFilter); err != nil {
+				return nil, err
+			}
+		}
+
+	}
+
+	if _, err := fmt.Fprint(&fromBldr, `
+		LEFT JOIN information_schema.table_constraints
+		USING (table_catalog, table_schema, table_name)`,
+	); err != nil {
+		return nil, err
+	}
+
+	if tableFilter != nil {
+		if _, err := fmt.Fprintf(&conditionBldr, `
+				AND table_name ILIKE '%s'`,
+			*tableFilter); err != nil {
+			return nil, err
+		}
+	}
+
+	if _, err := fmt.Fprint(&conditionBldr, `
+		GROUP BY table_name, table_type`,
+	); err != nil {
+		return nil, err
+	}
+
+	query := selectBldr.String() + fromBldr.String() + conditionBldr.String()
+
+	rows, err := c.sqldb.QueryContext(ctx, query, nil)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+	defer rows.Close()
+
+	tableInfos := make([]driverbase.TableInfo, 0)
+	for rows.Next() {
+		var (
+			tableName   sql.NullString
+			tableType   sql.NullString
+			columns     columnInfoArray
+			constraints constraintInfoArray
+		)
+
+		dest := []any{&tableName, &tableType, &constraints}
+		if includeColumns {
+			dest = append(dest, &columns)
+		}
+
+		if err := rows.Scan(dest...); err != nil {
+			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
+		}
+
+		if !(tableName.Valid && tableType.Valid) {
+			return nil, fmt.Errorf("table_name and table_type fields of GetTables schema cannot be null, found: table_name='%s', table_type='%s'", tableName.String, tableType.String)
+		}
+
+		info := driverbase.TableInfo{
+			TableName:        tableName.String,
+			TableType:        tableType.String,
+			TableColumns:     columns.Value,
+			TableConstraints: constraints.Value,
+		}
+
+		tableInfos = append(tableInfos, info)
+	}
+
+	return tableInfos, nil
+}
+
+// columnInfoArray is a container for a slice of ColumnInfo's which implements the sql.Scanner interface.
+// The Scan() method handles mapping the snowflake response to the fields defined in GetObjectsSchema.
+type columnInfoArray struct {
+	Value []driverbase.ColumnInfo
+}
+
+// Scan implements sql.Scanner.
+func (c *columnInfoArray) Scan(src any) error {
+	var b []byte
+
+	switch s := src.(type) {
+	case []byte:
+		b = s
+	case string:
+		b = []byte(s)
+	default:
+		return fmt.Errorf("unexpected driver value for ColumnInfoArray: %s", s)
+	}
+
+	var out []driverbase.ColumnInfo
+	if err := json.Unmarshal(b, &out); err != nil {
+		return err
+	}
+
+	// Snowflake returns a list with 1 empty element when no results are found
+	// instead of an empty list, so we filter those values out.
+	c.Value = make([]driverbase.ColumnInfo, 0)
+	for _, val := range out {
+		if !reflect.ValueOf(val).IsZero() {
+			c.Value = append(c.Value, val)
+		}
+	}
+
+	return nil
+}
+
+// constraintInfoArray is a container for a slice of ConstraintInfo's which implements the sql.Scanner interface.
+// The Scan() method handles mapping the snowflake response to the fields defined in GetObjectsSchema.
+type constraintInfoArray struct {
+	Value []driverbase.ConstraintInfo
+}
+
+// Scan implements sql.Scanner.
+func (c *constraintInfoArray) Scan(src any) error {
+	var b []byte
+
+	switch s := src.(type) {
+	case []byte:
+		b = s
+	case string:
+		b = []byte(s)
+	default:
+		return fmt.Errorf("unexpected driver value for ConstraintInfoArray: %s", s)
+	}
+
+	var out []driverbase.ConstraintInfo
+	if err := json.Unmarshal(b, &out); err != nil {
+		return err
+	}
+
+	// Snowflake returns a list with 1 empty element when no results are found
+	// instead of an empty list, so we filter those values out.
+	c.Value = make([]driverbase.ConstraintInfo, 0)
+	for _, val := range out {
+		if !reflect.ValueOf(val).IsZero() {
+			c.Value = append(c.Value, val)
+		}
+	}
+
+	return nil
 }
 
 // Uniquely identify a constraint based on the dbName, schema, and tblName
@@ -1361,3 +1626,6 @@ func (c *connectionImpl) SetOption(key, value string) error {
 		}
 	}
 }
+
+var _ sql.Scanner = (*columnInfoArray)(nil)
+var _ sql.Scanner = (*constraintInfoArray)(nil)
