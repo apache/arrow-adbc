@@ -141,8 +141,8 @@ func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog str
 	return dbSchemas, nil
 }
 
-// GetTablesForDBSchemas implements driverbase.DbObjectsEnumeratorV2.
-func (c *connectionImpl) GetTablesForDBSchemas(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {
+// GetTablesForDBSchema implements driverbase.DbObjectsEnumeratorV2.
+func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {
 	var (
 		selectBldr    strings.Builder
 		fromBldr      strings.Builder

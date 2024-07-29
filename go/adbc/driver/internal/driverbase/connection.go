@@ -94,7 +94,7 @@ type DbObjectsEnumerator interface {
 type DbObjectsEnumeratorV2 interface {
 	GetCatalogs(ctx context.Context, catalogFilter *string) ([]string, error)
 	GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) ([]string, error)
-	GetTablesForDBSchemas(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]TableInfo, error)
+	GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]TableInfo, error)
 }
 
 // Connection is the interface satisfied by the result of the NewConnection constructor,
@@ -400,7 +400,7 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 					catalogDbSchema := catalogDbSchema
 					gTablesInner.Go(func() error {
 						includeColumns := depth == adbc.ObjectDepthColumns
-						tables, err := helper2.GetTablesForDBSchemas(ctxTablesInner, info.CatalogName, catalogDbSchema.DbSchemaName, tableName, columnName, includeColumns)
+						tables, err := helper2.GetTablesForDBSchema(ctxTablesInner, info.CatalogName, catalogDbSchema.DbSchemaName, tableName, columnName, includeColumns)
 						if err != nil {
 							return err
 						}
