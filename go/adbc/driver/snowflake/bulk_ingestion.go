@@ -334,20 +334,31 @@ func writeParquet(
 	parquetProps *parquet.WriterProperties,
 	arrowProps pqarrow.ArrowWriterProperties,
 ) error {
-	limitWr := &limitWriter{w: w, limit: targetSize}
-	pqWriter, err := pqarrow.NewFileWriter(schema, limitWr, parquetProps, arrowProps)
+	pqWriter, err := pqarrow.NewFileWriter(schema, w, parquetProps, arrowProps)
 	if err != nil {
 		return err
 	}
 	defer pqWriter.Close()
 
+	var bytesWritten int64
 	for rec := range in {
-		err = pqWriter.WriteBuffered(rec)
+		if rec.NumRows() == 0 {
+			rec.Release()
+			continue
+		}
+
+		err = pqWriter.Write(rec)
 		rec.Release()
 		if err != nil {
 			return err
 		}
-		if limitWr.LimitExceeded() {
+
+		if targetSize < 0 {
+			continue
+		}
+
+		bytesWritten += pqWriter.RowGroupTotalBytesWritten()
+		if bytesWritten >= int64(targetSize) {
 			return nil
 		}
 	}
@@ -583,29 +594,4 @@ func (bp *bufferPool) GetBuffer() *bytes.Buffer {
 func (bp *bufferPool) PutBuffer(buf *bytes.Buffer) {
 	buf.Reset()
 	bp.Pool.Put(buf)
-}
-
-// Wraps an io.Writer and specifies a limit.
-// Keeps track of how many bytes have been written and can report whether the limit has been exceeded.
-// TODO(ARROW-39789): We prefer to use RowGroupTotalBytesWritten on the ParquetWriter, but there seems to be a discrepency with the count.
-type limitWriter struct {
-	w     io.Writer
-	limit int
-
-	bytesWritten int
-}
-
-func (lw *limitWriter) Write(p []byte) (int, error) {
-	n, err := lw.w.Write(p)
-	lw.bytesWritten += n
-
-	return n, err
-}
-
-func (lw *limitWriter) LimitExceeded() bool {
-	if lw.limit > 0 {
-		return lw.bytesWritten > lw.limit
-	}
-	// Limit disabled
-	return false
 }
