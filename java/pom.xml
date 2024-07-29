@@ -314,7 +314,7 @@
                 <path>
                   <groupId>com.uber.nullaway</groupId>
                   <artifactId>nullaway</artifactId>
-                  <version>0.11.0</version>
+                  <version>0.11.1</version>
                 </path>
                 <path>
                   <groupId>org.checkerframework</groupId>
