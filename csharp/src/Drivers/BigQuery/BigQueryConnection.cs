@@ -997,8 +997,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             Dictionary<string, string> options = new Dictionary<string, string>();
 
-            List<string> statementOptions = new List<string>()
-            {
+            string[] statementOptions = new string[] {
                 BigQueryParameters.AllowLargeResults,
                 BigQueryParameters.UseLegacySQL,
                 BigQueryParameters.LargeDecimalsAsString,
@@ -1006,11 +1005,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes
             };
 
-            foreach (KeyValuePair<string, string> keyValuePair in this.properties)
+            foreach (string key in statementOptions)
             {
-                if (statementOptions.Contains(keyValuePair.Key))
+                if (properties.TryGetValue(key, out string? value))
                 {
-                    options[keyValuePair.Key] = keyValuePair.Value;
+                    options[key] = value;
                 }
             }
 
