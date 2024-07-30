@@ -19,9 +19,34 @@
 # implementation from the repo. We also run this from configure, so do nothing
 # if we aren't sitting within the repo (e.g., installing a source package from a
 # tarball).
+dir.create("src/arrow-adbc", showWarnings=FALSE)
+headers_to_vendor <- c(
+    "../../c/include/arrow-adbc/adbc.h",
+    "../../c/include/arrow-adbc/adbc_driver_manager.h"
+)
+if (all(file.exists(headers_to_vendor))) {
+  files_dst <- file.path("src/arrow-adbc", basename(headers_to_vendor))
+
+  n_removed <- sum(file.remove(files_dst))
+  if (n_removed > 0) {
+    cat(sprintf("Removed %d previously vendored files from src/arrow-adbc/\n", n_removed))
+  }
+
+  cat(
+    sprintf(
+      "Vendoring headers to src/arrow-adbc/:\n%s\n",
+      paste("-", headers_to_vendor, collapse = "\n")
+    )
+  )
+
+  if (all(file.copy(headers_to_vendor, "src/arrow-adbc"))) {
+    cat("All files successfully copied to src/arrow-adbc/\n")
+  } else {
+    stop("Failed to vendor all headers")
+  }
+}
+
 files_to_vendor <- c(
-  "../../adbc.h",
-  "../../c/driver_manager/adbc_driver_manager.h",
   "../../c/driver_manager/adbc_driver_manager.cc",
   "../../c/driver/common/driver_base.h"
 )

@@ -91,8 +91,8 @@ options.
 
 Again, the simplest case is as follows: if (1) the application links directly
 to the driver, and (2) the driver exposes the ADBC functions *under the same
-name* as in adbc.h, then the application can just ``#include <adbc.h>`` and
-call ``AdbcStatementExecuteQuery(...)`` directly.  Here, the application and
+name* as in adbc.h, then the application can just ``#include <arrow-adbc/adbc.h>``
+and call ``AdbcStatementExecuteQuery(...)`` directly.  Here, the application and
 driver have a relationship no different than any other C library.
 
 .. figure:: DriverDirectLink.mmd.svg

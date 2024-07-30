@@ -15,30 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#define R_NO_REMAP
-#include <R.h>
-#include <Rinternals.h>
+#pragma message(                                          \
+    "Including \"adbc_driver_manager.h\" is deprecated. " \
+    "Please include \"arrow-adbc/adbc_driver_manager.h\" instead")
 
-#include "arrow-adbc/adbc.h"
-
-extern "C" {
-AdbcStatusCode SqliteDriverInit(int version, void* raw_driver, struct AdbcError* error);
-
-static SEXP init_func_xptr = 0;
-
-SEXP adbcsqlite_c_sqlite(void) { return init_func_xptr; }
-
-static const R_CallMethodDef CallEntries[] = {
-    {"adbcsqlite_c_sqlite", (DL_FUNC)&adbcsqlite_c_sqlite, 0}, {NULL, NULL, 0}};
-
-void R_init_adbcsqlite(DllInfo* dll) {
-  R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
-  R_useDynamicSymbols(dll, FALSE);
-
-  init_func_xptr =
-      PROTECT(R_MakeExternalPtrFn((DL_FUNC)SqliteDriverInit, R_NilValue, R_NilValue));
-  Rf_setAttrib(init_func_xptr, R_ClassSymbol, Rf_mkString("adbc_driver_init_func"));
-  R_PreserveObject(init_func_xptr);
-  UNPROTECT(1);
-}
-}
+#include "arrow-adbc/adbc_driver_manager.h"

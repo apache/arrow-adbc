@@ -20,9 +20,9 @@
 
 #include <memory>
 
-#include "adbc.h"
-#include "adbc_driver_manager.h"
 #include "adbc_version_100.h"
+#include "arrow-adbc/adbc.h"
+#include "arrow-adbc/adbc_driver_manager.h"
 #include "validation/adbc_validation_util.h"
 
 namespace adbc {

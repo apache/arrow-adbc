@@ -23,7 +23,7 @@
 #include <utility>
 #include <vector>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 
 // This file defines a developer-friendly way to create an ADBC driver, currently intended
 // for testing the R driver manager. It handles errors, option getting/setting, and

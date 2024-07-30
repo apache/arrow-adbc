@@ -19,7 +19,7 @@
 #include <R.h>
 #include <Rinternals.h>
 
-#include <adbc.h>
+#include "arrow-adbc/adbc.h"
 
 #include "radbc.h"
 

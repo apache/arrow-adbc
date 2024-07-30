@@ -32,7 +32,10 @@ project(
 add_project_arguments('-Wno-int-conversion', '-Wno-unused-parameter', language: 'c')
 add_project_arguments('-Wno-unused-parameter', '-Wno-reorder', language: 'cpp')
 
-root_dir = include_directories('..')
+c_dir = include_directories('.')
+include_dir = include_directories('include')
+install_headers('include/adbc.h')
+install_headers('include/arrow-adbc/adbc.h', subdir: 'arrow-adbc')
 driver_dir = include_directories('driver')
 nanoarrow_dep = dependency('nanoarrow')
 fmt_dep = dependency('fmt')
@@ -51,6 +54,8 @@ needs_driver_manager = get_option('driver_manager') \
 pkg = import('pkgconfig')
 
 if needs_driver_manager
+    install_headers('include/adbc_driver_manager.h')
+    install_headers('include/arrow-adbc/adbc_driver_manager.h', subdir: 'arrow-adbc')
     subdir('driver_manager')
 endif
 

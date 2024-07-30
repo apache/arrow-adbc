@@ -19,7 +19,7 @@
 adbc_validation_util_lib = static_library(
     'adbc_validation_util',
     'adbc_validation_util.cc',
-    include_directories: [root_dir, driver_dir],
+    include_directories: [include_dir, driver_dir],
     link_with: [adbc_common_lib, adbc_framework_lib, adbc_driver_manager_lib],
     dependencies: [nanoarrow_dep, gtest_main_dep, gmock_dep],
 )
@@ -31,7 +31,7 @@ adbc_validation_dep = declare_dependency(
         'adbc_validation_database.cc',
         'adbc_validation_statement.cc',
     ],
-    include_directories: [root_dir, driver_dir],
+    include_directories: [include_dir, driver_dir],
     link_with: [
         adbc_validation_util_lib,
         adbc_common_lib,

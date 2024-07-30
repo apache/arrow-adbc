@@ -23,7 +23,7 @@
 
 #include "driver_base.h"
 
-#include <adbc.h>
+#include "arrow-adbc/adbc.h"
 
 using adbc::common::ConnectionObjectBase;
 using adbc::common::DatabaseObjectBase;

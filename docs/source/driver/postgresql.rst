@@ -91,7 +91,7 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
 
       .. code-block:: cpp
 
-         #include "adbc.h"
+         #include "arrow-adbc/adbc.h"
 
          // Ignoring error handling
          struct AdbcDatabase database;

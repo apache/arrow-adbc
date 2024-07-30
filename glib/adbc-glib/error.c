@@ -17,7 +17,7 @@
  * under the License.
  */
 
-#include <adbc_driver_manager.h>
+#include <arrow-adbc/adbc_driver_manager.h>
 
 /* This is needless. This is just for cpplint. */
 #include <adbc-glib/error.h>

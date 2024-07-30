@@ -35,6 +35,10 @@ add_subdirectory(vendor/nanoarrow)
 add_subdirectory(driver/common)
 add_subdirectory(driver/framework)
 
+install(FILES "${REPOSITORY_ROOT}/c/include/adbc.h" DESTINATION include)
+install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/adbc.h"
+        DESTINATION include/arrow-adbc)
+
 if(ADBC_BUILD_TESTS)
   add_subdirectory(validation)
 endif()
@@ -54,6 +58,9 @@ if(ADBC_DRIVER_FLIGHTSQL)
 endif()
 
 if(ADBC_DRIVER_MANAGER)
+  install(FILES "${REPOSITORY_ROOT}/c/include/adbc_driver_manager.h" DESTINATION include)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/adbc_driver_manager.h"
+          DESTINATION include/arrow-adbc)
   add_subdirectory(driver_manager)
 endif()
 

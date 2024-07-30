@@ -24,7 +24,7 @@ package drivermgr
 // #if !defined(ADBC_EXPORTING)
 // #define ADBC_EXPORTING
 // #endif
-// #include "adbc.h"
+// #include "arrow-adbc/adbc.h"
 // #include <stdlib.h>
 // #include <string.h>
 //

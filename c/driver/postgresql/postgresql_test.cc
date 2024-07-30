@@ -24,7 +24,7 @@
 #include <optional>
 #include <variant>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>

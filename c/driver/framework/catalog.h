@@ -25,7 +25,7 @@
 #include <variant>
 #include <vector>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 
 #include "driver/framework/status.h"
 

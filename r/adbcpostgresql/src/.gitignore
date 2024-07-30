@@ -18,5 +18,6 @@
 *.o
 *.so
 *.dll
-adbc.h
 Makevars
+arrow-adbc/
+c/

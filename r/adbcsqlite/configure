@@ -77,14 +77,3 @@ sed \
   -e "s|@libs@|$PKG_LIBS|" \
   -e "s|@objects@|$OBJECTS|" \
   src/Makevars.in > src/Makevars
-
-
-if [ -f "src/adbc.h" ]; then
-  echo "Found vendored ADBC"
-  exit 0
-fi
-
-
-echo "Vendored ADBC SQLite driver was not found."
-echo "This source package was probably built incorrectly and it's probably not your fault"
-exit 1

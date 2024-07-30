@@ -22,7 +22,7 @@
 
 #include <utility>
 
-#include <adbc.h>
+#include "arrow-adbc/adbc.h"
 
 template <typename T>
 static inline const char* adbc_xptr_class();
