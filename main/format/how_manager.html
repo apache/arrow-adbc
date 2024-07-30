@@ -454,8 +454,8 @@ generally none the wiser when it comes to what’s actually underneath.</p>
 options.</p>
 <p>Again, the simplest case is as follows: if (1) the application links directly
 to the driver, and (2) the driver exposes the ADBC functions <em>under the same
-name</em> as in adbc.h, then the application can just <code class="docutils literal notranslate"><span class="pre">#include</span> <span class="pre">&lt;adbc.h&gt;</span></code> and
-call <code class="docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery(...)</span></code> directly.  Here, the application and
+name</em> as in adbc.h, then the application can just <code class="docutils literal notranslate"><span class="pre">#include</span> <span class="pre">&lt;arrow-adbc/adbc.h&gt;</span></code>
+and call <code class="docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery(...)</span></code> directly.  Here, the application and
 driver have a relationship no different than any other C library.</p>
 <figure class="align-default" id="id5">
 <img alt="../_images/DriverDirectLink.mmd.svg" src="../_images/DriverDirectLink.mmd.svg" /><figcaption>
