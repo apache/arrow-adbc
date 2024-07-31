@@ -86,6 +86,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 parameters.Add(BigQueryParameters.LargeResultsDestinationTable, testConfiguration.LargeResultsDestinationTable);
             }
 
+            if (testConfiguration.TimeoutMinutes.HasValue)
+            {
+                parameters.Add(BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes, testConfiguration.TimeoutMinutes.Value.ToString());
+            }
+
             return parameters;
         }
 

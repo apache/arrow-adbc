@@ -997,23 +997,19 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             Dictionary<string, string> options = new Dictionary<string, string>();
 
-            foreach (KeyValuePair<string, string> keyValuePair in this.properties)
+            string[] statementOptions = new string[] {
+                BigQueryParameters.AllowLargeResults,
+                BigQueryParameters.UseLegacySQL,
+                BigQueryParameters.LargeDecimalsAsString,
+                BigQueryParameters.LargeResultsDestinationTable,
+                BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes
+            };
+
+            foreach (string key in statementOptions)
             {
-                if (keyValuePair.Key == BigQueryParameters.AllowLargeResults)
+                if (properties.TryGetValue(key, out string? value))
                 {
-                    options[keyValuePair.Key] = keyValuePair.Value;
-                }
-                if (keyValuePair.Key == BigQueryParameters.UseLegacySQL)
-                {
-                    options[keyValuePair.Key] = keyValuePair.Value;
-                }
-                if (keyValuePair.Key == BigQueryParameters.LargeDecimalsAsString)
-                {
-                    options[keyValuePair.Key] = keyValuePair.Value;
-                }
-                if (keyValuePair.Key == BigQueryParameters.LargeResultsDestinationTable)
-                {
-                    options[keyValuePair.Key] = keyValuePair.Value;
+                    options[key] = value;
                 }
             }
 
