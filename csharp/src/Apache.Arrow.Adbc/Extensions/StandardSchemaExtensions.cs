@@ -65,9 +65,29 @@ namespace Apache.Arrow.Adbc.Extensions
                 else if (field.DataType.TypeId == ArrowTypeId.List)
                 {
                     ListType listType = (ListType)field.DataType;
+
                     if (listType.Fields.Count > 0)
                     {
-                        Validate(listType.Fields, dataField.Children.Select(e => new ContainerArray(e)).ToList());
+                        List<Field> fieldsToValidate = new List<Field>();
+                        List<ContainerArray> arrayDataToValidate = new List<ContainerArray>();
+
+                        for (int j=0;j<listType.Fields.Count;j++)
+                        {
+                            Field f = listType.Fields[j];
+                            ArrayData? child = j < dataField.Children.Length ? dataField.Children[j] : null;
+
+                            if (child != null)
+                            {
+                                fieldsToValidate.Add(f);
+                                arrayDataToValidate.Add(new ContainerArray(child));
+                            }
+                            else if(!f.IsNullable)
+                            {
+                                throw new InvalidOperationException("Received a null value for a non-nullable field");
+                            }
+                        }
+
+                        Validate(fieldsToValidate, arrayDataToValidate);
                     }
                 }
                 else if (field.DataType.TypeId == ArrowTypeId.Union)
@@ -87,6 +107,7 @@ namespace Apache.Arrow.Adbc.Extensions
         {
             public ContainerArray(ArrayData data) : base(data)
             {
+
             }
         }
     }

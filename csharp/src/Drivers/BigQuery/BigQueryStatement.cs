@@ -273,7 +273,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
                     else
                     {
-                        jsonDictionary.Add(name, ParseStructArray(structArray1, index));
+                        if (index < structArray1.Length)
+                            jsonDictionary.Add(name, ParseStructArray(structArray1, index));
+                        else
+                            jsonDictionary.Add(name, null);
                     }
                 }
                 else if (value is IArrowArray arrowArray)
