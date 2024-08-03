@@ -124,7 +124,7 @@ func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allo
 		curChIndex: 0,
 		err:        nil,
 		cancelFn:   cancelFn,
-		schema:     nil,
+		schema:     rdr.Schema(),
 	}
 
 	go func() {
