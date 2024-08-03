@@ -272,6 +272,8 @@ type connection struct {
 	driverInfoPreparer    DriverInfoPreparer
 	tableTypeLister       TableTypeLister
 	autocommitSetter      AutocommitSetter
+
+	concurrency int
 }
 
 type ConnectionBuilder struct {
@@ -279,7 +281,7 @@ type ConnectionBuilder struct {
 }
 
 func NewConnectionBuilder(impl ConnectionImpl) *ConnectionBuilder {
-	return &ConnectionBuilder{connection: &connection{ConnectionImpl: impl}}
+	return &ConnectionBuilder{connection: &connection{ConnectionImpl: impl, concurrency: -1}}
 }
 
 func (b *ConnectionBuilder) WithDbObjectsEnumerator(helper DbObjectsEnumerator) *ConnectionBuilder {
@@ -295,6 +297,14 @@ func (b *ConnectionBuilder) WithDbObjectsEnumeratorV2(helper DbObjectsEnumerator
 		panic("nil ConnectionBuilder: cannot reuse after calling Connection()")
 	}
 	b.connection.dbObjectsEnumeratorV2 = helper
+	return b
+}
+
+func (b *ConnectionBuilder) WithConcurrency(concurrency int) *ConnectionBuilder {
+	if b == nil {
+		panic("nil ConnectionBuilder: cannot reuse after calling Connection()")
+	}
+	b.connection.concurrency = concurrency
 	return b
 }
 
@@ -361,6 +371,7 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 		g, ctxG := errgroup.WithContext(ctx)
 
 		gSchemas, ctxSchemas := errgroup.WithContext(ctxG)
+		gSchemas.SetLimit(cnxn.concurrency)
 		addDbSchemasCh := make(chan GetObjectsInfo, len(catalogs))
 		for info := range addCatalogCh {
 			info := info
@@ -389,12 +400,14 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 		}
 
 		gTables, ctxTables := errgroup.WithContext(ctxG)
+		gTables.SetLimit(cnxn.concurrency)
 		addTablesCh := make(chan GetObjectsInfo, len(catalogs))
 		for info := range addDbSchemasCh {
 			info := info
 
 			gTables.Go(func() error {
 				gTablesInner, ctxTablesInner := errgroup.WithContext(ctxTables)
+				gTablesInner.SetLimit(cnxn.concurrency)
 				dbSchemaInfoCh := make(chan DBSchemaInfo, len(info.CatalogDbSchemas))
 				for _, catalogDbSchema := range info.CatalogDbSchemas {
 					catalogDbSchema := catalogDbSchema
@@ -412,7 +425,7 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 					})
 				}
 
-				gTables.Go(func() error { defer close(dbSchemaInfoCh); return gTablesInner.Wait() })
+				g.Go(func() error { defer close(dbSchemaInfoCh); return gTablesInner.Wait() })
 
 				var i int
 				for dbSchema := range dbSchemaInfoCh {

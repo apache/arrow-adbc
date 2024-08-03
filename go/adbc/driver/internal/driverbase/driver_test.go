@@ -21,10 +21,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v18/arrow"
 	"github.com/apache/arrow/go/v18/arrow/array"
@@ -287,8 +288,23 @@ func TestCustomizedDriver(t *testing.T) {
 						{
 							"table_name": "foo",
 							"table_type": "TABLE",
-							"table_columns": [],
-							"table_constraints": []
+							"table_columns": [
+								{
+									"column_name": "col1",
+									"ordinal_position": 1,
+									"remarks": "the first column"
+								},
+								{
+									"column_name": "col2",
+									"ordinal_position": 2,
+									"remarks": "the second column"
+								},
+								{
+									"column_name": "col3",
+									"ordinal_position": 3,
+									"remarks": "the third column"
+								}
+							]
 						}
 					]
 				},
@@ -297,9 +313,7 @@ func TestCustomizedDriver(t *testing.T) {
 					"db_schema_tables": [
 						{
 							"table_name": "bar",
-							"table_type": "TABLE",
-							"table_columns": [],
-							"table_constraints": []
+							"table_type": "TABLE"
 						}
 					]
 				}
@@ -314,8 +328,20 @@ func TestCustomizedDriver(t *testing.T) {
 						{
 							"table_name": "baz",
 							"table_type": "TABLE",
-							"table_columns": [],
-							"table_constraints": []
+							"table_columns": [
+								{
+									"column_name": "col4",
+									"ordinal_position": 1,
+									"remarks": ""
+								}
+							],
+							"table_constraints": [
+								{
+									"constraint_name": "baz_pk",
+									"constraint_type": "PRIMARY KEY",
+									"constraint_column_names": ["col4"]
+								}
+							]
 						}
 					]
 				}
@@ -464,7 +490,8 @@ func (db *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 			WithCurrentNamespacer(cnxn).
 			WithTableTypeLister(cnxn).
 			WithDriverInfoPreparer(cnxn).
-			WithDbObjectsEnumerator(cnxn).
+			WithDbObjectsEnumeratorV2(cnxn).
+			WithConcurrency(1).
 			Connection(), nil
 	}
 	return bldr.Connection(), nil
@@ -476,6 +503,101 @@ type connectionImpl struct {
 
 	currentCatalog  string
 	currentDbSchema string
+}
+
+var dbObjects = map[string]map[string][]driverbase.TableInfo{
+	"default": {
+		"public": {
+			{
+				TableName: "foo",
+				TableType: "TABLE",
+				TableColumns: []driverbase.ColumnInfo{
+					{
+						ColumnName:      "col1",
+						OrdinalPosition: 1,
+						Remarks:         "the first column",
+					},
+					{
+						ColumnName:      "col2",
+						OrdinalPosition: 2,
+						Remarks:         "the second column",
+					},
+					{
+						ColumnName:      "col3",
+						OrdinalPosition: 3,
+						Remarks:         "the third column",
+					},
+				},
+			},
+		},
+		"test": {
+			{TableName: "bar", TableType: "TABLE"},
+		},
+	},
+	"my_db": {
+		"public": {
+			{
+				TableName: "baz",
+				TableType: "TABLE",
+				TableColumns: []driverbase.ColumnInfo{
+					{
+						ColumnName:      "col4",
+						OrdinalPosition: 1,
+					},
+				},
+				TableConstraints: []driverbase.ConstraintInfo{
+					{
+						ConstraintName:        "baz_pk",
+						ConstraintType:        "PRIMARY KEY",
+						ConstraintColumnNames: []string{"col4"},
+					},
+				},
+			},
+		},
+	},
+}
+
+// GetCatalogs implements driverbase.DbObjectsEnumeratorV2.
+func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string) ([]string, error) {
+	catalogs := make([]string, 0, len(dbObjects))
+	for cat := range dbObjects {
+		catalogs = append(catalogs, cat)
+	}
+
+	slices.Sort(catalogs)
+	return catalogs, nil
+}
+
+// GetDBSchemasForCatalog implements driverbase.DbObjectsEnumeratorV2.
+func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) ([]string, error) {
+	schemas, ok := dbObjects[catalog]
+	if !ok {
+		return nil, fmt.Errorf("catalog %s not found", catalog)
+	}
+
+	dbSchemaNames := make([]string, 0, len(schemas))
+	for sch := range schemas {
+		dbSchemaNames = append(dbSchemaNames, sch)
+	}
+
+	slices.Sort(dbSchemaNames)
+	return dbSchemaNames, nil
+}
+
+// GetTablesForDBSchema implements driverbase.DbObjectsEnumeratorV2.
+func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {
+	schemas, ok := dbObjects[catalog]
+	if !ok {
+		return nil, fmt.Errorf("catalog %s not found", catalog)
+	}
+
+	tables, ok := schemas[schema]
+	if !ok {
+		return nil, fmt.Errorf("dbSchema %s not found", schema)
+	}
+
+	slices.SortFunc(tables, func(a, b driverbase.TableInfo) int { return strings.Compare(a.TableName, b.TableName) })
+	return tables, nil
 }
 
 func (c *connectionImpl) SetAutocommit(enabled bool) error {
@@ -521,25 +643,6 @@ func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc
 		return err
 	}
 	return c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoCode(10_002), "this was fetched dynamically")
-}
-
-func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error) {
-	return []string{"default", "my_db"}, nil
-}
-
-func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, metadataRecords []internal.Metadata) (map[string][]string, error) {
-	return map[string][]string{
-		"default": {"public", "test"},
-		"my_db":   {"public"},
-	}, nil
-}
-
-func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (map[internal.CatalogAndSchema][]internal.TableInfo, error) {
-	return map[internal.CatalogAndSchema][]internal.TableInfo{
-		{Catalog: "default", Schema: "public"}: {internal.TableInfo{Name: "foo", TableType: "TABLE"}},
-		{Catalog: "default", Schema: "test"}:   {internal.TableInfo{Name: "bar", TableType: "TABLE"}},
-		{Catalog: "my_db", Schema: "public"}:   {internal.TableInfo{Name: "baz", TableType: "TABLE"}},
-	}, nil
 }
 
 // MockedHandler is a mock.Mock that implements the slog.Handler interface.
