@@ -117,6 +117,18 @@ jobs:
         run: |
           sudo apt-get install -y valgrind
 
+      # Usually, pak::pkg_install() will run bootstrap.R if it is included and is declared;
+      # however, this doesn't work for local:: for some reason (which is what
+      # setup-r-dependencies uses under the hood)
+      - name: Bootstrap R Package
+        run: |
+          pushd r/adbcdrivermanager
+          Rscript bootstrap.R
+          popd
+          pushd "r/${{ inputs.pkg }}"
+          Rscript bootstrap.R
+          popd
+
       - uses: r-lib/actions/setup-r-dependencies@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
         with:
           extra-packages: local::../adbcdrivermanager
