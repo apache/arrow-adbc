@@ -125,7 +125,7 @@ jobs:
           pushd r/adbcdrivermanager
           Rscript bootstrap.R
           popd
-          pushd "r/${{ inputs.pkg }}"
+          pushd "r/${{ matrix.pkg }}"
           Rscript bootstrap.R
           popd
 
