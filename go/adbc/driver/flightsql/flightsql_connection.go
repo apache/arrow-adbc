@@ -57,6 +57,169 @@ type connectionImpl struct {
 	supportInfo support
 }
 
+// GetCatalogs implements driverbase.DbObjectsEnumeratorV2.
+func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string) ([]string, error) {
+	catalogPattern, err := internal.PatternToRegexp(catalogFilter)
+	if err != nil {
+		return nil, err
+	}
+	if catalogPattern == nil {
+		catalogPattern = internal.AcceptAll
+	}
+
+	msg := "GetObjects(GetCatalogs)"
+	rdr, nRecords, header, trailer, err := c.getReaderForInfo(ctx, schema_ref.Catalogs, c.cl.GetCatalogs, msg)
+	if err != nil {
+		return nil, err
+	}
+	defer rdr.Release()
+
+	catalogs := make([]string, 0, nRecords)
+	for rdr.Next() {
+		arr := rdr.Record().Column(0).(*array.String)
+		for i := 0; i < arr.Len(); i++ {
+			// XXX: force copy since accessor is unsafe
+			catalogName := string([]byte(arr.Value(i)))
+			if catalogPattern.MatchString(catalogName) {
+				catalogs = append(catalogs, catalogName)
+			}
+		}
+	}
+
+	if err := checkContext(rdr.Err(), ctx); err != nil {
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, msg)
+	}
+
+	return catalogs, nil
+}
+
+// GetDBSchemasForCatalog implements driverbase.DbObjectsEnumeratorV2.
+func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) ([]string, error) {
+	msg := "GetObjects(GetDBSchemas)"
+	rdr, nRecords, header, trailer, err := c.getReaderForInfo(
+		ctx,
+		schema_ref.DBSchemas,
+		func(ctx context.Context, co ...grpc.CallOption) (*flightproto.FlightInfo, error) {
+			return c.cl.GetDBSchemas(
+				ctx,
+				&flightsql.GetDBSchemasOpts{
+					Catalog:               &catalog,
+					DbSchemaFilterPattern: schemaFilter,
+				},
+				co...,
+			)
+		},
+		msg,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rdr.Release()
+
+	dbSchemas := make([]string, 0, nRecords)
+	for rdr.Next() {
+		arr := rdr.Record().Column(1).(*array.String)
+		for i := 0; i < arr.Len(); i++ {
+			// XXX: force copy since accessor is unsafe
+			dbSchemaName := string([]byte(arr.Value(i)))
+			dbSchemas = append(dbSchemas, dbSchemaName)
+		}
+	}
+
+	if err := checkContext(rdr.Err(), ctx); err != nil {
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, msg)
+	}
+
+	return dbSchemas, nil
+}
+
+// GetTablesForDBSchema implements driverbase.DbObjectsEnumeratorV2.
+func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {
+	columnPattern, err := internal.PatternToRegexp(columnFilter)
+	if err != nil {
+		return nil, err
+	}
+	if columnPattern == nil {
+		columnPattern = internal.AcceptAll
+	}
+
+	msg := "GetObjects(GetTables)"
+	expectedSchema := schema_ref.Tables
+	if includeColumns {
+		expectedSchema = schema_ref.TablesWithIncludedSchema
+	}
+
+	rdr, nRecords, header, trailer, err := c.getReaderForInfo(
+		ctx,
+		expectedSchema,
+		func(ctx context.Context, co ...grpc.CallOption) (*flightproto.FlightInfo, error) {
+			return c.cl.GetTables(
+				ctx,
+				&flightsql.GetTablesOpts{
+					Catalog:                &catalog,
+					DbSchemaFilterPattern:  &schema,
+					TableNameFilterPattern: tableFilter,
+					IncludeSchema:          includeColumns,
+				},
+				co...,
+			)
+		},
+		msg,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rdr.Release()
+
+	tables := make([]driverbase.TableInfo, 0, nRecords)
+	for rdr.Next() {
+		rec := rdr.Record()
+
+		tableNameArr := rec.Column(2).(*array.String)
+		tableTypeArr := rec.Column(3).(*array.String)
+		for i := 0; i < int(rec.NumRows()); i++ {
+			// XXX: force copy since accessor is unsafe
+			tableName := string([]byte(tableNameArr.Value(i)))
+			tableType := string([]byte(tableTypeArr.Value(i)))
+
+			var columns []driverbase.ColumnInfo
+			if includeColumns {
+				reader, err := ipc.NewReader(bytes.NewReader(rec.Column(4).(*array.Binary).Value(i)))
+				if err != nil {
+					return nil, adbc.Error{
+						Msg:  err.Error(),
+						Code: adbc.StatusInternal,
+					}
+				}
+
+				schema := reader.Schema()
+				columns = make([]driverbase.ColumnInfo, 0, schema.NumFields())
+				for i, field := range schema.Fields() {
+					if columnPattern.MatchString(field.Name) {
+						columns = append(columns, driverbase.ColumnInfo{
+							ColumnName:      field.Name,
+							OrdinalPosition: int32(i + 1),
+						})
+					}
+				}
+				reader.Release()
+			}
+
+			tables = append(tables, driverbase.TableInfo{
+				TableName:    tableName,
+				TableType:    tableType,
+				TableColumns: columns,
+			})
+		}
+	}
+
+	if err := checkContext(rdr.Err(), ctx); err != nil {
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, msg)
+	}
+
+	return tables, nil
+}
+
 // GetCurrentCatalog implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) GetCurrentCatalog() (string, error) {
 	options, err := c.getSessionOptions(context.Background())
@@ -635,6 +798,43 @@ func (c *connectionImpl) readInfo(ctx context.Context, expectedSchema *arrow.Sch
 		}
 	}
 	return rdr, nil
+}
+
+func (c *connectionImpl) getReaderForInfo(
+	ctx context.Context,
+	expectedSchema *arrow.Schema,
+	getInfoFn func(context.Context, ...grpc.CallOption) (*flightproto.FlightInfo, error),
+	msg string,
+	args ...any,
+) (array.RecordReader,
+	int64,
+	metadata.MD,
+	metadata.MD,
+	error,
+) {
+	var (
+		header, trailer metadata.MD
+		numResults      int64
+	)
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
+	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
+	info, err := getInfoFn(ctx, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
+	if err != nil {
+		return nil, 0, header, trailer, adbcFromFlightStatusWithDetails(err, header, trailer, msg, args...)
+	}
+
+	if info.TotalRecords > 0 {
+		numResults = info.TotalRecords
+	}
+
+	header = metadata.MD{}
+	trailer = metadata.MD{}
+	rdr, err := c.readInfo(ctx, expectedSchema, info, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
+	if err != nil {
+		return nil, 0, header, trailer, adbcFromFlightStatusWithDetails(err, header, trailer, msg, args...)
+	}
+
+	return rdr, numResults, header, trailer, nil
 }
 
 func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error) {

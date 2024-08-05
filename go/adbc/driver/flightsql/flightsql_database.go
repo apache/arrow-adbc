@@ -499,7 +499,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	return driverbase.NewConnectionBuilder(conn).
 		WithDriverInfoPreparer(conn).
 		WithAutocommitSetter(conn).
-		WithDbObjectsEnumerator(conn).
+		WithDbObjectsEnumeratorV2(conn).
 		WithCurrentNamespacer(conn).
 		Connection(), nil
 }
