@@ -70,7 +70,7 @@ jobs:
           Rscript bootstrap.R
           popd
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - uses: r-lib/actions/setup-r-dependencies@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
         with:
           extra-packages: any::rcmdcheck, local::../adbcdrivermanager
           needs: check
