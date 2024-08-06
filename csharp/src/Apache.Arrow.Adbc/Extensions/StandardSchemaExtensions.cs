@@ -54,47 +54,44 @@ namespace Apache.Arrow.Adbc.Extensions
                 Field field = schemaFields[i];
                 ArrayData dataField = data[i].Data;
 
-                if (dataField != null)
+                if (field.DataType.TypeId != dataField.DataType.TypeId)
                 {
-                    if (field.DataType.TypeId != dataField.DataType.TypeId)
+                    throw new ArgumentException($"Expecting data type {field.DataType} but found {data[i].Data.DataType} on field with name {field.Name}.", nameof(data));
+                }
+                if (field.DataType.TypeId == ArrowTypeId.Struct)
+                {
+                    StructType structType = (StructType)field.DataType;
+                    Validate(structType.Fields, dataField.Children.Select(e => new ContainerArray(e)).ToList());
+                }
+                else if (field.DataType.TypeId == ArrowTypeId.List)
+                {
+                    ListType listType = (ListType)field.DataType;
+                    int j = 0;
+                    Field f = listType.Fields[j];
+
+                    List<Field> fieldsToValidate = new List<Field>();
+                    List<ContainerArray> arrayDataToValidate = new List<ContainerArray>();
+
+                    ArrayData? child = j < dataField.Children.Length ? dataField.Children[j] : null;
+
+                    if (child != null)
                     {
-                        throw new ArgumentException($"Expecting data type {field.DataType} but found {data[i].Data.DataType} on field with name {field.Name}.", nameof(data));
+                        fieldsToValidate.Add(f);
+                        arrayDataToValidate.Add(new ContainerArray(child));
                     }
-                    if (field.DataType.TypeId == ArrowTypeId.Struct)
+                    else if (!f.IsNullable)
                     {
-                        StructType structType = (StructType)field.DataType;
-                        Validate(structType.Fields, dataField.Children.Select(e => new ContainerArray(e)).ToList());
+                        throw new InvalidOperationException("Received a null value for a non-nullable field");
                     }
-                    else if (field.DataType.TypeId == ArrowTypeId.List)
+
+                    Validate(fieldsToValidate, arrayDataToValidate);
+                }
+                else if (field.DataType.TypeId == ArrowTypeId.Union)
+                {
+                    UnionType unionType = (UnionType)field.DataType;
+                    if (unionType.Fields.Count > 0)
                     {
-                        ListType listType = (ListType)field.DataType;
-                        int j = 0;
-                        Field f = listType.Fields[j];
-
-                        List<Field> fieldsToValidate = new List<Field>();
-                        List<ContainerArray> arrayDataToValidate = new List<ContainerArray>();
-
-                        ArrayData? child = j < dataField.Children.Length ? dataField.Children[j] : null;
-
-                        if (child != null)
-                        {
-                            fieldsToValidate.Add(f);
-                            arrayDataToValidate.Add(new ContainerArray(child));
-                        }
-                        else if (!f.IsNullable)
-                        {
-                            throw new InvalidOperationException("Received a null value for a non-nullable field");
-                        }
-
-                        Validate(fieldsToValidate, arrayDataToValidate);
-                    }
-                    else if (field.DataType.TypeId == ArrowTypeId.Union)
-                    {
-                        UnionType unionType = (UnionType)field.DataType;
-                        if (unionType.Fields.Count > 0)
-                        {
-                            Validate(unionType.Fields, dataField.Children.Select(e => new ContainerArray(e)).ToList());
-                        }
+                        Validate(unionType.Fields, dataField.Children.Select(e => new ContainerArray(e)).ToList());
                     }
                 }
             }
