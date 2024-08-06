@@ -261,10 +261,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     List<Dictionary<string, object?>?> children = new List<Dictionary<string, object?>?>();
 
-                    if (structArray1.Length > 1)
+                    for (int j = 0; j < structArray1.Length; j++)
                     {
-                        for (int j = 0; j < structArray1.Length; j++)
-                            children.Add(ParseStructArray(structArray1, j));
+                        children.Add(ParseStructArray(structArray1, j));
                     }
 
                     if (children.Count > 0)
@@ -273,10 +272,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
                     else
                     {
-                        if (index < structArray1.Length)
-                            jsonDictionary.Add(name, ParseStructArray(structArray1, index));
-                        else
-                            jsonDictionary.Add(name, null);
+                        jsonDictionary.Add(name, ParseStructArray(structArray1, index));
                     }
                 }
                 else if (value is IArrowArray arrowArray)
