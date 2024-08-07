@@ -35,7 +35,10 @@ constexpr int kPgBinaryFormat = 1;
 /// Helper to manage bind parameters with a prepared statement
 struct BindStream {
   Handle<struct ArrowArrayStream> bind;
+  Handle<struct ArrowArrayView> array_view;
+  Handle<struct ArrowArray> current;
   Handle<struct ArrowSchema> bind_schema;
+
   struct ArrowSchemaView bind_schema_view;
   std::vector<struct ArrowSchemaView> bind_schema_fields;
 
@@ -200,11 +203,10 @@ struct BindStream {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode Prepare(const PostgresConnection* conn, const std::string& query,
+  AdbcStatusCode Prepare(PGconn* pg_conn, const std::string& query,
                          struct AdbcError* error, const bool autocommit) {
     // tz-aware timestamps require special handling to set the timezone to UTC
     // prior to sending over the binary protocol; must be reset after execute
-    const auto pg_conn = conn->conn();
     for (int64_t col = 0; col < bind_schema->n_children; col++) {
       if ((bind_schema_fields[col].type == ArrowType::NANOARROW_TYPE_TIMESTAMP) &&
           (strcmp("", bind_schema_fields[col].timezone))) {
@@ -261,34 +263,33 @@ struct BindStream {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode Execute(const PostgresConnection* conn, int64_t* rows_affected,
+  AdbcStatusCode PullNextArray(AdbcError* error) {
+    if (current->release != nullptr) ArrowArrayRelease(&current.value);
+
+    CHECK_NA_DETAIL(IO, ArrowArrayStreamGetNext(&bind.value, &current.value, &na_error),
+                    &na_error, error);
+
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode Execute(PGconn* pg_conn, int64_t* rows_affected,
                          struct AdbcError* error) {
     if (rows_affected) *rows_affected = 0;
     PGresult* result = nullptr;
-    const auto pg_conn = conn->conn();
+    CHECK_NA_DETAIL(
+        INTERNAL,
+        ArrowArrayViewInitFromSchema(&array_view.value, &bind_schema.value, &na_error),
+        &na_error, error);
 
     while (true) {
-      Handle<struct ArrowArray> array;
-      int res = bind->get_next(&bind.value, &array.value);
-      if (res != 0) {
-        SetError(error,
-                 "[libpq] Failed to read next batch from stream of bind parameters: "
-                 "(%d) %s %s",
-                 res, std::strerror(res), bind->get_last_error(&bind.value));
-        return ADBC_STATUS_IO;
-      }
-      if (!array->release) break;
+      RAISE_ADBC(PullNextArray(error));
+      if (!current->release) break;
 
-      Handle<struct ArrowArrayView> array_view;
-      // TODO: include error messages
-      CHECK_NA(
-          INTERNAL,
-          ArrowArrayViewInitFromSchema(&array_view.value, &bind_schema.value, nullptr),
-          error);
-      CHECK_NA(INTERNAL, ArrowArrayViewSetArray(&array_view.value, &array.value, nullptr),
-               error);
+      CHECK_NA_DETAIL(
+          INTERNAL, ArrowArrayViewSetArray(&array_view.value, &current.value, &na_error),
+          &na_error, error);
 
-      for (int64_t row = 0; row < array->length; row++) {
+      for (int64_t row = 0; row < current->length; row++) {
         for (int64_t col = 0; col < array_view->n_children; col++) {
           if (ArrowArrayViewIsNull(array_view->children[col], row)) {
             param_values[col] = nullptr;
@@ -471,7 +472,7 @@ struct BindStream {
 
         PQclear(result);
       }
-      if (rows_affected) *rows_affected += array->length;
+      if (rows_affected) *rows_affected += current->length;
 
       if (has_tz_field) {
         std::string reset_query = "SET TIME ZONE '" + tz_setting + "'";
@@ -499,8 +500,8 @@ struct BindStream {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode ExecuteCopy(const PostgresConnection* conn, int64_t* rows_affected,
-                             struct AdbcError* error) {
+  AdbcStatusCode ExecuteCopy(PGconn* pg_conn, const PostgresTypeResolver& type_resolver,
+                             int64_t* rows_affected, struct AdbcError* error) {
     // https://github.com/apache/arrow-adbc/issues/1921: PostgreSQL has a max
     // size for a single message that we need to respect (1 GiB - 1).  Since
     // the buffer can be chunked up as much as we want, go for 16 MiB as our
@@ -508,32 +509,24 @@ struct BindStream {
     // https://github.com/postgres/postgres/blob/23c5a0e7d43bc925c6001538f04a458933a11fc1/src/common/stringinfo.c#L28
     constexpr int64_t kMaxCopyBufferSize = 0x1000000;
     if (rows_affected) *rows_affected = 0;
-    const auto pg_conn = conn->conn();
 
     PostgresCopyStreamWriter writer;
     CHECK_NA(INTERNAL, writer.Init(&bind_schema.value), error);
-    CHECK_NA(INTERNAL, writer.InitFieldWriters(*conn->type_resolver(), nullptr), error);
+    CHECK_NA_DETAIL(INTERNAL, writer.InitFieldWriters(type_resolver, &na_error),
+                    &na_error, error);
 
-    CHECK_NA(INTERNAL, writer.WriteHeader(nullptr), error);
+    CHECK_NA_DETAIL(INTERNAL, writer.WriteHeader(&na_error), &na_error, error);
 
     while (true) {
-      Handle<struct ArrowArray> array;
-      int res = bind->get_next(&bind.value, &array.value);
-      if (res != 0) {
-        SetError(error,
-                 "[libpq] Failed to read next batch from stream of bind parameters: "
-                 "(%d) %s %s",
-                 res, std::strerror(res), bind->get_last_error(&bind.value));
-        return ADBC_STATUS_IO;
-      }
-      if (!array->release) break;
+      RAISE_ADBC(PullNextArray(error));
+      if (!current->release) break;
 
-      CHECK_NA(INTERNAL, writer.SetArray(&array.value), error);
+      CHECK_NA(INTERNAL, writer.SetArray(&current.value), error);
 
       // build writer buffer
       int write_result;
       do {
-        write_result = writer.WriteRecord(nullptr);
+        write_result = writer.WriteRecord(&na_error);
       } while (write_result == NANOARROW_OK);
 
       // check if not ENODATA at exit
@@ -558,7 +551,7 @@ struct BindStream {
         }
       }
 
-      if (rows_affected) *rows_affected += array->length;
+      if (rows_affected) *rows_affected += current->length;
       writer.Rewind();
     }
 

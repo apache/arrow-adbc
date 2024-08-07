@@ -1144,8 +1144,8 @@ AdbcStatusCode PostgresStatement::ExecuteBind(struct ArrowArrayStream* stream,
   RAISE_ADBC(bind_stream.Begin([&]() { return ADBC_STATUS_OK; }, error));
   RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
   RAISE_ADBC(
-      bind_stream.Prepare(connection_.get(), query_, error, connection_->autocommit()));
-  RAISE_ADBC(bind_stream.Execute(connection_.get(), rows_affected, error));
+      bind_stream.Prepare(connection_->conn(), query_, error, connection_->autocommit()));
+  RAISE_ADBC(bind_stream.Execute(connection_->conn(), rows_affected, error));
   return ADBC_STATUS_OK;
 }
 
@@ -1321,7 +1321,8 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   }
 
   PQclear(result);
-  RAISE_ADBC(bind_stream.ExecuteCopy(connection_.get(), rows_affected, error));
+  RAISE_ADBC(bind_stream.ExecuteCopy(connection_->conn(), *connection_->type_resolver(),
+                                     rows_affected, error));
   return ADBC_STATUS_OK;
 }
 
