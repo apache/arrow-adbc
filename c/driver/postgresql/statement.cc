@@ -900,13 +900,7 @@ AdbcStatusCode PostgresStatement::Bind(struct ArrowArray* values,
 
   if (bind_.release) bind_.release(&bind_);
   // Make a one-value stream
-  bind_.private_data = new OneValueStream{*schema, *values};
-  bind_.get_schema = &OneValueStream::GetSchema;
-  bind_.get_next = &OneValueStream::GetNext;
-  bind_.get_last_error = &OneValueStream::GetLastError;
-  bind_.release = &OneValueStream::Release;
-  std::memset(values, 0, sizeof(*values));
-  std::memset(schema, 0, sizeof(*schema));
+  nanoarrow::VectorArrayStream(schema, values).ToArrayStream(&bind_);
   return ADBC_STATUS_OK;
 }
 
