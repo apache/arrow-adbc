@@ -64,11 +64,12 @@ struct BindStream {
 
   template <typename Callback>
   AdbcStatusCode Begin(Callback&& callback, struct AdbcError* error) {
-    CHECK_NA(INTERNAL, bind->get_schema(&bind.value, &bind_schema.value), error);
-    CHECK_NA(
-        INTERNAL,
-        ArrowSchemaViewInit(&bind_schema_view, &bind_schema.value, /*error*/ nullptr),
-        error);
+    CHECK_NA_DETAIL(INTERNAL,
+                    ArrowArrayStreamGetSchema(&bind.value, &bind_schema.value, &na_error),
+                    &na_error, error);
+    CHECK_NA_DETAIL(INTERNAL,
+                    ArrowSchemaViewInit(&bind_schema_view, &bind_schema.value, &na_error),
+                    &na_error, error);
 
     if (bind_schema_view.type != ArrowType::NANOARROW_TYPE_STRUCT) {
       SetError(error, "%s", "[libpq] Bind parameters must have type STRUCT");
@@ -82,6 +83,11 @@ struct BindStream {
                                    /*error*/ nullptr),
                error);
     }
+
+    CHECK_NA_DETAIL(
+        INTERNAL,
+        ArrowArrayViewInitFromSchema(&array_view.value, &bind_schema.value, &na_error),
+        &na_error, error);
 
     return std::move(callback)();
   }
@@ -269,6 +275,12 @@ struct BindStream {
     CHECK_NA_DETAIL(IO, ArrowArrayStreamGetNext(&bind.value, &current.value, &na_error),
                     &na_error, error);
 
+    if (current->release != nullptr) {
+      CHECK_NA_DETAIL(
+          INTERNAL, ArrowArrayViewSetArray(&array_view.value, &current.value, &na_error),
+          &na_error, error);
+    }
+
     return ADBC_STATUS_OK;
   }
 
@@ -276,18 +288,10 @@ struct BindStream {
                          struct AdbcError* error) {
     if (rows_affected) *rows_affected = 0;
     PGresult* result = nullptr;
-    CHECK_NA_DETAIL(
-        INTERNAL,
-        ArrowArrayViewInitFromSchema(&array_view.value, &bind_schema.value, &na_error),
-        &na_error, error);
 
     while (true) {
       RAISE_ADBC(PullNextArray(error));
       if (!current->release) break;
-
-      CHECK_NA_DETAIL(
-          INTERNAL, ArrowArrayViewSetArray(&array_view.value, &current.value, &na_error),
-          &na_error, error);
 
       for (int64_t row = 0; row < current->length; row++) {
         for (int64_t col = 0; col < array_view->n_children; col++) {
