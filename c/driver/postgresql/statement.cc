@@ -44,6 +44,7 @@
 #include "postgres_type.h"
 #include "postgres_util.h"
 #include "result_helper.h"
+#include "result_reader.h"
 
 namespace adbcpq {
 
