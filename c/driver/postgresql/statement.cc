@@ -36,8 +36,8 @@
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.hpp>
 
+#include "bind_stream.h"
 #include "connection.h"
-#include "copy/writer.h"
 #include "driver/common/options.h"
 #include "driver/common/utils.h"
 #include "error.h"
@@ -48,8 +48,6 @@
 namespace adbcpq {
 
 namespace {
-/// The flag indicating to PostgreSQL that we want binary-format values.
-constexpr int kPgBinaryFormat = 1;
 
 /// One-value ArrowArrayStream used to unify the implementations of Bind
 struct OneValueStream {
