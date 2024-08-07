@@ -18,6 +18,7 @@
 #pragma once
 
 #include <cassert>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -25,6 +26,8 @@
 
 #include <arrow-adbc/adbc.h>
 #include <libpq-fe.h>
+
+#include "copy/reader.h"
 
 namespace adbcpq {
 
@@ -73,24 +76,56 @@ class PqResultRow {
 // prior to iterating
 class PqResultHelper {
  public:
-  explicit PqResultHelper(PGconn* conn, std::string query, struct AdbcError* error)
-      : conn_(conn), query_(std::move(query)), error_(error) {}
+  enum class Format {
+    kText = 0,
+    kBinary = 1,
+  };
 
-  explicit PqResultHelper(PGconn* conn, std::string query,
-                          std::vector<std::string> param_values, struct AdbcError* error)
-      : conn_(conn),
-        query_(std::move(query)),
-        param_values_(std::move(param_values)),
-        error_(error) {}
+  explicit PqResultHelper(PGconn* conn, std::string query)
+      : conn_(conn), query_(std::move(query)) {}
+
+  PqResultHelper(PqResultHelper&& other)
+      : PqResultHelper(other.conn_, std::move(other.query_)) {
+    result_ = other.result_;
+    other.result_ = nullptr;
+  }
 
   ~PqResultHelper();
 
-  AdbcStatusCode Prepare();
-  AdbcStatusCode Execute();
+  void set_param_format(Format format) { param_format_ = format; }
+  void set_output_format(Format format) { output_format_ = format; }
+
+  AdbcStatusCode Prepare(struct AdbcError* error);
+  AdbcStatusCode Prepare(const std::vector<Oid>& param_oids, struct AdbcError* error);
+  AdbcStatusCode DescribePrepared(struct AdbcError* error);
+  AdbcStatusCode Execute(struct AdbcError* error,
+                         const std::vector<std::string>& params = {},
+                         PostgresType* param_types = nullptr);
+  AdbcStatusCode ExecuteCopy(struct AdbcError* error);
+  AdbcStatusCode ResolveParamTypes(PostgresTypeResolver& type_resolver,
+                                   PostgresType* param_types, struct AdbcError* error);
+  AdbcStatusCode ResolveOutputTypes(PostgresTypeResolver& type_resolver,
+                                    PostgresType* result_types, struct AdbcError* error);
+
+  bool HasResult() { return result_ != nullptr; }
+
+  PGresult* ReleaseResult();
+
+  void ClearResult() {
+    PQclear(result_);
+    result_ = nullptr;
+  }
+
+  int64_t AffectedRows();
 
   int NumRows() const { return PQntuples(result_); }
 
   int NumColumns() const { return PQnfields(result_); }
+
+  const char* FieldName(int column_number) const {
+    return PQfname(result_, column_number);
+  }
+  Oid FieldType(int column_number) const { return PQftype(result_, column_number); }
 
   class iterator {
     const PqResultHelper& outer_;
@@ -127,7 +162,58 @@ class PqResultHelper {
   PGresult* result_ = nullptr;
   PGconn* conn_;
   std::string query_;
-  std::vector<std::string> param_values_;
-  struct AdbcError* error_;
+  Format param_format_ = Format::kText;
+  Format output_format_ = Format::kText;
+
+  AdbcStatusCode PrepareInternal(int n_params, const Oid* param_oids,
+                                 struct AdbcError* error);
 };
+
+class PqResultArrayReader {
+ public:
+  PqResultArrayReader(PGconn* conn, std::shared_ptr<PostgresTypeResolver> type_resolver,
+                      std::string query)
+      : helper_(conn, std::move(query)), type_resolver_(type_resolver) {
+    ArrowErrorInit(&na_error_);
+    error_ = ADBC_ERROR_INIT;
+  }
+
+  ~PqResultArrayReader() { ResetErrors(); }
+
+  int GetSchema(struct ArrowSchema* out);
+  int GetNext(struct ArrowArray* out);
+  const char* GetLastError();
+
+  AdbcStatusCode ToArrayStream(int64_t* affected_rows, struct ArrowArrayStream* out,
+                               struct AdbcError* error);
+
+  AdbcStatusCode Initialize(struct AdbcError* error);
+
+ private:
+  PqResultHelper helper_;
+  std::shared_ptr<PostgresTypeResolver> type_resolver_;
+  std::vector<std::unique_ptr<PostgresCopyFieldReader>> field_readers_;
+  nanoarrow::UniqueSchema schema_;
+  struct AdbcError error_;
+  struct ArrowError na_error_;
+
+  explicit PqResultArrayReader(PqResultArrayReader* other)
+      : helper_(std::move(other->helper_)),
+        type_resolver_(std::move(other->type_resolver_)),
+        field_readers_(std::move(other->field_readers_)),
+        schema_(std::move(other->schema_)) {
+    ArrowErrorInit(&na_error_);
+    error_ = ADBC_ERROR_INIT;
+  }
+
+  void ResetErrors() {
+    ArrowErrorInit(&na_error_);
+
+    if (error_.private_data != nullptr) {
+      error_.release(&error_);
+    }
+    error_ = ADBC_ERROR_INIT;
+  }
+};
+
 }  // namespace adbcpq

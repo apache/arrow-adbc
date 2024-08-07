@@ -148,7 +148,7 @@ def test_query_execute_schema(postgres: dbapi.Connection) -> None:
 def test_query_invalid(postgres: dbapi.Connection) -> None:
     with postgres.cursor() as cur:
         with pytest.raises(
-            postgres.ProgrammingError, match="failed to prepare query"
+            postgres.ProgrammingError, match="Failed to prepare query"
         ) as excinfo:
             cur.execute("SELECT * FROM tabledoesnotexist")
 

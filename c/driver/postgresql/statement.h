@@ -33,6 +33,8 @@
 #define ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES \
   "adbc.postgresql.batch_size_hint_bytes"
 
+#define ADBC_POSTGRESQL_OPTION_USE_COPY "adbc.postgresql.use_copy"
+
 namespace adbcpq {
 class PostgresConnection;
 class PostgresStatement;
@@ -90,7 +92,11 @@ class TupleReader final {
 class PostgresStatement {
  public:
   PostgresStatement()
-      : connection_(nullptr), query_(), prepared_(false), reader_(nullptr) {
+      : connection_(nullptr),
+        query_(),
+        prepared_(false),
+        use_copy_(true),
+        reader_(nullptr) {
     std::memset(&bind_, 0, sizeof(bind_));
   }
 
@@ -130,12 +136,10 @@ class PostgresStatement {
       const std::vector<struct ArrowSchemaView>& source_schema_fields,
       std::string* escaped_table, std::string* escaped_field_list,
       struct AdbcError* error);
-  AdbcStatusCode ExecuteUpdateBulk(int64_t* rows_affected, struct AdbcError* error);
-  AdbcStatusCode ExecuteUpdateQuery(int64_t* rows_affected, struct AdbcError* error);
-  AdbcStatusCode ExecutePreparedStatement(struct ArrowArrayStream* stream,
-                                          int64_t* rows_affected,
-                                          struct AdbcError* error);
-  AdbcStatusCode SetupReader(struct AdbcError* error);
+  AdbcStatusCode ExecuteIngest(struct ArrowArrayStream* stream, int64_t* rows_affected,
+                               struct AdbcError* error);
+  AdbcStatusCode ExecuteBind(struct ArrowArrayStream* stream, int64_t* rows_affected,
+                             struct AdbcError* error);
 
  private:
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
@@ -153,6 +157,9 @@ class PostgresStatement {
     kReplace,
     kCreateAppend,
   };
+
+  // Options
+  bool use_copy_;
 
   struct {
     std::string db_schema;

@@ -43,6 +43,10 @@ std::optional<std::string> ConnectionGetOption(struct AdbcConnection* connection
                                                std::string_view option,
                                                struct AdbcError* error);
 
+std::optional<std::string> StatementGetOption(struct AdbcStatement* statement,
+                                              std::string_view option,
+                                              struct AdbcError* error);
+
 // ------------------------------------------------------------
 // Helpers to print values
 

@@ -145,12 +145,10 @@ class PqGetObjectsHelper {
         params.push_back(db_schema_);
       }
 
-      auto result_helper =
-          PqResultHelper{conn_, std::string(query.buffer), params, error_};
+      auto result_helper = PqResultHelper{conn_, std::string(query.buffer)};
       StringBuilderReset(&query);
 
-      RAISE_ADBC(result_helper.Prepare());
-      RAISE_ADBC(result_helper.Execute());
+      RAISE_ADBC(result_helper.Execute(error_, params));
 
       for (PqResultRow row : result_helper) {
         const char* schema_name = row[0].data;
@@ -188,12 +186,10 @@ class PqGetObjectsHelper {
       params.push_back(catalog_);
     }
 
-    PqResultHelper result_helper =
-        PqResultHelper{conn_, std::string(query.buffer), params, error_};
+    PqResultHelper result_helper = PqResultHelper{conn_, std::string(query.buffer)};
     StringBuilderReset(&query);
 
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    RAISE_ADBC(result_helper.Execute(error_, params));
 
     for (PqResultRow row : result_helper) {
       const char* db_name = row[0].data;
@@ -280,11 +276,10 @@ class PqGetObjectsHelper {
       }
     }
 
-    auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
+    auto result_helper = PqResultHelper{conn_, query.buffer};
     StringBuilderReset(&query);
 
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    RAISE_ADBC(result_helper.Execute(error_, params));
     for (PqResultRow row : result_helper) {
       const char* table_name = row[0].data;
       const char* table_type = row[1].data;
@@ -341,11 +336,10 @@ class PqGetObjectsHelper {
       params.push_back(std::string(column_name_));
     }
 
-    auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
+    auto result_helper = PqResultHelper{conn_, query.buffer};
     StringBuilderReset(&query);
 
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    RAISE_ADBC(result_helper.Execute(error_, params));
 
     for (PqResultRow row : result_helper) {
       const char* column_name = row[0].data;
@@ -493,11 +487,10 @@ class PqGetObjectsHelper {
       params.push_back(std::string(column_name_));
     }
 
-    auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
+    auto result_helper = PqResultHelper{conn_, query.buffer};
     StringBuilderReset(&query);
 
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    RAISE_ADBC(result_helper.Execute(error_, params));
 
     for (PqResultRow row : result_helper) {
       const char* constraint_name = row[0].data;
@@ -655,9 +648,8 @@ AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
         break;
       case ADBC_INFO_VENDOR_VERSION: {
         const char* stmt = "SHOW server_version_num";
-        auto result_helper = PqResultHelper{conn_, std::string(stmt), error};
-        RAISE_ADBC(result_helper.Prepare());
-        RAISE_ADBC(result_helper.Execute());
+        auto result_helper = PqResultHelper{conn_, std::string(stmt)};
+        RAISE_ADBC(result_helper.Execute(error));
         auto it = result_helper.begin();
         if (it == result_helper.end()) {
           SetError(error, "[libpq] PostgreSQL returned no rows for '%s'", stmt);
@@ -760,9 +752,8 @@ AdbcStatusCode PostgresConnection::GetOption(const char* option, char* value,
   if (std::strcmp(option, ADBC_CONNECTION_OPTION_CURRENT_CATALOG) == 0) {
     output = PQdb(conn_);
   } else if (std::strcmp(option, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
-    PqResultHelper result_helper{conn_, "SELECT CURRENT_SCHEMA", {}, error};
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    PqResultHelper result_helper{conn_, "SELECT CURRENT_SCHEMA"};
+    RAISE_ADBC(result_helper.Execute(error));
     auto it = result_helper.begin();
     if (it == result_helper.end()) {
       SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
@@ -931,10 +922,8 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
   std::string prev_table;
 
   {
-    PqResultHelper result_helper{
-        conn, query, {db_schema, table_name ? table_name : "%"}, error};
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    PqResultHelper result_helper{conn, query};
+    RAISE_ADBC(result_helper.Execute(error, {db_schema, table_name ? table_name : "%"}));
 
     for (PqResultRow row : result_helper) {
       auto reltuples = row[5].ParseDouble();
@@ -1166,11 +1155,9 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
 
   std::vector<std::string> params = {table_name_str};
 
-  PqResultHelper result_helper =
-      PqResultHelper{conn_, std::string(query.c_str()), params, error};
+  PqResultHelper result_helper = PqResultHelper{conn_, std::string(query.c_str())};
 
-  RAISE_ADBC(result_helper.Prepare());
-  auto result = result_helper.Execute();
+  auto result = result_helper.Execute(error, params);
   if (result != ADBC_STATUS_OK) {
     auto error_code = std::string(error->sqlstate, 5);
     if ((error_code == "42P01") || (error_code == "42602")) {
@@ -1337,10 +1324,8 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     return ADBC_STATUS_OK;
   } else if (std::strcmp(key, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
     // PostgreSQL doesn't accept a parameter here
-    PqResultHelper result_helper{
-        conn_, std::string("SET search_path TO ") + value, {}, error};
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    PqResultHelper result_helper{conn_, std::string("SET search_path TO ") + value};
+    RAISE_ADBC(result_helper.Execute(error));
     return ADBC_STATUS_OK;
   }
   SetError(error, "%s%s", "[libpq] Unknown option ", key);
