@@ -18,16 +18,12 @@
 package snowflake
 
 import (
-	"cmp"
 	"context"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"io"
-	"reflect"
-	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -144,22 +140,39 @@ func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog str
 // GetTablesForDBSchema implements driverbase.DbObjectsEnumeratorV2.
 func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {
 	var (
+		withBldr      strings.Builder
 		selectBldr    strings.Builder
 		fromBldr      strings.Builder
 		conditionBldr strings.Builder
 	)
 
+	if _, err := fmt.Fprint(&withBldr, `
+		WITH constraints AS (
+			SELECT
+				table_catalog,
+				table_schema,
+				table_name,
+				ARRAY_AGG({'constraint_name': constraint_name, 'constraint_type': constraint_type}) table_constraints,
+			FROM information_schema.table_constraints
+			GROUP BY table_catalog, table_schema, table_name
+		)`,
+	); err != nil {
+		return nil, err
+	}
+
 	if _, err := fmt.Fprint(&selectBldr, `
 		SELECT
 			table_name,
 			table_type,
-			ARRAY_AGG({'constraint_name': constraint_name, 'constraint_type': constraint_type}) table_constraints,`,
+			table_constraints,`,
 	); err != nil {
 		return nil, err
 	}
 
 	if _, err := fmt.Fprint(&fromBldr, `
-		FROM information_schema.tables`,
+		FROM information_schema.tables
+		LEFT JOIN constraints
+		USING (table_catalog, table_schema, table_name)`,
 	); err != nil {
 		return nil, err
 	}
@@ -171,34 +184,57 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 	}
 
 	if includeColumns {
-		if _, err := fmt.Fprint(&selectBldr, `
-			ARRAY_AGG({'column_name': column_name, 'ordinal_position': ordinal_position, 'remarks': comment}) table_columns,`,
-		); err != nil {
-			return nil, err
-		}
-
-		if _, err := fmt.Fprint(&fromBldr, `
-			LEFT JOIN information_schema.columns
-			USING (table_catalog, table_schema, table_name)`,
+		if _, err := fmt.Fprint(&withBldr, `,
+			columns AS (
+				SELECT
+					table_catalog,
+					table_schema,
+					table_name,
+					ARRAY_AGG({
+						'column_name': column_name,
+						'ordinal_position': ordinal_position,
+						'remarks': comment,
+						'xdbc_type_name': data_type,
+						'xdbc_is_nullable': is_nullable,
+						'xdbc_nullable': is_nullable::boolean::int,
+						'xdbc_column_size': coalesce(character_maximum_length, numeric_precision),
+						'xdbc_char_octet_length': character_octet_length,
+						'xdbc_decimal_digits': numeric_scale,
+						'xdbc_num_prec_radix': numeric_precision_radix,
+						'xdbc_datetime_sub': datetime_precision
+					}) table_columns,
+				FROM information_schema.columns`,
 		); err != nil {
 			return nil, err
 		}
 
 		if columnFilter != nil {
-			if _, err := fmt.Fprintf(&conditionBldr, `
-				AND column_name ILIKE '%s'`,
+			if _, err := fmt.Fprintf(&withBldr, `
+				WHERE column_name ILIKE '%s'`,
 				*columnFilter); err != nil {
 				return nil, err
 			}
 		}
 
-	}
+		if _, err := fmt.Fprint(&withBldr, `
+				GROUP BY table_catalog, table_schema, table_name
+			)`,
+		); err != nil {
+			return nil, err
+		}
 
-	if _, err := fmt.Fprint(&fromBldr, `
-		LEFT JOIN information_schema.table_constraints
-		USING (table_catalog, table_schema, table_name)`,
-	); err != nil {
-		return nil, err
+		if _, err := fmt.Fprint(&selectBldr, `
+			table_columns,`,
+		); err != nil {
+			return nil, err
+		}
+
+		if _, err := fmt.Fprint(&fromBldr, `
+			LEFT JOIN columns
+			USING (table_catalog, table_schema, table_name)`,
+		); err != nil {
+			return nil, err
+		}
 	}
 
 	if tableFilter != nil {
@@ -209,13 +245,7 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 		}
 	}
 
-	if _, err := fmt.Fprint(&conditionBldr, `
-		GROUP BY table_name, table_type`,
-	); err != nil {
-		return nil, err
-	}
-
-	query := selectBldr.String() + fromBldr.String() + conditionBldr.String()
+	query := withBldr.String() + selectBldr.String() + fromBldr.String() + conditionBldr.String()
 
 	rows, err := c.sqldb.QueryContext(ctx, query, nil)
 	if err != nil {
@@ -252,6 +282,15 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 			TableConstraints: constraints.Value,
 		}
 
+		// A few columns need additional processing outside of Snowflake
+		for i, col := range info.TableColumns {
+			field := c.toArrowField(col)
+			xdbcDataType := toXdbcDataType(field.Type)
+
+			info.TableColumns[i].XdbcDataType = int16(field.Type.ID())
+			info.TableColumns[i].XdbcSqlDataType = int16(xdbcDataType)
+		}
+
 		tableInfos = append(tableInfos, info)
 	}
 
@@ -266,8 +305,11 @@ type columnInfoArray struct {
 
 // Scan implements sql.Scanner.
 func (c *columnInfoArray) Scan(src any) error {
-	var b []byte
+	if src == nil {
+		return nil
+	}
 
+	var b []byte
 	switch s := src.(type) {
 	case []byte:
 		b = s
@@ -277,21 +319,7 @@ func (c *columnInfoArray) Scan(src any) error {
 		return fmt.Errorf("unexpected driver value for ColumnInfoArray: %s", s)
 	}
 
-	var out []driverbase.ColumnInfo
-	if err := json.Unmarshal(b, &out); err != nil {
-		return err
-	}
-
-	// Snowflake returns a list with 1 empty element when no results are found
-	// instead of an empty list, so we filter those values out.
-	c.Value = make([]driverbase.ColumnInfo, 0)
-	for _, val := range out {
-		if !reflect.ValueOf(val).IsZero() {
-			c.Value = append(c.Value, val)
-		}
-	}
-
-	return nil
+	return json.Unmarshal(b, &c.Value)
 }
 
 // constraintInfoArray is a container for a slice of ConstraintInfo's which implements the sql.Scanner interface.
@@ -302,8 +330,11 @@ type constraintInfoArray struct {
 
 // Scan implements sql.Scanner.
 func (c *constraintInfoArray) Scan(src any) error {
-	var b []byte
+	if src == nil {
+		return nil
+	}
 
+	var b []byte
 	switch s := src.(type) {
 	case []byte:
 		b = s
@@ -313,39 +344,7 @@ func (c *constraintInfoArray) Scan(src any) error {
 		return fmt.Errorf("unexpected driver value for ConstraintInfoArray: %s", s)
 	}
 
-	var out []driverbase.ConstraintInfo
-	if err := json.Unmarshal(b, &out); err != nil {
-		return err
-	}
-
-	// Snowflake returns a list with 1 empty element when no results are found
-	// instead of an empty list, so we filter those values out.
-	c.Value = make([]driverbase.ConstraintInfo, 0)
-	for _, val := range out {
-		if !reflect.ValueOf(val).IsZero() {
-			c.Value = append(c.Value, val)
-		}
-	}
-
-	return nil
-}
-
-// Uniquely identify a constraint based on the dbName, schema, and tblName
-// As Snowflake allows creating duplicate constraintName in a separate schema
-// Table Name is stored additional for mapping to internal.CatalogSchemaTable struct
-type QualifiedConstraint struct {
-	catalogSchemaTable internal.CatalogSchemaTable
-	constraintName     string
-}
-
-type TableConstraint struct {
-	dbName, schema, tblName, colName, constraintName, constraintType string
-	fkDbName, fkSchema, fkTblName, fkColName, fkConstraintName       sql.NullString
-	skipUpdateRule, skipDeleteRule, skipDeferrability                string
-	keySequence                                                      int
-	skipComment                                                      sql.NullString
-	skipCreatedOn                                                    time.Time
-	skipRely                                                         bool
+	return json.Unmarshal(b, &c.Value)
 }
 
 // PrepareDriverInfo implements driverbase.DriverInfoPreparer.
@@ -408,286 +407,61 @@ func (c *connectionImpl) SetAutocommit(enabled bool) error {
 	return err
 }
 
-// Metadata methods
-// Generally these methods return an array.RecordReader that
-// can be consumed to retrieve metadata about the database as Arrow
-// data. The returned metadata has an expected schema given in the
-// doc strings of the specific methods. Schema fields are nullable
-// unless otherwise marked. While no Statement is used in these
-// methods, the result set may count as an active statement to the
-// driver for the purposes of concurrency management (e.g. if the
-// driver has a limit on concurrent active statements and it must
-// execute a SQL query internally in order to implement the metadata
-// method).
-//
-// Some methods accept "search pattern" arguments, which are strings
-// that can contain the special character "%" to match zero or more
-// characters, or "_" to match exactly one character. (See the
-// documentation of DatabaseMetaData in JDBC or "Pattern Value Arguments"
-// in the ODBC documentation.) Escaping is not currently supported.
-// GetObjects gets a hierarchical view of all catalogs, database schemas,
-// tables, and columns.
-//
-// The result is an Arrow Dataset with the following schema:
-//
-//	Field Name                  | Field Type
-//	----------------------------|----------------------------
-//	catalog_name                | utf8
-//	catalog_db_schemas          | list<DB_SCHEMA_SCHEMA>
-//
-// DB_SCHEMA_SCHEMA is a Struct with the fields:
-//
-//	Field Name                  | Field Type
-//	----------------------------|----------------------------
-//	db_schema_name              | utf8
-//	db_schema_tables            | list<TABLE_SCHEMA>
-//
-// TABLE_SCHEMA is a Struct with the fields:
-//
-//	Field Name                  | Field Type
-//	----------------------------|----------------------------
-//	table_name                  | utf8 not null
-//	table_type                  | utf8 not null
-//	table_columns               | list<COLUMN_SCHEMA>
-//	table_constraints           | list<CONSTRAINT_SCHEMA>
-//
-// COLUMN_SCHEMA is a Struct with the fields:
-//
-//	Field Name                  | Field Type          | Comments
-//	----------------------------|---------------------|---------
-//	column_name                 | utf8 not null       |
-//	ordinal_position            | int32               | (1)
-//	remarks                     | utf8                | (2)
-//	xdbc_data_type              | int16               | (3)
-//	xdbc_type_name              | utf8                | (3)
-//	xdbc_column_size            | int32               | (3)
-//	xdbc_decimal_digits         | int16               | (3)
-//	xdbc_num_prec_radix         | int16               | (3)
-//	xdbc_nullable               | int16               | (3)
-//	xdbc_column_def             | utf8                | (3)
-//	xdbc_sql_data_type          | int16               | (3)
-//	xdbc_datetime_sub           | int16               | (3)
-//	xdbc_char_octet_length      | int32               | (3)
-//	xdbc_is_nullable            | utf8                | (3)
-//	xdbc_scope_catalog          | utf8                | (3)
-//	xdbc_scope_schema           | utf8                | (3)
-//	xdbc_scope_table            | utf8                | (3)
-//	xdbc_is_autoincrement       | bool                | (3)
-//	xdbc_is_generatedcolumn     | utf8                | (3)
-//
-// 1. The column's ordinal position in the table (starting from 1).
-// 2. Database-specific description of the column.
-// 3. Optional Value. Should be null if not supported by the driver.
-//	  xdbc_values are meant to provide JDBC/ODBC-compatible metadata
-//	  in an agnostic manner.
-//
-// CONSTRAINT_SCHEMA is a Struct with the fields:
-//
-//	Field Name                  | Field Type          | Comments
-//	----------------------------|---------------------|---------
-//	constraint_name             | utf8                |
-//	constraint_type             | utf8 not null       | (1)
-//	constraint_column_names     | list<utf8> not null | (2)
-//	constraint_column_usage     | list<USAGE_SCHEMA>  | (3)
-//
-// 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE'.
-// 2. The columns on the current table that are constrained, in order.
-// 3. For FOREIGN KEY only, the referenced table and columns.
-//
-// USAGE_SCHEMA is a Struct with fields:
-//
-//	Field Name                  | Field Type
-//	----------------------------|----------------------------
-//	fk_catalog                  | utf8
-//	fk_db_schema                | utf8
-//	fk_table                    | utf8 not null
-//	fk_column_name              | utf8 not null
-//
-// For the parameters: If nil is passed, then that parameter will not
-// be filtered by at all. If an empty string, then only objects without
-// that property (ie: catalog or db schema) will be returned.
-//
-// tableName and columnName must be either nil (do not filter by
-// table name or column name) or non-empty.
-//
-// All non-empty, non-nil strings should be a search pattern (as described
-// earlier).
-
-func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
-	metadataRecords, err := c.populateMetadata(ctx, depth, catalog, dbSchema, tableName, columnName, tableType)
-	if err != nil {
-		return nil, err
-	}
-
-	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
-	g.MetadataRecords = metadataRecords
-
-	constraintLookup, err := c.populateConstraintSchema(ctx, depth, metadataRecords)
-	g.ConstraintLookup = constraintLookup
-	if err != nil {
-		return nil, err
-	}
-
-	if err := g.Init(c.db.Alloc, c.getObjectsDbSchemas, c.getObjectsTables); err != nil {
-		return nil, err
-	}
-	defer g.Release()
-
-	uniqueCatalogs := make(map[string]bool)
-	for _, data := range metadataRecords {
-		if !data.Dbname.Valid {
-			continue
-		}
-
-		if _, exists := uniqueCatalogs[data.Dbname.String]; !exists {
-			uniqueCatalogs[data.Dbname.String] = true
-			g.AppendCatalog(data.Dbname.String)
-		}
-	}
-
-	return g.Finish()
-}
-
-func (c *connectionImpl) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, metadataRecords []internal.Metadata) (result map[string][]string, err error) {
-	if depth == adbc.ObjectDepthCatalogs {
-		return
-	}
-
-	result = make(map[string][]string)
-	uniqueCatalogSchema := make(map[internal.CatalogAndSchema]bool)
-
-	for _, data := range metadataRecords {
-		if !data.Dbname.Valid || !data.Schema.Valid {
-			continue
-		}
-
-		catalogSchemaInfo := internal.CatalogAndSchema{
-			Catalog: data.Dbname.String,
-			Schema:  data.Schema.String,
-		}
-
-		cat, exists := result[data.Dbname.String]
-		if !exists {
-			cat = make([]string, 0, 1)
-		}
-
-		if _, exists := uniqueCatalogSchema[catalogSchemaInfo]; !exists {
-			uniqueCatalogSchema[catalogSchemaInfo] = true
-			result[data.Dbname.String] = append(cat, data.Schema.String)
-		}
-	}
-
-	return
-}
-
 var loc = time.Now().Location()
 
-func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent, useHighPrecision bool, identGen, identInc sql.NullString, charMaxLength, charOctetLength sql.NullInt32, datetimePrec sql.NullInt16, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
-	ret.Name, ret.Nullable = name, isnullable
+func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Field {
+	field := arrow.Field{Name: columnInfo.ColumnName, Nullable: columnInfo.XdbcNullable != 0}
 
-	switch dataType {
+	switch columnInfo.XdbcTypeName {
 	case "NUMBER":
-		if useHighPrecision {
-			ret.Type = &arrow.Decimal128Type{
-				Precision: int32(numPrec.Int16),
-				Scale:     int32(numScale.Int16),
+		if c.useHighPrecision {
+			field.Type = &arrow.Decimal128Type{
+				Precision: int32(columnInfo.XdbcColumnSize),
+				Scale:     int32(columnInfo.XdbcDecimalDigits),
 			}
 		} else {
-			if !numScale.Valid || numScale.Int16 == 0 {
-				ret.Type = arrow.PrimitiveTypes.Int64
+			if columnInfo.XdbcDecimalDigits == 0 {
+				field.Type = arrow.PrimitiveTypes.Int64
 			} else {
-				ret.Type = arrow.PrimitiveTypes.Float64
+				field.Type = arrow.PrimitiveTypes.Float64
 			}
 		}
 	case "FLOAT":
 		fallthrough
 	case "DOUBLE":
-		ret.Type = arrow.PrimitiveTypes.Float64
+		field.Type = arrow.PrimitiveTypes.Float64
 	case "TEXT":
-		ret.Type = arrow.BinaryTypes.String
+		field.Type = arrow.BinaryTypes.String
 	case "BINARY":
-		ret.Type = arrow.BinaryTypes.Binary
+		field.Type = arrow.BinaryTypes.Binary
 	case "BOOLEAN":
-		ret.Type = arrow.FixedWidthTypes.Boolean
+		field.Type = arrow.FixedWidthTypes.Boolean
 	case "ARRAY":
 		fallthrough
 	case "VARIANT":
 		fallthrough
 	case "OBJECT":
 		// snowflake will return each value as a string
-		ret.Type = arrow.BinaryTypes.String
+		field.Type = arrow.BinaryTypes.String
 	case "DATE":
-		ret.Type = arrow.FixedWidthTypes.Date32
+		field.Type = arrow.FixedWidthTypes.Date32
 	case "TIME":
-		ret.Type = arrow.FixedWidthTypes.Time64ns
+		field.Type = arrow.FixedWidthTypes.Time64ns
 	case "DATETIME":
 		fallthrough
 	case "TIMESTAMP", "TIMESTAMP_NTZ":
-		ret.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
+		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
 	case "TIMESTAMP_LTZ":
-		ret.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
+		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
 	case "TIMESTAMP_TZ":
-		ret.Type = arrow.FixedWidthTypes.Timestamp_ns
+		field.Type = arrow.FixedWidthTypes.Timestamp_ns
 	case "GEOGRAPHY":
 		fallthrough
 	case "GEOMETRY":
-		ret.Type = arrow.BinaryTypes.String
+		field.Type = arrow.BinaryTypes.String
 	}
 
-	md := make(map[string]string)
-	md["TYPE_NAME"] = dataType
-	if isIdent {
-		md["IS_IDENTITY"] = "YES"
-		md["IDENTITY_GENERATION"] = identGen.String
-		md["IDENTITY_INCREMENT"] = identInc.String
-	}
-	if comment.Valid {
-		md["COMMENT"] = comment.String
-	}
-
-	md["ORDINAL_POSITION"] = strconv.Itoa(ordinalPos)
-	md["XDBC_DATA_TYPE"] = strconv.Itoa(int(ret.Type.ID()))
-	md["XDBC_TYPE_NAME"] = dataType
-	md["XDBC_SQL_DATA_TYPE"] = strconv.Itoa(int(toXdbcDataType(ret.Type)))
-	md["XDBC_NULLABLE"] = strconv.FormatBool(isnullable)
-
-	if isnullable {
-		md["XDBC_IS_NULLABLE"] = "YES"
-	} else {
-		md["XDBC_IS_NULLABLE"] = "NO"
-	}
-
-	if numPrec.Valid {
-		md["XDBC_PRECISION"] = strconv.Itoa(int(numPrec.Int16))
-	}
-
-	if numScale.Valid {
-		md["XDBC_SCALE"] = strconv.Itoa(int(numScale.Int16))
-	}
-
-	if numPrec.Valid {
-		md["XDBC_PRECISION"] = strconv.Itoa(int(numPrec.Int16))
-	}
-
-	if numPrecRadix.Valid {
-		md["XDBC_NUM_PREC_RADIX"] = strconv.Itoa(int(numPrecRadix.Int16))
-	}
-
-	if charMaxLength.Valid {
-		md["CHARACTER_MAXIMUM_LENGTH"] = strconv.Itoa(int(charMaxLength.Int32))
-	}
-
-	if charOctetLength.Valid {
-		md["XDBC_CHAR_OCTET_LENGTH"] = strconv.Itoa(int(charOctetLength.Int32))
-	}
-
-	if datetimePrec.Valid {
-		md["XDBC_DATETIME_SUB"] = strconv.Itoa(int(datetimePrec.Int16))
-	}
-
-	ret.Metadata = arrow.MetadataFrom(md)
-
-	return
+	return field
 }
 
 func toXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
@@ -733,641 +507,6 @@ func toXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
 	default:
 		return internal.XdbcDataType_XDBC_UNKNOWN_TYPE
 	}
-}
-
-func (c *connectionImpl) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (result internal.SchemaToTableInfo, err error) {
-
-	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
-		return
-	}
-
-	result = make(internal.SchemaToTableInfo)
-	includeSchema := depth == adbc.ObjectDepthAll || depth == adbc.ObjectDepthColumns
-
-	uniqueCatalogSchemaTable := make(map[internal.CatalogSchemaTable]bool)
-	for _, data := range metadataRecords {
-		if !data.Dbname.Valid || !data.Schema.Valid || !data.TblName.Valid || !data.TblType.Valid {
-			continue
-		}
-
-		catalogSchemaTableInfo := internal.CatalogSchemaTable{
-			Catalog: data.Dbname.String,
-			Schema:  data.Schema.String,
-			Table:   data.TblName.String,
-		}
-
-		if _, exists := uniqueCatalogSchemaTable[catalogSchemaTableInfo]; !exists {
-			uniqueCatalogSchemaTable[catalogSchemaTableInfo] = true
-
-			key := internal.CatalogAndSchema{
-				Catalog: data.Dbname.String, Schema: data.Schema.String}
-
-			result[key] = append(result[key], internal.TableInfo{
-				Name: data.TblName.String, TableType: data.TblType.String})
-		}
-	}
-
-	if includeSchema {
-		var (
-			prevKey      internal.CatalogAndSchema
-			curTableInfo *internal.TableInfo
-			fieldList    = make([]arrow.Field, 0)
-		)
-
-		uniqueColumn := make(map[internal.CatalogSchemaTableColumn]bool)
-
-		for _, data := range metadataRecords {
-			if !data.Dbname.Valid || !data.Schema.Valid || !data.TblName.Valid || !data.ColName.Valid {
-				continue
-			}
-
-			key := internal.CatalogAndSchema{Catalog: data.Dbname.String, Schema: data.Schema.String}
-			if prevKey != key || (curTableInfo != nil && curTableInfo.Name != data.TblName.String) {
-				if len(fieldList) > 0 && curTableInfo != nil {
-					curTableInfo.Schema = arrow.NewSchema(fieldList, nil)
-					fieldList = fieldList[:0]
-				}
-
-				info := result[key]
-				for i := range info {
-					if info[i].Name == data.TblName.String {
-						curTableInfo = &info[i]
-						break
-					}
-				}
-			}
-
-			prevKey = key
-			columnInfo := internal.CatalogSchemaTableColumn{
-				Catalog: data.Dbname.String,
-				Schema:  data.Schema.String,
-				Table:   data.TblName.String,
-				Column:  data.ColName.String,
-			}
-			if _, exists := uniqueColumn[columnInfo]; !exists {
-				uniqueColumn[columnInfo] = true
-				fieldList = append(fieldList, toField(data.ColName.String, data.IsNullable, data.DataType.String, data.NumericPrec, data.NumericPrecRadix, data.NumericScale, data.IsIdent, c.useHighPrecision, data.IdentGen, data.IdentIncrement, data.CharMaxLength, data.CharOctetLength, data.DatetimePrec, data.Comment, data.OrdinalPos))
-			}
-		}
-
-		if len(fieldList) > 0 && curTableInfo != nil {
-			curTableInfo.Schema = arrow.NewSchema(fieldList, nil)
-		}
-	}
-	return
-}
-
-func (c *connectionImpl) populateMetadata(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) ([]internal.Metadata, error) {
-	var metadataRecords []internal.Metadata
-
-	catalogMetadataRecords, err := c.getCatalogsMetadata(ctx)
-	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
-	}
-
-	matchingCatalogNames, err := getMatchingCatalogNames(catalogMetadataRecords, catalog)
-	if err != nil {
-		return nil, adbc.Error{
-			Msg:  err.Error(),
-			Code: adbc.StatusInvalidArgument,
-		}
-	}
-
-	if depth == adbc.ObjectDepthCatalogs {
-		metadataRecords = catalogMetadataRecords
-	} else if depth == adbc.ObjectDepthDBSchemas {
-		metadataRecords, err = c.getDbSchemasMetadata(ctx, matchingCatalogNames, catalog, dbSchema)
-
-	} else if depth == adbc.ObjectDepthTables {
-		metadataRecords, err = c.getTablesMetadata(ctx, matchingCatalogNames, catalog, dbSchema, tableName, tableType)
-	} else {
-		tableMetadataRecords, tablesErr := c.getTablesMetadata(ctx, matchingCatalogNames, catalog, dbSchema, tableName, tableType)
-		if tablesErr != nil {
-			return nil, errToAdbcErr(adbc.StatusIO, err)
-		}
-		columnsMetadataRecords, columnsErr := c.getColumnsMetadata(ctx, matchingCatalogNames, catalog, dbSchema, tableName, columnName, tableType)
-		if columnsErr != nil {
-			return nil, errToAdbcErr(adbc.StatusIO, err)
-		}
-		metadataRecords = append(tableMetadataRecords, columnsMetadataRecords...)
-	}
-
-	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
-	}
-
-	return metadataRecords, nil
-}
-
-func (c *connectionImpl) populateConstraintSchema(ctx context.Context, depth adbc.ObjectDepth, metadataRecords []internal.Metadata) (map[internal.CatalogSchemaTable][]internal.ConstraintSchema, error) {
-	constraintLookup := make(map[internal.CatalogSchemaTable][]internal.ConstraintSchema)
-	tableConstraintsData, err := c.getConstraintsData(ctx, depth, metadataRecords)
-	if err != nil {
-		return nil, err
-	}
-
-	// we want to avoid creating duplicate entries for a constraint
-	qualifiedConstraintLookup := make(map[QualifiedConstraint]internal.ConstraintSchema)
-	for _, data := range tableConstraintsData {
-		var qualifiedConstraint QualifiedConstraint
-		// columnUsages is only relevant for a foreign key
-		if data.fkConstraintName.Valid {
-			qualifiedConstraint = getQualifiedConstraint(data.fkDbName.String, data.fkSchema.String, data.fkTblName.String, data.fkConstraintName.String)
-			if _, exists := qualifiedConstraintLookup[qualifiedConstraint]; !exists {
-				qualifiedConstraintLookup[qualifiedConstraint] = getConstraintSchemaFromTableConstraint(data)
-			} else {
-				constraintInfo := qualifiedConstraintLookup[qualifiedConstraint]
-				// appending additional column names and column usages for foreign key constraints
-				constraintInfo.ConstraintColumnNames = append(constraintInfo.ConstraintColumnNames, data.fkColName.String)
-				constraintInfo.ConstraintColumnUsages = append(constraintInfo.ConstraintColumnUsages, getUsageSchemaFromTableConstraint(data))
-				qualifiedConstraintLookup[qualifiedConstraint] = constraintInfo
-			}
-		} else {
-			qualifiedConstraint = getQualifiedConstraint(data.dbName, data.schema, data.tblName, data.constraintName)
-			if _, exists := qualifiedConstraintLookup[qualifiedConstraint]; !exists {
-				qualifiedConstraintLookup[qualifiedConstraint] = getConstraintSchemaFromTableConstraint(data)
-			} else {
-				constraintInfo := qualifiedConstraintLookup[qualifiedConstraint]
-				// appending additional column names for primary and unique key constraints
-				constraintInfo.ConstraintColumnNames = append(constraintInfo.ConstraintColumnNames, data.colName)
-				qualifiedConstraintLookup[qualifiedConstraint] = constraintInfo
-			}
-		}
-	}
-
-	// adding all the unique constraints to a constraint lookup using the catalogSchemaTable as a key
-	for qualifiedConstraint, constraintSchema := range qualifiedConstraintLookup {
-		catalogSchemaTable := qualifiedConstraint.catalogSchemaTable
-		constraintLookup[catalogSchemaTable] = append(constraintLookup[catalogSchemaTable], constraintSchema)
-	}
-
-	return constraintLookup, nil
-}
-
-func (c *connectionImpl) getConstraintsData(ctx context.Context, depth adbc.ObjectDepth, metadataRecords []internal.Metadata) ([]TableConstraint, error) {
-	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
-		return nil, nil
-	}
-	availableConstraintTypes := getAvailableConstraintTypes(metadataRecords)
-	availableFullyQualifiedConstraints := getAvailableConstraints(metadataRecords)
-
-	var uniqueConstraintsData []TableConstraint
-	var primaryKeyConstraintsData []TableConstraint
-	var foreignKeyConstraintsData []TableConstraint
-	var err error
-
-	if availableConstraintTypes != nil {
-		if _, exists := availableConstraintTypes[internal.Unique]; exists {
-			uniqueConstraintsData, err = c.getUniqueConstraints(ctx, availableFullyQualifiedConstraints)
-			if err != nil {
-				return nil, errToAdbcErr(adbc.StatusIO, err)
-			}
-		}
-
-		if _, exists := availableConstraintTypes[internal.PrimaryKey]; exists {
-			primaryKeyConstraintsData, err = c.getPrimaryKeyConstraints(ctx, availableFullyQualifiedConstraints)
-			if err != nil {
-				return nil, errToAdbcErr(adbc.StatusIO, err)
-			}
-		}
-
-		if _, exists := availableConstraintTypes[internal.ForeignKey]; exists {
-			foreignKeyConstraintsData, err = c.getForeignKeyConstraints(ctx, availableFullyQualifiedConstraints)
-			if err != nil {
-				return nil, errToAdbcErr(adbc.StatusIO, err)
-			}
-		}
-	}
-
-	tableConstraintsData := append(append(uniqueConstraintsData, primaryKeyConstraintsData...), foreignKeyConstraintsData...)
-
-	slices.SortFunc(tableConstraintsData, func(i, j TableConstraint) int {
-		if n := cmp.Compare(i.constraintName, j.constraintName); n != 0 {
-			return n
-		}
-		// If constrain names are equal, order by keySequence
-		return cmp.Compare(i.keySequence, j.keySequence)
-	})
-
-	return tableConstraintsData, nil
-}
-
-func (c *connectionImpl) getUniqueConstraints(ctx context.Context, fullyQualifiedConstraints map[QualifiedConstraint]bool) ([]TableConstraint, error) {
-	uniqueConstraintsData := make([]TableConstraint, 0)
-
-	rows, err := c.sqldb.QueryContext(ctx, prepareUniqueConstraintSQL(), nil)
-	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var uniqueConstraint TableConstraint
-		if err := rows.Scan(&uniqueConstraint.skipCreatedOn, &uniqueConstraint.dbName, &uniqueConstraint.schema,
-			&uniqueConstraint.tblName, &uniqueConstraint.colName, &uniqueConstraint.keySequence,
-			&uniqueConstraint.constraintName, &uniqueConstraint.skipRely, &uniqueConstraint.skipComment); err != nil {
-			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
-		}
-
-		currentQualifiedConstraint := getQualifiedConstraint(uniqueConstraint.dbName, uniqueConstraint.schema, uniqueConstraint.tblName, uniqueConstraint.constraintName)
-
-		// skip constraint if it doesn't exist in fullyQualifiedConstraints
-		if _, exists := fullyQualifiedConstraints[currentQualifiedConstraint]; exists {
-			uniqueConstraint.constraintType = internal.Unique
-			uniqueConstraintsData = append(uniqueConstraintsData, uniqueConstraint)
-		}
-
-	}
-	return uniqueConstraintsData, nil
-}
-
-func (c *connectionImpl) getPrimaryKeyConstraints(ctx context.Context, fullyQualifiedConstraints map[QualifiedConstraint]bool) ([]TableConstraint, error) {
-	primaryKeyConstraintsData := make([]TableConstraint, 0)
-
-	rows, err := c.sqldb.QueryContext(ctx, preparePrimaryKeyConstraintSQL(), nil)
-	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var primaryKeyConstraint TableConstraint
-		if err := rows.Scan(&primaryKeyConstraint.skipCreatedOn, &primaryKeyConstraint.dbName, &primaryKeyConstraint.schema,
-			&primaryKeyConstraint.tblName, &primaryKeyConstraint.colName, &primaryKeyConstraint.keySequence,
-			&primaryKeyConstraint.constraintName, &primaryKeyConstraint.skipRely, &primaryKeyConstraint.skipComment); err != nil {
-			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
-		}
-
-		currentQualifiedConstraint := getQualifiedConstraint(primaryKeyConstraint.dbName, primaryKeyConstraint.schema, primaryKeyConstraint.tblName, primaryKeyConstraint.constraintName)
-
-		// skip constraint if it doesn't exist in fullyQualifiedConstraints
-		if _, exists := fullyQualifiedConstraints[currentQualifiedConstraint]; exists {
-			primaryKeyConstraint.constraintType = internal.PrimaryKey
-			primaryKeyConstraintsData = append(primaryKeyConstraintsData, primaryKeyConstraint)
-		}
-
-	}
-	return primaryKeyConstraintsData, nil
-}
-
-func (c *connectionImpl) getForeignKeyConstraints(ctx context.Context, qualifiedConstraints map[QualifiedConstraint]bool) ([]TableConstraint, error) {
-	foreignKeyConstraintsData := make([]TableConstraint, 0)
-
-	rows, err := c.sqldb.QueryContext(ctx, prepareForeignKeyConstraintSQL(), nil)
-	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var fkConstraint TableConstraint
-		if err := rows.Scan(&fkConstraint.skipCreatedOn, &fkConstraint.dbName, &fkConstraint.schema,
-			&fkConstraint.tblName, &fkConstraint.colName, &fkConstraint.fkDbName, &fkConstraint.fkSchema,
-			&fkConstraint.fkTblName, &fkConstraint.fkColName, &fkConstraint.keySequence,
-			&fkConstraint.skipUpdateRule, &fkConstraint.skipDeleteRule, &fkConstraint.fkConstraintName,
-			&fkConstraint.constraintName, &fkConstraint.skipDeferrability, &fkConstraint.skipRely, &fkConstraint.skipComment); err != nil {
-			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
-		}
-
-		currentQualifiedConstaint := getQualifiedConstraint(fkConstraint.fkDbName.String, fkConstraint.fkSchema.String, fkConstraint.fkTblName.String, fkConstraint.fkConstraintName.String)
-
-		// skip constraint if it doesn't exist in qualifiedConstraints
-		if _, exists := qualifiedConstraints[currentQualifiedConstaint]; exists {
-			fkConstraint.constraintType = internal.ForeignKey
-			foreignKeyConstraintsData = append(foreignKeyConstraintsData, fkConstraint)
-		}
-	}
-	return foreignKeyConstraintsData, nil
-}
-
-func (c *connectionImpl) getCatalogsMetadata(ctx context.Context) ([]internal.Metadata, error) {
-	metadataRecords := make([]internal.Metadata, 0)
-
-	rows, err := c.sqldb.QueryContext(ctx, prepareCatalogsSQL(), nil)
-	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var data internal.Metadata
-		var skipDbNullField, skipSchemaNullField sql.NullString
-		// schema for SHOW TERSE DATABASES is:
-		// created_on:timestamp, name:text, kind:null, database_name:null, schema_name:null
-		// the last three columns are always null because they are not applicable for databases
-		// so we want values[1].(string) for the name
-		if err := rows.Scan(&data.Created, &data.Dbname, &data.Kind, &skipDbNullField, &skipSchemaNullField); err != nil {
-			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
-		}
-
-		// SNOWFLAKE catalog contains functions and no tables
-		if data.Dbname.Valid && data.Dbname.String == "SNOWFLAKE" {
-			continue
-		}
-
-		metadataRecords = append(metadataRecords, data)
-	}
-	return metadataRecords, nil
-}
-
-func (c *connectionImpl) getDbSchemasMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string) ([]internal.Metadata, error) {
-	var metadataRecords []internal.Metadata
-	query, queryArgs := prepareDbSchemasSQL(matchingCatalogNames, catalog, dbSchema)
-	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
-	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var data internal.Metadata
-		if err = rows.Scan(&data.Dbname, &data.Schema); err != nil {
-			return nil, errToAdbcErr(adbc.StatusIO, err)
-		}
-		metadataRecords = append(metadataRecords, data)
-	}
-	return metadataRecords, nil
-}
-
-func (c *connectionImpl) getTablesMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, tableType []string) ([]internal.Metadata, error) {
-	metadataRecords := make([]internal.Metadata, 0)
-	query, queryArgs := prepareTablesSQL(matchingCatalogNames, catalog, dbSchema, tableName, tableType)
-	if query == "" {
-		return nil, nil
-	}
-
-	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
-	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var data internal.Metadata
-		if err = rows.Scan(&data.Dbname, &data.Schema, &data.TblName, &data.TblType, &data.ConstraintName, &data.ConstraintType); err != nil {
-			return nil, errToAdbcErr(adbc.StatusIO, err)
-		}
-		metadataRecords = append(metadataRecords, data)
-	}
-	return metadataRecords, nil
-}
-
-func (c *connectionImpl) getColumnsMetadata(ctx context.Context, matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) ([]internal.Metadata, error) {
-	metadataRecords := make([]internal.Metadata, 0)
-	query, queryArgs := prepareColumnsSQL(matchingCatalogNames, catalog, dbSchema, tableName, columnName, tableType)
-	if query == "" {
-		return nil, nil
-	}
-
-	rows, err := c.sqldb.QueryContext(ctx, query, queryArgs...)
-	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
-	}
-	defer rows.Close()
-
-	var data internal.Metadata
-
-	for rows.Next() {
-		// order here matches the order of the columns requested in the query
-		err = rows.Scan(&data.Dbname, &data.Schema, &data.TblName, &data.ColName,
-			&data.OrdinalPos, &data.IsNullable, &data.DataType, &data.NumericPrec,
-			&data.NumericPrecRadix, &data.NumericScale, &data.IsIdent, &data.IdentGen,
-			&data.IdentIncrement, &data.CharMaxLength, &data.CharOctetLength, &data.DatetimePrec, &data.Comment)
-		if err != nil {
-			return nil, errToAdbcErr(adbc.StatusIO, err)
-		}
-		metadataRecords = append(metadataRecords, data)
-	}
-	return metadataRecords, nil
-}
-
-func getAvailableConstraintTypes(metadataRecords []internal.Metadata) map[string]bool {
-	availableConstraintType := make(map[string]bool)
-	for _, data := range metadataRecords {
-		if data.ConstraintType.Valid {
-			switch data.ConstraintType.String {
-			case internal.Unique:
-				availableConstraintType[internal.Unique] = true
-			case internal.PrimaryKey:
-				availableConstraintType[internal.PrimaryKey] = true
-			case internal.ForeignKey:
-				availableConstraintType[internal.ForeignKey] = true
-			default:
-			}
-		}
-	}
-	return availableConstraintType
-}
-
-func getAvailableConstraints(metadataRecords []internal.Metadata) map[QualifiedConstraint]bool {
-	qualifiedConstraints := make(map[QualifiedConstraint]bool)
-	for _, data := range metadataRecords {
-		if data.ConstraintName.Valid {
-			qualifiedConstraint := getQualifiedConstraint(data.Dbname.String, data.Schema.String, data.TblName.String, data.ConstraintName.String)
-			qualifiedConstraints[qualifiedConstraint] = true
-		}
-	}
-	return qualifiedConstraints
-}
-
-func getQualifiedConstraint(dbName string, schema string, tableName string, constraintName string) QualifiedConstraint {
-	return QualifiedConstraint{
-		catalogSchemaTable: internal.CatalogSchemaTable{
-			Catalog: dbName,
-			Schema:  schema,
-			Table:   tableName,
-		},
-		constraintName: constraintName,
-	}
-}
-
-func getConstraintSchemaFromTableConstraint(tableConstraint TableConstraint) internal.ConstraintSchema {
-	var constraintSchema internal.ConstraintSchema
-	constraintSchema.ConstraintType = tableConstraint.constraintType
-
-	if tableConstraint.fkConstraintName.Valid {
-		usageSchema := getUsageSchemaFromTableConstraint(tableConstraint)
-		constraintSchema.ConstraintName = tableConstraint.fkConstraintName.String
-		constraintSchema.ConstraintColumnNames = []string{tableConstraint.fkColName.String}
-		constraintSchema.ConstraintColumnUsages = []internal.UsageSchema{usageSchema}
-	} else {
-		constraintSchema.ConstraintName = tableConstraint.constraintName
-		constraintSchema.ConstraintColumnNames = []string{tableConstraint.colName}
-	}
-	return constraintSchema
-}
-
-func getUsageSchemaFromTableConstraint(tableConstraint TableConstraint) internal.UsageSchema {
-	var usageSchema internal.UsageSchema
-	// usageSchema is only applicable for foreign key constraint
-	if tableConstraint.fkConstraintName.Valid {
-		// reference column for a foreign key constraint
-		usageSchema = internal.UsageSchema{
-			ForeignKeyCatalog:  tableConstraint.dbName,
-			ForeignKeyDbSchema: tableConstraint.schema,
-			ForeignKeyTable:    tableConstraint.tblName,
-			ForeignKeyColName:  tableConstraint.colName,
-		}
-	}
-	return usageSchema
-}
-
-func getMatchingCatalogNames(metadataRecords []internal.Metadata, catalog *string) ([]string, error) {
-	matchingCatalogNames := make([]string, 0)
-	var catalogPattern *regexp.Regexp
-	var err error
-	if catalogPattern, err = internal.PatternToRegexp(catalog); err != nil {
-		return nil, adbc.Error{
-			Msg:  err.Error(),
-			Code: adbc.StatusInvalidArgument,
-		}
-	}
-
-	for _, data := range metadataRecords {
-		if data.Dbname.Valid && data.Dbname.String == "SNOWFLAKE" {
-			continue
-		}
-		if catalogPattern != nil && !catalogPattern.MatchString(data.Dbname.String) {
-			continue
-		}
-
-		matchingCatalogNames = append(matchingCatalogNames, data.Dbname.String)
-	}
-	return matchingCatalogNames, nil
-}
-
-func prepareCatalogsSQL() string {
-	return "SHOW TERSE DATABASES"
-}
-
-func prepareDbSchemasSQL(matchingCatalogNames []string, catalog *string, dbSchema *string) (string, []interface{}) {
-	query := ""
-	for _, catalog_name := range matchingCatalogNames {
-		if query != "" {
-			query += " UNION ALL "
-		}
-		query += `SELECT * FROM "` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.SCHEMATA`
-	}
-
-	query = `SELECT CATALOG_NAME, SCHEMA_NAME FROM (` + query + `)`
-	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthDBSchemas, catalog, dbSchema, nil, nil, make([]string, 0))
-	if conditions != "" {
-		query += " WHERE " + conditions
-	}
-
-	return query, queryArgs
-}
-
-func prepareTablesSQL(matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, tableType []string) (string, []interface{}) {
-	query := ""
-	if len(matchingCatalogNames) == 0 {
-		return query, nil
-	}
-
-	for _, catalog_name := range matchingCatalogNames {
-		if query != "" {
-			query += " UNION ALL "
-		}
-		query += `SELECT T.table_catalog, T.table_schema, T.table_name, T.table_type, TC.constraint_name, TC.constraint_type
-					FROM
-					(
-						"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLES AS T
-						LEFT JOIN
-						"` + strings.ReplaceAll(catalog_name, "\"", "\"\"") + `".INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
-						ON
-							T.table_catalog = TC.table_catalog
-							AND T.table_schema = TC.table_schema
-							AND t.table_name = TC.table_name
-					)`
-	}
-
-	query = `SELECT table_catalog, table_schema, table_name, table_type, constraint_name, constraint_type FROM (` + query + `)`
-	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthTables, catalog, dbSchema, tableName, nil, tableType)
-	if conditions != "" {
-		query += " WHERE " + conditions
-	}
-	return query, queryArgs
-}
-
-func prepareColumnsSQL(matchingCatalogNames []string, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (string, []interface{}) {
-	prefixQuery := ""
-	if len(matchingCatalogNames) == 0 {
-		return prefixQuery, nil
-	}
-
-	for _, catalogName := range matchingCatalogNames {
-		if prefixQuery != "" {
-			prefixQuery += " UNION ALL "
-		}
-		prefixQuery += `SELECT * FROM "` + strings.ReplaceAll(catalogName, "\"", "\"\"") + `".INFORMATION_SCHEMA.COLUMNS`
-	}
-
-	prefixQuery = `SELECT table_catalog, table_schema, table_name, column_name,
-						ordinal_position, is_nullable::boolean, data_type, numeric_precision,
-						numeric_precision_radix, numeric_scale, is_identity::boolean,
-						identity_generation, identity_increment,
-						character_maximum_length, character_octet_length, datetime_precision, comment FROM (` + prefixQuery + `)`
-	ordering := ` ORDER BY table_catalog, table_schema, table_name, ordinal_position`
-	conditions, queryArgs := prepareFilterConditions(adbc.ObjectDepthColumns, catalog, dbSchema, tableName, columnName, tableType)
-	query := prefixQuery
-
-	if conditions != "" {
-		query += " WHERE " + conditions
-	}
-
-	query += ordering
-	return query, queryArgs
-}
-
-func prepareFilterConditions(depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (string, []interface{}) {
-	conditions := make([]string, 0)
-	queryArgs := make([]interface{}, 0)
-	if catalog != nil && *catalog != "" {
-		if depth == adbc.ObjectDepthDBSchemas {
-			conditions = append(conditions, ` CATALOG_NAME ILIKE ? `)
-		} else {
-			conditions = append(conditions, ` TABLE_CATALOG ILIKE ? `)
-		}
-		queryArgs = append(queryArgs, *catalog)
-	}
-	if dbSchema != nil && *dbSchema != "" {
-		if depth == adbc.ObjectDepthDBSchemas {
-			conditions = append(conditions, ` SCHEMA_NAME ILIKE ? `)
-		} else {
-			conditions = append(conditions, ` TABLE_SCHEMA ILIKE ? `)
-		}
-		queryArgs = append(queryArgs, *dbSchema)
-	}
-	if tableName != nil && *tableName != "" {
-		conditions = append(conditions, ` TABLE_NAME ILIKE ? `)
-		queryArgs = append(queryArgs, *tableName)
-	}
-	if columnName != nil && *columnName != "" {
-		conditions = append(conditions, ` COLUMN_NAME ILIKE ? `)
-		queryArgs = append(queryArgs, *columnName)
-	}
-
-	var tblConditions []string
-	if len(tableType) > 0 && depth == adbc.ObjectDepthTables {
-		tblConditions = append(conditions, ` TABLE_TYPE IN ('`+strings.Join(tableType, `','`)+`')`)
-	} else {
-		tblConditions = conditions
-	}
-
-	cond := strings.Join(tblConditions, " AND ")
-	return cond, queryArgs
-}
-
-func prepareUniqueConstraintSQL() string {
-	return "SHOW UNIQUE KEYS"
-}
-
-func preparePrimaryKeyConstraintSQL() string {
-	return "SHOW PRIMARY KEYS"
-}
-
-func prepareForeignKeyConstraintSQL() string {
-	return "SHOW EXPORTED KEYS"
 }
 
 func descToField(name, typ, isnull, primary string, comment sql.NullString) (field arrow.Field, err error) {

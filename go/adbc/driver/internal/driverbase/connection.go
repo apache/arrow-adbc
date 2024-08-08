@@ -610,10 +610,25 @@ type ConstraintInfo struct {
 }
 
 type ColumnInfo struct {
-	ColumnName      string `json:"column_name"`
-	OrdinalPosition int32  `json:"ordinal_position"`
-	Remarks         string `json:"remarks"`
-	// TODO: Remaining fields
+	ColumnName            string `json:"column_name"`
+	OrdinalPosition       int32  `json:"ordinal_position"`
+	Remarks               string `json:"remarks"`
+	XdbcDataType          int16  `json:"xdbc_data_type"`
+	XdbcTypeName          string `json:"xdbc_type_name"`
+	XdbcColumnSize        int32  `json:"xdbc_column_size"`
+	XdbcDecimalDigits     int16  `json:"xdbc_decimal_digits"`
+	XdbcNumPrecRadix      int16  `json:"xdbc_num_prec_radix"`
+	XdbcNullable          int16  `json:"xdbc_nullable"`
+	XdbcColumnDef         string `json:"xdbc_column_def"`
+	XdbcSqlDataType       int16  `json:"xdbc_sql_data_type"`
+	XdbcDatetimeSub       int16  `json:"xdbc_datetime_sub"`
+	XdbcCharOctetLength   int32  `json:"xdbc_char_octet_length"`
+	XdbcIsNullable        string `json:"xdbc_is_nullable"`
+	XdbcScopeCatalog      string `json:"xdbc_scope_catalog"`
+	XdbcScopeSchema       string `json:"xdbc_scope_schema"`
+	XdbcScopeTable        string `json:"xdbc_scope_table"`
+	XdbcIsAutoincrement   bool   `json:"xdbc_is_autoincrement"`
+	XdbcIsGeneratedcolumn bool   `json:"xdbc_is_generatedcolumn"`
 }
 
 type TableInfo struct {
@@ -712,24 +727,22 @@ func buildGetObjectsRecordReader(mem memory.Allocator, in chan GetObjectsInfo) (
 						columnNameBldr.Append(column.ColumnName)
 						ordinalPositionBldr.Append(column.OrdinalPosition)
 						remarksBldr.Append(column.Remarks)
-
-						// TODO: XDBC
-						xdbcDataTypeBldr.AppendNull()
-						xdbcTypeNameBldr.AppendNull()
-						xdbcColumnSizeBldr.AppendNull()
-						xdbcDecimalDigitsBldr.AppendNull()
-						xdbcNumPrecRadixBldr.AppendNull()
-						xdbcNullableBldr.AppendNull()
-						xdbcColumnDefBldr.AppendNull()
-						xdbcSqlDataTypeBldr.AppendNull()
-						xdbcDatetimeSubBldr.AppendNull()
-						xdbcCharOctetLengthBldr.AppendNull()
-						xdbcIsNullableBldr.AppendNull()
-						xdbcScopeCatalogBldr.AppendNull()
-						xdbcScopeSchemaBldr.AppendNull()
-						xdbcScopeTableBldr.AppendNull()
-						xdbcIsAutoincrementBldr.AppendNull()
-						xdbcIsGeneratedcolumnBldr.AppendNull()
+						xdbcDataTypeBldr.Append(column.XdbcDataType)
+						xdbcTypeNameBldr.Append(column.XdbcTypeName)
+						xdbcColumnSizeBldr.Append(column.XdbcColumnSize)
+						xdbcDecimalDigitsBldr.Append(column.XdbcDecimalDigits)
+						xdbcNumPrecRadixBldr.Append(column.XdbcNumPrecRadix)
+						xdbcNullableBldr.Append(column.XdbcNullable)
+						xdbcColumnDefBldr.Append(column.XdbcColumnDef)
+						xdbcSqlDataTypeBldr.Append(column.XdbcSqlDataType)
+						xdbcDatetimeSubBldr.Append(column.XdbcDatetimeSub)
+						xdbcCharOctetLengthBldr.Append(column.XdbcCharOctetLength)
+						xdbcIsNullableBldr.Append(column.XdbcIsNullable)
+						xdbcScopeCatalogBldr.Append(column.XdbcScopeCatalog)
+						xdbcScopeSchemaBldr.Append(column.XdbcScopeSchema)
+						xdbcScopeTableBldr.Append(column.XdbcScopeTable)
+						xdbcIsAutoincrementBldr.Append(column.XdbcIsAutoincrement)
+						xdbcIsGeneratedcolumnBldr.Append(column.XdbcIsGeneratedcolumn)
 					}
 				}
 
