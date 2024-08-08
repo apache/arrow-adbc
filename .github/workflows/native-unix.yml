@@ -130,12 +130,23 @@ jobs:
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
+      # XXX: GitHub broke upload/download-artifact.  To avoid symlinks being
+      # converted into weird files, tar the files ourselves first.
+      # https://github.com/apache/arrow-adbc/issues/2061
+      # https://github.com/actions/download-artifact/issues/346
+
+      - name: tar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar czf ~/local.tgz local
+
       - uses: actions/upload-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
           path: |
-            ~/local
+            ~/local.tgz
 
   # ------------------------------------------------------------
   # C/C++ (builds and tests)
@@ -355,7 +366,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
-          path: ~/local
+          path: "~"
+
+      - name: untar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar xvf ~/local.tgz
 
       - name: Build GLib Driver Manager
         shell: bash -l {0}
@@ -477,7 +494,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
-          path: ~/local
+          path: "~"
+
+      - name: untar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar xvf ~/local.tgz
 
       - name: Go Build
         shell: bash -l {0}
@@ -561,7 +584,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
-          path: ~/local
+          path: "~"
+
+      - name: untar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar xvf ~/local.tgz
 
       - name: Build
         shell: bash -l {0}
@@ -668,10 +697,17 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
+
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
-          path: ~/local
+          path: "~"
+
+      - name: untar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar xvf ~/local.tgz
 
       - name: Build Python
         shell: bash -l {0}
