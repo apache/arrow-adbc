@@ -35,7 +35,6 @@ import (
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow/go/v18/arrow"
@@ -1391,41 +1390,25 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest"))
 
-	mdInts := make(map[string]string)
-	mdInts["TYPE_NAME"] = "NUMERIC"
-	mdInts["ORDINAL_POSITION"] = "1"
-	mdInts["XDBC_DATA_TYPE"] = strconv.Itoa(int(arrow.PrimitiveTypes.Int64.ID()))
-	mdInts["XDBC_TYPE_NAME"] = "NUMERIC"
-	mdInts["XDBC_SQL_DATA_TYPE"] = strconv.Itoa(int(internal.XdbcDataType_XDBC_BIGINT))
-	mdInts["XDBC_NULLABLE"] = strconv.FormatBool(true)
-	mdInts["XDBC_IS_NULLABLE"] = "YES"
-	mdInts["XDBC_PRECISION"] = strconv.Itoa(38)
-	mdInts["XDBC_SCALE"] = strconv.Itoa(0)
-	mdInts["XDBC_NUM_PREC_RADIX"] = strconv.Itoa(10)
-
-	mdStrings := make(map[string]string)
-	mdStrings["TYPE_NAME"] = "TEXT"
-	mdStrings["ORDINAL_POSITION"] = "2"
-	mdStrings["XDBC_DATA_TYPE"] = strconv.Itoa(int(arrow.BinaryTypes.String.ID()))
-	mdStrings["XDBC_TYPE_NAME"] = "TEXT"
-	mdStrings["XDBC_SQL_DATA_TYPE"] = strconv.Itoa(int(internal.XdbcDataType_XDBC_VARCHAR))
-	mdStrings["XDBC_IS_NULLABLE"] = "YES"
-	mdStrings["CHARACTER_MAXIMUM_LENGTH"] = strconv.Itoa(16777216)
-	mdStrings["XDBC_CHAR_OCTET_LENGTH"] = strconv.Itoa(16777216)
-
 	rec, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), arrow.NewSchema(
 		[]arrow.Field{
-			{Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true, Metadata: arrow.MetadataFrom(mdInts)},
-			{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true, Metadata: arrow.MetadataFrom(mdStrings)},
+			{Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: false},
+			{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true},
 		}, nil), strings.NewReader(`[
 			{"int64s": 42, "strings": "foo"},
 			{"int64s": -42, "strings": null},
-			{"int64s": null, "strings": ""}
+			{"int64s": 0, "strings": ""}
 		]`))
 	suite.Require().NoError(err)
 	defer rec.Release()
 
 	suite.Require().NoError(suite.Quirks.CreateSampleTable("bulk_ingest", rec))
+
+	db := sql.OpenDB(suite.Quirks.connector)
+	defer db.Close()
+
+	_, err = db.ExecContext(suite.ctx, `ALTER TABLE "bulk_ingest" ADD CONSTRAINT bulk_ingest_pk PRIMARY KEY (int64s)`)
+	suite.Require().NoError(err)
 
 	tests := []struct {
 		name             string
@@ -1433,6 +1416,8 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 		positions        []string
 		dataTypes        []string
 		comments         []string
+		constraintNames  []string
+		constraintTypes  []string
 		xdbcDataType     []string
 		xdbcTypeName     []string
 		xdbcSqlDataType  []string
@@ -1445,21 +1430,23 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 		xdbcDateTimeSub  []string
 	}{
 		{
-			"BASIC",                       // name
-			[]string{"int64s", "strings"}, // colNames
-			[]string{"1", "2"},            // positions
-			[]string{"NUMBER", "TEXT"},    // dataTypes
-			[]string{"", ""},              // comments
-			[]string{"9", "13"},           // xdbcDataType
-			[]string{"NUMBER", "TEXT"},    // xdbcTypeName
-			[]string{"-5", "12"},          // xdbcSqlDataType
-			[]string{"1", "1"},            // xdbcNullable
-			[]string{"YES", "YES"},        // xdbcIsNullable
-			[]string{"0", "0"},            // xdbcScale
-			[]string{"10", "0"},           // xdbcNumPrecRadix
-			[]string{"38", "16777216"},    // xdbcCharMaxLen (xdbcPrecision)
-			[]string{"0", "16777216"},     // xdbcCharOctetLen
-			[]string{"-5", "12", "0"},     // xdbcDateTimeSub
+			name:             "BASIC",
+			colnames:         []string{"int64s", "strings"},
+			positions:        []string{"1", "2"},
+			dataTypes:        []string{"NUMBER", "TEXT"},
+			comments:         []string{"", ""},
+			constraintNames:  []string{"BULK_INGEST_PK"},
+			constraintTypes:  []string{"PRIMARY KEY"},
+			xdbcDataType:     []string{"9", "13"},
+			xdbcTypeName:     []string{"NUMBER", "TEXT"},
+			xdbcSqlDataType:  []string{"-5", "12"},
+			xdbcNullable:     []string{"1", "1"},
+			xdbcIsNullable:   []string{"YES", "YES"},
+			xdbcScale:        []string{"0", "0"},
+			xdbcNumPrecRadix: []string{"10", "0"},
+			xdbcCharMaxLen:   []string{"38", "16777216"},
+			xdbcCharOctetLen: []string{"0", "16777216"},
+			xdbcDateTimeSub:  []string{"0", "0"},
 		},
 	}
 
@@ -1482,10 +1469,14 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 				dbSchemaTables       = dbSchemaTablesList.ListValues().(*array.Struct)
 				tableColumnsList     = dbSchemaTables.Field(2).(*array.List)
 				tableColumns         = tableColumnsList.ListValues().(*array.Struct)
+				tableConstraintsList = dbSchemaTables.Field(3).(*array.List)
+				tableConstraints     = tableConstraintsList.ListValues().(*array.Struct)
 
 				colnames          = make([]string, 0)
 				positions         = make([]string, 0)
 				comments          = make([]string, 0)
+				constraintNames   = make([]string, 0)
+				constraintTypes   = make([]string, 0)
 				xdbcDataTypes     = make([]string, 0)
 				dataTypes         = make([]string, 0)
 				xdbcTypeNames     = make([]string, 0)
@@ -1543,12 +1534,18 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 								xdbcSqlDataTypes = append(xdbcSqlDataTypes, strconv.Itoa(int(sqlType)))
 
 								dtPrec := tableColumns.Field(11).(*array.Int16).Value(int(colIdx))
-								xdbcDateTimeSub = append(xdbcSqlDataTypes, strconv.Itoa(int(dtPrec)))
+								xdbcDateTimeSub = append(xdbcDateTimeSub, strconv.Itoa(int(dtPrec)))
 
 								charOctetLen := tableColumns.Field(12).(*array.Int32).Value(int(colIdx))
 								xdbcCharOctetLen = append(xdbcCharOctetLen, strconv.Itoa(int(charOctetLen)))
 
 								xdbcIsNullables = append(xdbcIsNullables, tableColumns.Field(13).(*array.String).Value(int(colIdx)))
+							}
+
+							conIdxStart, conIdxEnd := tableConstraintsList.ValueOffsets(int(tblIdx))
+							for conIdx := conIdxStart; conIdx < conIdxEnd; conIdx++ {
+								constraintNames = append(constraintNames, tableConstraints.Field(0).(*array.String).Value(int(conIdx)))
+								constraintTypes = append(constraintTypes, tableConstraints.Field(1).(*array.String).Value(int(conIdx)))
 							}
 						}
 					}
@@ -1557,20 +1554,22 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 
 			suite.False(rdr.Next())
 			suite.True(foundExpected)
-			suite.ElementsMatch(tt.colnames, colnames)                  // colNames
-			suite.ElementsMatch(tt.positions, positions)                // positions
-			suite.ElementsMatch(tt.comments, comments)                  // comments
-			suite.ElementsMatch(tt.xdbcDataType, xdbcDataTypes)         // xdbcDataType
-			suite.ElementsMatch(tt.dataTypes, dataTypes)                // dataTypes
-			suite.ElementsMatch(tt.xdbcTypeName, xdbcTypeNames)         // xdbcTypeName
-			suite.ElementsMatch(tt.xdbcCharMaxLen, xdbcCharMaxLens)     // xdbcCharMaxLen
-			suite.ElementsMatch(tt.xdbcScale, xdbcScales)               // xdbcScale
-			suite.ElementsMatch(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs) // xdbcNumPrecRadix
-			suite.ElementsMatch(tt.xdbcNullable, xdbcNullables)         // xdbcNullable
-			suite.ElementsMatch(tt.xdbcSqlDataType, xdbcSqlDataTypes)   // xdbcSqlDataType
-			suite.ElementsMatch(tt.xdbcDateTimeSub, xdbcDateTimeSub)    // xdbcDateTimeSub
-			suite.ElementsMatch(tt.xdbcCharOctetLen, xdbcCharOctetLen)  // xdbcCharOctetLen
-			suite.ElementsMatch(tt.xdbcIsNullable, xdbcIsNullables)     // xdbcIsNullable
+			suite.ElementsMatch(tt.colnames, colnames)
+			suite.ElementsMatch(tt.positions, positions)
+			suite.ElementsMatch(tt.comments, comments)
+			suite.ElementsMatch(tt.constraintNames, constraintNames)
+			suite.ElementsMatch(tt.constraintTypes, constraintTypes)
+			suite.ElementsMatch(tt.xdbcDataType, xdbcDataTypes)
+			suite.ElementsMatch(tt.dataTypes, dataTypes)
+			suite.ElementsMatch(tt.xdbcTypeName, xdbcTypeNames)
+			suite.ElementsMatch(tt.xdbcCharMaxLen, xdbcCharMaxLens)
+			suite.ElementsMatch(tt.xdbcScale, xdbcScales)
+			suite.ElementsMatch(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs)
+			suite.ElementsMatch(tt.xdbcNullable, xdbcNullables)
+			suite.ElementsMatch(tt.xdbcSqlDataType, xdbcSqlDataTypes)
+			suite.ElementsMatch(tt.xdbcDateTimeSub, xdbcDateTimeSub)
+			suite.ElementsMatch(tt.xdbcCharOctetLen, xdbcCharOctetLen)
+			suite.ElementsMatch(tt.xdbcIsNullable, xdbcIsNullables)
 
 		})
 	}
