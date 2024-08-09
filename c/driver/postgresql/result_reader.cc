@@ -31,7 +31,7 @@ int PqResultArrayReader::GetSchema(struct ArrowSchema* out) {
   ResetErrors();
 
   if (schema_->release == nullptr) {
-    AdbcStatusCode status = Initialize(&error_);
+    AdbcStatusCode status = Initialize(nullptr, &error_);
     if (status != ADBC_STATUS_OK) {
       return EINVAL;
     }
@@ -45,33 +45,34 @@ int PqResultArrayReader::GetNext(struct ArrowArray* out) {
 
   AdbcStatusCode status;
   if (schema_->release == nullptr) {
-    AdbcStatusCode status = Initialize(&error_);
+    AdbcStatusCode status = Initialize(nullptr, &error_);
     if (status != ADBC_STATUS_OK) {
       return EINVAL;
     }
   }
 
   // If don't already have a result, populate it by binding the next row
-  // in the bind stream. If there is a bind stream and this is the first
-  // call to GetNext(), we have already populated the result.
+  // in the bind stream. If this is the first call to GetNext(), we have
+  // already populated the result.
   if (!helper_.HasResult()) {
-    // Try to bind the next row. If there was no stream provided,
-    // we have inserted a dummy stream that contains no more arrays.
-    status = bind_stream_->EnsureNextRow(&error_);
-    if (status != ADBC_STATUS_OK) {
-      return EIO;
-    }
-
-    // If there is no underlying current array in the bind stream, we are done.
-    if (bind_stream_->current->release == nullptr) {
+    // If there was no bind stream provided or the existing bind stream has been
+    // exhausted, we are done.
+    if (!bind_stream_) {
       out->release = nullptr;
       return NANOARROW_OK;
     }
 
-    // Otherwise, bind and execute
-    PGresult* result;
-    RAISE_ADBC(bind_stream_->BindAndExecuteCurrentRow(conn_, &result, &error_));
-    helper_.SetResult(result);
+    // Keep binding and executing until we have a result to return
+    status = BindNextAndExecute(nullptr, &error_);
+    if (status != ADBC_STATUS_OK) {
+      return EIO;
+    }
+
+    // It's possible that there is still nothing to do here
+    if (!helper_.HasResult()) {
+      out->release = nullptr;
+      return NANOARROW_OK;
+    }
   }
 
   nanoarrow::UniqueArray tmp;
@@ -132,43 +133,34 @@ const char* PqResultArrayReader::GetLastError() {
   }
 }
 
-AdbcStatusCode PqResultArrayReader::Initialize(struct AdbcError* error) {
+AdbcStatusCode PqResultArrayReader::Initialize(int64_t* rows_affected,
+                                               struct AdbcError* error) {
   helper_.set_output_format(PqResultHelper::Format::kBinary);
   helper_.set_param_format(PqResultHelper::Format::kBinary);
 
-  // If we have to do binding, use Prepare() + DescribePrepared(), ensuring
-  // that the Oids of the binary we're about to send are passed on and that
-  // we execute something with a result
-  if (bind_stream_->bind->release != nullptr) {
+  // If we have to do binding, set up the bind stream an execute until
+  // there is a result with more than zero rows to populate.
+  if (bind_stream_) {
     RAISE_ADBC(bind_stream_->Begin([] { return ADBC_STATUS_OK; }, error));
     RAISE_ADBC(bind_stream_->SetParamTypes(*type_resolver_, error));
     RAISE_ADBC(helper_.Prepare(bind_stream_->param_types, error));
 
-    RAISE_ADBC(bind_stream_->EnsureNextRow(error));
+    RAISE_ADBC(BindNextAndExecute(rows_affected, error));
 
-    // If there were no arrays in the bind stream, we can still initialize the schema
-    if (bind_stream_->current->release == nullptr) {
+    // If there were no arrays in the bind stream, we still need a result
+    // to populate the schema. If there were any arrays in the bind stream,
+    // the last one will still be in helper_ even if it had zero rows.
+    if (!helper_.HasResult()) {
       RAISE_ADBC(helper_.DescribePrepared(error));
-    } else {
-      PGresult* result;
-      RAISE_ADBC(bind_stream_->BindAndExecuteCurrentRow(conn_, &result, error));
-      helper_.SetResult(result);
     }
   } else {
     RAISE_ADBC(helper_.Execute(error));
-
-    // It is helpful for the purposes of the GetNext() implementation to bind
-    // a stream with no parameters and no arrays.
-    nanoarrow::UniqueSchema empty_bind;
-    ArrowSchemaInitFromType(empty_bind.get(), NANOARROW_TYPE_STRUCT);
-
-    nanoarrow::UniqueArrayStream empty_stream;
-    nanoarrow::EmptyArrayStream(empty_bind.get()).ToArrayStream(empty_stream.get());
-    bind_stream_->SetBind(empty_stream.get());
-    RAISE_ADBC(bind_stream_->Begin([] { return ADBC_STATUS_OK; }, error));
+    if (rows_affected != nullptr) {
+      *rows_affected = helper_.AffectedRows();
+    }
   }
 
-  // Build the schema we are about to build results for
+  // Build the schema for which we are about to build results
   ArrowSchemaInit(schema_.get());
   CHECK_NA_DETAIL(INTERNAL, ArrowSchemaSetTypeStruct(schema_.get(), helper_.NumColumns()),
                   &na_error_, error);
@@ -202,12 +194,12 @@ AdbcStatusCode PqResultArrayReader::Initialize(struct AdbcError* error) {
 AdbcStatusCode PqResultArrayReader::ToArrayStream(int64_t* affected_rows,
                                                   struct ArrowArrayStream* out,
                                                   struct AdbcError* error) {
-  if (out == nullptr) {
-    // If there is no output requested, we still need to execute and set
-    // affected_rows if needed. We don't need an output schema or to set
-    // up a copy reader, so we can skip those steps by going straight
-    // to Execute(). This also enables us to support queries with multiple
-    // statements because we can call PQexec() instead of PQexecParams().
+  if (out == nullptr && !bind_stream_) {
+    // If there is no output requested and nothing to bind, we still need to execute and
+    // set affected_rows if needed. We don't need an output schema or to set up a copy
+    // reader, so we can skip those steps by going straight to Execute(). This also
+    // enables us to support queries with multiple statements because we can call PQexec()
+    // instead of PQexecParams().
     RAISE_ADBC(helper_.Execute(error));
 
     if (affected_rows != nullptr) {
@@ -221,13 +213,33 @@ AdbcStatusCode PqResultArrayReader::ToArrayStream(int64_t* affected_rows,
   // CREATE TABLE queries as well as to provide more informative errors
   // until this reader class is wired up to provide extended AdbcError
   // information.
-  RAISE_ADBC(Initialize(error));
-  if (affected_rows != nullptr) {
-    *affected_rows = helper_.AffectedRows();
-  }
+  RAISE_ADBC(Initialize(affected_rows, error));
 
   nanoarrow::ArrayStreamFactory<PqResultArrayReader>::InitArrayStream(
       new PqResultArrayReader(this), out);
+
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PqResultArrayReader::BindNextAndExecute(int64_t* affected_rows,
+                                                       AdbcError* error) {
+  // Keep pulling from the bind stream and executing as long as
+  // we receive results with zero rows.
+  do {
+    RAISE_ADBC(bind_stream_->EnsureNextRow(error));
+    if (!bind_stream_->current->release) {
+      RAISE_ADBC(bind_stream_->Cleanup(conn_, error));
+      bind_stream_.reset();
+      return ADBC_STATUS_OK;
+    }
+
+    PGresult* result;
+    RAISE_ADBC(bind_stream_->BindAndExecuteCurrentRow(conn_, &result, error));
+    helper_.SetResult(result);
+    if (affected_rows) {
+      (*affected_rows) += helper_.AffectedRows();
+    }
+  } while (helper_.NumRows() == 0);
 
   return ADBC_STATUS_OK;
 }

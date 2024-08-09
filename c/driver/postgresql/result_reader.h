@@ -34,17 +34,17 @@ class PqResultArrayReader {
  public:
   PqResultArrayReader(PGconn* conn, std::shared_ptr<PostgresTypeResolver> type_resolver,
                       std::string query)
-      : conn_(conn),
-        helper_(conn, std::move(query)),
-        bind_stream_(std::make_unique<BindStream>()),
-        type_resolver_(type_resolver) {
+      : conn_(conn), helper_(conn, std::move(query)), type_resolver_(type_resolver) {
     ArrowErrorInit(&na_error_);
     error_ = ADBC_ERROR_INIT;
   }
 
   ~PqResultArrayReader() { ResetErrors(); }
 
-  void SetBind(struct ArrowArrayStream* stream) { bind_stream_->SetBind(stream); }
+  void SetBind(struct ArrowArrayStream* stream) {
+    bind_stream_ = std::make_unique<BindStream>();
+    bind_stream_->SetBind(stream);
+  }
 
   int GetSchema(struct ArrowSchema* out);
   int GetNext(struct ArrowArray* out);
@@ -53,7 +53,7 @@ class PqResultArrayReader {
   AdbcStatusCode ToArrayStream(int64_t* affected_rows, struct ArrowArrayStream* out,
                                struct AdbcError* error);
 
-  AdbcStatusCode Initialize(struct AdbcError* error);
+  AdbcStatusCode Initialize(int64_t* affected_rows, struct AdbcError* error);
 
  private:
   PGconn* conn_;
@@ -75,6 +75,8 @@ class PqResultArrayReader {
     ArrowErrorInit(&na_error_);
     error_ = ADBC_ERROR_INIT;
   }
+
+  AdbcStatusCode BindNextAndExecute(int64_t* affected_rows, AdbcError* error);
 
   void ResetErrors() {
     ArrowErrorInit(&na_error_);

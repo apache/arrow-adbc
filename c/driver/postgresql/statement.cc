@@ -1130,12 +1130,10 @@ AdbcStatusCode PostgresStatement::ExecuteBind(struct ArrowArrayStream* stream,
                                               int64_t* rows_affected,
                                               struct AdbcError* error) {
   if (stream) {
-    // TODO:
-    SetError(error, "%s",
-             "[libpq] Prepared statements with parameters returning result sets are not "
-             "implemented");
-
-    return ADBC_STATUS_NOT_IMPLEMENTED;
+    PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
+    reader.SetBind(&bind_);
+    RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
+    return ADBC_STATUS_OK;
   }
 
   BindStream bind_stream;
