@@ -129,6 +129,19 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
 		}
 
+		// A few columns need additional processing outside of Snowflake
+		for i, sch := range getObjectsCatalog.CatalogDbSchemas {
+			for j, tab := range sch.DbSchemaTables {
+				for k, col := range tab.TableColumns {
+					field := c.toArrowField(col)
+					xdbcDataType := toXdbcDataType(field.Type)
+
+					getObjectsCatalog.CatalogDbSchemas[i].DbSchemaTables[j].TableColumns[k].XdbcDataType = int16(field.Type.ID())
+					getObjectsCatalog.CatalogDbSchemas[i].DbSchemaTables[j].TableColumns[k].XdbcSqlDataType = int16(xdbcDataType)
+				}
+			}
+		}
+
 		catalogCh <- getObjectsCatalog
 	}
 	close(catalogCh)
