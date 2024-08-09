@@ -306,7 +306,8 @@ struct BindStream {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode BindCurrentRow(PGconn* pg_conn, PGresult** result_out, AdbcError* error) {
+  AdbcStatusCode BindAndExecuteCurrentRow(PGconn* pg_conn, PGresult** result_out,
+                                          AdbcError* error) {
     int64_t row = current_row;
 
     for (int64_t col = 0; col < array_view->n_children; col++) {
@@ -528,7 +529,7 @@ struct BindStream {
       RAISE_ADBC(EnsureNextRow(error));
       if (!current->release) break;
 
-      RAISE_ADBC(BindCurrentRow(pg_conn, &result, error));
+      RAISE_ADBC(BindAndExecuteCurrentRow(pg_conn, &result, error));
       PQclear(result);
       if (rows_affected) {
         (*rows_affected)++;
