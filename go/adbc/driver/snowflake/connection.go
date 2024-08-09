@@ -36,6 +36,7 @@ import (
 	"github.com/apache/arrow/go/v18/arrow"
 	"github.com/apache/arrow/go/v18/arrow/array"
 	"github.com/snowflakedb/gosnowflake"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -74,6 +75,17 @@ type connectionImpl struct {
 }
 
 func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
+	var (
+		pkQueryID, fkQueryID, uniqueQueryID string
+	)
+
+	conn, err := c.sqldb.Conn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	gConstraints, gContraintsCtx := errgroup.WithContext(ctx)
 	queryFile := queryTemplateGetObjectsAll
 	switch depth {
 	case adbc.ObjectDepthCatalogs:
@@ -82,6 +94,45 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		queryFile = queryTemplateGetObjectsDbSchemas
 	case adbc.ObjectDepthTables:
 		queryFile = queryTemplateGetObjectsTables
+		fallthrough
+	default:
+		// Detailed constraint info not available in information_schema
+		// Need to dispatch SHOW queries and use conn.Raw to extract the queryID for reuse in GetObjects query
+		gConstraints.Go(func() error {
+			return conn.Raw(func(driverConn any) error {
+				rows, err := driverConn.(driver.QueryerContext).QueryContext(gContraintsCtx, "SHOW PRIMARY KEYS", nil)
+				if err != nil {
+					return err
+				}
+
+				pkQueryID = rows.(gosnowflake.SnowflakeRows).GetQueryID()
+				return rows.Close()
+			})
+		})
+
+		gConstraints.Go(func() error {
+			return conn.Raw(func(driverConn any) error {
+				rows, err := driverConn.(driver.QueryerContext).QueryContext(gContraintsCtx, "SHOW IMPORTED KEYS", nil)
+				if err != nil {
+					return err
+				}
+
+				fkQueryID = rows.(gosnowflake.SnowflakeRows).GetQueryID()
+				return rows.Close()
+			})
+		})
+
+		gConstraints.Go(func() error {
+			return conn.Raw(func(driverConn any) error {
+				rows, err := driverConn.(driver.QueryerContext).QueryContext(gContraintsCtx, "SHOW UNIQUE KEYS", nil)
+				if err != nil {
+					return err
+				}
+
+				uniqueQueryID = rows.(gosnowflake.SnowflakeRows).GetQueryID()
+				return rows.Close()
+			})
+		})
 	}
 
 	f, err := queryTemplates.Open(path.Join("queries", queryFile))
@@ -95,15 +146,26 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		return nil, err
 	}
 
+	// Need constraint subqueries to complete before we can query GetObjects
+	if err := gConstraints.Wait(); err != nil {
+		return nil, err
+	}
+
 	args := []any{
+		// Optional filter patterns
 		driverbase.PatternToNamedArg("CATALOG", catalog),
 		driverbase.PatternToNamedArg("DB_SCHEMA", dbSchema),
 		driverbase.PatternToNamedArg("TABLE", tableName),
 		driverbase.PatternToNamedArg("COLUMN", columnName),
+
+		// QueryIDs for constraint data if depth is tables or deeper
+		sql.Named("PK_QUERY_ID", pkQueryID),
+		sql.Named("FK_QUERY_ID", fkQueryID),
+		sql.Named("UNIQUE_QUERY_ID", uniqueQueryID),
 	}
 
 	query := bldr.String()
-	rows, err := c.sqldb.QueryContext(ctx, query, args...)
+	rows, err := conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}

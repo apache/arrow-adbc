@@ -20,6 +20,50 @@ WITH columns AS (
     WHERE table_catalog ILIKE :CATALOG AND table_schema ILIKE :DB_SCHEMA AND table_name ILIKE :TABLE AND column_name ILIKE :COLUMN
     GROUP BY table_catalog, table_schema, table_name
 ),
+pk_constraints AS (
+    SELECT
+        "database_name" table_catalog,
+        "schema_name" table_schema,
+        "table_name" table_name,
+        "constraint_name" constraint_name,
+        'PRIMARY KEY' constraint_type,
+        ARRAY_AGG("column_name") WITHIN GROUP (ORDER BY "key_sequence") constraint_column_names,
+        [] constraint_column_usage,
+    FROM TABLE(RESULT_SCAN(:PK_QUERY_ID))
+    WHERE table_catalog ILIKE :CATALOG AND table_schema ILIKE :DB_SCHEMA AND table_name ILIKE :TABLE
+    GROUP BY table_catalog, table_schema, table_name, "constraint_name"
+),
+unique_constraints AS (
+    SELECT
+        "database_name" table_catalog,
+        "schema_name" table_schema,
+        "table_name" table_name,
+        "constraint_name" constraint_name,
+        'UNIQUE' constraint_type,
+        ARRAY_AGG("column_name") WITHIN GROUP (ORDER BY "key_sequence") constraint_column_names,
+        [] constraint_column_usage,
+    FROM TABLE(RESULT_SCAN(:UNIQUE_QUERY_ID))
+    WHERE table_catalog ILIKE :CATALOG AND table_schema ILIKE :DB_SCHEMA AND table_name ILIKE :TABLE
+    GROUP BY table_catalog, table_schema, table_name, "constraint_name"
+),
+fk_constraints AS (
+    SELECT
+        "fk_database_name" table_catalog,
+        "fk_schema_name" table_schema,
+        "fk_table_name" table_name,
+        "fk_name" constraint_name,
+        'FOREIGN KEY' constraint_type,
+        ARRAY_AGG("fk_column_name") WITHIN GROUP (ORDER BY "key_sequence") constraint_column_names,
+        ARRAY_AGG({
+            'fk_catalog': "pk_database_name",
+            'fk_db_schema': "pk_schema_name",
+            'fk_table': "pk_table_name",
+            'fk_column_name': "pk_column_name"
+        }) WITHIN GROUP (ORDER BY "key_sequence") constraint_column_usage,
+    FROM TABLE(RESULT_SCAN(:FK_QUERY_ID))
+    WHERE table_catalog ILIKE :CATALOG AND table_schema ILIKE :DB_SCHEMA AND table_name ILIKE :TABLE
+    GROUP BY table_catalog, table_schema, table_name, constraint_name
+),
 constraints AS (
     SELECT
         table_catalog,
@@ -27,10 +71,17 @@ constraints AS (
         table_name,
         ARRAY_AGG({
             'constraint_name': constraint_name,
-            'constraint_type': constraint_type
+            'constraint_type': constraint_type,
+            'constraint_column_names': constraint_column_names,
+            'constraint_column_usage': constraint_column_usage
         }) table_constraints,
-    FROM information_schema.table_constraints
-    WHERE table_catalog ILIKE :CATALOG AND table_schema ILIKE :DB_SCHEMA AND table_name ILIKE :TABLE
+    FROM (
+        SELECT * FROM pk_constraints
+        UNION ALL
+        SELECT * FROM unique_constraints
+        UNION ALL
+        SELECT * FROM fk_constraints
+    )
     GROUP BY table_catalog, table_schema, table_name
 ),
 tables AS (
