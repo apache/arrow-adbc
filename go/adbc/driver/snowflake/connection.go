@@ -21,9 +21,11 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -39,7 +41,15 @@ import (
 const (
 	defaultStatementQueueSize  = 200
 	defaultPrefetchConcurrency = 10
+
+	queryTemplateGetObjectsAll       = "get_objects_all.sql"
+	queryTemplateGetObjectsCatalogs  = "get_objects_catalogs.sql"
+	queryTemplateGetObjectsDbSchemas = "get_objects_dbschemas.sql"
+	queryTemplateGetObjectsTables    = "get_objects_tables.sql"
 )
+
+//go:embed queries/*
+var queryTemplates embed.FS
 
 type snowflakeConn interface {
 	driver.Conn
@@ -61,6 +71,74 @@ type connectionImpl struct {
 
 	activeTransaction bool
 	useHighPrecision  bool
+}
+
+func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
+	queryFile := queryTemplateGetObjectsAll
+	switch depth {
+	case adbc.ObjectDepthCatalogs:
+		queryFile = queryTemplateGetObjectsCatalogs
+	case adbc.ObjectDepthDBSchemas:
+		queryFile = queryTemplateGetObjectsDbSchemas
+	case adbc.ObjectDepthTables:
+		queryFile = queryTemplateGetObjectsTables
+	}
+
+	f, err := queryTemplates.Open(path.Join("queries", queryFile))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	var bldr strings.Builder
+	if _, err := io.Copy(&bldr, f); err != nil {
+		return nil, err
+	}
+
+	args := []any{
+		driverbase.PatternToNamedArg("CATALOG", catalog),
+		driverbase.PatternToNamedArg("DB_SCHEMA", dbSchema),
+		driverbase.PatternToNamedArg("TABLE", tableName),
+		driverbase.PatternToNamedArg("COLUMN", columnName),
+	}
+
+	query := bldr.String()
+	rows, err := c.sqldb.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+	defer rows.Close()
+
+	catalogCh := make(chan driverbase.GetObjectsInfo, 1)
+	readerCh := make(chan array.RecordReader)
+	errCh := make(chan error)
+
+	go func() {
+		rdr, err := driverbase.BuildGetObjectsRecordReader(c.Alloc, catalogCh)
+		if err != nil {
+			errCh <- err
+		}
+
+		readerCh <- rdr
+		close(readerCh)
+	}()
+
+	for rows.Next() {
+		var getObjectsCatalog driverbase.GetObjectsInfo
+		if err := rows.Scan(&getObjectsCatalog); err != nil {
+			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
+		}
+
+		catalogCh <- getObjectsCatalog
+	}
+	close(catalogCh)
+
+	select {
+	case rdr := <-readerCh:
+		return rdr, nil
+	case err := <-errCh:
+		return nil, err
+	}
 }
 
 // GetCatalogs implements driverbase.DbObjectsEnumeratorV2.

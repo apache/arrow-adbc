@@ -19,6 +19,8 @@ package driverbase
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -365,7 +367,7 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 		close(addCatalogCh) // defer in group
 
 		if depth == adbc.ObjectDepthCatalogs {
-			return buildGetObjectsRecordReader(cnxn.Base().Alloc, addCatalogCh)
+			return BuildGetObjectsRecordReader(cnxn.Base().Alloc, addCatalogCh)
 		}
 
 		g, ctxG := errgroup.WithContext(ctx)
@@ -395,7 +397,7 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 		g.Go(func() error { defer close(addDbSchemasCh); return gSchemas.Wait() })
 
 		if depth == adbc.ObjectDepthDBSchemas {
-			rdr, err := buildGetObjectsRecordReader(cnxn.Base().Alloc, addDbSchemasCh)
+			rdr, err := BuildGetObjectsRecordReader(cnxn.Base().Alloc, addDbSchemasCh)
 			return rdr, errors.Join(err, g.Wait())
 		}
 
@@ -441,7 +443,7 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 
 		g.Go(func() error { defer close(addTablesCh); return gTables.Wait() })
 
-		rdr, err := buildGetObjectsRecordReader(cnxn.Base().Alloc, addTablesCh)
+		rdr, err := BuildGetObjectsRecordReader(cnxn.Base().Alloc, addTablesCh)
 		return rdr, errors.Join(err, g.Wait())
 
 	}
@@ -648,7 +650,26 @@ type GetObjectsInfo struct {
 	CatalogDbSchemas []DBSchemaInfo `json:"catalog_db_schemas"`
 }
 
-func buildGetObjectsRecordReader(mem memory.Allocator, in chan GetObjectsInfo) (array.RecordReader, error) {
+// Scan implements sql.Scanner.
+func (g *GetObjectsInfo) Scan(src any) error {
+	if src == nil {
+		return nil
+	}
+
+	var b []byte
+	switch s := src.(type) {
+	case []byte:
+		b = s
+	case string:
+		b = []byte(s)
+	default:
+		return fmt.Errorf("unexpected driver value for GetObjectsInfo: %s", s)
+	}
+
+	return json.Unmarshal(b, g)
+}
+
+func BuildGetObjectsRecordReader(mem memory.Allocator, in chan GetObjectsInfo) (array.RecordReader, error) {
 	bldr := array.NewRecordBuilder(mem, adbc.GetObjectsSchema)
 	defer bldr.Release()
 
@@ -789,6 +810,13 @@ func buildGetObjectsRecordReader(mem memory.Allocator, in chan GetObjectsInfo) (
 	rec := bldr.NewRecord()
 	defer rec.Release()
 	return array.NewRecordReader(adbc.GetObjectsSchema, []arrow.Record{rec})
+}
+
+func PatternToNamedArg(name string, pattern *string) sql.NamedArg {
+	if pattern == nil {
+		return sql.Named(name, "%")
+	}
+	return sql.Named(name, *pattern)
 }
 
 var _ ConnectionImpl = (*ConnectionImplBase)(nil)
