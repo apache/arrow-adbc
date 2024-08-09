@@ -17,6 +17,9 @@
 
 #pragma once
 
+#include <algorithm>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include <arrow-adbc/adbc.h>
