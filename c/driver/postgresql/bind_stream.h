@@ -528,26 +528,6 @@ struct BindStream {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode Execute(PGconn* pg_conn, int64_t* rows_affected,
-                         struct AdbcError* error) {
-    if (rows_affected) *rows_affected = 0;
-    PGresult* result = nullptr;
-
-    while (true) {
-      RAISE_ADBC(EnsureNextRow(error));
-      if (!current->release) break;
-
-      RAISE_ADBC(BindAndExecuteCurrentRow(pg_conn, &result, error));
-      PQclear(result);
-      if (rows_affected) {
-        (*rows_affected)++;
-      }
-    }
-
-    RAISE_ADBC(Cleanup(pg_conn, error));
-    return ADBC_STATUS_OK;
-  }
-
   AdbcStatusCode ExecuteCopy(PGconn* pg_conn, const PostgresTypeResolver& type_resolver,
                              int64_t* rows_affected, struct AdbcError* error) {
     // https://github.com/apache/arrow-adbc/issues/1921: PostgreSQL has a max
