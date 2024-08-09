@@ -194,25 +194,19 @@ AdbcStatusCode PqResultArrayReader::Initialize(int64_t* rows_affected,
 AdbcStatusCode PqResultArrayReader::ToArrayStream(int64_t* affected_rows,
                                                   struct ArrowArrayStream* out,
                                                   struct AdbcError* error) {
-  if (out == nullptr && !bind_stream_) {
-    // If there is no output requested and nothing to bind, we still need to execute and
+  if (out == nullptr) {
+    // If there is no output requested, we still need to execute and
     // set affected_rows if needed. We don't need an output schema or to set up a copy
     // reader, so we can skip those steps by going straight to Execute(). This also
     // enables us to support queries with multiple statements because we can call PQexec()
     // instead of PQexecParams().
-    RAISE_ADBC(helper_.Execute(error));
-
-    if (affected_rows != nullptr) {
-      *affected_rows = helper_.AffectedRows();
-    }
-
+    RAISE_ADBC(ExecuteAll(affected_rows, error));
     return ADBC_STATUS_OK;
   }
 
-  // Execute eagerly. We need this to provide row counts for DELETE and
-  // CREATE TABLE queries as well as to provide more informative errors
-  // until this reader class is wired up to provide extended AdbcError
-  // information.
+  // Otherwise, execute until we have a result to return. We need this to provide row
+  // counts for DELETE and CREATE TABLE queries as well as to provide more informative
+  // errors until this reader class is wired up to provide extended AdbcError information.
   RAISE_ADBC(Initialize(affected_rows, error));
 
   nanoarrow::ArrayStreamFactory<PqResultArrayReader>::InitArrayStream(
@@ -240,6 +234,28 @@ AdbcStatusCode PqResultArrayReader::BindNextAndExecute(int64_t* affected_rows,
       (*affected_rows) += helper_.AffectedRows();
     }
   } while (helper_.NumRows() == 0);
+
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PqResultArrayReader::ExecuteAll(int64_t* affected_rows, AdbcError* error) {
+  // For the case where we don't need a result, we either need to exhaust the bind
+  // stream
+  if (bind_stream_) {
+    RAISE_ADBC(bind_stream_->Begin([] { return ADBC_STATUS_OK; }, error));
+    RAISE_ADBC(bind_stream_->SetParamTypes(*type_resolver_, error));
+    RAISE_ADBC(helper_.Prepare(bind_stream_->param_types, error));
+
+    do {
+      RAISE_ADBC(BindNextAndExecute(affected_rows, error));
+    } while (bind_stream_);
+  } else {
+    RAISE_ADBC(helper_.Execute(error));
+
+    if (affected_rows != nullptr) {
+      *affected_rows = helper_.AffectedRows();
+    }
+  }
 
   return ADBC_STATUS_OK;
 }

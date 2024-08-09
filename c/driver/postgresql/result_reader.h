@@ -77,6 +77,7 @@ class PqResultArrayReader {
   }
 
   AdbcStatusCode BindNextAndExecute(int64_t* affected_rows, AdbcError* error);
+  AdbcStatusCode ExecuteAll(int64_t* affected_rows, AdbcError* error);
 
   void ResetErrors() {
     ArrowErrorInit(&na_error_);

@@ -1129,22 +1129,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
 AdbcStatusCode PostgresStatement::ExecuteBind(struct ArrowArrayStream* stream,
                                               int64_t* rows_affected,
                                               struct AdbcError* error) {
-  if (stream) {
-    PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
-    reader.SetBind(&bind_);
-    RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
-    return ADBC_STATUS_OK;
-  }
-
-  BindStream bind_stream;
-  bind_stream.SetBind(&bind_);
-  std::memset(&bind_, 0, sizeof(bind_));
-
-  RAISE_ADBC(bind_stream.Begin([&]() { return ADBC_STATUS_OK; }, error));
-  RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
-  RAISE_ADBC(
-      bind_stream.Prepare(connection_->conn(), query_, error, connection_->autocommit()));
-  RAISE_ADBC(bind_stream.Execute(connection_->conn(), rows_affected, error));
+  PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
+  reader.SetBind(&bind_);
+  RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
   return ADBC_STATUS_OK;
 }
 
