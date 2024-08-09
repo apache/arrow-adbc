@@ -24,6 +24,7 @@
 
 #include <libpq-fe.h>
 
+#include "bind_stream.h"
 #include "copy/reader.h"
 #include "result_helper.h"
 
@@ -33,12 +34,17 @@ class PqResultArrayReader {
  public:
   PqResultArrayReader(PGconn* conn, std::shared_ptr<PostgresTypeResolver> type_resolver,
                       std::string query)
-      : helper_(conn, std::move(query)), type_resolver_(type_resolver) {
+      : conn_(conn),
+        helper_(conn, std::move(query)),
+        bind_stream_(std::make_unique<BindStream>()),
+        type_resolver_(type_resolver) {
     ArrowErrorInit(&na_error_);
     error_ = ADBC_ERROR_INIT;
   }
 
   ~PqResultArrayReader() { ResetErrors(); }
+
+  void SetBind(struct ArrowArrayStream* stream) { bind_stream_->SetBind(stream); }
 
   int GetSchema(struct ArrowSchema* out);
   int GetNext(struct ArrowArray* out);
@@ -50,7 +56,9 @@ class PqResultArrayReader {
   AdbcStatusCode Initialize(struct AdbcError* error);
 
  private:
+  PGconn* conn_;
   PqResultHelper helper_;
+  std::unique_ptr<BindStream> bind_stream_;
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   std::vector<std::unique_ptr<PostgresCopyFieldReader>> field_readers_;
   nanoarrow::UniqueSchema schema_;
@@ -58,7 +66,9 @@ class PqResultArrayReader {
   struct ArrowError na_error_;
 
   explicit PqResultArrayReader(PqResultArrayReader* other)
-      : helper_(std::move(other->helper_)),
+      : conn_(other->conn_),
+        helper_(std::move(other->helper_)),
+        bind_stream_(std::move(other->bind_stream_)),
         type_resolver_(std::move(other->type_resolver_)),
         field_readers_(std::move(other->field_readers_)),
         schema_(std::move(other->schema_)) {

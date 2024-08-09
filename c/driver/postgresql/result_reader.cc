@@ -43,6 +43,7 @@ int PqResultArrayReader::GetSchema(struct ArrowSchema* out) {
 int PqResultArrayReader::GetNext(struct ArrowArray* out) {
   ResetErrors();
 
+  AdbcStatusCode status;
   if (schema_->release == nullptr) {
     AdbcStatusCode status = Initialize(&error_);
     if (status != ADBC_STATUS_OK) {
@@ -50,9 +51,27 @@ int PqResultArrayReader::GetNext(struct ArrowArray* out) {
     }
   }
 
+  // If don't already have a result, populate it by binding the next row
+  // in the bind stream. If there is a bind stream and this is the first
+  // call to GetNext(), we have already populated the result.
   if (!helper_.HasResult()) {
-    out->release = nullptr;
-    return NANOARROW_OK;
+    // Try to bind the next row. If there was no stream provided,
+    // we have inserted a dummy stream that contains no more arrays.
+    status = bind_stream_->EnsureNextRow(&error_);
+    if (status != ADBC_STATUS_OK) {
+      return EIO;
+    }
+
+    // If there is no underlying current array in the bind stream, we are done.
+    if (bind_stream_->current->release == nullptr) {
+      out->release = nullptr;
+      return NANOARROW_OK;
+    }
+
+    // Otherwise, bind and execute
+    PGresult* result;
+    RAISE_ADBC(bind_stream_->BindAndExecuteCurrentRow(conn_, &result, &error_));
+    helper_.SetResult(result);
   }
 
   nanoarrow::UniqueArray tmp;
@@ -92,7 +111,7 @@ int PqResultArrayReader::GetNext(struct ArrowArray* out) {
   tmp->null_count = 0;
   NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuildingDefault(tmp.get(), &na_error_));
 
-  // Ensure that the next call to GetNext() will signal the end of the stream
+  // Signal that the next call to GetNext() will have to populate the result again
   helper_.ClearResult();
 
   // Canonically return zero-size results as an empty stream
@@ -115,8 +134,41 @@ const char* PqResultArrayReader::GetLastError() {
 
 AdbcStatusCode PqResultArrayReader::Initialize(struct AdbcError* error) {
   helper_.set_output_format(PqResultHelper::Format::kBinary);
-  RAISE_ADBC(helper_.Execute(error));
+  helper_.set_param_format(PqResultHelper::Format::kBinary);
 
+  // If we have to do binding, use Prepare() + DescribePrepared(), ensuring
+  // that the Oids of the binary we're about to send are passed on and that
+  // we execute something with a result
+  if (bind_stream_->bind->release != nullptr) {
+    RAISE_ADBC(bind_stream_->Begin([] { return ADBC_STATUS_OK; }, error));
+    RAISE_ADBC(bind_stream_->SetParamTypes(*type_resolver_, error));
+    RAISE_ADBC(helper_.Prepare(bind_stream_->param_types, error));
+
+    RAISE_ADBC(bind_stream_->EnsureNextRow(error));
+
+    // If there were no arrays in the bind stream, we can still initialize the schema
+    if (bind_stream_->current->release == nullptr) {
+      RAISE_ADBC(helper_.DescribePrepared(error));
+    } else {
+      PGresult* result;
+      RAISE_ADBC(bind_stream_->BindAndExecuteCurrentRow(conn_, &result, error));
+      helper_.SetResult(result);
+    }
+  } else {
+    RAISE_ADBC(helper_.Execute(error));
+
+    // It is helpful for the purposes of the GetNext() implementation to bind
+    // a stream with no parameters and no arrays.
+    nanoarrow::UniqueSchema empty_bind;
+    ArrowSchemaInitFromType(empty_bind.get(), NANOARROW_TYPE_STRUCT);
+
+    nanoarrow::UniqueArrayStream empty_stream;
+    nanoarrow::EmptyArrayStream(empty_bind.get()).ToArrayStream(empty_stream.get());
+    bind_stream_->SetBind(empty_stream.get());
+    RAISE_ADBC(bind_stream_->Begin([] { return ADBC_STATUS_OK; }, error));
+  }
+
+  // Build the schema we are about to build results for
   ArrowSchemaInit(schema_.get());
   CHECK_NA_DETAIL(INTERNAL, ArrowSchemaSetTypeStruct(schema_.get(), helper_.NumColumns()),
                   &na_error_, error);

@@ -109,6 +109,11 @@ class PqResultHelper {
 
   bool HasResult() { return result_ != nullptr; }
 
+  void SetResult(PGresult* result) {
+    ClearResult();
+    result_ = result;
+  }
+
   PGresult* ReleaseResult();
 
   void ClearResult() {

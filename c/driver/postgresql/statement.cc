@@ -1138,7 +1138,8 @@ AdbcStatusCode PostgresStatement::ExecuteBind(struct ArrowArrayStream* stream,
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
-  BindStream bind_stream(std::move(bind_));
+  BindStream bind_stream;
+  bind_stream.SetBind(&bind_);
   std::memset(&bind_, 0, sizeof(bind_));
 
   RAISE_ADBC(bind_stream.Begin([&]() { return ADBC_STATUS_OK; }, error));
@@ -1293,7 +1294,8 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
     current_schema = (*it)[0].data;
   }
 
-  BindStream bind_stream(std::move(bind_));
+  BindStream bind_stream;
+  bind_stream.SetBind(&bind_);
   std::memset(&bind_, 0, sizeof(bind_));
   std::string escaped_table;
   std::string escaped_field_list;

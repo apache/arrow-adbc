@@ -61,9 +61,14 @@ struct BindStream {
 
   struct ArrowError na_error;
 
-  explicit BindStream(struct ArrowArrayStream&& bind) {
-    this->bind.value = std::move(bind);
+  BindStream() {
+    this->bind->release = nullptr;
     std::memset(&na_error, 0, sizeof(na_error));
+  }
+
+  void SetBind(struct ArrowArrayStream* stream) {
+    this->bind.reset();
+    ArrowArrayStreamMove(stream, &bind.value);
   }
 
   template <typename Callback>
