@@ -17,6 +17,11 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include <libpq-fe.h>
 
 #include "copy/reader.h"

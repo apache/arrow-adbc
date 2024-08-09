@@ -17,6 +17,9 @@
 
 #include "result_reader.h"
 
+#include <memory>
+#include <utility>
+
 #include "copy/reader.h"
 #include "driver/common/utils.h"
 
