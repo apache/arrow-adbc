@@ -490,7 +490,7 @@ struct BindStream {
                        /*resultFormat=*/0 /*text*/);
 
     ExecStatusType pg_status = PQresultStatus(result);
-    if (pg_status != PGRES_COMMAND_OK) {
+    if (pg_status != PGRES_COMMAND_OK && pg_status != PGRES_TUPLES_OK) {
       AdbcStatusCode code =
           SetError(error, result, "[libpq] Failed to execute prepared statement: %s %s",
                    PQresStatus(pg_status), PQerrorMessage(pg_conn));
