@@ -77,8 +77,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public TSessionHandle? SessionHandle { get; private set; }
 
         protected abstract Task<TTransport> CreateTransportAsync();
+
         protected abstract Task<TProtocol> CreateProtocolAsync(TTransport transport);
+
         protected abstract TOpenSessionReq CreateSessionRequest();
+
         public abstract SchemaParser SchemaParser { get; }
 
         public abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
@@ -143,53 +146,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
             return response;
         }
-
-        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port)
-        {
-            // Uri property takes precedent.
-            if (!string.IsNullOrWhiteSpace(uri))
-            {
-                var uriValue = new Uri(uri);
-                if (uriValue.Scheme != Uri.UriSchemeHttp && uriValue.Scheme != Uri.UriSchemeHttps)
-                    throw new ArgumentOutOfRangeException(
-                        AdbcOptions.Uri,
-                        uri,
-                        $"Unsupported scheme '{uriValue.Scheme}'");
-                return uriValue;
-            }
-
-            bool isPortSet = !string.IsNullOrEmpty(port);
-            bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
-            bool isDefaultHttpsPort = !isPortSet || (isValidPortNumber && portNumber == 443);
-            string uriScheme = isDefaultHttpsPort ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
-            int uriPort;
-            if (!isPortSet)
-                uriPort = -1;
-            else if (isValidPortNumber)
-                uriPort = portNumber;
-            else
-                throw new ArgumentOutOfRangeException(nameof(port), portNumber, $"Port number is not in a valid range.");
-
-            Uri baseAddress = new UriBuilder(uriScheme, hostName, uriPort, path).Uri;
-            return baseAddress;
-        }
-
-        protected static AuthenticationHeaderValue GetAuthenticationHeaderValue(string? authType, string? token, string? username, string? password)
-        {
-            bool isValidAuthType = Enum.TryParse(authType, out SparkAuthType authTypeValue);
-            if (!string.IsNullOrEmpty(token) && (!isValidAuthType || authTypeValue == SparkAuthType.Token))
-            {
-                return new AuthenticationHeaderValue("Bearer", token);
-            }
-            else if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password) && (!isValidAuthType || authTypeValue == SparkAuthType.Basic))
-            {
-                return new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")));
-            }
-            else
-            {
-                throw new AdbcException("Missing connection properties. Must contain 'token' or 'username' and 'password'");
-            }
-        }
-
     }
 }

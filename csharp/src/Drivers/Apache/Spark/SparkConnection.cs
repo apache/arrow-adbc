@@ -1016,6 +1016,36 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
         }
 
+        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port)
+        {
+            // Uri property takes precedent.
+            if (!string.IsNullOrWhiteSpace(uri))
+            {
+                var uriValue = new Uri(uri);
+                if (uriValue.Scheme != Uri.UriSchemeHttp && uriValue.Scheme != Uri.UriSchemeHttps)
+                    throw new ArgumentOutOfRangeException(
+                        AdbcOptions.Uri,
+                        uri,
+                        $"Unsupported scheme '{uriValue.Scheme}'");
+                return uriValue;
+            }
+
+            bool isPortSet = !string.IsNullOrEmpty(port);
+            bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
+            bool isDefaultHttpsPort = !isPortSet || (isValidPortNumber && portNumber == 443);
+            string uriScheme = isDefaultHttpsPort ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
+            int uriPort;
+            if (!isPortSet)
+                uriPort = -1;
+            else if (isValidPortNumber)
+                uriPort = portNumber;
+            else
+                throw new ArgumentOutOfRangeException(nameof(port), portNumber, $"Port number is not in a valid range.");
+
+            Uri baseAddress = new UriBuilder(uriScheme, hostName, uriPort, path).Uri;
+            return baseAddress;
+        }
+
         public abstract Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response);
         public abstract Task<TRowSet> GetRowSetAsync(TGetColumnsResp response);
         public abstract Task<TRowSet> GetRowSetAsync(TGetTablesResp response);

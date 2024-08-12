@@ -32,8 +32,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
     public static class SparkAuthTypeConstants
     {
-        public const string AuthTypeBasic = "auth_basic";
-        public const string AuthTypeToken = "auth_token";
+        public const string AuthTypeBasic = "basic";
+        public const string AuthTypeToken = "token";
 
         public static bool TryParse(string? authType, out SparkAuthType authTypeValue)
         {

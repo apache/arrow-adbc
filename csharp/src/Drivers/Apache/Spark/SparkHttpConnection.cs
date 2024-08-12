@@ -80,6 +80,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return Task.FromResult<TTransport>(transport);
         }
 
+        private static AuthenticationHeaderValue GetAuthenticationHeaderValue(string? authType, string? token, string? username, string? password)
+        {
+            bool isValidAuthType = Enum.TryParse(authType, out SparkAuthType authTypeValue);
+            if (!string.IsNullOrEmpty(token) && (!isValidAuthType || authTypeValue == SparkAuthType.Token))
+            {
+                return new AuthenticationHeaderValue("Bearer", token);
+            }
+            else if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password) && (!isValidAuthType || authTypeValue == SparkAuthType.Basic))
+            {
+                return new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")));
+            }
+            else
+            {
+                throw new AdbcException("Missing connection properties. Must contain 'token' or 'username' and 'password'");
+            }
+        }
+
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport)
         {
             Trace.TraceError($"create protocol with {Properties.Count} properties.");
