@@ -445,8 +445,8 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
 
 /// Postgres JSONB emits as the JSON string prefixed with a version number
 /// (https://github.com/postgres/postgres/blob/3f44959f47460fb350d25d760cf2384f9aa14e9a/src/backend/utils/adt/jsonb.c#L80-L87
-/// ) Currently there is only one version, so functionally this is a just string prefixed with
-/// 0x01.
+/// ) Currently there is only one version, so functionally this is a just string prefixed
+/// with 0x01.
 class PostgresCopyJsonbFieldReader : public PostgresCopyFieldReader {
  public:
   ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
