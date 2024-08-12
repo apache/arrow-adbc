@@ -27,7 +27,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         protected HiveServer2Statement(HiveServer2Connection connection)
         {
-            this.Connection = connection;
+            Connection = connection;
         }
 
         protected virtual void SetStatementProperties(TExecuteStatementReq statement)
@@ -42,14 +42,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             await ExecuteStatementAsync();
             await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds);
-            Schema schema = await GetResultSetSchema();
+            Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client);
 
             // TODO: Ensure this is set dynamically based on server capabilities
             return new QueryResult(-1, Connection.NewReader(this, schema));
         }
-
-        private Task<Schema> GetResultSetSchema() =>
-            GetResultSetSchemaAsync(OperationHandle!, Connection.Client);
 
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
@@ -76,9 +73,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
             }
 
-            // If no altered rows, i.e. DDC statements, then -1 is the default.
+            // The default is -1.
+            if (affectedRowsField == null) return new UpdateResult(-1);
+
             long? affectedRows = null;
-            while (affectedRowsField != null && true)
+            while (true)
             {
                 using RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync();
                 if (nextBatch == null) { break; }
@@ -91,6 +90,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
             }
 
+            // If no altered rows, i.e. DDC statements, then -1 is the default.
             return new UpdateResult(affectedRows ?? -1);
         }
 
@@ -111,16 +111,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task ExecuteStatementAsync()
         {
-            TExecuteStatementReq executeRequest = new TExecuteStatementReq(this.Connection.SessionHandle, this.SqlQuery);
+            TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery);
             SetStatementProperties(executeRequest);
-            TExecuteStatementResp executeResponse = await this.Connection.Client.ExecuteStatement(executeRequest);
+            TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest);
             if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)
                     .SetSqlState(executeResponse.Status.SqlState)
                     .SetNativeError(executeResponse.Status.ErrorCode);
             }
-            this.OperationHandle = executeResponse.OperationHandle;
+            OperationHandle = executeResponse.OperationHandle;
         }
 
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
@@ -151,11 +151,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override void Dispose()
         {
-            if (this.OperationHandle != null)
+            if (OperationHandle != null)
             {
-                TCloseOperationReq request = new TCloseOperationReq(this.OperationHandle);
-                this.Connection.Client.CloseOperation(request).Wait();
-                this.OperationHandle = null;
+                TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
+                Connection.Client.CloseOperation(request).Wait();
+                OperationHandle = null;
             }
 
             base.Dispose();
