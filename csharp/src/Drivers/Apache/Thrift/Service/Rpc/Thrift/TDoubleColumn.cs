@@ -29,9 +29,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
   public partial class TDoubleColumn : TBase
   {
-        private const int DoubleSize = 8;
+    private const int DoubleSize = 8;
 
-        public DoubleArray Values { get; set; }
+    public DoubleArray Values { get; set; }
 
     public TDoubleColumn()
     {
@@ -51,90 +51,90 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       iprot.IncrementRecursionDepth();
       try
-            {
-                bool isset_values = false;
-                bool isset_nulls = false;
-                TField field;
+      {
+        bool isset_values = false;
+        bool isset_nulls = false;
+        TField field;
 
-                byte[] nulls = null;
-                byte[] buffer = null;
-                Stream transport = ((IPeekableTransport)iprot.Transport).Input;
-                int length = -1;
+        byte[] nulls = null;
+        byte[] buffer = null;
+        Stream transport = ((IPeekableTransport)iprot.Transport).Input;
+        int length = -1;
 
-                await iprot.ReadStructBeginAsync(cancellationToken);
-                while (true)
+        await iprot.ReadStructBeginAsync(cancellationToken);
+        while (true)
+        {
+          field = await iprot.ReadFieldBeginAsync(cancellationToken);
+          if (field.Type == TType.Stop)
+          {
+            break;
+          }
+
+          switch (field.ID)
+          {
+            case 1:
+              if (field.Type == TType.List)
+              {
                 {
-                    field = await iprot.ReadFieldBeginAsync(cancellationToken);
-                    if (field.Type == TType.Stop)
-                    {
-                        break;
-                    }
+                  var _list178 = await iprot.ReadListBeginAsync(cancellationToken);
+                  length = _list178.Count;
 
-                    switch (field.ID)
-                    {
-                        case 1:
-                            if (field.Type == TType.List)
-                            {
-                                {
-                                    var _list178 = await iprot.ReadListBeginAsync(cancellationToken);
-                                    length = _list178.Count;
-
-                                    buffer = new byte[length * DoubleSize];
-                                    var memory = buffer.AsMemory();
-                                    var typedMemory = Unsafe.As<Memory<byte>, Memory<long>>(ref memory).Slice(0, length);
-                                    iprot.Transport.CheckReadBytesAvailable(buffer.Length);
-                                    await transport.ReadExactlyAsync(memory, cancellationToken);
-                                    for (int _i179 = 0; _i179 < length; ++_i179)
-                                    {
+                  buffer = new byte[length * DoubleSize];
+                  var memory = buffer.AsMemory();
+                  var typedMemory = Unsafe.As<Memory<byte>, Memory<long>>(ref memory).Slice(0, length);
+                  iprot.Transport.CheckReadBytesAvailable(buffer.Length);
+                  await transport.ReadExactlyAsync(memory, cancellationToken);
+                  for (int _i179 = 0; _i179 < length; ++_i179)
+                  {
 #if NET472
-                                      long source = BinaryPrimitives.ReverseEndianness(BitConverter.ToInt64(buffer, _i179 * DoubleSize));
-                                      BitConverter.GetBytes(source).CopyTo(buffer, _i179 * DoubleSize);
+                    long source = BinaryPrimitives.ReverseEndianness(BitConverter.ToInt64(buffer, _i179 * DoubleSize));
+                    BitConverter.GetBytes(source).CopyTo(buffer, _i179 * DoubleSize);
 #else
-                                      typedMemory.Span[_i179] = BinaryPrimitives.ReverseEndianness(typedMemory.Span[_i179]);
+                    typedMemory.Span[_i179] = BinaryPrimitives.ReverseEndianness(typedMemory.Span[_i179]);
 #endif
-                                    }
-                                    await iprot.ReadListEndAsync(cancellationToken);
-                                }
-                                isset_values = true;
-                            }
-                            else
-                            {
-                                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-                            }
-                            break;
-                        case 2:
-                            if (field.Type == TType.String)
-                            {
-                                nulls = await iprot.ReadBinaryAsync(cancellationToken);
-                                isset_nulls = true;
-                            }
-                            else
-                            {
-                                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-                            }
-                            break;
-                        default:
-                            await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-                            break;
-                    }
-
-                    await iprot.ReadFieldEndAsync(cancellationToken);
+                  }
+                  await iprot.ReadListEndAsync(cancellationToken);
                 }
+                isset_values = true;
+              }
+              else
+              {
+                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+              }
+              break;
+            case 2:
+              if (field.Type == TType.String)
+              {
+                nulls = await iprot.ReadBinaryAsync(cancellationToken);
+                isset_nulls = true;
+              }
+              else
+              {
+                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+              }
+              break;
+            default:
+              await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+              break;
+          }
 
-                await iprot.ReadStructEndAsync(cancellationToken);
-                if (!isset_values)
-                {
-                    throw new TProtocolException(TProtocolException.INVALID_DATA);
-                }
-                if (!isset_nulls)
-                {
-                    throw new TProtocolException(TProtocolException.INVALID_DATA);
-                }
+            await iprot.ReadFieldEndAsync(cancellationToken);
+        }
 
-                ArrowBuffer validityBitmapBuffer = BitmapUtilities.GetValidityBitmapBuffer(nulls, out int nullCount);
-                Values = new DoubleArray(new ArrowBuffer(buffer), validityBitmapBuffer, length, nullCount, 0);
-            }
-            finally
+        await iprot.ReadStructEndAsync(cancellationToken);
+        if (!isset_values)
+        {
+          throw new TProtocolException(TProtocolException.INVALID_DATA);
+        }
+        if (!isset_nulls)
+        {
+          throw new TProtocolException(TProtocolException.INVALID_DATA);
+        }
+
+        ArrowBuffer validityBitmapBuffer = BitmapUtilities.GetValidityBitmapBuffer(nulls, out int nullCount);
+        Values = new DoubleArray(new ArrowBuffer(buffer), validityBitmapBuffer, length, nullCount, 0);
+      }
+      finally
       {
         iprot.DecrementRecursionDepth();
       }

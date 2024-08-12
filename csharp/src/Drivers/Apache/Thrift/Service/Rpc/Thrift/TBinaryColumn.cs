@@ -28,11 +28,11 @@ using Thrift.Protocol.Utilities;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-    public partial class TBinaryColumn : TBase
+  public partial class TBinaryColumn : TBase
   {
-        private const int IntSize = 4;
+    private const int IntSize = 4;
 
-        public BinaryArray Values { get; set; }
+    public BinaryArray Values { get; set; }
 
     public TBinaryColumn()
     {
