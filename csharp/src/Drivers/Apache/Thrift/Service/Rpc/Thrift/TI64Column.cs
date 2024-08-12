@@ -29,9 +29,9 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
   public partial class TI64Column : TBase
   {
-        private const int LongSize = 8;
+    private const int LongSize = 8;
 
-        public Int64Array Values { get; set; }
+    public Int64Array Values { get; set; }
 
     public TI64Column()
     {

@@ -118,7 +118,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
               break;
           }
 
-            await iprot.ReadFieldEndAsync(cancellationToken);
+          await iprot.ReadFieldEndAsync(cancellationToken);
         }
 
         await iprot.ReadStructEndAsync(cancellationToken);
