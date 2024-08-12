@@ -27,12 +27,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     // TODO: When supported, use prepared statements instead of SQL string literals
     //      Which will better test how the driver handles values sent/received
 
-    public class NumericValueTests : SparkTestBase
+    public class NumericValueTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
         /// <summary>
         /// Validates that specific numeric values can be inserted, retrieved and targeted correctly
         /// </summary>
-        public NumericValueTests(ITestOutputHelper output) : base(output) { }
+        public NumericValueTests(ITestOutputHelper output) : base(output, new SparkTestEnvironment.Factory()) { }
 
         /// <summary>
         /// Validates if driver can send and receive specific Integer values correctly
@@ -113,7 +113,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "SMALLNUMBER";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(2,0)", columnName));
-            object? expectedValue = GetValueForProtocolVersion(value, new SqlDecimal(double.Parse(value)));
+            object? expectedValue = TestEnvironment.GetValueForProtocolVersion(value, new SqlDecimal(double.Parse(value)));
             await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, expectedValue);
         }
 
@@ -132,7 +132,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             await Assert.ThrowsAsync<HiveServer2Exception>(
                 async () => await ValidateInsertSelectDeleteSingleValueAsync(
                     table.TableName,
-                    columnName, GetValueForProtocolVersion(value.ToString(), new SqlDecimal(value))));
+                    columnName, TestEnvironment.GetValueForProtocolVersion(value.ToString(), new SqlDecimal(value))));
         }
 
         /// <summary>
@@ -148,7 +148,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "LARGESCALENUMBER";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(38,37)", columnName));
-            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, GetValueForProtocolVersion(value, new SqlDecimal(double.Parse(value))));
+            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, TestEnvironment.GetValueForProtocolVersion(value, new SqlDecimal(double.Parse(value))));
         }
 
         /// <summary>
@@ -178,7 +178,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "SMALLSCALENUMBER";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(38,2)", columnName));
-            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, GetValueForProtocolVersion(value, SqlDecimal.Parse(value)));
+            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, TestEnvironment.GetValueForProtocolVersion(value, SqlDecimal.Parse(value)));
         }
 
         /// <summary>
@@ -209,7 +209,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             SqlDecimal value = new SqlDecimal(input);
             SqlDecimal returned = new SqlDecimal(output);
             await InsertSingleValueAsync(table.TableName, columnName, value.ToString());
-            await SelectAndValidateValuesAsync(table.TableName, columnName, GetValueForProtocolVersion(output.ToString(), returned), 1);
+            await SelectAndValidateValuesAsync(table.TableName, columnName, TestEnvironment.GetValueForProtocolVersion(output.ToString(), returned), 1);
             string whereClause = GetWhereClause(columnName, returned);
             if (SupportsDelete) await DeleteFromTableAsync(table.TableName, whereClause, 1);
         }
@@ -261,7 +261,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string valueString = ConvertFloatToString(value);
             await InsertSingleValueAsync(table.TableName, columnName, valueString);
             object doubleValue = (double)value;
-            object floatValue = GetValueForProtocolVersion(doubleValue, value)!;
+            object floatValue = TestEnvironment.GetValueForProtocolVersion(doubleValue, value)!;
             await base.SelectAndValidateValuesAsync(table.TableName, columnName, floatValue, 1);
             string whereClause = GetWhereClause(columnName, value);
             if (SupportsDelete) await DeleteFromTableAsync(table.TableName, whereClause, 1);

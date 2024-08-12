@@ -16,27 +16,23 @@
 */
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    public abstract class HiveServer2Statement : AdbcStatement
+    internal abstract class HiveServer2Statement : AdbcStatement
     {
-        protected internal HiveServer2Connection connection;
-        protected internal TOperationHandle? operationHandle;
-
         protected HiveServer2Statement(HiveServer2Connection connection)
         {
-            this.connection = connection;
+            this.Connection = connection;
         }
 
         protected virtual void SetStatementProperties(TExecuteStatementReq statement)
         {
         }
-
-        protected abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
 
         public override QueryResult ExecuteQuery() => ExecuteQueryAsync().AsTask().Result;
 
@@ -45,15 +41,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
             await ExecuteStatementAsync();
-            await HiveServer2Connection.PollForResponseAsync(operationHandle!, connection.Client, PollTimeMilliseconds);
+            await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds);
             Schema schema = await GetResultSetSchema();
 
             // TODO: Ensure this is set dynamically based on server capabilities
-            return new QueryResult(-1, NewReader(this, schema));
+            return new QueryResult(-1, Connection.NewReader(this, schema));
         }
 
         private Task<Schema> GetResultSetSchema() =>
-            HiveServer2Connection.GetResultSetSchemaAsync(operationHandle!, connection.Client, connection.ProtocolVersion);
+            GetResultSetSchemaAsync(OperationHandle!, Connection.Client);
+
+        private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
+        {
+            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
+            return Connection.SchemaParser.GetArrowSchema(response.Schema);
+        }
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
@@ -109,21 +111,25 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task ExecuteStatementAsync()
         {
-            TExecuteStatementReq executeRequest = new TExecuteStatementReq(this.connection.sessionHandle, this.SqlQuery);
+            TExecuteStatementReq executeRequest = new TExecuteStatementReq(this.Connection.SessionHandle, this.SqlQuery);
             SetStatementProperties(executeRequest);
-            TExecuteStatementResp executeResponse = await this.connection.Client.ExecuteStatement(executeRequest);
+            TExecuteStatementResp executeResponse = await this.Connection.Client.ExecuteStatement(executeRequest);
             if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)
                     .SetSqlState(executeResponse.Status.SqlState)
                     .SetNativeError(executeResponse.Status.ErrorCode);
             }
-            this.operationHandle = executeResponse.OperationHandle;
+            this.OperationHandle = executeResponse.OperationHandle;
         }
 
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
 
         protected internal long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
+
+        public HiveServer2Connection Connection { get; private set; }
+
+        public TOperationHandle? OperationHandle { get; private set; }
 
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
@@ -145,11 +151,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override void Dispose()
         {
-            if (this.operationHandle != null)
+            if (this.OperationHandle != null)
             {
-                TCloseOperationReq request = new TCloseOperationReq(this.operationHandle);
-                this.connection.Client.CloseOperation(request).Wait();
-                this.operationHandle = null;
+                TCloseOperationReq request = new TCloseOperationReq(this.OperationHandle);
+                this.Connection.Client.CloseOperation(request).Wait();
+                this.OperationHandle = null;
             }
 
             base.Dispose();

@@ -15,10 +15,14 @@
 * limitations under the License.
 */
 
+using System.Text.Json.Serialization;
+
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
     public class SparkTestConfiguration : ApacheTestConfiguration
     {
 
+        [JsonPropertyName("type"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Type { get; set; } = string.Empty;
     }
 }

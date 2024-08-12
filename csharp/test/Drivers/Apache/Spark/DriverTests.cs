@@ -38,7 +38,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// queries to run.
     /// </remarks>
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
-    public class DriverTests : SparkTestBase
+    public class DriverTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
         /// <summary>
         /// Supported Spark data types as a subset of <see cref="SparkConnection.ColumnTypeId"/>
@@ -74,7 +74,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         private static List<string> DefaultTableTypes => new() { "TABLE", "VIEW" };
 
-        public DriverTests(ITestOutputHelper? outputHelper) : base(outputHelper)
+        public DriverTests(ITestOutputHelper? outputHelper) : base(outputHelper, new SparkTestEnvironment.Factory())
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));
         }
@@ -243,9 +243,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, catalogName, null);
             AdbcCatalog? catalog = catalogs.Where((catalog) => string.Equals(catalog.Name, catalogName)).FirstOrDefault();
 
-            bool isPatternExpectNotNullCatalog = (string.IsNullOrEmpty(pattern) && IsHiveServer2Protocol) || !string.IsNullOrEmpty(pattern);
-            bool isCatalogNull = catalog == null;
-            Assert.True((isPatternExpectNotNullCatalog && !isCatalogNull) || !isCatalogNull, "catalog should not be null");
+            Assert.True((pattern == string.Empty && catalog == null) || catalog != null, "catalog should not be null");
         }
 
         /// <summary>
@@ -559,7 +557,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             using AdbcStatement statement = adbcConnection.CreateStatement();
             using TemporaryTable temporaryTable = await NewTemporaryTableAsync(statement, "INDEX INT");
 
-            statement.SqlQuery = GetInsertValueStatement(temporaryTable.TableName, "INDEX", "1");
+            statement.SqlQuery = GetInsertStatement(temporaryTable.TableName, "INDEX", "1");
             UpdateResult updateResult = await statement.ExecuteUpdateAsync();
 
             if (ValidateAffectedRows) Assert.Equal(1, updateResult.AffectedRows);

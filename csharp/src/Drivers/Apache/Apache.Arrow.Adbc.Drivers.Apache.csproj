@@ -5,6 +5,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Spark\Standard\**" />
+    <EmbeddedResource Remove="Spark\Standard\**" />
+    <None Remove="Spark\Standard\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ApacheThrift" Version="0.20.0" />
   </ItemGroup>
 

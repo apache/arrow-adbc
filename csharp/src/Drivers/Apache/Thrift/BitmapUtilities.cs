@@ -15,6 +15,8 @@
 * limitations under the License.
 */
 
+using static Apache.Arrow.ArrowBuffer;
+
 namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
 {
     internal static class BitmapUtilities
@@ -28,13 +30,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
         /// <remarks>Inverts the bits in the incoming bitmap to reverse the null to valid indicators.</remarks>
         internal static ArrowBuffer GetValidityBitmapBuffer(byte[] nulls, out int nullCount)
         {
-            byte[] valids = new byte[nulls.Length];
-            for (int i = 0; i < nulls.Length; i++)
-            {
-                valids[i] = (byte)~nulls[i];
-            }
             nullCount = BitUtility.CountBits(nulls);
-            return new ArrowBuffer(valids);
+            for (int i = 0; i < nullCount; i++)
+            {
+                BitUtility.ToggleBit(nulls, i);
+            }
+            return new ArrowBuffer(nulls);
         }
     }
 }

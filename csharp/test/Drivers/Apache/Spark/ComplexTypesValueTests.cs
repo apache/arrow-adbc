@@ -29,9 +29,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// <summary>
     /// Validates that specific complex structured types can be inserted, retrieved and targeted correctly
     /// </summary>
-    public class ComplexTypesValueTests : SparkTestBase
+    public class ComplexTypesValueTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
-        public ComplexTypesValueTests(ITestOutputHelper output) : base(output) { }
+        public ComplexTypesValueTests(ITestOutputHelper output) : base(output, new SparkTestEnvironment.Factory()) { }
 
         /// <summary>
         /// Validates if driver can send and receive specific array of integer values correctly.

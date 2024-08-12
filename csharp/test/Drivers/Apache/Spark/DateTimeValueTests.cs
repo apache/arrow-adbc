@@ -30,15 +30,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// <summary>
     /// Validates that specific date, timestamp and interval values can be inserted, retrieved and targeted correctly
     /// </summary>
-    public class DateTimeValueTests : SparkTestBase
+    public class DateTimeValueTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
         // Spark handles microseconds but not nanoseconds. Truncated to 6 decimal places.
         const string DateTimeZoneFormat = "yyyy-MM-dd'T'HH:mm:ss'.'ffffffK";
         const string DateTimeFormat = "yyyy-MM-dd' 'HH:mm:ss";
         const string DateFormat = "yyyy-MM-dd";
 
-        private static readonly DateTimeOffset[] s_timestampValues = new[]
-        {
+        private static readonly DateTimeOffset[] s_timestampValues =
+        [
 #if NET5_0_OR_GREATER
             DateTimeOffset.UnixEpoch,
 #endif
@@ -46,9 +46,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             DateTimeOffset.MaxValue,
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(4))
-        };
+        ];
 
-        public DateTimeValueTests(ITestOutputHelper output) : base(output) { }
+        public DateTimeValueTests(ITestOutputHelper output) : base(output, new SparkTestEnvironment.Factory()) { }
 
         /// <summary>
         /// Validates if driver can send and receive specific Timstamp values correctly
@@ -63,15 +63,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string columnName = "TIMESTAMPTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
 
-            string format = GetValueForProtocolVersion(DateTimeFormat, DateTimeZoneFormat)!;
+            string format = TestEnvironment.GetValueForProtocolVersion(DateTimeFormat, DateTimeZoneFormat)!;
             string formattedValue = $"{value.ToString(format, CultureInfo.InvariantCulture)}";
             DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, format, CultureInfo.InvariantCulture);
 
-            object expectedValue = GetValueForProtocolVersion(formattedValue, truncatedValue)!;
+            object expectedValue = TestEnvironment.GetValueForProtocolVersion(formattedValue, truncatedValue)!;
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
-                expectedValue,
+                expectedValue ,
                 "TO_TIMESTAMP(" + QuoteValue(formattedValue) + ")");
         }
 
@@ -113,7 +113,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, DateFormat, CultureInfo.InvariantCulture);
 
             // Remove timezone offset
-            object expectedValue = GetValueForProtocolVersion(formattedValue, new DateTimeOffset(truncatedValue.DateTime, TimeSpan.Zero))!;
+            object expectedValue = TestEnvironment.GetValueForProtocolVersion(formattedValue, new DateTimeOffset(truncatedValue.DateTime, TimeSpan.Zero))!;
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,

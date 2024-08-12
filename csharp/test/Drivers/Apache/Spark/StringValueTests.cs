@@ -31,9 +31,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// <summary>
     /// Validates that specific string and character values can be inserted, retrieved and targeted correctly
     /// </summary>
-    public class StringValueTests : SparkTestBase
+    public class StringValueTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
-        public StringValueTests(ITestOutputHelper output) : base(output) { }
+        public StringValueTests(ITestOutputHelper output) : base(output, new SparkTestEnvironment.Factory()) { }
 
         public static IEnumerable<object[]> ByteArrayData(int size)
         {

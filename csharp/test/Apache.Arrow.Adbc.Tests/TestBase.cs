@@ -32,21 +32,30 @@ namespace Apache.Arrow.Adbc.Tests
     /// <summary>
     /// Provides a base class for ADBC tests.
     /// </summary>
-    /// <typeparam name="T">A TestConfiguration type to use when accessing test configuration files.</typeparam>
-    public abstract class TestBase<T> : IDisposable where T : TestConfiguration
+    /// <typeparam name="TConfig">A TestConfiguration type to use when accessing test configuration files.</typeparam>
+    public abstract class TestBase<TConfig, TEnv> : IDisposable
+        where TConfig : TestConfiguration
+        where TEnv : TestEnvironment<TConfig>
     {
         private bool _disposedValue;
-        private T? _testConfiguration;
-        private AdbcConnection? _connection = null;
-        private AdbcStatement? _statement = null;
+        private readonly Lazy<TConfig> _testConfiguration;
+        private readonly Lazy<AdbcConnection> _connection;
+        private readonly Lazy<AdbcStatement> _statement;
+        private readonly TestEnvironment<TConfig>.Factory<TEnv> _testEnvFactory;
+        private readonly Lazy<TEnv> _testEnvironment;
 
         /// <summary>
         /// Constructs a new TestBase object with an output helper.
         /// </summary>
         /// <param name="outputHelper">Test output helper for writing test output.</param>
-        public TestBase(ITestOutputHelper? outputHelper)
+        public TestBase(ITestOutputHelper? outputHelper, TestEnvironment<TConfig>.Factory<TEnv> testEnvFacltory)
         {
             OutputHelper = outputHelper;
+            _testEnvFactory = testEnvFacltory;
+            _testEnvironment = new Lazy<TEnv>(() => _testEnvFactory.Create(() => Connection));
+            _testConfiguration = new Lazy<TConfig>(() => Utils.LoadTestConfiguration<TConfig>(TestConfigVariable));
+            _connection = new Lazy<AdbcConnection>(() => NewConnection());
+            _statement = new Lazy<AdbcStatement>(() => Connection.CreateStatement());
         }
 
         /// <summary>
@@ -54,12 +63,14 @@ namespace Apache.Arrow.Adbc.Tests
         /// </summary>
         protected ITestOutputHelper? OutputHelper { get; }
 
+        public TEnv TestEnvironment => _testEnvironment.Value;
+
         /// <summary>
         /// The name of the environment variable that stores the full location of the test configuration file.
         /// </summary>
-        protected abstract string TestConfigVariable { get; }
+        protected string TestConfigVariable => TestEnvironment.TestConfigVariable;
 
-        protected abstract string VendorVersion {  get; }
+        protected string VendorVersion => TestEnvironment.VendorVersion;
 
         protected Version VendorVersionAsVersion => new Lazy<Version>(() => new Version(VendorVersion)).Value;
 
@@ -70,10 +81,10 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="statement">The ADBC statement to apply the update.</param>
         /// <param name="columns">The columns definition in the native SQL dialect.</param>
         /// <returns>A disposable temporary table object that will drop the table when disposed.</returns>
-        protected virtual async ValueTask<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string columns)
+        protected async Task<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string columns)
         {
             string tableName = NewTableName();
-            string sqlUpdate = string.Format("CREATE TEMPORARY IF NOT EXISTS TABLE {0} ({1})", tableName, columns);
+            string sqlUpdate = TestEnvironment.GetCreateTemporaryTableStatement(tableName, columns);
             return await TemporaryTable.NewTemporaryTableAsync(statement, tableName, sqlUpdate);
         }
 
@@ -81,7 +92,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// Creates a new unique table name .
         /// </summary>
         /// <returns>A unique table name.</returns>
-        protected virtual string NewTableName() => string.Format(
+        protected string NewTableName() => string.Format(
                         "{0}{1}{2}",
                         string.IsNullOrEmpty(TestConfiguration.Metadata.Catalog) ? string.Empty : DelimitIdentifier(TestConfiguration.Metadata.Catalog) + ".",
                         string.IsNullOrEmpty(TestConfiguration.Metadata.Schema) ? string.Empty : DelimitIdentifier(TestConfiguration.Metadata.Schema) + ".",
@@ -91,72 +102,42 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Gets the relative resource location of source SQL data used in driver testing.
         /// </summary>
-        protected abstract string SqlDataResourceLocation { get; }
+        protected string SqlDataResourceLocation => TestEnvironment.SqlDataResourceLocation;
 
-        protected abstract int ExpectedColumnCount { get; }
+        protected int ExpectedColumnCount => TestEnvironment.ExpectedColumnCount;
 
         /// <summary>
         /// Creates a new driver.
         /// </summary>
-        protected abstract AdbcDriver NewDriver { get; }
+        protected AdbcDriver NewDriver => TestEnvironment.CreateNewDriver();
 
-        protected abstract bool SupportsDelete {  get; }
+        protected bool SupportsDelete => TestEnvironment.SupportsDelete;
 
-        protected abstract bool SupportsUpdate { get; }
+        protected bool SupportsUpdate => TestEnvironment.SupportsUpdate;
 
-        protected abstract bool ValidateAffectedRows { get; }
+        protected bool ValidateAffectedRows => TestEnvironment.ValidateAffectedRows;
 
         /// <summary>
         /// Gets the parameters from the test configuration that are passed to the driver as a dictionary.
         /// </summary>
         /// <param name="testConfiguration">The test configuration as input.</param>
         /// <returns>Ditionary of parameters for the driver.</returns>
-        protected abstract Dictionary<string, string> GetDriverParameters(T testConfiguration);
+        protected virtual Dictionary<string, string> GetDriverParameters(TConfig testConfiguration) => TestEnvironment.GetDriverParameters(testConfiguration);
 
         /// <summary>
         /// Gets a single ADBC Connection for the object.
         /// </summary>
-        protected AdbcConnection Connection
-        {
-            get
-            {
-                if (_connection == null)
-                {
-                    _connection = NewConnection();
-                }
-                return _connection;
-            }
-        }
+        protected AdbcConnection Connection => _connection.Value;
 
         /// <summary>
         /// Gets as single ADBC Statement for the object.
         /// </summary>
-        protected AdbcStatement Statement
-        {
-            get
-            {
-                if (_statement == null)
-                {
-                    _statement = Connection.CreateStatement();
-                }
-                return _statement;
-            }
-        }
+        protected AdbcStatement Statement => _statement.Value;
 
         /// <summary>
         /// Gets the test configuration file.
         /// </summary>
-        protected T TestConfiguration
-        {
-            get
-            {
-                if (_testConfiguration == null)
-                {
-                    _testConfiguration = Utils.LoadTestConfiguration<T>(TestConfigVariable);
-                }
-                return _testConfiguration;
-            }
-        }
+        protected TConfig TestConfiguration => _testConfiguration.Value;
 
         /// <summary>
         /// Parses the queries from internal resource location
@@ -195,7 +176,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="testConfiguration"><see cref="Tests.TestConfiguration"/></param>
         /// <param name="connectionOptions"></param>
         /// <returns></returns>
-        protected AdbcConnection NewConnection(T? testConfiguration = null, IReadOnlyDictionary<string, string>? connectionOptions = null)
+        protected AdbcConnection NewConnection(TConfig? testConfiguration = null, IReadOnlyDictionary<string, string>? connectionOptions = null)
         {
             Dictionary<string, string> parameters = GetDriverParameters(testConfiguration ?? TestConfiguration);
             AdbcDatabase database = NewDriver.Open(parameters);
@@ -258,11 +239,11 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to insert.</param>
-        protected virtual async Task InsertSingleValueAsync(string tableName, string columnName, string? value)
+        protected async Task InsertSingleValueAsync(string tableName, string columnName, string? value)
         {
-            string insertNumberStatement = GetInsertSelectStatement(tableName, columnName, value);
-            OutputHelper?.WriteLine(insertNumberStatement);
-            Statement.SqlQuery = insertNumberStatement;
+            string insertStatement = GetInsertStatement(tableName, columnName, value);
+            OutputHelper?.WriteLine(insertStatement);
+            Statement.SqlQuery = insertStatement;
             UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
             if (ValidateAffectedRows) Assert.Equal(1, updateResult.AffectedRows);
         }
@@ -274,11 +255,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to insert.</param>
         /// <returns></returns>
-        protected virtual string GetInsertValueStatement(string tableName, string columnName, string? value) =>
-            string.Format("INSERT INTO {0} ({1}) VALUES ({2});", tableName, columnName, value ?? "NULL");
-
-        protected virtual string GetInsertSelectStatement(string tableName, string columnName, string? value) =>
-            string.Format("INSERT INTO {0} ({1}) SELECT {2};", tableName, columnName, value ?? "NULL");
+        protected string GetInsertStatement(string tableName, string columnName, string? value) => TestEnvironment.GetInsertStatement(tableName, columnName, value);
 
         /// <summary>
         /// Deletes a (single) value from a table.
@@ -286,7 +263,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="whereClause">The WHERE clause string.</param>
         /// <param name="expectedRowsAffected">The expected number of affected rows.</param>
-        protected virtual async Task DeleteFromTableAsync(string tableName, string whereClause, int expectedRowsAffected)
+        protected async Task DeleteFromTableAsync(string tableName, string whereClause, int expectedRowsAffected)
         {
             string deleteNumberStatement = GetDeleteValueStatement(tableName, whereClause);
             OutputHelper?.WriteLine(deleteNumberStatement);
@@ -301,8 +278,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="whereClause">The WHERE clause string.</param>
         /// <returns></returns>
-        protected virtual string GetDeleteValueStatement(string tableName, string whereClause) =>
-            string.Format("DELETE FROM {0} WHERE {1};", tableName, whereClause);
+        protected string GetDeleteValueStatement(string tableName, string whereClause) => TestEnvironment.GetDeleteValueStatement(tableName, whereClause);
 
         /// <summary>
         /// Selects a single value and validates it equality with expected value and number of results.
@@ -312,7 +288,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to select and validate.</param>
         /// <param name="expectedLength">The number of expected results (rows).</param>
         /// <returns></returns>
-        protected virtual async Task SelectAndValidateValuesAsync(string table, string columnName, object? value, int expectedLength, string? formattedValue = null)
+        protected async Task SelectAndValidateValuesAsync(string table, string columnName, object? value, int expectedLength, string? formattedValue = null)
         {
             string selectNumberStatement = GetSelectSingleValueStatement(table, columnName, formattedValue ?? value);
             await SelectAndValidateValuesAsync(selectNumberStatement, value, expectedLength);
@@ -325,7 +301,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to select and validate.</param>
         /// <param name="expectedLength">The number of expected results (rows).</param>
         /// <returns></returns>
-        protected virtual async Task SelectAndValidateValuesAsync(string selectStatement, object? value, int expectedLength)
+        protected async Task SelectAndValidateValuesAsync(string selectStatement, object? value, int expectedLength)
         {
             Statement.SqlQuery = selectStatement;
             OutputHelper?.WriteLine(selectStatement);
@@ -456,10 +432,10 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to select and validate.</param>
         /// <returns>The native SQL statement.</returns>
-        protected virtual string GetSelectSingleValueStatement(string table, string columnName, object? value) =>
+        protected string GetSelectSingleValueStatement(string table, string columnName, object? value) =>
             $"SELECT {columnName} FROM {table} WHERE {GetWhereClause(columnName, value)}";
 
-        protected virtual string GetWhereClause(string columnName, object? value) =>
+        protected string GetWhereClause(string columnName, object? value) =>
             value == null
                 ? $"{columnName} IS NULL"
                 : string.Format("{0} = {1}", columnName, MaybeDoubleToString(value));
@@ -535,15 +511,13 @@ namespace Apache.Arrow.Adbc.Tests
             {
                 if (disposing)
                 {
-                    if (_statement != null)
+                    if (_statement.IsValueCreated)
                     {
-                        _statement.Dispose();
-                        _statement = null;
+                        _statement.Value.Dispose();
                     }
-                    if (_connection != null)
+                    if (_connection.IsValueCreated)
                     {
-                        _connection.Dispose();
-                        _connection = null;
+                        _connection.Value.Dispose();
                     }
                 }
 
@@ -563,12 +537,12 @@ namespace Apache.Arrow.Adbc.Tests
             return $"'{value.Replace("'", "''")}'";
         }
 
-        protected virtual string DelimitIdentifier(string value)
+        protected string DelimitIdentifier(string value)
         {
             return $"{Delimiter}{value.Replace(Delimiter, $"{Delimiter}{Delimiter}")}{Delimiter}";
         }
 
-        protected virtual string Delimiter => "\"";
+        protected string Delimiter => TestEnvironment.Delimiter;
 
         protected static void AssertContainsAll(string[] expectedTexts, string value)
         {
@@ -617,7 +591,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Represents a temporary table that can create and drop the table automatically.
         /// </summary>
-        protected class TemporaryTable : IDisposable
+        public class TemporaryTable : IDisposable
         {
             private bool _disposedValue;
             private readonly AdbcStatement _statement;
@@ -640,7 +614,7 @@ namespace Apache.Arrow.Adbc.Tests
             /// <param name="tableName">The name of temporary table to create.</param>
             /// <param name="sqlUpdate">The SQL query to create the table in the native SQL dialect.</param>
             /// <returns></returns>
-            public static async ValueTask<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string tableName, string sqlUpdate)
+            public static async Task<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string tableName, string sqlUpdate)
             {
                 statement.SqlQuery = sqlUpdate;
                 await statement.ExecuteUpdateAsync();

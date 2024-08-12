@@ -34,6 +34,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
         {
         }
 
+        public ThriftSocketTransport(string hostNameOrIpAddress, int port, bool connectClient, TConfiguration config, int timeout = 0)
+            : base(hostNameOrIpAddress, port, connectClient, config, timeout)
+        {
+        }
+
         public Stream Input { get { return this.InputStream; } }
         public Stream Output { get { return this.OutputStream; } }
     }

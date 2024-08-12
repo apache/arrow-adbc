@@ -26,6 +26,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 
 | Property            | Description | Default |
 | :---                | :---        | :---    |
+| `adbc.spark.type`   | (Required) Indicates the Spark server type. One of `databricks`, `http` (future: `standard`, `hdinsight`) | |
 | `adbc.spark.host`   | Host name for the data source. Do no include scheme or port number. Example: `sparkserver.region.cloudapp.azure.com` |  |
 | `adbc.spark.port`   | The port number the data source is listen on for new connections. | `443` |
 | `adbc.spark.path`   | The URI path on the data source server. Example: `sql/protocolv1/o/0123456789123456/01234-0123456-source` | |
@@ -68,7 +69,7 @@ The following table depicts how the Spark ADBC driver converts a Spark type to a
 | USER_DEFINED         | String     | string |
 | VARCHAR              | String     | string |
 
-### Apache Spark (Native)
+### Apache Spark over HTTP
 
 | Spark Type           | Arrow Type | C# Type |
 | :---                 | :---:      | :---:   |
@@ -108,6 +109,14 @@ The Spark ADBC driver supports token-based authentiation using the
 [Databricks personal access token](https://docs.databricks.com/en/dev-tools/auth/pat.html).
 Basic (username and password) authenication is not supported, at this time.
 
-### Native Apache Spark
+### Apache Spark over HTPP
+
+This is currently unsupported. (Under development)
+
+### Apache Spark Standard
+
+This is currently unsupported.
+
+### Azure Spark HDInsight
 
 This is currently unsupported.

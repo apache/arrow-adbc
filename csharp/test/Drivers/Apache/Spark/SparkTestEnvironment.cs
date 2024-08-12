@@ -17,44 +17,43 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Hive.Service.Rpc.Thrift;
-using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
-    public class SparkTestBase : TestBase<SparkTestConfiguration>
+    public class SparkTestEnvironment : TestEnvironment<SparkTestConfiguration>
     {
-        public SparkTestBase(ITestOutputHelper? outputHelper) : base(outputHelper) { }
+        public class Factory : Factory<SparkTestEnvironment>
+        {
+            public override SparkTestEnvironment Create(Func<AdbcConnection> getConnection) => new SparkTestEnvironment(getConnection);
+        }
 
-        protected override string TestConfigVariable => "SPARK_TEST_CONFIG_FILE";
+        private SparkTestEnvironment(Func<AdbcConnection> getConnection) : base(getConnection) { }
 
-        protected override string SqlDataResourceLocation => VendorVersionAsVersion >= Version.Parse("3.4.0")
+        public override string TestConfigVariable => "SPARK_TEST_CONFIG_FILE";
+
+        public override string SqlDataResourceLocation => VendorVersionAsVersion >= Version.Parse("3.4.0")
             ? "Spark/Resources/SparkData-3.4.sql"
             : "Spark/Resources/SparkData.sql";
 
-        protected override int ExpectedColumnCount => VendorVersionAsVersion >= Version.Parse("3.4.0") ? 19 : 17;
+        public override int ExpectedColumnCount => VendorVersionAsVersion >= Version.Parse("3.4.0") ? 19 : 17;
 
-        protected override AdbcDriver NewDriver => new SparkDriver();
+        public override AdbcDriver CreateNewDriver() => new SparkDriver();
 
-        protected string? GetValueForProtocolVersion(string? hiveValue, string? databrickValue) => IsHiveServer2Protocol ? hiveValue : databrickValue;
-
-        protected object? GetValueForProtocolVersion(object? hiveValue, object? databrickValue) => IsHiveServer2Protocol ? hiveValue : databrickValue;
-
-        protected override async ValueTask<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string columns)
+        public override string GetCreateTemporaryTableStatement(string tableName, string columns)
         {
-            string tableName = NewTableName();
-            // Note: Databricks/Spark doesn't support TEMPORARY table.
-            string sqlUpdate = string.Format("CREATE TABLE {0} ({1})", tableName, columns);
-            OutputHelper?.WriteLine(sqlUpdate);
-            return await TemporaryTable.NewTemporaryTableAsync(statement, tableName, sqlUpdate);
+            return string.Format("CREATE TABLE {0} ({1})", tableName, columns);
         }
 
-        protected override string Delimiter => "`";
+        public string? GetValueForProtocolVersion(string? hiveValue, string? databrickValue) => ServerType != SparkServerType.Databricks ? hiveValue : databrickValue;
 
-        protected override Dictionary<string, string> GetDriverParameters(SparkTestConfiguration testConfiguration)
+        public object? GetValueForProtocolVersion(object? hiveValue, object? databrickValue) => ServerType != SparkServerType.Databricks ? hiveValue : databrickValue;
+
+        public override string Delimiter => "`";
+
+        public override Dictionary<string, string> GetDriverParameters(SparkTestConfiguration testConfiguration)
         {
             Dictionary<string, string> parameters = new(StringComparer.OrdinalIgnoreCase);
 
@@ -90,20 +89,27 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             {
                 parameters.Add(SparkParameters.AuthType, testConfiguration.AuthType!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.Type))
+            {
+                parameters.Add(SparkParameters.Type, testConfiguration.Type!);
+            }
 
             return parameters;
         }
 
-        protected TProtocolVersion ProtocolVersion => ((HiveServer2Connection)Connection).ProtocolVersion;
+        protected SparkServerType ServerType => ((SparkConnection)Connection).ServerType;
 
-        protected bool IsHiveServer2Protocol => ((HiveServer2Connection)Connection).IsHiveServer2Protocol;
+        public override string VendorVersion => ((HiveServer2Connection)Connection).VendorVersion;
 
-        protected override string VendorVersion => ((HiveServer2Connection)Connection).VendorVersion;
+        public override bool SupportsDelete => ServerType == SparkServerType.Databricks;
 
-        protected override bool SupportsDelete => !IsHiveServer2Protocol;
+        public override bool SupportsUpdate => ServerType == SparkServerType.Databricks;
 
-        protected override bool SupportsUpdate => !IsHiveServer2Protocol;
+        public override bool SupportCatalogName => ServerType == SparkServerType.Databricks;
 
-        protected override bool ValidateAffectedRows => !IsHiveServer2Protocol;
+        public override bool ValidateAffectedRows => ServerType == SparkServerType.Databricks;
+
+        public override string GetInsertStatement(string tableName, string columnName, string? value) =>
+            string.Format("INSERT INTO {0} ({1}) SELECT {2};", tableName, columnName, value ?? "NULL");
     }
 }

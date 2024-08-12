@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
@@ -26,14 +27,14 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
-    public class ImpalaConnection : HiveServer2Connection
+    internal class ImpalaConnection : HiveServer2Connection
     {
         internal ImpalaConnection(IReadOnlyDictionary<string, string> properties)
             : base(properties)
         {
         }
 
-        protected override ValueTask<TProtocol> CreateProtocolAsync()
+        protected override Task<TTransport> CreateTransportAsync()
         {
             string hostName = Properties["HostName"];
             string? tmp;
@@ -45,12 +46,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
             TConfiguration config = new TConfiguration();
             TTransport transport = new ThriftSocketTransport(hostName, port, config);
-            return new ValueTask<TProtocol>(new TBinaryProtocol(transport));
+            return Task.FromResult(transport);
         }
 
-        protected override TOpenSessionReq CreateSessionRequest(TProtocolVersion protocolVersion)
+        protected override Task<TProtocol> CreateProtocolAsync(TTransport transport)
         {
-            return new TOpenSessionReq(protocolVersion)
+            return Task.FromResult<TProtocol>(new TBinaryProtocol(transport));
+        }
+
+
+        protected override TOpenSessionReq CreateSessionRequest()
+        {
+            return new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11)
             {
                 CanUseMultipleCatalogs = true,
             };
@@ -73,6 +80,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string tableName) => throw new System.NotImplementedException();
 
-        protected override IReadOnlyList<TProtocolVersion> SupportedProtocolVersions => [TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11];
+        public override SchemaParser SchemaParser => throw new NotImplementedException();
+        public override IArrowArrayStream NewReader<T>(T statement, Schema schema) => throw new NotImplementedException();
     }
 }

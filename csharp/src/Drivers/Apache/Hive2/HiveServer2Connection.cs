@@ -17,33 +17,33 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
-using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    public abstract class HiveServer2Connection : AdbcConnection
+    internal abstract class HiveServer2Connection : AdbcConnection
     {
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
         private const string userAgent = "AdbcExperimental/0.0";
 
         protected TOperationHandle? operationHandle;
-        internal TTransport? transport;
-        private TCLIService.Client? client;
-        internal TSessionHandle? sessionHandle;
+        internal TTransport? _transport;
+        private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
 
-        internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
+        public HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
-            this.Properties = properties;
+            Properties = properties;
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
             // will retry until it successfully returns a value without an exception.
@@ -52,59 +52,36 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             _vendorName = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_NAME), LazyThreadSafetyMode.PublicationOnly);
         }
 
-        internal TCLIService.Client Client
+        public TCLIService.Client Client
         {
-            get { return this.client ?? throw new InvalidOperationException("connection not open"); }
+            get { return _client ?? throw new InvalidOperationException("connection not open"); }
         }
 
-        protected internal string VendorVersion => _vendorVersion.Value;
+        public string VendorVersion => _vendorVersion.Value;
 
-        protected string VendorName => _vendorName.Value;
+        public string VendorName => _vendorName.Value;
 
-        internal IReadOnlyDictionary<string, string> Properties { get; }
+        public IReadOnlyDictionary<string, string> Properties { get; }
 
-        protected internal TProtocolVersion ProtocolVersion { get; private set; }
-
-        protected abstract IReadOnlyList<TProtocolVersion> SupportedProtocolVersions { get; }
-
-        internal async Task OpenAsync()
+        public async Task OpenAsync()
         {
-            TProtocol protocol = await CreateProtocolAsync();
-            this.transport = protocol.Transport;
-            this.client = new TCLIService.Client(protocol);
-            TOpenSessionResp? s0 = null;
-            Exception? lastException = null;
-
-            if (SupportedProtocolVersions.Count < 1)
-                throw new InvalidOperationException("Invalid driver implementation. Must contain at least one supported Thrift protocol version.");
-
-            // Try each protocol version, until a successful connection is made.
-            // All other exception should be not be caught (i.e., no response, no host, rejected, authentication, etc.
-            foreach (TProtocolVersion protocolVersion in SupportedProtocolVersions)
-            {
-                s0 = null;
-                try
-                {
-                    s0 = await this.client.OpenSession(CreateSessionRequest(protocolVersion));
-                    ProtocolVersion = protocolVersion;
-                    break;
-                }
-                catch (TApplicationException ex) when (ex.Type == TApplicationException.ExceptionType.ProtocolError)
-                {
-                    lastException = ex;
-                    continue;
-                }
-            }
-
-            // If we still don't have a connection after trying all the protocols, raise the last known exception.
-            if (s0 == null) throw lastException!;
-
-            this.sessionHandle = s0.SessionHandle;
+            TTransport transport = await CreateTransportAsync();
+            TProtocol protocol = await CreateProtocolAsync(transport);
+            _transport = protocol.Transport;
+            _client = new TCLIService.Client(protocol);
+            TOpenSessionReq request = CreateSessionRequest();
+            TOpenSessionResp? session = await Client.OpenSession(request);
+            SessionHandle = session.SessionHandle;
         }
 
-        protected abstract ValueTask<TProtocol> CreateProtocolAsync();
+        public TSessionHandle? SessionHandle { get; private set; }
 
-        protected abstract TOpenSessionReq CreateSessionRequest(TProtocolVersion protocolVersion);
+        protected abstract Task<TTransport> CreateTransportAsync();
+        protected abstract Task<TProtocol> CreateProtocolAsync(TTransport transport);
+        protected abstract TOpenSessionReq CreateSessionRequest();
+        public abstract SchemaParser SchemaParser { get; }
+
+        public abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
@@ -116,7 +93,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             throw new NotImplementedException();
         }
 
-        static internal async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds)
+        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds)
         {
             TGetOperationStatusResp? statusResponse = null;
             do
@@ -131,7 +108,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             TGetInfoReq req = new()
             {
-                SessionHandle = this.sessionHandle ?? throw new InvalidOperationException("session not created"),
+                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
                 InfoType = infoType,
             };
 
@@ -148,46 +125,71 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override void Dispose()
         {
-            if (this.client != null)
+            if (_client != null)
             {
-                TCloseSessionReq r6 = new TCloseSessionReq(this.sessionHandle);
-                this.client.CloseSession(r6).Wait();
+                TCloseSessionReq r6 = new TCloseSessionReq(SessionHandle);
+                _client.CloseSession(r6).Wait();
 
-                this.transport?.Close();
-                this.client.Dispose();
-                this.transport = null;
-                this.client = null;
+                _transport?.Close();
+                _client.Dispose();
+                _transport = null;
+                _client = null;
             }
         }
 
-        protected internal bool IsHiveServer2Protocol => GetIsHiveServer2Protocol(ProtocolVersion);
-
-        protected internal bool IsSparkProtocol => GetIsSparkProtocol(ProtocolVersion);
-
-        internal static bool GetIsHiveServer2Protocol(TProtocolVersion protocolVersion) =>
-            protocolVersion is >= TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V1 and <= TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11;
-
-        internal static bool GetIsSparkProtocol(TProtocolVersion protocolVersion) =>
-            protocolVersion is >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V1 and <= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7;
-
-        internal static async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, TProtocolVersion protocolVersion, CancellationToken cancellationToken = default)
-        {
-            TGetResultSetMetadataResp response = await GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
-            return SchemaParser.GetArrowSchema(response.Schema, protocolVersion);
-        }
-
-        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
+        public static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
             TGetResultSetMetadataReq request = new(operationHandle);
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
             return response;
         }
 
-        internal static async Task<TFetchResultsResp> FetchNextAsync(TOperationHandle operationHandle, TCLIService.IAsync client, long batchSize, CancellationToken cancellationToken = default)
+        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port)
         {
-            TFetchResultsReq request = new(operationHandle, TFetchOrientation.FETCH_NEXT, batchSize);
-            TFetchResultsResp response = await client.FetchResults(request, cancellationToken);
-            return response;
+            // Uri property takes precedent.
+            if (!string.IsNullOrWhiteSpace(uri))
+            {
+                var uriValue = new Uri(uri);
+                if (uriValue.Scheme != Uri.UriSchemeHttp && uriValue.Scheme != Uri.UriSchemeHttps)
+                    throw new ArgumentOutOfRangeException(
+                        AdbcOptions.Uri,
+                        uri,
+                        $"Unsupported scheme '{uriValue.Scheme}'");
+                return uriValue;
+            }
+
+            bool isPortSet = !string.IsNullOrEmpty(port);
+            bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
+            bool isDefaultHttpsPort = !isPortSet || (isValidPortNumber && portNumber == 443);
+            string uriScheme = isDefaultHttpsPort ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
+            int uriPort;
+            if (!isPortSet)
+                uriPort = -1;
+            else if (isValidPortNumber)
+                uriPort = portNumber;
+            else
+                throw new ArgumentOutOfRangeException(nameof(port), portNumber, $"Port number is not in a valid range.");
+
+            Uri baseAddress = new UriBuilder(uriScheme, hostName, uriPort, path).Uri;
+            return baseAddress;
         }
+
+        protected static AuthenticationHeaderValue GetAuthenticationHeaderValue(string? authType, string? token, string? username, string? password)
+        {
+            bool isValidAuthType = Enum.TryParse(authType, out SparkAuthType authTypeValue);
+            if (!string.IsNullOrEmpty(token) && (!isValidAuthType || authTypeValue == SparkAuthType.Token))
+            {
+                return new AuthenticationHeaderValue("Bearer", token);
+            }
+            else if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password) && (!isValidAuthType || authTypeValue == SparkAuthType.Basic))
+            {
+                return new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")));
+            }
+            else
+            {
+                throw new AdbcException("Missing connection properties. Must contain 'token' or 'username' and 'password'");
+            }
+        }
+
     }
 }

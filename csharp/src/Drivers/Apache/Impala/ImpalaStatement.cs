@@ -17,11 +17,10 @@
 
 using System;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
-    public class ImpalaStatement : HiveServer2Statement
+    internal class ImpalaStatement : HiveServer2Statement
     {
         internal ImpalaStatement(ImpalaConnection connection)
             : base(connection)
@@ -32,8 +31,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
             throw new NotSupportedException();
         }
-
-        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema);
 
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.

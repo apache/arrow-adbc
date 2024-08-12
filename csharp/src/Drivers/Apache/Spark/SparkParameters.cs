@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-using System.Runtime.Serialization;
-
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     /// <summary>
@@ -29,6 +27,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public const string Path = "adbc.spark.path";
         public const string Token = "adbc.spark.token";
         public const string AuthType = "adbc.spark.auth_type";
+        public const string Type = "adbc.spark.type";
     }
 
     public static class SparkAuthTypeConstants
@@ -59,10 +58,55 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
     public enum SparkAuthType
     {
-        Invalid,
+        Invalid = 0,
         Basic,
         Token,
-        Empty,
+        Empty = int.MaxValue,
+    }
+
+    public static class SparkServerTypeConstants
+    {
+        public const string ServerTypeDatabricks = "databricks";
+        public const string ServerTypeHttp = "http";
+        public const string ServerTypeStandard = "standard";
+        public const string ServerTypeHDInsight = "hdinsight";
+        internal const string ServerTypeSupportedList = ServerTypeStandard + ", " + ServerTypeHttp + ", " + ServerTypeDatabricks;
+
+        public static bool TryParse(string? serverType, out SparkServerType serverTypeValue)
+        {
+            switch (serverType?.Trim().ToLowerInvariant())
+            {
+                case null:
+                case "":
+                    serverTypeValue = SparkServerType.Empty;
+                    return true;
+                case ServerTypeDatabricks:
+                    serverTypeValue = SparkServerType.Databricks;
+                    return true;
+                case ServerTypeHttp:
+                    serverTypeValue = SparkServerType.Http;
+                    return true;
+                case ServerTypeStandard:
+                    serverTypeValue = SparkServerType.Standard;
+                    return true;
+                case ServerTypeHDInsight:
+                    serverTypeValue = SparkServerType.HDInsight;
+                    return true;
+                default:
+                    serverTypeValue = SparkServerType.Invalid;
+                    return false;
+            }
+        }
+    }
+
+    public enum SparkServerType
+    {
+        Invalid = 0,
+        Databricks,
+        Http,
+        Standard,
+        HDInsight,
+        Empty = int.MaxValue,
     }
 
 }

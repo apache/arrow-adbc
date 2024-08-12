@@ -33,11 +33,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// queries to run.
     /// </remarks>
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
-    public class StatementTests : SparkTestBase
+    public class StatementTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
         private static List<string> DefaultTableTypes => new() { "TABLE", "VIEW" };
 
-        public StatementTests(ITestOutputHelper? outputHelper) : base(outputHelper)
+        public StatementTests(ITestOutputHelper? outputHelper) : base(outputHelper, new SparkTestEnvironment.Factory())
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));
         }

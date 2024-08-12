@@ -30,9 +30,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// <summary>
     /// Validates that specific binary and boolean values can be inserted, retrieved and targeted correctly
     /// </summary>
-    public class BinaryBooleanValueTests : SparkTestBase
+    public class BinaryBooleanValueTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
-        public BinaryBooleanValueTests(ITestOutputHelper output) : base(output) { }
+        public BinaryBooleanValueTests(ITestOutputHelper output) : base(output, new SparkTestEnvironment.Factory()) { }
 
         public static IEnumerable<object[]> ByteArrayData(int size)
         {
@@ -73,7 +73,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "BOOLEANTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "BOOLEAN"));
-            string? formattedValue =  value == null ? null : $"{value?.ToString(CultureInfo.InvariantCulture)}";
+            string? formattedValue = value == null ? null : $"{value?.ToString(CultureInfo.InvariantCulture)}";
             await ValidateInsertSelectDeleteTwoValuesAsync(
                 table.TableName,
                 columnName,

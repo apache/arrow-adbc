@@ -21,7 +21,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -33,14 +32,12 @@ using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
-using Thrift;
-using Thrift.Protocol;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
-    public class SparkConnection : HiveServer2Connection
+    internal abstract class SparkConnection : HiveServer2Connection
     {
-        private readonly string UserAgent = $"{InfoDriverName.Replace(" ", "")}/{ProductVersionDefault}";
+        internal static readonly string s_userAgent = $"{InfoDriverName.Replace(" ", "")}/{ProductVersionDefault}";
 
         readonly AdbcInfoCode[] infoSupportedCodes = new[] {
             AdbcInfoCode.DriverName,
@@ -262,99 +259,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected string ProductVersion => _productVersion.Value;
 
-        protected override async ValueTask<TProtocol> CreateProtocolAsync()
-        {
-            Trace.TraceError($"create protocol with {Properties.Count} properties.");
-
-            foreach (var property in Properties.Keys)
-            {
-                Trace.TraceError($"key = {property} value = {Properties[property]}");
-            }
-
-            Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
-            Properties.TryGetValue(SparkParameters.Path, out string? path);
-            Properties.TryGetValue(SparkParameters.Port, out string? port);
-            Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            Properties.TryGetValue(SparkParameters.Token, out string? token);
-            Properties.TryGetValue(AdbcOptions.Username, out string? username);
-            Properties.TryGetValue(AdbcOptions.Password, out string? password);
-            Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
-
-            Uri baseAddress = GetBaseAddress(uri, hostName, path, port);
-            AuthenticationHeaderValue authenticationHeaderValue = GetAuthenticationHeaderValue(authType, token, username, password);
-
-            HttpClient httpClient = new();
-            httpClient.BaseAddress = baseAddress;
-            httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
-            httpClient.DefaultRequestHeaders.AcceptEncoding.Clear();
-            httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
-            httpClient.DefaultRequestHeaders.ExpectContinue = false;
-
-            TConfiguration config = new();
-            ThriftHttpTransport transport = new(httpClient, config);
-            // can switch to the one below if want to use the experimental one with IPeekableTransport
-            // ThriftHttpTransport transport = new ThriftHttpTransport(httpClient, config);
-            await transport.OpenAsync(CancellationToken.None);
-            return new TBinaryProtocol(transport);
-        }
-
-        private static AuthenticationHeaderValue GetAuthenticationHeaderValue(string? authType, string? token, string? username, string? password)
-        {
-            bool isValidAuthType = Enum.TryParse(authType, out SparkAuthType authTypeValue);
-            if (!string.IsNullOrEmpty(token) && (!isValidAuthType || authTypeValue == SparkAuthType.Token))
-            {
-                return new AuthenticationHeaderValue("Bearer", token);
-            }
-            else if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password) && (!isValidAuthType || authTypeValue == SparkAuthType.Basic))
-            {
-                return new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")));
-            }
-            else
-            {
-                throw new AdbcException("Missing connection properties. Must contain 'token' or 'username' and 'password'");
-            }
-        }
-
-        private static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port)
-        {
-            // Uri property takes precedent.
-            if (!string.IsNullOrWhiteSpace(uri))
-            {
-                var uriValue = new Uri(uri);
-                if (uriValue.Scheme != Uri.UriSchemeHttp && uriValue.Scheme != Uri.UriSchemeHttps)
-                    throw new ArgumentOutOfRangeException(
-                        $"Unsupported scheme '{uriValue.Scheme}'",
-                        AdbcOptions.Uri);
-                return uriValue;
-            }
-
-            bool isPortSet = !string.IsNullOrEmpty(port);
-            bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
-            bool isDefaultHttpsPort = !isPortSet || (isValidPortNumber && portNumber == 443);
-            string uriScheme = isDefaultHttpsPort ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
-            int uriPort;
-            if (!isPortSet)
-                uriPort = -1;
-            else if (isValidPortNumber)
-                uriPort = portNumber;
-            else
-                throw new ArgumentOutOfRangeException(nameof(port), portNumber, $"Port number is not in a valid range.");
-
-            Uri baseAddress = new UriBuilder(uriScheme, hostName, uriPort, path).Uri;
-            return baseAddress;
-        }
-
-        protected override TOpenSessionReq CreateSessionRequest(TProtocolVersion protocolVersion)
-        {
-            var req = new TOpenSessionReq(protocolVersion)
-            {
-                CanUseMultipleCatalogs = true,
-                Configuration = timestampConfig,
-            };
-            return req;
-        }
-
         public override AdbcStatement CreateStatement()
         {
             return new SparkStatement(this);
@@ -506,10 +410,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             TGetTableTypesReq req = new()
             {
-                SessionHandle = this.sessionHandle ?? throw new InvalidOperationException("session not created"),
+                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
                 GetDirectResults = sparkGetDirectResults
             };
-            TGetTableTypesResp resp = this.Client.GetTableTypes(req).Result;
+            TGetTableTypesResp resp = Client.GetTableTypes(req).Result;
             if (resp.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new HiveServer2Exception(resp.Status.ErrorMessage)
@@ -517,7 +421,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     .SetSqlState(resp.Status.SqlState);
             }
 
-            TRowSet rowSet = GetRowSet(resp);
+            TRowSet rowSet = GetRowSetAsync(resp).Result;
             StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
 
             StringArray.Builder tableTypesBuilder = new StringArray.Builder();
@@ -531,34 +435,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return new SparkInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
         }
 
-        private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = HiveServer2Connection.BatchSizeDefault, CancellationToken cancellationToken = default)
-        {
-            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault);
-            TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
-            if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-            {
-                throw new HiveServer2Exception(fetchResp.Status.ErrorMessage)
-                    .SetNativeError(fetchResp.Status.ErrorCode)
-                    .SetSqlState(fetchResp.Status.SqlState);
-            }
-            return fetchResp.Results;
-        }
-
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
         {
-            TGetColumnsReq getColumnsReq = new TGetColumnsReq(this.sessionHandle);
+            TGetColumnsReq getColumnsReq = new TGetColumnsReq(SessionHandle);
             getColumnsReq.CatalogName = catalog;
             getColumnsReq.SchemaName = dbSchema;
             getColumnsReq.TableName = tableName;
             getColumnsReq.GetDirectResults = sparkGetDirectResults;
 
-            var columnsResponse = this.Client.GetColumns(getColumnsReq).Result;
+            var columnsResponse = Client.GetColumns(getColumnsReq).Result;
             if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new Exception(columnsResponse.Status.ErrorMessage);
             }
 
-            TRowSet rowSet = GetRowSet(columnsResponse);
+            TRowSet rowSet = GetRowSetAsync(columnsResponse).Result;
             List<TColumn> columns = rowSet.Columns;
             int rowCount = rowSet.Columns[3].StringVal.Values.Length;
 
@@ -585,19 +476,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>>();
             if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
             {
-                TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(this.sessionHandle);
+                TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
                 getCatalogsReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetCatalogsResp getCatalogsResp = this.Client.GetCatalogs(getCatalogsReq).Result;
+                TGetCatalogsResp getCatalogsResp = Client.GetCatalogs(getCatalogsReq).Result;
                 if (getCatalogsResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getCatalogsResp.Status.ErrorMessage);
                 }
-                var catalogsMetadata = GetResultSetMetadata(getCatalogsResp);
+                var catalogsMetadata = GetResultSetMetadataAsync(getCatalogsResp).Result;
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(catalogsMetadata.Schema.Columns);
 
                 string catalogRegexp = PatternToRegEx(catalogPattern);
-                TRowSet rowSet = GetRowSet(getCatalogsResp);
+                TRowSet rowSet = GetRowSetAsync(getCatalogsResp).Result;
                 IReadOnlyList<string> list = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
                 for (int i = 0; i < list.Count; i++)
                 {
@@ -618,20 +509,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.DbSchemas)
             {
-                TGetSchemasReq getSchemasReq = new TGetSchemasReq(this.sessionHandle);
+                TGetSchemasReq getSchemasReq = new TGetSchemasReq(SessionHandle);
                 getSchemasReq.CatalogName = catalogPattern;
                 getSchemasReq.SchemaName = dbSchemaPattern;
                 getSchemasReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetSchemasResp getSchemasResp = this.Client.GetSchemas(getSchemasReq).Result;
+                TGetSchemasResp getSchemasResp = Client.GetSchemas(getSchemasReq).Result;
                 if (getSchemasResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getSchemasResp.Status.ErrorMessage);
                 }
 
-                TGetResultSetMetadataResp schemaMetadata = GetResultSetMetadata(getSchemasResp);
+                TGetResultSetMetadataResp schemaMetadata = GetResultSetMetadataAsync(getSchemasResp).Result;
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(schemaMetadata.Schema.Columns);
-                TRowSet rowSet = GetRowSet(getSchemasResp);
+                TRowSet rowSet = GetRowSetAsync(getSchemasResp).Result;
 
                 IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCatalog]].StringVal.Values;
                 IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
@@ -647,21 +538,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Tables)
             {
-                TGetTablesReq getTablesReq = new TGetTablesReq(this.sessionHandle);
+                TGetTablesReq getTablesReq = new TGetTablesReq(SessionHandle);
                 getTablesReq.CatalogName = catalogPattern;
                 getTablesReq.SchemaName = dbSchemaPattern;
                 getTablesReq.TableName = tableNamePattern;
                 getTablesReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetTablesResp getTablesResp = this.Client.GetTables(getTablesReq).Result;
+                TGetTablesResp getTablesResp = Client.GetTables(getTablesReq).Result;
                 if (getTablesResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getTablesResp.Status.ErrorMessage);
                 }
 
-                TGetResultSetMetadataResp tableMetadata = GetResultSetMetadata(getTablesResp);
+                TGetResultSetMetadataResp tableMetadata = GetResultSetMetadataAsync(getTablesResp).Result;
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(tableMetadata.Schema.Columns);
-                TRowSet rowSet = GetRowSet(getTablesResp);
+                TRowSet rowSet = GetRowSetAsync(getTablesResp).Result;
 
                 IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
                 IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
@@ -681,7 +572,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             if (depth == GetObjectsDepth.All)
             {
-                TGetColumnsReq columnsReq = new TGetColumnsReq(this.sessionHandle);
+                TGetColumnsReq columnsReq = new TGetColumnsReq(SessionHandle);
                 columnsReq.CatalogName = catalogPattern;
                 columnsReq.SchemaName = dbSchemaPattern;
                 columnsReq.TableName = tableNamePattern;
@@ -690,15 +581,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 if (!string.IsNullOrEmpty(columnNamePattern))
                     columnsReq.ColumnName = columnNamePattern;
 
-                var columnsResponse = this.Client.GetColumns(columnsReq).Result;
+                var columnsResponse = Client.GetColumns(columnsReq).Result;
                 if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(columnsResponse.Status.ErrorMessage);
                 }
 
-                TGetResultSetMetadataResp columnsMetadata = GetResultSetMetadata(columnsResponse);
+                TGetResultSetMetadataResp columnsMetadata = GetResultSetMetadataAsync(columnsResponse).Result;
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsMetadata.Schema.Columns);
-                TRowSet rowSet = GetRowSet(columnsResponse);
+                TRowSet rowSet = GetRowSetAsync(columnsResponse).Result;
 
                 IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
                 IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
@@ -1125,82 +1016,70 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
         }
 
-        protected override IReadOnlyList<TProtocolVersion> SupportedProtocolVersions =>
-        [
-            TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
-            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11,
-        ];
+        public abstract Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response);
+        public abstract Task<TRowSet> GetRowSetAsync(TGetColumnsResp response);
+        public abstract Task<TRowSet> GetRowSetAsync(TGetTablesResp response);
+        public abstract Task<TRowSet> GetRowSetAsync(TGetCatalogsResp getCatalogsResp);
+        public abstract Task<TRowSet> GetRowSetAsync(TGetSchemasResp getSchemasResp);
+        public abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response);
+        public abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response);
+        public abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response);
+        public abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response);
 
-        private TRowSet GetRowSet(TGetTableTypesResp response) => response.DirectResults?.ResultSet.Results ?? FetchResultsAsync(response.OperationHandle).Result;
+        public abstract SparkServerType ServerType { get; }
 
-        private TRowSet GetRowSet(TGetColumnsResp response) => response.DirectResults?.ResultSet.Results ?? FetchResultsAsync(response.OperationHandle).Result;
-
-        private TRowSet GetRowSet(TGetTablesResp response) => response.DirectResults?.ResultSet.Results ?? FetchResultsAsync(response.OperationHandle).Result;
-
-        private TRowSet GetRowSet(TGetCatalogsResp getCatalogsResp) => getCatalogsResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getCatalogsResp.OperationHandle).Result;
-
-        private TRowSet GetRowSet(TGetSchemasResp getSchemasResp) => getSchemasResp.DirectResults?.ResultSet.Results ?? FetchResultsAsync(getSchemasResp.OperationHandle).Result;
-
-        private TGetResultSetMetadataResp GetResultSetMetadata(TGetSchemasResp response) => response.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(response.OperationHandle, Client).Result;
-
-        private TGetResultSetMetadataResp GetResultSetMetadata(TGetCatalogsResp response) => response.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(response.OperationHandle, Client).Result;
-
-        private TGetResultSetMetadataResp GetResultSetMetadata(TGetColumnsResp response) => response.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(response.OperationHandle, Client).Result;
-
-        private TGetResultSetMetadataResp GetResultSetMetadata(TGetTablesResp response) => response.DirectResults?.ResultSetMetadata ?? GetResultSetMetadataAsync(response.OperationHandle, Client).Result;
-    }
-
-    internal struct TableInfo(string type)
-    {
-        public string Type { get; } = type;
-
-        public List<string> ColumnName { get; } = new();
-
-        public List<short> ColType { get; } = new();
-
-        public List<string> BaseTypeName { get; } = new();
-
-        public List<string> TypeName { get; } = new();
-
-        public List<short> Nullable { get; } = new();
-
-        public List<int?> Precision { get; } = new();
-
-        public List<short?> Scale { get; } = new();
-
-        public List<int> OrdinalPosition { get; } = new();
-
-        public List<string> ColumnDefault { get; } = new();
-
-        public List<string> IsNullable { get; } = new();
-
-        public List<bool> IsAutoIncrement { get; } = new();
-    }
-
-    internal class SparkInfoArrowStream : IArrowArrayStream
-    {
-        private Schema schema;
-        private RecordBatch? batch;
-
-        public SparkInfoArrowStream(Schema schema, IReadOnlyList<IArrowArray> data)
+        internal struct TableInfo(string type)
         {
-            this.schema = schema;
-            this.batch = new RecordBatch(schema, data, data[0].Length);
+            public string Type { get; } = type;
+
+            public List<string> ColumnName { get; } = new();
+
+            public List<short> ColType { get; } = new();
+
+            public List<string> BaseTypeName { get; } = new();
+
+            public List<string> TypeName { get; } = new();
+
+            public List<short> Nullable { get; } = new();
+
+            public List<int?> Precision { get; } = new();
+
+            public List<short?> Scale { get; } = new();
+
+            public List<int> OrdinalPosition { get; } = new();
+
+            public List<string> ColumnDefault { get; } = new();
+
+            public List<string> IsNullable { get; } = new();
+
+            public List<bool> IsAutoIncrement { get; } = new();
         }
 
-        public Schema Schema { get { return this.schema; } }
-
-        public ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        internal class SparkInfoArrowStream : IArrowArrayStream
         {
-            RecordBatch? batch = this.batch;
-            this.batch = null;
-            return new ValueTask<RecordBatch?>(batch);
-        }
+            private Schema schema;
+            private RecordBatch? batch;
 
-        public void Dispose()
-        {
-            this.batch?.Dispose();
-            this.batch = null;
+            public SparkInfoArrowStream(Schema schema, IReadOnlyList<IArrowArray> data)
+            {
+                this.schema = schema;
+                this.batch = new RecordBatch(schema, data, data[0].Length);
+            }
+
+            public Schema Schema { get { return this.schema; } }
+
+            public ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            {
+                RecordBatch? batch = this.batch;
+                this.batch = null;
+                return new ValueTask<RecordBatch?>(batch);
+            }
+
+            public void Dispose()
+            {
+                this.batch?.Dispose();
+                this.batch = null;
+            }
         }
     }
 }

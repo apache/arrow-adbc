@@ -49,8 +49,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return null;
             }
 
-            var request = new TFetchResultsReq(_statement.operationHandle, TFetchOrientation.FETCH_NEXT, _batchSize);
-            TFetchResultsResp response = await _statement.connection.Client.FetchResults(request, cancellationToken);
+            var request = new TFetchResultsReq(_statement.OperationHandle, TFetchOrientation.FETCH_NEXT, _batchSize);
+            TFetchResultsResp response = await _statement.Connection.Client.FetchResults(request, cancellationToken);
 
             int length = response.Results.Columns.Count > 0 ? GetArray(response.Results.Columns[0]).Length : 0;
             var result = new RecordBatch(
