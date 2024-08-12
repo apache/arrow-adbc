@@ -233,6 +233,8 @@ class PostgresType {
       case PostgresTypeId::kText:
       case PostgresTypeId::kName:
       case PostgresTypeId::kEnum:
+      case PostgresTypeId::kJson:
+      case PostgresTypeId::kJsonb:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
       case PostgresTypeId::kBytea:
