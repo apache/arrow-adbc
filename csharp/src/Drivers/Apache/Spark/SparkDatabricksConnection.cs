@@ -31,7 +31,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         }
 
         public override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkDatabricksReader(statement, schema);
+
         public override SchemaParser SchemaParser => new DatabricksSchemaParser();
+
         public override SparkServerType ServerType => SparkServerType.Databricks;
 
         protected override TOpenSessionReq CreateSessionRequest()
@@ -51,6 +53,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Task.FromResult(response.DirectResults.ResultSetMetadata);
         public override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
+
         public override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
         public override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response) =>

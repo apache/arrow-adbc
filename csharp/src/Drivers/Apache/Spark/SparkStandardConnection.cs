@@ -68,6 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             request.Password = password!;
             return request;
         }
+
         public override SparkServerType ServerType => SparkServerType.Standard;
     }
 }
