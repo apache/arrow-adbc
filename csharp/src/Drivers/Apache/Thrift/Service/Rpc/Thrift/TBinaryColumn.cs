@@ -28,10 +28,11 @@ using Thrift.Protocol.Utilities;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TBinaryColumn : TBase
+    public partial class TBinaryColumn : TBase
   {
+        private const int IntSize = 4;
 
-    public BinaryArray Values { get; set; }
+        public BinaryArray Values { get; set; }
 
     public TBinaryColumn()
     {
@@ -83,14 +84,14 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
                   values = new ArrowBuffer.Builder<byte>();
                   int offset = 0;
-                  offsetBuffer = new byte[(length + 1) * 4];
+                  offsetBuffer = new byte[(length + 1) * IntSize];
                   var memory = offsetBuffer.AsMemory();
                   var typedMemory = Unsafe.As<Memory<byte>, Memory<int>>(ref memory).Slice(0, length + 1);
 
                   for(int _i197 = 0; _i197 < length; ++_i197)
                   {
                     //typedMemory.Span[_i197] = offset;
-                    StreamExtensions.WriteInt32LittleEndian(offset, memory.Span, _i197 * 4);
+                    StreamExtensions.WriteInt32LittleEndian(offset, memory.Span, _i197 * IntSize);
                     var size = await iprot.ReadI32Async(cancellationToken);
                     offset += size;
 
@@ -109,8 +110,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
                     await transport.ReadExactlyAsync(tmp.AsMemory(0, size), cancellationToken);
                     values.Append(tmp.AsMemory(0, size).Span);
                   }
+#if NET472
+                  BitConverter.GetBytes(offset).CopyTo(offsetBuffer, length * IntSize);
+#else
                   typedMemory.Span[length] = offset;
-                  StreamExtensions.WriteInt32LittleEndian(offset, memory.Span, length * 4);
+#endif
+                  StreamExtensions.WriteInt32LittleEndian(offset, memory.Span, length * IntSize);
 
                   await iprot.ReadListEndAsync(cancellationToken);
                 }
