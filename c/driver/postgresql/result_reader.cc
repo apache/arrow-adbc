@@ -145,13 +145,20 @@ AdbcStatusCode PqResultArrayReader::Initialize(int64_t* rows_affected,
     RAISE_ADBC(bind_stream_->SetParamTypes(*type_resolver_, error));
     RAISE_ADBC(helper_.Prepare(bind_stream_->param_types, error));
 
-    RAISE_ADBC(BindNextAndExecute(rows_affected, error));
+    RAISE_ADBC(BindNextAndExecute(nullptr, error));
 
     // If there were no arrays in the bind stream, we still need a result
     // to populate the schema. If there were any arrays in the bind stream,
     // the last one will still be in helper_ even if it had zero rows.
     if (!helper_.HasResult()) {
       RAISE_ADBC(helper_.DescribePrepared(error));
+    }
+
+    // We can't provide affected row counts if there is a bind stream and
+    // an output because we don't know how many future bind arrays/rows there
+    // might be.
+    if (rows_affected != nullptr) {
+      *rows_affected = -1;
     }
   } else {
     RAISE_ADBC(helper_.Execute(error));
@@ -228,7 +235,8 @@ AdbcStatusCode PqResultArrayReader::BindNextAndExecute(int64_t* affected_rows,
     }
 
     PGresult* result;
-    RAISE_ADBC(bind_stream_->BindAndExecuteCurrentRow(conn_, &result, error));
+    RAISE_ADBC(bind_stream_->BindAndExecuteCurrentRow(
+        conn_, &result, /*result_format*/ kPgBinaryFormat, error));
     helper_.SetResult(result);
     if (affected_rows) {
       (*affected_rows) += helper_.AffectedRows();

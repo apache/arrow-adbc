@@ -316,7 +316,7 @@ struct BindStream {
   }
 
   AdbcStatusCode BindAndExecuteCurrentRow(PGconn* pg_conn, PGresult** result_out,
-                                          AdbcError* error) {
+                                          int result_format, AdbcError* error) {
     int64_t row = current_row;
 
     for (int64_t col = 0; col < array_view->n_children; col++) {
@@ -486,8 +486,7 @@ struct BindStream {
     PGresult* result =
         PQexecPrepared(pg_conn, /*stmtName=*/"",
                        /*nParams=*/bind_schema->n_children, param_values.data(),
-                       param_lengths.data(), param_formats.data(),
-                       /*resultFormat=*/0 /*text*/);
+                       param_lengths.data(), param_formats.data(), result_format);
 
     ExecStatusType pg_status = PQresultStatus(result);
     if (pg_status != PGRES_COMMAND_OK && pg_status != PGRES_TUPLES_OK) {
