@@ -1353,6 +1353,8 @@ TEST_F(PostgresStatementTest, ExecuteParameterizedQueryWithResult) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
   }
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
 TEST_F(PostgresStatementTest, ExecuteParameterizedQueryWithRowsAffected) {
@@ -1435,6 +1437,8 @@ TEST_F(PostgresStatementTest, ExecuteParameterizedQueryWithRowsAffected) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
   }
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
 TEST_F(PostgresStatementTest, BatchSizeHint) {
