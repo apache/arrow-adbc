@@ -254,6 +254,11 @@ AdbcStatusCode PqResultArrayReader::ExecuteAll(int64_t* affected_rows, AdbcError
     RAISE_ADBC(bind_stream_->SetParamTypes(*type_resolver_, error));
     RAISE_ADBC(helper_.Prepare(bind_stream_->param_types, error));
 
+    // Reset affected rows to zero before binding and executing any
+    if (affected_rows) {
+      (*affected_rows) = 0;
+    }
+
     do {
       RAISE_ADBC(BindNextAndExecute(affected_rows, error));
     } while (bind_stream_);

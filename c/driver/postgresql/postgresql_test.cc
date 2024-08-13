@@ -1355,6 +1355,88 @@ TEST_F(PostgresStatementTest, ExecuteParameterizedQueryWithResult) {
   }
 }
 
+TEST_F(PostgresStatementTest, ExecuteParameterizedQueryWithRowsAffected) {
+  // Check that when executing one or more parameterized queries that the corresponding
+  // affected row count is added.
+  ASSERT_THAT(quirks()->DropTable(&connection, "adbc_test", &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  {
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement, "CREATE TABLE adbc_test (ints INT)", &error),
+        IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(reader.rows_affected, -1);
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+
+  {
+    // Use INSERT INTO
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement, "INSERT INTO adbc_test (ints) VALUES (123), (456)", &error),
+        IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(reader.rows_affected, 2);
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+
+  nanoarrow::UniqueSchema schema_bind;
+  ArrowSchemaInit(schema_bind.get());
+  ASSERT_THAT(ArrowSchemaSetTypeStruct(schema_bind.get(), 1),
+              adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetType(schema_bind->children[0], NANOARROW_TYPE_INT32),
+              adbc_validation::IsOkErrno());
+
+  nanoarrow::UniqueArray bind;
+  ASSERT_THAT(ArrowArrayInitFromSchema(bind.get(), schema_bind.get(), nullptr),
+              adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowArrayStartAppending(bind.get()), adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowArrayAppendInt(bind->children[0], 123), adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowArrayFinishElement(bind.get()), adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowArrayAppendInt(bind->children[0], 456), adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowArrayFinishElement(bind.get()), adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowArrayFinishBuildingDefault(bind.get(), nullptr),
+              adbc_validation::IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+                                       "DELETE FROM adbc_test WHERE ints = $1", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, bind.get(), schema_bind.get(), &error),
+              IsOkStatus());
+
+  {
+    int64_t rows_affected = -2;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(rows_affected, 2);
+  }
+
+  {
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * from adbc_test", &error),
+                IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+}
+
 TEST_F(PostgresStatementTest, BatchSizeHint) {
   ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "batch_size_hint_test", &error),
               IsOkStatus(&error));
