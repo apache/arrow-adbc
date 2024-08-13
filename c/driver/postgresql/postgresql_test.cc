@@ -1410,7 +1410,6 @@ TEST_F(PostgresStatementTest, ExecuteParameterizedQueryWithRowsAffected) {
   ASSERT_THAT(ArrowArrayFinishBuildingDefault(bind.get(), nullptr),
               adbc_validation::IsOkErrno());
 
-  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
                                        "DELETE FROM adbc_test WHERE ints = $1", &error),
               IsOkStatus(&error));
