@@ -86,11 +86,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
                   await transport.ReadExactlyAsync(memory, cancellationToken);
                   for (int _i179 = 0; _i179 < length; ++_i179)
                   {
-#if NET472
+#if NET6_0_OR_GREATER
+                    typedMemory.Span[_i179] = BinaryPrimitives.ReverseEndianness(typedMemory.Span[_i179]);
+#else
                     long source = BinaryPrimitives.ReverseEndianness(BitConverter.ToInt64(buffer, _i179 * DoubleSize));
                     BitConverter.GetBytes(source).CopyTo(buffer, _i179 * DoubleSize);
-#else
-                    typedMemory.Span[_i179] = BinaryPrimitives.ReverseEndianness(typedMemory.Span[_i179]);
 #endif
                   }
                   await iprot.ReadListEndAsync(cancellationToken);

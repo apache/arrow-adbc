@@ -110,10 +110,10 @@ namespace Apache.Hive.Service.Rpc.Thrift
                     await transport.ReadExactlyAsync(tmp.AsMemory(0, size), cancellationToken);
                     values.Append(tmp.AsMemory(0, size).Span);
                   }
-#if NET472
-                  BitConverter.GetBytes(offset).CopyTo(offsetBuffer, length * IntSize);
-#else
+#if NET6_0_OR_GREATER
                   typedMemory.Span[length] = offset;
+#else
+                  BitConverter.GetBytes(offset).CopyTo(offsetBuffer, length * IntSize);
 #endif
                   StreamExtensions.WriteInt32LittleEndian(offset, memory.Span, length * IntSize);
 
