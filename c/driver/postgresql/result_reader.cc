@@ -248,7 +248,7 @@ AdbcStatusCode PqResultArrayReader::BindNextAndExecute(int64_t* affected_rows,
 
 AdbcStatusCode PqResultArrayReader::ExecuteAll(int64_t* affected_rows, AdbcError* error) {
   // For the case where we don't need a result, we either need to exhaust the bind
-  // stream
+  // stream (if there is one) or execute the query without binding.
   if (bind_stream_) {
     RAISE_ADBC(bind_stream_->Begin([] { return ADBC_STATUS_OK; }, error));
     RAISE_ADBC(bind_stream_->SetParamTypes(*type_resolver_, error));

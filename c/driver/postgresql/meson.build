@@ -25,6 +25,7 @@ adbc_postgres_driver_lib = library(
         'database.cc',
         'postgresql.cc',
         'result_helper.cc',
+        'result_builder.cc',
         'statement.cc',
     ],
     include_directories: [include_dir, c_dir],
