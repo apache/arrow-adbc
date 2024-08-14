@@ -17,15 +17,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Threading;
+using System.Net;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
-using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
 
@@ -35,6 +29,60 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         public SparkStandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+        }
+
+        protected override void ValidateAuthentication()
+        {
+            Properties.TryGetValue(AdbcOptions.Username, out string? username);
+            Properties.TryGetValue(AdbcOptions.Password, out string? password);
+            Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
+            bool isValidAuthType = SparkAuthTypeConstants.TryParse(authType, out SparkAuthType authTypeValue);
+            switch (authTypeValue)
+            {
+                case SparkAuthType.None:
+                    break;
+                case SparkAuthType.UsernameOnly:
+                    if (string.IsNullOrWhiteSpace(username))
+                        throw new ArgumentException(
+                            $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.UsernameOnly}' but parameters '{AdbcOptions.Username}' is not set. Please provide a value for this parameter.",
+                            nameof(Properties));
+                    break;
+                case SparkAuthType.Basic:
+                    if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                        throw new ArgumentException(
+                            $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.Basic}' but parameters '{AdbcOptions.Username}' or '{AdbcOptions.Password}' are not set. Please provide a values for these parameters.",
+                            nameof(Properties));
+                    break;
+                case SparkAuthType.Empty:
+                    if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                        throw new ArgumentException(
+                            $"Parameters must include valid authentiation settings. Please provide either '{SparkParameters.Token}'; or '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.",
+                            nameof(Properties));
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
+            }
+        }
+
+        protected override void ValidateConnection()
+        {
+            // HostName is required parameter
+            Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
+            if (Uri.CheckHostName(hostName) == UriHostNameType.Unknown)
+            {
+                throw new ArgumentException(
+                    $"Required parameter '{SparkParameters.HostName}' is missing or invalid. Please provide a valid hostname for the data source.",
+                    nameof(Properties));
+            }
+
+            // Validate port range
+            Properties.TryGetValue(SparkParameters.Port, out string? port);
+            if (int.TryParse(port, out int portNumber) && (portNumber <= IPEndPoint.MinPort || portNumber > IPEndPoint.MaxPort))
+                throw new ArgumentOutOfRangeException(
+                    nameof(Properties),
+                    port,
+                    $"Parameter '{SparkParameters.Port}' value is not in the valid range of 1 .. {IPEndPoint.MaxPort}.");
+
         }
 
         protected override Task<TTransport> CreateTransportAsync()
@@ -63,9 +111,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // Assumption: user name and password have already been validated.
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
+            Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
+            bool isValidAuthType = SparkAuthTypeConstants.TryParse(authType, out SparkAuthType authTypeValue);
             TOpenSessionReq request = base.CreateSessionRequest();
-            request.Username = username!;
-            request.Password = password!;
+            switch (authTypeValue)
+            {
+                case SparkAuthType.UsernameOnly:
+                case SparkAuthType.Basic:
+                case SparkAuthType.Empty when !string.IsNullOrEmpty(username):
+                    request.Username = username!;
+                    break;
+            }
+            switch (authTypeValue)
+            {
+                case SparkAuthType.Basic:
+                case SparkAuthType.Empty when !string.IsNullOrEmpty(password):
+                    request.Password = password!;
+                    break;
+            }
             return request;
         }
 

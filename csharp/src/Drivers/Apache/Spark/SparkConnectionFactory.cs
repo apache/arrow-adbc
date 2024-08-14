@@ -30,9 +30,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             {
                 SparkServerType.Databricks => new SparkDatabricksConnection(properties),
                 SparkServerType.Http => new SparkHttpConnection(properties),
-                SparkServerType.Standard => new SparkStandardConnection(properties),
-                SparkServerType.Empty => throw new ArgumentException($"Required property '{SparkParameters.Type}' is missing. Supported types: {SparkServerTypeConstants.ServerTypeSupportedList}", nameof(properties)),
-                _ => throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{SparkParameters.Type}'. Supported types: {SparkServerTypeConstants.ServerTypeSupportedList}"),
+                // TODO: Re-enable when properly supported
+                //SparkServerType.Standard => new SparkStandardConnection(properties),
+                SparkServerType.Empty => throw new ArgumentException($"Required property '{SparkParameters.Type}' is missing. Supported types: {SparkServerTypeConstants.SupportedList}", nameof(properties)),
+                _ => throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{SparkParameters.Type}'. Supported types: {SparkServerTypeConstants.SupportedList}"),
             };
         }
 

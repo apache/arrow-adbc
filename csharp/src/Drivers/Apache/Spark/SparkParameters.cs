@@ -32,8 +32,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
     public static class SparkAuthTypeConstants
     {
-        public const string AuthTypeBasic = "basic";
-        public const string AuthTypeToken = "token";
+        public const string None = "none";
+        public const string UsernameOnly = "username_only";
+        public const string Basic = "basic";
+        public const string Token = "token";
 
         public static bool TryParse(string? authType, out SparkAuthType authTypeValue)
         {
@@ -43,10 +45,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case "":
                     authTypeValue = SparkAuthType.Empty;
                     return true;
-                case AuthTypeBasic:
+                case None:
+                    authTypeValue = SparkAuthType.None;
+                    return true;
+                case UsernameOnly:
+                    authTypeValue = SparkAuthType.UsernameOnly;
+                    return true;
+                case Basic:
                     authTypeValue = SparkAuthType.Basic;
                     return true;
-                case AuthTypeToken:
+                case Token:
                     authTypeValue = SparkAuthType.Token;
                     return true;
                 default:
@@ -59,6 +67,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     public enum SparkAuthType
     {
         Invalid = 0,
+        None,
+        UsernameOnly,
         Basic,
         Token,
         Empty = int.MaxValue,
@@ -66,11 +76,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
     public static class SparkServerTypeConstants
     {
-        public const string ServerTypeDatabricks = "databricks";
-        public const string ServerTypeHttp = "http";
-        public const string ServerTypeStandard = "standard";
-        public const string ServerTypeHDInsight = "hdinsight";
-        internal const string ServerTypeSupportedList = ServerTypeStandard + ", " + ServerTypeHttp + ", " + ServerTypeDatabricks;
+        public const string Http = "http";
+        public const string Databricks = "databricks";
+        public const string Standard = "standard";
+        public const string HDInsight = "hdinsight";
+        internal const string SupportedList = Http + ", " + Databricks;
 
         public static bool TryParse(string? serverType, out SparkServerType serverTypeValue)
         {
@@ -80,16 +90,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case "":
                     serverTypeValue = SparkServerType.Empty;
                     return true;
-                case ServerTypeDatabricks:
+                case Databricks:
                     serverTypeValue = SparkServerType.Databricks;
                     return true;
-                case ServerTypeHttp:
+                case Http:
                     serverTypeValue = SparkServerType.Http;
                     return true;
-                case ServerTypeStandard:
+                case Standard:
                     serverTypeValue = SparkServerType.Standard;
                     return true;
-                case ServerTypeHDInsight:
+                case HDInsight:
                     serverTypeValue = SparkServerType.HDInsight;
                     return true;
                 default:
@@ -102,8 +112,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     public enum SparkServerType
     {
         Invalid = 0,
-        Databricks,
         Http,
+        Databricks,
         Standard,
         HDInsight,
         Empty = int.MaxValue,
