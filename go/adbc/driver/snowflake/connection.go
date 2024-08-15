@@ -31,7 +31,6 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow/go/v18/arrow"
 	"github.com/apache/arrow/go/v18/arrow/array"
@@ -196,7 +195,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 			for j, tab := range sch.DbSchemaTables {
 				for k, col := range tab.TableColumns {
 					field := c.toArrowField(col)
-					xdbcDataType := toXdbcDataType(field.Type)
+					xdbcDataType := driverbase.ToXdbcDataType(field.Type)
 
 					getObjectsCatalog.CatalogDbSchemas[i].DbSchemaTables[j].TableColumns[k].XdbcDataType = int16(field.Type.ID())
 					getObjectsCatalog.CatalogDbSchemas[i].DbSchemaTables[j].TableColumns[k].XdbcSqlDataType = int16(xdbcDataType)
@@ -438,7 +437,7 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 		// A few columns need additional processing outside of Snowflake
 		for i, col := range info.TableColumns {
 			field := c.toArrowField(col)
-			xdbcDataType := toXdbcDataType(field.Type)
+			xdbcDataType := driverbase.ToXdbcDataType(field.Type)
 
 			info.TableColumns[i].XdbcDataType = int16(field.Type.ID())
 			info.TableColumns[i].XdbcSqlDataType = int16(xdbcDataType)
@@ -615,51 +614,6 @@ func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Fi
 	}
 
 	return field
-}
-
-func toXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
-	switch dt.ID() {
-	case arrow.EXTENSION:
-		return toXdbcDataType(dt.(arrow.ExtensionType).StorageType())
-	case arrow.DICTIONARY:
-		return toXdbcDataType(dt.(*arrow.DictionaryType).ValueType)
-	case arrow.RUN_END_ENCODED:
-		return toXdbcDataType(dt.(*arrow.RunEndEncodedType).Encoded())
-	case arrow.INT8, arrow.UINT8:
-		return internal.XdbcDataType_XDBC_TINYINT
-	case arrow.INT16, arrow.UINT16:
-		return internal.XdbcDataType_XDBC_SMALLINT
-	case arrow.INT32, arrow.UINT32:
-		return internal.XdbcDataType_XDBC_SMALLINT
-	case arrow.INT64, arrow.UINT64:
-		return internal.XdbcDataType_XDBC_BIGINT
-	case arrow.FLOAT32, arrow.FLOAT16, arrow.FLOAT64:
-		return internal.XdbcDataType_XDBC_FLOAT
-	case arrow.DECIMAL, arrow.DECIMAL256:
-		return internal.XdbcDataType_XDBC_DECIMAL
-	case arrow.STRING, arrow.LARGE_STRING:
-		return internal.XdbcDataType_XDBC_VARCHAR
-	case arrow.BINARY, arrow.LARGE_BINARY:
-		return internal.XdbcDataType_XDBC_BINARY
-	case arrow.FIXED_SIZE_BINARY:
-		return internal.XdbcDataType_XDBC_BINARY
-	case arrow.BOOL:
-		return internal.XdbcDataType_XDBC_BIT
-	case arrow.TIME32, arrow.TIME64:
-		return internal.XdbcDataType_XDBC_TIME
-	case arrow.DATE32, arrow.DATE64:
-		return internal.XdbcDataType_XDBC_DATE
-	case arrow.TIMESTAMP:
-		return internal.XdbcDataType_XDBC_TIMESTAMP
-	case arrow.DENSE_UNION, arrow.SPARSE_UNION:
-		return internal.XdbcDataType_XDBC_VARBINARY
-	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST:
-		return internal.XdbcDataType_XDBC_VARBINARY
-	case arrow.STRUCT, arrow.MAP:
-		return internal.XdbcDataType_XDBC_VARBINARY
-	default:
-		return internal.XdbcDataType_XDBC_UNKNOWN_TYPE
-	}
 }
 
 func descToField(name, typ, isnull, primary string, comment sql.NullString) (field arrow.Field, err error) {

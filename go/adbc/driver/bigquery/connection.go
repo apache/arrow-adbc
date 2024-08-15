@@ -137,7 +137,7 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 			continue
 		}
 
-		md, err := table.Metadata(ctx)
+		md, err := table.Metadata(ctx, bigquery.WithMetadataView(bigquery.BasicMetadataView))
 		if err != nil {
 			return nil, err
 		}
@@ -147,7 +147,7 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 			constraints = make([]driverbase.ConstraintInfo, 0)
 			if md.TableConstraints.PrimaryKey != nil {
 				constraints = append(constraints, driverbase.ConstraintInfo{
-					ConstraintName:        "PRIMARY KEY", // TODO
+					// BigQuery Primary Keys are unnamed
 					ConstraintType:        internal.PrimaryKey,
 					ConstraintColumnNames: md.TableConstraints.PrimaryKey.Columns,
 				})
@@ -182,12 +182,46 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 			}
 
 			columns = make([]driverbase.ColumnInfo, 0)
-			for pos, field := range md.Schema {
-				if columnPattern.MatchString(field.Name) {
+			for pos, fieldschema := range md.Schema {
+				if columnPattern.MatchString(fieldschema.Name) {
+					xdbcIsNullable := "YES"
+					xdbcNullable := int16(1)
+					if fieldschema.Required {
+						xdbcIsNullable = "NO"
+						xdbcNullable = 0
+					}
+
+					xdbcColumnSize := fieldschema.MaxLength
+					if xdbcColumnSize == 0 {
+						xdbcColumnSize = fieldschema.Precision
+					}
+
+					var xdbcCharOctetLength int32
+					if fieldschema.Type == bigquery.BytesFieldType {
+						xdbcCharOctetLength = int32(fieldschema.MaxLength)
+					}
+
+					field, err := buildField(fieldschema, 0)
+					if err != nil {
+						return nil, err
+					}
+					xdbcDataType := driverbase.ToXdbcDataType(field.Type)
+
 					columns = append(columns, driverbase.ColumnInfo{
-						ColumnName:      field.Name,
-						OrdinalPosition: int32(pos + 1),
-						Remarks:         field.Description,
+						ColumnName:          fieldschema.Name,
+						OrdinalPosition:     int32(pos + 1),
+						Remarks:             fieldschema.Description,
+						XdbcDataType:        int16(field.Type.ID()),
+						XdbcTypeName:        string(fieldschema.Type),
+						XdbcNullable:        xdbcNullable,
+						XdbcSqlDataType:     int16(xdbcDataType),
+						XdbcIsNullable:      xdbcIsNullable,
+						XdbcDecimalDigits:   int16(fieldschema.Scale),
+						XdbcColumnSize:      int32(xdbcColumnSize),
+						XdbcCharOctetLength: xdbcCharOctetLength,
+						XdbcScopeCatalog:    catalog,
+						XdbcScopeSchema:     schema,
+						XdbcScopeTable:      table.TableID,
 					})
 				}
 			}
