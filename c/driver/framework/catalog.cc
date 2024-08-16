@@ -292,4 +292,32 @@ Status AdbcGetInfo(std::vector<InfoValue> infos, struct ArrowArrayStream* out) {
   return status::Ok();
 }
 
+Status AdbcGetTableTypes(const std::vector<std::string>& table_types,
+                         struct ArrowArrayStream* out) {
+  nanoarrow::UniqueArray array;
+  nanoarrow::UniqueSchema schema;
+  ArrowSchemaInit(schema.get());
+
+  UNWRAP_ERRNO(Internal, ArrowSchemaSetType(schema.get(), NANOARROW_TYPE_STRUCT));
+  UNWRAP_ERRNO(Internal, ArrowSchemaAllocateChildren(schema.get(), /*num_columns=*/1));
+  ArrowSchemaInit(schema.get()->children[0]);
+  UNWRAP_ERRNO(Internal,
+               ArrowSchemaSetType(schema.get()->children[0], NANOARROW_TYPE_STRING));
+  UNWRAP_ERRNO(Internal, ArrowSchemaSetName(schema.get()->children[0], "table_type"));
+  schema.get()->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+
+  UNWRAP_ERRNO(Internal, ArrowArrayInitFromSchema(array.get(), schema.get(), NULL));
+  UNWRAP_ERRNO(Internal, ArrowArrayStartAppending(array.get()));
+
+  for (std::string const& table_type : table_types) {
+    UNWRAP_ERRNO(Internal, ArrowArrayAppendString(array->children[0],
+                                                  ArrowCharView(table_type.c_str())));
+    UNWRAP_ERRNO(Internal, ArrowArrayFinishElement(array.get()));
+  }
+
+  UNWRAP_ERRNO(Internal, ArrowArrayFinishBuildingDefault(array.get(), nullptr));
+  nanoarrow::VectorArrayStream(schema.get(), array.get()).ToArrayStream(out);
+  return status::Ok();
+}
+
 }  // namespace adbc::driver

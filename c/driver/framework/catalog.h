@@ -144,6 +144,9 @@ struct InfoValue {
 
 Status AdbcGetInfo(std::vector<InfoValue> infos, struct ArrowArrayStream* out);
 
+Status AdbcGetTableTypes(const std::vector<std::string>& table_types,
+                         struct ArrowArrayStream* out);
+
 Status AdbcInitConnectionGetInfoSchema(struct ArrowSchema* schema,
                                        struct ArrowArray* array);
 Status AdbcConnectionGetInfoAppendString(struct ArrowArray* array, uint32_t info_code,

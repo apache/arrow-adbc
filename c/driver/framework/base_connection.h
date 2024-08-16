@@ -211,35 +211,8 @@ class ConnectionBase : public ObjectBase {
     }
 
     RAISE_RESULT(error, std::vector<std::string> table_types, impl().GetTableTypesImpl());
-
-    nanoarrow::UniqueArray array;
-    nanoarrow::UniqueSchema schema;
-    ArrowSchemaInit(schema.get());
-
-    CHECK_NA(INTERNAL, ArrowSchemaSetType(schema.get(), NANOARROW_TYPE_STRUCT), error);
-    CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(schema.get(), /*num_columns=*/1),
-             error);
-    ArrowSchemaInit(schema.get()->children[0]);
-    CHECK_NA(INTERNAL,
-             ArrowSchemaSetType(schema.get()->children[0], NANOARROW_TYPE_STRING), error);
-    CHECK_NA(INTERNAL, ArrowSchemaSetName(schema.get()->children[0], "table_type"),
-             error);
-    schema.get()->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
-
-    CHECK_NA(INTERNAL, ArrowArrayInitFromSchema(array.get(), schema.get(), NULL), error);
-    CHECK_NA(INTERNAL, ArrowArrayStartAppending(array.get()), error);
-
-    for (std::string const& table_type : table_types) {
-      CHECK_NA(
-          INTERNAL,
-          ArrowArrayAppendString(array->children[0], ArrowCharView(table_type.c_str())),
-          error);
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(array.get()), error);
-    }
-
-    CHECK_NA(INTERNAL, ArrowArrayFinishBuildingDefault(array.get(), NULL), error);
-
-    return BatchToArrayStream(array.get(), schema.get(), out, error);
+    RAISE_STATUS(error, AdbcGetTableTypes(table_types, out));
+    return ADBC_STATUS_OK;
   }
 
   /// \internal
