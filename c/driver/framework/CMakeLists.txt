@@ -38,7 +38,8 @@ if(ADBC_BUILD_TESTS)
                 nanoarrow)
   target_compile_features(adbc-driver-framework-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-framework-test
-                             PRIVATE "${REPOSITORY_ROOT}/c/" "${REPOSITORY_ROOT}/c/include"
-                                   "${REPOSITORY_ROOT}/c/vendor")
+                             PRIVATE "${REPOSITORY_ROOT}/c/"
+                                     "${REPOSITORY_ROOT}/c/include"
+                                     "${REPOSITORY_ROOT}/c/vendor")
   adbc_configure_target(adbc-driver-framework-test)
 endif()
