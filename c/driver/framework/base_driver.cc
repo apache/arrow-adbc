@@ -29,7 +29,7 @@ Result<bool> Option::AsBool() const {
             return false;
           }
         }
-        return status::InvalidArgument("Invalid boolean value {}", *this);
+        return status::InvalidArgument("Invalid boolean value ", *this);
       },
       value_);
 }
@@ -46,15 +46,15 @@ Result<int64_t> Option::AsInt() const {
           auto end = value.data() + value.size();
           auto result = std::from_chars(begin, end, parsed);
           if (result.ec != std::errc()) {
-            return status::InvalidArgument("Invalid integer value '{}': not an integer",
-                                           value);
+            return status::InvalidArgument("Invalid integer value '", value,
+                                           "': not an integer", value);
           } else if (result.ptr != end) {
-            return status::InvalidArgument("Invalid integer value '{}': trailing data",
-                                           value);
+            return status::InvalidArgument("Invalid integer value '", value,
+                                           "': trailing data", value);
           }
           return parsed;
         }
-        return status::InvalidArgument("Invalid integer value {}", *this);
+        return status::InvalidArgument("Invalid integer value ", *this);
       },
       value_);
 }
@@ -67,6 +67,23 @@ Result<std::string_view> Option::AsString() const {
           return value;
         }
         return status::InvalidArgument("Invalid string value {}", *this);
+      },
+      value_);
+}
+
+std::string Option::Format() const {
+  return std::visit(
+      [&](auto&& value) -> std::string {
+        using T = std::decay_t<decltype(value)>;
+        if constexpr (std::is_same_v<T, adbc::driver::Option::Unset>) {
+          return "(NULL)";
+        } else if constexpr (std::is_same_v<T, std::string>) {
+          return value;
+        } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+          return std::string("(") + std::to_string(value.size()) + " bytes)";
+        } else {
+          return std::to_string(value);
+        }
       },
       value_);
 }
@@ -157,4 +174,5 @@ AdbcStatusCode Option::CGet(double* out, AdbcError* error) const {
       },
       value_);
 }
+
 }  // namespace adbc::driver

@@ -20,13 +20,17 @@
 #include <cassert>
 #include <cstring>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <variant>
 #include <vector>
 
+#if defined(ADBC_FRAMEWORK_USE_FMT)
+#include <fmt/core.h>"
+#endif
+
 #include <arrow-adbc/adbc.h>
-#include <fmt/core.h>
 
 /// \file status.h
 
@@ -248,11 +252,14 @@ class Result {
 
 namespace adbc::driver::status {
 
-#define STATUS_CTOR(NAME, CODE)                                                 \
-  template <typename... Args>                                                   \
-  static Status NAME(std::string_view format_string, Args&&... args) {          \
-    auto message = fmt::vformat(format_string, fmt::make_format_args(args...)); \
-    return Status(ADBC_STATUS_##CODE, std::move(message));                      \
+inline driver::Status Ok() { return driver::Status(); }
+
+#define STATUS_CTOR(NAME, CODE)                  \
+  template <typename... Args>                    \
+  static Status NAME(Args&&... args) {           \
+    std::stringstream ss;                        \
+    ([&] { ss << args; }(), ...);                \
+    return Status(ADBC_STATUS_##CODE, ss.str()); \
   }
 
 // TODO: unit tests for internal utilities
@@ -266,27 +273,49 @@ STATUS_CTOR(Unknown, UNKNOWN)
 
 #undef STATUS_CTOR
 
-inline driver::Status Ok() { return driver::Status(); }
+}  // namespace adbc::driver::status
 
-#define UNWRAP_ERRNO_IMPL(NAME, CODE, RHS)                                               \
-  auto&& NAME = (RHS);                                                                   \
-  if (NAME != 0) {                                                                       \
-    return adbc::driver::status::CODE("Nanoarrow call failed: {} = ({}) {}", #RHS, NAME, \
-                                      std::strerror(NAME));                              \
+#if defined(ADBC_FRAMEWORK_USE_FMT)
+namespace adbc::driver::status::fmt {
+
+#define STATUS_CTOR(NAME, CODE)                                                     \
+  template <typename... Args>                                                       \
+  static Status NAME(std::string_view format_string, Args&&... args) {              \
+    auto message = ::fmt::vformat(format_string, ::fmt::make_format_args(args...)); \
+    return Status(ADBC_STATUS_##CODE, std::move(message));                          \
+  }
+
+// TODO: unit tests for internal utilities
+STATUS_CTOR(Internal, INTERNAL)
+STATUS_CTOR(InvalidArgument, INVALID_ARGUMENT)
+STATUS_CTOR(InvalidState, INVALID_STATE)
+STATUS_CTOR(IO, IO)
+STATUS_CTOR(NotFound, NOT_FOUND)
+STATUS_CTOR(NotImplemented, NOT_IMPLEMENTED)
+STATUS_CTOR(Unknown, UNKNOWN)
+
+#undef STATUS_CTOR
+
+}  // namespace adbc::driver::status::fmt
+#endif
+
+#define UNWRAP_ERRNO_IMPL(NAME, CODE, RHS)                                             \
+  auto&& NAME = (RHS);                                                                 \
+  if (NAME != 0) {                                                                     \
+    return adbc::driver::status::CODE("Call failed: ", #RHS, " = (errno ", NAME, ") ", \
+                                      std::strerror(NAME));                            \
   }
 
 #define UNWRAP_ERRNO(CODE, RHS) \
   UNWRAP_ERRNO_IMPL(UNWRAP_RESULT_NAME(driver_errno, __COUNTER__), CODE, RHS)
 
-#define UNWRAP_NANOARROW_IMPL(NAME, ERROR, CODE, RHS)                                  \
-  auto&& NAME = (RHS);                                                                 \
-  if (NAME != 0) {                                                                     \
-    return adbc::driver::status::CODE("Nanoarrow call failed: {} = ({}) {}. {}", #RHS, \
-                                      NAME, std::strerror(NAME), (ERROR).message);     \
+#define UNWRAP_NANOARROW_IMPL(NAME, ERROR, CODE, RHS)                                    \
+  auto&& NAME = (RHS);                                                                   \
+  if (NAME != 0) {                                                                       \
+    return adbc::driver::status::CODE("nanoarrow call failed: ", #RHS, " = (", NAME,     \
+                                      ") ", std::strerror(NAME), ". ", (ERROR).message); \
   }
 
 #define UNWRAP_NANOARROW(ERROR, CODE, RHS)                                             \
   UNWRAP_NANOARROW_IMPL(UNWRAP_RESULT_NAME(driver_errno_na, __COUNTER__), ERROR, CODE, \
                         RHS)
-
-}  // namespace adbc::driver::status

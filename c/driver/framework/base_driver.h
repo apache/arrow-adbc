@@ -29,8 +29,6 @@
 #include <vector>
 
 #include <arrow-adbc/adbc.h>
-#include <fmt/core.h>
-#include <fmt/format.h>
 
 #include "driver/common/utils.h"
 #include "driver/framework/status.h"
@@ -90,6 +88,9 @@ class Option {
 
   /// \brief Get the value if it is a string.
   Result<std::string_view> AsString() const;
+
+  /// \brief Provide a human-readable summary of the value
+  std::string Format() const;
 
  private:
   Value value_;
@@ -623,26 +624,3 @@ class Driver {
 };
 
 }  // namespace adbc::driver
-
-/// \brief Formatter for Option values.
-template <>
-struct fmt::formatter<adbc::driver::Option> : fmt::nested_formatter<std::string_view> {
-  auto format(const adbc::driver::Option& option, fmt::format_context& ctx) const {
-    return write_padded(ctx, [=](auto out) {
-      return std::visit(
-          [&](auto&& value) {
-            using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, adbc::driver::Option::Unset>) {
-              return fmt::format_to(out, "(NULL)");
-            } else if constexpr (std::is_same_v<T, std::string>) {
-              return fmt::format_to(out, "'{}'", value);
-            } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
-              return fmt::format_to(out, "({} bytes)", value.size());
-            } else {
-              return fmt::format_to(out, "{}", value);
-            }
-          },
-          option.value());
-    });
-  }
-};
