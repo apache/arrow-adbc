@@ -17,9 +17,10 @@
 
 #include "driver/framework/catalog.h"
 
-#include <nanoarrow/nanoarrow.h>
+#include <nanoarrow/nanoarrow.hpp>
 
 namespace adbc::driver {
+
 Status AdbcInitConnectionGetInfoSchema(struct ArrowSchema* schema,
                                        struct ArrowArray* array) {
   ArrowSchemaInit(schema);
@@ -260,4 +261,35 @@ Status AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema) {
 
   return status::Ok();
 }
+
+Status AdbcGetInfo(std::vector<InfoValue> infos, struct ArrowArrayStream* out) {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+
+  UNWRAP_STATUS(AdbcInitConnectionGetInfoSchema(schema.get(), array.get()));
+
+  for (const auto& info : infos) {
+    UNWRAP_STATUS(std::visit(
+        [&](auto&& value) -> Status {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, std::string>) {
+            return AdbcConnectionGetInfoAppendString(array.get(), info.code, value);
+          } else if constexpr (std::is_same_v<T, int64_t>) {
+            return AdbcConnectionGetInfoAppendInt(array.get(), info.code, value);
+          } else {
+            static_assert(!sizeof(T), "info value type not implemented");
+          }
+          return status::Ok();
+        },
+        info.value));
+    UNWRAP_ERRNO(Internal, ArrowArrayFinishElement(array.get()));
+  }
+
+  struct ArrowError na_error = {0};
+  UNWRAP_NANOARROW(na_error, Internal,
+                   ArrowArrayFinishBuildingDefault(array.get(), &na_error));
+  nanoarrow::VectorArrayStream(schema.get(), array.get()).ToArrayStream(out);
+  return status::Ok();
+}
+
 }  // namespace adbc::driver

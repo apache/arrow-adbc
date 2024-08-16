@@ -142,6 +142,8 @@ struct InfoValue {
       : code(code), value(std::move(value)) {}
 };
 
+Status AdbcGetInfo(std::vector<InfoValue> infos, struct ArrowArrayStream* out);
+
 Status AdbcInitConnectionGetInfoSchema(struct ArrowSchema* schema,
                                        struct ArrowArray* array);
 Status AdbcConnectionGetInfoAppendString(struct ArrowArray* array, uint32_t info_code,

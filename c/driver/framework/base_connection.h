@@ -90,34 +90,8 @@ class ConnectionBase : public ObjectBase {
 
     std::vector<uint32_t> codes(info_codes, info_codes + info_codes_length);
     RAISE_RESULT(error, auto infos, impl().InfoImpl(codes));
-
-    nanoarrow::UniqueSchema schema;
-    nanoarrow::UniqueArray array;
-    RAISE_STATUS(error, AdbcInitConnectionGetInfoSchema(schema.get(), array.get()));
-
-    for (const auto& info : infos) {
-      RAISE_STATUS(
-          error,
-          std::visit(
-              [&](auto&& value) -> Status {
-                using T = std::decay_t<decltype(value)>;
-                if constexpr (std::is_same_v<T, std::string>) {
-                  return AdbcConnectionGetInfoAppendString(array.get(), info.code, value);
-                } else if constexpr (std::is_same_v<T, int64_t>) {
-                  return AdbcConnectionGetInfoAppendInt(array.get(), info.code, value);
-                } else {
-                  static_assert(!sizeof(T), "info value type not implemented");
-                }
-                return status::Ok();
-              },
-              info.value));
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(array.get()), error);
-    }
-
-    struct ArrowError na_error = {0};
-    CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array.get(), &na_error),
-                    &na_error, error);
-    return BatchToArrayStream(array.get(), schema.get(), out, error);
+    RAISE_STATUS(error, AdbcGetInfo(infos, out));
+    return ADBC_STATUS_OK;
   }
 
   /// \internal
