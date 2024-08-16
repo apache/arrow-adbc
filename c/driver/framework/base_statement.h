@@ -25,42 +25,10 @@
 #include <variant>
 #include <vector>
 
-#include "driver/common/options.h"
 #include "driver/framework/base_driver.h"
 #include "driver/framework/status.h"
 
 namespace adbc::driver {
-
-/// One-value ArrowArrayStream used to unify the implementations of Bind
-struct OneValueStream {
-  struct ArrowSchema schema;
-  struct ArrowArray array;
-
-  static int GetSchema(struct ArrowArrayStream* self, struct ArrowSchema* out) {
-    OneValueStream* stream = static_cast<OneValueStream*>(self->private_data);
-    return ArrowSchemaDeepCopy(&stream->schema, out);
-  }
-  static int GetNext(struct ArrowArrayStream* self, struct ArrowArray* out) {
-    OneValueStream* stream = static_cast<OneValueStream*>(self->private_data);
-    *out = stream->array;
-    stream->array.release = nullptr;
-    return 0;
-  }
-  static const char* GetLastError(struct ArrowArrayStream* self) { return NULL; }
-  static void Release(struct ArrowArrayStream* self) {
-    OneValueStream* stream = static_cast<OneValueStream*>(self->private_data);
-    if (stream->schema.release) {
-      stream->schema.release(&stream->schema);
-      stream->schema.release = nullptr;
-    }
-    if (stream->array.release) {
-      stream->array.release(&stream->array);
-      stream->array.release = nullptr;
-    }
-    delete stream;
-    self->release = nullptr;
-  }
-};
 
 /// \brief A base implementation of a statement.
 template <typename Derived>
@@ -119,14 +87,7 @@ class StatementBase : public ObjectBase {
           .ToAdbc(error);
     }
     if (bind_parameters_.release) bind_parameters_.release(&bind_parameters_);
-    // Make a one-value stream
-    bind_parameters_.private_data = new OneValueStream{*schema, *values};
-    bind_parameters_.get_schema = &OneValueStream::GetSchema;
-    bind_parameters_.get_next = &OneValueStream::GetNext;
-    bind_parameters_.get_last_error = &OneValueStream::GetLastError;
-    bind_parameters_.release = &OneValueStream::Release;
-    std::memset(values, 0, sizeof(*values));
-    std::memset(schema, 0, sizeof(*schema));
+    AdbcMakeArrayStream(schema, values, &bind_parameters_);
     return ADBC_STATUS_OK;
   }
 

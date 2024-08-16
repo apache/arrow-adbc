@@ -30,7 +30,6 @@
 
 #include <arrow-adbc/adbc.h>
 
-#include "driver/common/utils.h"
 #include "driver/framework/status.h"
 
 /// \file base.h ADBC Driver Framework

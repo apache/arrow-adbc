@@ -21,6 +21,11 @@
 
 namespace adbc::driver {
 
+void AdbcMakeArrayStream(struct ArrowSchema* schema, struct ArrowArray* array,
+                         struct ArrowArrayStream* out) {
+  nanoarrow::VectorArrayStream(schema, array).ToArrayStream(out);
+}
+
 Status AdbcInitConnectionGetInfoSchema(struct ArrowSchema* schema,
                                        struct ArrowArray* array) {
   ArrowSchemaInit(schema);
