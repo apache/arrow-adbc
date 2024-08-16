@@ -361,7 +361,7 @@ class ConnectionBase : public ObjectBase {
       return status::Ok();
     }
     return status::NotImplemented(Derived::kErrorPrefix, " Unknown connection option ",
-                                  key, "='", value.Format(), "'");
+                                  key, "=", value.Format());
   }
 
   Status ToggleAutocommitImpl(bool enable_autocommit) {

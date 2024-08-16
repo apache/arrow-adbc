@@ -73,12 +73,12 @@ Result<std::string_view> Option::AsString() const {
 
 std::string Option::Format() const {
   return std::visit(
-      [&](auto&& value) -> std::string {
+      [&](auto&& value) {
         using T = std::decay_t<decltype(value)>;
         if constexpr (std::is_same_v<T, adbc::driver::Option::Unset>) {
-          return "(NULL)";
+          return std::string("(NULL)");
         } else if constexpr (std::is_same_v<T, std::string>) {
-          return value;
+          return std::string("'") + value + "'";
         } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
           return std::string("(") + std::to_string(value.size()) + " bytes)";
         } else {

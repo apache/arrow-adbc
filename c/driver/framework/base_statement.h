@@ -398,7 +398,7 @@ class StatementBase : public ObjectBase {
 
   Status SetOptionImpl(std::string_view key, Option value) {
     return status::NotImplemented(Derived::kErrorPrefix, " Unknown statement option ",
-                                  key, "='", value.Format(), "'");
+                                  key, "=", value.Format());
   }
 
  protected:
