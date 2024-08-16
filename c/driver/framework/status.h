@@ -27,7 +27,7 @@
 #include <vector>
 
 #if defined(ADBC_FRAMEWORK_USE_FMT)
-#include "<fmt/core.h>"
+#include <fmt/core.h>
 #endif
 
 #include <arrow-adbc/adbc.h>

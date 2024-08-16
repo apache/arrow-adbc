@@ -23,6 +23,7 @@
 #include <sqlite3.h>
 #include <nanoarrow/nanoarrow.hpp>
 
+#define ADBC_FRAMEWORK_USE_FMT
 #include "driver/common/options.h"
 #include "driver/common/utils.h"
 #include "driver/framework/base_connection.h"
@@ -112,7 +113,7 @@ class SqliteStringBuilder {
       } else if (rc == SQLITE_TOOBIG) {
         return status::Internal("query too long");
       } else if (rc != SQLITE_OK) {
-        return status::Internal("unknown SQLite error ({})", rc);
+        return status::fmt::Internal("unknown SQLite error ({})", rc);
       }
       len = sqlite3_str_length(str_);
       result_ = sqlite3_str_finish(str_);
@@ -142,7 +143,7 @@ class SqliteQuery {
 
   Result<bool> Next() {
     if (!stmt_) {
-      return status::Internal(
+      return status::fmt::Internal(
           "query already finished or never initialized\nquery was: {}", query_);
     }
     int rc = sqlite3_step(stmt_);
@@ -159,12 +160,12 @@ class SqliteQuery {
       int rc = sqlite3_finalize(stmt_);
       stmt_ = nullptr;
       if (rc != SQLITE_OK && rc != SQLITE_DONE) {
-        return status::Internal("failed to execute: {}\nquery was: {}",
-                                sqlite3_errmsg(conn_), query_);
+        return status::fmt::Internal("failed to execute: {}\nquery was: {}",
+                                     sqlite3_errmsg(conn_), query_);
       }
     } else if (rc != SQLITE_OK) {
-      return status::Internal("failed to execute: {}\nquery was: {}",
-                              sqlite3_errmsg(conn_), query_);
+      return status::fmt::Internal("failed to execute: {}\nquery was: {}",
+                                   sqlite3_errmsg(conn_), query_);
     }
     return status::Ok();
   }
@@ -513,9 +514,9 @@ class SqliteDatabase : public driver::DatabaseBase<SqliteDatabase> {
     if (rc != SQLITE_OK) {
       Status status;
       if (conn_) {
-        status = status::IO("failed to open '{}': {}", uri_, sqlite3_errmsg(conn));
+        status = status::fmt::IO("failed to open '{}': {}", uri_, sqlite3_errmsg(conn));
       } else {
-        status = status::IO("failed to open '{}': failed to allocate memory", uri_);
+        status = status::fmt::IO("failed to open '{}': failed to allocate memory", uri_);
       }
       (void)sqlite3_close(conn);
       return status;
@@ -532,8 +533,8 @@ class SqliteDatabase : public driver::DatabaseBase<SqliteDatabase> {
     if (conn_) {
       int rc = sqlite3_close_v2(conn_);
       if (rc != SQLITE_OK) {
-        return status::IO("failed to close connection: ({}) {}", rc,
-                          sqlite3_errmsg(conn_));
+        return status::fmt::IO("failed to close connection: ({}) {}", rc,
+                               sqlite3_errmsg(conn_));
       }
       conn_ = nullptr;
     }
@@ -594,7 +595,7 @@ class SqliteConnection : public driver::ConnectionBase<SqliteConnection> {
                            /*pzTail=*/nullptr);
     if (rc != SQLITE_OK) {
       (void)sqlite3_finalize(stmt);
-      return status::NotFound("GetTableSchema: {}", sqlite3_errmsg(conn_));
+      return status::fmt::NotFound("GetTableSchema: {}", sqlite3_errmsg(conn_));
     }
 
     nanoarrow::UniqueArrayStream stream;
@@ -606,7 +607,8 @@ class SqliteConnection : public driver::ConnectionBase<SqliteConnection> {
       int code = stream->get_schema(stream.get(), schema);
       if (code != 0) {
         (void)sqlite3_finalize(stmt);
-        return status::IO("failed to get schema: ({}) {}", code, std::strerror(code));
+        return status::fmt::IO("failed to get schema: ({}) {}", code,
+                               std::strerror(code));
       }
     }
     (void)sqlite3_finalize(stmt);
@@ -665,8 +667,8 @@ class SqliteConnection : public driver::ConnectionBase<SqliteConnection> {
     if (conn_) {
       int rc = sqlite3_close_v2(conn_);
       if (rc != SQLITE_OK) {
-        return status::IO("failed to close connection: ({}) {}", rc,
-                          sqlite3_errmsg(conn_));
+        return status::fmt::IO("failed to close connection: ({}) {}", rc,
+                               sqlite3_errmsg(conn_));
       }
       conn_ = nullptr;
     }
@@ -689,7 +691,8 @@ class SqliteConnection : public driver::ConnectionBase<SqliteConnection> {
       int rc = sqlite3_db_config(conn_, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION,
                                  enabled ? 1 : 0, nullptr);
       if (rc != SQLITE_OK) {
-        return status::IO("cannot enable extension loading: {}", sqlite3_errmsg(conn_));
+        return status::fmt::IO("cannot enable extension loading: {}",
+                               sqlite3_errmsg(conn_));
       }
       return status::Ok();
     } else if (key == kConnectionOptionLoadExtensionPath) {
@@ -702,9 +705,9 @@ class SqliteConnection : public driver::ConnectionBase<SqliteConnection> {
     } else if (key == kConnectionOptionLoadExtensionEntrypoint) {
 #if !defined(ADBC_SQLITE_WITH_NO_LOAD_EXTENSION)
       if (extension_path_.empty()) {
-        return status::InvalidState("{} can only be set after {}",
-                                    kConnectionOptionLoadExtensionEntrypoint,
-                                    kConnectionOptionLoadExtensionPath);
+        return status::fmt::InvalidState("{} can only be set after {}",
+                                         kConnectionOptionLoadExtensionEntrypoint,
+                                         kConnectionOptionLoadExtensionPath);
       }
       const char* extension_entrypoint = nullptr;
       if (value.has_value()) {
@@ -716,7 +719,7 @@ class SqliteConnection : public driver::ConnectionBase<SqliteConnection> {
       int rc = sqlite3_load_extension(conn_, extension_path_.c_str(),
                                       extension_entrypoint, &message);
       if (rc != SQLITE_OK) {
-        auto status = status::Unknown(
+        auto status = status::fmt::Unknown(
             "failed to load extension {} (entrypoint {}): {}", extension_path_,
             extension_entrypoint ? extension_entrypoint : "(NULL)",
             message ? message : "(unknown error)");
@@ -782,15 +785,15 @@ class SqliteStatement : public driver::StatementBase<SqliteStatement> {
     // Parameter validation
 
     if (state.target_catalog && state.temporary) {
-      return status::InvalidState("{} Cannot set both {} and {}", kErrorPrefix,
-                                  ADBC_INGEST_OPTION_TARGET_CATALOG,
-                                  ADBC_INGEST_OPTION_TEMPORARY);
+      return status::fmt::InvalidState("{} Cannot set both {} and {}", kErrorPrefix,
+                                       ADBC_INGEST_OPTION_TARGET_CATALOG,
+                                       ADBC_INGEST_OPTION_TEMPORARY);
     } else if (state.target_schema) {
-      return status::NotImplemented("{} {} not supported", kErrorPrefix,
-                                    ADBC_INGEST_OPTION_TARGET_DB_SCHEMA);
+      return status::fmt::NotImplemented("{} {} not supported", kErrorPrefix,
+                                         ADBC_INGEST_OPTION_TARGET_DB_SCHEMA);
     } else if (!state.target_table) {
-      return status::InvalidState("{} Must set {}", kErrorPrefix,
-                                  ADBC_INGEST_OPTION_TARGET_TABLE);
+      return status::fmt::InvalidState("{} Must set {}", kErrorPrefix,
+                                       ADBC_INGEST_OPTION_TARGET_TABLE);
     }
 
     // Create statements for creating the table, inserting a row, and the table name
@@ -844,8 +847,9 @@ class SqliteStatement : public driver::StatementBase<SqliteStatement> {
 
       int status = ArrowSchemaViewInit(&view, binder_.schema.children[i], &arrow_error);
       if (status != 0) {
-        return status::Internal("failed to parse schema for column {}: {} ({}): {}", i,
-                                std::strerror(status), status, arrow_error.message);
+        return status::fmt::Internal("failed to parse schema for column {}: {} ({}): {}",
+                                     i, std::strerror(status), status,
+                                     arrow_error.message);
       }
 
       switch (view.type) {
@@ -924,8 +928,8 @@ class SqliteStatement : public driver::StatementBase<SqliteStatement> {
                                   &stmt, /*pzTail=*/nullptr);
       if (rc != SQLITE_OK) {
         std::ignore = sqlite3_finalize(stmt);
-        return status::Internal("failed to prepare: {}\nquery was: {}",
-                                sqlite3_errmsg(conn_), insert);
+        return status::fmt::Internal("failed to prepare: {}\nquery was: {}",
+                                     sqlite3_errmsg(conn_), insert);
       }
     }
     assert(stmt != nullptr);
@@ -972,8 +976,8 @@ class SqliteStatement : public driver::StatementBase<SqliteStatement> {
     const int64_t expected = sqlite3_bind_parameter_count(stmt_);
     const int64_t actual = binder_.schema.n_children;
     if (actual != expected) {
-      return status::InvalidState("parameter count mismatch: expected {} but found {}",
-                                  expected, actual);
+      return status::fmt::InvalidState(
+          "parameter count mismatch: expected {} but found {}", expected, actual);
     }
 
     auto status =
@@ -1000,8 +1004,8 @@ class SqliteStatement : public driver::StatementBase<SqliteStatement> {
     const int64_t expected = sqlite3_bind_parameter_count(stmt_);
     const int64_t actual = binder_.schema.n_children;
     if (actual != expected) {
-      return status::InvalidState("parameter count mismatch: expected {} but found {}",
-                                  expected, actual);
+      return status::fmt::InvalidState(
+          "parameter count mismatch: expected {} but found {}", expected, actual);
     }
 
     int64_t rows = 0;
@@ -1032,7 +1036,8 @@ class SqliteStatement : public driver::StatementBase<SqliteStatement> {
 
     if (sqlite3_reset(stmt_) != SQLITE_OK) {
       const char* msg = sqlite3_errmsg(conn_);
-      return status::IO("failed to execute query: {}", msg ? msg : "(unknown error)");
+      return status::fmt::IO("failed to execute query: {}",
+                             msg ? msg : "(unknown error)");
     }
 
     if (sqlite3_column_count(stmt_) == 0) {
@@ -1052,8 +1057,8 @@ class SqliteStatement : public driver::StatementBase<SqliteStatement> {
     int num_params = sqlite3_bind_parameter_count(stmt_);
     if (num_params < 0) {
       // Should not happen
-      return status::Internal("{} SQLite returned negative parameter count",
-                              kErrorPrefix);
+      return status::fmt::Internal("{} SQLite returned negative parameter count",
+                                   kErrorPrefix);
     }
 
     nanoarrow::UniqueSchema uschema;
@@ -1086,8 +1091,8 @@ class SqliteStatement : public driver::StatementBase<SqliteStatement> {
       int rc = sqlite3_finalize(stmt_);
       stmt_ = nullptr;
       if (rc != SQLITE_OK) {
-        return status::IO("{} Failed to finalize previous statement: ({}) {}",
-                          kErrorPrefix, rc, sqlite3_errmsg(conn_));
+        return status::fmt::IO("{} Failed to finalize previous statement: ({}) {}",
+                               kErrorPrefix, rc, sqlite3_errmsg(conn_));
       }
     }
 
@@ -1098,8 +1103,8 @@ class SqliteStatement : public driver::StatementBase<SqliteStatement> {
       std::string msg = sqlite3_errmsg(conn_);
       std::ignore = sqlite3_finalize(stmt_);
       stmt_ = NULL;
-      return status::InvalidArgument("{} Failed to prepare query: {}\nquery: {}",
-                                     kErrorPrefix, msg, state.query);
+      return status::fmt::InvalidArgument("{} Failed to prepare query: {}\nquery: {}",
+                                          kErrorPrefix, msg, state.query);
     }
     return status::Ok();
   }
@@ -1109,8 +1114,8 @@ class SqliteStatement : public driver::StatementBase<SqliteStatement> {
       int rc = sqlite3_finalize(stmt_);
       stmt_ = nullptr;
       if (rc != SQLITE_OK) {
-        return status::IO("{} Failed to finalize statement: ({}) {}", kErrorPrefix, rc,
-                          sqlite3_errmsg(conn_));
+        return status::fmt::IO("{} Failed to finalize statement: ({}) {}", kErrorPrefix,
+                               rc, sqlite3_errmsg(conn_));
       }
     }
     AdbcSqliteBinderRelease(&binder_);
@@ -1121,7 +1126,7 @@ class SqliteStatement : public driver::StatementBase<SqliteStatement> {
     if (key == kStatementOptionBatchRows) {
       UNWRAP_RESULT(int64_t batch_size, value.AsInt());
       if (batch_size >= std::numeric_limits<int>::max() || batch_size <= 0) {
-        return status::InvalidArgument(
+        return status::fmt::InvalidArgument(
             "{} Invalid statement option value {}={} (value is non-positive or out of "
             "range of int)",
             kErrorPrefix, key, value.Format());

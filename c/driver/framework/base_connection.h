@@ -72,7 +72,7 @@ class ConnectionBase : public ObjectBase {
     switch (autocommit_) {
       case AutocommitState::kAutocommit:
         return status::InvalidState(Derived::kErrorPrefix,
-                                    "{} No active transaction, cannot commit")
+                                    " No active transaction, cannot commit")
             .ToAdbc(error);
       case AutocommitState::kTransaction:
         return impl().CommitImpl().ToAdbc(error);
@@ -211,7 +211,7 @@ class ConnectionBase : public ObjectBase {
                                 AdbcError* error) {
     if (!table_name) {
       return status::InvalidArgument(Derived::kErrorPrefix,
-                                     "{} GetTableSchema: must provide table_name")
+                                     " GetTableSchema: must provide table_name")
           .ToAdbc(error);
     }
     std::memset(schema, 0, sizeof(*schema));
