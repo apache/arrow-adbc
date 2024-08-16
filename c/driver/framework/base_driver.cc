@@ -29,7 +29,7 @@ Result<bool> Option::AsBool() const {
             return false;
           }
         }
-        return status::InvalidArgument("Invalid boolean value ", *this);
+        return status::InvalidArgument("Invalid boolean value ", this->Format());
       },
       value_);
 }
@@ -54,7 +54,7 @@ Result<int64_t> Option::AsInt() const {
           }
           return parsed;
         }
-        return status::InvalidArgument("Invalid integer value ", *this);
+        return status::InvalidArgument("Invalid integer value ", this->Format());
       },
       value_);
 }
@@ -66,7 +66,7 @@ Result<std::string_view> Option::AsString() const {
         if constexpr (std::is_same_v<T, std::string>) {
           return value;
         }
-        return status::InvalidArgument("Invalid string value {}", *this);
+        return status::InvalidArgument("Invalid string value {}", this->Format());
       },
       value_);
 }
