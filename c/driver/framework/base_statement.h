@@ -110,12 +110,12 @@ class StatementBase : public ObjectBase {
 
   AdbcStatusCode Bind(ArrowArray* values, ArrowSchema* schema, AdbcError* error) {
     if (!values || !values->release) {
-      return status::InvalidArgument("{} Bind: must provide non-NULL array",
-                                     Derived::kErrorPrefix)
+      return status::InvalidArgument(Derived::kErrorPrefix,
+                                     " Bind: must provide non-NULL array")
           .ToAdbc(error);
     } else if (!schema || !schema->release) {
-      return status::InvalidArgument("{} Bind: must provide non-NULL stream",
-                                     Derived::kErrorPrefix)
+      return status::InvalidArgument(Derived::kErrorPrefix,
+                                     " Bind: must provide non-NULL stream")
           .ToAdbc(error);
     }
     if (bind_parameters_.release) bind_parameters_.release(&bind_parameters_);
@@ -132,8 +132,8 @@ class StatementBase : public ObjectBase {
 
   AdbcStatusCode BindStream(ArrowArrayStream* stream, AdbcError* error) {
     if (!stream || !stream->release) {
-      return status::InvalidArgument("{} BindStream: must provide non-NULL stream",
-                                     Derived::kErrorPrefix)
+      return status::InvalidArgument(Derived::kErrorPrefix,
+                                     " BindStream: must provide non-NULL stream")
           .ToAdbc(error);
     }
     if (bind_parameters_.release) bind_parameters_.release(&bind_parameters_);
@@ -157,14 +157,13 @@ class StatementBase : public ObjectBase {
         [&](auto&& state) -> AdbcStatusCode {
           using T = std::decay_t<decltype(state)>;
           if constexpr (std::is_same_v<T, EmptyState>) {
-            return status::InvalidState(
-                       "{} Cannot ExecuteQuery without setting the query",
-                       Derived::kErrorPrefix)
+            return status::InvalidState(Derived::kErrorPrefix,
+                                        " Cannot ExecuteQuery without setting the query")
                 .ToAdbc(error);
           } else if constexpr (std::is_same_v<T, IngestState>) {
             if (stream) {
-              return status::InvalidState("{} Cannot ingest with result set",
-                                          Derived::kErrorPrefix)
+              return status::InvalidState(Derived::kErrorPrefix,
+                                          " Cannot ingest with result set")
                   .ToAdbc(error);
             }
             RAISE_RESULT(error, int64_t rows, impl().ExecuteIngestImpl(state));
@@ -201,19 +200,19 @@ class StatementBase : public ObjectBase {
           using T = std::decay_t<decltype(state)>;
           if constexpr (std::is_same_v<T, EmptyState>) {
             return status::InvalidState(
-                       "{} Cannot GetParameterSchema without setting the query",
-                       Derived::kErrorPrefix)
+                       Derived::kErrorPrefix,
+                       " Cannot GetParameterSchema without setting the query")
                 .ToAdbc(error);
           } else if constexpr (std::is_same_v<T, IngestState>) {
-            return status::InvalidState("{} Cannot GetParameterSchema in bulk ingestion",
-                                        Derived::kErrorPrefix)
+            return status::InvalidState(Derived::kErrorPrefix,
+                                        " Cannot GetParameterSchema in bulk ingestion")
                 .ToAdbc(error);
           } else if constexpr (std::is_same_v<T, PreparedState>) {
             return impl().GetParameterSchemaImpl(state, schema).ToAdbc(error);
           } else if constexpr (std::is_same_v<T, QueryState>) {
             return status::InvalidState(
-                       "{} Cannot GetParameterSchema without calling Prepare",
-                       Derived::kErrorPrefix)
+                       Derived::kErrorPrefix,
+                       " Cannot GetParameterSchema without calling Prepare")
                 .ToAdbc(error);
           } else {
             static_assert(!sizeof(T), "case not implemented");
@@ -236,12 +235,12 @@ class StatementBase : public ObjectBase {
                               using T = std::decay_t<decltype(state)>;
                               if constexpr (std::is_same_v<T, EmptyState>) {
                                 return status::InvalidState(
-                                    "{} Cannot Prepare without setting the query",
-                                    Derived::kErrorPrefix);
+                                    Derived::kErrorPrefix,
+                                    " Cannot Prepare without setting the query");
                               } else if constexpr (std::is_same_v<T, IngestState>) {
                                 return status::InvalidState(
-                                    "{} Cannot Prepare without setting the query",
-                                    Derived::kErrorPrefix);
+                                    Derived::kErrorPrefix,
+                                    " Cannot Prepare without setting the query");
                               } else if constexpr (std::is_same_v<T, PreparedState>) {
                                 // No-op
                                 return status::Ok();
@@ -291,8 +290,8 @@ class StatementBase : public ObjectBase {
         state.table_does_not_exist_ = TableDoesNotExist::kCreate;
         state.table_exists_ = TableExists::kReplace;
       } else {
-        return status::InvalidArgument("{} Invalid ingest mode '{}'",
-                                       Derived::kErrorPrefix, key, value)
+        return status::InvalidArgument(Derived::kErrorPrefix, " Invalid ingest mode '",
+                                       key, "': ", value.Format())
             .ToAdbc(error);
       }
       return ADBC_STATUS_OK;
@@ -360,46 +359,46 @@ class StatementBase : public ObjectBase {
   }
 
   Result<int64_t> ExecuteIngestImpl(IngestState& state) {
-    return status::NotImplemented("{} Bulk ingest is not implemented",
-                                  Derived::kErrorPrefix);
+    return status::NotImplemented(Derived::kErrorPrefix,
+                                  " Bulk ingest is not implemented");
   }
 
   Result<int64_t> ExecuteQueryImpl(PreparedState& state, ArrowArrayStream* stream) {
-    return status::NotImplemented("{} ExecuteQuery is not implemented",
-                                  Derived::kErrorPrefix);
+    return status::NotImplemented(Derived::kErrorPrefix,
+                                  " ExecuteQuery is not implemented");
   }
 
   Result<int64_t> ExecuteQueryImpl(QueryState& state, ArrowArrayStream* stream) {
-    return status::NotImplemented("{} ExecuteQuery is not implemented",
-                                  Derived::kErrorPrefix);
+    return status::NotImplemented(Derived::kErrorPrefix,
+                                  " ExecuteQuery is not implemented");
   }
 
   Result<int64_t> ExecuteUpdateImpl(PreparedState& state) {
-    return status::NotImplemented("{} ExecuteQuery (update) is not implemented",
-                                  Derived::kErrorPrefix);
+    return status::NotImplemented(Derived::kErrorPrefix,
+                                  " ExecuteQuery (update) is not implemented");
   }
 
   Result<int64_t> ExecuteUpdateImpl(QueryState& state) {
-    return status::NotImplemented("{} ExecuteQuery (update) is not implemented",
-                                  Derived::kErrorPrefix);
+    return status::NotImplemented(Derived::kErrorPrefix,
+                                  " ExecuteQuery (update) is not implemented");
   }
 
   Status GetParameterSchemaImpl(PreparedState& state, ArrowSchema* schema) {
-    return status::NotImplemented("{} GetParameterSchema is not implemented",
-                                  Derived::kErrorPrefix);
+    return status::NotImplemented(Derived::kErrorPrefix,
+                                  " GetParameterSchema is not implemented");
   }
 
   Status InitImpl(void* parent) { return status::Ok(); }
 
   Status PrepareImpl(QueryState& state) {
-    return status::NotImplemented("{} Prepare is not implemented", Derived::kErrorPrefix);
+    return status::NotImplemented(Derived::kErrorPrefix, " Prepare is not implemented");
   }
 
   Status ReleaseImpl() { return status::Ok(); }
 
   Status SetOptionImpl(std::string_view key, Option value) {
-    return status::NotImplemented("{} Unknown statement option {}={}",
-                                  Derived::kErrorPrefix, key, value);
+    return status::NotImplemented(Derived::kErrorPrefix, " Unknown statement option ",
+                                  key, "=", value.Format());
   }
 
  protected:

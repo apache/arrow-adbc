@@ -1124,7 +1124,7 @@ class SqliteStatement : public driver::StatementBase<SqliteStatement> {
         return status::InvalidArgument(
             "{} Invalid statement option value {}={} (value is non-positive or out of "
             "range of int)",
-            kErrorPrefix, key, value);
+            kErrorPrefix, key, value.Format());
       }
       batch_size_ = static_cast<int>(batch_size);
       return status::Ok();

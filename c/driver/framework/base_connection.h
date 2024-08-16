@@ -71,8 +71,8 @@ class ConnectionBase : public ObjectBase {
   AdbcStatusCode Commit(AdbcError* error) {
     switch (autocommit_) {
       case AutocommitState::kAutocommit:
-        return status::InvalidState("{} No active transaction, cannot commit",
-                                    Derived::kErrorPrefix)
+        return status::InvalidState(Derived::kErrorPrefix,
+                                    "{} No active transaction, cannot commit")
             .ToAdbc(error);
       case AutocommitState::kTransaction:
         return impl().CommitImpl().ToAdbc(error);
@@ -152,8 +152,8 @@ class ConnectionBase : public ObjectBase {
         depth = GetObjectsDepth::kTables;
         break;
       default:
-        return status::InvalidArgument("{} GetObjects: invalid depth {}",
-                                       Derived::kErrorPrefix, c_depth)
+        return status::InvalidArgument(Derived::kErrorPrefix,
+                                       " GetObjects: invalid depth ", c_depth)
             .ToAdbc(error);
     }
 
@@ -210,8 +210,8 @@ class ConnectionBase : public ObjectBase {
                                 const char* table_name, ArrowSchema* schema,
                                 AdbcError* error) {
     if (!table_name) {
-      return status::InvalidArgument("{} GetTableSchema: must provide table_name",
-                                     Derived::kErrorPrefix)
+      return status::InvalidArgument(Derived::kErrorPrefix,
+                                     "{} GetTableSchema: must provide table_name")
           .ToAdbc(error);
     }
     std::memset(schema, 0, sizeof(*schema));
@@ -276,8 +276,8 @@ class ConnectionBase : public ObjectBase {
   AdbcStatusCode Rollback(AdbcError* error) {
     switch (autocommit_) {
       case AutocommitState::kAutocommit:
-        return status::InvalidState("{} No active transaction, cannot rollback",
-                                    Derived::kErrorPrefix)
+        return status::InvalidState(Derived::kErrorPrefix,
+                                    " No active transaction, cannot rollback")
             .ToAdbc(error);
       case AutocommitState::kTransaction:
         return impl().RollbackImpl().ToAdbc(error);
@@ -352,12 +352,12 @@ class ConnectionBase : public ObjectBase {
       }
       return status::Ok();
     }
-    return status::NotImplemented("{} Unknown connection option {}={}",
-                                  Derived::kErrorPrefix, key, value);
+    return status::NotImplemented(Derived::kErrorPrefix, " Unknown connection option ",
+                                  key, value.Format());
   }
 
   Status ToggleAutocommitImpl(bool enable_autocommit) {
-    return status::NotImplemented("{} Cannot change autocommit", Derived::kErrorPrefix);
+    return status::NotImplemented(Derived::kErrorPrefix, " Cannot change autocommit");
   }
 
  protected:
