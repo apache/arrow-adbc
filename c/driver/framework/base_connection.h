@@ -25,11 +25,7 @@
 #include <vector>
 
 #include <arrow-adbc/adbc.h>
-#include <nanoarrow/nanoarrow.h>
-#include <nanoarrow/nanoarrow.hpp>
 
-#include "driver/common/options.h"
-#include "driver/common/utils.h"
 #include "driver/framework/base_driver.h"
 #include "driver/framework/catalog.h"
 #include "driver/framework/objects.h"
@@ -136,14 +132,11 @@ class ConnectionBase : public ObjectBase {
     }
 
     RAISE_RESULT(error, auto helper, impl().GetObjectsImpl());
-    nanoarrow::UniqueSchema schema;
-    nanoarrow::UniqueArray array;
-    auto status =
-        BuildGetObjects(helper.get(), depth, catalog_filter, schema_filter, table_filter,
-                        column_filter, table_type_filter, schema.get(), array.get());
+    auto status = BuildGetObjects(helper.get(), depth, catalog_filter, schema_filter,
+                                  table_filter, column_filter, table_type_filter, out);
     RAISE_STATUS(error, helper->Close());
     RAISE_STATUS(error, status);
-    return BatchToArrayStream(array.get(), schema.get(), out, error);
+    return ADBC_STATUS_OK;
   }
 
   /// \internal
