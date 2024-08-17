@@ -19,7 +19,10 @@ RoxygenNote: 7.2.3
 SystemRequirements: SQLite3
 Suggests:
     nanoarrow,
+    adbi,
+    DBItest,
     testthat (>= 3.0.0)
+Config/needs/check: bit64
 Config/testthat/edition: 3
 Config/build/bootstrap: TRUE
 URL: https://github.com/apache/arrow-adbc, https://arrow.apache.org/adbc/current/r/adbcsqlite/
