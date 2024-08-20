@@ -19,6 +19,8 @@
 
 #include <string_view>
 
+#include "nanoarrow/nanoarrow.hpp"
+
 #include "driver/framework/catalog.h"
 #include "driver/framework/status.h"
 
@@ -356,9 +358,14 @@ Status BuildGetObjects(GetObjectsHelper* helper, GetObjectsDepth depth,
                        std::optional<std::string_view> table_filter,
                        std::optional<std::string_view> column_filter,
                        const std::vector<std::string_view>& table_types,
-                       struct ArrowSchema* schema, struct ArrowArray* array) {
-  return GetObjectsBuilder(helper, depth, catalog_filter, schema_filter, table_filter,
-                           column_filter, table_types, schema, array)
-      .Build();
+                       struct ArrowArrayStream* out) {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  UNWRAP_STATUS(GetObjectsBuilder(helper, depth, catalog_filter, schema_filter,
+                                  table_filter, column_filter, table_types, schema.get(),
+                                  array.get())
+                    .Build());
+  nanoarrow::VectorArrayStream(schema.get(), array.get()).ToArrayStream(out);
+  return status::Ok();
 }
 }  // namespace adbc::driver

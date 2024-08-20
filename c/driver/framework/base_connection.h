@@ -25,11 +25,7 @@
 #include <vector>
 
 #include <arrow-adbc/adbc.h>
-#include <nanoarrow/nanoarrow.h>
-#include <nanoarrow/nanoarrow.hpp>
 
-#include "driver/common/options.h"
-#include "driver/common/utils.h"
 #include "driver/framework/base_driver.h"
 #include "driver/framework/catalog.h"
 #include "driver/framework/objects.h"
@@ -71,8 +67,8 @@ class ConnectionBase : public ObjectBase {
   AdbcStatusCode Commit(AdbcError* error) {
     switch (autocommit_) {
       case AutocommitState::kAutocommit:
-        return status::InvalidState("{} No active transaction, cannot commit",
-                                    Derived::kErrorPrefix)
+        return status::InvalidState(Derived::kErrorPrefix,
+                                    " No active transaction, cannot commit")
             .ToAdbc(error);
       case AutocommitState::kTransaction:
         return impl().CommitImpl().ToAdbc(error);
@@ -84,36 +80,14 @@ class ConnectionBase : public ObjectBase {
   /// \internal
   AdbcStatusCode GetInfo(const uint32_t* info_codes, size_t info_codes_length,
                          ArrowArrayStream* out, AdbcError* error) {
-    std::vector<uint32_t> codes(info_codes, info_codes + info_codes_length);
-    RAISE_RESULT(error, auto infos, impl().InfoImpl(codes));
-
-    nanoarrow::UniqueSchema schema;
-    nanoarrow::UniqueArray array;
-    RAISE_STATUS(error, AdbcInitConnectionGetInfoSchema(schema.get(), array.get()));
-
-    for (const auto& info : infos) {
-      RAISE_STATUS(
-          error,
-          std::visit(
-              [&](auto&& value) -> Status {
-                using T = std::decay_t<decltype(value)>;
-                if constexpr (std::is_same_v<T, std::string>) {
-                  return AdbcConnectionGetInfoAppendString(array.get(), info.code, value);
-                } else if constexpr (std::is_same_v<T, int64_t>) {
-                  return AdbcConnectionGetInfoAppendInt(array.get(), info.code, value);
-                } else {
-                  static_assert(!sizeof(T), "info value type not implemented");
-                }
-                return status::Ok();
-              },
-              info.value));
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(array.get()), error);
+    if (!out) {
+      RAISE_STATUS(error, status::InvalidArgument("out must be non-null"));
     }
 
-    struct ArrowError na_error = {0};
-    CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array.get(), &na_error),
-                    &na_error, error);
-    return BatchToArrayStream(array.get(), schema.get(), out, error);
+    std::vector<uint32_t> codes(info_codes, info_codes + info_codes_length);
+    RAISE_RESULT(error, auto infos, impl().InfoImpl(codes));
+    RAISE_STATUS(error, AdbcGetInfo(infos, out));
+    return ADBC_STATUS_OK;
   }
 
   /// \internal
@@ -152,20 +126,17 @@ class ConnectionBase : public ObjectBase {
         depth = GetObjectsDepth::kTables;
         break;
       default:
-        return status::InvalidArgument("{} GetObjects: invalid depth {}",
-                                       Derived::kErrorPrefix, c_depth)
+        return status::InvalidArgument(Derived::kErrorPrefix,
+                                       " GetObjects: invalid depth ", c_depth)
             .ToAdbc(error);
     }
 
     RAISE_RESULT(error, auto helper, impl().GetObjectsImpl());
-    nanoarrow::UniqueSchema schema;
-    nanoarrow::UniqueArray array;
-    auto status =
-        BuildGetObjects(helper.get(), depth, catalog_filter, schema_filter, table_filter,
-                        column_filter, table_type_filter, schema.get(), array.get());
+    auto status = BuildGetObjects(helper.get(), depth, catalog_filter, schema_filter,
+                                  table_filter, column_filter, table_type_filter, out);
     RAISE_STATUS(error, helper->Close());
     RAISE_STATUS(error, status);
-    return BatchToArrayStream(array.get(), schema.get(), out, error);
+    return ADBC_STATUS_OK;
   }
 
   /// \internal
@@ -210,8 +181,8 @@ class ConnectionBase : public ObjectBase {
                                 const char* table_name, ArrowSchema* schema,
                                 AdbcError* error) {
     if (!table_name) {
-      return status::InvalidArgument("{} GetTableSchema: must provide table_name",
-                                     Derived::kErrorPrefix)
+      return status::InvalidArgument(Derived::kErrorPrefix,
+                                     " GetTableSchema: must provide table_name")
           .ToAdbc(error);
     }
     std::memset(schema, 0, sizeof(*schema));
@@ -228,36 +199,13 @@ class ConnectionBase : public ObjectBase {
 
   /// \internal
   AdbcStatusCode GetTableTypes(ArrowArrayStream* out, AdbcError* error) {
-    RAISE_RESULT(error, std::vector<std::string> table_types, impl().GetTableTypesImpl());
-
-    nanoarrow::UniqueArray array;
-    nanoarrow::UniqueSchema schema;
-    ArrowSchemaInit(schema.get());
-
-    CHECK_NA(INTERNAL, ArrowSchemaSetType(schema.get(), NANOARROW_TYPE_STRUCT), error);
-    CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(schema.get(), /*num_columns=*/1),
-             error);
-    ArrowSchemaInit(schema.get()->children[0]);
-    CHECK_NA(INTERNAL,
-             ArrowSchemaSetType(schema.get()->children[0], NANOARROW_TYPE_STRING), error);
-    CHECK_NA(INTERNAL, ArrowSchemaSetName(schema.get()->children[0], "table_type"),
-             error);
-    schema.get()->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
-
-    CHECK_NA(INTERNAL, ArrowArrayInitFromSchema(array.get(), schema.get(), NULL), error);
-    CHECK_NA(INTERNAL, ArrowArrayStartAppending(array.get()), error);
-
-    for (std::string const& table_type : table_types) {
-      CHECK_NA(
-          INTERNAL,
-          ArrowArrayAppendString(array->children[0], ArrowCharView(table_type.c_str())),
-          error);
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(array.get()), error);
+    if (!out) {
+      RAISE_STATUS(error, status::InvalidArgument("out must be non-null"));
     }
 
-    CHECK_NA(INTERNAL, ArrowArrayFinishBuildingDefault(array.get(), NULL), error);
-
-    return BatchToArrayStream(array.get(), schema.get(), out, error);
+    RAISE_RESULT(error, std::vector<std::string> table_types, impl().GetTableTypesImpl());
+    RAISE_STATUS(error, AdbcGetTableTypes(table_types, out));
+    return ADBC_STATUS_OK;
   }
 
   /// \internal
@@ -276,8 +224,8 @@ class ConnectionBase : public ObjectBase {
   AdbcStatusCode Rollback(AdbcError* error) {
     switch (autocommit_) {
       case AutocommitState::kAutocommit:
-        return status::InvalidState("{} No active transaction, cannot rollback",
-                                    Derived::kErrorPrefix)
+        return status::InvalidState(Derived::kErrorPrefix,
+                                    " No active transaction, cannot rollback")
             .ToAdbc(error);
       case AutocommitState::kTransaction:
         return impl().RollbackImpl().ToAdbc(error);
@@ -352,12 +300,12 @@ class ConnectionBase : public ObjectBase {
       }
       return status::Ok();
     }
-    return status::NotImplemented("{} Unknown connection option {}={}",
-                                  Derived::kErrorPrefix, key, value);
+    return status::NotImplemented(Derived::kErrorPrefix, " Unknown connection option ",
+                                  key, "=", value.Format());
   }
 
   Status ToggleAutocommitImpl(bool enable_autocommit) {
-    return status::NotImplemented("{} Cannot change autocommit", Derived::kErrorPrefix);
+    return status::NotImplemented(Derived::kErrorPrefix, " Cannot change autocommit");
   }
 
  protected:

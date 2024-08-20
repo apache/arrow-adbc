@@ -17,9 +17,15 @@
 
 #include "driver/framework/catalog.h"
 
-#include <nanoarrow/nanoarrow.h>
+#include <nanoarrow/nanoarrow.hpp>
 
 namespace adbc::driver {
+
+void AdbcMakeArrayStream(struct ArrowSchema* schema, struct ArrowArray* array,
+                         struct ArrowArrayStream* out) {
+  nanoarrow::VectorArrayStream(schema, array).ToArrayStream(out);
+}
+
 Status AdbcInitConnectionGetInfoSchema(struct ArrowSchema* schema,
                                        struct ArrowArray* array) {
   ArrowSchemaInit(schema);
@@ -260,4 +266,63 @@ Status AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema) {
 
   return status::Ok();
 }
+
+Status AdbcGetInfo(std::vector<InfoValue> infos, struct ArrowArrayStream* out) {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+
+  UNWRAP_STATUS(AdbcInitConnectionGetInfoSchema(schema.get(), array.get()));
+
+  for (const auto& info : infos) {
+    UNWRAP_STATUS(std::visit(
+        [&](auto&& value) -> Status {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, std::string>) {
+            return AdbcConnectionGetInfoAppendString(array.get(), info.code, value);
+          } else if constexpr (std::is_same_v<T, int64_t>) {
+            return AdbcConnectionGetInfoAppendInt(array.get(), info.code, value);
+          } else {
+            static_assert(!sizeof(T), "info value type not implemented");
+          }
+          return status::Ok();
+        },
+        info.value));
+    UNWRAP_ERRNO(Internal, ArrowArrayFinishElement(array.get()));
+  }
+
+  struct ArrowError na_error = {0};
+  UNWRAP_NANOARROW(na_error, Internal,
+                   ArrowArrayFinishBuildingDefault(array.get(), &na_error));
+  nanoarrow::VectorArrayStream(schema.get(), array.get()).ToArrayStream(out);
+  return status::Ok();
+}
+
+Status AdbcGetTableTypes(const std::vector<std::string>& table_types,
+                         struct ArrowArrayStream* out) {
+  nanoarrow::UniqueArray array;
+  nanoarrow::UniqueSchema schema;
+  ArrowSchemaInit(schema.get());
+
+  UNWRAP_ERRNO(Internal, ArrowSchemaSetType(schema.get(), NANOARROW_TYPE_STRUCT));
+  UNWRAP_ERRNO(Internal, ArrowSchemaAllocateChildren(schema.get(), /*num_columns=*/1));
+  ArrowSchemaInit(schema.get()->children[0]);
+  UNWRAP_ERRNO(Internal,
+               ArrowSchemaSetType(schema.get()->children[0], NANOARROW_TYPE_STRING));
+  UNWRAP_ERRNO(Internal, ArrowSchemaSetName(schema.get()->children[0], "table_type"));
+  schema.get()->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+
+  UNWRAP_ERRNO(Internal, ArrowArrayInitFromSchema(array.get(), schema.get(), NULL));
+  UNWRAP_ERRNO(Internal, ArrowArrayStartAppending(array.get()));
+
+  for (std::string const& table_type : table_types) {
+    UNWRAP_ERRNO(Internal, ArrowArrayAppendString(array->children[0],
+                                                  ArrowCharView(table_type.c_str())));
+    UNWRAP_ERRNO(Internal, ArrowArrayFinishElement(array.get()));
+  }
+
+  UNWRAP_ERRNO(Internal, ArrowArrayFinishBuildingDefault(array.get(), nullptr));
+  nanoarrow::VectorArrayStream(schema.get(), array.get()).ToArrayStream(out);
+  return status::Ok();
+}
+
 }  // namespace adbc::driver

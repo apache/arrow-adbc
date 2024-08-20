@@ -68,8 +68,8 @@ class DatabaseBase : public ObjectBase {
 
   /// \brief Set an option.  May be called prior to InitImpl.
   virtual Status SetOptionImpl(std::string_view key, Option value) {
-    return status::NotImplemented("{} Unknown database option {}={}",
-                                  Derived::kErrorPrefix, key, value);
+    return status::NotImplemented(Derived::kErrorPrefix, " Unknown database option ", key,
+                                  "=", value.Format());
   }
 
  private:

@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "nanoarrow.h"
+#include "nanoarrow/nanoarrow.h"
 
 #ifndef NANOARROW_HPP_INCLUDED
 #define NANOARROW_HPP_INCLUDED
@@ -81,6 +81,23 @@ class Exception : public std::exception {
                                #EXPR)
 
 /// @}
+
+namespace literals {
+
+/// \defgroup nanoarrow_hpp-string_view_helpers ArrowStringView helpers
+///
+/// Factories and equality comparison for ArrowStringView.
+///
+/// @{
+
+/// \brief User literal operator allowing ArrowStringView construction like "str"_asv
+inline ArrowStringView operator"" _asv(const char* data, std::size_t size_bytes) {
+  return {data, static_cast<int64_t>(size_bytes)};
+}
+
+// @}
+
+}  // namespace literals
 
 namespace internal {
 
@@ -826,7 +843,12 @@ class ViewArrayAsFixedSizeBytes {
 class ViewArrayStream {
  public:
   ViewArrayStream(ArrowArrayStream* stream, ArrowErrorCode* code, ArrowError* error)
-      : range_{Next{this, stream, UniqueArray()}}, code_{code}, error_{error} {}
+      : code_{code}, error_{error} {
+    // Using a slightly more verbose constructor to silence a warning that occurs
+    // on some versions of MSVC.
+    range_.next.self = this;
+    range_.next.stream = stream;
+  }
 
   ViewArrayStream(ArrowArrayStream* stream, ArrowError* error)
       : ViewArrayStream{stream, &internal_code_, error} {}
@@ -893,22 +915,11 @@ class ViewArrayStream {
 
 }  // namespace nanoarrow
 
-/// \defgroup nanoarrow_hpp-string_view_helpers ArrowStringView helpers
-///
-/// Factories and equality comparison for ArrowStringView.
-///
-/// @{
-
 /// \brief Equality comparison operator between ArrowStringView
+/// \ingroup nanoarrow_hpp-string_view_helpers
 inline bool operator==(ArrowStringView l, ArrowStringView r) {
   if (l.size_bytes != r.size_bytes) return false;
   return memcmp(l.data, r.data, l.size_bytes) == 0;
 }
-
-/// \brief User literal operator allowing ArrowStringView construction like "str"_sv
-inline ArrowStringView operator"" _v(const char* data, std::size_t size_bytes) {
-  return {data, static_cast<int64_t>(size_bytes)};
-}
-/// @}
 
 #endif
