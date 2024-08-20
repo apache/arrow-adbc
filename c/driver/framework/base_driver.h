@@ -640,13 +640,15 @@ class BaseDatabase : public ObjectBase {
 
   /// \internal
   AdbcStatusCode Release(AdbcError* error) override {
-    return impl().ReleaseImpl().ToAdbc(error);
+    RAISE_STATUS(error, impl().ReleaseImpl());
+    return ADBC_STATUS_OK;
   }
 
   /// \internal
   AdbcStatusCode SetOption(std::string_view key, Option value,
                            AdbcError* error) override {
-    return impl().SetOptionImpl(key, std::move(value)).ToAdbc(error);
+    RAISE_STATUS(error, impl().SetOptionImpl(key, std::move(value)));
+    return ADBC_STATUS_OK;
   }
 
   /// \brief Initialize the database.
@@ -688,7 +690,7 @@ class BaseConnection : public ObjectBase {
   }
 
   /// \brief Initialize the database.
-  virtual Status InitImpl() { return status::Ok(); }
+  virtual Status InitImpl(void* parent) { return status::Ok(); }
 
   /// \internal
   AdbcStatusCode Cancel(AdbcError* error) { return impl().CancelImpl().ToAdbc(error); }
@@ -708,7 +710,7 @@ class BaseConnection : public ObjectBase {
     }
 
     std::vector<uint32_t> codes(info_codes, info_codes + info_codes_length);
-    RAISE_STATUS(error, impl().GetInfoImpl(codes));
+    RAISE_STATUS(error, impl().GetInfoImpl(codes, out));
     return ADBC_STATUS_OK;
   }
 
@@ -763,9 +765,8 @@ class BaseConnection : public ObjectBase {
         db_schema ? std::make_optional(std::string_view(db_schema)) : std::nullopt;
     const auto table_filter =
         table_name ? std::make_optional(std::string_view(table_name)) : std::nullopt;
-    RAISE_STATUS(error,
-                 impl().GetStatisticsImpl(catalog_filter, schema_filter, table_filter,
-                                          table_filter, approximate != 0, out));
+    RAISE_STATUS(error, impl().GetStatisticsImpl(catalog_filter, schema_filter,
+                                                 table_filter, approximate != 0, out));
     return ADBC_STATUS_OK;
   }
 
@@ -814,7 +815,7 @@ class BaseConnection : public ObjectBase {
 
   /// \internal
   AdbcStatusCode GetTableTypes(ArrowArrayStream* out, AdbcError* error) {
-    RAISE_STATUS(error, impl().GetTableTypesImpl());
+    RAISE_STATUS(error, impl().GetTableTypesImpl(out));
     return ADBC_STATUS_OK;
   }
 
@@ -828,7 +829,7 @@ class BaseConnection : public ObjectBase {
                                AdbcError* error) {
     std::string_view partition(reinterpret_cast<const char*>(serialized_partition),
                                serialized_length);
-    RAISE_STATUS(error, impl().ReadPartition(partition, out));
+    RAISE_STATUS(error, impl().ReadPartitionImpl(partition, out));
     return ADBC_STATUS_OK;
   }
 
@@ -841,6 +842,8 @@ class BaseConnection : public ObjectBase {
     RAISE_STATUS(error, impl().ReleaseImpl());
     return ADBC_STATUS_OK;
   }
+
+  Status ReleaseImpl() { return status::Ok(); }
 
   /// \internal
   AdbcStatusCode Rollback(AdbcError* error) {
@@ -857,6 +860,12 @@ class BaseConnection : public ObjectBase {
     return ADBC_STATUS_OK;
   }
 
+  /// \brief Set an option.  May be called prior to InitImpl.
+  virtual Status SetOptionImpl(std::string_view key, Option value) {
+    return status::NotImplemented(Derived::kErrorPrefix, " Unknown connection option ",
+                                  key, "=", value.Format());
+  }
+
  private:
   Derived& impl() { return static_cast<Derived&>(*this); }
 };
@@ -864,6 +873,8 @@ class BaseConnection : public ObjectBase {
 template <typename Derived>
 class BaseStatement : public ObjectBase {
  public:
+  using Base = BaseStatement<Derived>;
+
   /// \internal
   AdbcStatusCode Init(void* parent, AdbcError* error) override {
     if (auto status = impl().InitImpl(parent); !status.ok()) {
@@ -879,6 +890,21 @@ class BaseStatement : public ObjectBase {
   AdbcStatusCode Release(AdbcError* error) override {
     RAISE_STATUS(error, impl().ReleaseImpl());
     return ADBC_STATUS_OK;
+  }
+
+  Status ReleaseImpl() { return status::Ok(); }
+
+  /// \internal
+  AdbcStatusCode SetOption(std::string_view key, Option value,
+                           AdbcError* error) override {
+    RAISE_STATUS(error, impl().SetOptionImpl(key, value));
+    return ADBC_STATUS_OK;
+  }
+
+  /// \brief Set an option.  May be called prior to InitImpl.
+  virtual Status SetOptionImpl(std::string_view key, Option value) {
+    return status::NotImplemented(Derived::kErrorPrefix, " Unknown statement option ",
+                                  key, "=", value.Format());
   }
 
   AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
@@ -935,7 +961,7 @@ class BaseStatement : public ObjectBase {
     return ADBC_STATUS_OK;
   }
 
-  Status Bind(ArrowArray* values, ArrowSchema* schema) {
+  Status BindImpl(ArrowArray* values, ArrowSchema* schema) {
     return status::NotImplemented("Bind");
   }
 
@@ -946,6 +972,20 @@ class BaseStatement : public ObjectBase {
 
   Status BindStreamImpl(ArrowArrayStream* stream) {
     return status::NotImplemented("BindStream");
+  }
+
+  AdbcStatusCode GetParameterSchema(ArrowSchema* schema, AdbcError* error) {
+    RAISE_STATUS(error, impl().GetParameterSchemaImpl(schema));
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetParameterSchemaImpl(struct ArrowSchema* schema) {
+    return status::NotImplemented("GetParameterSchema");
+  }
+
+  AdbcStatusCode ExecutePartitions(ArrowSchema* schema, AdbcPartitions* partitions,
+                                   int64_t* rows_affected, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
   AdbcStatusCode Cancel(AdbcError* error) {

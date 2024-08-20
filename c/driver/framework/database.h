@@ -36,20 +36,20 @@ namespace adbc::driver {
 template <typename Derived>
 class Database : public BaseDatabase<Derived> {
  public:
-  using Base = BaseDatabase<Derived>;
+  using Base = Database<Derived>;
 
   Database() : BaseDatabase<Derived>() {}
   ~Database() = default;
 
   /// \brief Initialize the database.
-  virtual Status InitImpl() { return Base::InitImpl(); }
+  virtual Status InitImpl() { return BaseDatabase<Derived>::InitImpl(); }
 
   /// \brief Release the database.
-  virtual Status ReleaseImpl() { return Base::ReleaseImpl(); }
+  virtual Status ReleaseImpl() { return BaseDatabase<Derived>::ReleaseImpl(); }
 
   /// \brief Set an option.  May be called prior to InitImpl.
   virtual Status SetOptionImpl(std::string_view key, Option value) {
-    return Base::SetOptionImpl(key, value);
+    return BaseDatabase<Derived>::SetOptionImpl(key, value);
   }
 
  private:

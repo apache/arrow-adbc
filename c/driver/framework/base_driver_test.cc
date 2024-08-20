@@ -20,9 +20,6 @@
 
 #include <arrow-adbc/adbc.h>
 #include "driver/framework/base_driver.h"
-#include "driver/framework/connection.h"
-#include "driver/framework/database.h"
-#include "driver/framework/statement.h"
 
 // Self-contained version of the Handle
 static inline void clean_up(AdbcDriver* ptr) { ptr->release(ptr, nullptr); }
@@ -52,17 +49,17 @@ class Handle {
 
 namespace {
 
-class VoidDatabase : public adbc::driver::Database<VoidDatabase> {
+class VoidDatabase : public adbc::driver::BaseDatabase<VoidDatabase> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
 };
 
-class VoidConnection : public adbc::driver::Connection<VoidConnection> {
+class VoidConnection : public adbc::driver::BaseConnection<VoidConnection> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
 };
 
-class VoidStatement : public adbc::driver::Statement<VoidStatement> {
+class VoidStatement : public adbc::driver::BaseStatement<VoidStatement> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
 };
@@ -98,7 +95,7 @@ TEST(TestDriverBase, TestVoidDriverMethods) {
   Handle<AdbcConnection> connection_handle(&connection);
   ASSERT_EQ(driver.ConnectionInit(&connection, &database, nullptr), ADBC_STATUS_OK);
 
-  EXPECT_EQ(driver.ConnectionCommit(&connection, nullptr), ADBC_STATUS_INVALID_STATE);
+  EXPECT_EQ(driver.ConnectionCommit(&connection, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
   EXPECT_EQ(driver.ConnectionGetInfo(&connection, nullptr, 0, nullptr, nullptr),
             ADBC_STATUS_INVALID_ARGUMENT);
   EXPECT_EQ(driver.ConnectionGetObjects(&connection, 0, nullptr, nullptr, 0, nullptr,
@@ -108,10 +105,10 @@ TEST(TestDriverBase, TestVoidDriverMethods) {
                                             nullptr, nullptr),
             ADBC_STATUS_INVALID_ARGUMENT);
   EXPECT_EQ(driver.ConnectionGetTableTypes(&connection, nullptr, nullptr),
-            ADBC_STATUS_INVALID_ARGUMENT);
+            ADBC_STATUS_NOT_IMPLEMENTED);
   EXPECT_EQ(driver.ConnectionReadPartition(&connection, nullptr, 0, nullptr, nullptr),
             ADBC_STATUS_NOT_IMPLEMENTED);
-  EXPECT_EQ(driver.ConnectionRollback(&connection, nullptr), ADBC_STATUS_INVALID_STATE);
+  EXPECT_EQ(driver.ConnectionRollback(&connection, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
   EXPECT_EQ(driver.ConnectionCancel(&connection, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
   EXPECT_EQ(driver.ConnectionGetStatistics(&connection, nullptr, nullptr, nullptr, 0,
                                            nullptr, nullptr),
@@ -127,16 +124,17 @@ TEST(TestDriverBase, TestVoidDriverMethods) {
   Handle<AdbcStatement> statement_handle(&statement);
 
   EXPECT_EQ(driver.StatementExecuteQuery(&statement, nullptr, nullptr, nullptr),
-            ADBC_STATUS_INVALID_STATE);
+            ADBC_STATUS_NOT_IMPLEMENTED);
   EXPECT_EQ(driver.StatementExecuteSchema(&statement, nullptr, nullptr),
             ADBC_STATUS_NOT_IMPLEMENTED);
-  EXPECT_EQ(driver.StatementPrepare(&statement, nullptr), ADBC_STATUS_INVALID_STATE);
-  EXPECT_EQ(driver.StatementSetSqlQuery(&statement, "", nullptr), ADBC_STATUS_OK);
+  EXPECT_EQ(driver.StatementPrepare(&statement, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
+  EXPECT_EQ(driver.StatementSetSqlQuery(&statement, "", nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
   EXPECT_EQ(driver.StatementSetSubstraitPlan(&statement, nullptr, 0, nullptr),
             ADBC_STATUS_NOT_IMPLEMENTED);
   EXPECT_EQ(driver.StatementBind(&statement, nullptr, nullptr, nullptr),
-            ADBC_STATUS_INVALID_ARGUMENT);
+            ADBC_STATUS_NOT_IMPLEMENTED);
   EXPECT_EQ(driver.StatementBindStream(&statement, nullptr, nullptr),
-            ADBC_STATUS_INVALID_ARGUMENT);
+            ADBC_STATUS_NOT_IMPLEMENTED);
   EXPECT_EQ(driver.StatementCancel(&statement, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
 }
