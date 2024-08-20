@@ -502,7 +502,7 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
   size_t next_constraint = 0;
 };
 
-class SqliteDatabase : public driver::DriverDatabase<SqliteDatabase> {
+class SqliteDatabase : public driver::Database<SqliteDatabase> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[SQLite]";
 
@@ -558,7 +558,7 @@ class SqliteDatabase : public driver::DriverDatabase<SqliteDatabase> {
   sqlite3* conn_ = nullptr;
 };
 
-class SqliteConnection : public driver::DriverConnection<SqliteConnection> {
+class SqliteConnection : public driver::Connection<SqliteConnection> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[SQLite]";
 
@@ -672,7 +672,7 @@ class SqliteConnection : public driver::DriverConnection<SqliteConnection> {
       }
       conn_ = nullptr;
     }
-    return DriverConnection::ReleaseImpl();
+    return Connection::ReleaseImpl();
   }
 
   Status RollbackImpl() {
@@ -760,7 +760,7 @@ class SqliteConnection : public driver::DriverConnection<SqliteConnection> {
   std::string extension_path_;
 };
 
-class SqliteStatement : public driver::DriverStatement<SqliteStatement> {
+class SqliteStatement : public driver::Statement<SqliteStatement> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[SQLite]";
 
@@ -1083,7 +1083,7 @@ class SqliteStatement : public driver::DriverStatement<SqliteStatement> {
 
   Status InitImpl(void* parent) {
     conn_ = reinterpret_cast<SqliteConnection*>(parent)->conn();
-    return DriverStatement::InitImpl(parent);
+    return Statement::InitImpl(parent);
   }
 
   Status PrepareImpl(QueryState& state) {
@@ -1119,7 +1119,7 @@ class SqliteStatement : public driver::DriverStatement<SqliteStatement> {
       }
     }
     AdbcSqliteBinderRelease(&binder_);
-    return DriverStatement::ReleaseImpl();
+    return Statement::ReleaseImpl();
   }
 
   Status SetOptionImpl(std::string_view key, driver::Option value) {

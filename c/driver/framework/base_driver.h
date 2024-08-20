@@ -122,7 +122,7 @@ class ObjectBase {
   ///
   /// Called after 0 or more SetOption calls.  Generally, you won't need to
   /// override this directly.  Instead, use the typed InitImpl provided by
-  /// DriverDatabase/DriverConnection/DriverStatement.
+  /// Database/Connection/Statement.
   ///
   /// \param[in] parent A pointer to the AdbcDatabase or AdbcConnection
   ///   implementation as appropriate, or nullptr.
@@ -140,7 +140,7 @@ class ObjectBase {
   /// the destructor.
   ///
   /// Generally, you won't need to override this directly. Instead, use the
-  /// typed ReleaseImpl provided by DriverDatabase/DriverConnection/DriverStatement.
+  /// typed ReleaseImpl provided by Database/Connection/Statement.
   virtual AdbcStatusCode Release(AdbcError* error) { return ADBC_STATUS_OK; }
 
   /// \brief Get an option value.

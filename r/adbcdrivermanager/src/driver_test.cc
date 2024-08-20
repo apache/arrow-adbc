@@ -46,11 +46,11 @@ extern "C" SEXP RAdbcVoidDriverInitFunc(void) {
   return xptr;
 }
 
-class MonkeyDriverStatement : public StatementObjectBase {
+class MonkeyStatement : public StatementObjectBase {
  public:
-  MonkeyDriverStatement() { stream_.release = nullptr; }
+  MonkeyStatement() { stream_.release = nullptr; }
 
-  ~MonkeyDriverStatement() {
+  ~MonkeyStatement() {
     if (stream_.release != nullptr) {
       stream_.release(&stream_);
     }
@@ -85,7 +85,7 @@ class MonkeyDriverStatement : public StatementObjectBase {
 };
 
 using MonkeyDriver =
-    adbc::common::Driver<DatabaseObjectBase, ConnectionObjectBase, MonkeyDriverStatement>;
+    adbc::common::Driver<DatabaseObjectBase, ConnectionObjectBase, MonkeyStatement>;
 
 static AdbcStatusCode MonkeyDriverInitFunc(int version, void* raw_driver,
                                            AdbcError* error) {
@@ -100,11 +100,11 @@ extern "C" SEXP RAdbcMonkeyDriverInitFunc(void) {
   return xptr;
 }
 
-class LogDriverDatabase : public DatabaseObjectBase {
+class LogDatabase : public DatabaseObjectBase {
  public:
-  LogDriverDatabase() { Rprintf("LogDatabaseNew()\n"); }
+  LogDatabase() { Rprintf("LogDatabaseNew()\n"); }
 
-  ~LogDriverDatabase() { Rprintf("LogDatabaseRelease()\n"); }
+  ~LogDatabase() { Rprintf("LogDatabaseRelease()\n"); }
 
   AdbcStatusCode Init(void* parent, AdbcError* error) {
     Rprintf("LogDatabaseInit()\n");
@@ -123,11 +123,11 @@ class LogDriverDatabase : public DatabaseObjectBase {
   }
 };
 
-class LogDriverConnection : public ConnectionObjectBase {
+class LogConnection : public ConnectionObjectBase {
  public:
-  LogDriverConnection() { Rprintf("LogConnectionNew()\n"); }
+  LogConnection() { Rprintf("LogConnectionNew()\n"); }
 
-  ~LogDriverConnection() { Rprintf("LogConnectionRelease()\n"); }
+  ~LogConnection() { Rprintf("LogConnectionRelease()\n"); }
 
   AdbcStatusCode Init(void* parent, AdbcError* error) {
     Rprintf("LogConnectionInit()\n");
@@ -206,9 +206,9 @@ class LogDriverConnection : public ConnectionObjectBase {
   }
 };
 
-class LogDriverStatement : public StatementObjectBase {
+class LogStatement : public StatementObjectBase {
  public:
-  ~LogDriverStatement() { Rprintf("LogStatementRelease()\n"); }
+  ~LogStatement() { Rprintf("LogStatementRelease()\n"); }
 
   AdbcStatusCode Init(void* parent, AdbcError* error) {
     Rprintf("LogStatementNew()\n");
@@ -269,7 +269,7 @@ class LogDriverStatement : public StatementObjectBase {
 };
 
 using LogDriver =
-    adbc::common::Driver<LogDriverDatabase, LogDriverConnection, LogDriverStatement>;
+    adbc::common::Driver<LogDatabase, LogConnection, LogStatement>;
 
 static AdbcStatusCode LogDriverInitFunc(int version, void* raw_driver, AdbcError* error) {
   return LogDriver::Init(version, raw_driver, error);
