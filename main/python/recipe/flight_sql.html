@@ -501,6 +501,66 @@ service with authentication, provide the options at connection time.</p>
 </pre></div>
 </div>
 </section>
+<section id="set-the-max-grpc-message-size">
+<h2>Set the max gRPC message size<a class="headerlink" href="#set-the-max-grpc-message-size" title="Permalink to this heading">¶</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/flightsql_sqlite_max_msg_size.py">flightsql_sqlite_max_msg_size.py</a></p>
+<p>By default, the Flight SQL driver limits the size of incoming/outgoing
+messages.  You might see an error like this if those limits are exceeded:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INTERNAL</span><span class="p">:</span> <span class="p">[</span><span class="n">FlightSQL</span><span class="p">]</span> <span class="n">grpc</span><span class="p">:</span> <span class="n">received</span> <span class="n">message</span> <span class="n">larger</span> <span class="n">than</span> <span class="nb">max</span>
+</pre></div>
+</div>
+<p>These limits can be adjusted to avoid this.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">27</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">28</span>
+<span class="linenos">29</span><span class="kn">import</span> <span class="nn">adbc_driver_flightsql.dbapi</span>
+<span class="linenos">30</span><span class="kn">from</span> <span class="nn">adbc_driver_flightsql</span> <span class="kn">import</span> <span class="n">DatabaseOptions</span>
+<span class="linenos">31</span>
+<span class="linenos">32</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_SQLITE_FLIGHTSQL_URI&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>This query generates about 16 MiB per batch, which will trip the default
+limit.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">37</span><span class="n">query</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="linenos">38</span><span class="s2">WITH RECURSIVE generate_series(value) AS (</span>
+<span class="linenos">39</span><span class="s2">  SELECT 1</span>
+<span class="linenos">40</span><span class="s2">  UNION ALL</span>
+<span class="linenos">41</span><span class="s2">  SELECT value + 1 FROM generate_series</span>
+<span class="linenos">42</span><span class="s2">   WHERE value + 1 &lt;= 2048</span>
+<span class="linenos">43</span><span class="s2">)</span>
+<span class="linenos">44</span><span class="s2">SELECT printf(&#39;</span><span class="si">%.*c</span><span class="s2">&#39;, 16384, &#39;x&#39;) FROM generate_series</span>
+<span class="linenos">45</span><span class="s2">&quot;&quot;&quot;</span>
+</pre></div>
+</div>
+<p>When we execute the query, we’ll get an error.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">49</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_flightsql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+<span class="linenos">50</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">51</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+<span class="linenos">52</span>
+<span class="linenos">53</span>    <span class="k">try</span><span class="p">:</span>
+<span class="linenos">54</span>        <span class="n">cur</span><span class="o">.</span><span class="n">fetchallarrow</span><span class="p">()</span>
+<span class="linenos">55</span>    <span class="k">except</span> <span class="n">adbc_driver_flightsql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">InternalError</span><span class="p">:</span>
+<span class="linenos">56</span>        <span class="c1"># This exception is expected.</span>
+<span class="linenos">57</span>        <span class="k">pass</span>
+<span class="linenos">58</span>    <span class="k">else</span><span class="p">:</span>
+<span class="linenos">59</span>        <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;Did not raise expected exception&quot;</span>
+<span class="linenos">60</span>
+<span class="linenos">61</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>We can instead change the limit when connecting.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">65</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_flightsql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+<span class="linenos">66</span>    <span class="n">uri</span><span class="p">,</span>
+<span class="linenos">67</span>    <span class="n">db_kwargs</span><span class="o">=</span><span class="p">{</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">WITH_MAX_MSG_SIZE</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;2147483647&quot;</span><span class="p">},</span>
+<span class="linenos">68</span><span class="p">)</span>
+<span class="linenos">69</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">70</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+<span class="linenos">71</span>
+<span class="linenos">72</span>    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetchallarrow</span><span class="p">())</span> <span class="o">==</span> <span class="mi">2048</span>
+<span class="linenos">73</span>
+<span class="linenos">74</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
 </section>
 
         </article>
@@ -565,6 +625,7 @@ United States and other countries.
 <li><a class="reference internal" href="#connect-to-an-unsecured-flight-sql-service">Connect to an unsecured Flight SQL service</a></li>
 <li><a class="reference internal" href="#connect-to-a-flight-sql-service-with-username-and-password">Connect to a Flight SQL service with username and password</a></li>
 <li><a class="reference internal" href="#set-timeouts-and-other-options">Set timeouts and other options</a></li>
+<li><a class="reference internal" href="#set-the-max-grpc-message-size">Set the max gRPC message size</a></li>
 </ul>
 </li>
 </ul>
