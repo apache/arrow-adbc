@@ -814,8 +814,7 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
 
             ASSERT_FALSE(ArrowArrayViewIsNull(table_columns_list, tables_index))
                 << "Row " << row << " should have non-null table_columns";
-            // TODO: FlightSQL driver does not yet support constraints via GetObjects
-            ASSERT_TRUE(ArrowArrayViewIsNull(table_constraints_list, tables_index))
+            ASSERT_FALSE(ArrowArrayViewIsNull(table_constraints_list, tables_index))
                 << "Row " << row << " should have non-null table_constraints";
 
             if (iequals(std::string(table_name.data, table_name.size_bytes),
