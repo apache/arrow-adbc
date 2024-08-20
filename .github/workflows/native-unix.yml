@@ -388,6 +388,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: 'google-github-actions/auth@v2'
+        continue-on-error: true
         with:
           project_id: 'my-project'
           workload_identity_provider: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
