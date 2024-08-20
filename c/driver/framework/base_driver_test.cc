@@ -19,10 +19,10 @@
 #include <cstring>
 
 #include <arrow-adbc/adbc.h>
-#include "driver/framework/base_connection.h"
-#include "driver/framework/base_database.h"
 #include "driver/framework/base_driver.h"
-#include "driver/framework/base_statement.h"
+#include "driver/framework/connection.h"
+#include "driver/framework/database.h"
+#include "driver/framework/statement.h"
 
 // Self-contained version of the Handle
 static inline void clean_up(AdbcDriver* ptr) { ptr->release(ptr, nullptr); }
