@@ -2057,3 +2057,62 @@ func (suite *SnowflakeTests) TestIngestEmptyChunk() {
 	suite.Require().NoError(err)
 	suite.EqualValues(int64(3), n)
 }
+
+func TestIngestCancelContext(t *testing.T) {
+	withQuirks(t, func(q *SnowflakeQuirks) {
+		ctx := context.Background()
+
+		drv := q.SetupDriver(t)
+		defer q.TearDownDriver(t, drv)
+
+		db, err := drv.NewDatabase(q.DatabaseOptions())
+		require.NoError(t, err)
+
+		cnxn, err := db.Open(ctx)
+		require.NoError(t, err)
+
+		stmt, err := cnxn.NewStatement()
+		require.NoError(t, err)
+
+		require.NoError(t, q.DropTable(cnxn, "bulk_ingest_cancel_context"))
+
+		sc := arrow.NewSchema([]arrow.Field{
+			{
+				Name: "col_int64", Type: arrow.PrimitiveTypes.Int64,
+				Nullable: true,
+			},
+		}, nil)
+
+		bldr := array.NewRecordBuilder(q.Alloc(), sc)
+		defer bldr.Release()
+
+		bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+
+		rec := bldr.NewRecord()
+		defer rec.Release()
+
+		rdr, err := array.NewRecordReader(sc, []arrow.Record{rec})
+		require.NoError(t, err)
+		defer rdr.Release()
+
+		require.NoError(t, stmt.BindStream(ctx, rdr))
+		require.NoError(t, stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest_cancel_context"))
+
+		var buf bytes.Buffer
+		logger := gosnowflake.GetLogger()
+		logger.SetOutput(&buf)
+		defer logger.SetOutput(os.Stderr)
+
+		ctxCancel, cancel := context.WithCancel(ctx)
+		n, err := stmt.ExecuteUpdate(ctxCancel)
+		require.NoError(t, err)
+		require.EqualValues(t, int64(3), n)
+		cancel()
+
+		require.NoError(t, stmt.Close())
+		require.NoError(t, cnxn.Close())
+		require.NoError(t, db.Close())
+
+		require.Equal(t, "", buf.String())
+	})
+}
