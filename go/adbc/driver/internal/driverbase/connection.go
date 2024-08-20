@@ -347,12 +347,13 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 		return nil, err
 	}
 
-	addCatalogCh := make(chan GetObjectsInfo, len(catalogs))
+	bufferSize := len(catalogs)
+	addCatalogCh := make(chan GetObjectsInfo, bufferSize)
 	for _, cat := range catalogs {
 		addCatalogCh <- GetObjectsInfo{CatalogName: Nullable(cat)}
 	}
 
-	close(addCatalogCh) // defer in group
+	close(addCatalogCh)
 
 	if depth == adbc.ObjectDepthCatalogs {
 		return BuildGetObjectsRecordReader(cnxn.Base().Alloc, addCatalogCh)
@@ -362,7 +363,7 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 
 	gSchemas, ctxSchemas := errgroup.WithContext(ctxG)
 	gSchemas.SetLimit(cnxn.concurrency)
-	addDbSchemasCh := make(chan GetObjectsInfo, len(catalogs))
+	addDbSchemasCh := make(chan GetObjectsInfo, bufferSize)
 	for info := range addCatalogCh {
 		info := info
 		gSchemas.Go(func() error {
@@ -391,7 +392,7 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 
 	gTables, ctxTables := errgroup.WithContext(ctxG)
 	gTables.SetLimit(cnxn.concurrency)
-	addTablesCh := make(chan GetObjectsInfo, len(catalogs))
+	addTablesCh := make(chan GetObjectsInfo, bufferSize)
 	for info := range addDbSchemasCh {
 		info := info
 
