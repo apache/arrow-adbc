@@ -388,10 +388,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: 'google-github-actions/auth@v2'
-        continue-on-error: true
+        continue-on-error: true # if auth fails, bigquery driver adbc should skip
         with:
-          project_id: 'my-project'
-          workload_identity_provider: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       - uses: actions/setup-go@v5
         with:
           go-version-file: "go/adbc/go.mod"
