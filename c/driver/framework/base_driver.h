@@ -665,4 +665,200 @@ class BaseDatabase : public ObjectBase {
   Derived& impl() { return static_cast<Derived&>(*this); }
 };
 
+template <typename Derived>
+class BaseConnection : public ObjectBase {
+ public:
+  using Base = BaseConnection<Derived>;
+
+  /// \brief Whether autocommit is enabled or not (by default: enabled).
+  enum class AutocommitState {
+    kAutocommit,
+    kTransaction,
+  };
+
+  BaseConnection() : ObjectBase() {}
+  ~BaseConnection() = default;
+
+  /// \internal
+  AdbcStatusCode Init(void* parent, AdbcError* error) override {
+    if (auto status = impl().InitImpl(parent); !status.ok()) {
+      return status.ToAdbc(error);
+    }
+    return ObjectBase::Init(parent, error);
+  }
+
+  /// \brief Initialize the database.
+  virtual Status InitImpl() { return status::Ok(); }
+
+  /// \internal
+  AdbcStatusCode Cancel(AdbcError* error) { return impl().CancelImpl().ToAdbc(error); }
+
+  Status CancelImpl() { return status::NotImplemented("Cancel"); }
+
+  /// \internal
+  AdbcStatusCode Commit(AdbcError* error) { return impl().CommitImpl().ToAdbc(error); }
+
+  Status CommitImpl() { return status::NotImplemented("Commit"); }
+
+  /// \internal
+  AdbcStatusCode GetInfo(const uint32_t* info_codes, size_t info_codes_length,
+                         ArrowArrayStream* out, AdbcError* error) {
+    if (!out) {
+      RAISE_STATUS(error, status::InvalidArgument("out must be non-null"));
+    }
+
+    std::vector<uint32_t> codes(info_codes, info_codes + info_codes_length);
+    RAISE_STATUS(error, impl().GetInfoImpl(codes));
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetInfoImpl(const std::vector<uint32_t> info_codes, ArrowArrayStream* out) {
+    return status::NotImplemented("GetInfo");
+  }
+
+  /// \internal
+  AdbcStatusCode GetObjects(int c_depth, const char* catalog, const char* db_schema,
+                            const char* table_name, const char** table_type,
+                            const char* column_name, ArrowArrayStream* out,
+                            AdbcError* error) {
+    const auto catalog_filter =
+        catalog ? std::make_optional(std::string_view(catalog)) : std::nullopt;
+    const auto schema_filter =
+        db_schema ? std::make_optional(std::string_view(db_schema)) : std::nullopt;
+    const auto table_filter =
+        table_name ? std::make_optional(std::string_view(table_name)) : std::nullopt;
+    const auto column_filter =
+        column_name ? std::make_optional(std::string_view(column_name)) : std::nullopt;
+    std::vector<std::string_view> table_type_filter;
+    while (table_type && *table_type) {
+      if (*table_type) {
+        table_type_filter.push_back(std::string_view(*table_type));
+      }
+      table_type++;
+    }
+
+    RAISE_STATUS(
+        error, impl().GetObjectsImpl(c_depth, catalog_filter, schema_filter, table_filter,
+                                     column_filter, table_type_filter, out));
+
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetObjectsImpl(int c_depth, std::optional<std::string_view> catalog_filter,
+                        std::optional<std::string_view> schema_filter,
+                        std::optional<std::string_view> table_filter,
+                        std::optional<std::string_view> column_filter,
+                        const std::vector<std::string_view>& table_types,
+                        struct ArrowArrayStream* out) {
+    return status::NotImplemented("GetObjects");
+  }
+
+  /// \internal
+  AdbcStatusCode GetStatistics(const char* catalog, const char* db_schema,
+                               const char* table_name, char approximate,
+                               ArrowArrayStream* out, AdbcError* error) {
+    const auto catalog_filter =
+        catalog ? std::make_optional(std::string_view(catalog)) : std::nullopt;
+    const auto schema_filter =
+        db_schema ? std::make_optional(std::string_view(db_schema)) : std::nullopt;
+    const auto table_filter =
+        table_name ? std::make_optional(std::string_view(table_name)) : std::nullopt;
+    RAISE_STATUS(error,
+                 impl().GetStatisticsImpl(catalog_filter, schema_filter, table_filter,
+                                          table_filter, approximate != 0, out));
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetStatisticsImpl(std::optional<std::string_view> catalog,
+                           std::optional<std::string_view> db_schema,
+                           std::optional<std::string_view> table_name, bool approximate,
+                           ArrowArrayStream* out) {
+    return status::NotImplemented("GetStatistics");
+  }
+
+  /// \internal
+  AdbcStatusCode GetStatisticNames(ArrowArrayStream* out, AdbcError* error) {
+    RAISE_STATUS(error, impl().GetStatisticNames(out));
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetStatisticNames(ArrowArrayStream* out) {
+    return status::NotImplemented("GetStatisticNames");
+  }
+
+  /// \internal
+  AdbcStatusCode GetTableSchema(const char* catalog, const char* db_schema,
+                                const char* table_name, ArrowSchema* schema,
+                                AdbcError* error) {
+    if (!table_name) {
+      return status::InvalidArgument(Derived::kErrorPrefix,
+                                     " GetTableSchema: must provide table_name")
+          .ToAdbc(error);
+    }
+
+    std::optional<std::string_view> catalog_param =
+        catalog ? std::make_optional(std::string_view(catalog)) : std::nullopt;
+    std::optional<std::string_view> db_schema_param =
+        db_schema ? std::make_optional(std::string_view(db_schema)) : std::nullopt;
+
+    RAISE_STATUS(error, impl().GetTableSchemaImpl(catalog_param, db_schema_param,
+                                                table_name, schema));
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetTableSchemaImpl(std::optional<std::string_view> catalog,
+                            std::optional<std::string_view> db_schema,
+                            std::string_view table_name, ArrowSchema* out) {
+    return status::NotImplemented("GetTableSchema");
+  }
+
+  /// \internal
+  AdbcStatusCode GetTableTypes(ArrowArrayStream* out, AdbcError* error) {
+    RAISE_STATUS(error, impl().GetTableTypesImpl());
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetTableTypesImpl(ArrowArrayStream* out) {
+    return status::NotImplemented("GetTableTypes");
+  }
+
+  /// \internal
+  AdbcStatusCode ReadPartition(const uint8_t* serialized_partition,
+                               size_t serialized_length, ArrowArrayStream* out,
+                               AdbcError* error) {
+    std::string_view partition(reinterpret_cast<const char*>(serialized_partition),
+                               serialized_length);
+    RAISE_STATUS(error, impl().ReadPartition(partition, out));
+    return ADBC_STATUS_OK;
+  }
+
+  Status ReadPartitionImpl(std::string_view serialized_partition, ArrowArrayStream* out) {
+    return status::NotImplemented("ReadPartition");
+  }
+
+  /// \internal
+  AdbcStatusCode Release(AdbcError* error) override {
+    RAISE_STATUS(error, impl().ReleaseImpl());
+    return ADBC_STATUS_OK;
+  }
+
+  /// \internal
+  AdbcStatusCode Rollback(AdbcError* error) {
+    RAISE_STATUS(error, impl().RollbackImpl());
+    return ADBC_STATUS_OK;
+  }
+
+  Status RollbackImpl() { return status::NotImplemented("Rollback"); }
+
+  /// \internal
+  AdbcStatusCode SetOption(std::string_view key, Option value,
+                           AdbcError* error) override {
+    RAISE_STATUS(error, impl().SetOptionImpl(key, value));
+    return ADBC_STATUS_OK;
+  }
+
+ private:
+  Derived& impl() { return static_cast<Derived&>(*this); }
+};
+
 }  // namespace adbc::driver
