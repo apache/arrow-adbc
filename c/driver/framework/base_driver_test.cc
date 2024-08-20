@@ -52,17 +52,17 @@ class Handle {
 
 namespace {
 
-class VoidDatabase : public adbc::driver::DatabaseBase<VoidDatabase> {
+class VoidDatabase : public adbc::driver::DriverDatabase<VoidDatabase> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
 };
 
-class VoidConnection : public adbc::driver::ConnectionBase<VoidConnection> {
+class VoidConnection : public adbc::driver::DriverConnection<VoidConnection> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
 };
 
-class VoidStatement : public adbc::driver::StatementBase<VoidStatement> {
+class VoidStatement : public adbc::driver::DriverStatement<VoidStatement> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
 };

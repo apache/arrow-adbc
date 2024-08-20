@@ -34,12 +34,12 @@ namespace adbc::driver {
 /// define a constexpr static symbol called kErrorPrefix that is used to
 /// construct error messages.
 template <typename Derived>
-class DatabaseBase : public ObjectBase {
+class DriverDatabase : public ObjectBase {
  public:
-  using Base = DatabaseBase<Derived>;
+  using Base = DriverDatabase<Derived>;
 
-  DatabaseBase() : ObjectBase() {}
-  ~DatabaseBase() = default;
+  DriverDatabase() : ObjectBase() {}
+  ~DriverDatabase() = default;
 
   /// \internal
   AdbcStatusCode Init(void* parent, AdbcError* error) override {

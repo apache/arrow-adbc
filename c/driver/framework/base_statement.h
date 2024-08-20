@@ -32,9 +32,9 @@ namespace adbc::driver {
 
 /// \brief A base implementation of a statement.
 template <typename Derived>
-class StatementBase : public ObjectBase {
+class DriverStatement : public ObjectBase {
  public:
-  using Base = StatementBase<Derived>;
+  using Base = DriverStatement<Derived>;
 
   /// \brief What to do in ingestion when the table does not exist.
   enum class TableDoesNotExist {
@@ -71,10 +71,10 @@ class StatementBase : public ObjectBase {
   /// \brief Statement state: one of the above.
   using State = std::variant<EmptyState, IngestState, PreparedState, QueryState>;
 
-  StatementBase() : ObjectBase() {
+  DriverStatement() : ObjectBase() {
     std::memset(&bind_parameters_, 0, sizeof(bind_parameters_));
   }
-  ~StatementBase() = default;
+  ~DriverStatement() = default;
 
   AdbcStatusCode Bind(ArrowArray* values, ArrowSchema* schema, AdbcError* error) {
     if (!values || !values->release) {

@@ -39,9 +39,9 @@ namespace adbc::driver {
 /// define a constexpr static symbol called kErrorPrefix that is used to
 /// construct error messages.
 template <typename Derived>
-class ConnectionBase : public ObjectBase {
+class DriverConnection : public ObjectBase {
  public:
-  using Base = ConnectionBase<Derived>;
+  using Base = DriverConnection<Derived>;
 
   /// \brief Whether autocommit is enabled or not (by default: enabled).
   enum class AutocommitState {
@@ -49,8 +49,8 @@ class ConnectionBase : public ObjectBase {
     kTransaction,
   };
 
-  ConnectionBase() : ObjectBase() {}
-  ~ConnectionBase() = default;
+  DriverConnection() : ObjectBase() {}
+  ~DriverConnection() = default;
 
   /// \internal
   AdbcStatusCode Init(void* parent, AdbcError* error) override {
