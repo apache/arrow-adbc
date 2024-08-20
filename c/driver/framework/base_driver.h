@@ -632,9 +632,7 @@ class BaseDatabase : public ObjectBase {
 
   /// \internal
   AdbcStatusCode Init(void* parent, AdbcError* error) override {
-    if (auto status = impl().InitImpl(); !status.ok()) {
-      return status.ToAdbc(error);
-    }
+    RAISE_STATUS(error, impl().InitImpl());
     return ObjectBase::Init(parent, error);
   }
 
@@ -683,9 +681,7 @@ class BaseConnection : public ObjectBase {
 
   /// \internal
   AdbcStatusCode Init(void* parent, AdbcError* error) override {
-    if (auto status = impl().InitImpl(parent); !status.ok()) {
-      return status.ToAdbc(error);
-    }
+    RAISE_STATUS(error, impl().InitImpl(parent));
     return ObjectBase::Init(parent, error);
   }
 
@@ -877,9 +873,7 @@ class BaseStatement : public ObjectBase {
 
   /// \internal
   AdbcStatusCode Init(void* parent, AdbcError* error) override {
-    if (auto status = impl().InitImpl(parent); !status.ok()) {
-      return status.ToAdbc(error);
-    }
+    RAISE_STATUS(error, impl().InitImpl(parent));
     return ObjectBase::Init(parent, error);
   }
 
