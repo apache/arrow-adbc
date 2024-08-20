@@ -379,11 +379,18 @@ jobs:
     strategy:
       matrix:
         os: ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: 'google-github-actions/auth@v2'
+        with:
+          project_id: 'my-project'
+          workload_identity_provider: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
       - uses: actions/setup-go@v5
         with:
           go-version-file: "go/adbc/go.mod"
