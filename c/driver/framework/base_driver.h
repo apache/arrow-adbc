@@ -802,7 +802,7 @@ class BaseConnection : public ObjectBase {
         db_schema ? std::make_optional(std::string_view(db_schema)) : std::nullopt;
 
     RAISE_STATUS(error, impl().GetTableSchemaImpl(catalog_param, db_schema_param,
-                                                table_name, schema));
+                                                  table_name, schema));
     return ADBC_STATUS_OK;
   }
 
@@ -856,6 +856,59 @@ class BaseConnection : public ObjectBase {
     RAISE_STATUS(error, impl().SetOptionImpl(key, value));
     return ADBC_STATUS_OK;
   }
+
+ private:
+  Derived& impl() { return static_cast<Derived&>(*this); }
+};
+
+template <typename Derived>
+class BaseStatement : public ObjectBase {
+ public:
+  /// \internal
+  AdbcStatusCode Init(void* parent, AdbcError* error) override {
+    if (auto status = impl().InitImpl(parent); !status.ok()) {
+      return status.ToAdbc(error);
+    }
+    return ObjectBase::Init(parent, error);
+  }
+
+  /// \brief Initialize the database.
+  virtual Status InitImpl() { return status::Ok(); }
+
+  /// \internal
+  AdbcStatusCode Release(AdbcError* error) override {
+    RAISE_STATUS(error, impl().ReleaseImpl());
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
+                              AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode ExecuteSchema(ArrowSchema* schema, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode Prepare(AdbcError* error) { return ADBC_STATUS_NOT_IMPLEMENTED; }
+
+  AdbcStatusCode SetSqlQuery(const char* query, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode SetSubstraitPlan(const uint8_t* plan, size_t length, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode Bind(ArrowArray* values, ArrowSchema* schema, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode BindStream(ArrowArrayStream* stream, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode Cancel(AdbcError* error) { return ADBC_STATUS_NOT_IMPLEMENTED; }
 
  private:
   Derived& impl() { return static_cast<Derived&>(*this); }
