@@ -883,32 +883,77 @@ class BaseStatement : public ObjectBase {
 
   AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
                               AdbcError* error) {
-    return ADBC_STATUS_NOT_IMPLEMENTED;
+    RAISE_RESULT(error, int64_t rows_affected_result, impl().ExecuteQueryImpl(stream));
+    if (rows_affected) {
+      *rows_affected = rows_affected_result;
+    }
+
+    return ADBC_STATUS_OK;
+  }
+
+  Result<int64_t> ExecuteQueryImpl(ArrowArrayStream* stream) {
+    return status::NotImplemented("ExecuteQuery");
   }
 
   AdbcStatusCode ExecuteSchema(ArrowSchema* schema, AdbcError* error) {
-    return ADBC_STATUS_NOT_IMPLEMENTED;
+    RAISE_STATUS(error, impl().ExecuteSchemaImpl(schema));
+    return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode Prepare(AdbcError* error) { return ADBC_STATUS_NOT_IMPLEMENTED; }
+  Status ExecuteSchemaImpl(ArrowSchema* schema) {
+    return status::NotImplemented("ExecuteSchema");
+  }
+
+  AdbcStatusCode Prepare(AdbcError* error) {
+    RAISE_STATUS(error, impl().PrepareImpl());
+    return ADBC_STATUS_OK;
+  }
+
+  Status PrepareImpl() { return status::NotImplemented("Prepare"); }
 
   AdbcStatusCode SetSqlQuery(const char* query, AdbcError* error) {
-    return ADBC_STATUS_NOT_IMPLEMENTED;
+    RAISE_STATUS(error, impl().SetSqlQueryImpl(query));
+    return ADBC_STATUS_OK;
+  }
+
+  Status SetSqlQueryImpl(std::string_view query) {
+    return status::NotImplemented("SetSqlQuery");
   }
 
   AdbcStatusCode SetSubstraitPlan(const uint8_t* plan, size_t length, AdbcError* error) {
-    return ADBC_STATUS_NOT_IMPLEMENTED;
+    RAISE_STATUS(error, impl().SetSubstraitPlanImpl(std::string_view(
+                            reinterpret_cast<const char*>(plan), length)));
+    return ADBC_STATUS_OK;
+  }
+
+  Status SetSubstraitPlanImpl(std::string_view plan) {
+    return status::NotImplemented("SetSubstraitPlan");
   }
 
   AdbcStatusCode Bind(ArrowArray* values, ArrowSchema* schema, AdbcError* error) {
-    return ADBC_STATUS_NOT_IMPLEMENTED;
+    RAISE_STATUS(error, impl().BindImpl(values, schema));
+    return ADBC_STATUS_OK;
+  }
+
+  Status Bind(ArrowArray* values, ArrowSchema* schema) {
+    return status::NotImplemented("Bind");
   }
 
   AdbcStatusCode BindStream(ArrowArrayStream* stream, AdbcError* error) {
-    return ADBC_STATUS_NOT_IMPLEMENTED;
+    RAISE_STATUS(error, impl().BindStreamImpl(stream));
+    return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode Cancel(AdbcError* error) { return ADBC_STATUS_NOT_IMPLEMENTED; }
+  Status BindStreamImpl(ArrowArrayStream* stream) {
+    return status::NotImplemented("BindStream");
+  }
+
+  AdbcStatusCode Cancel(AdbcError* error) {
+    RAISE_STATUS(error, impl().Cancel());
+    return ADBC_STATUS_OK;
+  }
+
+  Status Cancel() { return status::NotImplemented("Cancel"); }
 
  private:
   Derived& impl() { return static_cast<Derived&>(*this); }
