@@ -32,6 +32,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             : base(connection)
         {
         }
+        public override QueryResult ExecuteQuery()
+        {
+            var conn = (connection as SparkConnection);
+
+            if(conn != null)
+            {
+                conn.ResetTraceId();
+            }
+
+            return base.ExecuteQuery();
+        }
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
         {
@@ -55,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
         }
 
-        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkReader(statement, schema);
+        protected override IArrowArrayStream NewReader<T>(T statement, Schema schema, TFetchResultsResp? firstBatch) => new SparkReader(statement, schema, firstBatch);
 
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
@@ -72,11 +83,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             List<TSparkArrowBatch>? batches;
             int index;
             IArrowReader? reader;
+            bool hasMoreRows = false;
 
-            public SparkReader(HiveServer2Statement statement, Schema schema)
+            public SparkReader(HiveServer2Statement statement, Schema schema, TFetchResultsResp? firstBatch)
             {
                 this.statement = statement;
                 this.schema = schema;
+
+                if (firstBatch != null)
+                {
+                    this.batches = firstBatch.Results.ArrowBatches;
+                    this.hasMoreRows = firstBatch.HasMoreRows;
+                }
             }
 
             public Schema Schema { get { return schema; } }
@@ -104,7 +122,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     this.batches = null;
                     this.index = 0;
 
-                    if (this.statement == null)
+                    if (this.statement == null || !hasMoreRows)
                     {
                         return null;
                     }
@@ -117,6 +135,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     {
                         this.statement = null;
                     }
+
+                    hasMoreRows = response.HasMoreRows;
                 }
             }
 

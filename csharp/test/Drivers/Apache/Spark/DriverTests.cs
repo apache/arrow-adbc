@@ -16,10 +16,15 @@
 */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
@@ -505,14 +510,71 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [SkippableFact, Order(10)]
         public void CanExecuteQuery()
         {
-            using AdbcConnection adbcConnection = NewConnection();
+            long count = 0;
+            long target = 80;
+            Queue<String> log = new Queue<string>();
+            string FileName = $@"c:\temp\hmsmeta\{DateTime.Now.ToString("yyyyMMdd_HHmm")}__{target}.log";
 
-            using AdbcStatement statement = adbcConnection.CreateStatement();
-            statement.SqlQuery = TestConfiguration.Query;
+            for (int i = 0; i < target; i++)
+            {
+                ThreadPool.QueueUserWorkItem((_) =>
+                {
+                    using AdbcConnection adbcConnection = NewConnection();
+                    var sparkConn = adbcConnection as SparkConnection;
+                    if(sparkConn == null)
+                    {
+                        throw new InvalidCastException();
+                    }
 
-            QueryResult queryResult = statement.ExecuteQuery();
+                    for (int i = 0; i < 10000; i++)
+                    {
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        bool succeed = false;
+                        try
+                        {
+                            using AdbcStatement statement = adbcConnection.CreateStatement();
+                            statement.SqlQuery = TestConfiguration.Query;
 
-            Tests.DriverTests.CanExecuteQuery(queryResult, TestConfiguration.ExpectedResultsCount);
+                            QueryResult queryResult = statement.ExecuteQuery();
+                            Tests.DriverTests.CanExecuteQuery(queryResult, TestConfiguration.ExpectedResultsCount);
+                            succeed = true;
+                        }
+                        catch (Exception)
+                        {
+                            succeed = false;
+                        }
+                        sw.Stop();
+                        var logStr = $"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")},{sparkConn.TraceId},{sw.ElapsedMilliseconds},{succeed}";
+
+                        lock(log)
+                        {
+                            log.Enqueue(logStr);
+                            if(log.Count > 1000)
+                            {
+                                File.AppendAllLines(FileName, log.ToArray());
+                                log.Clear();
+                            }
+                        }
+                    }
+
+                    lock (log)
+                    {
+                        if (log.Count > 0)
+                        {
+                            File.AppendAllLines(FileName, log.ToArray());
+                            log.Clear();
+                        }
+                    }
+
+                    Interlocked.Increment(ref count);
+                });
+            }
+
+            while(Interlocked.Read(ref count) < target)
+            {
+                Thread.Sleep(1000);
+            }
         }
 
         /// <summary>
