@@ -526,7 +526,7 @@ func withQuirks(t *testing.T, fn func(quirks *BigQueryQuirks)) {
 	// Can be overridden by setting env var GOOGLE_CLOUD_PROJECT
 	client, err := bigquery.NewClient(ctx, bigquery.DetectProjectID)
 	if err != nil {
-		panic(err)
+		t.Skipf("failed to detect client config from environment, skip bigquery driver tests: %s", err)
 	}
 
 	// avoid multiple runs clashing by operating in a fresh schema and then
