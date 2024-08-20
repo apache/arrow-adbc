@@ -701,10 +701,6 @@ class BaseConnection : public ObjectBase {
   /// \internal
   AdbcStatusCode GetInfo(const uint32_t* info_codes, size_t info_codes_length,
                          ArrowArrayStream* out, AdbcError* error) {
-    if (!out) {
-      RAISE_STATUS(error, status::InvalidArgument("out must be non-null"));
-    }
-
     std::vector<uint32_t> codes(info_codes, info_codes + info_codes_length);
     RAISE_STATUS(error, impl().GetInfoImpl(codes, out));
     return ADBC_STATUS_OK;
