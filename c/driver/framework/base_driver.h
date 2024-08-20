@@ -872,8 +872,8 @@ class BaseStatement : public ObjectBase {
     return ObjectBase::Init(parent, error);
   }
 
-  /// \brief Initialize the database.
-  virtual Status InitImpl() { return status::Ok(); }
+  /// \brief Initialize the statement.
+  Status InitImpl(void* parent) { return status::Ok(); }
 
   /// \internal
   AdbcStatusCode Release(AdbcError* error) override {

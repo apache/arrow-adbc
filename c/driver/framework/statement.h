@@ -32,7 +32,7 @@ namespace adbc::driver {
 
 /// \brief A base implementation of a statement.
 template <typename Derived>
-class Statement : public ObjectBase {
+class Statement : public BaseStatement<Derived> {
  public:
   using Base = Statement<Derived>;
 
@@ -71,7 +71,7 @@ class Statement : public ObjectBase {
   /// \brief Statement state: one of the above.
   using State = std::variant<EmptyState, IngestState, PreparedState, QueryState>;
 
-  Statement() : ObjectBase() {
+  Statement() : BaseStatement<Derived>() {
     std::memset(&bind_parameters_, 0, sizeof(bind_parameters_));
   }
   ~Statement() = default;
@@ -183,7 +183,7 @@ class Statement : public ObjectBase {
   }
 
   AdbcStatusCode Init(void* parent, AdbcError* error) {
-    lifecycle_state_ = LifecycleState::kInitialized;
+    this->lifecycle_state_ = LifecycleState::kInitialized;
     if (auto status = impl().InitImpl(parent); !status.ok()) {
       return status.ToAdbc(error);
     }
