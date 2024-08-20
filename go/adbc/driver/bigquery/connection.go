@@ -149,22 +149,25 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 				constraints = append(constraints, driverbase.ConstraintInfo{
 					// BigQuery Primary Keys are unnamed
 					ConstraintType:        internal.PrimaryKey,
-					ConstraintColumnNames: md.TableConstraints.PrimaryKey.Columns,
+					ConstraintColumnNames: driverbase.RequiredList(md.TableConstraints.PrimaryKey.Columns),
 				})
 			}
 
 			for _, fk := range md.TableConstraints.ForeignKeys {
-				columnUsage := make([]driverbase.ConstraintColumnUsage, len(fk.ColumnReferences))
+				var columnUsage []driverbase.ConstraintColumnUsage
+				if len(fk.ColumnReferences) > 0 {
+					columnUsage = make([]driverbase.ConstraintColumnUsage, len(fk.ColumnReferences))
+				}
 				for i, ref := range fk.ColumnReferences {
 					columnUsage[i] = driverbase.ConstraintColumnUsage{
-						ForeignKeyCatalog:  fk.ReferencedTable.ProjectID,
-						ForeignKeyDbSchema: fk.ReferencedTable.DatasetID,
+						ForeignKeyCatalog:  driverbase.Nullable(fk.ReferencedTable.ProjectID),
+						ForeignKeyDbSchema: driverbase.Nullable(fk.ReferencedTable.DatasetID),
 						ForeignKeyTable:    fk.ReferencedTable.TableID,
 						ForeignKeyColumn:   ref.ReferencedColumn,
 					}
 				}
 				constraints = append(constraints, driverbase.ConstraintInfo{
-					ConstraintName:        fk.Name,
+					ConstraintName:        driverbase.Nullable(fk.Name),
 					ConstraintType:        internal.ForeignKey,
 					ConstraintColumnUsage: columnUsage,
 				})
@@ -209,19 +212,19 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 
 					columns = append(columns, driverbase.ColumnInfo{
 						ColumnName:          fieldschema.Name,
-						OrdinalPosition:     int32(pos + 1),
-						Remarks:             fieldschema.Description,
-						XdbcDataType:        int16(field.Type.ID()),
-						XdbcTypeName:        string(fieldschema.Type),
-						XdbcNullable:        xdbcNullable,
-						XdbcSqlDataType:     int16(xdbcDataType),
-						XdbcIsNullable:      xdbcIsNullable,
-						XdbcDecimalDigits:   int16(fieldschema.Scale),
-						XdbcColumnSize:      int32(xdbcColumnSize),
-						XdbcCharOctetLength: xdbcCharOctetLength,
-						XdbcScopeCatalog:    catalog,
-						XdbcScopeSchema:     schema,
-						XdbcScopeTable:      table.TableID,
+						OrdinalPosition:     driverbase.Nullable(int32(pos + 1)),
+						Remarks:             driverbase.Nullable(fieldschema.Description),
+						XdbcDataType:        driverbase.Nullable(int16(field.Type.ID())),
+						XdbcTypeName:        driverbase.Nullable(string(fieldschema.Type)),
+						XdbcNullable:        driverbase.Nullable(xdbcNullable),
+						XdbcSqlDataType:     driverbase.Nullable(int16(xdbcDataType)),
+						XdbcIsNullable:      driverbase.Nullable(xdbcIsNullable),
+						XdbcDecimalDigits:   driverbase.Nullable(int16(fieldschema.Scale)),
+						XdbcColumnSize:      driverbase.Nullable(int32(xdbcColumnSize)),
+						XdbcCharOctetLength: driverbase.Nullable(xdbcCharOctetLength),
+						XdbcScopeCatalog:    driverbase.Nullable(catalog),
+						XdbcScopeSchema:     driverbase.Nullable(schema),
+						XdbcScopeTable:      driverbase.Nullable(table.TableID),
 					})
 				}
 			}

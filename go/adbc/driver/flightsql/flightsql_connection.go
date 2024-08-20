@@ -198,7 +198,7 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 					if columnPattern.MatchString(field.Name) {
 						columns = append(columns, driverbase.ColumnInfo{
 							ColumnName:      field.Name,
-							OrdinalPosition: int32(i + 1),
+							OrdinalPosition: driverbase.Nullable(int32(i + 1)),
 						})
 					}
 				}

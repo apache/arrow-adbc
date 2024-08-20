@@ -331,8 +331,7 @@ func TestCustomizedDriver(t *testing.T) {
 							"table_columns": [
 								{
 									"column_name": "col4",
-									"ordinal_position": 1,
-									"remarks": ""
+									"ordinal_position": 1
 								}
 							],
 							"table_constraints": [
@@ -490,7 +489,7 @@ func (db *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 			WithCurrentNamespacer(cnxn).
 			WithTableTypeLister(cnxn).
 			WithDriverInfoPreparer(cnxn).
-			WithDbObjectsEnumeratorV2(cnxn).
+			WithDbObjectsEnumerator(cnxn).
 			WithConcurrency(1).
 			Connection(), nil
 	}
@@ -514,18 +513,18 @@ var dbObjects = map[string]map[string][]driverbase.TableInfo{
 				TableColumns: []driverbase.ColumnInfo{
 					{
 						ColumnName:      "col1",
-						OrdinalPosition: 1,
-						Remarks:         "the first column",
+						OrdinalPosition: driverbase.Nullable(int32(1)),
+						Remarks:         driverbase.Nullable("the first column"),
 					},
 					{
 						ColumnName:      "col2",
-						OrdinalPosition: 2,
-						Remarks:         "the second column",
+						OrdinalPosition: driverbase.Nullable(int32(2)),
+						Remarks:         driverbase.Nullable("the second column"),
 					},
 					{
 						ColumnName:      "col3",
-						OrdinalPosition: 3,
-						Remarks:         "the third column",
+						OrdinalPosition: driverbase.Nullable(int32(3)),
+						Remarks:         driverbase.Nullable("the third column"),
 					},
 				},
 			},
@@ -542,14 +541,14 @@ var dbObjects = map[string]map[string][]driverbase.TableInfo{
 				TableColumns: []driverbase.ColumnInfo{
 					{
 						ColumnName:      "col4",
-						OrdinalPosition: 1,
+						OrdinalPosition: driverbase.Nullable(int32(1)),
 					},
 				},
 				TableConstraints: []driverbase.ConstraintInfo{
 					{
-						ConstraintName:        "baz_pk",
+						ConstraintName:        driverbase.Nullable("baz_pk"),
 						ConstraintType:        "PRIMARY KEY",
-						ConstraintColumnNames: []string{"col4"},
+						ConstraintColumnNames: driverbase.RequiredList([]string{"col4"}),
 					},
 				},
 			},
