@@ -53,24 +53,32 @@ type statement struct {
 	prefetchConcurrency    int
 }
 
-// GetOptionBytes implements adbc.GetSetOptions.
 func (st *statement) GetOptionBytes(key string) ([]byte, error) {
-	panic("unimplemented")
+	return nil, adbc.Error{
+		Msg:  fmt.Sprintf("[BigQuery] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
 }
 
-// GetOptionDouble implements adbc.GetSetOptions.
 func (st *statement) GetOptionDouble(key string) (float64, error) {
-	panic("unimplemented")
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[BigQuery] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
 }
 
-// SetOptionBytes implements adbc.GetSetOptions.
 func (st *statement) SetOptionBytes(key string, value []byte) error {
-	panic("unimplemented")
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[BigQuery] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
-// SetOptionDouble implements adbc.GetSetOptions.
 func (st *statement) SetOptionDouble(key string, value float64) error {
-	panic("unimplemented")
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[BigQuery] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
 // Close releases any relevant resources associated with this statement
