@@ -30,8 +30,6 @@ using adbc::driver::Option;
 using adbc::driver::Result;
 using adbc::driver::Status;
 
-namespace {
-
 class VoidDatabase : public adbc::driver::BaseDatabase<VoidDatabase> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
@@ -103,8 +101,6 @@ class VoidStatement : public adbc::driver::BaseStatement<VoidStatement> {
  private:
   std::unordered_map<std::string, Option> options_;
 };
-
-}  // namespace
 
 static AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver,
                                          AdbcError* error) {
