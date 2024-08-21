@@ -18,7 +18,6 @@
 adbc_framework_lib = library(
     'adbc_driver_framework',
     sources: [
-        'base_driver.cc',
         'catalog.cc',
         'objects.cc',
     ],

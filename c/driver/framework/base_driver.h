@@ -80,26 +80,171 @@ class Option {
   bool has_value() const { return !std::holds_alternative<Unset>(value_); }
 
   /// \brief Try to parse a string value as a boolean.
-  Result<bool> AsBool() const;
+  Result<bool> AsBool() const {
+    return std::visit(
+        [&](auto&& value) -> Result<bool> {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, std::string>) {
+            if (value == ADBC_OPTION_VALUE_ENABLED) {
+              return true;
+            } else if (value == ADBC_OPTION_VALUE_DISABLED) {
+              return false;
+            }
+          }
+          return status::InvalidArgument("Invalid boolean value ", this->Format());
+        },
+        value_);
+  }
 
   /// \brief Try to parse a string or integer value as an integer.
-  Result<int64_t> AsInt() const;
+  Result<int64_t> AsInt() const {
+    return std::visit(
+        [&](auto&& value) -> Result<int64_t> {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, int64_t>) {
+            return value;
+          } else if constexpr (std::is_same_v<T, std::string>) {
+            int64_t parsed = 0;
+            auto begin = value.data();
+            auto end = value.data() + value.size();
+            auto result = std::from_chars(begin, end, parsed);
+            if (result.ec != std::errc()) {
+              return status::InvalidArgument("Invalid integer value '", value,
+                                             "': not an integer", value);
+            } else if (result.ptr != end) {
+              return status::InvalidArgument("Invalid integer value '", value,
+                                             "': trailing data", value);
+            }
+            return parsed;
+          }
+          return status::InvalidArgument("Invalid integer value ", this->Format());
+        },
+        value_);
+  }
 
   /// \brief Get the value if it is a string.
-  Result<std::string_view> AsString() const;
+  Result<std::string_view> AsString() const {
+    return std::visit(
+        [&](auto&& value) -> Result<std::string_view> {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, std::string>) {
+            return value;
+          }
+          return status::InvalidArgument("Invalid string value ", this->Format());
+        },
+        value_);
+  }
 
   /// \brief Provide a human-readable summary of the value
-  std::string Format() const;
+  std::string Format() const {
+    return std::visit(
+        [&](auto&& value) -> std::string {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, adbc::driver::Option::Unset>) {
+            return "(NULL)";
+          } else if constexpr (std::is_same_v<T, std::string>) {
+            return std::string("'") + value + "'";
+          } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+            return std::string("(") + std::to_string(value.size()) + " bytes)";
+          } else {
+            return std::to_string(value);
+          }
+        },
+        value_);
+  }
 
  private:
   Value value_;
 
   // Methods used by trampolines to export option values in C below
   friend class ObjectBase;
-  AdbcStatusCode CGet(char* out, size_t* length, AdbcError* error) const;
-  AdbcStatusCode CGet(uint8_t* out, size_t* length, AdbcError* error) const;
-  AdbcStatusCode CGet(int64_t* out, AdbcError* error) const;
-  AdbcStatusCode CGet(double* out, AdbcError* error) const;
+  AdbcStatusCode CGet(char* out, size_t* length, AdbcError* error) const {
+    {
+      if (!out || !length) {
+        return status::InvalidArgument("Must provide both out and length to GetOption")
+            .ToAdbc(error);
+      }
+      return std::visit(
+          [&](auto&& value) -> AdbcStatusCode {
+            using T = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<T, std::string>) {
+              size_t value_size_with_terminator = value.size() + 1;
+              if (*length >= value_size_with_terminator) {
+                std::memcpy(out, value.data(), value.size());
+                out[value.size()] = 0;
+              }
+              *length = value_size_with_terminator;
+              return ADBC_STATUS_OK;
+            } else if constexpr (std::is_same_v<T, Unset>) {
+              return status::NotFound("Unknown option").ToAdbc(error);
+            } else {
+              return status::NotFound("Option value is not a string").ToAdbc(error);
+            }
+          },
+          value_);
+    }
+  }
+  AdbcStatusCode CGet(uint8_t* out, size_t* length, AdbcError* error) const {
+    if (!out || !length) {
+      return status::InvalidArgument("Must provide both out and length to GetOption")
+          .ToAdbc(error);
+    }
+    return std::visit(
+        [&](auto&& value) -> AdbcStatusCode {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, std::string> ||
+                        std::is_same_v<T, std::vector<uint8_t>>) {
+            if (*length >= value.size()) {
+              std::memcpy(out, value.data(), value.size());
+            }
+            *length = value.size();
+            return ADBC_STATUS_OK;
+          } else if constexpr (std::is_same_v<T, Unset>) {
+            return status::NotFound("Unknown option").ToAdbc(error);
+          } else {
+            return status::NotFound("Option value is not a bytestring").ToAdbc(error);
+          }
+        },
+        value_);
+  }
+  AdbcStatusCode CGet(int64_t* out, AdbcError* error) const {
+    {
+      if (!out) {
+        return status::InvalidArgument("Must provide out to GetOption").ToAdbc(error);
+      }
+      return std::visit(
+          [&](auto&& value) -> AdbcStatusCode {
+            using T = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<T, int64_t>) {
+              *out = value;
+              return ADBC_STATUS_OK;
+            } else if constexpr (std::is_same_v<T, Unset>) {
+              return status::NotFound("Unknown option").ToAdbc(error);
+            } else {
+              return status::NotFound("Option value is not an integer").ToAdbc(error);
+            }
+          },
+          value_);
+    }
+  }
+  AdbcStatusCode CGet(double* out, AdbcError* error) const {
+    if (!out) {
+      return status::InvalidArgument("Must provide out to GetOption").ToAdbc(error);
+    }
+    return std::visit(
+        [&](auto&& value) -> AdbcStatusCode {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, double> || std::is_same_v<T, int64_t>) {
+            *out = static_cast<double>(value);
+            return ADBC_STATUS_OK;
+          } else if constexpr (std::is_same_v<T, Unset>) {
+            return status::NotFound("Unknown option").ToAdbc(error);
+          } else {
+            return status::NotFound("Option value is not a double").ToAdbc(error);
+          }
+        },
+        value_);
+  }
 };
 
 /// \brief Base class for private_data of AdbcDatabase, AdbcConnection, and

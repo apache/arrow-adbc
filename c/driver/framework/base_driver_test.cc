@@ -97,7 +97,7 @@ TEST(TestDriverBase, TestVoidDriverMethods) {
 
   EXPECT_EQ(driver.ConnectionCommit(&connection, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
   EXPECT_EQ(driver.ConnectionGetInfo(&connection, nullptr, 0, nullptr, nullptr),
-            ADBC_STATUS_INVALID_ARGUMENT);
+            ADBC_STATUS_NOT_IMPLEMENTED);
   EXPECT_EQ(driver.ConnectionGetObjects(&connection, 0, nullptr, nullptr, 0, nullptr,
                                         nullptr, nullptr, nullptr),
             ADBC_STATUS_NOT_IMPLEMENTED);
