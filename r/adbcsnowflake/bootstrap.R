@@ -20,7 +20,7 @@
 # than remembering the internal dependency structure of the go sources.
 files_to_vendor <- list.files(
   "../../go/adbc",
-  "\\.(go|mod|txt|sum|h|c)$",
+  "\\.(go|mod|txt|sum|h|c|sql)$",
   recursive = TRUE
 )
 
