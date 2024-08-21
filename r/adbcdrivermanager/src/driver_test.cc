@@ -22,6 +22,7 @@
 #include <cstring>
 
 #include "driver/common/driver_base.h"
+#include "driver/framework/base_driver.h"
 
 #include "arrow-adbc/adbc.h"
 
@@ -30,8 +31,25 @@ using adbc::common::DatabaseObjectBase;
 using adbc::common::Option;
 using adbc::common::StatementObjectBase;
 
-using VoidDriver =
-    adbc::common::Driver<DatabaseObjectBase, ConnectionObjectBase, StatementObjectBase>;
+namespace {
+
+class VoidDatabase : public adbc::driver::BaseDatabase<VoidDatabase> {
+ public:
+  [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
+};
+
+class VoidConnection : public adbc::driver::BaseConnection<VoidConnection> {
+ public:
+  [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
+};
+
+class VoidStatement : public adbc::driver::BaseStatement<VoidStatement> {
+ public:
+  [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
+};
+
+using VoidDriver = adbc::driver::Driver<VoidDatabase, VoidConnection, VoidStatement>;
+}  // namespace
 
 static AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver,
                                          AdbcError* error) {
@@ -268,8 +286,7 @@ class LogStatement : public StatementObjectBase {
   }
 };
 
-using LogDriver =
-    adbc::common::Driver<LogDatabase, LogConnection, LogStatement>;
+using LogDriver = adbc::common::Driver<LogDatabase, LogConnection, LogStatement>;
 
 static AdbcStatusCode LogDriverInitFunc(int version, void* raw_driver, AdbcError* error) {
   return LogDriver::Init(version, raw_driver, error);
