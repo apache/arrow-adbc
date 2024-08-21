@@ -57,167 +57,30 @@ type connectionImpl struct {
 	supportInfo support
 }
 
-// GetCatalogs implements driverbase.DbObjectsEnumeratorV2.
-func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string) ([]string, error) {
-	catalogPattern, err := internal.PatternToRegexp(catalogFilter)
+func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
+	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
+	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
+	if err := g.Init(c.Base().Alloc, c.GetObjectsDbSchemas, c.GetObjectsTables); err != nil {
+		return nil, err
+	}
+	defer g.Release()
+
+	catalogs, err := c.GetObjectsCatalogs(ctx, catalog)
 	if err != nil {
 		return nil, err
 	}
-	if catalogPattern == nil {
-		catalogPattern = internal.AcceptAll
+
+	foundCatalog := false
+	for _, catalog := range catalogs {
+		g.AppendCatalog(catalog)
+		foundCatalog = true
 	}
 
-	msg := "GetObjects(GetCatalogs)"
-	rdr, nRecords, header, trailer, err := c.getReaderForInfo(ctx, schema_ref.Catalogs, c.cl.GetCatalogs, msg)
-	if err != nil {
-		return nil, err
+	// Implementations like Dremio report no catalogs, but still have schemas
+	if !foundCatalog && depth != adbc.ObjectDepthCatalogs {
+		g.AppendCatalog("")
 	}
-	defer rdr.Release()
-
-	catalogs := make([]string, 0, nRecords)
-	for rdr.Next() {
-		arr := rdr.Record().Column(0).(*array.String)
-		for i := 0; i < arr.Len(); i++ {
-			// XXX: force copy since accessor is unsafe
-			catalogName := string([]byte(arr.Value(i)))
-			if catalogPattern.MatchString(catalogName) {
-				catalogs = append(catalogs, catalogName)
-			}
-		}
-	}
-
-	if err := checkContext(rdr.Err(), ctx); err != nil {
-		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, msg)
-	}
-
-	return catalogs, nil
-}
-
-// GetDBSchemasForCatalog implements driverbase.DbObjectsEnumeratorV2.
-func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) ([]string, error) {
-	msg := "GetObjects(GetDBSchemas)"
-	rdr, nRecords, header, trailer, err := c.getReaderForInfo(
-		ctx,
-		schema_ref.DBSchemas,
-		func(ctx context.Context, co ...grpc.CallOption) (*flightproto.FlightInfo, error) {
-			return c.cl.GetDBSchemas(
-				ctx,
-				&flightsql.GetDBSchemasOpts{
-					Catalog:               &catalog,
-					DbSchemaFilterPattern: schemaFilter,
-				},
-				co...,
-			)
-		},
-		msg,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rdr.Release()
-
-	dbSchemas := make([]string, 0, nRecords)
-	for rdr.Next() {
-		arr := rdr.Record().Column(1).(*array.String)
-		for i := 0; i < arr.Len(); i++ {
-			// XXX: force copy since accessor is unsafe
-			dbSchemaName := string([]byte(arr.Value(i)))
-			dbSchemas = append(dbSchemas, dbSchemaName)
-		}
-	}
-
-	if err := checkContext(rdr.Err(), ctx); err != nil {
-		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, msg)
-	}
-
-	return dbSchemas, nil
-}
-
-// GetTablesForDBSchema implements driverbase.DbObjectsEnumeratorV2.
-func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {
-	columnPattern, err := internal.PatternToRegexp(columnFilter)
-	if err != nil {
-		return nil, err
-	}
-	if columnPattern == nil {
-		columnPattern = internal.AcceptAll
-	}
-
-	msg := "GetObjects(GetTables)"
-	expectedSchema := schema_ref.Tables
-	if includeColumns {
-		expectedSchema = schema_ref.TablesWithIncludedSchema
-	}
-
-	rdr, nRecords, header, trailer, err := c.getReaderForInfo(
-		ctx,
-		expectedSchema,
-		func(ctx context.Context, co ...grpc.CallOption) (*flightproto.FlightInfo, error) {
-			return c.cl.GetTables(
-				ctx,
-				&flightsql.GetTablesOpts{
-					Catalog:                &catalog,
-					DbSchemaFilterPattern:  &schema,
-					TableNameFilterPattern: tableFilter,
-					IncludeSchema:          includeColumns,
-				},
-				co...,
-			)
-		},
-		msg,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rdr.Release()
-
-	tables := make([]driverbase.TableInfo, 0, nRecords)
-	for rdr.Next() {
-		rec := rdr.Record()
-
-		tableNameArr := rec.Column(2).(*array.String)
-		tableTypeArr := rec.Column(3).(*array.String)
-		for i := 0; i < int(rec.NumRows()); i++ {
-			// XXX: force copy since accessor is unsafe
-			tableName := string([]byte(tableNameArr.Value(i)))
-			tableType := string([]byte(tableTypeArr.Value(i)))
-
-			var columns []driverbase.ColumnInfo
-			if includeColumns {
-				reader, err := ipc.NewReader(bytes.NewReader(rec.Column(4).(*array.Binary).Value(i)))
-				if err != nil {
-					return nil, adbc.Error{
-						Msg:  err.Error(),
-						Code: adbc.StatusInternal,
-					}
-				}
-
-				schema := reader.Schema()
-				columns = make([]driverbase.ColumnInfo, 0, schema.NumFields())
-				for i, field := range schema.Fields() {
-					if columnPattern.MatchString(field.Name) {
-						columns = append(columns, driverbase.ColumnInfo{
-							ColumnName:      field.Name,
-							OrdinalPosition: driverbase.Nullable(int32(i + 1)),
-						})
-					}
-				}
-				reader.Release()
-			}
-
-			tables = append(tables, driverbase.TableInfo{
-				TableName:    tableName,
-				TableType:    tableType,
-				TableColumns: columns,
-			})
-		}
-	}
-
-	if err := checkContext(rdr.Err(), ctx); err != nil {
-		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, msg)
-	}
-
-	return tables, nil
+	return g.Finish()
 }
 
 // GetCurrentCatalog implements driverbase.CurrentNamespacer.
