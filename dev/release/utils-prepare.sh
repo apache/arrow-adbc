@@ -120,6 +120,12 @@ update_versions() {
   rm "${ADBC_DIR}/rust/Cargo.toml.bak"
   git add "${ADBC_DIR}/rust/Cargo.toml"
 
+  # Regenerate the Cargo lockfile, as several ADBC package versions are propagated there.
+  # This also has the effect of updating patch versions of dependencies.
+  pushd "${ADBC_DIR}/rust"
+  cargo generate-lockfile
+  popd
+
   if [ ${type} = "release" ]; then
     pushd "${ADBC_DIR}/ci/linux-packages"
     rake version:update VERSION=${linux_version}
