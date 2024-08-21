@@ -21,7 +21,7 @@
 
 #include <cstring>
 
-#include "driver_base.h"
+#include "driver/common/driver_base.h"
 
 #include "arrow-adbc/adbc.h"
 

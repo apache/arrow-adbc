@@ -24,12 +24,3 @@
 if [ -f bootstrap.R ]; then
   $R_HOME/bin/Rscript bootstrap.R --vanilla
 fi
-
-if [ -f "src/arrow-adbc/adbc.h" ] && [ -f "src/arrow-adbc/adbc_driver_manager.h" ] && [ -f "src/adbc_driver_manager.cc" ]; then
-  echo "Found vendored ADBC"
-  exit 0
-fi
-
-echo "Vendored src/arrow-adbc/adbc.h and/or src/adbc_driver_manager.cc are missing"
-echo "This source package was probably built incorrectly and it's probably not your fault"
-exit 1
