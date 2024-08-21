@@ -31,21 +31,82 @@ using adbc::common::DatabaseObjectBase;
 using adbc::common::Option;
 using adbc::common::StatementObjectBase;
 
+using Option2 = adbc::driver::Option;
+using adbc::driver::Result;
+using adbc::driver::Status;
+
 namespace {
 
 class VoidDatabase : public adbc::driver::BaseDatabase<VoidDatabase> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
+
+  Status SetOptionImpl(std::string_view key, Option2 value) override {
+    options_[std::string(key)] = value;
+    return adbc::driver::status::Ok();
+  }
+
+  Result<Option2> GetOption(std::string_view key) override {
+    auto result = options_.find(std::string(key));
+    if (result == options_.end()) {
+      Status out(ADBC_STATUS_NOT_FOUND, "option not found");
+      out.AddDetail("r.driver_test.option_key", std::string(key));
+      return out;
+    } else {
+      return result->second;
+    }
+  }
+
+ private:
+  std::unordered_map<std::string, Option2> options_;
 };
 
 class VoidConnection : public adbc::driver::BaseConnection<VoidConnection> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
+
+  Status SetOptionImpl(std::string_view key, Option2 value) override {
+    options_[std::string(key)] = value;
+    return adbc::driver::status::Ok();
+  }
+
+  Result<Option2> GetOption(std::string_view key) override {
+    auto result = options_.find(std::string(key));
+    if (result == options_.end()) {
+      Status out(ADBC_STATUS_NOT_FOUND, "option not found");
+      out.AddDetail("r.driver_test.option_key", std::string(key));
+      return out;
+    } else {
+      return result->second;
+    }
+  }
+
+ private:
+  std::unordered_map<std::string, Option2> options_;
 };
 
 class VoidStatement : public adbc::driver::BaseStatement<VoidStatement> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
+
+  Status SetOptionImpl(std::string_view key, Option2 value) override {
+    options_[std::string(key)] = value;
+    return adbc::driver::status::Ok();
+  }
+
+  Result<Option2> GetOption(std::string_view key) override {
+    auto result = options_.find(std::string(key));
+    if (result == options_.end()) {
+      Status out(ADBC_STATUS_NOT_FOUND, "option not found");
+      out.AddDetail("r.driver_test.option_key", std::string(key));
+      return out;
+    } else {
+      return result->second;
+    }
+  }
+
+ private:
+  std::unordered_map<std::string, Option2> options_;
 };
 
 using VoidDriver = adbc::driver::Driver<VoidDatabase, VoidConnection, VoidStatement>;
