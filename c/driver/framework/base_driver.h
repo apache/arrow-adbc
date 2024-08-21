@@ -160,7 +160,7 @@ class Option {
   friend class ObjectBase;
   AdbcStatusCode CGet(char* out, size_t* length, AdbcError* error) const {
     {
-      if (!out || !length) {
+      if (!length || (!out && *length > 0)) {
         return status::InvalidArgument("Must provide both out and length to GetOption")
             .ToAdbc(error);
       }
@@ -185,7 +185,7 @@ class Option {
     }
   }
   AdbcStatusCode CGet(uint8_t* out, size_t* length, AdbcError* error) const {
-    if (!out || !length) {
+    if (!length || (!out && *length > 0)) {
       return status::InvalidArgument("Must provide both out and length to GetOption")
           .ToAdbc(error);
     }
