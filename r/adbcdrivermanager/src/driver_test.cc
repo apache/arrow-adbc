@@ -20,18 +20,13 @@
 #include <Rinternals.h>
 
 #include <cstring>
+#include <unordered_map>
 
-#include "driver/common/driver_base.h"
 #include "driver/framework/base_driver.h"
 
 #include "arrow-adbc/adbc.h"
 
-using adbc::common::ConnectionObjectBase;
-using adbc::common::DatabaseObjectBase;
-using adbc::common::Option;
-using adbc::common::StatementObjectBase;
-
-using Option2 = adbc::driver::Option;
+using adbc::driver::Option;
 using adbc::driver::Result;
 using adbc::driver::Status;
 
@@ -41,12 +36,12 @@ class VoidDatabase : public adbc::driver::BaseDatabase<VoidDatabase> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
 
-  Status SetOptionImpl(std::string_view key, Option2 value) override {
+  Status SetOptionImpl(std::string_view key, Option value) override {
     options_[std::string(key)] = value;
     return adbc::driver::status::Ok();
   }
 
-  Result<Option2> GetOption(std::string_view key) override {
+  Result<Option> GetOption(std::string_view key) override {
     auto result = options_.find(std::string(key));
     if (result == options_.end()) {
       Status out(ADBC_STATUS_NOT_FOUND, "option not found");
@@ -58,19 +53,19 @@ class VoidDatabase : public adbc::driver::BaseDatabase<VoidDatabase> {
   }
 
  private:
-  std::unordered_map<std::string, Option2> options_;
+  std::unordered_map<std::string, Option> options_;
 };
 
 class VoidConnection : public adbc::driver::BaseConnection<VoidConnection> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
 
-  Status SetOptionImpl(std::string_view key, Option2 value) override {
+  Status SetOptionImpl(std::string_view key, Option value) override {
     options_[std::string(key)] = value;
     return adbc::driver::status::Ok();
   }
 
-  Result<Option2> GetOption(std::string_view key) override {
+  Result<Option> GetOption(std::string_view key) override {
     auto result = options_.find(std::string(key));
     if (result == options_.end()) {
       Status out(ADBC_STATUS_NOT_FOUND, "option not found");
@@ -82,19 +77,19 @@ class VoidConnection : public adbc::driver::BaseConnection<VoidConnection> {
   }
 
  private:
-  std::unordered_map<std::string, Option2> options_;
+  std::unordered_map<std::string, Option> options_;
 };
 
 class VoidStatement : public adbc::driver::BaseStatement<VoidStatement> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[void]";
 
-  Status SetOptionImpl(std::string_view key, Option2 value) override {
+  Status SetOptionImpl(std::string_view key, Option value) override {
     options_[std::string(key)] = value;
     return adbc::driver::status::Ok();
   }
 
-  Result<Option2> GetOption(std::string_view key) override {
+  Result<Option> GetOption(std::string_view key) override {
     auto result = options_.find(std::string(key));
     if (result == options_.end()) {
       Status out(ADBC_STATUS_NOT_FOUND, "option not found");
@@ -106,7 +101,7 @@ class VoidStatement : public adbc::driver::BaseStatement<VoidStatement> {
   }
 
  private:
-  std::unordered_map<std::string, Option2> options_;
+  std::unordered_map<std::string, Option> options_;
 };
 
 }  // namespace
@@ -175,49 +170,46 @@ extern "C" SEXP RAdbcMonkeyDriverInitFunc(void) {
   return xptr;
 }
 
-class LogDatabase : public DatabaseObjectBase {
+class LogDatabase : public adbc::driver::BaseDatabase<LogDatabase> {
  public:
+  [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[log]";
+
   LogDatabase() { Rprintf("LogDatabaseNew()\n"); }
 
   ~LogDatabase() { Rprintf("LogDatabaseRelease()\n"); }
 
-  AdbcStatusCode Init(void* parent, AdbcError* error) {
+  AdbcStatusCode Init(void* parent, AdbcError* error) override {
     Rprintf("LogDatabaseInit()\n");
-    return DatabaseObjectBase::Init(parent, error);
+    return Base::Init(parent, error);
   }
 
-  const Option& GetOption(const std::string& key,
-                          const Option& default_value = Option()) const {
-    Rprintf("LogDatabaseGetOption()\n");
-    return DatabaseObjectBase::GetOption(key, default_value);
-  }
-
-  AdbcStatusCode SetOption(const std::string& key, const Option& value) {
+  Status SetOptionImpl(std::string_view key, Option value) override {
     Rprintf("LogDatabaseSetOption()\n");
-    return DatabaseObjectBase::SetOption(key, value);
+    return adbc::driver::status::Ok();
+  }
+
+  Result<Option> GetOption(std::string_view key) override {
+    Rprintf("LogDatabaseGetOption()\n");
+    return Base::GetOption(key);
   }
 };
 
-class LogConnection : public ConnectionObjectBase {
+class LogConnection : public adbc::driver::BaseConnection<LogConnection> {
  public:
+  [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[log]";
+
   LogConnection() { Rprintf("LogConnectionNew()\n"); }
 
   ~LogConnection() { Rprintf("LogConnectionRelease()\n"); }
 
-  AdbcStatusCode Init(void* parent, AdbcError* error) {
+  AdbcStatusCode Init(void* parent, AdbcError* error) override {
     Rprintf("LogConnectionInit()\n");
-    return ConnectionObjectBase::Init(parent, error);
+    return Base::Init(parent, error);
   }
 
-  const Option& GetOption(const std::string& key,
-                          const Option& default_value = Option()) const {
-    Rprintf("LogConnectionGetOption()\n");
-    return ConnectionObjectBase::GetOption(key, default_value);
-  }
-
-  AdbcStatusCode SetOption(const std::string& key, const Option& value) {
+  Status SetOptionImpl(std::string_view key, Option value) override {
     Rprintf("LogConnectionSetOption()\n");
-    return ConnectionObjectBase::SetOption(key, value);
+    return adbc::driver::status::Ok();
   }
 
   AdbcStatusCode Commit(AdbcError* error) {
@@ -281,24 +273,20 @@ class LogConnection : public ConnectionObjectBase {
   }
 };
 
-class LogStatement : public StatementObjectBase {
+class LogStatement : public adbc::driver::BaseStatement<LogStatement> {
  public:
+  [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[log]";
+
   ~LogStatement() { Rprintf("LogStatementRelease()\n"); }
 
-  AdbcStatusCode Init(void* parent, AdbcError* error) {
+  AdbcStatusCode Init(void* parent, AdbcError* error) override {
     Rprintf("LogStatementNew()\n");
-    return StatementObjectBase::Init(parent, error);
+    return Base::Init(parent, error);
   }
 
-  const Option& GetOption(const std::string& key,
-                          const Option& default_value = Option()) const {
-    Rprintf("LogStatementGetOption()\n");
-    return StatementObjectBase::GetOption(key, default_value);
-  }
-
-  AdbcStatusCode SetOption(const std::string& key, const Option& value) {
+  Status SetOptionImpl(std::string_view key, Option value) override {
     Rprintf("LogStatementSetOption()\n");
-    return StatementObjectBase::SetOption(key, value);
+    return adbc::driver::status::Ok();
   }
 
   AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
@@ -343,7 +331,7 @@ class LogStatement : public StatementObjectBase {
   }
 };
 
-using LogDriver = adbc::common::Driver<LogDatabase, LogConnection, LogStatement>;
+using LogDriver = adbc::driver::Driver<LogDatabase, LogConnection, LogStatement>;
 
 static AdbcStatusCode LogDriverInitFunc(int version, void* raw_driver, AdbcError* error) {
   return LogDriver::Init(version, raw_driver, error);

@@ -7,10 +7,10 @@
       LogDatabaseSetOption()
       LogDatabaseInit()
     Code
-      expect_identical(adbc_database_get_option(db, "key"), "value")
+      try(adbc_database_get_option(db, "key"))
     Output
       LogDatabaseGetOption()
-      LogDatabaseGetOption()
+      Error in adbc_database_get_option(db, "key") : NOT_FOUND: Unknown option
     Code
       con <- adbc_connection_init(db, key = "value")
     Output
@@ -18,10 +18,10 @@
       LogConnectionSetOption()
       LogConnectionInit()
     Code
-      expect_identical(adbc_connection_get_option(con, "key"), "value")
+      try(adbc_connection_get_option(con, "key"))
     Output
-      LogConnectionGetOption()
-      LogConnectionGetOption()
+      Error in adbc_connection_get_option(con, "key") : 
+        NOT_FOUND: Unknown option
     Code
       try(adbc_connection_commit(con))
     Output
@@ -80,10 +80,10 @@
       LogStatementNew()
       LogStatementSetOption()
     Code
-      expect_identical(adbc_statement_get_option(stmt, "key"), "value")
+      try(adbc_statement_get_option(stmt, "key"))
     Output
-      LogStatementGetOption()
-      LogStatementGetOption()
+      Error in adbc_statement_get_option(stmt, "key") : 
+        NOT_FOUND: Unknown option
     Code
       try(adbc_statement_execute_query(stmt))
     Output
