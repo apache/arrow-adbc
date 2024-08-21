@@ -663,43 +663,6 @@ func (c *connectionImpl) readInfo(ctx context.Context, expectedSchema *arrow.Sch
 	return rdr, nil
 }
 
-func (c *connectionImpl) getReaderForInfo(
-	ctx context.Context,
-	expectedSchema *arrow.Schema,
-	getInfoFn func(context.Context, ...grpc.CallOption) (*flightproto.FlightInfo, error),
-	msg string,
-	args ...any,
-) (array.RecordReader,
-	int64,
-	metadata.MD,
-	metadata.MD,
-	error,
-) {
-	var (
-		header, trailer metadata.MD
-		numResults      int64
-	)
-	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
-	info, err := getInfoFn(ctx, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
-	if err != nil {
-		return nil, 0, header, trailer, adbcFromFlightStatusWithDetails(err, header, trailer, msg, args...)
-	}
-
-	if info.TotalRecords > 0 {
-		numResults = info.TotalRecords
-	}
-
-	header = metadata.MD{}
-	trailer = metadata.MD{}
-	rdr, err := c.readInfo(ctx, expectedSchema, info, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
-	if err != nil {
-		return nil, 0, header, trailer, adbcFromFlightStatusWithDetails(err, header, trailer, msg, args...)
-	}
-
-	return rdr, numResults, header, trailer, nil
-}
-
 func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error) {
 	var (
 		header, trailer metadata.MD
