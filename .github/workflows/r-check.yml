@@ -64,6 +64,7 @@ jobs:
       - name: Bootstrap R Package
         run: |
           pushd r/adbcdrivermanager
+          R -e 'if (!requireNamespace("nanoarrow", quietly = TRUE)) install.packages("nanoarrow")'
           R CMD INSTALL . --preclean
           popd
           pushd "r/${{ inputs.pkg }}"
