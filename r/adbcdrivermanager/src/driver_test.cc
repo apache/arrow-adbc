@@ -109,11 +109,11 @@ class VoidStatement : public adbc::driver::BaseStatement<VoidStatement> {
   std::unordered_map<std::string, Option2> options_;
 };
 
-using VoidDriver = adbc::driver::Driver<VoidDatabase, VoidConnection, VoidStatement>;
 }  // namespace
 
 static AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver,
                                          AdbcError* error) {
+  using VoidDriver = adbc::driver::Driver<VoidDatabase, VoidConnection, VoidStatement>;
   return VoidDriver::Init(version, raw_driver, error);
 }
 
@@ -125,8 +125,10 @@ extern "C" SEXP RAdbcVoidDriverInitFunc(void) {
   return xptr;
 }
 
-class MonkeyStatement : public StatementObjectBase {
+class MonkeyStatement : public adbc::driver::BaseStatement<MonkeyStatement> {
  public:
+  [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[monkey]";
+
   MonkeyStatement() { stream_.release = nullptr; }
 
   ~MonkeyStatement() {
@@ -135,36 +137,30 @@ class MonkeyStatement : public StatementObjectBase {
     }
   }
 
-  AdbcStatusCode BindStream(ArrowArrayStream* stream, AdbcError* error) {
+  Status BindStreamImpl(ArrowArrayStream* stream) {
     if (stream_.release != nullptr) {
       stream_.release(&stream_);
     }
 
     std::memcpy(&stream_, stream, sizeof(ArrowArrayStream));
     stream->release = nullptr;
-    return ADBC_STATUS_OK;
+    return adbc::driver::status::Ok();
   }
 
-  AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
-                              AdbcError* error) {
+  Result<int64_t> ExecuteQueryImpl(ArrowArrayStream* stream) {
     if (stream != nullptr) {
       std::memcpy(stream, &stream_, sizeof(ArrowArrayStream));
       stream_.release = nullptr;
     }
 
-    if (rows_affected != nullptr) {
-      *rows_affected = -1;
-    }
-
-    return ADBC_STATUS_OK;
+    return -1;
   }
 
  private:
   ArrowArrayStream stream_;
 };
 
-using MonkeyDriver =
-    adbc::common::Driver<DatabaseObjectBase, ConnectionObjectBase, MonkeyStatement>;
+using MonkeyDriver = adbc::driver::Driver<VoidDatabase, VoidConnection, MonkeyStatement>;
 
 static AdbcStatusCode MonkeyDriverInitFunc(int version, void* raw_driver,
                                            AdbcError* error) {
