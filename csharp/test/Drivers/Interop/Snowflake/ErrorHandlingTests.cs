@@ -117,7 +117,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <param name="test">A test for an invalid configuration checking the exception type and keywords in the error message.</param>
         [SkippableTheory]
         [MemberData(nameof(GenerateTestConfigurationData))]
-        public void TestConnectionInvalidConnection(SnowflakeTestConfigurationTest test)
+        public void TestDriverConnectionInvalidConnection(SnowflakeTestConfigurationTest test)
         {
             Dictionary<string, string> options = new();
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(
