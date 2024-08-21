@@ -388,7 +388,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: 'google-github-actions/auth@v2'
-        continue-on-error: true # if auth fails, bigquery driver adbc should skip
+        continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       - uses: actions/setup-go@v5
@@ -446,7 +446,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: 'google-github-actions/auth@v2'
-        continue-on-error: true # if auth fails, bigquery driver adbc should skip
+        continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       - name: Get required Go version

@@ -663,8 +663,12 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	metadata["Required"] = strconv.FormatBool(schema.Required)
 	field.Nullable = !schema.Required
 	metadata["Type"] = string(schema.Type)
-	policyTagList, err := json.Marshal(schema.PolicyTags) // TODO: make sure this works
-	if err != nil {
+
+	if schema.PolicyTags != nil {
+		policyTagList, err := json.Marshal(schema.PolicyTags)
+		if err != nil {
+			return arrow.Field{}, err
+		}
 		metadata["PolicyTags"] = string(policyTagList)
 	}
 

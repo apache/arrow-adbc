@@ -586,7 +586,6 @@ func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 
 								if strings.EqualFold(tableName, ingestTableName) {
 									foundTable = true
-									// TODO: Assert TableType?
 
 									colIdxStart, colIdxEnd := tableColumnsList.ValueOffsets(int(tblIdx))
 									for colIdx := colIdxStart; colIdx < colIdxEnd; colIdx++ {
