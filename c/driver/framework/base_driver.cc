@@ -66,7 +66,7 @@ Result<std::string_view> Option::AsString() const {
         if constexpr (std::is_same_v<T, std::string>) {
           return value;
         }
-        return status::InvalidArgument("Invalid string value {}", this->Format());
+        return status::InvalidArgument("Invalid string value ", this->Format());
       },
       value_);
 }
