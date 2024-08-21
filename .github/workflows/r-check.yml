@@ -64,7 +64,7 @@ jobs:
       - name: Bootstrap R Package
         run: |
           pushd r/adbcdrivermanager
-          Rscript bootstrap.R
+          R CMD INSTALL . --preclean
           popd
           pushd "r/${{ inputs.pkg }}"
           Rscript bootstrap.R
@@ -72,7 +72,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
         with:
-          extra-packages: any::rcmdcheck, local::../adbcdrivermanager
+          extra-packages: any::rcmdcheck
           needs: check
           working-directory: r/${{ inputs.pkg }}
 
