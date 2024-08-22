@@ -22,7 +22,6 @@ using System;
 
 namespace Apache.Arrow.Adbc.Client
 {
-    // TODO: Consider making public
     sealed public class AdbcParameter : DbParameter
     {
         public override DbType DbType { get; set; }

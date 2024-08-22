@@ -24,7 +24,6 @@ using System.IO;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
-using static Apache.Arrow.Adbc.AdbcOptions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
