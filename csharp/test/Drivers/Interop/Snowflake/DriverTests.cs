@@ -399,6 +399,24 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             Tests.DriverTests.CanExecuteQuery(queryResult, _testConfiguration.ExpectedResultsCount);
         }
 
+        /// <summary>
+        /// Validates if the driver can connect to a live server and execute a parameterized query.
+        /// </summary>
+        [SkippableFact, Order(6)]
+        public void CanExecuteParameterizedQuery()
+        {
+            using AdbcStatement statement = _connection.CreateStatement();
+            statement.SqlQuery = "SELECT * FROM (SELECT column1 FROM (VALUES (1), (2), (3))) WHERE column1 < ?";
+
+            Schema parameterSchema = new Schema(new[] { new Field("column1", Int32Type.Default, false) }, null);
+            RecordBatch parameters = new RecordBatch(parameterSchema, new[] { new Int32Array.Builder().Append(2).Build() }, 1);
+            statement.Bind(parameters, parameterSchema);
+
+            QueryResult queryResult = statement.ExecuteQuery();
+
+            Tests.DriverTests.CanExecuteQuery(queryResult, 1);
+        }
+
         [SkippableFact, Order(7)]
         public void CanIngestData()
         {

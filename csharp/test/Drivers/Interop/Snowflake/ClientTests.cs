@@ -24,6 +24,7 @@ using System.IO;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
+using static Apache.Arrow.Adbc.AdbcOptions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
@@ -139,6 +140,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
             {
                 Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
+            }
+        }
+
+        // <summary>
+        /// Validates if the client can connect to a live server and execute a parameterized query.
+        /// </summary>
+        [SkippableFact, Order(4)]
+        public void CanClientExecuteParameterizedQuery()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            testConfiguration.Query = "SELECT * FROM (SELECT column1 FROM (VALUES (1), (2), (3))) WHERE column1 < ?";
+            testConfiguration.ExpectedResultsCount = 1;
+
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+            {
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration, command =>
+                {
+                    DbParameter parameter1 = command.CreateParameter();
+                    parameter1.Value = 2;
+                    parameter1.DbType = DbType.Int32;
+                    command.Parameters.Add(parameter1);
+                });
             }
         }
 
