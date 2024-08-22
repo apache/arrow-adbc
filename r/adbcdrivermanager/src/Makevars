@@ -16,4 +16,12 @@
 # under the License.
 
 CXX_STD = CXX17
-PKG_CPPFLAGS=-I../src -DADBC_EXPORT=""
+PKG_CPPFLAGS=-I../src/c/include -I../src/c -DADBC_EXPORT=""
+
+OBJECTS = driver_test.o \
+    error.o \
+    init.o \
+    options.o \
+    radbc.o \
+    utils.o \
+    c/driver_manager/adbc_driver_manager.o

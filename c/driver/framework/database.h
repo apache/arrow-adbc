@@ -34,42 +34,22 @@ namespace adbc::driver {
 /// define a constexpr static symbol called kErrorPrefix that is used to
 /// construct error messages.
 template <typename Derived>
-class DatabaseBase : public ObjectBase {
+class Database : public BaseDatabase<Derived> {
  public:
-  using Base = DatabaseBase<Derived>;
+  using Base = Database<Derived>;
 
-  DatabaseBase() : ObjectBase() {}
-  ~DatabaseBase() = default;
-
-  /// \internal
-  AdbcStatusCode Init(void* parent, AdbcError* error) override {
-    if (auto status = impl().InitImpl(); !status.ok()) {
-      return status.ToAdbc(error);
-    }
-    return ObjectBase::Init(parent, error);
-  }
-
-  /// \internal
-  AdbcStatusCode Release(AdbcError* error) override {
-    return impl().ReleaseImpl().ToAdbc(error);
-  }
-
-  /// \internal
-  AdbcStatusCode SetOption(std::string_view key, Option value,
-                           AdbcError* error) override {
-    return impl().SetOptionImpl(key, std::move(value)).ToAdbc(error);
-  }
+  Database() : BaseDatabase<Derived>() {}
+  ~Database() = default;
 
   /// \brief Initialize the database.
-  virtual Status InitImpl() { return status::Ok(); }
+  virtual Status InitImpl() { return BaseDatabase<Derived>::InitImpl(); }
 
   /// \brief Release the database.
-  virtual Status ReleaseImpl() { return status::Ok(); }
+  virtual Status ReleaseImpl() { return BaseDatabase<Derived>::ReleaseImpl(); }
 
   /// \brief Set an option.  May be called prior to InitImpl.
   virtual Status SetOptionImpl(std::string_view key, Option value) {
-    return status::NotImplemented(Derived::kErrorPrefix, " Unknown database option ", key,
-                                  "=", value.Format());
+    return BaseDatabase<Derived>::SetOptionImpl(key, value);
   }
 
  private:

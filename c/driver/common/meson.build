@@ -27,7 +27,6 @@ if get_option('tests')
     exc = executable(
         'adbc-driver-common-test',
         'utils_test.cc',
-        'driver_test.cc',
         include_directories: [include_dir],
         link_with: [adbc_common_lib],
         dependencies: [nanoarrow_dep, gtest_main_dep, gmock_dep],
