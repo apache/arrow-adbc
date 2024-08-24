@@ -15,6 +15,19 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-======================
-Driver Manager Recipes
-======================
+============================
+DBAPI/Driver Manager Recipes
+============================
+
+These recipes show general functionality of the ADBC Python libraries that
+isn't necessarily specific to any one driver.
+
+Direct use of the low-level bindings
+====================================
+
+.. recipe:: driver_manager_lowlevel.py
+
+Manually preparing a statement
+==============================
+
+.. recipe:: driver_manager_prepare.py
