@@ -435,7 +435,7 @@ times.)</p>
 </pre></div>
 </div>
 <p>We can use the PyArrow APIs to read the result.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">61</span><span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">RecordBatchReader</span><span class="o">.</span><span class="n">_import_from_c_capsule</span><span class="p">(</span><span class="n">handle</span><span class="o">.</span><span class="n">__arrow_c_stream__</span><span class="p">())</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">61</span><span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">RecordBatchReader</span><span class="o">.</span><span class="n">from_stream</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
 <span class="linenos">62</span><span class="k">assert</span> <span class="n">reader</span><span class="o">.</span><span class="n">schema</span> <span class="o">==</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">schema</span><span class="p">([(</span><span class="s2">&quot;THEANSWER&quot;</span><span class="p">,</span> <span class="s2">&quot;int64&quot;</span><span class="p">)])</span>
 </pre></div>
 </div>
