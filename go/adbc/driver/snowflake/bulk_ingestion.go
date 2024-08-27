@@ -60,6 +60,8 @@ var (
 
 	defaultCompressionCodec compress.Compression = compress.Codecs.Snappy
 	defaultCompressionLevel int                  = flate.DefaultCompression
+
+	ErrNoRecordsInStream = errors.New("no records in stream to write")
 )
 
 // Options for configuring bulk ingestion.
@@ -261,7 +263,7 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 			int(st.ingestOptions.writerConcurrency),
 			parquetProps,
 			arrowProps,
-			pool.GetBuffer,
+			pool,
 			records,
 			buffers,
 		)
@@ -278,7 +280,7 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 
 	// Read Parquet files from buffer pool and upload to Snowflake stage in parallel
 	g.Go(func() error {
-		return uploadAllStreams(gCtx, st.cnxn.cn, buffers, int(st.ingestOptions.uploadConcurrency), pool.PutBuffer, fileReady)
+		return uploadAllStreams(gCtx, st.cnxn.cn, buffers, int(st.ingestOptions.uploadConcurrency), pool, fileReady)
 	})
 
 	// Wait until either all files have been uploaded to Snowflake or the pipeline has failed / been canceled
@@ -326,6 +328,21 @@ func readRecords(ctx context.Context, rdr array.RecordReader, out chan<- arrow.R
 	return nil
 }
 
+func writeRecordToParquet(wr *pqarrow.FileWriter, rec arrow.Record) (int64, error) {
+	if rec.NumRows() == 0 {
+		rec.Release()
+		return 0, nil
+	}
+
+	err := wr.Write(rec)
+	rec.Release()
+	if err != nil {
+		return 0, err
+	}
+
+	return wr.RowGroupTotalBytesWritten(), nil
+}
+
 func writeParquet(
 	schema *arrow.Schema,
 	w io.Writer,
@@ -334,21 +351,32 @@ func writeParquet(
 	parquetProps *parquet.WriterProperties,
 	arrowProps pqarrow.ArrowWriterProperties,
 ) error {
+
+	// don't start a new parquet file unless there is at least one record available
+	rec, ok := <-in
+	if !ok {
+		return ErrNoRecordsInStream
+	}
+
+	// initialize writer
 	pqWriter, err := pqarrow.NewFileWriter(schema, w, parquetProps, arrowProps)
 	if err != nil {
 		return err
 	}
 	defer pqWriter.Close()
 
-	var bytesWritten int64
-	for rec := range in {
-		if rec.NumRows() == 0 {
-			rec.Release()
-			continue
-		}
+	// write first record
+	bytesWritten, err := writeRecordToParquet(pqWriter, rec)
+	if err != nil {
+		return err
+	}
+	if targetSize > 0 && bytesWritten >= int64(targetSize) {
+		return nil
+	}
 
-		err = pqWriter.Write(rec)
-		rec.Release()
+	// write remaining records
+	for rec := range in {
+		nbytes, err := writeRecordToParquet(pqWriter, rec)
 		if err != nil {
 			return err
 		}
@@ -357,7 +385,7 @@ func writeParquet(
 			continue
 		}
 
-		bytesWritten += pqWriter.RowGroupTotalBytesWritten()
+		bytesWritten += nbytes
 		if bytesWritten >= int64(targetSize) {
 			return nil
 		}
@@ -374,7 +402,7 @@ func runParallelParquetWriters(
 	concurrency int,
 	parquetProps *parquet.WriterProperties,
 	arrowProps pqarrow.ArrowWriterProperties,
-	newBuffer func() *bytes.Buffer,
+	buffers *bufferPool,
 	in <-chan arrow.Record,
 	out chan<- *bytes.Buffer,
 ) error {
@@ -416,10 +444,17 @@ func runParallelParquetWriters(
 				// Proceed to write a new file
 			}
 
-			buf := newBuffer()
+			buf := buffers.GetBuffer()
 			err := writeParquet(schema, buf, in, targetSize, parquetProps, arrowProps)
 			if err == io.EOF {
 				tryWriteBuffer(buf)
+				finished()
+				return nil
+			}
+			if errors.Is(err, ErrNoRecordsInStream) {
+				// no records were written to the parquet file, so just return the buffer
+				// to the pool instead of passing it along to the next pipeline stage
+				buffers.PutBuffer(buf)
 				finished()
 				return nil
 			}
@@ -448,7 +483,7 @@ func uploadAllStreams(
 	cn snowflakeConn,
 	streams <-chan *bytes.Buffer,
 	concurrency int,
-	freeBuffer func(*bytes.Buffer),
+	buffers *bufferPool,
 	uploadCallback func(),
 ) error {
 	g, ctx := errgroup.WithContext(ctx)
@@ -469,7 +504,7 @@ func uploadAllStreams(
 		buf := buf // mutable loop variable
 		fileName := fmt.Sprintf("%d.parquet", i)
 		g.Go(func() error {
-			defer freeBuffer(buf)
+			defer buffers.PutBuffer(buf)
 			defer uploadCallback()
 
 			return uploadStream(ctx, cn, buf, fileName)
