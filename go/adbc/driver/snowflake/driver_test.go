@@ -35,7 +35,6 @@ import (
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow/go/v18/arrow"
@@ -1391,189 +1390,185 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest"))
 
-	mdInts := make(map[string]string)
-	mdInts["TYPE_NAME"] = "NUMERIC"
-	mdInts["ORDINAL_POSITION"] = "1"
-	mdInts["XDBC_DATA_TYPE"] = strconv.Itoa(int(arrow.PrimitiveTypes.Int64.ID()))
-	mdInts["XDBC_TYPE_NAME"] = "NUMERIC"
-	mdInts["XDBC_SQL_DATA_TYPE"] = strconv.Itoa(int(internal.XdbcDataType_XDBC_BIGINT))
-	mdInts["XDBC_NULLABLE"] = strconv.FormatBool(true)
-	mdInts["XDBC_IS_NULLABLE"] = "YES"
-	mdInts["XDBC_PRECISION"] = strconv.Itoa(38)
-	mdInts["XDBC_SCALE"] = strconv.Itoa(0)
-	mdInts["XDBC_NUM_PREC_RADIX"] = strconv.Itoa(10)
-
-	mdStrings := make(map[string]string)
-	mdStrings["TYPE_NAME"] = "TEXT"
-	mdStrings["ORDINAL_POSITION"] = "2"
-	mdStrings["XDBC_DATA_TYPE"] = strconv.Itoa(int(arrow.BinaryTypes.String.ID()))
-	mdStrings["XDBC_TYPE_NAME"] = "TEXT"
-	mdStrings["XDBC_SQL_DATA_TYPE"] = strconv.Itoa(int(internal.XdbcDataType_XDBC_VARCHAR))
-	mdStrings["XDBC_IS_NULLABLE"] = "YES"
-	mdStrings["CHARACTER_MAXIMUM_LENGTH"] = strconv.Itoa(16777216)
-	mdStrings["XDBC_CHAR_OCTET_LENGTH"] = strconv.Itoa(16777216)
-
 	rec, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), arrow.NewSchema(
 		[]arrow.Field{
-			{Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true, Metadata: arrow.MetadataFrom(mdInts)},
-			{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true, Metadata: arrow.MetadataFrom(mdStrings)},
+			{Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: false},
+			{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true},
 		}, nil), strings.NewReader(`[
 			{"int64s": 42, "strings": "foo"},
 			{"int64s": -42, "strings": null},
-			{"int64s": null, "strings": ""}
+			{"int64s": 0, "strings": ""}
 		]`))
 	suite.Require().NoError(err)
 	defer rec.Release()
 
 	suite.Require().NoError(suite.Quirks.CreateSampleTable("bulk_ingest", rec))
+	suite.Require().NoError(suite.Quirks.CreateSampleTable("bulk_ingest2", rec))
 
-	tests := []struct {
-		name             string
-		colnames         []string
-		positions        []string
-		dataTypes        []string
-		comments         []string
-		xdbcDataType     []string
-		xdbcTypeName     []string
-		xdbcSqlDataType  []string
-		xdbcNullable     []string
-		xdbcIsNullable   []string
-		xdbcScale        []string
-		xdbcNumPrecRadix []string
-		xdbcCharMaxLen   []string
-		xdbcCharOctetLen []string
-		xdbcDateTimeSub  []string
-	}{
-		{
-			"BASIC",                       // name
-			[]string{"int64s", "strings"}, // colNames
-			[]string{"1", "2"},            // positions
-			[]string{"NUMBER", "TEXT"},    // dataTypes
-			[]string{"", ""},              // comments
-			[]string{"9", "13"},           // xdbcDataType
-			[]string{"NUMBER", "TEXT"},    // xdbcTypeName
-			[]string{"-5", "12"},          // xdbcSqlDataType
-			[]string{"1", "1"},            // xdbcNullable
-			[]string{"YES", "YES"},        // xdbcIsNullable
-			[]string{"0", "0"},            // xdbcScale
-			[]string{"10", "0"},           // xdbcNumPrecRadix
-			[]string{"38", "16777216"},    // xdbcCharMaxLen (xdbcPrecision)
-			[]string{"0", "16777216"},     // xdbcCharOctetLen
-			[]string{"-5", "12", "0"},     // xdbcDateTimeSub
-		},
-	}
+	db := sql.OpenDB(suite.Quirks.connector)
+	defer db.Close()
 
-	for _, tt := range tests {
-		suite.Run(tt.name, func() {
-			rdr, err := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthColumns, nil, nil, nil, nil, nil)
-			suite.Require().NoError(err)
-			defer rdr.Release()
+	_, err = db.ExecContext(suite.ctx, `ALTER TABLE "bulk_ingest2" ADD CONSTRAINT bulk_ingest2_pk PRIMARY KEY (int64s, strings)`)
+	suite.Require().NoError(err)
 
-			suite.Truef(adbc.GetObjectsSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.GetObjectsSchema, rdr.Schema())
-			suite.True(rdr.Next())
-			rec := rdr.Record()
-			suite.Greater(rec.NumRows(), int64(0))
-			var (
-				foundExpected        = false
-				catalogDbSchemasList = rec.Column(1).(*array.List)
-				catalogDbSchemas     = catalogDbSchemasList.ListValues().(*array.Struct)
-				dbSchemaNames        = catalogDbSchemas.Field(0).(*array.String)
-				dbSchemaTablesList   = catalogDbSchemas.Field(1).(*array.List)
-				dbSchemaTables       = dbSchemaTablesList.ListValues().(*array.Struct)
-				tableColumnsList     = dbSchemaTables.Field(2).(*array.List)
-				tableColumns         = tableColumnsList.ListValues().(*array.Struct)
+	_, err = db.ExecContext(suite.ctx, `ALTER TABLE "bulk_ingest" ADD CONSTRAINT bulk_ingest_pk PRIMARY KEY (int64s, strings)`)
+	suite.Require().NoError(err)
 
-				colnames          = make([]string, 0)
-				positions         = make([]string, 0)
-				comments          = make([]string, 0)
-				xdbcDataTypes     = make([]string, 0)
-				dataTypes         = make([]string, 0)
-				xdbcTypeNames     = make([]string, 0)
-				xdbcCharMaxLens   = make([]string, 0)
-				xdbcScales        = make([]string, 0)
-				xdbcNumPrecRadixs = make([]string, 0)
-				xdbcNullables     = make([]string, 0)
-				xdbcSqlDataTypes  = make([]string, 0)
-				xdbcDateTimeSub   = make([]string, 0)
-				xdbcCharOctetLen  = make([]string, 0)
-				xdbcIsNullables   = make([]string, 0)
-			)
-			for row := 0; row < int(rec.NumRows()); row++ {
-				dbSchemaIdxStart, dbSchemaIdxEnd := catalogDbSchemasList.ValueOffsets(row)
-				for dbSchemaIdx := dbSchemaIdxStart; dbSchemaIdx < dbSchemaIdxEnd; dbSchemaIdx++ {
-					schemaName := dbSchemaNames.Value(int(dbSchemaIdx))
-					tblIdxStart, tblIdxEnd := dbSchemaTablesList.ValueOffsets(int(dbSchemaIdx))
-					for tblIdx := tblIdxStart; tblIdx < tblIdxEnd; tblIdx++ {
-						tableName := dbSchemaTables.Field(0).(*array.String).Value(int(tblIdx))
+	_, err = db.ExecContext(suite.ctx, `ALTER TABLE "bulk_ingest" ADD CONSTRAINT uniq_col UNIQUE (int64s)`)
+	suite.Require().NoError(err)
 
-						if strings.EqualFold(schemaName, suite.Quirks.DBSchema()) && strings.EqualFold("bulk_ingest", tableName) {
-							foundExpected = true
+	_, err = db.ExecContext(suite.ctx, `ALTER TABLE "bulk_ingest" ADD CONSTRAINT bulk_ingest_fk FOREIGN KEY (int64s, strings) REFERENCES "bulk_ingest2"`)
+	suite.Require().NoError(err)
 
-							colIdxStart, colIdxEnd := tableColumnsList.ValueOffsets(int(tblIdx))
-							for colIdx := colIdxStart; colIdx < colIdxEnd; colIdx++ {
-								name := tableColumns.Field(0).(*array.String).Value(int(colIdx))
-								colnames = append(colnames, strings.ToLower(name))
+	var (
+		expectedColnames    = []string{"int64s", "strings"}
+		expectedPositions   = []string{"1", "2"}
+		expectedDataTypes   = []string{"NUMBER", "TEXT"}
+		expectedComments    = []string{"", ""}
+		expectedConstraints = []struct {
+			Name, Type string
+		}{
+			{Name: "BULK_INGEST_PK", Type: "PRIMARY KEY"},
+			{Name: "BULK_INGEST_FK", Type: "FOREIGN KEY"},
+			{Name: "UNIQ_COL", Type: "UNIQUE"},
+		}
+		expectedXdbcDataType     = []string{"9", "13"}
+		expectedXdbcTypeName     = []string{"NUMBER", "TEXT"}
+		expectedXdbcSqlDataType  = []string{"-5", "12"}
+		expectedXdbcNullable     = []string{"1", "1"}
+		expectedXdbcIsNullable   = []string{"YES", "YES"}
+		expectedXdbcScale        = []string{"0", "0"}
+		expectedXdbcNumPrecRadix = []string{"10", "0"}
+		expectedXdbcCharMaxLen   = []string{"38", "16777216"}
+		expectedXdbcCharOctetLen = []string{"0", "16777216"}
+		expectedXdbcDateTimeSub  = []string{"0", "0"}
+	)
 
-								pos := tableColumns.Field(1).(*array.Int32).Value(int(colIdx))
-								positions = append(positions, strconv.Itoa(int(pos)))
+	rdr, err := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthColumns, nil, nil, nil, nil, nil)
+	suite.Require().NoError(err)
+	defer rdr.Release()
 
-								comments = append(comments, tableColumns.Field(2).(*array.String).Value(int(colIdx)))
+	suite.Truef(adbc.GetObjectsSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.GetObjectsSchema, rdr.Schema())
+	suite.True(rdr.Next())
+	rec = rdr.Record()
+	suite.Greater(rec.NumRows(), int64(0))
+	var (
+		foundExpected        = false
+		catalogDbSchemasList = rec.Column(1).(*array.List)
+		catalogDbSchemas     = catalogDbSchemasList.ListValues().(*array.Struct)
+		dbSchemaNames        = catalogDbSchemas.Field(0).(*array.String)
+		dbSchemaTablesList   = catalogDbSchemas.Field(1).(*array.List)
+		dbSchemaTables       = dbSchemaTablesList.ListValues().(*array.Struct)
+		tableColumnsList     = dbSchemaTables.Field(2).(*array.List)
+		tableColumns         = tableColumnsList.ListValues().(*array.Struct)
+		tableConstraintsList = dbSchemaTables.Field(3).(*array.List)
+		tableConstraints     = tableConstraintsList.ListValues().(*array.Struct)
 
-								xdt := tableColumns.Field(3).(*array.Int16).Value(int(colIdx))
-								xdbcDataTypes = append(xdbcDataTypes, strconv.Itoa(int(xdt)))
+		colnames          = make([]string, 0)
+		positions         = make([]string, 0)
+		comments          = make([]string, 0)
+		constraints       = make([]struct{ Name, Type string }, 0)
+		xdbcDataTypes     = make([]string, 0)
+		dataTypes         = make([]string, 0)
+		xdbcTypeNames     = make([]string, 0)
+		xdbcCharMaxLens   = make([]string, 0)
+		xdbcScales        = make([]string, 0)
+		xdbcNumPrecRadixs = make([]string, 0)
+		xdbcNullables     = make([]string, 0)
+		xdbcSqlDataTypes  = make([]string, 0)
+		xdbcDateTimeSub   = make([]string, 0)
+		xdbcCharOctetLen  = make([]string, 0)
+		xdbcIsNullables   = make([]string, 0)
+	)
+	for row := 0; row < int(rec.NumRows()); row++ {
+		dbSchemaIdxStart, dbSchemaIdxEnd := catalogDbSchemasList.ValueOffsets(row)
+		for dbSchemaIdx := dbSchemaIdxStart; dbSchemaIdx < dbSchemaIdxEnd; dbSchemaIdx++ {
+			schemaName := dbSchemaNames.Value(int(dbSchemaIdx))
+			tblIdxStart, tblIdxEnd := dbSchemaTablesList.ValueOffsets(int(dbSchemaIdx))
+			for tblIdx := tblIdxStart; tblIdx < tblIdxEnd; tblIdx++ {
+				tableName := dbSchemaTables.Field(0).(*array.String).Value(int(tblIdx))
 
-								dataType := tableColumns.Field(4).(*array.String).Value(int(colIdx))
-								dataTypes = append(dataTypes, dataType)
-								xdbcTypeNames = append(xdbcTypeNames, dataType)
+				if strings.EqualFold(schemaName, suite.Quirks.DBSchema()) && strings.EqualFold("bulk_ingest", tableName) {
+					foundExpected = true
 
-								// these are column size attributes used for either precision for numbers OR the length for text
-								maxLenOrPrecision := tableColumns.Field(5).(*array.Int32).Value(int(colIdx))
-								xdbcCharMaxLens = append(xdbcCharMaxLens, strconv.Itoa(int(maxLenOrPrecision)))
+					colIdxStart, colIdxEnd := tableColumnsList.ValueOffsets(int(tblIdx))
+					for colIdx := colIdxStart; colIdx < colIdxEnd; colIdx++ {
+						name := tableColumns.Field(0).(*array.String).Value(int(colIdx))
+						colnames = append(colnames, strings.ToLower(name))
 
-								scale := tableColumns.Field(6).(*array.Int16).Value(int(colIdx))
-								xdbcScales = append(xdbcScales, strconv.Itoa(int(scale)))
+						pos := tableColumns.Field(1).(*array.Int32).Value(int(colIdx))
+						positions = append(positions, strconv.Itoa(int(pos)))
 
-								radix := tableColumns.Field(7).(*array.Int16).Value(int(colIdx))
-								xdbcNumPrecRadixs = append(xdbcNumPrecRadixs, strconv.Itoa(int(radix)))
+						comments = append(comments, tableColumns.Field(2).(*array.String).Value(int(colIdx)))
 
-								isnull := tableColumns.Field(8).(*array.Int16).Value(int(colIdx))
-								xdbcNullables = append(xdbcNullables, strconv.Itoa(int(isnull)))
+						xdt := tableColumns.Field(3).(*array.Int16).Value(int(colIdx))
+						xdbcDataTypes = append(xdbcDataTypes, strconv.Itoa(int(xdt)))
 
-								sqlType := tableColumns.Field(10).(*array.Int16).Value(int(colIdx))
-								xdbcSqlDataTypes = append(xdbcSqlDataTypes, strconv.Itoa(int(sqlType)))
+						dataType := tableColumns.Field(4).(*array.String).Value(int(colIdx))
+						dataTypes = append(dataTypes, dataType)
+						xdbcTypeNames = append(xdbcTypeNames, dataType)
 
-								dtPrec := tableColumns.Field(11).(*array.Int16).Value(int(colIdx))
-								xdbcDateTimeSub = append(xdbcSqlDataTypes, strconv.Itoa(int(dtPrec)))
+						// these are column size attributes used for either precision for numbers OR the length for text
+						maxLenOrPrecision := tableColumns.Field(5).(*array.Int32).Value(int(colIdx))
+						xdbcCharMaxLens = append(xdbcCharMaxLens, strconv.Itoa(int(maxLenOrPrecision)))
 
-								charOctetLen := tableColumns.Field(12).(*array.Int32).Value(int(colIdx))
-								xdbcCharOctetLen = append(xdbcCharOctetLen, strconv.Itoa(int(charOctetLen)))
+						scale := tableColumns.Field(6).(*array.Int16).Value(int(colIdx))
+						xdbcScales = append(xdbcScales, strconv.Itoa(int(scale)))
 
-								xdbcIsNullables = append(xdbcIsNullables, tableColumns.Field(13).(*array.String).Value(int(colIdx)))
-							}
-						}
+						radix := tableColumns.Field(7).(*array.Int16).Value(int(colIdx))
+						xdbcNumPrecRadixs = append(xdbcNumPrecRadixs, strconv.Itoa(int(radix)))
+
+						isnull := tableColumns.Field(8).(*array.Int16).Value(int(colIdx))
+						xdbcNullables = append(xdbcNullables, strconv.Itoa(int(isnull)))
+
+						sqlType := tableColumns.Field(10).(*array.Int16).Value(int(colIdx))
+						xdbcSqlDataTypes = append(xdbcSqlDataTypes, strconv.Itoa(int(sqlType)))
+
+						dtPrec := tableColumns.Field(11).(*array.Int16).Value(int(colIdx))
+						xdbcDateTimeSub = append(xdbcDateTimeSub, strconv.Itoa(int(dtPrec)))
+
+						charOctetLen := tableColumns.Field(12).(*array.Int32).Value(int(colIdx))
+						xdbcCharOctetLen = append(xdbcCharOctetLen, strconv.Itoa(int(charOctetLen)))
+
+						xdbcIsNullables = append(xdbcIsNullables, tableColumns.Field(13).(*array.String).Value(int(colIdx)))
+					}
+
+					conIdxStart, conIdxEnd := tableConstraintsList.ValueOffsets(int(tblIdx))
+					for conIdx := conIdxStart; conIdx < conIdxEnd; conIdx++ {
+						constraints = append(
+							constraints,
+							struct {
+								Name string
+								Type string
+							}{
+								Name: tableConstraints.Field(0).(*array.String).Value(int(conIdx)),
+								Type: tableConstraints.Field(1).(*array.String).Value(int(conIdx)),
+							})
+
 					}
 				}
 			}
-
-			suite.False(rdr.Next())
-			suite.True(foundExpected)
-			suite.Equal(tt.colnames, colnames)                  // colNames
-			suite.Equal(tt.positions, positions)                // positions
-			suite.Equal(tt.comments, comments)                  // comments
-			suite.Equal(tt.xdbcDataType, xdbcDataTypes)         // xdbcDataType
-			suite.Equal(tt.dataTypes, dataTypes)                // dataTypes
-			suite.Equal(tt.xdbcTypeName, xdbcTypeNames)         // xdbcTypeName
-			suite.Equal(tt.xdbcCharMaxLen, xdbcCharMaxLens)     // xdbcCharMaxLen
-			suite.Equal(tt.xdbcScale, xdbcScales)               // xdbcScale
-			suite.Equal(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs) // xdbcNumPrecRadix
-			suite.Equal(tt.xdbcNullable, xdbcNullables)         // xdbcNullable
-			suite.Equal(tt.xdbcSqlDataType, xdbcSqlDataTypes)   // xdbcSqlDataType
-			suite.Equal(tt.xdbcDateTimeSub, xdbcDateTimeSub)    // xdbcDateTimeSub
-			suite.Equal(tt.xdbcCharOctetLen, xdbcCharOctetLen)  // xdbcCharOctetLen
-			suite.Equal(tt.xdbcIsNullable, xdbcIsNullables)     // xdbcIsNullable
-
-		})
+		}
 	}
+
+	suite.False(rdr.Next())
+	suite.True(foundExpected)
+	suite.ElementsMatch(expectedColnames, colnames)
+	suite.ElementsMatch(expectedPositions, positions)
+	suite.ElementsMatch(expectedComments, comments)
+	suite.ElementsMatch(expectedConstraints, constraints)
+	suite.ElementsMatch(expectedXdbcDataType, xdbcDataTypes)
+	suite.ElementsMatch(expectedDataTypes, dataTypes)
+	suite.ElementsMatch(expectedXdbcTypeName, xdbcTypeNames)
+	suite.ElementsMatch(expectedXdbcCharMaxLen, xdbcCharMaxLens)
+	suite.ElementsMatch(expectedXdbcScale, xdbcScales)
+	suite.ElementsMatch(expectedXdbcNumPrecRadix, xdbcNumPrecRadixs)
+	suite.ElementsMatch(expectedXdbcNullable, xdbcNullables)
+	suite.ElementsMatch(expectedXdbcSqlDataType, xdbcSqlDataTypes)
+	suite.ElementsMatch(expectedXdbcDateTimeSub, xdbcDateTimeSub)
+	suite.ElementsMatch(expectedXdbcCharOctetLen, xdbcCharOctetLen)
+	suite.ElementsMatch(expectedXdbcIsNullable, xdbcIsNullables)
+
 }
 
 func (suite *SnowflakeTests) TestNewDatabaseGetSetOptions() {

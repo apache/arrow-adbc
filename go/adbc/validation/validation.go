@@ -417,7 +417,11 @@ func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 	cnxn, _ := c.DB.Open(ctx)
 	defer cnxn.Close()
 
-	c.Require().NoError(c.Quirks.DropTable(cnxn, "bulk_ingest"))
+	ingestCatalogName := c.Quirks.Catalog()
+	ingestSchemaName := c.Quirks.DBSchema()
+	ingestTableName := "bulk_ingest"
+
+	c.Require().NoError(c.Quirks.DropTable(cnxn, ingestTableName))
 	rec, _, err := array.RecordFromJSON(c.Quirks.Alloc(), arrow.NewSchema(
 		[]arrow.Field{
 			{Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
@@ -430,31 +434,128 @@ func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 	c.Require().NoError(err)
 	defer rec.Release()
 
-	c.Require().NoError(c.Quirks.CreateSampleTable("bulk_ingest", rec))
+	c.Require().NoError(c.Quirks.CreateSampleTable(ingestTableName, rec))
 
-	filter := "in%"
+	catalogFilterInvalid := ingestCatalogName + "_invalid"
+	dbSchemaFilterInvalid := ingestSchemaName + "_invalid"
+	tableFilterInvalid := ingestTableName + "_invalid"
+	columnFilter := "in%"
 	tests := []struct {
-		name      string
-		filter    *string
-		colnames  []string
-		positions []int32
+		name           string
+		depth          adbc.ObjectDepth
+		catalogFilter  *string
+		dbSchemaFilter *string
+		tableFilter    *string
+		columnFilter   *string
+		tableTypes     []string
+
+		expectFindCatalog  bool
+		expectFindDbSchema bool
+		expectFindTable    bool
+		expectedColnames   []string
+		expectedPositions  []int32
 	}{
-		{"no filter", nil, []string{"int64s", "strings"}, []int32{1, 2}},
-		{"filter: in%", &filter, []string{"int64s"}, []int32{1}},
+		{
+			name:              "depth catalog no filter",
+			depth:             adbc.ObjectDepthCatalogs,
+			expectFindCatalog: true,
+		},
+		{
+			name:               "depth dbSchema no filter",
+			depth:              adbc.ObjectDepthDBSchemas,
+			expectFindCatalog:  true,
+			expectFindDbSchema: true,
+		},
+		{
+			name:               "depth table no filter",
+			depth:              adbc.ObjectDepthTables,
+			expectFindCatalog:  true,
+			expectFindDbSchema: true,
+			expectFindTable:    true,
+		},
+		{
+			name:               "depth column no filter",
+			depth:              adbc.ObjectDepthColumns,
+			expectFindCatalog:  true,
+			expectFindDbSchema: true,
+			expectFindTable:    true,
+			expectedColnames:   []string{"int64s", "strings"},
+			expectedPositions:  []int32{1, 2},
+		},
+		{
+			name:               "filter catalog valid",
+			depth:              adbc.ObjectDepthColumns,
+			catalogFilter:      &ingestCatalogName,
+			expectFindCatalog:  true,
+			expectFindDbSchema: true,
+			expectFindTable:    true,
+			expectedColnames:   []string{"int64s", "strings"},
+			expectedPositions:  []int32{1, 2},
+		},
+		{
+			name:          "filter catalog invalid",
+			depth:         adbc.ObjectDepthColumns,
+			catalogFilter: &catalogFilterInvalid,
+		},
+		{
+			name:               "filter dbSchema valid",
+			depth:              adbc.ObjectDepthColumns,
+			dbSchemaFilter:     &ingestSchemaName,
+			expectFindCatalog:  true,
+			expectFindDbSchema: true,
+			expectFindTable:    true,
+			expectedColnames:   []string{"int64s", "strings"},
+			expectedPositions:  []int32{1, 2},
+		},
+		{
+			name:              "filter dbSchema invalid",
+			depth:             adbc.ObjectDepthColumns,
+			dbSchemaFilter:    &dbSchemaFilterInvalid,
+			expectFindCatalog: true,
+		},
+		{
+			name:               "filter table valid",
+			depth:              adbc.ObjectDepthColumns,
+			tableFilter:        &ingestTableName,
+			expectFindCatalog:  true,
+			expectFindDbSchema: true,
+			expectFindTable:    true,
+			expectedColnames:   []string{"int64s", "strings"},
+			expectedPositions:  []int32{1, 2},
+		},
+		{
+			name:               "filter table invalid",
+			depth:              adbc.ObjectDepthColumns,
+			tableFilter:        &tableFilterInvalid,
+			expectFindCatalog:  true,
+			expectFindDbSchema: true,
+		},
+		{
+			name:               "filter column: in%",
+			depth:              adbc.ObjectDepthColumns,
+			columnFilter:       &columnFilter,
+			expectFindCatalog:  true,
+			expectFindDbSchema: true,
+			expectFindTable:    true,
+			expectedColnames:   []string{"int64s"},
+			expectedPositions:  []int32{1},
+		},
 	}
 
 	for _, tt := range tests {
 		c.Run(tt.name, func() {
-			rdr, err := cnxn.GetObjects(ctx, adbc.ObjectDepthColumns, nil, nil, nil, tt.filter, nil)
+			rdr, err := cnxn.GetObjects(ctx, tt.depth, tt.catalogFilter, tt.dbSchemaFilter, tt.tableFilter, tt.columnFilter, tt.tableTypes)
 			c.Require().NoError(err)
 			defer rdr.Release()
 
 			c.Truef(adbc.GetObjectsSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.GetObjectsSchema, rdr.Schema())
 			c.True(rdr.Next())
 			rec := rdr.Record()
-			c.Greater(rec.NumRows(), int64(0))
 			var (
-				foundExpected        = false
+				foundCatalog         = false
+				foundDbSchema        = false
+				foundTable           = false
+				catalogs             = rec.Column(0).(*array.String)
 				catalogDbSchemasList = rec.Column(1).(*array.List)
 				catalogDbSchemas     = catalogDbSchemasList.ListValues().(*array.Struct)
 				dbSchemaNames        = catalogDbSchemas.Field(0).(*array.String)
@@ -467,21 +568,32 @@ func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 				positions = make([]int32, 0)
 			)
 			for row := 0; row < int(rec.NumRows()); row++ {
-				dbSchemaIdxStart, dbSchemaIdxEnd := catalogDbSchemasList.ValueOffsets(row)
-				for dbSchemaIdx := dbSchemaIdxStart; dbSchemaIdx < dbSchemaIdxEnd; dbSchemaIdx++ {
-					schemaName := dbSchemaNames.Value(int(dbSchemaIdx))
-					tblIdxStart, tblIdxEnd := dbSchemaTablesList.ValueOffsets(int(dbSchemaIdx))
-					for tblIdx := tblIdxStart; tblIdx < tblIdxEnd; tblIdx++ {
-						tableName := dbSchemaTables.Field(0).(*array.String).Value(int(tblIdx))
+				catalogName := catalogs.Value(row)
 
-						if strings.EqualFold(schemaName, c.Quirks.DBSchema()) && strings.EqualFold("bulk_ingest", tableName) {
-							foundExpected = true
+				if strings.EqualFold(catalogName, ingestCatalogName) {
+					foundCatalog = true
 
-							colIdxStart, colIdxEnd := tableColumnsList.ValueOffsets(int(tblIdx))
-							for colIdx := colIdxStart; colIdx < colIdxEnd; colIdx++ {
-								name := tableColumns.Field(0).(*array.String).Value(int(colIdx))
-								colnames = append(colnames, strings.ToLower(name))
-								positions = append(positions, tableColumns.Field(1).(*array.Int32).Value(int(colIdx)))
+					dbSchemaIdxStart, dbSchemaIdxEnd := catalogDbSchemasList.ValueOffsets(row)
+					for dbSchemaIdx := dbSchemaIdxStart; dbSchemaIdx < dbSchemaIdxEnd; dbSchemaIdx++ {
+						schemaName := dbSchemaNames.Value(int(dbSchemaIdx))
+
+						if strings.EqualFold(schemaName, ingestSchemaName) {
+							foundDbSchema = true
+
+							tblIdxStart, tblIdxEnd := dbSchemaTablesList.ValueOffsets(int(dbSchemaIdx))
+							for tblIdx := tblIdxStart; tblIdx < tblIdxEnd; tblIdx++ {
+								tableName := dbSchemaTables.Field(0).(*array.String).Value(int(tblIdx))
+
+								if strings.EqualFold(tableName, ingestTableName) {
+									foundTable = true
+
+									colIdxStart, colIdxEnd := tableColumnsList.ValueOffsets(int(tblIdx))
+									for colIdx := colIdxStart; colIdx < colIdxEnd; colIdx++ {
+										name := tableColumns.Field(0).(*array.String).Value(int(colIdx))
+										colnames = append(colnames, strings.ToLower(name))
+										positions = append(positions, tableColumns.Field(1).(*array.Int32).Value(int(colIdx)))
+									}
+								}
 							}
 						}
 					}
@@ -489,9 +601,11 @@ func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 			}
 
 			c.False(rdr.Next())
-			c.True(foundExpected)
-			c.Equal(tt.colnames, colnames)
-			c.Equal(tt.positions, positions)
+			c.Equal(tt.expectFindCatalog, foundCatalog)
+			c.Equal(tt.expectFindDbSchema, foundDbSchema)
+			c.Equal(tt.expectFindTable, foundTable)
+			c.ElementsMatch(tt.expectedColnames, colnames)
+			c.ElementsMatch(tt.expectedPositions, positions)
 		})
 	}
 }
@@ -533,11 +647,14 @@ func (s *StatementTests) TestNewStatement() {
 	s.NoError(stmt.Close())
 
 	var adbcError adbc.Error
+	// statement already closed
 	s.ErrorAs(stmt.Close(), &adbcError)
 	s.Equal(adbc.StatusInvalidState, adbcError.Code)
 
 	stmt, err = s.Cnxn.NewStatement()
 	s.NoError(err)
+
+	// cannot execute without a query
 	_, _, err = stmt.ExecuteQuery(s.ctx)
 	s.ErrorAs(err, &adbcError)
 	s.Equal(adbc.StatusInvalidState, adbcError.Code)

@@ -394,11 +394,18 @@ jobs:
     strategy:
       matrix:
         os: ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: 'google-github-actions/auth@v2'
+        continue-on-error: true # if auth fails, bigquery driver tests should skip
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       - uses: actions/setup-go@v5
         with:
           go-version-file: "go/adbc/go.mod"
@@ -445,11 +452,18 @@ jobs:
             goarch: x64
     env:
       CGO_ENABLED: "1"
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: 'google-github-actions/auth@v2'
+        continue-on-error: true # if auth fails, bigquery driver tests should skip
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       - name: Get required Go version
         run: |
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV

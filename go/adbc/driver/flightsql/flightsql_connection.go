@@ -57,6 +57,32 @@ type connectionImpl struct {
 	supportInfo support
 }
 
+func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
+	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
+	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
+	if err := g.Init(c.Base().Alloc, c.GetObjectsDbSchemas, c.GetObjectsTables); err != nil {
+		return nil, err
+	}
+	defer g.Release()
+
+	catalogs, err := c.GetObjectsCatalogs(ctx, catalog)
+	if err != nil {
+		return nil, err
+	}
+
+	foundCatalog := false
+	for _, catalog := range catalogs {
+		g.AppendCatalog(catalog)
+		foundCatalog = true
+	}
+
+	// Implementations like Dremio report no catalogs, but still have schemas
+	if !foundCatalog && depth != adbc.ObjectDepthCatalogs {
+		g.AppendCatalog("")
+	}
+	return g.Finish()
+}
+
 // GetCurrentCatalog implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) GetCurrentCatalog() (string, error) {
 	options, err := c.getSessionOptions(context.Background())

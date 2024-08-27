@@ -37,6 +37,10 @@ const (
 	ForeignKey = "FOREIGN KEY"
 )
 
+var (
+	AcceptAll = regexp.MustCompile(".*")
+)
+
 type CatalogAndSchema struct {
 	Catalog, Schema string
 }

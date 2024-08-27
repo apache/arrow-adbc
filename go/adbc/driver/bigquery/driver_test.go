@@ -20,31 +20,71 @@ package bigquery_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
-	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/bigquery"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow/go/v18/arrow"
 	"github.com/apache/arrow/go/v18/arrow/array"
 	"github.com/apache/arrow/go/v18/arrow/decimal128"
 	"github.com/apache/arrow/go/v18/arrow/decimal256"
 	"github.com/apache/arrow/go/v18/arrow/memory"
+	"github.com/apache/arrow/go/v18/parquet"
+	"github.com/apache/arrow/go/v18/parquet/pqarrow"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
 type BigQueryQuirks struct {
-	mem       *memory.CheckedAllocator
-	authType  string
-	authValue string
+	ctx    context.Context
+	mem    *memory.CheckedAllocator
+	client *bigquery.Client
 	// catalogName is the same as projectID
 	catalogName string
 	// schemaName is the same as datasetID
 	schemaName string
+}
+
+func (q *BigQueryQuirks) CreateSampleTable(tableName string, r arrow.Record) error {
+	var buf bytes.Buffer
+
+	w, err := pqarrow.NewFileWriter(
+		r.Schema(),
+		&buf,
+		parquet.NewWriterProperties(parquet.WithAllocator(q.mem)),
+		pqarrow.NewArrowWriterProperties(pqarrow.WithAllocator(q.mem)),
+	)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	if err = w.Write(r); err != nil {
+		return err
+	}
+
+	if err = w.Close(); err != nil {
+		return err
+	}
+
+	src := bigquery.NewReaderSource(&buf)
+	src.SourceFormat = bigquery.Parquet
+
+	loader := q.client.Dataset(q.schemaName).Table(tableName).LoaderFrom(src)
+	job, err := loader.Run(q.ctx)
+	if err != nil {
+		return err
+	}
+
+	status, err := job.Wait(q.ctx)
+	return errors.Join(err, status.Err())
 }
 
 func (q *BigQueryQuirks) SetupDriver(t *testing.T) adbc.Driver {
@@ -58,10 +98,8 @@ func (q *BigQueryQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
 
 func (q *BigQueryQuirks) DatabaseOptions() map[string]string {
 	return map[string]string{
-		driver.OptionStringAuthType:        q.authType,
-		driver.OptionStringAuthCredentials: q.authValue,
-		driver.OptionStringProjectID:       q.catalogName,
-		driver.OptionStringDatasetID:       q.schemaName,
+		driver.OptionStringProjectID: q.catalogName,
+		driver.OptionStringDatasetID: q.schemaName,
 	}
 }
 
@@ -283,7 +321,7 @@ func (q *BigQueryQuirks) Alloc() memory.Allocator                     { return q
 func (q *BigQueryQuirks) BindParameter(_ int) string                  { return "?" }
 func (q *BigQueryQuirks) SupportsBulkIngest(string) bool              { return false }
 func (q *BigQueryQuirks) SupportsConcurrentStatements() bool          { return false }
-func (q *BigQueryQuirks) SupportsCurrentCatalogSchema() bool          { return false }
+func (q *BigQueryQuirks) SupportsCurrentCatalogSchema() bool          { return true }
 func (q *BigQueryQuirks) SupportsExecuteSchema() bool                 { return false }
 func (q *BigQueryQuirks) SupportsGetSetOptions() bool                 { return true }
 func (q *BigQueryQuirks) SupportsPartitionedData() bool               { return false }
@@ -318,139 +356,39 @@ func (q *BigQueryQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 }
 
 func (q *BigQueryQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.DataType) arrow.Metadata {
+	metadata := map[string]string{
+		"DefaultValueExpression": "",
+		"Description":            "",
+		"Repeated":               "false",
+		"Required":               "false",
+	}
+
 	switch dt.ID() {
 	case arrow.STRING:
-		return arrow.MetadataFrom(map[string]string{
-			"DATA_TYPE": "VARCHAR(16777216)", "PRIMARY_KEY": "N",
-		})
+		metadata["Collation"] = ""
+		metadata["MaxLength"] = "0"
+		metadata["Type"] = "STRING"
 	case arrow.INT64:
-		return arrow.MetadataFrom(map[string]string{
-			"DATA_TYPE": "NUMBER(38,0)", "PRIMARY_KEY": "N",
-		})
+		metadata["Type"] = "INTEGER"
 	}
-	return arrow.Metadata{}
+
+	return arrow.MetadataFrom(metadata)
 }
 
-func (q *BigQueryQuirks) createTempSchema(wait time.Duration) string {
-	ctx := context.Background()
-	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
-	tmpDriver := driver.NewDriver(mem)
-	db, err := tmpDriver.NewDatabase(q.DatabaseOptions())
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
-	cnxn, err := db.Open(ctx)
-	if err != nil {
-		panic(err)
-	}
-	defer cnxn.Close()
-
-	stmt, err := cnxn.NewStatement()
-	if err != nil {
-		panic(err)
-	}
-	defer stmt.Close()
-
-	err = stmt.SetOption(driver.OptionBoolQueryUseLegacySQL, "false")
-	if err != nil {
-		panic(err)
-	}
-
+func createTempSchema(ctx context.Context, client *bigquery.Client) string {
 	schemaName := strings.ToUpper("ADBC_TESTING_" + strings.ReplaceAll(uuid.New().String(), "-", "_"))
-	err = stmt.SetSqlQuery(fmt.Sprintf("CREATE SCHEMA %s", schemaName))
-	if err != nil {
-		panic(err)
-	}
-	_, err = stmt.ExecuteUpdate(ctx)
-	if err != nil {
-		panic(err)
-	}
 
-	// wait for some time before accessing it
-	// BigQuery needs some time to make the table available
-	// otherwise the query will fail with error saying the table cannot be found
-	time.Sleep(wait)
+	dataset := client.Dataset(schemaName)
+	err := dataset.Create(ctx, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	return schemaName
 }
 
-func createTempTable(q *BigQueryQuirks, schema string, wait time.Duration) string {
-	ctx := context.Background()
-	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
-	tmpDriver := driver.NewDriver(mem)
-	db, err := tmpDriver.NewDatabase(q.DatabaseOptions())
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
-	cnxn, err := db.Open(ctx)
-	if err != nil {
-		panic(err)
-	}
-	defer cnxn.Close()
-
-	stmt, err := cnxn.NewStatement()
-	if err != nil {
-		panic(err)
-	}
-	defer stmt.Close()
-
-	err = stmt.SetOption(driver.OptionBoolQueryUseLegacySQL, "false")
-	if err != nil {
-		panic(err)
-	}
-
-	tableName := strings.ToUpper("ADBC_TABLE_" + strings.ReplaceAll(uuid.New().String(), "-", "_"))
-	query := fmt.Sprintf("CREATE OR REPLACE TABLE `%s.%s` %s", q.schemaName, tableName, schema)
-	err = stmt.SetSqlQuery(query)
-	if err != nil {
-		panic(err)
-	}
-	_, err = stmt.ExecuteUpdate(ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	// wait for some time before accessing it
-	// BigQuery needs some time to make the table available
-	// otherwise the query will fail with error saying the table cannot be found
-	time.Sleep(wait)
-
-	return tableName
-}
-
-func (q *BigQueryQuirks) dropTempSchema() {
-	ctx := context.Background()
-	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
-	tmpDriver := driver.NewDriver(mem)
-	db, err := tmpDriver.NewDatabase(q.DatabaseOptions())
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
-	cnxn, err := db.Open(ctx)
-	if err != nil {
-		panic(err)
-	}
-	defer cnxn.Close()
-
-	stmt, err := cnxn.NewStatement()
-	if err != nil {
-		panic(err)
-	}
-	defer stmt.Close()
-
-	query := fmt.Sprintf("DROP SCHEMA `%s.%s`", q.catalogName, q.schemaName)
-	err = stmt.SetSqlQuery(query)
-	if err != nil {
-		panic(err)
-	}
-	_, err = stmt.ExecuteUpdate(ctx)
-	if err != nil {
+func dropTempSchema(ctx context.Context, client *bigquery.Client, schemaName string) {
+	if err := client.Dataset(schemaName).DeleteWithContents(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -581,67 +519,40 @@ func buildSamplePrimitiveTypeRecord(mem memory.Allocator, schema, bigquery *arro
 }
 
 func withQuirks(t *testing.T, fn func(quirks *BigQueryQuirks)) {
-	// set either env var for authentication
-	//
-	// - BIGQUERY_JSON_CREDENTIAL_FILE
-	//     Path to the JSON credential file
-	//
-	// - BIGQUERY_JSON_CREDENTIAL_STRING
-	//     Store the whole JSON credential content, something like
-	//
-	//     {
-	//       "account": "",
-	//       "client_id": "123456789012-1234567890abcdefabcdefabcdefabcd.apps.googleusercontent.com",
-	//       "client_secret": "d-SECRETSECRETSECRETSECR",
-	//       "refresh_token": "1//1234567890abcdefabcdefabcdef-abcdefabcd-abcdefabcdefabcdefabcdefab-abcdefabcdefabcdefabcdefabcdef-ab",
-	//       "type": "authorized_user",
-	//       "universe_domain": "googleapis.com"
-	//     }
-	authType := ""
-	authValue := ""
-	jsonCredentialString := os.Getenv("BIGQUERY_JSON_CREDENTIAL_STRING")
-	if len(jsonCredentialString) > 0 {
-		authType = driver.OptionValueAuthTypeJSONCredentialString
-		authValue = jsonCredentialString
-	} else {
-		jsonCredentialFile := os.Getenv("BIGQUERY_JSON_CREDENTIAL_FILE")
-		if len(jsonCredentialFile) > 0 {
-			authType = driver.OptionValueAuthTypeJSONCredentialFile
-			authValue = jsonCredentialFile
-		} else {
-			t.Skip("no BIGQUERY_JSON_CREDENTIAL_STRING or BIGQUERY_JSON_CREDENTIAL_FILE defined, skip bigquery driver tests")
-		}
-	}
+	ctx := context.Background()
 
-	// env var BIGQUERY_PROJECT_ID should be set
-	//
-	// for example, the sample table provide by Google has the following values
-	// https://cloud.google.com/bigquery/public-data#sample_tables
-	//
-	// export BIGQUERY_PROJECT_ID=bigquery-public-data
-	projectID := os.Getenv("BIGQUERY_PROJECT_ID")
-	if projectID == "" {
-		t.Skip("no BIGQUERY_PROJECT_ID defined, skip bigquery driver tests")
+	// Detect ProjectID from Application Default Credentials
+	// See: https://cloud.google.com/docs/authentication/application-default-credentials
+	// Can be overridden by setting env var GOOGLE_CLOUD_PROJECT
+	client, err := bigquery.NewClient(ctx, bigquery.DetectProjectID)
+	if err != nil {
+		t.Skipf("failed to detect client config from environment, skip bigquery driver tests: %s", err)
 	}
 
 	// avoid multiple runs clashing by operating in a fresh schema and then
 	// dropping that schema when we're done.
-	q := &BigQueryQuirks{authType: authType, authValue: authValue, catalogName: projectID}
-	q.schemaName = q.createTempSchema(5 * time.Second)
+	q := &BigQueryQuirks{
+		ctx:         ctx,
+		client:      client,
+		catalogName: client.Project(),
+		schemaName:  createTempSchema(ctx, client),
+	}
+
 	t.Cleanup(func() {
-		q.dropTempSchema()
+		dropTempSchema(ctx, client, q.schemaName)
 	})
+
 	fn(q)
 }
 
 // todo: finish other callbacks and make this validation test suite pass
-//func TestValidation(t *testing.T) {
-//	withQuirks(t, func(q *BigQueryQuirks) {
-//		suite.Run(t, &validation.DatabaseTests{Quirks: q})
-//		suite.Run(t, &validation.ConnectionTests{Quirks: q})
-//		suite.Run(t, &validation.StatementTests{Quirks: q})
-//	})
-//}
+func TestValidation(t *testing.T) {
+	withQuirks(t, func(q *BigQueryQuirks) {
+		suite.Run(t, &validation.DatabaseTests{Quirks: q})
+		suite.Run(t, &validation.ConnectionTests{Quirks: q})
+		suite.Run(t, &validation.StatementTests{Quirks: q})
+	})
+}
 
 func TestBigQuery(t *testing.T) {
 	withQuirks(t, func(q *BigQueryQuirks) {
@@ -709,10 +620,7 @@ func (suite *BigQueryTests) TestNewDatabaseGetSetOptions() {
 }
 
 func (suite *BigQueryTests) TestEmptyResultSet() {
-	// Google enforces `FROM` when `WHERE` appears in a query
-	tableName := createTempTable(suite.Quirks, "(int64s INTEGER)", 1*time.Second)
-	query := fmt.Sprintf("SELECT 42 FROM `%s.%s` WHERE 1=0", suite.Quirks.schemaName, tableName)
-	suite.Require().NoError(suite.stmt.SetSqlQuery(query))
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM UNNEST([])"))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
@@ -1352,3 +1260,226 @@ func (suite *BigQueryTests) TestSqlIngestStructType() {
 	suite.False(rdr.Next())
 	suite.Require().NoError(rdr.Err())
 }
+
+func (suite *BigQueryTests) TestMetadataGetObjectsColumnsXdbc() {
+
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest"))
+
+	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), arrow.NewSchema(
+		[]arrow.Field{
+			{Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: false},
+			{Name: "decs", Type: &arrow.Decimal128Type{Precision: 10, Scale: 2}, Nullable: false},
+			{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true},
+			{Name: "timestamps", Type: arrow.FixedWidthTypes.Timestamp_us, Nullable: true},
+		}, nil))
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{42, -42, 0}, nil)
+	bldr.Field(1).(*array.Decimal128Builder).AppendValues([]decimal128.Num{decimal128.FromI64(42), decimal128.FromI64(-42), decimal128.FromI64(0)}, nil)
+	bldr.Field(2).(*array.StringBuilder).AppendValues([]string{"foo", "", ""}, []bool{true, false, true})
+	bldr.Field(3).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{arrow.Timestamp(1), arrow.Timestamp(2), arrow.Timestamp(3)}, nil)
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	suite.Require().NoError(suite.Quirks.CreateSampleTable("bulk_ingest", rec))
+	suite.Require().NoError(suite.Quirks.CreateSampleTable("bulk_ingest2", rec))
+
+	_, err := suite.Quirks.client.Query(
+		fmt.Sprintf(
+			"ALTER TABLE %s.bulk_ingest ADD PRIMARY KEY (int64s, decs) NOT ENFORCED",
+			suite.Quirks.schemaName),
+	).Read(suite.ctx)
+	suite.Require().NoError(err)
+
+	_, err = suite.Quirks.client.Query(
+		fmt.Sprintf(
+			"ALTER TABLE %s.bulk_ingest2 ADD PRIMARY KEY (int64s, decs) NOT ENFORCED",
+			suite.Quirks.schemaName),
+	).Read(suite.ctx)
+	suite.Require().NoError(err)
+
+	_, err = suite.Quirks.client.Query(
+		fmt.Sprintf(`
+		ALTER TABLE %[1]s.bulk_ingest
+		ADD CONSTRAINT test_fk_name FOREIGN KEY (int64s, decs)
+		REFERENCES %[1]s.bulk_ingest2(int64s, decs) NOT ENFORCED`,
+			suite.Quirks.schemaName),
+	).Read(suite.ctx)
+	suite.Require().NoError(err)
+
+	var (
+		expectedColnames              = []string{"int64s", "decs", "strings", "timestamps"}
+		expectedPositions             = []string{"1", "2", "3", "4"}
+		expectedComments              = []string{"", "", "", ""}
+		expectedXdbcDataType          = []string{"9", "23", "13", "18"}
+		expectedXdbcTypeName          = []string{"INTEGER", "NUMERIC", "STRING", "TIMESTAMP"}
+		expectedXdbcColumnSize        = []string{"0", "0", "0", "0"} // TODO: Should be supported, not included in API resp
+		expectedXdbcDecimalDigits     = []string{"0", "0", "0", "0"} // TODO: Should be supported, not included in API resp
+		expectedXdbcNumPrecRadix      = []string{"0", "0", "0", "0"} // Not supported
+		expectedXdbcNullable          = []string{"0", "0", "1", "1"}
+		expectedXdbcColumnDef         = []string{"", "", "", ""} // Not supported
+		expectedXdbcSqlDataType       = []string{"-5", "3", "12", "93"}
+		expectedXdbcDateTimeSub       = []string{"0", "0", "0", "0"} // Only for RANGE
+		expectedXdbcCharOctetLen      = []string{"0", "0", "0", "0"} // Only for BYTES
+		expectedXdbcIsNullable        = []string{"NO", "NO", "YES", "YES"}
+		expectedXdbcScopeCatalog      = []string{suite.Quirks.catalogName, suite.Quirks.catalogName, suite.Quirks.catalogName, suite.Quirks.catalogName}
+		expectedXdbcScopeSchema       = []string{suite.Quirks.schemaName, suite.Quirks.schemaName, suite.Quirks.schemaName, suite.Quirks.schemaName}
+		expectedXdbcScopeTable        = []string{"bulk_ingest", "bulk_ingest", "bulk_ingest", "bulk_ingest"}
+		expectedXdbcIsAutoIncrement   = []bool{false, false, false, false} // Not supported
+		expectedXdbcIsGeneratedColumn = []bool{false, false, false, false} // Not supported
+		expectedConstraints           = []struct {
+			Name, Type string
+		}{
+			{Type: "PRIMARY KEY"},
+			{Name: "test_fk_name", Type: "FOREIGN KEY"},
+		}
+	)
+
+	rdr, err := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthColumns, nil, nil, nil, nil, nil)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.Truef(adbc.GetObjectsSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.GetObjectsSchema, rdr.Schema())
+	suite.True(rdr.Next())
+	rec = rdr.Record()
+	suite.Greater(rec.NumRows(), int64(0))
+	suite.True(rec.Schema().Equal(adbc.GetObjectsSchema))
+	var (
+		foundExpected        = false
+		catalogDbSchemasList = rec.Column(1).(*array.List)
+		catalogDbSchemas     = catalogDbSchemasList.ListValues().(*array.Struct)
+		dbSchemaNames        = catalogDbSchemas.Field(0).(*array.String)
+		dbSchemaTablesList   = catalogDbSchemas.Field(1).(*array.List)
+		dbSchemaTables       = dbSchemaTablesList.ListValues().(*array.Struct)
+		tableColumnsList     = dbSchemaTables.Field(2).(*array.List)
+		tableColumns         = tableColumnsList.ListValues().(*array.Struct)
+		tableConstraintsList = dbSchemaTables.Field(3).(*array.List)
+		tableConstraints     = tableConstraintsList.ListValues().(*array.Struct)
+
+		colnames              = make([]string, 0)
+		positions             = make([]string, 0)
+		comments              = make([]string, 0)
+		constraints           = make([]struct{ Name, Type string }, 0)
+		xdbcDataTypes         = make([]string, 0)
+		xdbcTypeNames         = make([]string, 0)
+		xdbcColumnSize        = make([]string, 0)
+		xdbcDecimalDigits     = make([]string, 0)
+		xdbcNumPrecRadixs     = make([]string, 0)
+		xdbcNullables         = make([]string, 0)
+		xdbcColumnDef         = make([]string, 0)
+		xdbcSqlDataTypes      = make([]string, 0)
+		xdbcDateTimeSub       = make([]string, 0)
+		xdbcCharOctetLen      = make([]string, 0)
+		xdbcIsNullables       = make([]string, 0)
+		xdbcScopeCatalog      = make([]string, 0)
+		xdbcScopeSchema       = make([]string, 0)
+		xdbcScopeTable        = make([]string, 0)
+		xdbcIsAutoIncrement   = make([]bool, 0)
+		xdbcIsGeneratedColumn = make([]bool, 0)
+	)
+	for row := 0; row < int(rec.NumRows()); row++ {
+		dbSchemaIdxStart, dbSchemaIdxEnd := catalogDbSchemasList.ValueOffsets(row)
+		for dbSchemaIdx := dbSchemaIdxStart; dbSchemaIdx < dbSchemaIdxEnd; dbSchemaIdx++ {
+			schemaName := dbSchemaNames.Value(int(dbSchemaIdx))
+			tblIdxStart, tblIdxEnd := dbSchemaTablesList.ValueOffsets(int(dbSchemaIdx))
+			for tblIdx := tblIdxStart; tblIdx < tblIdxEnd; tblIdx++ {
+				tableName := dbSchemaTables.Field(0).(*array.String).Value(int(tblIdx))
+
+				if strings.EqualFold(schemaName, suite.Quirks.DBSchema()) && strings.EqualFold("bulk_ingest", tableName) {
+					foundExpected = true
+
+					colIdxStart, colIdxEnd := tableColumnsList.ValueOffsets(int(tblIdx))
+					for colIdx := colIdxStart; colIdx < colIdxEnd; colIdx++ {
+						name := tableColumns.Field(0).(*array.String).Value(int(colIdx))
+						colnames = append(colnames, strings.ToLower(name))
+
+						pos := tableColumns.Field(1).(*array.Int32).Value(int(colIdx))
+						positions = append(positions, strconv.Itoa(int(pos)))
+
+						comments = append(comments, tableColumns.Field(2).(*array.String).Value(int(colIdx)))
+
+						xdt := tableColumns.Field(3).(*array.Int16).Value(int(colIdx))
+						xdbcDataTypes = append(xdbcDataTypes, strconv.Itoa(int(xdt)))
+
+						dataType := tableColumns.Field(4).(*array.String).Value(int(colIdx))
+						xdbcTypeNames = append(xdbcTypeNames, dataType)
+
+						// these are column size attributes used for either precision for numbers OR the length for text
+						maxLenOrPrecision := tableColumns.Field(5).(*array.Int32).Value(int(colIdx))
+						xdbcColumnSize = append(xdbcColumnSize, strconv.Itoa(int(maxLenOrPrecision)))
+
+						scale := tableColumns.Field(6).(*array.Int16).Value(int(colIdx))
+						xdbcDecimalDigits = append(xdbcDecimalDigits, strconv.Itoa(int(scale)))
+
+						radix := tableColumns.Field(7).(*array.Int16).Value(int(colIdx))
+						xdbcNumPrecRadixs = append(xdbcNumPrecRadixs, strconv.Itoa(int(radix)))
+
+						isnull := tableColumns.Field(8).(*array.Int16).Value(int(colIdx))
+						xdbcNullables = append(xdbcNullables, strconv.Itoa(int(isnull)))
+
+						xdbcColumnDef = append(xdbcColumnDef, tableColumns.Field(9).(*array.String).Value(int(colIdx)))
+
+						sqlType := tableColumns.Field(10).(*array.Int16).Value(int(colIdx))
+						xdbcSqlDataTypes = append(xdbcSqlDataTypes, strconv.Itoa(int(sqlType)))
+
+						dtPrec := tableColumns.Field(11).(*array.Int16).Value(int(colIdx))
+						xdbcDateTimeSub = append(xdbcDateTimeSub, strconv.Itoa(int(dtPrec)))
+
+						charOctetLen := tableColumns.Field(12).(*array.Int32).Value(int(colIdx))
+						xdbcCharOctetLen = append(xdbcCharOctetLen, strconv.Itoa(int(charOctetLen)))
+
+						xdbcIsNullables = append(xdbcIsNullables, tableColumns.Field(13).(*array.String).Value(int(colIdx)))
+
+						xdbcScopeCatalog = append(xdbcScopeCatalog, tableColumns.Field(14).(*array.String).Value(int(colIdx)))
+						xdbcScopeSchema = append(xdbcScopeSchema, tableColumns.Field(15).(*array.String).Value(int(colIdx)))
+						xdbcScopeTable = append(xdbcScopeTable, tableColumns.Field(16).(*array.String).Value(int(colIdx)))
+
+						xdbcIsAutoIncrement = append(xdbcIsAutoIncrement, tableColumns.Field(17).(*array.Boolean).Value(int(colIdx)))
+						xdbcIsGeneratedColumn = append(xdbcIsGeneratedColumn, tableColumns.Field(18).(*array.Boolean).Value(int(colIdx)))
+					}
+
+					conIdxStart, conIdxEnd := tableConstraintsList.ValueOffsets(int(tblIdx))
+					for conIdx := conIdxStart; conIdx < conIdxEnd; conIdx++ {
+						constraints = append(
+							constraints,
+							struct {
+								Name string
+								Type string
+							}{
+								Name: tableConstraints.Field(0).(*array.String).Value(int(conIdx)),
+								Type: tableConstraints.Field(1).(*array.String).Value(int(conIdx)),
+							})
+
+					}
+				}
+			}
+		}
+	}
+
+	suite.False(rdr.Next())
+	suite.True(foundExpected)
+	suite.ElementsMatch(expectedColnames, colnames)
+	suite.ElementsMatch(expectedPositions, positions)
+	suite.ElementsMatch(expectedComments, comments)
+	suite.ElementsMatch(expectedXdbcDataType, xdbcDataTypes)
+	suite.ElementsMatch(expectedXdbcTypeName, xdbcTypeNames)
+	suite.ElementsMatch(expectedXdbcColumnSize, xdbcColumnSize)
+	suite.ElementsMatch(expectedXdbcDecimalDigits, xdbcDecimalDigits)
+	suite.ElementsMatch(expectedXdbcNumPrecRadix, xdbcNumPrecRadixs)
+	suite.ElementsMatch(expectedXdbcNullable, xdbcNullables)
+	suite.ElementsMatch(expectedXdbcColumnDef, xdbcColumnDef)
+	suite.ElementsMatch(expectedXdbcSqlDataType, xdbcSqlDataTypes)
+	suite.ElementsMatch(expectedXdbcDateTimeSub, xdbcDateTimeSub)
+	suite.ElementsMatch(expectedXdbcCharOctetLen, xdbcCharOctetLen)
+	suite.ElementsMatch(expectedXdbcIsNullable, xdbcIsNullables)
+	suite.ElementsMatch(expectedXdbcScopeCatalog, xdbcScopeCatalog)
+	suite.ElementsMatch(expectedXdbcScopeSchema, xdbcScopeSchema)
+	suite.ElementsMatch(expectedXdbcScopeTable, xdbcScopeTable)
+	suite.ElementsMatch(expectedXdbcIsAutoIncrement, xdbcIsAutoIncrement)
+	suite.ElementsMatch(expectedXdbcIsGeneratedColumn, xdbcIsGeneratedColumn)
+	suite.ElementsMatch(expectedConstraints, constraints)
+
+}
+
+var _ validation.DriverQuirks = (*BigQueryQuirks)(nil)
