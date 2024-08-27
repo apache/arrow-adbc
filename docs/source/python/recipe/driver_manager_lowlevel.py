@@ -58,7 +58,7 @@ handle, rowcount = stmt.execute_query()
 #: (other drivers, like the PostgreSQL driver, may know).
 assert rowcount == -1
 #: We can use the PyArrow APIs to read the result.
-reader = pyarrow.RecordBatchReader._import_from_c_capsule(handle.__arrow_c_stream__())
+reader = pyarrow.RecordBatchReader.from_stream(handle)
 assert reader.schema == pyarrow.schema([("THEANSWER", "int64")])
 #: Finally, we have to clean up all the objects.  (They also support the
 #: context manager protocol.)
