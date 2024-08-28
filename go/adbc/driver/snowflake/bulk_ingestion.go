@@ -347,31 +347,25 @@ func writeParquet(
 	parquetProps *parquet.WriterProperties,
 	arrowProps pqarrow.ArrowWriterProperties,
 ) error {
+	var (
+		pqWriter     *pqarrow.FileWriter
+		err          error
+		hasRecords   bool
+		bytesWritten int64
+	)
 
-	// don't start a new parquet file unless there is at least one record available
-	rec, ok := <-in
-	if !ok {
-		return ErrNoRecordsInStream
-	}
-
-	// initialize writer
-	pqWriter, err := pqarrow.NewFileWriter(schema, w, parquetProps, arrowProps)
-	if err != nil {
-		return err
-	}
-	defer pqWriter.Close()
-
-	// write first record
-	bytesWritten, err := writeRecordToParquet(pqWriter, rec)
-	if err != nil {
-		return err
-	}
-	if targetSize > 0 && bytesWritten >= int64(targetSize) {
-		return nil
-	}
-
-	// write remaining records
 	for rec := range in {
+		// the channel may be empty by the time we start writing this file, so
+		// wait until we recieve at least one record to initialize the writer.
+		if !hasRecords {
+			pqWriter, err = pqarrow.NewFileWriter(schema, w, parquetProps, arrowProps)
+			if err != nil {
+				return err
+			}
+			defer pqWriter.Close()
+			hasRecords = true
+		}
+
 		nbytes, err := writeRecordToParquet(pqWriter, rec)
 		if err != nil {
 			return err
@@ -385,6 +379,11 @@ func writeParquet(
 		if bytesWritten >= int64(targetSize) {
 			return nil
 		}
+	}
+
+	// let the caller know if the parquet file is empty, to avoid sending it any further in the pipeline
+	if !hasRecords {
+		return ErrNoRecordsInStream
 	}
 
 	// Input channel closed, signal that all parquet writing is done
