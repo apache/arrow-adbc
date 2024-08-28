@@ -221,20 +221,13 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 
 	defer func() {
 		// Always check the resulting row count, even in the case of an error. We may have ingested part of the data.
-		ctx := context.Background() // TODO(joellubi): switch to context.WithoutCancel(ctx) once we're on Go 1.21
+		ctx := context.WithoutCancel(ctx)
 		n, countErr := countRowsInTable(ctx, st.cnxn.sqldb, target)
 		nrows = n - initialRows
 
 		// Ingestion, row-count check, or both could have failed
 		// Wrap any failures as ADBC errors
-
-		// TODO(joellubi): simplify / improve with errors.Join(err, countErr) once we're on Go 1.20
-		if err == nil {
-			err = errToAdbcErr(adbc.StatusInternal, countErr)
-			return
-		}
-
-		// Failure in the pipeline itself
+		err = errors.Join(err, countErr)
 		if errors.Is(err, context.Canceled) {
 			err = errToAdbcErr(adbc.StatusCancelled, err)
 		} else {
