@@ -523,7 +523,6 @@ func executeCopyQuery(ctx context.Context, cn snowflakeConn, tableName string, f
 		return nil
 	}
 
-	filesCopied := make([]string, 0)
 	for {
 		vals := make([]driver.Value, len(rows.Columns()))
 		err := rows.Next(vals)
@@ -537,11 +536,9 @@ func executeCopyQuery(ctx context.Context, cn snowflakeConn, tableName string, f
 		if !ok {
 			return fmt.Errorf("unexpected response for COPY, expected 'file' to be string, found: %T", vals[fileColIdx])
 		}
-		filesCopied = append(filesCopied, file)
+		filesToCopy.Remove(file)
 	}
 
-	// remove all at once so we don't have to re-lock multiple times
-	filesToCopy.Remove(filesCopied...)
 	return nil
 }
 
@@ -680,37 +677,25 @@ func (bp *bufferPool) PutBuffer(buf *bytes.Buffer) {
 }
 
 type fileSet struct {
-	mu   sync.RWMutex
-	data map[string]struct{}
+	data sync.Map
 }
 
-func (s *fileSet) Add(files ...string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.data == nil {
-		s.data = make(map[string]struct{})
-	}
-
-	for _, file := range files {
-		basename := path.Base(file)
-		s.data[basename] = struct{}{}
-	}
+func (s *fileSet) Add(file string) {
+	basename := path.Base(file)
+	s.data.Store(basename, nil)
 }
 
-func (s *fileSet) Remove(files ...string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *fileSet) Remove(file string) {
+	basename := path.Base(file)
+	s.data.Delete(basename)
 
-	for _, file := range files {
-		basename := path.Base(file)
-		delete(s.data, basename)
-	}
 }
 
 func (s *fileSet) Len() int {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	return len(s.data)
+	var items int
+	s.data.Range(func(key, value any) bool {
+		items++
+		return true
+	})
+	return items
 }
