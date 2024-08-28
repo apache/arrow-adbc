@@ -28,9 +28,12 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"path"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v18/arrow"
@@ -477,7 +480,7 @@ func uploadAllStreams(
 	streams <-chan *bytes.Buffer,
 	concurrency int,
 	buffers *bufferPool,
-	uploadCallback func(),
+	uploadCallback func(string),
 ) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
@@ -498,7 +501,7 @@ func uploadAllStreams(
 		fileName := fmt.Sprintf("%d.parquet", i)
 		g.Go(func() error {
 			defer buffers.PutBuffer(buf)
-			defer uploadCallback()
+			defer uploadCallback(fileName)
 
 			return uploadStream(ctx, cn, buf, fileName)
 		})
@@ -507,7 +510,44 @@ func uploadAllStreams(
 	return g.Wait()
 }
 
-func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concurrency int) (func(), func() error, func()) {
+func executeCopyQuery(ctx context.Context, cn snowflakeConn, tableName string, filesToCopy *fileSet) error {
+	rows, err := cn.QueryContext(ctx, copyQuery, []driver.NamedValue{{Value: tableName}})
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	fileColIdx := slices.Index(rows.Columns(), "file")
+	if fileColIdx < 0 {
+		// COPY response does not include 'file' column if no files we copied
+		return nil
+	}
+
+	filesCopied := make([]string, 0)
+	for {
+		vals := make([]driver.Value, len(rows.Columns()))
+		err := rows.Next(vals)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		file, ok := vals[fileColIdx].(string)
+		if !ok {
+			return fmt.Errorf("unexpected response for COPY, expected 'file' to be string, found: %T", vals[fileColIdx])
+		}
+		filesCopied = append(filesCopied, file)
+	}
+
+	// remove all at once so we don't have to re-lock multiple times
+	filesToCopy.Remove(filesCopied...)
+	return nil
+}
+
+func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concurrency int) (func(string), func() error, func()) {
+	var filesToCopy fileSet
+
 	ctx, cancel := context.WithCancel(ctx)
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
@@ -517,7 +557,9 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 
 	// Handler to signal that new data has been uploaded.
 	// Executing COPY will be a no-op if this has not been called since the last COPY was dispatched, so we wait for the signal.
-	readyFn := func() {
+	readyFn := func(filename string) {
+		// keep track of each file uploaded to the stage, until it has been copied into the table successfully
+		filesToCopy.Add(filename)
 
 		// readyFn is a no-op if the shutdown signal has already been recieved
 		select {
@@ -544,12 +586,26 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 		close(stopCh)
 		close(readyCh)
 
-		_, err := cn.ExecContext(ctx, copyQuery, []driver.NamedValue{{Value: tableName}})
-		if err != nil {
-			return err
+		maxRetries := 5 // maybe make configurable?
+		for attempt := 0; attempt < maxRetries+1; attempt++ {
+			if attempt > 0 {
+				// backoff by 100ms, 200ms, 400ms, ...
+				factor := time.Duration(math.Pow(2, float64(attempt-1)))
+				backoff := 100 * factor * time.Millisecond
+				time.Sleep(backoff)
+			}
+
+			if err := executeCopyQuery(ctx, cn, tableName, &filesToCopy); err != nil {
+				return err
+			}
+
+			if filesToCopy.Len() == 0 {
+				// all files successfully copied
+				return g.Wait()
+			}
 		}
 
-		return g.Wait()
+		return fmt.Errorf("some files not loaded by COPY command, %d files remain after %d retries", filesToCopy.Len(), maxRetries)
 	}
 
 	// Handler to signal that ingestion pipeline failed and COPY operations should not proceed.
@@ -577,8 +633,7 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 			}
 
 			g.Go(func() error {
-				_, err := cn.ExecContext(ctx, copyQuery, []driver.NamedValue{{Value: tableName}})
-				return err
+				return executeCopyQuery(ctx, cn, tableName, &filesToCopy)
 			})
 		}
 	}()
@@ -622,4 +677,40 @@ func (bp *bufferPool) GetBuffer() *bytes.Buffer {
 func (bp *bufferPool) PutBuffer(buf *bytes.Buffer) {
 	buf.Reset()
 	bp.Pool.Put(buf)
+}
+
+type fileSet struct {
+	mu   sync.RWMutex
+	data map[string]struct{}
+}
+
+func (s *fileSet) Add(files ...string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.data == nil {
+		s.data = make(map[string]struct{})
+	}
+
+	for _, file := range files {
+		basename := path.Base(file)
+		s.data[basename] = struct{}{}
+	}
+}
+
+func (s *fileSet) Remove(files ...string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, file := range files {
+		basename := path.Base(file)
+		delete(s.data, basename)
+	}
+}
+
+func (s *fileSet) Len() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return len(s.data)
 }
