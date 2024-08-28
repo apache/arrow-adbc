@@ -386,6 +386,24 @@ Be sure to go through on the following checklist:
       # dev/release/post-07-csharp.sh
       dev/release/post-07-csharp.sh
 
+.. dropdown:: Upload Rust crates to crates.io
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   You must be one of owners of the package.  If you aren't an owner yet, an
+   existing owner can add you at https://crates.io.
+
+   You will need to [create an API token](https://crates.io/settings/tokens).
+
+   An owner can upload:
+
+   .. code-block:: bash
+
+      cargo login
+
+      # dev/release/post-08-rust.sh
+      dev/release/post-08-rust.sh
+
 .. dropdown:: Update conda-forge packages
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
@@ -411,7 +429,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      dev/release/post-08-remove-old-artifacts.sh
+      dev/release/post-09-remove-old-artifacts.sh
 
 .. dropdown:: Bump versions
    :class-title: sd-fs-5
@@ -421,8 +439,8 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-09-bump-versions.sh ../arrow
-      dev/release/post-09-bump-versions.sh <arrow-dir>
+      # dev/release/post-10-bump-versions.sh ../arrow
+      dev/release/post-10-bump-versions.sh <arrow-dir>
 
 .. dropdown:: Publish release blog post
    :class-title: sd-fs-5
@@ -434,7 +452,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-10-website.sh ../arrow-site
-      dev/release/post-10-website.sh <arrow-site-dir>
+      # dev/release/post-11-website.sh ../arrow-site
+      dev/release/post-11-website.sh <arrow-site-dir>
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml

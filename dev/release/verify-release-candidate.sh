@@ -340,6 +340,45 @@ install_go() {
   GO_ALREADY_INSTALLED=1
 }
 
+install_rust() {
+  if [ "${RUST_ALREADY_INSTALLED:-0}" -gt 0 ]; then
+    show_info "Rust already installed at $(command -v cargo)"
+    show_info "$(cargo --version)"
+    return 0
+  fi
+
+  if [[ -f ${ARROW_TMPDIR}/cargo/env ]]; then
+    source ${ARROW_TMPDIR}/cargo/env
+    rustup default stable
+    show_info "$(cargo version) installed at $(command -v cargo)"
+    RUST_ALREADY_INSTALLED=1
+    return 0
+  fi
+
+  if command -v cargo > /dev/null; then
+    show_info "Found $(cargo version) at $(command -v cargo)"
+    RUST_ALREADY_INSTALLED=1
+    return 0
+  fi
+
+  show_info "Installing Rust..."
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |\
+      env \
+          RUSTUP_HOME=${ARROW_TMPDIR}/rustup \
+          CARGO_HOME=${ARROW_TMPDIR}/cargo \
+          sh -s -- \
+          --default-toolchain stable \
+          --no-modify-path \
+          -y
+
+  source ${ARROW_TMPDIR}/cargo/env
+  rustup default stable
+
+  show_info "$(cargo version) installed at $(command -v cargo)"
+
+  RUST_ALREADY_INSTALLED=1
+}
+
 install_conda() {
   # Setup short-lived miniconda for Python and integration tests
   show_info "Ensuring that Conda is installed..."
@@ -462,6 +501,13 @@ maybe_setup_go() {
   fi
 }
 
+maybe_setup_rust() {
+  show_info "Ensuring that Rust is installed..."
+  if [ "${USE_CONDA}" -eq 0 ]; then
+    install_rust
+  fi
+}
+
 test_cpp() {
   show_header "Build, install and test C++ libraries"
 
@@ -475,9 +521,9 @@ test_cpp() {
   if [ "${USE_CONDA}" -gt 0 ]; then
     export CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
     # The CMake setup forces RPATH to be the Conda prefix
-    local -r install_prefix="${CONDA_PREFIX}"
+    export CPP_INSTALL_PREFIX="${CONDA_PREFIX}"
   else
-    local -r install_prefix="${ARROW_TMPDIR}/local"
+    export CPP_INSTALL_PREFIX="${ARROW_TMPDIR}/local"
   fi
 
   export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-${NPROC}}
@@ -486,14 +532,14 @@ test_cpp() {
   export ADBC_CMAKE_ARGS="-DADBC_INSTALL_NAME_RPATH=OFF"
   export ADBC_USE_ASAN=OFF
   export ADBC_USE_UBSAN=OFF
-  "${ADBC_DIR}/ci/scripts/cpp_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
+  "${ADBC_DIR}/ci/scripts/cpp_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${CPP_INSTALL_PREFIX}"
   # FlightSQL driver requires running database for testing
   export BUILD_DRIVER_FLIGHTSQL=0
   # PostgreSQL driver requires running database for testing
   export BUILD_DRIVER_POSTGRESQL=0
   # Snowflake driver requires snowflake creds for testing
   export BUILD_DRIVER_SNOWFLAKE=0
-  "${ADBC_DIR}/ci/scripts/cpp_test.sh" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
+  "${ADBC_DIR}/ci/scripts/cpp_test.sh" "${ARROW_TMPDIR}/cpp-build" "${CPP_INSTALL_PREFIX}"
   export BUILD_DRIVER_FLIGHTSQL=1
   export BUILD_DRIVER_POSTGRESQL=1
   export BUILD_DRIVER_SNOWFLAKE=1
@@ -637,6 +683,17 @@ test_go() {
   "${ADBC_DIR}/ci/scripts/go_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/go-build" "${install_prefix}"
 }
 
+test_rust() {
+  show_header "Build and test Rust libraries"
+
+  maybe_setup_rust || exit 1
+  maybe_setup_conda rust || exit 1
+
+  # We expect the C++ libraries to exist.
+  "${ADBC_DIR}/ci/scripts/rust_build.sh" "${ADBC_SOURCE_DIR}"
+  "${ADBC_DIR}/ci/scripts/rust_test.sh" "${ADBC_SOURCE_DIR}" "${CPP_INSTALL_PREFIX}"
+}
+
 ensure_source_directory() {
   show_header "Ensuring source directory"
 
@@ -721,6 +778,9 @@ test_source_distribution() {
   fi
   if [ ${TEST_R} -gt 0 ]; then
     test_r
+  fi
+  if [ ${TEST_RUST} -gt 0 ]; then
+    test_rust
   fi
 
   popd
@@ -874,9 +934,10 @@ test_jars() {
 : ${TEST_JS:=${TEST_SOURCE}}
 : ${TEST_GO:=${TEST_SOURCE}}
 : ${TEST_R:=${TEST_SOURCE}}
+: ${TEST_RUST:=${TEST_SOURCE}}
 
 # Automatically test if its activated by a dependent
-TEST_CPP=$((${TEST_CPP} + ${TEST_GO} + ${TEST_GLIB} + ${TEST_PYTHON}))
+TEST_CPP=$((${TEST_CPP} + ${TEST_GO} + ${TEST_GLIB} + ${TEST_PYTHON} + ${TEST_RUST}))
 
 # Execute tests in a conda enviroment
 : ${USE_CONDA:=0}
