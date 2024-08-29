@@ -360,11 +360,10 @@ func writeParquet(
 			return err
 		}
 
+		bytesWritten += nbytes
 		if targetSize < 0 {
 			continue
 		}
-
-		bytesWritten += nbytes
 		if bytesWritten >= int64(targetSize) {
 			return nil
 		}
@@ -664,24 +663,22 @@ func (bp *bufferPool) PutBuffer(buf *bytes.Buffer) {
 	bp.Pool.Put(buf)
 }
 
-type fileSet struct {
-	data sync.Map
-}
+type fileSet sync.Map
 
 func (s *fileSet) Add(file string) {
 	basename := path.Base(file)
-	s.data.Store(basename, nil)
+	(*sync.Map)(s).Store(basename, nil)
 }
 
 func (s *fileSet) Remove(file string) {
 	basename := path.Base(file)
-	s.data.Delete(basename)
+	(*sync.Map)(s).Delete(basename)
 
 }
 
 func (s *fileSet) Len() int {
 	var items int
-	s.data.Range(func(key, value any) bool {
+	(*sync.Map)(s).Range(func(key, value any) bool {
 		items++
 		return true
 	})
