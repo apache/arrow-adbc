@@ -25,7 +25,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
-	github.com/snowflakedb/gosnowflake v1.11.1-0.20240820132919-5649c7a3d6f6
+	github.com/snowflakedb/gosnowflake v1.11.1
 	github.com/stretchr/testify v1.9.0
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
