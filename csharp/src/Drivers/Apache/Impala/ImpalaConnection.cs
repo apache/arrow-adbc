@@ -29,6 +29,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     internal class ImpalaConnection : HiveServer2Connection
     {
+        // https://impala.apache.org/docs/build/html/topics/impala_ports.html
+        // https://impala.apache.org/docs/build/html/topics/impala_client.html
+        private const int DefaultSocketTransportPort = 21050;
+        private const int DefaultHttpTransportPort = 28000;
+
         internal ImpalaConnection(IReadOnlyDictionary<string, string> properties)
             : base(properties)
         {
@@ -38,7 +43,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
             string hostName = Properties["HostName"];
             string? tmp;
-            int port = 21050; // default?
+            int port = DefaultSocketTransportPort; // default?
             if (Properties.TryGetValue("Port", out tmp))
             {
                 port = int.Parse(tmp);

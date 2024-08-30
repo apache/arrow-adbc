@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Apache.Arrow.Adbc.Tests
 {
@@ -65,7 +66,23 @@ namespace Apache.Arrow.Adbc.Tests
             string.Format("INSERT INTO {0} ({1}) VALUES ({2});", tableName, columnName, value ?? "NULL");
 
         public virtual string GetDeleteValueStatement(string tableName, string whereClause) =>
-            string.Format("DELETE FROM {0} WHERE {1};", tableName, whereClause);
+            string.Format("DELETE FROM {0} {1};", tableName, whereClause);
+
+        public string GetInsertStatementWithIndexColumn(string tableName, string columnName, string indexColumnName, object?[] values, string?[]? formattedValues)
+        {
+            var completeValues = new StringBuilder();
+            if (values.Length == 0) throw new ArgumentOutOfRangeException(nameof(values), values.Length, "Must provide a non-zero length array of test values.");
+            for (int i = 0; i < values.Length; i++)
+            {
+                object? value = values[i];
+                string? formattedValue = formattedValues?[i];
+                string separator = (completeValues.Length != 0) ? ", " : "";
+                completeValues.AppendLine($"{separator}({i}, {formattedValue ?? value?.ToString() ?? "NULL"})");
+            }
+
+            string insertStatement = $"INSERT INTO {tableName} ({indexColumnName}, {columnName}) VALUES {completeValues}";
+            return insertStatement;
+        }
 
         public Version VendorVersionAsVersion => new Lazy<Version>(() => new Version(VendorVersion)).Value;
 

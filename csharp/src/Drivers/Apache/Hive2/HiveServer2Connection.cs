@@ -30,10 +30,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
-        private const string userAgent = "AdbcExperimental/0.0";
 
-        protected TOperationHandle? operationHandle;
-        internal TTransport? _transport;
+        private TTransport? _transport;
         private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;

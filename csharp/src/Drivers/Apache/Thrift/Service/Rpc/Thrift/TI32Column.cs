@@ -124,7 +124,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           throw new TProtocolException(TProtocolException.INVALID_DATA);
         }
-        ArrowBuffer validityBitmapBuffer = BitmapUtilities.GetValidityBitmapBuffer(nulls, out int nullCount);
+        ArrowBuffer validityBitmapBuffer = BitmapUtilities.GetValidityBitmapBuffer(ref nulls, length, out int nullCount);
         Values = new Int32Array(new ArrowBuffer(buffer), validityBitmapBuffer, length, nullCount, 0);
       }
       finally

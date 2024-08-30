@@ -21,17 +21,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
-using Thrift.Protocol;
-using Thrift.Transport.Client;
-using Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2Reader : IArrowArrayStream
     {
-        HiveServer2Statement? _statement;
+        private HiveServer2Statement? _statement;
         private readonly long _batchSize;
-        //int _counter;
 
         public HiveServer2Reader(HiveServer2Statement statement, Schema schema, long batchSize = HiveServer2Connection.BatchSizeDefault)
         {

@@ -228,10 +228,60 @@ namespace Apache.Arrow.Adbc.Tests
         {
             await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
             await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
-            await SelectAndValidateValuesAsync(tableName, columnName, value, 2, formattedValue);
+            await SelectAndValidateValuesAsync(tableName, columnName, [value, value], 2, formattedValue);
             string whereClause = GetWhereClause(columnName, formattedValue ?? value);
             if (SupportsDelete) await DeleteFromTableAsync(tableName, whereClause, 2);
         }
+
+        /// <summary>
+        /// Validates "multi-value" scenarios
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <param name="columnName"></param>
+        /// <param name="indexColumnName"></param>
+        /// <param name="values"></param>
+        /// <param name="formattedValues"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        protected async Task ValidateInsertSelectDeleteMultipleValuesAsync(string tableName, string columnName, string indexColumnName, object?[] values, string?[]? formattedValues = null)
+        {
+            await InsertMultipleValuesWithIndexColumnAsync(tableName, columnName, indexColumnName, values, formattedValues);
+
+            string selectStatement = $"SELECT {columnName}, {indexColumnName} FROM {tableName}";
+            await SelectAndValidateValuesAsync(selectStatement, values, values.Length, hasIndexColumn: true);
+
+            if (SupportsDelete) await DeleteFromTableAsync(tableName, "", values.Length);
+        }
+
+        /// <summary>
+        /// Inserts multiple values
+        /// </summary>
+        /// <param name="tableName">Name of the table to perform the insert</param>
+        /// <param name="columnName">Name of the value column to insert</param>
+        /// <param name="indexColumnName">Name of the index column to insert index values</param>
+        /// <param name="values">The array of values to insert</param>
+        /// <param name="formattedValues">The array of formatted values to insert</param>
+        /// <returns></returns>
+        protected async Task InsertMultipleValuesWithIndexColumnAsync(string tableName, string columnName, string indexColumnName, object?[] values, string?[]? formattedValues)
+        {
+            string insertStatement = GetInsertStatementWithIndexColumn(tableName, columnName, indexColumnName, values, formattedValues);
+            OutputHelper?.WriteLine(insertStatement);
+            Statement.SqlQuery = insertStatement;
+            UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
+            if (ValidateAffectedRows) Assert.Equal(values.Length, updateResult.AffectedRows);
+        }
+
+        /// <summary>
+        /// Gets the SQL INSERT statement for inserting multiple values with an index column
+        /// </summary>
+        /// <param name="tableName">Name of the table to perform the insert</param>
+        /// <param name="columnName">Name of the value column to insert</param>
+        /// <param name="indexColumnName">Name of the index column to insert index values</param>
+        /// <param name="values">The array of values to insert</param>
+        /// <param name="formattedValues">The array of formatted values to insert</param>
+        /// <returns></returns>
+        protected string GetInsertStatementWithIndexColumn(string tableName, string columnName, string indexColumnName, object?[] values, string?[]? formattedValues) =>
+            TestEnvironment.GetInsertStatementWithIndexColumn(tableName, columnName, indexColumnName, values, formattedValues);
 
         /// <summary>
         /// Inserts a single value into a table.
@@ -255,7 +305,8 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to insert.</param>
         /// <returns></returns>
-        protected string GetInsertStatement(string tableName, string columnName, string? value) => TestEnvironment.GetInsertStatement(tableName, columnName, value);
+        protected string GetInsertStatement(string tableName, string columnName, string? value) =>
+            TestEnvironment.GetInsertStatement(tableName, columnName, value);
 
         /// <summary>
         /// Deletes a (single) value from a table.
@@ -297,11 +348,37 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Selects a single value and validates it equality with expected value and number of results.
         /// </summary>
+        /// <param name="tableName">The name of the table to use.</param>
+        /// <param name="columnName">The name of the column.</param>
+        /// <param name="values">The value to select and validate.</param>
+        /// <param name="expectedLength">The number of expected results (rows).</param>
+        /// <returns></returns>
+        protected async Task SelectAndValidateValuesAsync(string table, string columnName, object?[] values, int expectedLength, string? formattedValue = null)
+        {
+            string selectNumberStatement = GetSelectSingleValueStatement(table, columnName, formattedValue ?? values[0]);
+            await SelectAndValidateValuesAsync(selectNumberStatement, values, expectedLength);
+        }
+
+        /// <summary>
+        /// Selects a single value and validates it equality with expected value and number of results.
+        /// </summary>
         /// <param name="selectStatement">The SQL statement to execute.</param>
         /// <param name="value">The value to select and validate.</param>
         /// <param name="expectedLength">The number of expected results (rows).</param>
         /// <returns></returns>
         protected async Task SelectAndValidateValuesAsync(string selectStatement, object? value, int expectedLength)
+        {
+            await SelectAndValidateValuesAsync(selectStatement, [value], expectedLength);
+        }
+
+        /// <summary>
+        /// Selects a single value and validates it equality with expected value and number of results.
+        /// </summary>
+        /// <param name="selectStatement">The SQL statement to execute.</param>
+        /// <param name="values">The array of values to select and validate.</param>
+        /// <param name="expectedLength">The number of expected results (rows).</param>
+        /// <returns></returns>
+        protected async Task SelectAndValidateValuesAsync(string selectStatement, object?[] values, int expectedLength, bool hasIndexColumn = false)
         {
             Statement.SqlQuery = selectStatement;
             OutputHelper?.WriteLine(selectStatement);
@@ -321,67 +398,68 @@ namespace Apache.Arrow.Adbc.Tests
                             case Decimal128Type:
                                 Decimal128Array decimalArray = (Decimal128Array)nextBatch.Column(0);
                                 actualLength += decimalArray.Length;
-                                ValidateValue(value, decimalArray.Length, (i) => decimalArray.GetSqlDecimal(i));
+                                ValidateValue((i) => values?[i], decimalArray.Length, (i) => decimalArray.GetSqlDecimal(i));
                                 break;
                             case DoubleType:
                                 DoubleArray doubleArray = (DoubleArray)nextBatch.Column(0);
                                 actualLength += doubleArray.Length;
-                                ValidateValue(value, doubleArray.Length, (i) => doubleArray.GetValue(i));
+                                ValidateValue((i) => values?[i], doubleArray.Length, (i) => doubleArray.GetValue(i));
                                 break;
                             case FloatType:
                                 FloatArray floatArray = (FloatArray)nextBatch.Column(0);
                                 actualLength += floatArray.Length;
-                                ValidateValue(value, floatArray.Length, (i) => floatArray.GetValue(i));
+                                ValidateValue((i) => values?[i], floatArray.Length, (i) => floatArray.GetValue(i));
                                 break;
                             case Int64Type:
                                 Int64Array int64Array = (Int64Array)nextBatch.Column(0);
                                 actualLength += int64Array.Length;
-                                ValidateValue(value, int64Array.Length, (i) => int64Array.GetValue(i));
+                                ValidateValue((i) => values?[i], int64Array.Length, (i) => int64Array.GetValue(i));
                                 break;
                             case Int32Type:
                                 Int32Array intArray = (Int32Array)nextBatch.Column(0);
                                 actualLength += intArray.Length;
-                                ValidateValue(value, intArray.Length, (i) => intArray.GetValue(i));
+                                ValidateValue((i) => values?[i], intArray.Length, (i) => intArray.GetValue(i));
                                 break;
                             case Int16Type:
                                 Int16Array shortArray = (Int16Array)nextBatch.Column(0);
                                 actualLength += shortArray.Length;
-                                ValidateValue(value, shortArray.Length, (i) => shortArray.GetValue(i));
+                                ValidateValue((i) => values?[i], shortArray.Length, (i) => shortArray.GetValue(i));
                                 break;
                             case Int8Type:
                                 Int8Array tinyIntArray = (Int8Array)nextBatch.Column(0);
                                 actualLength += tinyIntArray.Length;
-                                ValidateValue(value, tinyIntArray.Length, (i) => tinyIntArray.GetValue(i));
+                                ValidateValue((i) => values?[i], tinyIntArray.Length, (i) => tinyIntArray.GetValue(i));
                                 break;
                             case StringType:
                                 StringArray stringArray = (StringArray)nextBatch.Column(0);
                                 actualLength += stringArray.Length;
-                                ValidateValue(value, stringArray.Length, (i) => stringArray.GetString(i));
+                                ValidateValue((i) => values?[i], stringArray.Length, (i) => stringArray.GetString(i));
                                 break;
                             case TimestampType:
                                 TimestampArray timestampArray = (TimestampArray)nextBatch.Column(0);
                                 actualLength += timestampArray.Length;
-                                ValidateValue(value, timestampArray.Length, (i) => timestampArray.GetTimestamp(i));
+                                ValidateValue((i) => values?[i], timestampArray.Length, (i) => timestampArray.GetTimestamp(i));
                                 break;
                             case Date32Type:
                                 Date32Array date32Array = (Date32Array)nextBatch.Column(0);
                                 actualLength += date32Array.Length;
-                                ValidateValue(value, date32Array.Length, (i) => date32Array.GetDateTimeOffset(i));
+                                ValidateValue((i) => values?[i], date32Array.Length, (i) => date32Array.GetDateTimeOffset(i));
                                 break;
                             case BooleanType:
                                 BooleanArray booleanArray = (BooleanArray)nextBatch.Column(0);
+                                Int32Array? indexArray = hasIndexColumn ? (Int32Array)nextBatch.Column(1) : null;
                                 actualLength += booleanArray.Length;
-                                ValidateValue(value, booleanArray.Length, (i) => booleanArray.GetValue(i));
+                                ValidateValue((i) => values?[i], booleanArray.Length, (i) => booleanArray.GetValue(i), indexArray);
                                 break;
                             case BinaryType:
                                 BinaryArray binaryArray = (BinaryArray)nextBatch.Column(0);
                                 actualLength += binaryArray.Length;
-                                ValidateBinaryArrayValue(value, binaryArray);
+                                ValidateBinaryArrayValue((i) => values?[i], binaryArray);
                                 break;
                             case NullType:
                                 NullArray nullArray = (NullArray)nextBatch.Column(0);
                                 actualLength += nullArray.Length;
-                                ValidateValue(value == null, nullArray.Length, (i) => nullArray.IsNull(i));
+                                ValidateValue((i) => values?[i] == null, nullArray.Length, (i) => nullArray.IsNull(i));
                                 break;
                             default:
                                 Assert.Fail($"Unhandled datatype {field.DataType}");
@@ -397,16 +475,17 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Validates a single values for all results (in the batch).
         /// </summary>
-        /// <param name="sexpectedValue">The value to validate.</param>
+        /// <param name="expectedValues">The value to validate.</param>
         /// <param name="binaryArray">The binary array to validate</param>
-        private static void ValidateBinaryArrayValue(object? sexpectedValue, BinaryArray binaryArray)
+        private static void ValidateBinaryArrayValue(Func<int, object?> expectedValues, BinaryArray binaryArray)
         {
             for (int i = 0; i < binaryArray.Length; i++)
             {
-                // Note: null is indicated in output flagk 'isNull'.
+                // Note: null is indicated in output flag 'isNull'.
                 byte[] byteArray = binaryArray.GetBytes(i, out bool isNull).ToArray();
                 byte[]? nullableByteArray = isNull ? null : byteArray;
-                Assert.Equal<object>(sexpectedValue, nullableByteArray);
+                var expectedValue = expectedValues(i);
+                Assert.Equal<object>(expectedValue, nullableByteArray);
             }
         }
 
@@ -416,12 +495,14 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to validate.</param>
         /// <param name="length">The length of the current batch/array.</param>
         /// <param name="getter">The getter function to retrieve the actual value.</param>
-        private static void ValidateValue(object? value, int length, Func<int, object?> getter)
+        private static void ValidateValue(Func<int, object?> value, int length, Func<int, object?> getter, Int32Array? indexColumn = null)
         {
             for (int i = 0; i < length; i++)
             {
+                int valueIndex = indexColumn?.GetValue(i) ?? i;
+                object? expected = value(valueIndex);
                 object? actual = getter(i);
-                Assert.Equal<object>(value, actual);
+                Assert.Equal<object>(expected, actual);
             }
         }
 
@@ -433,12 +514,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to select and validate.</param>
         /// <returns>The native SQL statement.</returns>
         protected string GetSelectSingleValueStatement(string table, string columnName, object? value) =>
-            $"SELECT {columnName} FROM {table} WHERE {GetWhereClause(columnName, value)}";
+            $"SELECT {columnName} FROM {table} {GetWhereClause(columnName, value)}";
 
         protected string GetWhereClause(string columnName, object? value) =>
             value == null
-                ? $"{columnName} IS NULL"
-                : string.Format("{0} = {1}", columnName, MaybeDoubleToString(value));
+                ? $"WHERE {columnName} IS NULL"
+                : string.Format("WHERE {0} = {1}", columnName, MaybeDoubleToString(value));
 
         private static object MaybeDoubleToString(object value) =>
             value.GetType() == typeof(float)

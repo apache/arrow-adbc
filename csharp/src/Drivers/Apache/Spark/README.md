@@ -27,9 +27,9 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | Property               | Description | Default |
 | :---                   | :---        | :---    |
 | `adbc.spark.type`      | (Required) Indicates the Spark server type. One of `databricks`, `http` (future: `standard`, `hdinsight`) | |
-| `adbc.spark.auth_type` | An indicator of the intended type of authentication. Allowed values: `none`, `username_only`,_`basic`, and `token`. This property is optional. The authentication type can be inferred from `token`, `username`, and `password`. If a `token` value is provided, token authentication is used. Otherwise, if both `username` and `password` values are provided, basic authentication is used. | |
-| `adbc.spark.host`      | Host name for the data source. Do no include scheme or port number. Example: `sparkserver.region.cloudapp.azure.com` |  |
-| `adbc.spark.port`      | The port number the data source is listen on for new connections. | `443` |
+| `adbc.spark.auth_type` | An indicator of the intended type of authentication. Allowed values: `none`, `username_only`, `basic`, and `token`. This property is optional. The authentication type can be inferred from `token`, `username`, and `password`. If a `token` value is provided, token authentication is used. Otherwise, if both `username` and `password` values are provided, basic authentication is used. | |
+| `adbc.spark.host`      | Host name for the data source. Do not include scheme or port number. Example: `sparkserver.region.cloudapp.azure.com` |  |
+| `adbc.spark.port`      | The port number the data source listens on for a new connections. | `443` |
 | `adbc.spark.path`      | The URI path on the data source server. Example: `sql/protocolv1/o/0123456789123456/01234-0123456-source` | |
 | `adbc.spark.token`     | For token-based authentication, the token to be authenticated on the data source. Example: `abcdef0123456789` | |
 | `uri`                  | The full URI that includes scheme, host, port and path. If set, this property takes precedence over `adbc.spark.host`, `adbc.spark.port` and `adbc.spark.path`. | |
