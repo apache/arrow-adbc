@@ -29,8 +29,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
   public partial class TDoubleColumn : TBase
   {
-    private const int DoubleSize = 8;
-
     public DoubleArray Values { get; set; }
 
     public TDoubleColumn()
@@ -79,19 +77,13 @@ namespace Apache.Hive.Service.Rpc.Thrift
                   var _list178 = await iprot.ReadListBeginAsync(cancellationToken);
                   length = _list178.Count;
 
-                  buffer = new byte[length * DoubleSize];
+                  buffer = new byte[length * sizeof(double)];
                   var memory = buffer.AsMemory();
-                  var typedMemory = Unsafe.As<Memory<byte>, Memory<long>>(ref memory).Slice(0, length);
                   iprot.Transport.CheckReadBytesAvailable(buffer.Length);
                   await transport.ReadExactlyAsync(memory, cancellationToken);
                   for (int _i179 = 0; _i179 < length; ++_i179)
                   {
-#if NET6_0_OR_GREATER
-                    typedMemory.Span[_i179] = BinaryPrimitives.ReverseEndianness(typedMemory.Span[_i179]);
-#else
-                    long source = BinaryPrimitives.ReverseEndianness(BitConverter.ToInt64(buffer, _i179 * DoubleSize));
-                    BitConverter.GetBytes(source).CopyTo(buffer, _i179 * DoubleSize);
-#endif
+                    StreamExtensions.ReverseEndianI64AtOffset(memory.Span, _i179 * sizeof(double));
                   }
                   await iprot.ReadListEndAsync(cancellationToken);
                 }

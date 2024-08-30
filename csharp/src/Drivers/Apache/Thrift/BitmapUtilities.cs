@@ -15,9 +15,6 @@
 * limitations under the License.
 */
 
-using System;
-using System.Runtime.CompilerServices;
-
 namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
 {
     internal static class BitmapUtilities
@@ -35,11 +32,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
         internal static ArrowBuffer GetValidityBitmapBuffer(ref byte[] nulls, int arrayLength, out int nullCount)
         {
             nullCount = BitUtility.CountBits(nulls);
+
             int fullBytes = arrayLength / 8;
-            int fullInts = fullBytes / 4;
             int remainingBits = arrayLength % 8;
             int requiredBytes = fullBytes + (remainingBits == 0 ? 0 : 1);
-            int remainingBytes = fullBytes % 4;
             if (nulls.Length < requiredBytes)
             {
                 // Note: Spark may return a nulls bitmap buffer that is shorter than required - implying that missing bits indicate non-null.
@@ -49,27 +45,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
                 nulls = temp;
             }
 
-            // Handle full integers
-#if NET6_0_OR_GREATER
-            Memory<byte> byteMemory = nulls.AsMemory(0, fullInts * 4);
-            Memory<int> intMemory = Unsafe.As<Memory<byte>, Memory<int>>(ref byteMemory);
-            for (int i = 0; i < fullInts; i++)
+            // Handle full bytes
+            for (int i = 0; i < fullBytes; i++)
             {
-                intMemory.Span[i] = ~intMemory.Span[i];
-            }
-#else
-            for (int i = 0; i < fullInts; i++)
-            {
-                BitConverter.GetBytes(~BitConverter.ToInt32(nulls, i * 4)).CopyTo(nulls, i * 4);
-            }
-#endif
-            // Handle remaining full bytes
-            if (remainingBytes > 0)
-            {
-                for (int i = fullInts * 4; i < fullBytes; i++)
-                {
-                    nulls[i] = (byte)~nulls[i];
-                }
+                nulls[i] = (byte)~nulls[i];
             }
             // Handle remaing bits
             if (remainingBits > 0)

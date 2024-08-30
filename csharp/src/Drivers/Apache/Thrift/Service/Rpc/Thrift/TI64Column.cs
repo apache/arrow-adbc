@@ -29,8 +29,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
   public partial class TI64Column : TBase
   {
-    private const int LongSize = 8;
-
     public Int64Array Values { get; set; }
 
     public TI64Column()
@@ -79,19 +77,13 @@ namespace Apache.Hive.Service.Rpc.Thrift
                   var _list169 = await iprot.ReadListBeginAsync(cancellationToken);
                   length = _list169.Count;
 
-                  buffer = new byte[length * LongSize];
+                  buffer = new byte[length * sizeof(long)];
                   var memory = buffer.AsMemory();
-                  var typedMemory = Unsafe.As<Memory<byte>, Memory<long>>(ref memory).Slice(0, length);
                   iprot.Transport.CheckReadBytesAvailable(buffer.Length);
                   await transport.ReadExactlyAsync(memory, cancellationToken);
                   for (int _i170 = 0; _i170 < length; ++_i170)
                   {
-#if NET6_0_OR_GREATER
-                    typedMemory.Span[_i170] = BinaryPrimitives.ReverseEndianness(typedMemory.Span[_i170]);
-#else
-                    long source = BinaryPrimitives.ReverseEndianness(BitConverter.ToInt64(buffer, _i170 * LongSize));
-                    BitConverter.GetBytes(source).CopyTo(buffer, _i170 * LongSize);
-#endif
+                    StreamExtensions.ReverseEndianI64AtOffset(memory.Span, _i170 * sizeof(long));
                   }
                   await iprot.ReadListEndAsync(cancellationToken);
                 }
