@@ -20,13 +20,12 @@ importlib-resources
 # nodejs is required by pyright
 nodejs >=13.0.0
 pandas
-pyarrow=15.0.2
+pyarrow-all
 pyright
 pytest
 setuptools
 
 # For integration testing
-# 0.20.3 is broken on conda-forge
-polars<=0.20.2
+polars
 protobuf
 python-duckdb
