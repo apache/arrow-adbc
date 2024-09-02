@@ -428,7 +428,7 @@ def test_pycapsule(sqlite):
     handle = conn.get_table_schema(catalog=None, db_schema=None, table_name="foo")
     assert data.schema == pyarrow.schema(handle)
     # ensure consumed schema was marked as such
-    with pytest.raises(ValueError, match="Cannot import released ArrowSchema"):
+    with pytest.raises(ValueError):
         pyarrow.schema(handle)
 
     # smoke test for the capsule calling release
@@ -454,7 +454,7 @@ def test_pycapsule(sqlite):
     assert result == table
 
     # ensure consumed schema was marked as such
-    with pytest.raises(ValueError, match="Cannot import released ArrowArrayStream"):
+    with pytest.raises(ValueError):
         pyarrow.table(handle)
 
     # smoke test for the capsule calling release

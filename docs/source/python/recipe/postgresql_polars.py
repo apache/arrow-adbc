@@ -48,9 +48,9 @@ data = pl.DataFrame(
 data.write_database("example", uri, engine="adbc", if_table_exists="replace")
 
 #: After creating the table, we can use
-#: :external:py:func:`polars.read_database` to fetch the result.  Again,
+#: :external:py:func:`polars.read_database_uri` to fetch the result.  Again,
 #: we can just pass the URI and tell Polars to manage ADBC for us.
 
-df = pl.read_database("SELECT * FROM example WHERE ints > 1", uri, engine="adbc")
+df = pl.read_database_uri("SELECT * FROM example WHERE ints > 1", uri, engine="adbc")
 
 assert len(df) == 2
