@@ -185,7 +185,12 @@ jobs:
           path: arrow-adbc
           persist-credentials: false
 
-      - name: Run Test
+      - name: cpp-clang-latest
         run: |
           pushd arrow-adbc
           docker compose run --rm cpp-clang-latest
+
+      - name: python-debug
+        run: |
+          pushd arrow-adbc
+          docker compose run -e PYTHON=3.12 --rm python-debug
