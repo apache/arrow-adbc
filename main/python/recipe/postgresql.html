@@ -1091,9 +1091,9 @@ to open an ADBC connection ourselves with Polars.</p>
 </pre></div>
 </div>
 <p>After creating the table, we can use
-<a class="reference external" href="https://docs.pola.rs/api/python/stable/reference/api/polars.read_database.html#polars.read_database" title="(in Polars)"><code class="xref py py-func docutils literal notranslate"><span class="pre">polars.read_database()</span></code></a> to fetch the result.  Again,
+<a class="reference external" href="https://docs.pola.rs/api/python/stable/reference/api/polars.read_database_uri.html#polars.read_database_uri" title="(in Polars)"><code class="xref py py-func docutils literal notranslate"><span class="pre">polars.read_database_uri()</span></code></a> to fetch the result.  Again,
 we can just pass the URI and tell Polars to manage ADBC for us.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">54</span><span class="n">df</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">read_database</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM example WHERE ints &gt; 1&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;adbc&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">54</span><span class="n">df</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">read_database_uri</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM example WHERE ints &gt; 1&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;adbc&quot;</span><span class="p">)</span>
 <span class="linenos">55</span>
 <span class="linenos">56</span><span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
 </pre></div>
