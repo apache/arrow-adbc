@@ -44,8 +44,9 @@ def test_load_driver():
     with pytest.raises(
         adbc_driver_manager.ProgrammingError, match="ProjectID is empty"
     ):
-        with adbc_driver_bigquery.connect(""):
-            pass
+        with adbc_driver_bigquery.connect("") as db:
+            with adbc_driver_manager.AdbcConnection(db):
+                pass
 
 
 def test_query_trivial(bigquery):

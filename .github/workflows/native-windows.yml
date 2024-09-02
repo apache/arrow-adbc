@@ -93,6 +93,7 @@ jobs:
         env:
           BUILD_ALL: "1"
           # TODO(apache/arrow-adbc#634)
+          BUILD_DRIVER_BIGQUERY: "0"
           BUILD_DRIVER_FLIGHTSQL: "0"
           BUILD_DRIVER_SNOWFLAKE: "0"
         run: |

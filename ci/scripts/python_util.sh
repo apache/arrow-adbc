@@ -19,7 +19,7 @@
 
 set -ex
 
-COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake"
+COMPONENTS="adbc_driver_bigquery adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake"
 
 function build_drivers {
     local -r source_dir="$1"
@@ -36,6 +36,7 @@ function build_drivers {
     export VCPKG_OVERLAY_TRIPLETS="${source_dir}/ci/vcpkg/triplets/"
 
     if [[ $(uname) == "Linux" ]]; then
+        export ADBC_BIGQUERY_LIBRARY=${build_dir}/lib/libadbc_driver_bigquery.so
         export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.so
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
@@ -43,6 +44,7 @@ function build_drivers {
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
         export CMAKE_ARGUMENTS=""
     else # macOS
+        export ADBC_BIGQUERY_LIBRARY=${build_dir}/lib/libadbc_driver_bigquery.dylib
         export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.dylib
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
@@ -91,6 +93,7 @@ function build_drivers {
         ${CMAKE_ARGUMENTS} \
         -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
+        -DADBC_DRIVER_BIGQUERY=ON \
         -DADBC_DRIVER_FLIGHTSQL=ON \
         -DADBC_DRIVER_POSTGRESQL=ON \
         -DADBC_DRIVER_SQLITE=ON \

@@ -231,7 +231,6 @@ def _driver_path() -> str:
     # The filename is always the same regardless of platform
     entrypoint = root.joinpath(f"lib{driver}.so")
     if entrypoint.is_file():
-        print(str(entrypoint))
         return str(entrypoint)
 
     # Search sys.prefix + '/lib' (Unix, Conda on Unix)

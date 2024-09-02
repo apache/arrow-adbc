@@ -33,6 +33,9 @@ test_project() {
     pushd "${build_dir}/"
 
     local labels=""
+    if [[ "${BUILD_DRIVER_BIGQUERY}" -gt 0 ]]; then
+       labels="${labels}|driver-bigquery"
+    fi
     if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
        labels="${labels}|driver-flightsql"
     fi
@@ -42,14 +45,11 @@ test_project() {
     if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
        labels="${labels}|driver-postgresql"
     fi
-    if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
-       labels="${labels}|driver-sqlite"
-    fi
     if [[ "${BUILD_DRIVER_SNOWFLAKE}" -gt 0 ]]; then
        labels="${labels}|driver-snowflake"
     fi
-    if [[ "${BUILD_DRIVER_BIGQUERY}" -gt 0 ]]; then
-       labels="${labels}|driver-bigquery"
+    if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
+       labels="${labels}|driver-sqlite"
     fi
     if [[ "${BUILD_INTEGRATION_DUCKDB}" -gt 0 ]]; then
        labels="${labels}|integration-duckdb"
