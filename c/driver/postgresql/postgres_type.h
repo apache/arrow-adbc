@@ -312,6 +312,9 @@ class PostgresType {
   std::vector<PostgresType> children_;
 
   static constexpr const char* kPostgresTypeKey = "ADBC:postgresql:typname";
+  static constexpr const char* kExtensionName = "ARROW:extension:name";
+  static constexpr const char* kOpaqueExtensionName = "arrow.opaque";
+  static constexpr const char* kExtensionMetadata = "ARROW:extension:metadata";
 
   ArrowErrorCode AddPostgresTypeMetadata(ArrowSchema* schema) const {
     // the typname_ may not always be set: an instance of this class can be
@@ -322,8 +325,25 @@ class PostgresType {
     nanoarrow::UniqueBuffer buffer;
 
     ArrowMetadataBuilderInit(buffer.get(), nullptr);
+    // TODO(lidavidm): we have deprecated this in favor of arrow.opaque,
+    // remove once we feel enough time has passed
     NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
         buffer.get(), ArrowCharView(kPostgresTypeKey), ArrowCharView(typname)));
+
+    // Add the Opaque extension type metadata
+    std::string metadata = R"({"type_name": ")";
+    metadata += typname;
+    metadata += R"(", "vendor_name": "PostgreSQL"})";
+    NANOARROW_RETURN_NOT_OK(
+        ArrowMetadataBuilderAppend(buffer.get(), ArrowCharView(kExtensionName),
+                                   ArrowCharView(kOpaqueExtensionName)));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowMetadataBuilderAppend(buffer.get(), ArrowCharView(kExtensionMetadata),
+                                   ArrowStringView{
+                                       metadata.c_str(),
+                                       static_cast<int64_t>(metadata.size()),
+                                   }));
+
     NANOARROW_RETURN_NOT_OK(
         ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(buffer->data)));
 
