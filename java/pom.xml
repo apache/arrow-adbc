@@ -212,7 +212,7 @@
              wrong stylesheet) -->
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.8.0</version>
+        <version>3.10.0</version>
         <configuration>
           <!-- Ignore missing @return, @throws -->
           <doclint>all,-missing</doclint>
