@@ -84,8 +84,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string tableName) => throw new System.NotImplementedException();
 
-        public override SchemaParser SchemaParser => throw new NotImplementedException();
+        internal override SchemaParser SchemaParser => throw new NotImplementedException();
 
-        public override IArrowArrayStream NewReader<T>(T statement, Schema schema) => throw new NotImplementedException();
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => throw new NotImplementedException();
     }
 }

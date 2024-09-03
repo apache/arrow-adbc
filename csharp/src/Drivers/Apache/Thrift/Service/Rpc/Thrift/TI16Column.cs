@@ -80,7 +80,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
                   buffer = new byte[length * sizeof(short)];
                   var memory = buffer.AsMemory();
-                  var typedMemory = Unsafe.As<Memory<byte>, Memory<short>>(ref memory).Slice(0, length);
                   iprot.Transport.CheckReadBytesAvailable(buffer.Length);
                   await transport.ReadExactlyAsync(memory, cancellationToken);
                   for (int _i152 = 0; _i152 < length; ++_i152)

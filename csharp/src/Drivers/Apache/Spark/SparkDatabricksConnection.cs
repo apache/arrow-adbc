@@ -30,11 +30,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
         }
 
-        public override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkDatabricksReader(statement, schema);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkDatabricksReader(statement, schema);
 
-        public override SchemaParser SchemaParser => new DatabricksSchemaParser();
+        internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
 
-        public override SparkServerType ServerType => SparkServerType.Databricks;
+        internal override SparkServerType ServerType => SparkServerType.Databricks;
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
@@ -45,24 +45,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return req;
         }
 
-        public override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
-        public override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response) =>
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
-        public override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response) =>
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
-        public override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response) =>
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
 
-        public override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
-        public override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
-        public override Task<TRowSet> GetRowSetAsync(TGetTablesResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
-        public override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
-        public override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
 
         internal class DatabricksSchemaParser : SchemaParser

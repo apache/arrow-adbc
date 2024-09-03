@@ -132,6 +132,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return request;
         }
 
-        public override SparkServerType ServerType => SparkServerType.Standard;
+        internal override SparkServerType ServerType => SparkServerType.Standard;
     }
 }

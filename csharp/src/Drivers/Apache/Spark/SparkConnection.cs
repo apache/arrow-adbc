@@ -996,17 +996,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected abstract void ValidateConnection();
         protected abstract void ValidateAuthentication();
 
-        public abstract Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response);
-        public abstract Task<TRowSet> GetRowSetAsync(TGetColumnsResp response);
-        public abstract Task<TRowSet> GetRowSetAsync(TGetTablesResp response);
-        public abstract Task<TRowSet> GetRowSetAsync(TGetCatalogsResp getCatalogsResp);
-        public abstract Task<TRowSet> GetRowSetAsync(TGetSchemasResp getSchemasResp);
-        public abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response);
-        public abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response);
-        public abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response);
-        public abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetColumnsResp response);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetTablesResp response);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetCatalogsResp getCatalogsResp);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetSchemasResp getSchemasResp);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response);
 
-        public abstract SparkServerType ServerType { get; }
+        internal abstract SparkServerType ServerType { get; }
 
         internal struct TableInfo(string type)
         {

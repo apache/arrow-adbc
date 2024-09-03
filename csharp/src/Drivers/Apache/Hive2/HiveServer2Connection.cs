@@ -36,7 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
 
-        public HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
+        internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
             Properties = properties;
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
@@ -47,18 +47,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             _vendorName = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_NAME), LazyThreadSafetyMode.PublicationOnly);
         }
 
-        public TCLIService.Client Client
+        internal TCLIService.Client Client
         {
             get { return _client ?? throw new InvalidOperationException("connection not open"); }
         }
 
-        public string VendorVersion => _vendorVersion.Value;
+        internal string VendorVersion => _vendorVersion.Value;
 
-        public string VendorName => _vendorName.Value;
+        internal string VendorName => _vendorName.Value;
 
-        public IReadOnlyDictionary<string, string> Properties { get; }
+        internal IReadOnlyDictionary<string, string> Properties { get; }
 
-        public async Task OpenAsync()
+        internal async Task OpenAsync()
         {
             TTransport transport = await CreateTransportAsync();
             TProtocol protocol = await CreateProtocolAsync(transport);
@@ -69,7 +69,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             SessionHandle = session.SessionHandle;
         }
 
-        public TSessionHandle? SessionHandle { get; private set; }
+        internal TSessionHandle? SessionHandle { get; private set; }
 
         protected abstract Task<TTransport> CreateTransportAsync();
 
@@ -77,9 +77,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected abstract TOpenSessionReq CreateSessionRequest();
 
-        public abstract SchemaParser SchemaParser { get; }
+        internal abstract SchemaParser SchemaParser { get; }
 
-        public abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
+        internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
@@ -135,7 +135,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        public static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
+        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
             TGetResultSetMetadataReq request = new(operationHandle);
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);

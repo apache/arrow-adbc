@@ -118,7 +118,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
         }
 
-        public override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema);
 
         protected override Task<TTransport> CreateTransportAsync()
         {
@@ -195,23 +195,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return req;
         }
 
-        public override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>
             GetResultSetMetadataAsync(response.OperationHandle, Client);
-        public override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response) =>
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response) =>
             GetResultSetMetadataAsync(response.OperationHandle, Client);
-        public override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response) =>
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response) =>
             GetResultSetMetadataAsync(response.OperationHandle, Client);
-        public override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response) =>
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response) =>
             GetResultSetMetadataAsync(response.OperationHandle, Client);
-        public override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response) =>
             FetchResultsAsync(response.OperationHandle);
-        public override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response) =>
             FetchResultsAsync(response.OperationHandle);
-        public override Task<TRowSet> GetRowSetAsync(TGetTablesResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response) =>
             FetchResultsAsync(response.OperationHandle);
-        public override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response) =>
             FetchResultsAsync(response.OperationHandle);
-        public override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response) =>
             FetchResultsAsync(response.OperationHandle);
 
         private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
@@ -234,9 +234,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return response;
         }
 
-        public override SchemaParser SchemaParser => new HiveServer2SchemaParser();
+        internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
-        public override SparkServerType ServerType => SparkServerType.Http;
+        internal override SparkServerType ServerType => SparkServerType.Http;
 
         internal class HiveServer2SchemaParser : SchemaParser
         {
