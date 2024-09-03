@@ -91,7 +91,7 @@ services:
         GO: ${GO}
     volumes:
       - .:/adbc:delegated
-    command: "/bin/bash -c '/adbc/ci/docker/python-debug.sh $${PYTHON}'"
+    command: /adbc/ci/docker/python-debug.sh
 
   ############################ Python sdist ##################################
 

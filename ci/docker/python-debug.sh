@@ -18,7 +18,7 @@
 
 set -euxo pipefail
 
-echo "Using debug Python $1"
+echo "Using debug Python ${PYTHON}"
 
 git config --global --add safe.directory /adbc
 
@@ -31,7 +31,7 @@ cat /adbc/ci/conda_env_cpp.txt /adbc/ci/conda_env_python.txt |\
 
 micromamba install -c conda-forge -y \
            -f /tmp/spec.txt \
-           "conda-forge/label/python_debug::python=$1[build=*_cpython]"
+           "conda-forge/label/python_debug::python=${PYTHON}[build=*_cpython]"
 micromamba clean --all -y
 
 export ADBC_USE_ASAN=ON
