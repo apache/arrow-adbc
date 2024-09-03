@@ -28,18 +28,28 @@ module Helper
     omit(message)
   end
 
-  def execute_statement(statement, need_result: true)
-    _, c_abi_array_stream, n_rows_affected = statement.execute(need_result)
+  def import_array_stream(c_abi_array_stream)
     begin
-      if need_result
-        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
-        table = reader.read_all
-        yield(table, n_rows_affected) if block_given?
-      else
-        yield(n_rows_affected) if block_given?
+      reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+      begin
+        yield(reader)
+      ensure
+        reader.unref
       end
     ensure
-      GLib.free(c_abi_array_stream) if need_result
+      GLib.free(c_abi_array_stream)
+    end
+  end
+
+  def execute_statement(statement, need_result: true)
+    _, c_abi_array_stream, n_rows_affected = statement.execute(need_result)
+    if need_result
+      import_array_stream(c_abi_array_stream) do |reader|
+        table = reader.read_all
+        yield(table, n_rows_affected) if block_given?
+      end
+    else
+      yield(n_rows_affected) if block_given?
     end
   end
 
@@ -51,5 +61,49 @@ module Helper
     ensure
       statement.release
     end
+  end
+
+  def normalize_vendor_version(version)
+    return nil if version.nil?
+    version.gsub(/\A\d+(?:\.\d+)*\z/, "X.Y.Z")
+  end
+
+  def normalize_arrow_version(version)
+    return nil if version.nil?
+    version.gsub(/\A\d+\.\d+\.\d+(?:-SNAPSHOT)?\z/, "X.Y.Z")
+  end
+
+  def normalize_info(info)
+    info.collect do |code, value|
+      value = value.values[0] if value.is_a?(Hash)
+      case code
+      when ADBC::Info::VENDOR_VERSION
+        value = normalize_vendor_version(value)
+      when ADBC::Info::DRIVER_ARROW_VERSION
+        value = normalize_arrow_version(value)
+      end
+      [code, value]
+    end
+  end
+
+  def normalize_statistics(statistics)
+    statistics.each do |name, db_schemas|
+      db_schemas.each do |db_schema|
+        db_schema["db_schema_statistics"].each do |stat|
+          key = stat["statistic_key"]
+          stat["statistic_key"] = ADBC::StatisticKey.new(key)
+          value = stat["statistic_value"]
+          stat["statistic_value"] = value.round(1) if value.is_a?(Float)
+        end
+        db_schema["db_schema_statistics"].sort_by! do |stat|
+          [
+            stat["table_name"],
+            stat["column_name"] || "",
+            stat["statistic_key"].to_i,
+          ]
+        end
+      end
+    end
+    statistics
   end
 end

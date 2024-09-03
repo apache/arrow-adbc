@@ -34,6 +34,22 @@ namespace Apache.Arrow.Adbc
         /// does not match the schema of the data to append
         /// (<see cref="AdbcStatusCode.AlreadyExists"/>).
         /// </summary>
-        Append
+        Append,
+
+        /// <summary>
+        /// Create the table and insert data; drop the original table if it already exists.
+        ///
+        /// Added as part of API version 1.1.0
+        /// </summary>
+        Replace,
+
+        /// <summary>
+        /// Insert data; create the table if it does not exist or error
+        /// (<see cref="AdbcStatusCode.AlreadyExists"/>) if the table exists but the schema does not
+        /// match the schema of the data to append.
+        ///
+        /// Added as part of API version 1.1.0
+        /// </summary>
+        CreateAppend,
     }
 }

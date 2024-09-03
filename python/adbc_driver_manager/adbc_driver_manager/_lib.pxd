@@ -20,7 +20,7 @@
 from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t
 
 
-cdef extern from "adbc.h" nogil:
+cdef extern from "arrow-adbc/adbc.h" nogil:
     # C ABI
 
     ctypedef void (*CArrowSchemaRelease)(void*)
@@ -126,13 +126,13 @@ cdef extern from "adbc.h" nogil:
 
     CAdbcStatusCode AdbcDatabaseNew(CAdbcDatabase* database, CAdbcError* error)
     CAdbcStatusCode AdbcDatabaseGetOption(
-        CAdbcDatabase*, const char*, char*, size_t*, CAdbcError*);
+        CAdbcDatabase*, const char*, char*, size_t*, CAdbcError*)
     CAdbcStatusCode AdbcDatabaseGetOptionBytes(
-        CAdbcDatabase*, const char*, uint8_t*, size_t*, CAdbcError*);
+        CAdbcDatabase*, const char*, uint8_t*, size_t*, CAdbcError*)
     CAdbcStatusCode AdbcDatabaseGetOptionDouble(
-        CAdbcDatabase*, const char*, double*, CAdbcError*);
+        CAdbcDatabase*, const char*, double*, CAdbcError*)
     CAdbcStatusCode AdbcDatabaseGetOptionInt(
-        CAdbcDatabase*, const char*, int64_t*, CAdbcError*);
+        CAdbcDatabase*, const char*, int64_t*, CAdbcError*)
     CAdbcStatusCode AdbcDatabaseSetOption(
         CAdbcDatabase*, const char*, const char*, CAdbcError*)
     CAdbcStatusCode AdbcDatabaseSetOptionBytes(
@@ -180,18 +180,18 @@ cdef extern from "adbc.h" nogil:
         CArrowArrayStream* stream,
         CAdbcError* error)
     CAdbcStatusCode AdbcConnectionGetOption(
-        CAdbcConnection*, const char*, char*, size_t*, CAdbcError*);
+        CAdbcConnection*, const char*, char*, size_t*, CAdbcError*)
     CAdbcStatusCode AdbcConnectionGetOptionBytes(
-        CAdbcConnection*, const char*, uint8_t*, size_t*, CAdbcError*);
+        CAdbcConnection*, const char*, uint8_t*, size_t*, CAdbcError*)
     CAdbcStatusCode AdbcConnectionGetOptionDouble(
-        CAdbcConnection*, const char*, double*, CAdbcError*);
+        CAdbcConnection*, const char*, double*, CAdbcError*)
     CAdbcStatusCode AdbcConnectionGetOptionInt(
-        CAdbcConnection*, const char*, int64_t*, CAdbcError*);
+        CAdbcConnection*, const char*, int64_t*, CAdbcError*)
     CAdbcStatusCode AdbcConnectionGetStatistics(
         CAdbcConnection*, const char*, const char*, const char*,
-        char, CArrowArrayStream*, CAdbcError*);
+        char, CArrowArrayStream*, CAdbcError*)
     CAdbcStatusCode AdbcConnectionGetStatisticNames(
-        CAdbcConnection*, CArrowArrayStream*, CAdbcError*);
+        CAdbcConnection*, CArrowArrayStream*, CAdbcError*)
     CAdbcStatusCode AdbcConnectionGetTableSchema(
         CAdbcConnection* connection,
         const char* catalog,
@@ -244,17 +244,17 @@ cdef extern from "adbc.h" nogil:
     CAdbcStatusCode AdbcStatementExecuteSchema(
         CAdbcStatement*, CArrowSchema*, CAdbcError*)
     CAdbcStatusCode AdbcStatementGetOption(
-        CAdbcStatement*, const char*, char*, size_t*, CAdbcError*);
+        CAdbcStatement*, const char*, char*, size_t*, CAdbcError*)
     CAdbcStatusCode AdbcStatementGetOptionBytes(
-        CAdbcStatement*, const char*, uint8_t*, size_t*, CAdbcError*);
+        CAdbcStatement*, const char*, uint8_t*, size_t*, CAdbcError*)
     CAdbcStatusCode AdbcStatementGetOptionDouble(
-        CAdbcStatement*, const char*, double*, CAdbcError*);
+        CAdbcStatement*, const char*, double*, CAdbcError*)
     CAdbcStatusCode AdbcStatementGetOptionInt(
-        CAdbcStatement*, const char*, int64_t*, CAdbcError*);
+        CAdbcStatement*, const char*, int64_t*, CAdbcError*)
     CAdbcStatusCode AdbcStatementGetParameterSchema(
         CAdbcStatement* statement,
         CArrowSchema* schema,
-        CAdbcError* error);
+        CAdbcError* error)
     CAdbcStatusCode AdbcStatementNew(
         CAdbcConnection* connection,
         CAdbcStatement* statement,
@@ -289,5 +289,5 @@ cdef const CAdbcError* PyAdbcErrorFromArrayStream(
 cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *
 cdef object convert_error(CAdbcStatusCode status, CAdbcError* error)
 
-cdef extern from "adbc_driver_manager.h":
+cdef extern from "arrow-adbc/adbc_driver_manager.h":
     const char* CAdbcStatusCodeMessage"AdbcStatusCodeMessage"(CAdbcStatusCode code)

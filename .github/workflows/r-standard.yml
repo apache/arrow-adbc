@@ -17,8 +17,7 @@
 
 name: R (standard)
 
-# Runs on PRs that touch the R packages and when pushing files the R
-# package uses to main.
+# Runs on PRs that touch the R packages directly
 on:
   pull_request:
     branches:
@@ -32,7 +31,6 @@ on:
     branches:
       - main
     paths:
-      - "adbc.h"
       - "c/**"
       - "go/adbc/driver/**"
       - "go/adbc/pkg/**"

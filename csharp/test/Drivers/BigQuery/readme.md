@@ -38,6 +38,10 @@ The following values can be setup in the configuration
   - **expectedColumnCount** - Used by metadata tests to validate the number of columns that are returned.
 - **query** - The query to use.
 - **expectedResults** - The expected number of results from the query.
+- **timeoutMinutes** - The timeout (in minutes).
+- **includeTableConstraints** - Whether to include table constraints in the GetObjects query.
+- **largeResultsDestinationTable** - Sets the [DestinationTable](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_DestinationTable) value of the QueryOptions if configured. Expects the format to be `{projectId}.{datasetId}.{tableId}` to set the corresponding values in the [TableReference](https://github.com/googleapis/google-api-dotnet-client/blob/6c415c73788b848711e47c6dd33c2f93c76faf97/Src/Generated/Google.Apis.Bigquery.v2/Google.Apis.Bigquery.v2.cs#L9348) class.
+- **allowLargeResults** - Whether to allow large results .
 
 ## Data
 This project contains a SQL script to generate BigQuery data in the `resources/BigQueryData.sql` file. This can be used to populate a table in your BigQuery instance with data.

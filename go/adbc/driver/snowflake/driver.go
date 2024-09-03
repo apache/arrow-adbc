@@ -19,13 +19,14 @@ package snowflake
 
 import (
 	"errors"
+	"maps"
 	"runtime/debug"
+	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/apache/arrow/go/v16/arrow/memory"
+	"github.com/apache/arrow/go/v18/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
-	"golang.org/x/exp/maps"
 )
 
 const (
@@ -161,6 +162,10 @@ func errToAdbcErr(code adbc.Status, err error) error {
 		Msg:  err.Error(),
 		Code: code,
 	}
+}
+
+func quoteTblName(name string) string {
+	return "\"" + strings.ReplaceAll(name, "\"", "\"\"") + "\""
 }
 
 type driverImpl struct {

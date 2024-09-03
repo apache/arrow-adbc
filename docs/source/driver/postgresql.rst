@@ -91,7 +91,7 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
 
       .. code-block:: cpp
 
-         #include "adbc.h"
+         #include "arrow-adbc/adbc.h"
 
          // Ignoring error handling
          struct AdbcDatabase database;
@@ -164,6 +164,15 @@ Supported Features
 The PostgreSQL driver mostly supports features defined in the ADBC API
 specification 1.0.0, but not all cases are fully implemented
 (particularly around bind parameters and prepared statements).
+
+Bind Parameters and Prepared Statements
+---------------------------------------
+
+The PostgreSQL driver only supports executing prepared statements with
+parameters that do not return result sets (basically, an INSERT with
+parameters).  Queries that return result sets are difficult with prepared
+statements because the driver is built around using COPY for best
+performance, which is not supported in this context.
 
 Bulk Ingestion
 --------------

@@ -19,12 +19,12 @@
 
 // clang-format off
 //go:build driverlib
-//  clang-format on
+// clang-format on
 
 #pragma once
 
 #include <stdlib.h>
-#include "../../drivermgr/adbc.h"
+#include "../../drivermgr/arrow-adbc/adbc.h"
 
 struct AdbcError* SnowflakeErrorFromArrayStream(struct ArrowArrayStream*,
                                                 AdbcStatusCode*);
@@ -117,6 +117,9 @@ AdbcStatusCode SnowflakeStatementExecutePartitions(struct AdbcStatement* stmt,
                                                    struct AdbcPartitions* partitions,
                                                    int64_t* affected,
                                                    struct AdbcError* err);
+AdbcStatusCode SnowflakeStatementExecutePartitionsTrampoline(
+    struct AdbcStatement* stmt, struct ArrowSchema* schema,
+    struct AdbcPartitions* partitions, int64_t* affected, struct AdbcError* err);
 AdbcStatusCode SnowflakeStatementExecuteSchema(struct AdbcStatement*, struct ArrowSchema*,
                                                struct AdbcError*);
 AdbcStatusCode SnowflakeStatementGetOption(struct AdbcStatement*, const char*, char*,

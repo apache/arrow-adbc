@@ -37,20 +37,34 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Gets or sets a SQL query to be executed on this statement.
         /// </summary>
-        public virtual string SqlQuery { get; set; }
+        public virtual string? SqlQuery { get; set; }
 
         /// <summary>
         /// Gets or sets the Substrait plan.
         /// </summary>
-        public virtual byte[] SubstraitPlan
+        public virtual byte[]? SubstraitPlan
         {
-            get { throw new NotImplementedException(); }
-            set { throw new NotImplementedException(); }
+            get { throw AdbcException.NotImplemented("Statement does not support SubstraitPlan"); }
+            set { throw AdbcException.NotImplemented("Statement does not support SubstraitPlan"); }
         }
 
+        /// <summary>
+        /// Binds this statement to a <see cref="RecordBatch"/> to provide parameter values or bulk data ingestion.
+        /// </summary>
+        /// <param name="batch">the RecordBatch to bind</param>
+        /// <param name="schema">the schema of the RecordBatch</param>
         public virtual void Bind(RecordBatch batch, Schema schema)
         {
             throw AdbcException.NotImplemented("Statement does not support Bind");
+        }
+
+        /// <summary>
+        /// Binds this statement to an <see cref="IArrowArrayStream"/> to provide parameter values or bulk data ingestion.
+        /// </summary>
+        /// <param name="stream"></param>
+        public virtual void BindStream(IArrowArrayStream stream)
+        {
+            throw AdbcException.NotImplemented("Statement does not support BindStream");
         }
 
         /// <summary>
@@ -74,6 +88,16 @@ namespace Apache.Arrow.Adbc
         public virtual async ValueTask<QueryResult> ExecuteQueryAsync()
         {
             return await Task.Run(() => ExecuteQuery());
+        }
+
+        /// <summary>
+        /// Analyzes the statement and returns the schema of the result set that would
+        /// be expected if the statement were to be executed.
+        /// </summary>
+        /// <returns>An Arrow <see cref="Schema"/> describing the result set.</returns>
+        public virtual Schema ExecuteSchema()
+        {
+            throw AdbcException.NotImplemented("Statement does not support ExecuteSchema");
         }
 
         /// <summary>
@@ -147,7 +171,7 @@ namespace Apache.Arrow.Adbc
         /// <param name="index">
         /// The index in the array to get the value from.
         /// </param>
-        public virtual object GetValue(IArrowArray arrowArray, int index)
+        public virtual object? GetValue(IArrowArray arrowArray, int index)
         {
             if (arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
             if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
@@ -233,6 +257,20 @@ namespace Apache.Arrow.Adbc
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Attempts to cancel an in-progress operation on a connection.
+        /// </summary>
+        /// <remarks>
+        /// This can be called during a method like ExecuteQuery or while consuming an ArrowArrayStream
+        /// returned from such. Calling this function should make the other function throw a cancellation exception.
+        ///
+        /// This must always be thread-safe.
+        /// </remarks>
+        public virtual void Cancel()
+        {
+            throw AdbcException.NotImplemented("Statement does not support cancellation");
         }
     }
 }

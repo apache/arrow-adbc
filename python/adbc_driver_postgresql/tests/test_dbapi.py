@@ -15,9 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import string
 from pathlib import Path
 from typing import Generator
 
+import numpy
 import pyarrow
 import pyarrow.dataset
 import pytest
@@ -146,7 +148,7 @@ def test_query_execute_schema(postgres: dbapi.Connection) -> None:
 def test_query_invalid(postgres: dbapi.Connection) -> None:
     with postgres.cursor() as cur:
         with pytest.raises(
-            postgres.ProgrammingError, match="failed to prepare query"
+            postgres.ProgrammingError, match="Failed to prepare query"
         ) as excinfo:
             cur.execute("SELECT * FROM tabledoesnotexist")
 
@@ -410,3 +412,15 @@ def test_ingest_temporary(postgres: dbapi.Connection) -> None:
         assert cur.fetch_arrow_table() == temp2
         cur.execute("SELECT * FROM temporary")
         assert cur.fetch_arrow_table() == temp2
+
+
+def test_ingest_large(postgres: dbapi.Connection) -> None:
+    """Regression test for #1921."""
+    # More than 1 GiB of data in one batch
+    arr = pyarrow.array(numpy.random.randint(-100, 100, size=4_000_000))
+    batch = pyarrow.RecordBatch.from_pydict(
+        {char: arr for char in string.ascii_lowercase}
+    )
+    table = pyarrow.Table.from_batches([batch] * 4)
+    with postgres.cursor() as cur:
+        cur.adbc_ingest("test_ingest_large", table, mode="replace")

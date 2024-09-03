@@ -23,7 +23,7 @@
 #include <variant>
 #include <vector>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
 
@@ -377,6 +377,8 @@ class StatementTest {
   // Dictionary-encoded
   void TestSqlIngestStringDictionary();
 
+  void TestSqlIngestStreamZeroArrays();
+
   // ---- End Type-specific tests ----------------
 
   void TestSqlIngestTableEscaping();
@@ -407,6 +409,7 @@ class StatementTest {
   void TestSqlPrepareErrorNoQuery();
   void TestSqlPrepareErrorParamCountMismatch();
 
+  void TestSqlQueryEmpty();
   void TestSqlQueryInts();
   void TestSqlQueryFloats();
   void TestSqlQueryStrings();
@@ -477,6 +480,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                       \
   TEST_F(FIXTURE, SqlIngestStringDictionary) { TestSqlIngestStringDictionary(); }       \
+  TEST_F(FIXTURE, TestSqlIngestStreamZeroArrays) { TestSqlIngestStreamZeroArrays(); }   \
   TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }             \
   TEST_F(FIXTURE, SqlIngestColumnEscaping) { TestSqlIngestColumnEscaping(); }           \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
@@ -504,6 +508,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlPrepareErrorParamCountMismatch) {                                  \
     TestSqlPrepareErrorParamCountMismatch();                                            \
   }                                                                                     \
+  TEST_F(FIXTURE, SqlQueryEmpty) { TestSqlQueryEmpty(); }                               \
   TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
   TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \
   TEST_F(FIXTURE, SqlQueryStrings) { TestSqlQueryStrings(); }                           \

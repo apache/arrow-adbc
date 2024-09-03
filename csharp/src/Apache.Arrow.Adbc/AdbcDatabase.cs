@@ -30,12 +30,34 @@ namespace Apache.Arrow.Adbc
     public abstract class AdbcDatabase : IDisposable
     {
         /// <summary>
+        /// Options are generally set before opening a database.  Some drivers may
+        /// support setting options after opening as well.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value</param>
+        public virtual void SetOption(string key, string value)
+        {
+            throw AdbcException.NotImplemented("Connection does not support setting options");
+        }
+
+        /// <summary>
+        /// Options are generally set before opening a database.  Some drivers may
+        /// support setting options after opening as well.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value</param>
+        public virtual void SetOption(string key, object value)
+        {
+            throw AdbcException.NotImplemented("Connection does not support setting options");
+        }
+
+        /// <summary>
         /// Create a new connection to the database.
         /// </summary>
         /// <param name="options">
         /// Additional options to use when connecting.
         /// </param>
-        public abstract AdbcConnection Connect(IReadOnlyDictionary<string, string> options);
+        public abstract AdbcConnection Connect(IReadOnlyDictionary<string, string>? options);
 
         public virtual void Dispose() { }
     }

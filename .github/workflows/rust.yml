@@ -30,7 +30,7 @@ on:
       - ".github/workflows/rust.yml"
 
 concurrency:
-  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}-rust
   cancel-in-progress: true
 
 permissions:
@@ -38,31 +38,56 @@ permissions:
 
 defaults:
   run:
+    shell: bash
     working-directory: rust
 
 jobs:
+  native-unix:
+    uses: ./.github/workflows/native-unix.yml
+
   rust:
+    needs: [native-unix]
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        # TODO(alexandreyc): add `windows-latest`
+        # See: https://github.com/apache/arrow-adbc/pull/1803#issuecomment-2117669300
+        os: [macos-13, macos-latest, ubuntu-latest]
     name: "Rust ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
+    env:
+      CARGO_INCREMENTAL: 0
+      RUSTFLAGS: "-Adead_code" # TODO(alexandreyc): remove this line when implementation is complete
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Use stable Rust
+        id: rust
+        run: |
+          rustup toolchain install stable --no-self-update
+          rustup default stable
+      - uses: actions/download-artifact@v4
         with:
-          components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
-      - name: Check format
-        run: cargo fmt -- --check
+          name: driver-manager-${{ matrix.os }}
+          path: ${{ github.workspace }}/build
+      - name: Set dynamic linker path
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "LD_LIBRARY_PATH=${{ github.workspace }}/build/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+      - name: Set dynamic linker path
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "DYLD_LIBRARY_PATH=/opt/homebrew/opt/sqlite/lib:${{ github.workspace }}/build/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
+      - name: Set dynamic linker path
+        if: matrix.os == 'macos-13'
+        run: |
+          echo "DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib:${{ github.workspace }}/build/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
       - name: Clippy
-        run: cargo clippy --tests
+        run: cargo clippy --workspace --all-targets --all-features -- -Dwarnings
       - name: Test
-        shell: bash -l {0}
-        run: cargo test
+        run: cargo test --workspace --all-targets --all-features
+      - name: Doctests
+        run: cargo test --workspace --doc --all-features
       - name: Check docs
-        run: cargo doc
+        run: cargo doc --workspace --all-features

@@ -28,11 +28,8 @@
 #include <variant>
 #include <vector>
 
-#include <adbc.h>
-#include <fmt/core.h>
-#include <fmt/format.h>
+#include <arrow-adbc/adbc.h>
 
-#include "driver/common/utils.h"
 #include "driver/framework/status.h"
 
 /// \file base.h ADBC Driver Framework
@@ -83,23 +80,171 @@ class Option {
   bool has_value() const { return !std::holds_alternative<Unset>(value_); }
 
   /// \brief Try to parse a string value as a boolean.
-  Result<bool> AsBool() const;
+  Result<bool> AsBool() const {
+    return std::visit(
+        [&](auto&& value) -> Result<bool> {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, std::string>) {
+            if (value == ADBC_OPTION_VALUE_ENABLED) {
+              return true;
+            } else if (value == ADBC_OPTION_VALUE_DISABLED) {
+              return false;
+            }
+          }
+          return status::InvalidArgument("Invalid boolean value ", this->Format());
+        },
+        value_);
+  }
 
   /// \brief Try to parse a string or integer value as an integer.
-  Result<int64_t> AsInt() const;
+  Result<int64_t> AsInt() const {
+    return std::visit(
+        [&](auto&& value) -> Result<int64_t> {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, int64_t>) {
+            return value;
+          } else if constexpr (std::is_same_v<T, std::string>) {
+            int64_t parsed = 0;
+            auto begin = value.data();
+            auto end = value.data() + value.size();
+            auto result = std::from_chars(begin, end, parsed);
+            if (result.ec != std::errc()) {
+              return status::InvalidArgument("Invalid integer value '", value,
+                                             "': not an integer", value);
+            } else if (result.ptr != end) {
+              return status::InvalidArgument("Invalid integer value '", value,
+                                             "': trailing data", value);
+            }
+            return parsed;
+          }
+          return status::InvalidArgument("Invalid integer value ", this->Format());
+        },
+        value_);
+  }
 
   /// \brief Get the value if it is a string.
-  Result<std::string_view> AsString() const;
+  Result<std::string_view> AsString() const {
+    return std::visit(
+        [&](auto&& value) -> Result<std::string_view> {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, std::string>) {
+            return value;
+          }
+          return status::InvalidArgument("Invalid string value ", this->Format());
+        },
+        value_);
+  }
+
+  /// \brief Provide a human-readable summary of the value
+  std::string Format() const {
+    return std::visit(
+        [&](auto&& value) -> std::string {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, adbc::driver::Option::Unset>) {
+            return "(NULL)";
+          } else if constexpr (std::is_same_v<T, std::string>) {
+            return std::string("'") + value + "'";
+          } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+            return std::string("(") + std::to_string(value.size()) + " bytes)";
+          } else {
+            return std::to_string(value);
+          }
+        },
+        value_);
+  }
 
  private:
   Value value_;
 
   // Methods used by trampolines to export option values in C below
   friend class ObjectBase;
-  AdbcStatusCode CGet(char* out, size_t* length, AdbcError* error) const;
-  AdbcStatusCode CGet(uint8_t* out, size_t* length, AdbcError* error) const;
-  AdbcStatusCode CGet(int64_t* out, AdbcError* error) const;
-  AdbcStatusCode CGet(double* out, AdbcError* error) const;
+  AdbcStatusCode CGet(char* out, size_t* length, AdbcError* error) const {
+    {
+      if (!length || (!out && *length > 0)) {
+        return status::InvalidArgument("Must provide both out and length to GetOption")
+            .ToAdbc(error);
+      }
+      return std::visit(
+          [&](auto&& value) -> AdbcStatusCode {
+            using T = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<T, std::string>) {
+              size_t value_size_with_terminator = value.size() + 1;
+              if (*length >= value_size_with_terminator) {
+                std::memcpy(out, value.data(), value.size());
+                out[value.size()] = 0;
+              }
+              *length = value_size_with_terminator;
+              return ADBC_STATUS_OK;
+            } else if constexpr (std::is_same_v<T, Unset>) {
+              return status::NotFound("Unknown option").ToAdbc(error);
+            } else {
+              return status::NotFound("Option value is not a string").ToAdbc(error);
+            }
+          },
+          value_);
+    }
+  }
+  AdbcStatusCode CGet(uint8_t* out, size_t* length, AdbcError* error) const {
+    if (!length || (!out && *length > 0)) {
+      return status::InvalidArgument("Must provide both out and length to GetOption")
+          .ToAdbc(error);
+    }
+    return std::visit(
+        [&](auto&& value) -> AdbcStatusCode {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, std::string> ||
+                        std::is_same_v<T, std::vector<uint8_t>>) {
+            if (*length >= value.size()) {
+              std::memcpy(out, value.data(), value.size());
+            }
+            *length = value.size();
+            return ADBC_STATUS_OK;
+          } else if constexpr (std::is_same_v<T, Unset>) {
+            return status::NotFound("Unknown option").ToAdbc(error);
+          } else {
+            return status::NotFound("Option value is not a bytestring").ToAdbc(error);
+          }
+        },
+        value_);
+  }
+  AdbcStatusCode CGet(int64_t* out, AdbcError* error) const {
+    {
+      if (!out) {
+        return status::InvalidArgument("Must provide out to GetOption").ToAdbc(error);
+      }
+      return std::visit(
+          [&](auto&& value) -> AdbcStatusCode {
+            using T = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<T, int64_t>) {
+              *out = value;
+              return ADBC_STATUS_OK;
+            } else if constexpr (std::is_same_v<T, Unset>) {
+              return status::NotFound("Unknown option").ToAdbc(error);
+            } else {
+              return status::NotFound("Option value is not an integer").ToAdbc(error);
+            }
+          },
+          value_);
+    }
+  }
+  AdbcStatusCode CGet(double* out, AdbcError* error) const {
+    if (!out) {
+      return status::InvalidArgument("Must provide out to GetOption").ToAdbc(error);
+    }
+    return std::visit(
+        [&](auto&& value) -> AdbcStatusCode {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, double> || std::is_same_v<T, int64_t>) {
+            *out = static_cast<double>(value);
+            return ADBC_STATUS_OK;
+          } else if constexpr (std::is_same_v<T, Unset>) {
+            return status::NotFound("Unknown option").ToAdbc(error);
+          } else {
+            return status::NotFound("Option value is not a double").ToAdbc(error);
+          }
+        },
+        value_);
+  }
 };
 
 /// \brief Base class for private_data of AdbcDatabase, AdbcConnection, and
@@ -122,7 +267,7 @@ class ObjectBase {
   ///
   /// Called after 0 or more SetOption calls.  Generally, you won't need to
   /// override this directly.  Instead, use the typed InitImpl provided by
-  /// DatabaseBase/ConnectionBase/StatementBase.
+  /// Database/Connection/Statement.
   ///
   /// \param[in] parent A pointer to the AdbcDatabase or AdbcConnection
   ///   implementation as appropriate, or nullptr.
@@ -140,7 +285,7 @@ class ObjectBase {
   /// the destructor.
   ///
   /// Generally, you won't need to override this directly. Instead, use the
-  /// typed ReleaseImpl provided by DatabaseBase/ConnectionBase/StatementBase.
+  /// typed ReleaseImpl provided by Database/Connection/Statement.
   virtual AdbcStatusCode Release(AdbcError* error) { return ADBC_STATUS_OK; }
 
   /// \brief Get an option value.
@@ -622,27 +767,371 @@ class Driver {
 #undef CHECK_INIT
 };
 
-}  // namespace adbc::driver
+template <typename Derived>
+class BaseDatabase : public ObjectBase {
+ public:
+  using Base = BaseDatabase<Derived>;
 
-/// \brief Formatter for Option values.
-template <>
-struct fmt::formatter<adbc::driver::Option> : fmt::nested_formatter<std::string_view> {
-  auto format(const adbc::driver::Option& option, fmt::format_context& ctx) const {
-    return write_padded(ctx, [=](auto out) {
-      return std::visit(
-          [&](auto&& value) {
-            using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, adbc::driver::Option::Unset>) {
-              return fmt::format_to(out, "(NULL)");
-            } else if constexpr (std::is_same_v<T, std::string>) {
-              return fmt::format_to(out, "'{}'", value);
-            } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
-              return fmt::format_to(out, "({} bytes)", value.size());
-            } else {
-              return fmt::format_to(out, "{}", value);
-            }
-          },
-          option.value());
-    });
+  BaseDatabase() : ObjectBase() {}
+  ~BaseDatabase() = default;
+
+  /// \internal
+  AdbcStatusCode Init(void* parent, AdbcError* error) override {
+    RAISE_STATUS(error, impl().InitImpl());
+    return ObjectBase::Init(parent, error);
   }
+
+  /// \internal
+  AdbcStatusCode Release(AdbcError* error) override {
+    RAISE_STATUS(error, impl().ReleaseImpl());
+    return ADBC_STATUS_OK;
+  }
+
+  /// \internal
+  AdbcStatusCode SetOption(std::string_view key, Option value,
+                           AdbcError* error) override {
+    RAISE_STATUS(error, impl().SetOptionImpl(key, std::move(value)));
+    return ADBC_STATUS_OK;
+  }
+
+  /// \brief Initialize the database.
+  virtual Status InitImpl() { return status::Ok(); }
+
+  /// \brief Release the database.
+  virtual Status ReleaseImpl() { return status::Ok(); }
+
+  /// \brief Set an option.  May be called prior to InitImpl.
+  virtual Status SetOptionImpl(std::string_view key, Option value) {
+    return status::NotImplemented(Derived::kErrorPrefix, " Unknown database option ", key,
+                                  "=", value.Format());
+  }
+
+ private:
+  Derived& impl() { return static_cast<Derived&>(*this); }
 };
+
+template <typename Derived>
+class BaseConnection : public ObjectBase {
+ public:
+  using Base = BaseConnection<Derived>;
+
+  /// \brief Whether autocommit is enabled or not (by default: enabled).
+  enum class AutocommitState {
+    kAutocommit,
+    kTransaction,
+  };
+
+  BaseConnection() : ObjectBase() {}
+  ~BaseConnection() = default;
+
+  /// \internal
+  AdbcStatusCode Init(void* parent, AdbcError* error) override {
+    RAISE_STATUS(error, impl().InitImpl(parent));
+    return ObjectBase::Init(parent, error);
+  }
+
+  /// \brief Initialize the database.
+  virtual Status InitImpl(void* parent) { return status::Ok(); }
+
+  /// \internal
+  AdbcStatusCode Cancel(AdbcError* error) { return impl().CancelImpl().ToAdbc(error); }
+
+  Status CancelImpl() { return status::NotImplemented("Cancel"); }
+
+  /// \internal
+  AdbcStatusCode Commit(AdbcError* error) { return impl().CommitImpl().ToAdbc(error); }
+
+  Status CommitImpl() { return status::NotImplemented("Commit"); }
+
+  /// \internal
+  AdbcStatusCode GetInfo(const uint32_t* info_codes, size_t info_codes_length,
+                         ArrowArrayStream* out, AdbcError* error) {
+    std::vector<uint32_t> codes(info_codes, info_codes + info_codes_length);
+    RAISE_STATUS(error, impl().GetInfoImpl(codes, out));
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetInfoImpl(const std::vector<uint32_t> info_codes, ArrowArrayStream* out) {
+    return status::NotImplemented("GetInfo");
+  }
+
+  /// \internal
+  AdbcStatusCode GetObjects(int c_depth, const char* catalog, const char* db_schema,
+                            const char* table_name, const char** table_type,
+                            const char* column_name, ArrowArrayStream* out,
+                            AdbcError* error) {
+    const auto catalog_filter =
+        catalog ? std::make_optional(std::string_view(catalog)) : std::nullopt;
+    const auto schema_filter =
+        db_schema ? std::make_optional(std::string_view(db_schema)) : std::nullopt;
+    const auto table_filter =
+        table_name ? std::make_optional(std::string_view(table_name)) : std::nullopt;
+    const auto column_filter =
+        column_name ? std::make_optional(std::string_view(column_name)) : std::nullopt;
+    std::vector<std::string_view> table_type_filter;
+    while (table_type && *table_type) {
+      if (*table_type) {
+        table_type_filter.push_back(std::string_view(*table_type));
+      }
+      table_type++;
+    }
+
+    RAISE_STATUS(
+        error, impl().GetObjectsImpl(c_depth, catalog_filter, schema_filter, table_filter,
+                                     column_filter, table_type_filter, out));
+
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetObjectsImpl(int c_depth, std::optional<std::string_view> catalog_filter,
+                        std::optional<std::string_view> schema_filter,
+                        std::optional<std::string_view> table_filter,
+                        std::optional<std::string_view> column_filter,
+                        const std::vector<std::string_view>& table_types,
+                        struct ArrowArrayStream* out) {
+    return status::NotImplemented("GetObjects");
+  }
+
+  /// \internal
+  AdbcStatusCode GetStatistics(const char* catalog, const char* db_schema,
+                               const char* table_name, char approximate,
+                               ArrowArrayStream* out, AdbcError* error) {
+    const auto catalog_filter =
+        catalog ? std::make_optional(std::string_view(catalog)) : std::nullopt;
+    const auto schema_filter =
+        db_schema ? std::make_optional(std::string_view(db_schema)) : std::nullopt;
+    const auto table_filter =
+        table_name ? std::make_optional(std::string_view(table_name)) : std::nullopt;
+    RAISE_STATUS(error, impl().GetStatisticsImpl(catalog_filter, schema_filter,
+                                                 table_filter, approximate != 0, out));
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetStatisticsImpl(std::optional<std::string_view> catalog,
+                           std::optional<std::string_view> db_schema,
+                           std::optional<std::string_view> table_name, bool approximate,
+                           ArrowArrayStream* out) {
+    return status::NotImplemented("GetStatistics");
+  }
+
+  /// \internal
+  AdbcStatusCode GetStatisticNames(ArrowArrayStream* out, AdbcError* error) {
+    RAISE_STATUS(error, impl().GetStatisticNames(out));
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetStatisticNames(ArrowArrayStream* out) {
+    return status::NotImplemented("GetStatisticNames");
+  }
+
+  /// \internal
+  AdbcStatusCode GetTableSchema(const char* catalog, const char* db_schema,
+                                const char* table_name, ArrowSchema* schema,
+                                AdbcError* error) {
+    if (!table_name) {
+      return status::InvalidArgument(Derived::kErrorPrefix,
+                                     " GetTableSchema: must provide table_name")
+          .ToAdbc(error);
+    }
+
+    std::optional<std::string_view> catalog_param =
+        catalog ? std::make_optional(std::string_view(catalog)) : std::nullopt;
+    std::optional<std::string_view> db_schema_param =
+        db_schema ? std::make_optional(std::string_view(db_schema)) : std::nullopt;
+
+    RAISE_STATUS(error, impl().GetTableSchemaImpl(catalog_param, db_schema_param,
+                                                  table_name, schema));
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetTableSchemaImpl(std::optional<std::string_view> catalog,
+                            std::optional<std::string_view> db_schema,
+                            std::string_view table_name, ArrowSchema* out) {
+    return status::NotImplemented("GetTableSchema");
+  }
+
+  /// \internal
+  AdbcStatusCode GetTableTypes(ArrowArrayStream* out, AdbcError* error) {
+    RAISE_STATUS(error, impl().GetTableTypesImpl(out));
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetTableTypesImpl(ArrowArrayStream* out) {
+    return status::NotImplemented("GetTableTypes");
+  }
+
+  /// \internal
+  AdbcStatusCode ReadPartition(const uint8_t* serialized_partition,
+                               size_t serialized_length, ArrowArrayStream* out,
+                               AdbcError* error) {
+    std::string_view partition(reinterpret_cast<const char*>(serialized_partition),
+                               serialized_length);
+    RAISE_STATUS(error, impl().ReadPartitionImpl(partition, out));
+    return ADBC_STATUS_OK;
+  }
+
+  Status ReadPartitionImpl(std::string_view serialized_partition, ArrowArrayStream* out) {
+    return status::NotImplemented("ReadPartition");
+  }
+
+  /// \internal
+  AdbcStatusCode Release(AdbcError* error) override {
+    RAISE_STATUS(error, impl().ReleaseImpl());
+    return ADBC_STATUS_OK;
+  }
+
+  Status ReleaseImpl() { return status::Ok(); }
+
+  /// \internal
+  AdbcStatusCode Rollback(AdbcError* error) {
+    RAISE_STATUS(error, impl().RollbackImpl());
+    return ADBC_STATUS_OK;
+  }
+
+  Status RollbackImpl() { return status::NotImplemented("Rollback"); }
+
+  /// \internal
+  AdbcStatusCode SetOption(std::string_view key, Option value,
+                           AdbcError* error) override {
+    RAISE_STATUS(error, impl().SetOptionImpl(key, value));
+    return ADBC_STATUS_OK;
+  }
+
+  /// \brief Set an option.  May be called prior to InitImpl.
+  virtual Status SetOptionImpl(std::string_view key, Option value) {
+    return status::NotImplemented(Derived::kErrorPrefix, " Unknown connection option ",
+                                  key, "=", value.Format());
+  }
+
+ private:
+  Derived& impl() { return static_cast<Derived&>(*this); }
+};
+
+template <typename Derived>
+class BaseStatement : public ObjectBase {
+ public:
+  using Base = BaseStatement<Derived>;
+
+  /// \internal
+  AdbcStatusCode Init(void* parent, AdbcError* error) override {
+    RAISE_STATUS(error, impl().InitImpl(parent));
+    return ObjectBase::Init(parent, error);
+  }
+
+  /// \brief Initialize the statement.
+  Status InitImpl(void* parent) { return status::Ok(); }
+
+  /// \internal
+  AdbcStatusCode Release(AdbcError* error) override {
+    RAISE_STATUS(error, impl().ReleaseImpl());
+    return ADBC_STATUS_OK;
+  }
+
+  Status ReleaseImpl() { return status::Ok(); }
+
+  /// \internal
+  AdbcStatusCode SetOption(std::string_view key, Option value,
+                           AdbcError* error) override {
+    RAISE_STATUS(error, impl().SetOptionImpl(key, value));
+    return ADBC_STATUS_OK;
+  }
+
+  /// \brief Set an option.  May be called prior to InitImpl.
+  virtual Status SetOptionImpl(std::string_view key, Option value) {
+    return status::NotImplemented(Derived::kErrorPrefix, " Unknown statement option ",
+                                  key, "=", value.Format());
+  }
+
+  AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
+                              AdbcError* error) {
+    RAISE_RESULT(error, int64_t rows_affected_result, impl().ExecuteQueryImpl(stream));
+    if (rows_affected) {
+      *rows_affected = rows_affected_result;
+    }
+
+    return ADBC_STATUS_OK;
+  }
+
+  Result<int64_t> ExecuteQueryImpl(ArrowArrayStream* stream) {
+    return status::NotImplemented("ExecuteQuery");
+  }
+
+  AdbcStatusCode ExecuteSchema(ArrowSchema* schema, AdbcError* error) {
+    RAISE_STATUS(error, impl().ExecuteSchemaImpl(schema));
+    return ADBC_STATUS_OK;
+  }
+
+  Status ExecuteSchemaImpl(ArrowSchema* schema) {
+    return status::NotImplemented("ExecuteSchema");
+  }
+
+  AdbcStatusCode Prepare(AdbcError* error) {
+    RAISE_STATUS(error, impl().PrepareImpl());
+    return ADBC_STATUS_OK;
+  }
+
+  Status PrepareImpl() { return status::NotImplemented("Prepare"); }
+
+  AdbcStatusCode SetSqlQuery(const char* query, AdbcError* error) {
+    RAISE_STATUS(error, impl().SetSqlQueryImpl(query));
+    return ADBC_STATUS_OK;
+  }
+
+  Status SetSqlQueryImpl(std::string_view query) {
+    return status::NotImplemented("SetSqlQuery");
+  }
+
+  AdbcStatusCode SetSubstraitPlan(const uint8_t* plan, size_t length, AdbcError* error) {
+    RAISE_STATUS(error, impl().SetSubstraitPlanImpl(std::string_view(
+                            reinterpret_cast<const char*>(plan), length)));
+    return ADBC_STATUS_OK;
+  }
+
+  Status SetSubstraitPlanImpl(std::string_view plan) {
+    return status::NotImplemented("SetSubstraitPlan");
+  }
+
+  AdbcStatusCode Bind(ArrowArray* values, ArrowSchema* schema, AdbcError* error) {
+    RAISE_STATUS(error, impl().BindImpl(values, schema));
+    return ADBC_STATUS_OK;
+  }
+
+  Status BindImpl(ArrowArray* values, ArrowSchema* schema) {
+    return status::NotImplemented("Bind");
+  }
+
+  AdbcStatusCode BindStream(ArrowArrayStream* stream, AdbcError* error) {
+    RAISE_STATUS(error, impl().BindStreamImpl(stream));
+    return ADBC_STATUS_OK;
+  }
+
+  Status BindStreamImpl(ArrowArrayStream* stream) {
+    return status::NotImplemented("BindStream");
+  }
+
+  AdbcStatusCode GetParameterSchema(ArrowSchema* schema, AdbcError* error) {
+    RAISE_STATUS(error, impl().GetParameterSchemaImpl(schema));
+    return ADBC_STATUS_OK;
+  }
+
+  Status GetParameterSchemaImpl(struct ArrowSchema* schema) {
+    return status::NotImplemented("GetParameterSchema");
+  }
+
+  AdbcStatusCode ExecutePartitions(ArrowSchema* schema, AdbcPartitions* partitions,
+                                   int64_t* rows_affected, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode Cancel(AdbcError* error) {
+    RAISE_STATUS(error, impl().Cancel());
+    return ADBC_STATUS_OK;
+  }
+
+  Status Cancel() { return status::NotImplemented("Cancel"); }
+
+ private:
+  Derived& impl() { return static_cast<Derived&>(*this); }
+};
+
+}  // namespace adbc::driver

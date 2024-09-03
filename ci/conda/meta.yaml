@@ -18,7 +18,7 @@
 package:
   name: arrow-adbc-split
   # TODO: this needs to get bumped by the release process
-  version: 1.0.0
+  version: 1.2.0
 
 source:
   path: ../../
@@ -39,8 +39,8 @@ outputs:
       run:
     test:
       commands:
-        - test -f $PREFIX/include/adbc.h                                         # [unix]
-        - test -f $PREFIX/include/adbc_driver_manager.h                          # [unix]
+        - test -f $PREFIX/include/arrow-adbc/adbc.h                              # [unix]
+        - test -f $PREFIX/include/arrow-adbc/adbc_driver_manager.h               # [unix]
         - test -d $PREFIX/lib/cmake/AdbcDriverManager/                           # [unix]
         - test -f $PREFIX/lib/pkgconfig/adbc-driver-manager.pc                   # [unix]
         - test ! -f $PREFIX/lib/libadbc_driver_manager.a                         # [unix]
@@ -48,8 +48,8 @@ outputs:
         - test -f $PREFIX/lib/libadbc_driver_manager.dylib                       # [osx]
 
         - if not exist %LIBRARY_BIN%\adbc_driver_manager.dll exit 1              # [win]
-        - if not exist %LIBRARY_INC%\adbc.h exit 1                               # [win]
-        - if not exist %LIBRARY_INC%\adbc_driver_manager.h exit 1                # [win]
+        - if not exist %LIBRARY_INC%\arrow-adbc\adbc.h exit 1                    # [win]
+        - if not exist %LIBRARY_INC%\arrow-adbc\adbc_driver_manager.h exit 1     # [win]
         - if not exist %LIBRARY_LIB%\adbc_driver_manager.lib exit 1              # [win]
         - if not exist %LIBRARY_LIB%\cmake\AdbcDriverManager exit 1              # [win]
         - if not exist %LIBRARY_LIB%\pkgconfig\adbc-driver-manager.pc exit 1     # [win]

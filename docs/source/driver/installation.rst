@@ -128,6 +128,8 @@ Python
 
 Install the appropriate driver package.
 
+.. note:: To use the DBAPI interface, ``pyarrow`` is also required.
+
 For example, from PyPI:
 
 - ``pip install adbc-driver-flightsql``

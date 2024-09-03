@@ -28,7 +28,7 @@
 #include <utility>
 #include <vector>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <libpq-fe.h>
 
 #include "database.h"
@@ -145,12 +145,10 @@ class PqGetObjectsHelper {
         params.push_back(db_schema_);
       }
 
-      auto result_helper =
-          PqResultHelper{conn_, std::string(query.buffer), params, error_};
+      auto result_helper = PqResultHelper{conn_, std::string(query.buffer)};
       StringBuilderReset(&query);
 
-      RAISE_ADBC(result_helper.Prepare());
-      RAISE_ADBC(result_helper.Execute());
+      RAISE_ADBC(result_helper.Execute(error_, params));
 
       for (PqResultRow row : result_helper) {
         const char* schema_name = row[0].data;
@@ -188,12 +186,10 @@ class PqGetObjectsHelper {
       params.push_back(catalog_);
     }
 
-    PqResultHelper result_helper =
-        PqResultHelper{conn_, std::string(query.buffer), params, error_};
+    PqResultHelper result_helper = PqResultHelper{conn_, std::string(query.buffer)};
     StringBuilderReset(&query);
 
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    RAISE_ADBC(result_helper.Execute(error_, params));
 
     for (PqResultRow row : result_helper) {
       const char* db_name = row[0].data;
@@ -280,11 +276,10 @@ class PqGetObjectsHelper {
       }
     }
 
-    auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
+    auto result_helper = PqResultHelper{conn_, query.buffer};
     StringBuilderReset(&query);
 
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    RAISE_ADBC(result_helper.Execute(error_, params));
     for (PqResultRow row : result_helper) {
       const char* table_name = row[0].data;
       const char* table_type = row[1].data;
@@ -341,11 +336,10 @@ class PqGetObjectsHelper {
       params.push_back(std::string(column_name_));
     }
 
-    auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
+    auto result_helper = PqResultHelper{conn_, query.buffer};
     StringBuilderReset(&query);
 
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    RAISE_ADBC(result_helper.Execute(error_, params));
 
     for (PqResultRow row : result_helper) {
       const char* column_name = row[0].data;
@@ -493,11 +487,10 @@ class PqGetObjectsHelper {
       params.push_back(std::string(column_name_));
     }
 
-    auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
+    auto result_helper = PqResultHelper{conn_, query.buffer};
     StringBuilderReset(&query);
 
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    RAISE_ADBC(result_helper.Execute(error_, params));
 
     for (PqResultRow row : result_helper) {
       const char* constraint_name = row[0].data;
@@ -566,42 +559,42 @@ class PqGetObjectsHelper {
     return ADBC_STATUS_OK;
   }
 
-  PGconn* conn_;
+  PGconn* conn_ = nullptr;
   int depth_;
-  const char* catalog_;
-  const char* db_schema_;
-  const char* table_name_;
-  const char** table_types_;
-  const char* column_name_;
-  struct ArrowSchema* schema_;
-  struct ArrowArray* array_;
-  struct AdbcError* error_;
+  const char* catalog_ = nullptr;
+  const char* db_schema_ = nullptr;
+  const char* table_name_ = nullptr;
+  const char** table_types_ = nullptr;
+  const char* column_name_ = nullptr;
+  struct ArrowSchema* schema_ = nullptr;
+  struct ArrowArray* array_ = nullptr;
+  struct AdbcError* error_ = nullptr;
   struct ArrowError na_error_;
-  struct ArrowArray* catalog_name_col_;
-  struct ArrowArray* catalog_db_schemas_col_;
-  struct ArrowArray* catalog_db_schemas_items_;
-  struct ArrowArray* db_schema_name_col_;
-  struct ArrowArray* db_schema_tables_col_;
-  struct ArrowArray* schema_table_items_;
-  struct ArrowArray* table_name_col_;
-  struct ArrowArray* table_type_col_;
-  struct ArrowArray* table_columns_col_;
-  struct ArrowArray* table_columns_items_;
-  struct ArrowArray* column_name_col_;
-  struct ArrowArray* column_position_col_;
-  struct ArrowArray* column_remarks_col_;
-  struct ArrowArray* table_constraints_col_;
-  struct ArrowArray* table_constraints_items_;
-  struct ArrowArray* constraint_name_col_;
-  struct ArrowArray* constraint_type_col_;
-  struct ArrowArray* constraint_column_names_col_;
-  struct ArrowArray* constraint_column_name_col_;
-  struct ArrowArray* constraint_column_usages_col_;
-  struct ArrowArray* constraint_column_usage_items_;
-  struct ArrowArray* fk_catalog_col_;
-  struct ArrowArray* fk_db_schema_col_;
-  struct ArrowArray* fk_table_col_;
-  struct ArrowArray* fk_column_name_col_;
+  struct ArrowArray* catalog_name_col_ = nullptr;
+  struct ArrowArray* catalog_db_schemas_col_ = nullptr;
+  struct ArrowArray* catalog_db_schemas_items_ = nullptr;
+  struct ArrowArray* db_schema_name_col_ = nullptr;
+  struct ArrowArray* db_schema_tables_col_ = nullptr;
+  struct ArrowArray* schema_table_items_ = nullptr;
+  struct ArrowArray* table_name_col_ = nullptr;
+  struct ArrowArray* table_type_col_ = nullptr;
+  struct ArrowArray* table_columns_col_ = nullptr;
+  struct ArrowArray* table_columns_items_ = nullptr;
+  struct ArrowArray* column_name_col_ = nullptr;
+  struct ArrowArray* column_position_col_ = nullptr;
+  struct ArrowArray* column_remarks_col_ = nullptr;
+  struct ArrowArray* table_constraints_col_ = nullptr;
+  struct ArrowArray* table_constraints_items_ = nullptr;
+  struct ArrowArray* constraint_name_col_ = nullptr;
+  struct ArrowArray* constraint_type_col_ = nullptr;
+  struct ArrowArray* constraint_column_names_col_ = nullptr;
+  struct ArrowArray* constraint_column_name_col_ = nullptr;
+  struct ArrowArray* constraint_column_usages_col_ = nullptr;
+  struct ArrowArray* constraint_column_usage_items_ = nullptr;
+  struct ArrowArray* fk_catalog_col_ = nullptr;
+  struct ArrowArray* fk_db_schema_col_ = nullptr;
+  struct ArrowArray* fk_table_col_ = nullptr;
+  struct ArrowArray* fk_column_name_col_ = nullptr;
 };
 
 // A notice processor that does nothing with notices. In the future we can log
@@ -655,9 +648,8 @@ AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
         break;
       case ADBC_INFO_VENDOR_VERSION: {
         const char* stmt = "SHOW server_version_num";
-        auto result_helper = PqResultHelper{conn_, std::string(stmt), error};
-        RAISE_ADBC(result_helper.Prepare());
-        RAISE_ADBC(result_helper.Execute());
+        auto result_helper = PqResultHelper{conn_, std::string(stmt)};
+        RAISE_ADBC(result_helper.Execute(error));
         auto it = result_helper.begin();
         if (it == result_helper.end()) {
           SetError(error, "[libpq] PostgreSQL returned no rows for '%s'", stmt);
@@ -760,9 +752,8 @@ AdbcStatusCode PostgresConnection::GetOption(const char* option, char* value,
   if (std::strcmp(option, ADBC_CONNECTION_OPTION_CURRENT_CATALOG) == 0) {
     output = PQdb(conn_);
   } else if (std::strcmp(option, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
-    PqResultHelper result_helper{conn_, "SELECT CURRENT_SCHEMA", {}, error};
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    PqResultHelper result_helper{conn_, "SELECT CURRENT_SCHEMA"};
+    RAISE_ADBC(result_helper.Execute(error));
     auto it = result_helper.begin();
     if (it == result_helper.end()) {
       SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
@@ -931,10 +922,8 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
   std::string prev_table;
 
   {
-    PqResultHelper result_helper{
-        conn, query, {db_schema, table_name ? table_name : "%"}, error};
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    PqResultHelper result_helper{conn, query};
+    RAISE_ADBC(result_helper.Execute(error, {db_schema, table_name ? table_name : "%"}));
 
     for (PqResultRow row : result_helper) {
       auto reltuples = row[5].ParseDouble();
@@ -1146,25 +1135,29 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
                                                   struct AdbcError* error) {
   AdbcStatusCode final_status = ADBC_STATUS_OK;
 
+  char* quoted = PQescapeIdentifier(conn_, table_name, strlen(table_name));
+  std::string table_name_str(quoted);
+  PQfreemem(quoted);
+
+  if (db_schema != nullptr) {
+    quoted = PQescapeIdentifier(conn_, db_schema, strlen(db_schema));
+    table_name_str = std::string(quoted) + "." + table_name_str;
+    PQfreemem(quoted);
+  }
+
   std::string query =
       "SELECT attname, atttypid "
       "FROM pg_catalog.pg_class AS cls "
       "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
       "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
-      "WHERE attr.attnum >= 0 AND cls.oid = $1::regclass::oid";
+      "WHERE attr.attnum >= 0 AND cls.oid = $1::regclass::oid "
+      "ORDER BY attr.attnum";
 
-  std::vector<std::string> params;
-  if (db_schema != nullptr) {
-    params.push_back(std::string(db_schema) + "." + table_name);
-  } else {
-    params.push_back(table_name);
-  }
+  std::vector<std::string> params = {table_name_str};
 
-  PqResultHelper result_helper =
-      PqResultHelper{conn_, std::string(query.c_str()), params, error};
+  PqResultHelper result_helper = PqResultHelper{conn_, std::string(query.c_str())};
 
-  RAISE_ADBC(result_helper.Prepare());
-  auto result = result_helper.Execute();
+  auto result = result_helper.Execute(error, params);
   if (result != ADBC_STATUS_OK) {
     auto error_code = std::string(error->sqlstate, 5);
     if ((error_code == "42P01") || (error_code == "42602")) {
@@ -1331,10 +1324,8 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     return ADBC_STATUS_OK;
   } else if (std::strcmp(key, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
     // PostgreSQL doesn't accept a parameter here
-    PqResultHelper result_helper{
-        conn_, std::string("SET search_path TO ") + value, {}, error};
-    RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Execute());
+    PqResultHelper result_helper{conn_, std::string("SET search_path TO ") + value};
+    RAISE_ADBC(result_helper.Execute(error));
     return ADBC_STATUS_OK;
   }
   SetError(error, "%s%s", "[libpq] Unknown option ", key);

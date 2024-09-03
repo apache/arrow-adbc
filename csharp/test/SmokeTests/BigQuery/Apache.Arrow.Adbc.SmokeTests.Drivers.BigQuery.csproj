@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\Build.props" />
-    <PropertyGroup>
-     <TargetFrameworks>net472;net6.0</TargetFrameworks>
-   </PropertyGroup>
+  <PropertyGroup>
+    <TargetFrameworks Condition="'$(IsWindows)'=='true'">net8.0;net472</TargetFrameworks>
+    <TargetFrameworks Condition="'$(TargetFrameworks)'==''">net8.0</TargetFrameworks>
+  </PropertyGroup>
     <ItemGroup>
       <Compile Include="..\..\Drivers\BigQuery\BigQueryData.cs" Link="BigQueryData.cs" />
       <Compile Include="..\..\Drivers\BigQuery\BigQueryTestConfiguration.cs" Link="BigQueryTestConfiguration.cs" />

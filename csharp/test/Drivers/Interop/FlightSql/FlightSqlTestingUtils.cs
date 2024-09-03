@@ -54,7 +54,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         internal const string FLIGHTSQL_TEST_CONFIG_VARIABLE = "FLIGHTSQL_TEST_CONFIG_FILE";
 
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         static FlightSqlTestingUtils()
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             try
             {
@@ -80,10 +82,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         {
             // see https://arrow.apache.org/adbc/main/driver/flight_sql.html
 
-            parameters = new Dictionary<string, string>
+            parameters = new Dictionary<string, string>{};
+
+            if(!string.IsNullOrEmpty(testConfiguration.Uri))
             {
-                { FlightSqlParameters.Uri, testConfiguration.Uri },
-            };
+                parameters.Add(FlightSqlParameters.Uri, testConfiguration.Uri!);
+            }
 
             foreach(string key in testConfiguration.RPCCallHeaders.Keys)
             {
@@ -92,31 +96,31 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
             if (!string.IsNullOrEmpty(testConfiguration.AuthorizationHeader))
             {
-                parameters.Add(FlightSqlParameters.OptionAuthorizationHeader, testConfiguration.AuthorizationHeader);
+                parameters.Add(FlightSqlParameters.OptionAuthorizationHeader, testConfiguration.AuthorizationHeader!);
             }
             else
             {
                 if (!string.IsNullOrEmpty(testConfiguration.Username) && !string.IsNullOrEmpty(testConfiguration.Password))
                 {
-                    parameters.Add(FlightSqlParameters.Username, testConfiguration.Username);
-                    parameters.Add(FlightSqlParameters.Password, testConfiguration.Password);
+                    parameters.Add(FlightSqlParameters.Username, testConfiguration.Username!);
+                    parameters.Add(FlightSqlParameters.Password, testConfiguration.Password!);
                 }
             }
 
             if (!string.IsNullOrEmpty(testConfiguration.TimeoutQuery))
-                parameters.Add(FlightSqlParameters.OptionTimeoutQuery, testConfiguration.TimeoutQuery);
+                parameters.Add(FlightSqlParameters.OptionTimeoutQuery, testConfiguration.TimeoutQuery!);
 
             if (!string.IsNullOrEmpty(testConfiguration.TimeoutFetch))
-                parameters.Add(FlightSqlParameters.OptionTimeoutFetch, testConfiguration.TimeoutFetch);
+                parameters.Add(FlightSqlParameters.OptionTimeoutFetch, testConfiguration.TimeoutFetch!);
 
             if (!string.IsNullOrEmpty(testConfiguration.TimeoutUpdate))
-                parameters.Add(FlightSqlParameters.OptionTimeoutUpdate, testConfiguration.TimeoutUpdate);
+                parameters.Add(FlightSqlParameters.OptionTimeoutUpdate, testConfiguration.TimeoutUpdate!);
 
             if (!string.IsNullOrEmpty(testConfiguration.SSLSkipVerify))
-                parameters.Add(FlightSqlParameters.OptionSSLSkipVerify, testConfiguration.SSLSkipVerify);
+                parameters.Add(FlightSqlParameters.OptionSSLSkipVerify, testConfiguration.SSLSkipVerify!);
 
             if (!string.IsNullOrEmpty(testConfiguration.Authority))
-                parameters.Add(FlightSqlParameters.OptionAuthority, testConfiguration.Authority);
+                parameters.Add(FlightSqlParameters.OptionAuthority, testConfiguration.Authority!);
 
             Dictionary<string, string> options = new Dictionary<string, string>() { };
             AdbcDriver driver = GetFlightSqlAdbcDriver(testConfiguration);
@@ -143,7 +147,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             }
             else
             {
-                driver = FlightSqlDriverLoader.LoadDriver(testConfiguration.DriverPath, testConfiguration.DriverEntryPoint);
+                driver = FlightSqlDriverLoader.LoadDriver(testConfiguration.DriverPath!, testConfiguration.DriverEntryPoint!);
             }
 
             return driver;

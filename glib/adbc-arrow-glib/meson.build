@@ -18,16 +18,13 @@
 # under the License.
 
 sources = files(
+  'connection.c',
   'statement.c',
 )
 
 definition_headers = files(
+  'connection.h',
   'statement.h',
-)
-
-headers = definition_headers
-headers += files(
-  'adbc-arrow-glib.h',
 )
 
 version_h_conf = configuration_data()
@@ -39,6 +36,11 @@ version_h = configure_file(input: 'version.h.in',
                            output: 'version.h',
                            configuration: version_h_conf)
 headers += version_h
+
+headers = definition_headers
+headers += files(
+  'adbc-arrow-glib.h',
+)
 
 enums = gnome.mkenums_simple('enum-types',
                              identifier_prefix: 'GADBCArrow',

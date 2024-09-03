@@ -46,14 +46,17 @@ main() {
         exit 1
     fi
 
-    local -r regex='^([0-9]+\.[0-9]+\.[0-9]+)$'
+    # Docs use the ADBC release so it will just be 12, 13, 14, ...
+    local -r regex='^[0-9]+$'
     local directory="main"
     if [[ "${new_version}" =~ $regex ]]; then
+        echo "Adding docs for version ${new_version}"
         cp -r "${docs}" "${site}/${new_version}"
         git -C "${site}" add --force "${new_version}"
         directory="${new_version}"
     else
         # Assume this is dev docs
+        echo "Adding dev docs for version ${new_version}"
         rm -rf "${site}/main"
         cp -r "${docs}" "${site}/main"
         git -C "${site}" add --force "main"
@@ -81,7 +84,7 @@ main() {
     popd
 
     # Determine the latest stable version
-    local -r latest_docs=$(grep -E ';[0-9]+\.[0-9]+\.[0-9]+$' "${site}/versions.txt" | sort -t ';' --version-sort | tail -n1)
+    local -r latest_docs=$(grep -E ';[0-9]+(\.[0-9]+\.[0-9]+)?$' "${site}/versions.txt" | sort -t ';' --version-sort | tail -n1)
     if [[ -z "${latest_docs}" ]]; then
         echo "No stable versions found"
         local -r latest_dir="main"

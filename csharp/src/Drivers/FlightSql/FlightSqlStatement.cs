@@ -36,6 +36,9 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
+            if (SqlQuery == null)
+                throw new ArgumentNullException(nameof(SqlQuery));
+
             FlightInfo info = await GetInfo(SqlQuery, _flightSqlConnection.Metadata);
 
             return new QueryResult(info.TotalRecords, new FlightSqlResult(_flightSqlConnection, info));
@@ -53,6 +56,9 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
 
         public async ValueTask<FlightInfo> GetInfo(string query, Metadata headers)
         {
+            if (_flightSqlConnection.FlightClient == null)
+                throw new ArgumentNullException(nameof(_flightSqlConnection.FlightClient));
+
             FlightDescriptor commandDescripter = FlightDescriptor.CreateCommandDescriptor(query);
 
             return await _flightSqlConnection.FlightClient.GetInfo(commandDescripter, headers).ResponseAsync;

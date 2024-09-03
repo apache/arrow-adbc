@@ -71,7 +71,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
             _connection = adbcDatabase.Connect(options);
             _statement = _connection.CreateStatement();
-            _catalogSchema = string.Format("{0}.{1}", _snowflakeTestConfiguration.Metadata.Catalog, _snowflakeTestConfiguration.Metadata.Schema);
+            _catalogSchema = string.Format("{0}.{1}", _snowflakeTestConfiguration.Metadata?.Catalog, _snowflakeTestConfiguration.Metadata?.Schema);
             _output = output;
         }
 
@@ -88,7 +88,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string expectedValue,
             ArrowTypeId expectedTypeId)
         {
-            InitializeTest(columnDef, testValue.ToString(), out string columnName, out string table);
+            InitializeTest(columnDef, testValue.ToString()!, out string columnName, out string table);
             SelectUnaryOperatorAndValidateValues(table, columnName, "+", SqlDecimal.Parse(expectedValue), expectedTypeId);
         }
 
@@ -108,7 +108,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             double expectedValue,
             ArrowTypeId expectedTypeId)
         {
-            InitializeTest(columnDef, testValue.ToString(), out string columnName, out string table);
+            InitializeTest(columnDef, testValue.ToString()!, out string columnName, out string table);
             SelectUnaryOperatorAndValidateValues(table, columnName, "+", expectedValue, expectedTypeId);
         }
 
@@ -144,7 +144,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             double expectedValue,
             ArrowTypeId expectedTypeId)
         {
-            InitializeTest(columnDef, testValue.ToString(), out string columnName, out string table);
+            InitializeTest(columnDef, testValue.ToString()!, out string columnName, out string table);
             SelectUnaryOperatorAndValidateValues(table, columnName, "-", expectedValue, expectedTypeId);
         }
 
@@ -410,7 +410,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             ArrowTypeId expectedTypeId,
             QueryResult queryResult)
         {
-            using (IArrowArrayStream stream = queryResult.Stream)
+            using (IArrowArrayStream stream = queryResult.Stream ?? throw new InvalidOperationException("empty result"))
             {
                 Field field = stream.Schema.GetFieldByName(columnName);
                 while (true)

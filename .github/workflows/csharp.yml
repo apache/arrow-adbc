@@ -45,8 +45,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['7.0.x']
-        os: [ubuntu-latest, windows-2019, macos-latest]
+        dotnet: ['8.0.x']
+        os: [ubuntu-latest, windows-2019, macos-13, macos-latest]
     steps:
       - name: Install C#
         uses: actions/setup-dotnet@v4
@@ -63,3 +63,6 @@ jobs:
       - name: Build
         shell: bash
         run: ci/scripts/csharp_build.sh $(pwd)
+      - name: Test
+        shell: bash
+        run: ci/scripts/csharp_test.sh $(pwd)

@@ -24,11 +24,24 @@ services:
   ############################### C#/.NET ######################################
 
   csharp-dist:
-    image: mcr.microsoft.com/dotnet/sdk:7.0
+    image: mcr.microsoft.com/dotnet/sdk:8.0
     volumes:
       - .:/adbc:delegated
     command: |
       /adbc/ci/scripts/csharp_pack.sh /adbc
+
+  ################################ C/C++ #######################################
+
+  # Build/test with latest Clang
+  cpp-clang-latest:
+    build:
+      context: .
+      dockerfile: ci/docker/cpp-clang-latest.dockerfile
+      args:
+        VCPKG: ${VCPKG}
+    volumes:
+      - .:/adbc:delegated
+    command: "bash -c 'export PATH=$PATH:/opt/go/bin CC=$(which clang) CXX=$(which clang++) && git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build'"
 
   ############################ Documentation ###################################
 
@@ -65,6 +78,20 @@ services:
     volumes:
       - .:/adbc:delegated
     command: "/bin/bash -c '/adbc/ci/scripts/python_conda_test.sh /adbc /adbc/build'"
+
+  python-debug:
+    image: ${REPO}:${ARCH}-python-${PYTHON}-debug-adbc
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:${ARCH}-python-${PYTHON}-debug-adbc
+      dockerfile: ci/docker/python-debug.dockerfile
+      args:
+        ARCH: ${ARCH}
+        GO: ${GO}
+    volumes:
+      - .:/adbc:delegated
+    command: /adbc/ci/docker/python-debug.sh
 
   ############################ Python sdist ##################################
 
@@ -116,6 +143,7 @@ services:
 
   python-wheel-manylinux-test:
     image: ${ARCH}/python:${PYTHON}-slim
+    platform: ${PLATFORM}
     volumes:
       - .:/adbc:delegated
     command: /adbc/ci/scripts/python_wheel_unix_test.sh /adbc

@@ -15,35 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# If we are building within the repo, copy the latest adbc.h and driver manager
-# implementation from the repo. We also run this from configure, so do nothing
-# if we aren't sitting within the repo (e.g., installing a source package from a
-# tarball).
-files_to_vendor <- c(
-  "../../adbc.h",
-  "../../c/driver_manager/adbc_driver_manager.h",
-  "../../c/driver_manager/adbc_driver_manager.cc",
-  "../../c/driver/common/driver_base.h"
-)
+source_files <- list.files("../../c", "\\.(h|c|cc|hpp)$", recursive = TRUE)
+source_files <- source_files[!grepl("_test\\.cc", source_files)]
+source_files <- source_files[!grepl("^(build|out)/", source_files)]
+# backward C++ causes CRAN warnings and the drivers do not use it
+source_files <- source_files[!grepl("^vendor/backward", source_files)]
+source_files <- file.path("c", source_files)
+src <- file.path("../..", source_files)
+dst <- file.path("src", source_files)
 
-if (all(file.exists(files_to_vendor))) {
-  files_dst <- file.path("src", basename(files_to_vendor))
-
-  n_removed <- sum(file.remove(files_dst))
-  if (n_removed > 0) {
-    cat(sprintf("Removed %d previously vendored files from src/\n", n_removed))
-  }
-
-  cat(
-    sprintf(
-      "Vendoring files from arrow-adbc to src/:\n%s\n",
-      paste("-", files_to_vendor, collapse = "\n")
-    )
-  )
-
-  if (all(file.copy(files_to_vendor, "src"))) {
-    cat("All files successfully copied to src/\n")
-  } else {
-    stop("Failed to vendor all files")
-  }
+unlink("src/c", recursive = TRUE)
+for (dir_name in rev(unique(dirname(dst)))) {
+  dir.create(dir_name, showWarnings = FALSE, recursive = TRUE)
 }
+
+stopifnot(all(file.copy(src, dst)))

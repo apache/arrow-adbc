@@ -126,7 +126,7 @@ Create or update the corresponding maintenance branch
 
          git switch maint-X.Y.Z
          # Remove the commits that created the changelog and bumped the
-         # versions, since 01-source.sh will redo those steps
+         # versions, since 01-prepare.sh will redo those steps
          git reset --hard HEAD~2
          # Cherry-pick any commits by hand.
          git cherry-pick ...
@@ -146,11 +146,11 @@ Create the Release Candidate tag from the updated maintenance branch
    # on OSX use gnu-sed with homebrew: brew install gnu-sed (and export to $PATH)
    #
    # <rc-number> starts at 0 and increments every time the Release Candidate is burned
-   # so for the first RC this would be: dev/release/01-prepare.sh 3.0.0 4.0.0 5.0.0 0
+   # so for the first RC this would be: dev/release/01-prepare.sh 1.0.0 0
 
-   dev/release/01-prepare.sh <arrow-dir> <prev-version> <version> <next-version> <rc-number>
+   dev/release/01-prepare.sh <arrow-dir> <rc-number>
 
-   git push -u apache apache-arrow-adbc-<version>-rc<rc-number> maint-<version>
+   git push -u apache apache-arrow-adbc-<release>-rc<rc-number> maint-<release>
 
 Build source and binaries and submit them
 -----------------------------------------
@@ -163,27 +163,27 @@ Build source and binaries and submit them
     # On macOS the only way I could get this to work was running "echo
     # "UPDATESTARTUPTTY" | gpg-connect-agent" before running this
     # comment otherwise I got errors referencing "ioctl" errors.
-    dev/release/02-sign.sh <prev-version> <version> <rc-number>
+    dev/release/02-sign.sh <rc-number>
 
     # Upload the source release tarball and signs to
     # https://dist.apache.org/repos/dist/dev/arrow .
-    dev/release/03-source.sh <version> <rc-number>
+    dev/release/03-source.sh <rc-number>
 
     # Upload the Java artifacts
     #
     # Note that you need to press the "Close" button manually by Web interface
     # after you complete the script:
     #   https://repository.apache.org/#stagingRepositories
-    dev/release/04-java-upload.sh <arrow-dir> <version> <rc-number>
+    dev/release/04-java-upload.sh <arrow-dir> <rc-number>
 
     # Sign and upload the deb/rpm packages and APT/Yum repositories
     #
     # This reuses release scripts in apache/arrow. So you need to
     # specify cloned apache/arrow directory.
-    dev/release/05-linux-upload.sh <arrow-dir> <version> <rc-number>
+    dev/release/05-linux-upload.sh <arrow-dir> <rc-number>
 
     # Start verifications for binaries and wheels
-    dev/release/06-binary-verify.sh <version> <rc-number>
+    dev/release/06-binary-verify.sh <rc-number>
 
 Verify the Release
 ------------------
@@ -233,7 +233,7 @@ How to Verify Release Candidates
 #. Run the verification script::
 
      $ cd arrow-adbc
-     # Pass the version and the RC number
+     # Pass the release and the RC number
      $ ./dev/release/verify-release-candidate.sh 0.1.0 6
 
    These environment variables may be helpful:
@@ -280,9 +280,9 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-01-upload.sh 0.1.0 0
-      dev/release/post-01-upload.sh <version> <rc-number>
-      git push apache apache-arrow-adbc-<version>
+      # dev/release/post-01-upload.sh 0
+      dev/release/post-01-upload.sh <rc-number>
+      git push apache apache-arrow-adbc-<release>
 
 .. dropdown:: Create the final GitHub release
    :class-title: sd-fs-5
@@ -292,8 +292,8 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-02-binary.sh 0.1.0 0
-      dev/release/post-02-binary.sh <version> <rc-number>
+      # dev/release/post-02-binary.sh 0
+      dev/release/post-02-binary.sh <rc-number>
 
 .. dropdown:: Update website
    :class-title: sd-fs-5
@@ -310,8 +310,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-03-python.sh 0.1.0 0
-      dev/release/post-03-python.sh <version> <rc-number>
+      dev/release/post-03-python.sh
 
 .. dropdown:: Publish Maven packages
    :class-title: sd-fs-5
@@ -327,8 +326,8 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-04-go.sh 10.0.0
-      dev/release/post-04-go.sh <version>
+      # dev/release/post-04-go.sh
+      dev/release/post-04-go.sh
 
 .. dropdown:: Deploy APT/Yum repositories
    :class-title: sd-fs-5
@@ -339,8 +338,8 @@ Be sure to go through on the following checklist:
       # This reuses release scripts in apache/arrow. So you need to
       # specify cloned apache/arrow directory.
       #
-      # dev/release/post-05-linux.sh ../arrow 10.0.0 0
-      dev/release/post-05-linux.sh <arrow-dir> <version> <rc-number>
+      # dev/release/post-05-linux.sh ../arrow 0
+      dev/release/post-05-linux.sh <arrow-dir> <rc-number>
 
 .. dropdown:: Update R packages
    :class-title: sd-fs-5
@@ -365,8 +364,8 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-06-ruby.sh 1.0.0
-      dev/release/post-06-ruby.sh <version>
+      # dev/release/post-06-ruby.sh
+      dev/release/post-06-ruby.sh
 
 .. dropdown:: Upload C#/.NET packages to NuGet
    :class-title: sd-fs-5
@@ -384,8 +383,26 @@ Be sure to go through on the following checklist:
 
       export NUGET_API_KEY=<your API key here>
 
-      # dev/release/post-07-csharp.sh 1.0.0
-      dev/release/post-07-csharp.sh <version>
+      # dev/release/post-07-csharp.sh
+      dev/release/post-07-csharp.sh
+
+.. dropdown:: Upload Rust crates to crates.io
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   You must be one of owners of the package.  If you aren't an owner yet, an
+   existing owner can add you at https://crates.io.
+
+   You will need to [create an API token](https://crates.io/settings/tokens).
+
+   An owner can upload:
+
+   .. code-block:: bash
+
+      cargo login
+
+      # dev/release/post-08-rust.sh
+      dev/release/post-08-rust.sh
 
 .. dropdown:: Update conda-forge packages
    :class-title: sd-fs-5
@@ -412,20 +429,18 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      dev/release/post-08-remove-old-artifacts.sh
+      dev/release/post-09-remove-old-artifacts.sh
 
 .. dropdown:: Bump versions
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
 
-   This will bump version numbers embedded in files and filenames.
-
-   It will also update the changelog to the newly released changelog.
+   First, update the version numbers in ``dev/release/versions.env``.  Then, run this script to apply those version numbers to the versions embedded in files and filenames.  The script will also update the changelog to the newly released changelog.
 
    .. code-block:: Bash
 
-      # dev/release/post-09-bump-versions.sh ../arrow 0.1.0 0.2.0
-      dev/release/post-09-bump-versions.sh <arrow-dir> <version> <next_version>
+      # dev/release/post-10-bump-versions.sh ../arrow
+      dev/release/post-10-bump-versions.sh <arrow-dir>
 
 .. dropdown:: Publish release blog post
    :class-title: sd-fs-5
@@ -437,7 +452,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-10-website.sh ../arrow-site 0.0.0 0.1.0
-      dev/release/post-10-website.sh <arrow-site-dir> <prev_version> <version>
+      # dev/release/post-11-website.sh ../arrow-site
+      dev/release/post-11-website.sh <arrow-site-dir>
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml

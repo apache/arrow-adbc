@@ -15,6 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#if !defined(_WIN32)
+#define _POSIX_C_SOURCE 200112L
+#endif
+
 #include "statement_reader.h"
 
 #include <assert.h>
@@ -24,7 +28,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 
@@ -625,9 +629,18 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
 
   struct StatementReader* reader = (struct StatementReader*)self->private_data;
   if (reader->initial_batch.release != NULL) {
-    memcpy(out, &reader->initial_batch, sizeof(*out));
-    memset(&reader->initial_batch, 0, sizeof(reader->initial_batch));
-    return 0;
+    // Canonically return zero-row results as a stream with zero batches
+    if (reader->initial_batch.length == 0) {
+      reader->initial_batch.release(&reader->initial_batch);
+      reader->done = true;
+
+      out->release = NULL;
+      return 0;
+    } else {
+      memcpy(out, &reader->initial_batch, sizeof(*out));
+      memset(&reader->initial_batch, 0, sizeof(reader->initial_batch));
+      return 0;
+    }
   } else if (reader->done) {
     out->release = NULL;
     return 0;
@@ -771,7 +784,7 @@ AdbcStatusCode StatementReaderInitializeInfer(int num_columns, size_t infer_rows
     CHECK_NA(INTERNAL, ArrowBitmapReserve(&validity[i], infer_rows), error);
     ArrowBufferInit(&data[i]);
     CHECK_NA(INTERNAL, ArrowBufferReserve(&data[i], infer_rows * sizeof(int64_t)), error);
-    memset(&binary[i], 0, sizeof(struct ArrowBuffer));
+    ArrowBufferInit(&binary[i]);
     current_type[i] = NANOARROW_TYPE_INT64;
   }
   return ADBC_STATUS_OK;

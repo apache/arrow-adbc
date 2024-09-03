@@ -70,15 +70,15 @@ namespace Apache.Arrow.Adbc.Client
                     f.HasMetadata
                 )
                 {
-                    if (f.Metadata.TryGetValue("precision", out string precisionValue))
+                    if (f.Metadata.TryGetValue("precision", out string? precisionValue))
                     {
-                        if(!string.IsNullOrEmpty(precisionValue))
+                        if (!string.IsNullOrEmpty(precisionValue))
                             row[SchemaTableColumn.NumericPrecision] = Convert.ToInt32(precisionValue);
                     }
 
-                    if(f.Metadata.TryGetValue("scale", out string scaleValue))
+                    if (f.Metadata.TryGetValue("scale", out string? scaleValue))
                     {
-                        if(!string.IsNullOrEmpty(scaleValue))
+                        if (!string.IsNullOrEmpty(scaleValue))
                             row[SchemaTableColumn.NumericScale] = Convert.ToInt32(scaleValue);
                     }
                 }
@@ -115,7 +115,7 @@ namespace Apache.Arrow.Adbc.Client
             switch (f.DataType.TypeId)
             {
                 case ArrowTypeId.List:
-                    ListType list = f.DataType as ListType;
+                    ListType list = (ListType)f.DataType;
                     IArrowType valueType = list.ValueDataType;
                     return GetArrowArrayType(valueType);
                 default:
@@ -188,7 +188,7 @@ namespace Apache.Arrow.Adbc.Client
                     return typeof(DateTimeOffset);
 
                 case ArrowTypeId.Null:
-                    return null;
+                    return typeof(DBNull);
 
                 default:
                     return f.DataType.GetType();

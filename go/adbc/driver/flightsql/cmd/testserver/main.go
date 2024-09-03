@@ -32,24 +32,39 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/apache/arrow/go/v16/arrow"
-	"github.com/apache/arrow/go/v16/arrow/array"
-	"github.com/apache/arrow/go/v16/arrow/flight"
-	"github.com/apache/arrow/go/v16/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v16/arrow/memory"
+	"github.com/apache/arrow/go/v18/arrow"
+	"github.com/apache/arrow/go/v18/arrow/array"
+	"github.com/apache/arrow/go/v18/arrow/flight"
+	"github.com/apache/arrow/go/v18/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v18/arrow/flight/flightsql/schema_ref"
+	"github.com/apache/arrow/go/v18/arrow/memory"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+type RecordedHeader struct {
+	method string
+	header string
+	value  string
+}
+
 type ExampleServer struct {
 	flightsql.BaseServer
 
 	mu            sync.Mutex
 	pollingStatus map[string]int
+	headers       []RecordedHeader
 }
+
+var recordedHeadersSchema = arrow.NewSchema([]arrow.Field{
+	{Name: "method", Type: arrow.BinaryTypes.String, Nullable: false},
+	{Name: "header", Type: arrow.BinaryTypes.String, Nullable: false},
+	{Name: "value", Type: arrow.BinaryTypes.String, Nullable: false},
+}, nil)
 
 func StatusWithDetail(code codes.Code, message string, details ...proto.Message) error {
 	p := status.New(code, message).Proto()
@@ -64,11 +79,41 @@ func StatusWithDetail(code codes.Code, message string, details ...proto.Message)
 	return status.FromProto(p).Err()
 }
 
+func (srv *ExampleServer) recordHeaders(ctx context.Context, method string) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		panic("Misuse of recordHeaders")
+	}
+
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+	for k, vv := range md {
+		for _, v := range vv {
+			log.Printf("Header: %s: %s = %s\n", method, k, v)
+			srv.headers = append(srv.headers, RecordedHeader{
+				method: method, header: k, value: v,
+			})
+		}
+	}
+}
+
+func (srv *ExampleServer) BeginTransaction(ctx context.Context, req flightsql.ActionBeginTransactionRequest) ([]byte, error) {
+	srv.recordHeaders(ctx, "BeginTransaction")
+	return []byte("foo"), nil
+}
+
+func (srv *ExampleServer) EndTransaction(ctx context.Context, req flightsql.ActionEndTransactionRequest) error {
+	srv.recordHeaders(ctx, "EndTransaction")
+	return nil
+}
+
 func (srv *ExampleServer) ClosePreparedStatement(ctx context.Context, request flightsql.ActionClosePreparedStatementRequest) error {
+	srv.recordHeaders(ctx, "ClosePreparedStatement")
 	return nil
 }
 
 func (srv *ExampleServer) CreatePreparedStatement(ctx context.Context, req flightsql.ActionCreatePreparedStatementRequest) (result flightsql.ActionCreatePreparedStatementResult, err error) {
+	srv.recordHeaders(ctx, "CreatePreparedStatement")
 	switch req.GetQuery() {
 	case "error_create_prepared_statement":
 		err = status.Error(codes.InvalidArgument, "expected error (DoAction)")
@@ -83,7 +128,8 @@ func (srv *ExampleServer) CreatePreparedStatement(ctx context.Context, req fligh
 	return
 }
 
-func (srv *ExampleServer) GetFlightInfoPreparedStatement(_ context.Context, cmd flightsql.PreparedStatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+func (srv *ExampleServer) GetFlightInfoPreparedStatement(ctx context.Context, cmd flightsql.PreparedStatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	srv.recordHeaders(ctx, "GetFlightInfoPreparedStatement")
 	switch string(cmd.GetPreparedStatementHandle()) {
 	case "error_do_get", "error_do_get_stream", "error_do_get_detail", "error_do_get_stream_detail", "forever":
 		schema := arrow.NewSchema([]arrow.Field{{Name: "ints", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
@@ -111,6 +157,7 @@ func (srv *ExampleServer) GetFlightInfoPreparedStatement(_ context.Context, cmd 
 }
 
 func (srv *ExampleServer) GetFlightInfoStatement(ctx context.Context, cmd flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	srv.recordHeaders(ctx, "GetFlightInfoStatement")
 	ticket, err := flightsql.CreateStatementQueryTicket(desc.Cmd)
 	if err != nil {
 		return nil, err
@@ -239,6 +286,7 @@ func (srv *ExampleServer) PollFlightInfoPreparedStatement(ctx context.Context, q
 }
 
 func (srv *ExampleServer) DoGetPreparedStatement(ctx context.Context, cmd flightsql.PreparedStatementQuery) (schema *arrow.Schema, out <-chan flight.StreamChunk, err error) {
+	srv.recordHeaders(ctx, "DoGetPreparedStatement")
 	log.Printf("DoGetPreparedStatement: %v", cmd.GetPreparedStatementHandle())
 	switch string(cmd.GetPreparedStatementHandle()) {
 	case "error_do_get":
@@ -260,6 +308,48 @@ func (srv *ExampleServer) DoGetPreparedStatement(ctx context.Context, cmd flight
 			defer close(ch)
 
 			// arrow-go crashes if we don't give this
+			ch <- flight.StreamChunk{
+				Data: rec,
+				Desc: nil,
+				Err:  nil,
+			}
+		}()
+		out = ch
+		return
+	case "stateless_prepared_statement":
+		err = status.Error(codes.InvalidArgument, "client didn't use the updated handle")
+		return
+	case "recorded_headers":
+		schema = recordedHeadersSchema
+		ch := make(chan flight.StreamChunk)
+
+		methods := array.NewStringBuilder(srv.Alloc)
+		headers := array.NewStringBuilder(srv.Alloc)
+		values := array.NewStringBuilder(srv.Alloc)
+		defer methods.Release()
+		defer headers.Release()
+		defer values.Release()
+
+		srv.mu.Lock()
+		defer srv.mu.Unlock()
+
+		count := int64(0)
+		for _, recorded := range srv.headers {
+			count++
+			methods.AppendString(recorded.method)
+			headers.AppendString(recorded.header)
+			values.AppendString(recorded.value)
+		}
+		srv.headers = make([]RecordedHeader, 0)
+
+		rec := array.NewRecord(recordedHeadersSchema, []arrow.Array{
+			methods.NewArray(),
+			headers.NewArray(),
+			values.NewArray(),
+		}, count)
+
+		go func() {
+			defer close(ch)
 			ch <- flight.StreamChunk{
 				Data: rec,
 				Desc: nil,
@@ -319,21 +409,133 @@ func (srv *ExampleServer) DoGetStatement(ctx context.Context, cmd flightsql.Stat
 	return
 }
 
-func (srv *ExampleServer) DoPutPreparedStatementQuery(ctx context.Context, cmd flightsql.PreparedStatementQuery, reader flight.MessageReader, writer flight.MetadataWriter) error {
+func (srv *ExampleServer) DoPutPreparedStatementQuery(ctx context.Context, cmd flightsql.PreparedStatementQuery, reader flight.MessageReader, writer flight.MetadataWriter) ([]byte, error) {
+	srv.recordHeaders(ctx, "DoPutPreparedStatementQuery")
 	switch string(cmd.GetPreparedStatementHandle()) {
 	case "error_do_put":
-		return status.Error(codes.Unknown, "expected error (DoPut)")
+		return nil, status.Error(codes.Unknown, "expected error (DoPut)")
 	case "error_do_put_detail":
 		detail1 := wrapperspb.String("detail1")
 		detail2 := wrapperspb.String("detail2")
-		return StatusWithDetail(codes.Unknown, "expected error (DoPut)", detail1, detail2)
+		return nil, StatusWithDetail(codes.Unknown, "expected error (DoPut)", detail1, detail2)
+	case "stateless_prepared_statement":
+		return []byte("expected prepared statement handle"), nil
 	}
 
-	return status.Error(codes.Unimplemented, "DoPutPreparedStatementQuery not implemented")
+	return nil, status.Error(codes.Unimplemented, fmt.Sprintf("DoPutPreparedStatementQuery not implemented: %s", string(cmd.GetPreparedStatementHandle())))
 }
 
 func (srv *ExampleServer) DoPutPreparedStatementUpdate(context.Context, flightsql.PreparedStatementUpdate, flight.MessageReader) (int64, error) {
 	return 0, status.Error(codes.Unimplemented, "DoPutPreparedStatementUpdate not implemented")
+}
+
+func (srv *ExampleServer) GetFlightInfoCatalogs(ctx context.Context, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	srv.recordHeaders(ctx, "GetFlightInfoCatalogs")
+	return &flight.FlightInfo{
+		Endpoint:         []*flight.FlightEndpoint{{Ticket: &flight.Ticket{Ticket: desc.Cmd}}},
+		FlightDescriptor: desc,
+		Schema:           flight.SerializeSchema(schema_ref.Catalogs, srv.Alloc),
+		TotalRecords:     -1,
+		TotalBytes:       -1,
+	}, nil
+}
+
+func (srv *ExampleServer) DoGetCatalogs(ctx context.Context) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	srv.recordHeaders(ctx, "DoGetCatalogs")
+
+	// Just return some dummy data
+	schema := schema_ref.Catalogs
+	ch := make(chan flight.StreamChunk, 1)
+	catalogs, _, err := array.FromJSON(srv.Alloc, arrow.BinaryTypes.String, strings.NewReader(`["catalog"]`))
+	if err != nil {
+		return nil, nil, err
+	}
+	defer catalogs.Release()
+
+	batch := array.NewRecord(schema, []arrow.Array{catalogs}, 1)
+	ch <- flight.StreamChunk{Data: batch}
+	close(ch)
+	return schema, ch, nil
+}
+
+func (srv *ExampleServer) GetFlightInfoSchemas(ctx context.Context, req flightsql.GetDBSchemas, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	srv.recordHeaders(ctx, "GetFlightInfoDBSchemas")
+	return &flight.FlightInfo{
+		Endpoint:         []*flight.FlightEndpoint{{Ticket: &flight.Ticket{Ticket: desc.Cmd}}},
+		FlightDescriptor: desc,
+		Schema:           flight.SerializeSchema(schema_ref.DBSchemas, srv.Alloc),
+		TotalRecords:     -1,
+		TotalBytes:       -1,
+	}, nil
+}
+
+func (srv *ExampleServer) DoGetDBSchemas(ctx context.Context, req flightsql.GetDBSchemas) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	srv.recordHeaders(ctx, "DoGetDBSchemas")
+
+	// Just return some dummy data
+	schema := schema_ref.DBSchemas
+	ch := make(chan flight.StreamChunk, 1)
+	// Not really a proper match, but good enough
+	if req.GetDBSchemaFilterPattern() == nil || *req.GetDBSchemaFilterPattern() == "" || *req.GetDBSchemaFilterPattern() == "main" {
+		catalogs, _, err := array.FromJSON(srv.Alloc, arrow.BinaryTypes.String, strings.NewReader(`["main"]`))
+		if err != nil {
+			return nil, nil, err
+		}
+		defer catalogs.Release()
+
+		dbSchemas, _, err := array.FromJSON(srv.Alloc, arrow.BinaryTypes.String, strings.NewReader(`[""]`))
+		if err != nil {
+			return nil, nil, err
+		}
+		defer dbSchemas.Release()
+
+		batch := array.NewRecord(schema, []arrow.Array{catalogs, dbSchemas}, 1)
+		ch <- flight.StreamChunk{Data: batch}
+	}
+	close(ch)
+	return schema, ch, nil
+}
+
+func (srv *ExampleServer) GetFlightInfoTables(ctx context.Context, req flightsql.GetTables, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	srv.recordHeaders(ctx, "GetFlightInfoTables")
+	schema := schema_ref.Tables
+	if req.GetIncludeSchema() {
+		schema = schema_ref.TablesWithIncludedSchema
+	}
+	return &flight.FlightInfo{
+		Endpoint:         []*flight.FlightEndpoint{{Ticket: &flight.Ticket{Ticket: desc.Cmd}}},
+		FlightDescriptor: desc,
+		Schema:           flight.SerializeSchema(schema, srv.Alloc),
+		TotalRecords:     -1,
+		TotalBytes:       -1,
+	}, nil
+}
+
+func (srv *ExampleServer) DoGetTables(ctx context.Context, req flightsql.GetTables) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	srv.recordHeaders(ctx, "DoGetTables")
+	// Just return some dummy data
+	schema := schema_ref.Tables
+	if req.GetIncludeSchema() {
+		schema = schema_ref.TablesWithIncludedSchema
+	}
+	ch := make(chan flight.StreamChunk, 1)
+	close(ch)
+	return schema, ch, nil
+}
+
+func (srv *ExampleServer) SetSessionOptions(ctx context.Context, req *flight.SetSessionOptionsRequest) (*flight.SetSessionOptionsResult, error) {
+	srv.recordHeaders(ctx, "SetSessionOptions")
+	return &flight.SetSessionOptionsResult{}, nil
+}
+
+func (srv *ExampleServer) GetSessionOptions(ctx context.Context, req *flight.GetSessionOptionsRequest) (*flight.GetSessionOptionsResult, error) {
+	srv.recordHeaders(ctx, "GetSessionOptions")
+	return &flight.GetSessionOptionsResult{}, nil
+}
+
+func (srv *ExampleServer) CloseSession(ctx context.Context, req *flight.CloseSessionRequest) (*flight.CloseSessionResult, error) {
+	srv.recordHeaders(ctx, "CloseSession")
+	return &flight.CloseSessionResult{}, nil
 }
 
 func main() {
@@ -346,6 +548,9 @@ func main() {
 
 	srv := &ExampleServer{pollingStatus: make(map[string]int)}
 	srv.Alloc = memory.DefaultAllocator
+	if err := srv.RegisterSqlInfo(flightsql.SqlInfoFlightSqlServerTransaction, int32(flightsql.SqlTransactionTransaction)); err != nil {
+		log.Fatal(err)
+	}
 
 	server := flight.NewServerWithMiddleware(nil)
 	server.RegisterFlightService(flightsql.NewFlightServer(srv))

@@ -27,7 +27,7 @@
 #include <utility>
 #include <vector>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
@@ -42,6 +42,10 @@ namespace adbc_validation {
 std::optional<std::string> ConnectionGetOption(struct AdbcConnection* connection,
                                                std::string_view option,
                                                struct AdbcError* error);
+
+std::optional<std::string> StatementGetOption(struct AdbcStatement* statement,
+                                              std::string_view option,
+                                              struct AdbcError* error);
 
 // ------------------------------------------------------------
 // Helpers to print values
@@ -61,12 +65,22 @@ std::string ToString(struct ArrowArrayStream* stream);
 // Helper to manage C Data Interface/Nanoarrow resources with RAII
 
 template <typename T>
+struct Initializer {
+  static void Initialize(T* value) { memset(value, 0, sizeof(T)); }
+};
+
+template <typename T>
 struct Releaser {
   static void Release(T* value) {
     if (value->release) {
       value->release(value);
     }
   }
+};
+
+template <>
+struct Initializer<struct ArrowBuffer> {
+  static void Initialize(struct ArrowBuffer* value) { ArrowBufferInit(value); }
 };
 
 template <>
@@ -126,7 +140,7 @@ template <typename Resource>
 struct Handle {
   Resource value;
 
-  Handle() { std::memset(&value, 0, sizeof(value)); }
+  Handle() { Initializer<Resource>::Initialize(&value); }
 
   ~Handle() { Releaser<Resource>::Release(&value); }
 
@@ -232,12 +246,8 @@ struct GetObjectsReader {
   }
   ~GetObjectsReader() { AdbcGetObjectsDataDelete(get_objects_data_); }
 
-  struct AdbcGetObjectsData* operator*() {
-    return get_objects_data_;
-  }
-  struct AdbcGetObjectsData* operator->() {
-    return get_objects_data_;
-  }
+  struct AdbcGetObjectsData* operator*() { return get_objects_data_; }
+  struct AdbcGetObjectsData* operator->() { return get_objects_data_; }
 
  private:
   struct AdbcGetObjectsData* get_objects_data_;
@@ -267,54 +277,38 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
       if constexpr (std::is_same<T, bool>::value || std::is_same<T, int8_t>::value ||
                     std::is_same<T, int16_t>::value || std::is_same<T, int32_t>::value ||
                     std::is_same<T, int64_t>::value) {
-        if (int errno_res = ArrowArrayAppendInt(array, *v); errno_res != 0) {
-          return errno_res;
-        }
+        CHECK_OK(ArrowArrayAppendInt(array, *v));
         // XXX: cpplint gets weird here and thinks this is an unbraced if
       } else if constexpr (std::is_same<T,  // NOLINT(readability/braces)
                                         uint8_t>::value ||
                            std::is_same<T, uint16_t>::value ||
                            std::is_same<T, uint32_t>::value ||
                            std::is_same<T, uint64_t>::value) {
-        if (int errno_res = ArrowArrayAppendUInt(array, *v); errno_res != 0) {
-          return errno_res;
-        }
+        CHECK_OK(ArrowArrayAppendUInt(array, *v));
       } else if constexpr (std::is_same<T, float>::value ||  // NOLINT(readability/braces)
                            std::is_same<T, double>::value) {
-        if (int errno_res = ArrowArrayAppendDouble(array, *v); errno_res != 0) {
-          return errno_res;
-        }
+        CHECK_OK(ArrowArrayAppendDouble(array, *v));
       } else if constexpr (std::is_same<T, std::string>::value) {
         struct ArrowBufferView view;
         view.data.as_char = v->c_str();
         view.size_bytes = v->size();
-        if (int errno_res = ArrowArrayAppendBytes(array, view); errno_res != 0) {
-          return errno_res;
-        }
+        CHECK_OK(ArrowArrayAppendBytes(array, view));
       } else if constexpr (std::is_same<T, std::vector<std::byte>>::value) {
         static_assert(std::is_same_v<uint8_t, unsigned char>);
         struct ArrowBufferView view;
         view.data.as_uint8 = reinterpret_cast<const uint8_t*>(v->data());
         view.size_bytes = v->size();
-        if (int errno_res = ArrowArrayAppendBytes(array, view); errno_res != 0) {
-          return errno_res;
-        }
+        CHECK_OK(ArrowArrayAppendBytes(array, view));
       } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
-        if (int errno_res = ArrowArrayAppendInterval(array, *v); errno_res != 0) {
-          return errno_res;
-        }
+        CHECK_OK(ArrowArrayAppendInterval(array, *v));
       } else if constexpr (std::is_same<T, ArrowDecimal*>::value) {
-        if (int errno_res = ArrowArrayAppendDecimal(array, *v); errno_res != 0) {
-          return errno_res;
-        }
+        CHECK_OK(ArrowArrayAppendDecimal(array, *v));
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
         return ENOTSUP;
       }
     } else {
-      if (int errno_res = ArrowArrayAppendNull(array, 1); errno_res != 0) {
-        return errno_res;
-      }
+      CHECK_OK(ArrowArrayAppendNull(array, 1));
     }
   }
   return 0;
@@ -330,10 +324,7 @@ template <typename First, typename... Rest>
 int MakeBatchImpl(struct ArrowArray* batch, size_t i, struct ArrowError* error,
                   const std::vector<std::optional<First>>& first,
                   const std::vector<std::optional<Rest>>&... rest) {
-  if (int errno_res = MakeArray<First>(batch, batch->children[i], first);
-      errno_res != 0) {
-    return errno_res;
-  }
+  CHECK_OK(MakeArray<First>(batch, batch->children[i], first));
   return MakeBatchImpl(batch, i + 1, error, rest...);
 }
 
@@ -341,12 +332,8 @@ int MakeBatchImpl(struct ArrowArray* batch, size_t i, struct ArrowError* error,
 template <typename... T>
 int MakeBatch(struct ArrowArray* batch, struct ArrowError* error,
               const std::vector<std::optional<T>>&... columns) {
-  if (int errno_res = ArrowArrayStartAppending(batch); errno_res != 0) {
-    return errno_res;
-  }
-  if (int errno_res = MakeBatchImpl(batch, 0, error, columns...); errno_res != 0) {
-    return errno_res;
-  }
+  CHECK_OK(ArrowArrayStartAppending(batch));
+  CHECK_OK(MakeBatchImpl(batch, 0, error, columns...));
   for (size_t i = 0; i < static_cast<size_t>(batch->n_children); i++) {
     if (batch->length > 0 && batch->children[i]->length != batch->length) {
       ADD_FAILURE() << "Column lengths are inconsistent: column " << i << " has length "
@@ -361,9 +348,7 @@ int MakeBatch(struct ArrowArray* batch, struct ArrowError* error,
 template <typename... T>
 int MakeBatch(struct ArrowSchema* schema, struct ArrowArray* batch,
               struct ArrowError* error, const std::vector<std::optional<T>>&... columns) {
-  if (int errno_res = ArrowArrayInitFromSchema(batch, schema, error); errno_res != 0) {
-    return errno_res;
-  }
+  CHECK_OK(ArrowArrayInitFromSchema(batch, schema, error));
   return MakeBatch(batch, error, columns...);
 }
 

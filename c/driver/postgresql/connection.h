@@ -20,7 +20,7 @@
 #include <cstdint>
 #include <memory>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <libpq-fe.h>
 
 #include "postgres_type.h"

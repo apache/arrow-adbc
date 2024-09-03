@@ -20,7 +20,7 @@
 # than remembering the internal dependency structure of the go sources.
 files_to_vendor <- list.files(
   "../../go/adbc",
-  "\\.(go|mod|txt|sum|h|c)$",
+  "\\.(go|mod|txt|sum|h|c|sql)$",
   recursive = TRUE
 )
 
@@ -31,8 +31,8 @@ files_to_vendor_dst <- file.path("src/go/adbc", files_to_vendor)
 # is not a problem for a user install, where this script
 # should not even exist, but the below helps development
 # on Windows.
-is_adbc_h <- basename(files_to_vendor_src) == "adbc.h"
-files_to_vendor_src[is_adbc_h] <- "../../adbc.h"
+dir.create("src/arrow-adbc", showWarnings=FALSE)
+file.copy("../../c/include/arrow-adbc/adbc.h", "src/arrow-adbc/adbc.h")
 
 if (all(file.exists(files_to_vendor_src))) {
   unlink("src/go/adbc", recursive = TRUE)

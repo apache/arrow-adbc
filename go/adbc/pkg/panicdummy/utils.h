@@ -19,12 +19,12 @@
 
 // clang-format off
 //go:build driverlib
-//  clang-format on
+// clang-format on
 
 #pragma once
 
 #include <stdlib.h>
-#include "../../drivermgr/adbc.h"
+#include "../../drivermgr/arrow-adbc/adbc.h"
 
 struct AdbcError* PanicDummyErrorFromArrayStream(struct ArrowArrayStream*,
                                                  AdbcStatusCode*);
@@ -119,6 +119,9 @@ AdbcStatusCode PanicDummyStatementExecutePartitions(struct AdbcStatement* stmt,
                                                     struct AdbcPartitions* partitions,
                                                     int64_t* affected,
                                                     struct AdbcError* err);
+AdbcStatusCode PanicDummyStatementExecutePartitionsTrampoline(
+    struct AdbcStatement* stmt, struct ArrowSchema* schema,
+    struct AdbcPartitions* partitions, int64_t* affected, struct AdbcError* err);
 AdbcStatusCode PanicDummyStatementExecuteSchema(struct AdbcStatement*,
                                                 struct ArrowSchema*, struct AdbcError*);
 AdbcStatusCode PanicDummyStatementGetOption(struct AdbcStatement*, const char*, char*,

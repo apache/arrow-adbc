@@ -21,36 +21,27 @@ set -e
 set -u
 set -o pipefail
 
-main() {
-    local -r source_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-    local -r source_top_dir="$( cd "${source_dir}/../../" && pwd )"
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SOURCE_DIR}/utils-common.sh"
+source "${SOURCE_DIR}/utils-prepare.sh"
 
-    if [ "$#" -ne 2 ]; then
-        echo "Usage: $0 <version> <rc-num>"
+main() {
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: $0 <rc-num>"
         exit 1
     fi
+    local -r rc_number="$1"
+    local -r tag="apache-arrow-adbc-${RELEASE}-rc${rc_number}"
 
-    local -r version="$1"
-    local -r rc_number="$2"
-    local -r tag="apache-arrow-adbc-${version}-rc${rc_number}"
-
-    : ${REPOSITORY:="apache/arrow-adbc"}
-
-    header "Publishing release ${version}"
+    header "Publishing release ${RELEASE}"
 
     gh release edit \
        --verify-tag \
        --repo "${REPOSITORY}" \
        "${tag}" \
-       --title="ADBC Libraries ${version}" \
+       --title="ADBC Libraries ${RELEASE}" \
        --prerelease=false \
-       --tag="apache-arrow-adbc-${version}"
-}
-
-header() {
-    echo "============================================================"
-    echo "${1}"
-    echo "============================================================"
+       --tag="apache-arrow-adbc-${RELEASE}"
 }
 
 main "$@"

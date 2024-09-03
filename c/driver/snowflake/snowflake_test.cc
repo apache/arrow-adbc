@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest-param-test.h>
@@ -146,7 +146,7 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
   bool supports_metadata_current_catalog() const override { return false; }
   bool supports_metadata_current_db_schema() const override { return false; }
   bool supports_partitioned_data() const override { return false; }
-  bool supports_dynamic_parameter_binding() const override { return false; }
+  bool supports_dynamic_parameter_binding() const override { return true; }
   bool supports_error_on_incompatible_schema() const override { return false; }
   bool ddl_implicit_commit_txn() const override { return true; }
   std::string db_schema() const override { return schema_; }

@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests
@@ -38,9 +39,41 @@ namespace Apache.Arrow.Adbc.Tests
         {
             long count = 0;
 
-            while (true)
+            while (queryResult.Stream != null)
             {
                 RecordBatch nextBatch = queryResult.Stream.ReadNextRecordBatchAsync().Result;
+                if (nextBatch == null) { break; }
+                count += nextBatch.Length;
+            }
+
+            Assert.True(expectedNumberOfResults == count, $"The parsed records ({count}) differ from the expected amount ({expectedNumberOfResults})");
+
+            // if the values were set, make sure they are correct
+            if (queryResult.RowCount != -1)
+            {
+                Assert.True(queryResult.RowCount == expectedNumberOfResults, "The RowCount value does not match the expected results");
+
+                Assert.True(queryResult.RowCount == count, "The RowCount value does not match the counted records");
+            }
+        }
+
+        /// <summary>
+        /// Validates that a <see cref="QueryResult"/> contains a number
+        /// of records.
+        /// </summary>
+        /// <param name="queryResult">
+        /// The query result.
+        /// </param>
+        /// <param name="expectedNumberOfResults">
+        /// The number of records.
+        /// </param>
+        public static async Task CanExecuteQueryAsync(QueryResult queryResult, long expectedNumberOfResults)
+        {
+            long count = 0;
+
+            while (queryResult.Stream != null)
+            {
+                RecordBatch nextBatch = await queryResult.Stream.ReadNextRecordBatchAsync();
                 if (nextBatch == null) { break; }
                 count += nextBatch.Length;
             }

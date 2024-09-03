@@ -29,24 +29,24 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
     /// </summary>
     public class FlightSqlConnection : AdbcConnection
     {
-        private FlightClient _flightClientInternal = null;
-        private readonly IReadOnlyDictionary<string, string> _metadata;
+        private FlightClient? _flightClientInternal = null;
+        private readonly IReadOnlyDictionary<string, string>? _metadata;
 
-        private Metadata headers = null;
+        private Metadata? headers = null;
 
         public FlightSqlConnection() : this(null)
         {
 
         }
 
-        public FlightSqlConnection(IReadOnlyDictionary<string, string> metadata)
+        public FlightSqlConnection(IReadOnlyDictionary<string, string>? metadata)
         {
             _metadata = metadata;
         }
 
         internal FlightClient FlightClient
         {
-            get => _flightClientInternal;
+            get => _flightClientInternal ?? throw new ArgumentNullException(nameof(FlightClient));
         }
 
         internal Metadata Metadata
@@ -60,9 +60,12 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
             {
                 headers = new Metadata();
 
-                foreach (string key in _metadata.Keys)
+                if (_metadata is not null)
                 {
-                    headers.Add(key, _metadata[key]);
+                    foreach (KeyValuePair<string, string> pair in _metadata)
+                    {
+                        headers.Add(pair.Key, pair.Value);
+                    }
                 }
             }
 
@@ -95,8 +98,8 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
             return new FlightSqlStatement(this);
         }
 
-        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, List<string> tableTypes, string columnNamePattern) => throw new NotImplementedException();
-        public override Schema GetTableSchema(string catalog, string dbSchema, string tableName) => throw new NotImplementedException();
+        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern) => throw new NotImplementedException();
+        public override Schema GetTableSchema(string? catalog, string? dbSchema, string tableName) => throw new NotImplementedException();
         public override IArrowArrayStream GetTableTypes() => throw new NotImplementedException();
     }
 }

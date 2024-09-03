@@ -39,7 +39,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             Dictionary<string, string> parameters = GetBigQueryParameters(testConfiguration);
             AdbcDatabase database = new BigQueryDriver().Open(parameters);
-            AdbcConnection connection = database.Connect(new Dictionary<string,string>());
+            AdbcConnection connection = database.Connect(new Dictionary<string, string>());
 
             return connection;
         }
@@ -49,7 +49,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// </summary>
         /// <param name="testConfiguration"><see cref="BigQueryTestConfiguration"/></param>
         /// <returns></returns>
-        internal static Dictionary<string,string> GetBigQueryParameters(BigQueryTestConfiguration testConfiguration)
+        internal static Dictionary<string, string> GetBigQueryParameters(BigQueryTestConfiguration testConfiguration)
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>
             {
@@ -84,6 +84,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             if (!string.IsNullOrEmpty(testConfiguration.LargeResultsDestinationTable))
             {
                 parameters.Add(BigQueryParameters.LargeResultsDestinationTable, testConfiguration.LargeResultsDestinationTable);
+            }
+
+            if (testConfiguration.TimeoutMinutes.HasValue)
+            {
+                parameters.Add(BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes, testConfiguration.TimeoutMinutes.Value.ToString());
             }
 
             return parameters;

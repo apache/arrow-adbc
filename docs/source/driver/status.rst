@@ -19,12 +19,18 @@
 Driver Implementation Status
 ============================
 
+.. warning:: There is a known problem on macOS x86_64 when using two drivers
+             written in Go in the same process (unless working in a pure-Go
+             application), where using the second driver may crash.  For more
+             details, see `GH-1841
+             <https://github.com/apache/arrow-adbc/issues/1841>`_.
+
 Implementation Status
 =====================
 
 **Experimental** drivers are not feature-complete and the implementation is still progressing.
 **Beta** drivers are (mostly) feature-complete but have only been available for a short time.
-**Stable** drivers are feature-complete (as much as possible for the underlying database) and have been available/tested for a while.
+**Stable** drivers are (mostly) feature-complete (as much as possible for the underlying database) and have been available/tested for a while.
 
 .. list-table::
    :header-rows: 1
@@ -42,7 +48,7 @@ Implementation Status
    * - Flight SQL (Go)
      - C, Go
      - Go
-     - Beta
+     - Stable
 
    * - Flight SQL (Java)
      - Java
@@ -57,17 +63,17 @@ Implementation Status
    * - PostgreSQL
      - C
      - C++
-     - Beta
+     - Stable
 
    * - SQLite
      - C
      - C
-     - Beta
+     - Stable
 
    * - Snowflake
      - C, Go
      - Go
-     - Experimental
+     - Stable
 
 .. [#supported-languages] C drivers are usable from Go, Python, and Ruby as well.
 
@@ -183,7 +189,7 @@ Update Queries
    * - PostgreSQL
      - N/A
      - N/A
-     - Y
+     - Y [#postgresql-prepared]_
      - Y
      - Y
      - Y
@@ -196,6 +202,12 @@ Update Queries
      - Y
      - Y
 
+.. [#postgresql-prepared] The PostgreSQL driver only supports executing
+   prepared statements with parameters that do not return result sets
+   (basically, an INSERT with parameters).  Queries that return result sets
+   are difficult with prepared statements because the driver is built around
+   using COPY for best performance, which is not supported in this context.
+
 .. list-table:: Connection/database-level features
    :header-rows: 1
 
@@ -207,7 +219,7 @@ Update Queries
    * - Flight SQL (Go)
      - N
      - Y
-     - N
+     - Y
 
    * - Flight SQL (Java)
      - Y
@@ -222,7 +234,7 @@ Update Queries
    * - PostgreSQL
      - Y
      - Y
-     - N
+     - Y
 
    * - SQLite
      - Y

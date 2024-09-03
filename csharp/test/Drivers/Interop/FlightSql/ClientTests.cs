@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -175,8 +176,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                 Assert.Equal(3, restrictions.Columns.Count);
 
                 var catalogs = adbcConnection.GetSchema("Catalogs");
-                Assert.Equal(1, catalogs.Columns.Count);
-                var catalog = (string)catalogs.Rows[0].ItemArray[0];
+                Assert.Single(catalogs.Columns);
+                object? catalogObj = catalogs.Rows[0].ItemArray[0];
+
+                Assert.True(catalogObj != null);
+
+                string catalog = (string)catalogObj!;
 
                 catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
                 Assert.Equal(1, catalogs.Rows.Count);
@@ -189,7 +194,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                 Assert.Equal(1, schemas.Rows.Count);
 
                 var tableTypes = adbcConnection.GetSchema("TableTypes");
-                Assert.Equal(1, tableTypes.Columns.Count);
+                Assert.Single(tableTypes.Columns);
 
                 var tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema });
                 Assert.Equal(4, tables.Columns.Count);
@@ -201,7 +206,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             }
         }
 
-        private Adbc.Client.AdbcConnection GetFlightSqlAdbcConnectionUsingConnectionString(FlightSqlTestConfiguration testConfiguration, string authType = null)
+        private Adbc.Client.AdbcConnection GetFlightSqlAdbcConnectionUsingConnectionString(FlightSqlTestConfiguration testConfiguration, string? authType = null)
         {
             // see https://arrow.apache.org/adbc/main/driver/flight_sql.html
 

@@ -31,19 +31,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         /// The file path location of the driver.
         /// </summary>
         [JsonPropertyName("driverPath")]
-        public string DriverPath { get; set; }
+        public string? DriverPath { get; set; }
 
         /// <summary>
         /// The entrypoint of the driver.
         /// </summary>
         [JsonPropertyName("driverEntryPoint")]
-        public string DriverEntryPoint { get; set; }
+        public string? DriverEntryPoint { get; set; }
 
         /// <summary>
         /// The service URI.
         /// </summary>
         [JsonPropertyName("uri")]
-        public string Uri { get; set; }
+        public string? Uri { get; set; }
 
         /// <summary>
         /// Additional headers to add to the gRPC call.
@@ -55,29 +55,29 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         /// The authorization header.
         /// </summary>
         [JsonPropertyName("authorization")]
-        public string AuthorizationHeader { get; set; }
+        public string? AuthorizationHeader { get; set; }
 
         [JsonPropertyName("timeoutFetch")]
-        public string TimeoutFetch { get; set; }
+        public string? TimeoutFetch { get; set; }
 
         [JsonPropertyName("timeoutQuery")]
-        public string TimeoutQuery { get; set; }
+        public string? TimeoutQuery { get; set; }
 
         [JsonPropertyName("timeoutUpdate")]
-        public string TimeoutUpdate { get; set; }
+        public string? TimeoutUpdate { get; set; }
 
         [JsonPropertyName("sslSkipVerify")]
-        public string SSLSkipVerify { get; set; }
+        public string? SSLSkipVerify { get; set; }
 
         [JsonPropertyName("authority")]
-        public string Authority { get; set; }
+        public string? Authority { get; set; }
 
         [JsonPropertyName("username")]
-        public string Username { get; set; }
+        public string? Username { get; set; }
 
         [JsonPropertyName("password")]
-        public string Password { get; set; }
+        public string? Password { get; set; }
         [JsonPropertyName("datasourceKind")]
-        public string DatasourceKind { get; set; }
+        public string? DatasourceKind { get; set; }
     }
 }

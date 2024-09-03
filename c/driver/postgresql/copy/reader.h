@@ -443,6 +443,47 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
   }
 };
 
+/// Postgres JSONB emits as the JSON string prefixed with a version number
+/// (https://github.com/postgres/postgres/blob/3f44959f47460fb350d25d760cf2384f9aa14e9a/src/backend/utils/adt/jsonb.c#L80-L87
+/// ) Currently there is only one version, so functionally this is a just string prefixed
+/// with 0x01.
+class PostgresCopyJsonbFieldReader : public PostgresCopyFieldReader {
+ public:
+  ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
+                      ArrowError* error) override {
+    // -1 for NULL (0 would be empty string)
+    if (field_size_bytes < 0) {
+      return ArrowArrayAppendNull(array, 1);
+    }
+
+    if (field_size_bytes > data->size_bytes) {
+      ArrowErrorSet(error, "Expected %d bytes of field data but got %d bytes of input",
+                    static_cast<int>(field_size_bytes),
+                    static_cast<int>(data->size_bytes));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    int8_t version;
+    NANOARROW_RETURN_NOT_OK(ReadChecked<int8_t>(data, &version, error));
+    if (version != 1) {
+      ArrowErrorSet(error, "Expected JSONB binary version 0x01 but got %d",
+                    static_cast<int>(version));
+      return NANOARROW_OK;
+    }
+
+    field_size_bytes -= 1;
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, data->data.data, field_size_bytes));
+    data->data.as_uint8 += field_size_bytes;
+    data->size_bytes -= field_size_bytes;
+
+    int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppendInt32(offsets_, offsets[array->length] + field_size_bytes));
+
+    return AppendValid(array);
+  }
+};
+
 class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
  public:
   void InitChild(std::unique_ptr<PostgresCopyFieldReader> child) {
@@ -741,6 +782,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(
     case NANOARROW_TYPE_INT64:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kInt8:
+        case PostgresTypeId::kCash:
           *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<int64_t>>();
           return NANOARROW_OK;
         default:
@@ -773,10 +815,14 @@ static inline ArrowErrorCode MakeCopyFieldReader(
         case PostgresTypeId::kBpchar:
         case PostgresTypeId::kName:
         case PostgresTypeId::kEnum:
+        case PostgresTypeId::kJson:
           *out = std::make_unique<PostgresCopyBinaryFieldReader>();
           return NANOARROW_OK;
         case PostgresTypeId::kNumeric:
           *out = std::make_unique<PostgresCopyNumericFieldReader>();
+          return NANOARROW_OK;
+        case PostgresTypeId::kJsonb:
+          *out = std::make_unique<PostgresCopyJsonbFieldReader>();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
@@ -851,8 +897,13 @@ static inline ArrowErrorCode MakeCopyFieldReader(
     }
 
     case NANOARROW_TYPE_TIME64: {
-      *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<int64_t>>();
-      return NANOARROW_OK;
+      switch (pg_type.type_id()) {
+        case PostgresTypeId::kTime:
+          *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<int64_t>>();
+          return NANOARROW_OK;
+        default:
+          return ErrorCantConvert(error, pg_type, schema_view);
+      }
     }
 
     case NANOARROW_TYPE_TIMESTAMP:

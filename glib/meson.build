@@ -23,7 +23,7 @@ project('adbc-glib',
           'c_std=c99',
         ],
         license: 'Apache-2.0',
-        version: '1.0.0-SNAPSHOT')
+        version: '1.2.0-SNAPSHOT')
 
 version_numbers = meson.project_version().split('-')[0].split('.')
 version_major = version_numbers[0].to_int()
@@ -47,7 +47,7 @@ pkgconfig_variables = ['girdir=@0@'.format(gir_dir)]
 
 base_include_directories = [
   include_directories('.'),
-  include_directories('..'),
+  include_directories('..' / 'c' / 'include'),
 ]
 
 gi_fatal_warnings = (build_machine.system() != 'windows')
@@ -60,9 +60,6 @@ endif
 if adbc_build_dir == ''
   adbc_driver_manager = dependency('adbc-driver-manager')
 else
-  base_include_directories += [
-    include_directories('..' / 'c' / 'driver_manager'),
-  ]
   c_compiler = meson.get_compiler('c')
   adbc_driver_manager = c_compiler.find_library('adbc_driver_manager',
                                                 dirs: [adbc_build_dir])

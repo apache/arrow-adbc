@@ -19,7 +19,7 @@
 
 #include <cstring>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

@@ -23,25 +23,26 @@ set -e
 set -u
 set -o pipefail
 
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SOURCE_DIR}/utils-common.sh"
+source "${SOURCE_DIR}/utils-prepare.sh"
+
 main() {
-  if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <version>"
+  if [ "$#" -ne 0 ]; then
+    echo "Usage: $0"
     exit
   fi
 
-  local -r version="$1"
-  local -r tag="apache-arrow-adbc-${version}"
+  local -r tag="apache-arrow-adbc-${RELEASE}"
 
   if [ -z "${NUGET_API_KEY}" ]; then
     echo "NUGET_API_KEY is empty"
     exit 1
   fi
 
-  : ${REPOSITORY:="apache/arrow-adbc"}
-
   local -r tmp=$(mktemp -d -t "arrow-post-csharp.XXXXX")
 
-  header "Downloading C# packages for ${version}"
+  header "Downloading C# packages for ${VERSION_CSHARP}"
 
   gh release download \
      --repo "${REPOSITORY}" \
@@ -51,11 +52,11 @@ main() {
      --pattern "*.snupkg"
 
   local base_names=()
-  base_names+=(Apache.Arrow.Adbc.${version})
-  base_names+=(Apache.Arrow.Adbc.Client.${version})
-  base_names+=(Apache.Arrow.Adbc.Drivers.BigQuery.${version})
-  base_names+=(Apache.Arrow.Adbc.Drivers.FlightSql.${version})
-  base_names+=(Apache.Arrow.Adbc.Drivers.Interop.Snowflake.${version})
+  base_names+=(Apache.Arrow.Adbc.${VERSION_CSHARP})
+  base_names+=(Apache.Arrow.Adbc.Client.${VERSION_CSHARP})
+  base_names+=(Apache.Arrow.Adbc.Drivers.BigQuery.${VERSION_CSHARP})
+  base_names+=(Apache.Arrow.Adbc.Drivers.FlightSql.${VERSION_CSHARP})
+  base_names+=(Apache.Arrow.Adbc.Drivers.Interop.Snowflake.${VERSION_CSHARP})
   for base_name in "${base_names[@]}"; do
     dotnet nuget push \
       "${tmp}/${base_name}.nupkg" \
@@ -66,13 +67,7 @@ main() {
   rm -rf "${tmp}"
 
   echo "Success! The released NuGet package is available here:"
-  echo "  https://www.nuget.org/packages/Apache.Arrow.Adbc/${version}"
-}
-
-header() {
-    echo "============================================================"
-    echo "${1}"
-    echo "============================================================"
+  echo "  https://www.nuget.org/packages/Apache.Arrow.Adbc/${VERSION_CSHARP}"
 }
 
 main "$@"

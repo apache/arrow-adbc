@@ -26,6 +26,7 @@ else
 endif
 
 DRIVERS := \
+	libadbc_driver_bigquery.$(SUFFIX) \
 	libadbc_driver_flightsql.$(SUFFIX) \
 	libadbc_driver_panicdummy.$(SUFFIX) \
 	libadbc_driver_snowflake.$(SUFFIX)
@@ -38,6 +39,7 @@ libadbc_driver_%.$(SUFFIX): %
 	$(RM) $(basename $@).h
 
 regenerate:
+	go run gen/main.go -prefix BigQuery -o ./bigquery/ -driver ../driver/bigquery
 	go run gen/main.go -prefix FlightSQL -o ./flightsql/ -driver ../driver/flightsql
 	go run gen/main.go -prefix PanicDummy -o ./panicdummy/ -driver ../driver/panicdummy
 	go run gen/main.go -prefix Snowflake -o ./snowflake/ -driver ../driver/snowflake

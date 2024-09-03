@@ -511,3 +511,135 @@
 - **c/driver_manager**: differentiate errors from driver manager (#1662)
 - **c/driver/sqlite**: port to driver base (#1603)
 - **go/adbc/driver**: driverbase implementation for connection (#1590)
+
+## ADBC Libraries 12 (2024-05-09)
+
+### Fix
+
+- **csharp/src/Apache.Arrow.Adbc/C**: finalizer threw exception (#1842)
+- **dev/release**: handle versioning scheme in binary verification (#1834)
+- **csharp**: Change option translation to be case-sensitive (#1820)
+- **csharp/src/Apache.Arrow.Adbc/C**: imported errors don't return a native error or SQL state (#1815)
+- **csharp/src/Apache.Arrow.Adbc**: imported statements and databases don't allow options to be set (#1816)
+- **csharp/src/Apache.Arrow.Adbc/C**: correctly handle null driver entries for imported drivers (#1812)
+- **go/adbc/driver/snowflake**: handle empty result sets (#1805)
+- **csharp**: an assortment of small fixes not worth individual pull requests (#1807)
+- **go/adbc/driver/snowflake**: workaround snowflake metadata-only limitations (#1790)
+- **csharp/src/Apache.Arrow.Adbc**: correct StandardSchemas.ColumnSchema data types (#1731)
+- **csharp**: imported drivers have the potential for a lot of memory leaks (#1776)
+- **go/adbc/driver/flightsql**: should use `ctx.Err().Error()` (#1769)
+- **go/adbc/driver/snowflake**: handle quotes properly (#1738)
+- **go/adbc/driver/snowflake**: comment format (#1768)
+- **csharp/src/Apache.Arrow.Adbc**: Fix marshaling in three functions where it was broken (#1758)
+- **csharp/src/Apache.Arrow.Adbc**: Add support to the C Exporter for converting exceptions into AdbcErrors (#1752)
+- **format**: correct duplicated statistics names (#1736)
+- **dev/release**: correct C# version bump regex (#1733)
+- **r**: Ensure CXX_STD is set everywhere (#1706)
+- **csharp**: Resolve memory leaks described by #1690 (#1695)
+
+### Feat
+
+- **go/adbc/driver/snowflake**: support parameter binding (#1808)
+- **csharp**: imported objects should have call "release" when no longer in use (#1802)
+- **rust**: add the driver exporter (#1756)
+- **csharp**: enable nullable checks and resolve all warnings (#1792)
+- **go/adbc/driver/flightsql**: support stateless prepared statements (#1796)
+- **csharp**: Implement support for transactions, isolation level and read-only flag (#1784)
+- **csharp/test**: implement DuckDb test fixture (#1781)
+- **csharp**: Implement remaining functions in 1.0 spec (#1773)
+- **csharp/src/Apache.Arrow.Adbc**: Cleanup use of List<T> in APIs and implementation (#1761)
+- **csharp**: Update to test with net8.0 (#1771)
+- **csharp/src/Apache.Arrow.Adbc**: Remove AdbcConnection.GetInfo(List<int>) (#1760)
+- **glib**: add GADBCArrowConnection (#1754)
+- **rust**: add complete FFI bindings (#1742)
+- **glib**: Add garrow_connection_get_statistic_names() (#1748)
+- **glib**: Add garrow_connection_get_statistics() (#1744)
+- **c/driver/postgresql**: add money type and test intervals (#1741)
+- **rust**: add public abstract API and dummy driver implementation (#1725)
+- **csharp/src/Drivers**: introduce drivers for Apache systems built on Thrift (#1710)
+- **format**: add info codes for supported capabilities (#1649)
+
+## apache-arrow-adbc-12-rc3 (2024-05-09)
+
+### Fix
+
+- **csharp/src/Apache.Arrow.Adbc/C**: finalizer threw exception (#1842)
+- **dev/release**: handle versioning scheme in binary verification (#1834)
+- **csharp**: Change option translation to be case-sensitive (#1820)
+- **csharp/src/Apache.Arrow.Adbc/C**: imported errors don't return a native error or SQL state (#1815)
+- **csharp/src/Apache.Arrow.Adbc**: imported statements and databases don't allow options to be set (#1816)
+- **csharp/src/Apache.Arrow.Adbc/C**: correctly handle null driver entries for imported drivers (#1812)
+- **go/adbc/driver/snowflake**: handle empty result sets (#1805)
+- **csharp**: an assortment of small fixes not worth individual pull requests (#1807)
+- **go/adbc/driver/snowflake**: workaround snowflake metadata-only limitations (#1790)
+- **csharp/src/Apache.Arrow.Adbc**: correct StandardSchemas.ColumnSchema data types (#1731)
+- **csharp**: imported drivers have the potential for a lot of memory leaks (#1776)
+- **go/adbc/driver/flightsql**: should use `ctx.Err().Error()` (#1769)
+- **go/adbc/driver/snowflake**: handle quotes properly (#1738)
+- **go/adbc/driver/snowflake**: comment format (#1768)
+- **csharp/src/Apache.Arrow.Adbc**: Fix marshaling in three functions where it was broken (#1758)
+- **csharp/src/Apache.Arrow.Adbc**: Add support to the C Exporter for converting exceptions into AdbcErrors (#1752)
+- **format**: correct duplicated statistics names (#1736)
+- **dev/release**: correct C# version bump regex (#1733)
+- **r**: Ensure CXX_STD is set everywhere (#1706)
+- **csharp**: Resolve memory leaks described by #1690 (#1695)
+
+### Feat
+
+- **go/adbc/driver/snowflake**: support parameter binding (#1808)
+- **csharp**: imported objects should have call "release" when no longer in use (#1802)
+- **rust**: add the driver exporter (#1756)
+- **csharp**: enable nullable checks and resolve all warnings (#1792)
+- **go/adbc/driver/flightsql**: support stateless prepared statements (#1796)
+- **csharp**: Implement support for transactions, isolation level and read-only flag (#1784)
+- **csharp/test**: implement DuckDb test fixture (#1781)
+- **csharp**: Implement remaining functions in 1.0 spec (#1773)
+- **csharp/src/Apache.Arrow.Adbc**: Cleanup use of List<T> in APIs and implementation (#1761)
+- **csharp**: Update to test with net8.0 (#1771)
+- **csharp/src/Apache.Arrow.Adbc**: Remove AdbcConnection.GetInfo(List<int>) (#1760)
+- **glib**: add GADBCArrowConnection (#1754)
+- **rust**: add complete FFI bindings (#1742)
+- **glib**: Add garrow_connection_get_statistic_names() (#1748)
+- **glib**: Add garrow_connection_get_statistics() (#1744)
+- **c/driver/postgresql**: add money type and test intervals (#1741)
+- **rust**: add public abstract API and dummy driver implementation (#1725)
+- **csharp/src/Drivers**: introduce drivers for Apache systems built on Thrift (#1710)
+- **format**: add info codes for supported capabilities (#1649)
+
+## ADBC Libraries 13 (2024-07-01)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.1.0
+- C#: 0.13.0
+- Java: 0.13.0
+- R: 0.13.0
+- Rust: 0.13.0
+
+### Fix
+
+- **c/driver/sqlite**: Make SQLite driver C99 compliant (#1946)
+- **go/adbc/pkg**: clean up potential sites where Go GC may be exposed (#1942)
+- **c/driver/postgresql**: chunk large COPY payloads (#1937)
+- **go/adbc/pkg**: guard against potential crash (#1938)
+- **csharp/src/Drivers/Interop/Snowflake**: Swapping PreBuildEvent to DispatchToInnerBuilds (#1909)
+- **csharp/src/Drivers/Apache/Spark**: fix parameter naming convention (#1895)
+- **csharp/src/Apache.Arrow.Adbc/C**: GetObjects should preserve a null tableTypes parameter value (#1894)
+- **go/adbc/driver/snowflake**: Records dropped on ingestion when empty batch is present (#1866)
+- **csharp**: Fix packing process (#1862)
+- **csharp/src/Drivers/Apache**: set the precision and scale correctly on Decimal128Type (#1858)
+
+### Feat
+
+- Meson Support for ADBC (#1904)
+- **rust**: add integration tests and some improvements (#1883)
+- **csharp/src/Drivers/Apache/Spark**: extend SQL type name parsing for all types (#1911)
+- **csharp/src/Drivers/Apache**: improve type name handling for CHAR/VARCHAR/DECIMAL (#1896)
+- **csharp/src/Drivers/Apache**: improve GetObjects metadata returned for columns (#1884)
+- **rust**: add the driver manager (#1803)
+- **csharp**: redefine C# APIs to prioritize full async support (#1865)
+- **csharp/src/Drivers/Apache**: extend capability of GetInfo for Spark driver (#1863)
+- **csharp/src/Drivers/Apache**: add implementation for AdbcStatement.SetOption on Spark driver (#1849)
+- **csharp**: Move more options to be set centrally and enable TreatWarningsAsErrors (#1852)
+- **csharp**: Initial changes for ADBC 1.1 in C# implementation (#1821)
+- **csharp/src/Drivers/Apache/Spark**: implement async overrides for Spark driver (#1830)

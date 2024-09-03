@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc
@@ -48,13 +47,22 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Create a new statement to bulk insert into a table.
         /// </summary>
-        /// <param name="targetTableName">
-        /// The table name
-        /// </param>
-        /// <param name="mode">
-        /// The ingest mode
-        /// </param>
+        /// <param name="targetTableName">The table name</param>
+        /// <param name="mode">The ingest mode</param>
         public virtual AdbcStatement BulkIngest(string targetTableName, BulkIngestMode mode)
+        {
+            throw AdbcException.NotImplemented("Connection does not support BulkIngest");
+        }
+
+        /// <summary>
+        /// Create a new statement to bulk insert into a table.
+        /// </summary>
+        /// <param name="targetCatalog">The catalog name, or null to use the current catalog</param>
+        /// <param name="targetDbSchema">The schema name, or null to use the current schema</param>
+        /// <param name="targetTableName">The table name</param>
+        /// <param name="mode">The ingest mode</param>
+        /// <param name="isTemporary">True for a temporary table. Catalog and Schema must be null when true.</param>
+        public virtual AdbcStatement BulkIngest(string? targetCatalog, string? targetDbSchema, string targetTableName, BulkIngestMode mode, bool isTemporary)
         {
             throw AdbcException.NotImplemented("Connection does not support BulkIngest");
         }
@@ -70,31 +78,15 @@ namespace Apache.Arrow.Adbc
         /// The metadata items to fetch.
         /// </param>
         /// <returns>
-        /// A statement that can be immediately executed.
-        /// </returns>
-        public virtual IArrowArrayStream GetInfo(List<int> codes)
-        {
-            throw AdbcException.NotImplemented("Connection does not support GetInfo");
-        }
-
-        /// <summary>
-        /// Get metadata about the driver/database.
-        /// </summary>
-        /// <param name="codes">
-        /// The metadata items to fetch.
-        /// </param>
-        /// <returns>
-        /// A statement that can be immediately executed.
+        /// Metadata about the driver and/or database
         /// </returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public virtual IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
+        public virtual IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
             if (codes == null)
                 throw new ArgumentNullException(nameof(codes));
 
-            List<int> codeValues = codes.Select(x => (int)x).ToList();
-
-            return GetInfo(codeValues);
+            throw AdbcException.NotImplemented("Connection does not support GetInfo");
         }
 
         /// <summary>
@@ -132,11 +124,11 @@ namespace Apache.Arrow.Adbc
         /// </param>
         public abstract IArrowArrayStream GetObjects(
             GetObjectsDepth depth,
-            string catalogPattern,
-            string dbSchemaPattern,
-            string tableNamePattern,
-            List<string> tableTypes,
-            string columnNamePattern);
+            string? catalogPattern,
+            string? dbSchemaPattern,
+            string? tableNamePattern,
+            IReadOnlyList<string>? tableTypes,
+            string? columnNamePattern);
 
         public enum GetObjectsDepth
         {
@@ -174,7 +166,7 @@ namespace Apache.Arrow.Adbc
         /// <param name="tableName">
         /// The table name.
         /// </param>
-        public abstract Schema GetTableSchema(string catalog, string dbSchema, string tableName);
+        public abstract Schema GetTableSchema(string? catalog, string? dbSchema, string tableName);
 
         /// <summary>
         /// Get a list of table types supported by the database.
@@ -236,6 +228,42 @@ namespace Apache.Arrow.Adbc
         {
             get => _isolationLevel;
             set => throw AdbcException.NotImplemented("Connection does not support setting isolation level");
+        }
+
+        /// <summary>
+        /// Attempts to cancel an in-progress operation on a connection.
+        /// </summary>
+        /// <remarks>
+        /// This can be called during a method like GetObjects or while consuming an ArrowArrayStream
+        /// returned from such. Calling this function should make the other function throw a cancellation exception.
+        ///
+        /// This must always be thread-safe.
+        /// </remarks>
+        public virtual void Cancel()
+        {
+            throw AdbcException.NotImplemented("Connection does not support cancellation");
+        }
+
+        /// <summary>
+        /// Gets the names of statistics specific to this driver.
+        /// </summary>
+        /// <returns></returns>
+        public virtual IArrowArrayStream GetStatisticsNames()
+        {
+            throw AdbcException.NotImplemented("Connection does not support statistics");
+        }
+
+        /// <summary>
+        /// Gets statistics about the data distribution of table(s)
+        /// </summary>
+        /// <param name="catalogPattern">The catalog or null. May be a search pattern.</param>
+        /// <param name="schemaPattern">The schema or null. May be a search pattern.</param>
+        /// <param name="tableName">The table name or null. May be a search pattern.</param>
+        /// <param name="approximate">If false, consumer desires exact statistics regardless of cost</param>
+        /// <returns>A result describing the statistics for the table(s)</returns>
+        public virtual IArrowArrayStream GetStatistics(string? catalogPattern, string? schemaPattern, string tableNamePattern, bool approximate)
+        {
+            throw AdbcException.NotImplemented("Connection does not support statistics");
         }
     }
 }

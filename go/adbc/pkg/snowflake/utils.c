@@ -316,6 +316,16 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
                                               struct AdbcPartitions* partitions,
                                               int64_t* rows_affected,
                                               struct AdbcError* error) {
+  return SnowflakeStatementExecutePartitionsTrampoline(
+    statement, schema, partitions, rows_affected, error);
+}
+
+AdbcStatusCode SnowflakeStatementExecutePartitionsTrampoline(
+    struct AdbcStatement* statement,
+    struct ArrowSchema* schema,
+    struct AdbcPartitions* partitions,
+    int64_t* rows_affected,
+    struct AdbcError* error) {
   if (schema) memset(schema, 0, sizeof(*schema));
   if (partitions) memset(partitions, 0, sizeof(*partitions));
   return SnowflakeStatementExecutePartitions(statement, schema, partitions,

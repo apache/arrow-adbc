@@ -22,7 +22,6 @@ on:
     branches:
       - main
     paths:
-      - "adbc.h"
       - "c/**"
       - "ci/**"
       - "docs/**"
@@ -33,7 +32,6 @@ on:
       - ".github/workflows/native-unix.yml"
   push:
     paths:
-      - "adbc.h"
       - "c/**"
       - "ci/**"
       - "docs/**"
@@ -42,9 +40,10 @@ on:
       - "python/**"
       - "ruby/**"
       - ".github/workflows/native-unix.yml"
+  workflow_call:
 
 concurrency:
-  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}-unix
   cancel-in-progress: true
 
 permissions:
@@ -63,11 +62,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "macos-14", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
         include:
-          - os: macos-latest
+          - os: macos-13
             goarch: x64
-          - os: macos-14
+          - os: macos-latest
             goarch: arm64
           - os: ubuntu-latest
             goarch: x64
@@ -131,12 +130,23 @@ jobs:
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
-      - uses: actions/upload-artifact@v3
+      # XXX: GitHub broke upload/download-artifact.  To avoid symlinks being
+      # converted into weird files, tar the files ourselves first.
+      # https://github.com/apache/arrow-adbc/issues/2061
+      # https://github.com/actions/download-artifact/issues/346
+
+      - name: tar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar czf ~/local.tgz local
+
+      - uses: actions/upload-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
           path: |
-            ~/local
+            ~/local.tgz
 
   # ------------------------------------------------------------
   # C/C++ (builds and tests)
@@ -146,7 +156,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "macos-14", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -205,6 +215,67 @@ jobs:
         run: |
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
+  drivers-test-meson:
+    name: "Meson - C/C++ (Conda/${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-latest"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libpq-dev ninja-build
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "${{ env.GO_VERSION }}"
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install Meson via Python
+        run: pip install meson
+      - name: Start SQLite server, Dremio, and postgresql
+        shell: bash -l {0}
+        run: |
+          env POSTSGRES_VERSION=16 docker compose up --detach --wait \
+            dremio \
+            dremio-init \
+            flightsql-test \
+            flightsql-sqlite-test \
+            postgres-test
+          pip install python-dotenv[cli]
+          python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
+      - name: Build
+        run: |
+          meson setup \
+            -Db_sanitize=address,undefined \
+            -Ddriver_manager=true \
+            -Dflightsql=true \
+            -Dpostgresql=true \
+            -Dsnowflake=true \
+            -Dsqlite=true \
+            -Dtests=true \
+            c c/build
+          meson compile -C c/build
+      - name: Test
+        run: |
+          meson test -C c/build --print-errorlogs
+      - name: Stop SQLite server, Dremio, and postgresql
+        shell: bash -l {0}
+        run: |
+          docker compose down
+
   clang-tidy-conda:
     name: "clang-tidy"
     runs-on: ubuntu-latest
@@ -251,9 +322,9 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        # N.B. no macos-14 here since conda-forge does not package
+        # N.B. no macos-latest here since conda-forge does not package
         # arrow-c-glib for M1
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-13", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -292,10 +363,16 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
-          path: ~/local
+          path: "~"
+
+      - name: untar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar xvf ~/local.tgz
 
       - name: Build GLib Driver Manager
         shell: bash -l {0}
@@ -316,15 +393,22 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "macos-14", "ubuntu-latest", "windows-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: 'google-github-actions/auth@v2'
+        continue-on-error: true # if auth fails, bigquery driver tests should skip
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       - uses: actions/setup-go@v5
         with:
-          go-version-file: 'go/adbc/go.mod'
+          go-version-file: "go/adbc/go.mod"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -358,21 +442,28 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-latest", "macos-14", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
         include:
-          - os: macos-latest
+          - os: macos-13
             goarch: x64
-          - os: macos-14
+          - os: macos-latest
             goarch: arm64
           - os: ubuntu-latest
             goarch: x64
     env:
       CGO_ENABLED: "1"
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: 'google-github-actions/auth@v2'
+        continue-on-error: true # if auth fails, bigquery driver tests should skip
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       - name: Get required Go version
         run: |
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
@@ -414,10 +505,16 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: go install honnef.co/go/tools/cmd/staticcheck@latest
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
-          path: ~/local
+          path: "~"
+
+      - name: untar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar xvf ~/local.tgz
 
       - name: Go Build
         shell: bash -l {0}
@@ -449,7 +546,7 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-latest", "macos-14", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
         python: ["3.9", "3.11"]
     env:
       # Required for macOS
@@ -498,10 +595,16 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
-          path: ~/local
+          path: "~"
+
+      - name: untar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar xvf ~/local.tgz
 
       - name: Build
         shell: bash -l {0}
@@ -608,10 +711,17 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
-      - uses: actions/download-artifact@v3
+
+      - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
-          path: ~/local
+          path: "~"
+
+      - name: untar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar xvf ~/local.tgz
 
       - name: Build Python
         shell: bash -l {0}
@@ -627,7 +737,7 @@ jobs:
         run: |
           ./ci/scripts/docs_build.sh "$(pwd)"
       - name: Archive docs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docs
           retention-days: 2
@@ -636,7 +746,8 @@ jobs:
       - name: Configure Integration Env Vars
         shell: bash -l {0}
         run: |
-          cat .env | grep -v -e '^#' | awk NF | tee -a $GITHUB_ENV
+          pip install python-dotenv[cli]
+          python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
       - name: Test Recipes (C++)
         shell: bash -l {0}
         run: |

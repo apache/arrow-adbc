@@ -15,18 +15,25 @@
 #  limitations under the License.
 
 param (
-    [string]$destination=$null
+    [string]$destination=$null,
+    [string]$versionSuffix=$null
 )
 
-$loc = Get-Location
+$csharpFolder = [IO.Path]::Combine($PSScriptRoot, "..", "..", "csharp") | Resolve-Path
+Write-Host "Setting Path: $csharpFolder"
+Set-Location $csharpFolder
 
-if ($loc.ToString().ToLower().EndsWith("csharp") -eq $False) {
-    cd ..\..\csharp
+Write-Host "Running dotnet pack -c Release"
+$packArgs = @{
+    "c" = "Release"
 }
-
 if ($destination) {
-    dotnet pack -c Release -o $destination
+    Write-Host " * Destination: $destination"
+    $packArgs["o"] = $destination
 }
-else {
-    dotnet pack -c Release
+if ($versionSuffix) {
+    Write-Host " * Version Suffix: $versionSuffix"
+    $packArgs["-version-suffix"] = $versionSuffix
 }
+
+dotnet pack @packArgs

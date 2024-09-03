@@ -29,12 +29,12 @@
 
 namespace adbc::driver {
 /// \brief A helper that implements GetObjects.
-/// The schema/array/helper lifetime are caller-managed.
+/// The out/helper lifetime are caller-managed.
 Status BuildGetObjects(GetObjectsHelper* helper, GetObjectsDepth depth,
                        std::optional<std::string_view> catalog_filter,
                        std::optional<std::string_view> schema_filter,
                        std::optional<std::string_view> table_filter,
                        std::optional<std::string_view> column_filter,
                        const std::vector<std::string_view>& table_types,
-                       struct ArrowSchema* schema, struct ArrowArray* array);
+                       struct ArrowArrayStream* out);
 }  // namespace adbc::driver

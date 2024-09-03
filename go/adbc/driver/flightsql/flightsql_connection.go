@@ -29,13 +29,13 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/apache/arrow/go/v16/arrow"
-	"github.com/apache/arrow/go/v16/arrow/array"
-	"github.com/apache/arrow/go/v16/arrow/flight"
-	"github.com/apache/arrow/go/v16/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v16/arrow/flight/flightsql/schema_ref"
-	flightproto "github.com/apache/arrow/go/v16/arrow/flight/gen/flight"
-	"github.com/apache/arrow/go/v16/arrow/ipc"
+	"github.com/apache/arrow/go/v18/arrow"
+	"github.com/apache/arrow/go/v18/arrow/array"
+	"github.com/apache/arrow/go/v18/arrow/flight"
+	"github.com/apache/arrow/go/v18/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v18/arrow/flight/flightsql/schema_ref"
+	flightproto "github.com/apache/arrow/go/v18/arrow/flight/gen/flight"
+	"github.com/apache/arrow/go/v18/arrow/ipc"
 	"github.com/bluele/gcache"
 	"google.golang.org/grpc"
 	grpccodes "google.golang.org/grpc/codes"
@@ -55,6 +55,32 @@ type connectionImpl struct {
 	timeouts    timeoutOption
 	txn         *flightsql.Txn
 	supportInfo support
+}
+
+func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
+	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
+	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
+	if err := g.Init(c.Base().Alloc, c.GetObjectsDbSchemas, c.GetObjectsTables); err != nil {
+		return nil, err
+	}
+	defer g.Release()
+
+	catalogs, err := c.GetObjectsCatalogs(ctx, catalog)
+	if err != nil {
+		return nil, err
+	}
+
+	foundCatalog := false
+	for _, catalog := range catalogs {
+		g.AppendCatalog(catalog)
+		foundCatalog = true
+	}
+
+	// Implementations like Dremio report no catalogs, but still have schemas
+	if !foundCatalog && depth != adbc.ObjectDepthCatalogs {
+		g.AppendCatalog("")
+	}
+	return g.Finish()
 }
 
 // GetCurrentCatalog implements driverbase.CurrentNamespacer.
@@ -134,9 +160,13 @@ func (c *connectionImpl) SetAutocommit(enabled bool) error {
 }
 
 var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
-	adbc.InfoVendorName:         flightsql.SqlInfoFlightSqlServerName,
-	adbc.InfoVendorVersion:      flightsql.SqlInfoFlightSqlServerVersion,
-	adbc.InfoVendorArrowVersion: flightsql.SqlInfoFlightSqlServerArrowVersion,
+	adbc.InfoVendorName:                flightsql.SqlInfoFlightSqlServerName,
+	adbc.InfoVendorVersion:             flightsql.SqlInfoFlightSqlServerVersion,
+	adbc.InfoVendorArrowVersion:        flightsql.SqlInfoFlightSqlServerArrowVersion,
+	adbc.InfoVendorSql:                 flightsql.SqlInfoFlightSqlServerSql,
+	adbc.InfoVendorSubstrait:           flightsql.SqlInfoFlightSqlServerSubstrait,
+	adbc.InfoVendorSubstraitMinVersion: flightsql.SqlInfoFlightSqlServerSubstraitMinVersion,
+	adbc.InfoVendorSubstraitMaxVersion: flightsql.SqlInfoFlightSqlServerSubstraitMaxVersion,
 }
 
 func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEndpoint, clientCache gcache.Cache, opts ...grpc.CallOption) (rdr *flight.Reader, err error) {
@@ -221,6 +251,13 @@ func (c *connectionImpl) getSessionOptions(ctx context.Context) (map[string]inte
 
 func (c *connectionImpl) setSessionOptions(ctx context.Context, key string, val interface{}) error {
 	req := flight.SetSessionOptionsRequest{}
+	hdrs := make([]string, 0)
+	for k, vv := range c.hdrs {
+		for _, v := range vv {
+			hdrs = append(hdrs, k, v)
+		}
+	}
+	ctx = metadata.AppendToOutgoingContext(ctx, hdrs...)
 
 	var err error
 	req.SessionOptions, err = flight.NewSessionOptionValues(map[string]any{key: val})
@@ -234,7 +271,7 @@ func (c *connectionImpl) setSessionOptions(ctx context.Context, key string, val 
 	var header, trailer metadata.MD
 	errors, err := c.cl.SetSessionOptions(ctx, &req, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 	if err != nil {
-		return adbcFromFlightStatusWithDetails(err, header, trailer, "GetSessionOptions")
+		return adbcFromFlightStatusWithDetails(err, header, trailer, "SetSessionOptions")
 	}
 	if len(errors.Errors) > 0 {
 		msg := strings.Builder{}
@@ -564,21 +601,37 @@ func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc
 
 			var adbcInfoCode adbc.InfoCode
 			for i := 0; i < int(rec.NumRows()); i++ {
-				switch flightsql.SqlInfo(field.Value(i)) {
-				case flightsql.SqlInfoFlightSqlServerName:
-					adbcInfoCode = adbc.InfoVendorName
-				case flightsql.SqlInfoFlightSqlServerVersion:
-					adbcInfoCode = adbc.InfoVendorVersion
-				case flightsql.SqlInfoFlightSqlServerArrowVersion:
-					adbcInfoCode = adbc.InfoVendorArrowVersion
-				default:
+
+				var found bool
+				idx := int(info.ValueOffset(i))
+				flightSqlInfoCode := flightsql.SqlInfo(field.Value(i))
+				for infocode := range adbcToFlightSQLInfo {
+					if adbcToFlightSQLInfo[infocode] == flightSqlInfoCode {
+						adbcInfoCode = infocode
+						found = true
+						break
+					}
+				}
+
+				// SqlInfo on the server that does not have an explicit mapping to ADBC is ignored
+				if !found {
 					continue
 				}
 
-				// we know we're only doing string fields here right now
-				v := info.Field(info.ChildID(i)).(*array.String).
-					Value(int(info.ValueOffset(i)))
-				if err := driverInfo.RegisterInfoCode(adbcInfoCode, strings.Clone(v)); err != nil {
+				var v any
+				switch arr := info.Field(info.ChildID(i)).(type) {
+				case *array.String:
+					v = strings.Clone(arr.Value(idx))
+				case *array.Boolean:
+					v = arr.Value(idx)
+				default:
+					return adbc.Error{
+						Msg:  fmt.Sprintf("unsupported field_type %T for info_value", arr),
+						Code: adbc.StatusInvalidArgument,
+					}
+				}
+
+				if err := driverInfo.RegisterInfoCode(adbcInfoCode, v); err != nil {
 					return err
 				}
 			}
@@ -615,6 +668,7 @@ func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string
 		header, trailer metadata.MD
 		numCatalogs     int64
 	)
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
 	info, err := c.cl.GetCatalogs(ctx, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 	if err != nil {
@@ -655,6 +709,7 @@ func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.Obj
 	if depth == adbc.ObjectDepthCatalogs {
 		return
 	}
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	result = make(map[string][]string)
 	var header, trailer metadata.MD
 	// Pre-populate the map of which schemas are in which catalogs
@@ -696,6 +751,7 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
 		return
 	}
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	result = make(map[internal.CatalogAndSchema][]internal.TableInfo)
 
 	// Pre-populate the map of which schemas are in which catalogs

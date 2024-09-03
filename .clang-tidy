@@ -17,8 +17,9 @@
 ---
 # Only defaults for now, slowly enable more as desired
 # Disable clang-analyzer-core, it fires on nanoarrow (I think it doesn't see that ArrowBufferReserve won't leave buffer->data NULL)
+# Disable NewDeleteLeaks, it seems to trigger a lot on Googletest
 # Disable the warning about memset, etc. since it suggests C11 functions
 # Disable valist, it's buggy: https://github.com/llvm/llvm-project/issues/40656
-Checks: '-clang-analyzer-core.*,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,-clang-analyzer-valist.Uninitialized'
+Checks: '-clang-analyzer-core.*,-clang-analyzer-cplusplus.NewDeleteLeaks,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,-clang-analyzer-valist.Uninitialized'
 FormatStyle: google
 UseColor: true

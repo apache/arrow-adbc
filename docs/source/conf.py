@@ -30,7 +30,7 @@ Apache, the Apache feather logo, and the Apache Arrow project logo are either
 registered trademarks or trademarks of The Apache Software Foundation in the
 United States and other countries."""
 author = "the Apache Arrow Developers"
-release = "1.0.0 (dev)"
+release = "14 (dev)"
 # Needed to generate version switcher
 version = release
 
@@ -116,6 +116,8 @@ html_theme_options = {
 
 intersphinx_mapping = {
     "arrow": ("https://arrow.apache.org/docs/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "polars": ("https://docs.pola.rs/api/python/stable/", None),
 }
 
 # Add env vars like ADBC_INTERSPHINX_MAPPING_adbc_java = url;path

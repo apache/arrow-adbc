@@ -23,6 +23,8 @@ on:
       - opened
       - edited
       - synchronize
+      - ready_for_review
+      - review_requested
 
 permissions:
   contents: read
@@ -39,7 +41,7 @@ jobs:
           persist-credentials: false
 
       - name: Assign milestone
-        if: always()
+        if: '! github.event.pull_request.draft'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -57,3 +59,11 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           python .github/workflows/dev_pr/title_check.py $(pwd)/pr_checkout "$PR_TITLE"
+
+      # Pings make it into the commit message where they annoy the user every
+      # time the commit gets pushed somewhere
+      - name: Check PR body for pings
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          python .github/workflows/dev_pr/body_check.py "$PR_BODY"

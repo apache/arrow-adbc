@@ -41,8 +41,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         readonly AdbcConnection _connection;
         readonly List<string> _tableTypes = ["TABLE", "SYSTEM_TABLE", "VIEW"];
 
-        public static IEnumerable<object[]> GetPatterns(string name)
+        public static IEnumerable<object[]> GetPatterns(string? namePattern)
         {
+            string name = namePattern!;
             yield return new object[] { name };
             yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name)}%" };
             yield return new object[] { $"{DriverTests.GetPartialNameForPatternMatch(name).ToLower()}%" };
@@ -54,19 +55,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         public static IEnumerable<object[]> CatalogNamePatternData()
         {
-            string databaseName = FlightSqlTestingUtils.TestConfiguration?.Metadata.Catalog;
+            string? databaseName = FlightSqlTestingUtils.TestConfiguration?.Metadata.Catalog;
             return GetPatterns(databaseName);
         }
 
         public static IEnumerable<object[]> DbSchemasNamePatternData()
         {
-            string dbSchemaName = FlightSqlTestingUtils.TestConfiguration?.Metadata.Schema;
+            string? dbSchemaName = FlightSqlTestingUtils.TestConfiguration?.Metadata.Schema;
             return GetPatterns(dbSchemaName);
         }
 
         public static IEnumerable<object[]> TableNamePatternData()
         {
-            string tableName = FlightSqlTestingUtils.TestConfiguration?.Metadata.Table;
+            string? tableName = FlightSqlTestingUtils.TestConfiguration?.Metadata.Table;
             return GetPatterns(tableName);
         }
 
@@ -95,7 +96,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public void CanExecuteUpdate()
         {
             // Dremio doesn't have acceptPut implemented by design.
-            Skip.If(_testConfiguration.DatasourceKind.Equals("Dremio"));
+            if(!string.IsNullOrEmpty(_testConfiguration.DatasourceKind))
+                Skip.If(_testConfiguration.DatasourceKind!.Equals("Dremio"));
 
             string[] queries = FlightSqlTestingUtils.GetQueries(_testConfiguration);
 
@@ -119,7 +121,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(1)]
         public void AcceptPutNotImplemented()
         {
-            Skip.If(!_testConfiguration.DatasourceKind.Equals("Dremio"));
+            if (!string.IsNullOrEmpty(_testConfiguration.DatasourceKind))
+                Skip.If(!_testConfiguration.DatasourceKind!.Equals("Dremio"));
 
             string[] queries = FlightSqlTestingUtils.GetQueries(_testConfiguration);
 
@@ -147,13 +150,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
             for (int i = 0; i < infoNameArray.Length; i++)
             {
-                AdbcInfoCode value = (AdbcInfoCode)infoNameArray.GetValue(i);
-                DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
+                uint? uintValue = infoNameArray.GetValue(i);
 
-                Assert.Contains(value.ToString(), expectedValues);
+                if (uintValue.HasValue)
+                {
+                    AdbcInfoCode value = (AdbcInfoCode)uintValue;
+                    DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
 
-                StringArray stringArray = (StringArray)valueArray.Fields[0];
-                Console.WriteLine($"{value}={stringArray.GetString(i)}");
+                    Assert.Contains(value.ToString(), expectedValues);
+
+                    StringArray stringArray = (StringArray)valueArray.Fields[0];
+                    Console.WriteLine($"{value}={stringArray.GetString(i)}");
+                }
             }
         }
 
@@ -165,7 +173,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public void CanGetObjectsCatalogs(string catalogPattern)
         {
             // Dremio doesn't use catalogs
-            Skip.If(_testConfiguration.DatasourceKind.Equals("Dremio"));
+            if (!string.IsNullOrEmpty(_testConfiguration.DatasourceKind))
+                Skip.If(_testConfiguration.DatasourceKind!.Equals("Dremio"));
 
             string databaseName = _testConfiguration.Metadata.Catalog;
             string schemaName = _testConfiguration.Metadata.Schema;
@@ -181,7 +190,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, null);
-            AdbcCatalog catalog = catalogs.Where((catalog) => string.Equals(catalog.Name, databaseName)).FirstOrDefault();
+            AdbcCatalog? catalog = catalogs.Where((catalog) => string.Equals(catalog.Name, databaseName)).FirstOrDefault();
 
             Assert.True(catalog != null, "catalog should not be null");
         }
@@ -209,11 +218,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            List<AdbcDbSchema> dbSchemas = catalogs
+            List<AdbcDbSchema>? dbSchemas = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
                 .FirstOrDefault();
-            AdbcDbSchema dbSchema = dbSchemas.Where((dbSchema) => string.Equals(dbSchema.Name, schemaName)).FirstOrDefault();
+
+            Assert.True(dbSchemas != null, "dbSchemas should not be null");
+
+            AdbcDbSchema? dbSchema = dbSchemas.Where((dbSchema) => string.Equals(dbSchema.Name, schemaName)).FirstOrDefault();
 
             Assert.True(dbSchema != null, "dbSchema should not be null");
         }
@@ -242,15 +254,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            List<AdbcTable> tables = catalogs
+            List<AdbcDbSchema>? schemas = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
-                .FirstOrDefault()
+                .FirstOrDefault();
+
+            Assert.True(schemas != null, "schemas should not be null");
+
+            List<AdbcTable>? tables  = schemas
                 .Where(s => string.Equals(s.Name, schemaName))
                 .Select(s => s.Tables)
                 .FirstOrDefault();
 
-            AdbcTable table = tables.Where((table) => string.Equals(table.Name, tableName)).FirstOrDefault();
+            Assert.True(tables != null, "schemas should not be null");
+
+            AdbcTable? table = tables.Where((table) => string.Equals(table.Name, tableName)).FirstOrDefault();
             Assert.True(table != null, "table should not be null");
             Assert.Equal("TABLE", table.Type);
         }
@@ -264,7 +282,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             string databaseName = _testConfiguration.Metadata.Catalog;
             string schemaName = _testConfiguration.Metadata.Schema;
             string tableName = _testConfiguration.Metadata.Table;
-            string columnName = null;
+            string? columnName = null;
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.All,
@@ -278,20 +296,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            AdbcTable table = catalogs
+            List<AdbcDbSchema>? schemas = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
-                .FirstOrDefault()
+                .FirstOrDefault();
+
+            Assert.True(schemas != null, "schemas should not be null");
+
+            List<AdbcTable>? tables = schemas
                 .Where(s => string.Equals(s.Name, schemaName))
                 .Select(s => s.Tables)
-                .FirstOrDefault()
+                .FirstOrDefault();
+
+            Assert.True(tables != null, "tables should not be null");
+
+            AdbcTable? table = tables
                 .Where(t => string.Equals(t.Name, tableName))
                 .FirstOrDefault();
 
-
             Assert.True(table != null, "table should not be null");
+
             Assert.Equal("TABLE", table.Type);
-            List<AdbcColumn> columns = table.Columns;
+            List<AdbcColumn>? columns = table.Columns;
 
             Assert.True(columns != null, "Columns cannot be null");
             Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
@@ -334,7 +360,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public void CanGetObjectsTablesWithSpecialCharacter(string databaseName, string schemaName, string tableName)
         {
             // Dremio doesn't support write operations so temporary table needs to be re-thought
-            Skip.If(_testConfiguration.DatasourceKind.Equals("Dremio"));
+            if (!string.IsNullOrEmpty(_testConfiguration.DatasourceKind))
+                Skip.If(_testConfiguration.DatasourceKind!.Equals("Dremio"));
 
             CreateDatabaseAndTable(databaseName, schemaName, tableName);
 
@@ -350,15 +377,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            List<AdbcTable> tables = catalogs
+            List<AdbcDbSchema>? schemas = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
-                .FirstOrDefault()
+                .FirstOrDefault();
+
+            Assert.True(schemas != null, "schemas should not be null");
+
+            List<AdbcTable>? tables = schemas
                 .Where(s => string.Equals(s.Name, schemaName))
                 .Select(s => s.Tables)
                 .FirstOrDefault();
 
-            AdbcTable table = tables.FirstOrDefault();
+            Assert.True(tables != null, "tables should not be null");
+
+            AdbcTable? table = tables.FirstOrDefault();
 
             Assert.True(table != null, "table should not be null");
             Assert.Equal(tableName, table.Name, true);

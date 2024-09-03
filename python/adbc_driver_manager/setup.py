@@ -20,6 +20,7 @@
 import os
 import shutil
 import sys
+from collections import namedtuple
 from pathlib import Path
 
 from setuptools import Extension, setup
@@ -30,20 +31,25 @@ repo_root = source_root.joinpath("../../")
 # ------------------------------------------------------------
 # Resolve C++ Sources
 
-sources = [
-    "adbc.h",
-    "c/driver_manager/adbc_driver_manager.cc",
-    "c/driver_manager/adbc_driver_manager.h",
-    "c/vendor/backward/backward.hpp",
+FileToCopy = namedtuple("FileToCopy", ["source", "dest_dir"])
+files_to_copy = [
+    FileToCopy("c/include/arrow-adbc/adbc.h", "arrow-adbc"),
+    FileToCopy("c/driver_manager/adbc_driver_manager.cc", ""),
+    FileToCopy("c/include/arrow-adbc/adbc_driver_manager.h", "arrow-adbc"),
+    FileToCopy("c/vendor/backward/backward.hpp", ""),
 ]
 
-for source in sources:
-    target_filename = source.split("/")[-1]
-    source = repo_root.joinpath(source).resolve()
-    target = source_root.joinpath("adbc_driver_manager", target_filename).resolve()
+for file_to_copy in files_to_copy:
+    target_filename = file_to_copy.source.split("/")[-1]
+    source = repo_root.joinpath(file_to_copy.source).resolve()
+    target_dir = source_root.joinpath(
+        "adbc_driver_manager", file_to_copy.dest_dir
+    ).resolve()
+    target = target_dir.joinpath(target_filename).resolve()
     if source.is_file():
         # In-tree build/creating an sdist: copy from project root to local file
         # so that setuptools isn't confused
+        target_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy(source, target)
     elif not target.is_file():
         # Out-of-tree build missing the C++ source files

@@ -26,7 +26,7 @@ package main
 
 // #cgo CFLAGS: -DADBC_EXPORTING
 // #cgo CXXFLAGS: -std=c++11 -DADBC_EXPORTING
-// #include "../../drivermgr/adbc.h"
+// #include "../../drivermgr/arrow-adbc/adbc.h"
 // #include "utils.h"
 // #include <errno.h>
 // #include <stdint.h>
@@ -62,10 +62,10 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
-	"github.com/apache/arrow/go/v16/arrow/array"
-	"github.com/apache/arrow/go/v16/arrow/cdata"
-	"github.com/apache/arrow/go/v16/arrow/memory"
-	"github.com/apache/arrow/go/v16/arrow/memory/mallocator"
+	"github.com/apache/arrow/go/v18/arrow/array"
+	"github.com/apache/arrow/go/v18/arrow/cdata"
+	"github.com/apache/arrow/go/v18/arrow/memory"
+	"github.com/apache/arrow/go/v18/arrow/memory/mallocator"
 )
 
 // Must use malloc() to respect CGO rules
@@ -102,7 +102,7 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 		return
 	}
 
-	cErrPtr := C.malloc(C.sizeof_struct_SnowflakeError)
+	cErrPtr := C.calloc(C.sizeof_struct_SnowflakeError, C.size_t(1))
 	cErr := (*C.struct_SnowflakeError)(cErrPtr)
 	cErr.message = C.CString(adbcError.Msg)
 	err.message = cErr.message
@@ -212,7 +212,7 @@ func printLoggingHelp() {
 // handle.
 func createHandle(hndl cgo.Handle) unsafe.Pointer {
 	// uintptr_t* hptr = malloc(sizeof(uintptr_t));
-	hptr := (*C.uintptr_t)(C.malloc(C.sizeof_uintptr_t))
+	hptr := (*C.uintptr_t)(C.calloc(C.sizeof_uintptr_t, C.size_t(1)))
 	// *hptr = (uintptr)hndl;
 	*hptr = C.uintptr_t(uintptr(hndl))
 	return unsafe.Pointer(hptr)
@@ -1797,7 +1797,7 @@ func SnowflakeStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C
 	for _, p := range part.PartitionIDs {
 		totalLen += len(p)
 	}
-	partitions.private_data = C.malloc(C.size_t(totalLen))
+	partitions.private_data = C.calloc(C.size_t(totalLen), C.size_t(1))
 	dst := fromCArr[byte]((*byte)(partitions.private_data), totalLen)
 
 	partIDs := fromCArr[*C.cuint8_t](partitions.partitions, int(partitions.num_partitions))

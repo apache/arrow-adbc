@@ -22,8 +22,8 @@
 #include <cstring>
 #include <utility>
 
-#include <adbc.h>
-#include "adbc_driver_manager.h"
+#include "arrow-adbc/adbc.h"
+#include "arrow-adbc/adbc_driver_manager.h"
 
 #include "radbc.h"
 
@@ -112,11 +112,12 @@ extern "C" SEXP RAdbcLoadDriver(SEXP driver_name_sexp, SEXP entrypoint_sexp) {
 }
 
 extern "C" SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr) {
-  auto driver_init_func =
-      reinterpret_cast<AdbcDriverInitFunc>(R_ExternalPtrAddrFn(driver_init_func_xptr));
   if (!Rf_inherits(driver_init_func_xptr, "adbc_driver_init_func")) {
     Rf_error("Expected external pointer with class '%s'", "adbc_driver_init_func");
   }
+
+  auto driver_init_func =
+      reinterpret_cast<AdbcDriverInitFunc>(R_ExternalPtrAddrFn(driver_init_func_xptr));
 
   SEXP driver_xptr = PROTECT(adbc_allocate_xptr<AdbcDriver>());
   R_RegisterCFinalizer(driver_xptr, &finalize_driver_xptr);
@@ -148,11 +149,12 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
   adbc_error_stop(status, &error);
 
   if (driver_init_func_xptr != R_NilValue) {
-    auto driver_init_func =
-        reinterpret_cast<AdbcDriverInitFunc>(R_ExternalPtrAddrFn(driver_init_func_xptr));
     if (!Rf_inherits(driver_init_func_xptr, "adbc_driver_init_func")) {
       Rf_error("Expected external pointer with class '%s'", "adbc_driver_init_func");
     }
+
+    auto driver_init_func =
+        reinterpret_cast<AdbcDriverInitFunc>(R_ExternalPtrAddrFn(driver_init_func_xptr));
 
     status = AdbcDriverManagerDatabaseSetInitFunc(database, driver_init_func, &error);
     adbc_error_stop(status, &error);

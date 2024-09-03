@@ -235,6 +235,7 @@ Why ADBC?
    driver/postgresql
    driver/snowflake
    driver/sqlite
+   driver/authoring
 
 .. toctree::
    :maxdepth: 1
@@ -253,4 +254,5 @@ Why ADBC?
 
    development/contributing
    development/nightly
+   development/versioning
    development/releasing

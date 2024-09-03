@@ -20,7 +20,7 @@
 #include <benchmark/benchmark.h>
 #include <nanoarrow/nanoarrow.hpp>
 
-#include "adbc.h"
+#include "arrow-adbc/adbc.h"
 #include "validation/adbc_validation_util.h"
 
 #define _ADBC_BENCHMARK_RETURN_NOT_OK_IMPL(NAME, EXPR) \

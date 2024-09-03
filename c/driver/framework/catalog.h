@@ -25,7 +25,7 @@
 #include <variant>
 #include <vector>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 
 #include "driver/framework/status.h"
 
@@ -141,6 +141,14 @@ struct InfoValue {
   explicit InfoValue(uint32_t code, std::variant<std::string, int64_t> value)
       : code(code), value(std::move(value)) {}
 };
+
+void AdbcMakeArrayStream(struct ArrowSchema* schema, struct ArrowArray* array,
+                         struct ArrowArrayStream* out);
+
+Status AdbcGetInfo(std::vector<InfoValue> infos, struct ArrowArrayStream* out);
+
+Status AdbcGetTableTypes(const std::vector<std::string>& table_types,
+                         struct ArrowArrayStream* out);
 
 Status AdbcInitConnectionGetInfoSchema(struct ArrowSchema* schema,
                                        struct ArrowArray* array);
