@@ -16,6 +16,7 @@
 */
 
 using System.IO;
+using System.Runtime.InteropServices;
 using Apache.Arrow.Adbc.C;
 
 namespace Apache.Arrow.Adbc.Drivers.Interop.FlightSql
@@ -32,7 +33,18 @@ namespace Apache.Arrow.Adbc.Drivers.Interop.FlightSql
         /// <exception cref="FileNotFoundException"></exception>
         public static AdbcDriver LoadDriver()
         {
-            string file = "libadbc_driver_flightsql.dll";
+            string root = "runtimes";
+            string native = "native";
+            string fileName = $"libadbc_driver_flightsql";
+            string file;
+
+            // matches extensions in https://github.com/apache/arrow-adbc/blob/main/go/adbc/pkg/Makefile
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                file = Path.Combine(root, $"linux-{GetArchitecture()}", native, $"{fileName}.so");
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                file = Path.Combine(root, $"win-{GetArchitecture()}",   native, $"{fileName}.dll");
+            else
+                file = Path.Combine(root, $"osx-{GetArchitecture()}",   native, $"{fileName}.dylib");
 
             if (File.Exists(file))
             {
@@ -47,6 +59,11 @@ namespace Apache.Arrow.Adbc.Drivers.Interop.FlightSql
             return LoadDriver(file, "FlightSqlDriverInit");
         }
 
+        private static string GetArchitecture()
+        {
+            return RuntimeInformation.OSArchitecture.ToString().ToLower();
+        }
+
         /// <summary>
         /// Loads the Flight SQL Go driver from the current directory using the default name and entry point.
         /// </summary>
@@ -55,9 +72,9 @@ namespace Apache.Arrow.Adbc.Drivers.Interop.FlightSql
         /// <returns>An <see cref="AdbcDriver"/> based on the FlightSql Go driver.</returns>
         public static AdbcDriver LoadDriver(string file, string entryPoint)
         {
-            AdbcDriver FlightSqlDriver = CAdbcDriverImporter.Load(file, entryPoint);
+            AdbcDriver flightSqlDriver = CAdbcDriverImporter.Load(file, entryPoint);
 
-            return FlightSqlDriver;
+            return flightSqlDriver;
         }
     }
 }

@@ -25,6 +25,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public FlightSqlTestConfiguration()
         {
             this.RPCCallHeaders = new Dictionary<string, string>();
+            this.SupportsWriteUpdate = false;
+            this.SupportsCatalogs = false;
         }
 
         /// <summary>
@@ -77,7 +79,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         [JsonPropertyName("password")]
         public string? Password { get; set; }
-        [JsonPropertyName("datasourceKind")]
-        public string? DatasourceKind { get; set; }
+
+        [JsonPropertyName("supportsWriteUpdate")]
+        public bool SupportsWriteUpdate { get; set; }
+
+        [JsonPropertyName("supportsCatalogs")]
+        public bool SupportsCatalogs { get; set; }
     }
 }

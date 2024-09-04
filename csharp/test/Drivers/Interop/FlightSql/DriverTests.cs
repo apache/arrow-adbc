@@ -96,8 +96,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public void CanExecuteUpdate()
         {
             // Dremio doesn't have acceptPut implemented by design.
-            if(!string.IsNullOrEmpty(_testConfiguration.DatasourceKind))
-                Skip.If(_testConfiguration.DatasourceKind!.Equals("Dremio"));
+            Skip.If(_testConfiguration.SupportsWriteUpdate != true);
 
             string[] queries = FlightSqlTestingUtils.GetQueries(_testConfiguration);
 
@@ -121,8 +120,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(1)]
         public void AcceptPutNotImplemented()
         {
-            if (!string.IsNullOrEmpty(_testConfiguration.DatasourceKind))
-                Skip.If(!_testConfiguration.DatasourceKind!.Equals("Dremio"));
+            Skip.If(_testConfiguration.SupportsWriteUpdate != true);
 
             string[] queries = FlightSqlTestingUtils.GetQueries(_testConfiguration);
 
@@ -173,8 +171,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public void CanGetObjectsCatalogs(string catalogPattern)
         {
             // Dremio doesn't use catalogs
-            if (!string.IsNullOrEmpty(_testConfiguration.DatasourceKind))
-                Skip.If(_testConfiguration.DatasourceKind!.Equals("Dremio"));
+            Skip.If(_testConfiguration.SupportsCatalogs != true);
 
             string databaseName = _testConfiguration.Metadata.Catalog;
             string schemaName = _testConfiguration.Metadata.Schema;
@@ -360,8 +357,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public void CanGetObjectsTablesWithSpecialCharacter(string databaseName, string schemaName, string tableName)
         {
             // Dremio doesn't support write operations so temporary table needs to be re-thought
-            if (!string.IsNullOrEmpty(_testConfiguration.DatasourceKind))
-                Skip.If(_testConfiguration.DatasourceKind!.Equals("Dremio"));
+            Skip.If(_testConfiguration.SupportsWriteUpdate != true);
 
             CreateDatabaseAndTable(databaseName, schemaName, tableName);
 
