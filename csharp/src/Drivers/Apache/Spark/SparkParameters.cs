@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+using static System.Net.WebRequestMethods;
+
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     /// <summary>
@@ -28,6 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public const string Token = "adbc.spark.token";
         public const string AuthType = "adbc.spark.auth_type";
         public const string Type = "adbc.spark.type";
+        public const string DataTypeConv = "adbc.spark.data_type_conv";
     }
 
     public static class SparkAuthTypeConstants
@@ -119,4 +122,36 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         Empty = int.MaxValue,
     }
 
+    public static class SparkDataTypeConversionConstants
+    {
+        public const string None = "none";
+        public const string Scalar = "scalar";
+        public const string SupportedList = None;
+
+        public static bool TryParse(string? dataTypeConversion, out SparkDataTypeConversion dataTypeConversionValue)
+        {
+            switch (dataTypeConversion?.Trim().ToLowerInvariant())
+            {
+                case null:
+                case "":
+                case Scalar:
+                    dataTypeConversionValue = SparkDataTypeConversion.Scalar;
+                    return true;
+                case None:
+                    dataTypeConversionValue = SparkDataTypeConversion.None;
+                    return true;
+                default:
+                    dataTypeConversionValue = SparkDataTypeConversion.Invalid;
+                    return false;
+            }
+        }
+    }
+
+    public enum SparkDataTypeConversion
+    {
+        Invalid = 0,
+        None,
+        Scalar,
+        Empty = int.MaxValue,
+    }
 }

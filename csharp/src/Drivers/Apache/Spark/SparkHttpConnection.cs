@@ -118,6 +118,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
         }
 
+        protected override void ValidateOptions()
+        {
+            Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
+            SparkDataTypeConversionConstants.TryParse(dataTypeConv, out SparkDataTypeConversion dataTypeConversionValue);
+            DataTypeConversion = dataTypeConversionValue switch
+            {
+                SparkDataTypeConversion.None => dataTypeConversionValue!,
+                _ => throw new NotImplementedException($"Invalid or unsupported data type conversion option: '{dataTypeConv}'. Supported values: {SparkDataTypeConversionConstants.SupportedList}"),
+            };
+        }
+
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema);
 
         protected override Task<TTransport> CreateTransportAsync()

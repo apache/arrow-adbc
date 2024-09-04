@@ -45,6 +45,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return req;
         }
 
+        protected override void ValidateOptions() { }
+
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response) =>

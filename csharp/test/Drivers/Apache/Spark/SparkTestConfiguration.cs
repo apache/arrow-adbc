@@ -24,5 +24,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         [JsonPropertyName("type"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Type { get; set; } = string.Empty;
+
+        [JsonPropertyName("data_type_conv"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string DataTypeConversion { get; set; } = string.Empty;
     }
 }

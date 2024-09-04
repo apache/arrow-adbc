@@ -93,6 +93,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             {
                 parameters.Add(SparkParameters.Type, testConfiguration.Type!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.DataTypeConversion))
+            {
+                parameters.Add(SparkParameters.DataTypeConv, testConfiguration.DataTypeConversion!);
+            }
 
             return parameters;
         }
