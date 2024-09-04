@@ -47,7 +47,7 @@ AdbcConnection:
    /* What happens to the result set of stmt1? */
 
 What happens if the client application calls
-:cpp:func:`AdbcStatementExecuteQuery` on ``stmt1``, then on ``stmt2``,
+:c:func:`AdbcStatementExecuteQuery` on ``stmt1``, then on ``stmt2``,
 without reading the result set of ``stmt1``?  Some existing client
 libraries/protocols, like libpq, don't support concurrent execution of
 queries from a single connection.  So the driver would have to

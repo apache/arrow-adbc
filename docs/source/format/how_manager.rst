@@ -25,7 +25,7 @@ How Drivers and the Driver Manager Work Together
           or consuming drivers via FFI).
 
 When an application calls a function like
-:cpp:func:`AdbcStatementExecuteQuery`, how does it "know" what function in
+:c:func:`AdbcStatementExecuteQuery`, how does it "know" what function in
 which driver to actually call?
 
 This can happen in a few ways.  In the simplest case, the application links to
@@ -40,7 +40,7 @@ driver:
 This doesn't work with multiple drivers, or applications that don't/can't link
 directly to drivers (think dynamic loading, perhaps in a language like
 Python).  For this case, ADBC provides a table of function pointers
-(:cpp:struct:`AdbcDriver`), and a way to request this table from a driver.
+(:c:struct:`AdbcDriver`), and a way to request this table from a driver.
 Then, the application proceeds in two steps.  First, it dynamically loads a
 driver and calls an entrypoint function to get the function table:
 
@@ -128,7 +128,7 @@ driver at runtime.  In that case, it would need to know which functions from
 the driver correspond to which functions in the ADBC API definitions, without
 having to hardcode this knowledge.
 
-ADBC anticipated this, and defined :cpp:struct:`AdbcDriver`.  This is just a
+ADBC anticipated this, and defined :c:struct:`AdbcDriver`.  This is just a
 table of function pointers with one entry per ADBC function.  That way, an
 application can dynamically load a driver and call an entrypoint function that
 returns this table of function pointers.  (It does have to hardcode or guess
@@ -164,14 +164,14 @@ So to recap, a driver should implement these three things:
 #. An implementation of each ADBC function,
 #. A thin wrapper around each implementation function that exports the ADBC
    name for each function, and
-#. An entrypoint function that returns a :cpp:struct:`AdbcDriver` table,
+#. An entrypoint function that returns a :c:struct:`AdbcDriver` table,
    containing the functions from (1).
 
 Then, an application has these choices of ways to use a driver:
 
 - Link the driver directly and call ``Adbc…`` functions (only in the simplest
   cases) using (2) above,
-- Link the driver directly/dynamically, load the :cpp:struct:`AdbcDriver`
+- Link the driver directly/dynamically, load the :c:struct:`AdbcDriver`
   via (3) above, and call ADBC functions through function pointers (generally
   not recommended),
 - Link the ADBC driver manager, call ``Adbc…`` functions, and let the driver
@@ -180,7 +180,7 @@ Then, an application has these choices of ways to use a driver:
 In other words, it's usually easiest to just always use the driver manager.
 But the magic it pulls isn't required or all that complex.
 
-.. note:: You may ask: when we have :cpp:struct:`AdbcDriver`, why do we bother
+.. note:: You may ask: when we have :c:struct:`AdbcDriver`, why do we bother
           defining both ``AdbcStatementExecuteQuery`` and
           ``SqliteStatementExecuteQuery`` (i.e., why do both (1) and (2)
           above)?  Can't we just define the ``Adbc…`` version, and put it into

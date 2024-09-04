@@ -30,13 +30,13 @@ Of course, we can never add/remove/change struct members, and we can
 never change the signatures of existing functions.
 
 In ADBC 1.1.0, it was decided this would only apply to the "public"
-API, and not the driver-internal API (:cpp:class:`AdbcDriver`).  New
+API, and not the driver-internal API (:c:struct:`AdbcDriver`).  New
 members were added to this struct in the 1.1.0 revision.
 Compatibility is handled as follows:
 
-The driver entrypoint, :cpp:type:`AdbcDriverInitFunc`, is given a
+The driver entrypoint, :c:type:`AdbcDriverInitFunc`, is given a
 version and a pointer to a table of function pointers to initialize
-(the :cpp:class:`AdbcDriver`).  The size of the table will depend on
+(the :c:struct:`AdbcDriver`).  The size of the table will depend on
 the version; when a new version of ADBC is accepted, then a new table
 of function pointers may be expanded.  For each version, the driver
 knows the expected size of the table, and must not read/write fields
@@ -46,7 +46,7 @@ scenarios are possible:
 - An updated client application uses an old driver library.  The
   client will pass a `version` field greater than what the driver
   recognizes, so the driver will return
-  :c:type:`ADBC_STATUS_NOT_IMPLEMENTED` and the client can decide
+  :c:macro:`ADBC_STATUS_NOT_IMPLEMENTED` and the client can decide
   whether to abort or retry with an older version.
 - An old client application uses an updated driver library.  The
   client will pass a ``version`` lower than what the driver

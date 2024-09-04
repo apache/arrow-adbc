@@ -15,6 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
+/// \file arrow-adbc/adbc_driver_manager.h ADBC Driver Manager
+///
+/// A helper library to dynamically load and use multiple ADBC drivers in the
+/// same process.
+
 #pragma once
 
 #include <arrow-adbc/adbc.h>

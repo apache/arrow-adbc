@@ -43,7 +43,6 @@ extensions = [
     "adbc_cookbook",
     # generic directives to enable intersphinx for java
     "adbc_java_domain",
-    "breathe",
     "numpydoc",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
@@ -78,12 +77,15 @@ autodoc_default_options = {
     "show-inheritance": True,
 }
 
-# -- Options for Breathe -----------------------------------------------------
-
-breathe_default_project = "adbc"
-breathe_projects = {
-    "adbc": "../../c/apidoc/xml/",
-}
+# https://stackoverflow.com/questions/11417221/sphinx-autodoc-gives-warning-pyclass-reference-target-not-found-type-warning
+nitpick_ignore = [
+    ("py:class", "abc.ABC"),
+    ("py:class", "datetime.date"),
+    ("py:class", "datetime.datetime"),
+    ("py:class", "datetime.time"),
+    ("py:class", "enum.Enum"),
+    ("py:class", "enum.IntEnum"),
+]
 
 # -- Options for doctest -----------------------------------------------------
 
@@ -132,10 +134,6 @@ def _find_intersphinx_mappings():
             url, _, path = val.partition(";")
             print("[ADBC] Found Intersphinx mapping", name)
             intersphinx_mapping[name] = (url, path)
-        #         "adbc_java": (
-        #     "http://localhost:8000/",
-        #     "/home/lidavidm/Code/arrow-adbc/java/target/site/apidocs/objects.inv",
-        # ),
 
 
 _find_intersphinx_mappings()

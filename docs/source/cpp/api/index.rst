@@ -19,8 +19,5 @@
 C/C++ API Reference
 ===================
 
-.. toctree::
-   :maxdepth: 2
-
-   adbc
-   adbc_driver_manager
+This is a stub page for the Doxygen documentation. If you're seeing this page,
+it means that the actual documentation was not generated.

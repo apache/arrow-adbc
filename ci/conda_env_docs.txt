@@ -15,17 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-breathe
 doxygen
-# XXX(https://github.com/apache/arrow-adbc/issues/987)
-furo>=2023.09.10
+furo
 make
 # Needed to install mermaid
 nodejs
 numpydoc
 pytest
-# XXX: we're stuck until we can get rid of Breathe
-sphinx=6.*
+sphinx >=8
 sphinx-autobuild
 sphinx-copybutton
 sphinx-design
