@@ -174,6 +174,14 @@ TEST(PostgresTypeTest, PostgresTypeSetSchema) {
                         &typnameMetadataValue);
   EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
             "numeric");
+  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:name"),
+                        &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "arrow.opaque");
+  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:metadata"),
+                        &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            R"({"type_name": "numeric", "vendor_name": "PostgreSQL"})");
   schema.reset();
 
   ArrowSchemaInit(schema.get());
