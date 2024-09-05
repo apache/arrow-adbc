@@ -717,6 +717,23 @@ overflow/underflow; an error will be returned if this would be
 the case.</p>
 </aside>
 </aside>
+<section id="unknown-types">
+<h4>Unknown Types<a class="headerlink" href="#unknown-types" title="Permalink to this heading">¶</a></h4>
+<p>Types without direct Arrow equivalents can still be returned by the driver.
+In this case, the Arrow type will be binary, and the contents will be the raw
+bytes as provided by the PostgreSQL wire protocol.</p>
+<p>For Arrow implementations that support the <a class="reference external" href="https://arrow.apache.org/docs/format/CanonicalExtensions.html" title="(in Apache Arrow v17.0.0)"><span class="xref std std-doc">Opaque canonical
+extension type</span></a>, the extension type metadata is
+also always present.  This helps differentiate when the driver intentionally
+returned a binary column from when it returned a binary column as a fallback.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Currently, the driver also attaches a metadata key named
+<code class="docutils literal notranslate"><span class="pre">ADBC:posgresql:typname</span></code> to the schema field of the unknown
+column, but this has been deprecated in favor of the Opaque type
+and you should not rely on this key continuing to exist.</p>
+</div>
+</section>
 </section>
 </section>
 <section id="software-versions">
@@ -794,7 +811,10 @@ United States and other countries.
 <li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>
 <li><a class="reference internal" href="#partitioned-result-sets">Partitioned Result Sets</a></li>
 <li><a class="reference internal" href="#transactions">Transactions</a></li>
-<li><a class="reference internal" href="#type-support">Type Support</a></li>
+<li><a class="reference internal" href="#type-support">Type Support</a><ul>
+<li><a class="reference internal" href="#unknown-types">Unknown Types</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#software-versions">Software Versions</a></li>
