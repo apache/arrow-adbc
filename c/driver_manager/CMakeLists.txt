@@ -35,6 +35,10 @@ include_directories(SYSTEM ${REPOSITORY_ROOT}/c/include/)
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver)
 
+install(FILES "${REPOSITORY_ROOT}/c/include/adbc.h" DESTINATION include)
+install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/adbc.h"
+        DESTINATION include/arrow-adbc)
+
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
