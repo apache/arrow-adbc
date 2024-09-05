@@ -643,3 +643,59 @@
 - **csharp**: Move more options to be set centrally and enable TreatWarningsAsErrors (#1852)
 - **csharp**: Initial changes for ADBC 1.1 in C# implementation (#1821)
 - **csharp/src/Drivers/Apache/Spark**: implement async overrides for Spark driver (#1830)
+
+## ADBC Libraries 14 (2024-08-30)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.2.0
+- C#: 0.14.0
+- Java: 0.14.0
+- R: 0.14.0
+- Rust: 0.14.0
+
+### Feat
+
+- **go/adbc/driver/snowflake**: Keep track of all files copied and skip empty files in bulk_ingestion (#2106)
+- **dev/release**: add Rust release process (#2107)
+- **go/adbc/driver/bigquery**: Implement GetObjects and get tests passing (#2044)
+- **csharp/src/Client**: add support for parameterized execution (#2096)
+- **c/driver/postgresql**: Support queries that bind parameters and return a result (#2065)
+- **c/driver/postgresql**: Support JSON and JSONB types (#2072)
+- **go/adbc/driver/bigquery**: add schema to reader for BigQuery (#2050)
+- **c/driver/postgresql**: Implement consuming a PGresult via the copy reader (#2029)
+- **csharp/src/Drivers/BigQuery**: add support for configurable query timeouts (#2043)
+- **go/adbc/driver/snowflake**: use vectorized scanner for bulk ingest (#2025)
+- **c**: Add BigQuery library to Meson build system (#1994)
+- **c**: Add pkgconfig support to Meson build system (#1992)
+- **c/driver/postgresql**: FIXED_SIZED_LIST Writer support (#1975)
+- **go/adbc/driver**: add support for Google BigQuery (#1722)
+- **c/driver/postgresql**: Implement LIST/LARGE_LIST Writer (#1962)
+- **c/driver/postgresql**: Read/write support for TIME64[us] (#1960)
+- **c/driver/postgresql**: UInt(8/16/32) Writer (#1961)
+
+### Refactor
+
+- **c/driver/framework**: Separate C/C++ conversions and error handling into minimal "base" framework (#2090)
+- **c/driver/framework**: Remove fmt as required dependency of the driver framework (#2081)
+- **c**: Updated include/install paths for adbc.h (#1965)
+- **c/driver/postgresql**: Factory func for CopyWriter construction (#1998)
+- **c**: Check MakeArray/Batch Error codes with macro (#1959)
+
+### Fix
+
+- **go/adbc/driver/snowflake**: Bump gosnowflake to fix context error (#2091)
+- **c/driver/postgresql**: Fix ingest of streams with zero arrays (#2073)
+- **csharp/src/Drivers/BigQuery**: update BigQuery test cases (#2048)
+- **ci**: Pin r-lib actions as a workaround for latest action updates (#2051)
+- **csharp/src/Drivers/BigQuery**: update BigQuery documents (#2047)
+- **go/adbc/driver/snowflake**: split files properly after reaching targetSize on ingestion (#2026)
+- **c/driver/postgresql**: Ensure schema ordering is consisent and respects case sensitivity of table names (#2028)
+- **docs**: update broken link (#2016)
+- **docs**: correct snowflake options for bulk ingest (#2004)
+- **go/adbc/driver/flightsql**: propagate headers in GetObjects (#1996)
+- **c/driver/postgresql**: Fix compiler warning on gcc14 (#1990)
+- **r/adbcdrivermanager**: Ensure that class of object is checked before calling R_ExternalPtrAddrFn (#1989)
+- **ci**: update website_build.sh for new versioning scheme (#1972)
+- **dev/release**: update C# <VersionSuffix> tag (#1973)
+- **c/vendor/nanoarrow**: Fix -Wreorder warning (#1966)
