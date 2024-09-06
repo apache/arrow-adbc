@@ -1485,7 +1485,7 @@ TEST_F(PostgresStatementTest, SqlExecuteCopyZeroRowOutput) {
                                           &reader.rows_affected, &error),
                 IsOkStatus());
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.MaybeNext(), EINVAL);
     ASSERT_EQ(reader.array->release, nullptr);
   }
 }
