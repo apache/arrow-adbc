@@ -77,6 +77,11 @@ int TupleReader::InitQueryAndFetchFirst(struct ArrowError* error) {
     return AdbcStatusCodeToErrno(status_);
   }
 
+  if (get_copy_res == -1) {
+    is_finished_ = true;
+    return NANOARROW_OK;
+  }
+
   int na_res = copy_reader_->ReadHeader(&data_, error);
   if (na_res != NANOARROW_OK) {
     SetError(&error_, "[libpq] ReadHeader failed: %s", error->message);
@@ -152,6 +157,11 @@ int TupleReader::GetNext(struct ArrowArray* out) {
 
   if (row_id_ == -1) {
     NANOARROW_RETURN_NOT_OK(InitQueryAndFetchFirst(&error));
+    if (is_finished_) {
+      out->release = nullptr;
+      return 0;
+    }
+
     row_id_++;
   }
 
