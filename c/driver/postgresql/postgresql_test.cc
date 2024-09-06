@@ -1436,7 +1436,7 @@ TEST_F(PostgresStatementTest, ExecuteParameterizedQueryWithRowsAffected) {
   }
 }
 
-TEST_F(PostgresStatementTest, SqlExecuteCopyZeroRowOutput) {
+TEST_F(PostgresStatementTest, SqlExecuteCopyZeroRowOutputError) {
   ASSERT_THAT(quirks()->DropTable(&connection, "adbc_test", &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
