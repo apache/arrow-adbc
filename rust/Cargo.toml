@@ -25,6 +25,12 @@ description = "Rust implementation of Arrow Database Connectivity (ADBC)"
 edition = "2021"
 authors = ["Apache Arrow <dev@arrow.apache.org>"]
 license = "Apache-2.0"
+documentation = "https://docs.rs/adbc_core/"
+readme = "README.md"
+homepage = "https://arrow.apache.org/adbc/"
+repository = "https://github.com/apache/arrow-adbc"
+keywords = ["arrow"]
+categories = ["database"]
 
 [workspace.dependencies]
 arrow = { version = "51.0.0", default-features = false, features = ["ffi"] }
