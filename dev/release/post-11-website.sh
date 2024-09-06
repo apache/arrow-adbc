@@ -30,7 +30,7 @@ main() {
     local -r arrow_site="$1"
 
     # Extract ADBC spec version from Doxygen macro in header.
-    local -r spec_version=$(grep '[\]version' "${SOURCE_TOP_DIR}/adbc.h" | awk '{print $NF}')
+    local -r spec_version=$(grep '[\]version' "${SOURCE_TOP_DIR}/c/include/arrow-adbc/adbc.h" | awk '{print $NF}')
     local -r date=${POST_DATE:-$(date "+%Y-%m-%d")}
     local -r filename="${arrow_site}/_posts/${date}-adbc-${RELEASE}-release.md"
     local -r contributor_command="git shortlog --perl-regexp --author='^((?!dependabot\[bot\]).*)$' -sn apache-arrow-adbc-${PREVIOUS_RELEASE}..apache-arrow-adbc-${RELEASE}"
