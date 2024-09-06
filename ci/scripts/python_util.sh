@@ -136,7 +136,8 @@ function setup_build_vars {
         export CIBW_BUILD='*-manylinux_*'
         export CIBW_PLATFORM="linux"
     fi
-    export CIBW_SKIP="pp* ${CIBW_SKIP}"
+    # No PyPy, no Python 3.8
+    export CIBW_SKIP="pp* cp38-* ${CIBW_SKIP}"
 }
 
 function test_packages {
