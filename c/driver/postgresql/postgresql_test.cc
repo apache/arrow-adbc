@@ -1486,7 +1486,13 @@ TEST_F(PostgresStatementTest, SqlExecuteCopyZeroRowOutputError) {
                 IsOkStatus());
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_EQ(reader.MaybeNext(), EINVAL);
-    ASSERT_EQ(reader.array->release, nullptr);
+
+    AdbcStatusCode status = ADBC_STATUS_OK;
+    const struct AdbcError* detail =
+        AdbcErrorFromArrayStream(&reader.stream.value, &status);
+    ASSERT_NE(nullptr, detail);
+    ASSERT_EQ(ADBC_STATUS_INVALID_ARGUMENT, status);
+    ASSERT_EQ("22023", std::string_view(detail->sqlstate, 5));
   }
 }
 
