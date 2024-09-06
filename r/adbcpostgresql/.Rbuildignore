@@ -4,9 +4,6 @@
 ^bootstrap\.R$
 ^README\.Rmd$
 ^src/Makevars$
-^src/sqlite3\.c$
-^src/sqlite3\.h$
-^docker-compose\.yml$
 ^configure\.win$
 ^windows$
 ^\.vscode$
@@ -14,3 +11,5 @@
 ^docs$
 ^pkgdown$
 ^cran-comments\.md$
+^compile_commands\.json$
+^\.cache$
