@@ -21,7 +21,7 @@ description = "An ADBC driver for working with Apache Arrow Flight SQL."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dynamic = ["version"]
 dependencies = [
     "adbc-driver-manager",

@@ -616,14 +616,6 @@ jobs:
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
 
-      - name: Test wheel 3.8
-        env:
-          ARCH: ${{ matrix.arch }}
-          PLATFORM: ${{ matrix.platform }}
-        run: |
-          pushd adbc
-          env PYTHON=3.8 docker compose run python-wheel-manylinux-test
-
       - name: Test wheel 3.9
         env:
           ARCH: ${{ matrix.arch }}
@@ -728,11 +720,10 @@ jobs:
         if: matrix.arch == 'amd64'
         run: |
           pushd adbc
-          sudo ci/scripts/install_python.sh macos 3.8
           sudo ci/scripts/install_python.sh macos 3.9
           popd
 
-      - name: Install Python (AMD64 only)
+      - name: Install Python
         run: |
           pushd adbc
           sudo ci/scripts/install_python.sh macos 3.10
@@ -761,17 +752,6 @@ jobs:
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
-
-      - name: Test wheel 3.8
-        if: matrix.arch == 'amd64'
-        run: |
-          pushd adbc
-
-          /Library/Frameworks/Python.framework/Versions/3.8/bin/python3.8 -m venv test-env-38
-          source test-env-38/bin/activate
-          export PYTHON_VERSION=3.8
-          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
-          deactivate
 
       - name: Test wheel 3.9
         if: matrix.arch == 'amd64'
