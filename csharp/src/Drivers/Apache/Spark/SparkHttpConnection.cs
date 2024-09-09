@@ -18,20 +18,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Reflection;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
-using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Ipc;
-using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
@@ -124,7 +118,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             HiveServer2DataTypeConversion dataTypeConversionValue = HiveServer2DataTypeConversionConstants.Parse(dataTypeConv);
             DataTypeConversion = dataTypeConversionValue switch
             {
-                HiveServer2DataTypeConversion.None 
+                HiveServer2DataTypeConversion.None
                 or HiveServer2DataTypeConversion.Scalar => dataTypeConversionValue!,
                 HiveServer2DataTypeConversion.Empty => HiveServer2DataTypeConversion.Scalar,
                 _ => throw new NotImplementedException($"Invalid or unsupported data type conversion option: '{dataTypeConv}'. Supported values: {HiveServer2DataTypeConversionConstants.SupportedList}"),
