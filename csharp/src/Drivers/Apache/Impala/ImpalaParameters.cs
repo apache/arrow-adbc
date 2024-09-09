@@ -18,7 +18,7 @@
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     /// <summary>
-    /// Parameters used for connecting to Spark data sources.
+    /// Parameters used for connecting to Impala data sources.
     /// </summary>
     public static class ImpalaParameters
     {
@@ -35,31 +35,31 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         public const string UsernameOnly = "username_only";
         public const string Basic = "basic";
 
-        public static bool TryParse(string? authType, out SparkAuthType authTypeValue)
+        public static bool TryParse(string? authType, out ImpalaAuthType authTypeValue)
         {
             switch (authType?.Trim().ToLowerInvariant())
             {
                 case null:
                 case "":
-                    authTypeValue = SparkAuthType.Empty;
+                    authTypeValue = ImpalaAuthType.Empty;
                     return true;
                 case None:
-                    authTypeValue = SparkAuthType.None;
+                    authTypeValue = ImpalaAuthType.None;
                     return true;
                 case UsernameOnly:
-                    authTypeValue = SparkAuthType.UsernameOnly;
+                    authTypeValue = ImpalaAuthType.UsernameOnly;
                     return true;
                 case Basic:
-                    authTypeValue = SparkAuthType.Basic;
+                    authTypeValue = ImpalaAuthType.Basic;
                     return true;
                 default:
-                    authTypeValue = SparkAuthType.Invalid;
+                    authTypeValue = ImpalaAuthType.Invalid;
                     return false;
             }
         }
     }
 
-    public enum SparkAuthType
+    public enum ImpalaAuthType
     {
         Invalid = 0,
         None,

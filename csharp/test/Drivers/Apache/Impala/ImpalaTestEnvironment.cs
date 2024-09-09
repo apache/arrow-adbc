@@ -33,7 +33,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 
         public override string TestConfigVariable => "IMPALA_TEST_CONFIG_FILE";
 
-        public override string SqlDataResourceLocation => "Spark/Resources/ImpalaData.sql";
+        public override string SqlDataResourceLocation => "Impala/Resources/ImpalaData.sql";
 
         public override int ExpectedColumnCount => 17;
 

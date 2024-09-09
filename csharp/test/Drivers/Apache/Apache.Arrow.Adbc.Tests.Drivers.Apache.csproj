@@ -27,6 +27,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Impala\Resources\ImpalaData.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Spark\Resources\sparkconfig-http.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
