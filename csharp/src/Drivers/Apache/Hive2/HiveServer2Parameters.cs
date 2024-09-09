@@ -17,16 +17,11 @@
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    public static class HiveServer2Parameters
-    {
-        public const string DataTypeConv = "adbc.hive2.data_type_conv";
-    }
-
     public static class HiveServer2DataTypeConversionConstants
     {
         public const string None = "none";
         public const string Scalar = "scalar";
-        public const string SupportedList = None;
+        public const string SupportedList = None + ", " + Scalar;
 
         public static HiveServer2DataTypeConversion Parse(string? dataTypeConversion)
         {

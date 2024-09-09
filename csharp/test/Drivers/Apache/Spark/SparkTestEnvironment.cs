@@ -97,7 +97,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             }
             if (!string.IsNullOrEmpty(testConfiguration.DataTypeConversion))
             {
-                parameters.Add(HiveServer2Parameters.DataTypeConv, testConfiguration.DataTypeConversion!);
+                parameters.Add(SparkParameters.DataTypeConv, testConfiguration.DataTypeConversion!);
             }
 
             return parameters;

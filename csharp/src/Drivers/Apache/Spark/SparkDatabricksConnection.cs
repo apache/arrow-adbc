@@ -48,7 +48,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override void ValidateOptions()
         {
-            Properties.TryGetValue(HiveServer2Parameters.DataTypeConv, out string? dataTypeConv);
+            Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
             HiveServer2DataTypeConversion dataTypeConvValue = HiveServer2DataTypeConversionConstants.Parse(dataTypeConv);
             DataTypeConversion = dataTypeConvValue switch
             {

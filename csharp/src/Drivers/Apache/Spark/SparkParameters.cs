@@ -28,6 +28,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public const string Token = "adbc.spark.token";
         public const string AuthType = "adbc.spark.auth_type";
         public const string Type = "adbc.spark.type";
+        public const string DataTypeConv = "adbc.spark.data_type_conv";
     }
 
     public static class SparkAuthTypeConstants
@@ -118,6 +119,4 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         HDInsight,
         Empty = int.MaxValue,
     }
-
-
 }
