@@ -120,16 +120,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override void ValidateOptions()
         {
-            Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
-            SparkDataTypeConversionConstants.TryParse(dataTypeConv, out SparkDataTypeConversion dataTypeConversionValue);
+            Properties.TryGetValue(HiveServer2Parameters.DataTypeConv, out string? dataTypeConv);
+            HiveServer2DataTypeConversion dataTypeConversionValue = HiveServer2DataTypeConversionConstants.Parse(dataTypeConv);
             DataTypeConversion = dataTypeConversionValue switch
             {
-                SparkDataTypeConversion.None => dataTypeConversionValue!,
-                _ => throw new NotImplementedException($"Invalid or unsupported data type conversion option: '{dataTypeConv}'. Supported values: {SparkDataTypeConversionConstants.SupportedList}"),
+                HiveServer2DataTypeConversion.None 
+                or HiveServer2DataTypeConversion.Scalar => dataTypeConversionValue!,
+                HiveServer2DataTypeConversion.Empty => HiveServer2DataTypeConversion.Scalar,
+                _ => throw new NotImplementedException($"Invalid or unsupported data type conversion option: '{dataTypeConv}'. Supported values: {HiveServer2DataTypeConversionConstants.SupportedList}"),
             };
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         protected override Task<TTransport> CreateTransportAsync()
         {
@@ -248,39 +250,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override SparkServerType ServerType => SparkServerType.Http;
-
-        internal class HiveServer2SchemaParser : SchemaParser
-        {
-            public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType)
-            {
-                return thriftType.Type switch
-                {
-                    TTypeId.BIGINT_TYPE => Int64Type.Default,
-                    TTypeId.BINARY_TYPE => BinaryType.Default,
-                    TTypeId.BOOLEAN_TYPE => BooleanType.Default,
-                    TTypeId.DOUBLE_TYPE
-                    or TTypeId.FLOAT_TYPE => DoubleType.Default,
-                    TTypeId.INT_TYPE => Int32Type.Default,
-                    TTypeId.SMALLINT_TYPE => Int16Type.Default,
-                    TTypeId.TINYINT_TYPE => Int8Type.Default,
-                    TTypeId.CHAR_TYPE
-                    or TTypeId.DATE_TYPE
-                    or TTypeId.DECIMAL_TYPE
-                    or TTypeId.NULL_TYPE
-                    or TTypeId.STRING_TYPE
-                    or TTypeId.TIMESTAMP_TYPE
-                    or TTypeId.VARCHAR_TYPE
-                    or TTypeId.INTERVAL_DAY_TIME_TYPE
-                    or TTypeId.INTERVAL_YEAR_MONTH_TYPE
-                    or TTypeId.ARRAY_TYPE
-                    or TTypeId.MAP_TYPE
-                    or TTypeId.STRUCT_TYPE
-                    or TTypeId.UNION_TYPE
-                    or TTypeId.USER_DEFINED_TYPE => StringType.Default,
-                    TTypeId.TIMESTAMPLOCALTZ_TYPE => throw new NotImplementedException(),
-                    _ => throw new NotImplementedException(),
-                };
-            }
-        }
     }
 }

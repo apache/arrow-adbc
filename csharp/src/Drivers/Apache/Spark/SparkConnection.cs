@@ -998,8 +998,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected abstract void ValidateAuthentication();
         protected abstract void ValidateOptions();
 
-        protected SparkDataTypeConversion DataTypeConversion = SparkDataTypeConversion.None;
-
         protected abstract Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response);
         protected abstract Task<TRowSet> GetRowSetAsync(TGetColumnsResp response);
         protected abstract Task<TRowSet> GetRowSetAsync(TGetTablesResp response);

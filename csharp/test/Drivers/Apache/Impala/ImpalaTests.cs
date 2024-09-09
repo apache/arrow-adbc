@@ -15,36 +15,30 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.Apache.Impala;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
-    public class ImpalaTests
+    public class ImpalaTests : TestBase<ApacheTestConfiguration, ImpalaTestEnvironment>
     {
-        [SkippableFact, Order(1)]
-        public void CanDriverConnect()
+        public ImpalaTests(ITestOutputHelper? outputHelper)
+            : base(outputHelper, new ImpalaTestEnvironment.Factory())
         {
-            ApacheTestConfiguration testConfiguration = Utils.GetTestConfiguration<ApacheTestConfiguration>("impalaconfig.json");
+        }
 
-            Dictionary<string, string> parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "HostName", testConfiguration.HostName },
-                { "Port", testConfiguration.Port },
-            };
-
-            AdbcDatabase database = new ImpalaDriver().Open(parameters);
-            AdbcConnection connection = database.Connect(new Dictionary<string, string>());
-            AdbcStatement statement = connection.CreateStatement();
-            statement.SqlQuery = testConfiguration.Query;
+        [SkippableFact, Order(1)]
+        public void CanExecuteQuery()
+        {
+            AdbcStatement statement = Connection.CreateStatement();
+            statement.SqlQuery = TestConfiguration.Query;
             QueryResult queryResult = statement.ExecuteQuery();
 
-            //Adbc.Tests.ConnectionTests.CanDriverConnect(queryResult, testConfiguration.ExpectedResultsCount);
-
+            DriverTests.CanExecuteQuery(queryResult, TestConfiguration.ExpectedResultsCount);
         }
     }
 }

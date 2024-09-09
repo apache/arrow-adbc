@@ -51,7 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
             TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
-            return Connection.SchemaParser.GetArrowSchema(response.Schema);
+            return Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
         }
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()

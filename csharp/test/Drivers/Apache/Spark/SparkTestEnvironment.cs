@@ -47,9 +47,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             return string.Format("CREATE TABLE {0} ({1})", tableName, columns);
         }
 
-        public string? GetValueForProtocolVersion(string? hiveValue, string? databrickValue) => ServerType != SparkServerType.Databricks ? hiveValue : databrickValue;
+        public string? GetValueForProtocolVersion(string? hiveValue, string? databrickValue) =>
+            ServerType != SparkServerType.Databricks && ((HiveServer2Connection)Connection).DataTypeConversion == HiveServer2DataTypeConversion.None ? hiveValue : databrickValue;
 
-        public object? GetValueForProtocolVersion(object? hiveValue, object? databrickValue) => ServerType != SparkServerType.Databricks ? hiveValue : databrickValue;
+        public object? GetValueForProtocolVersion(object? hiveValue, object? databrickValue) =>
+            ServerType != SparkServerType.Databricks && ((HiveServer2Connection)Connection).DataTypeConversion == HiveServer2DataTypeConversion.None ? hiveValue : databrickValue;
 
         public override string Delimiter => "`";
 
@@ -95,13 +97,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             }
             if (!string.IsNullOrEmpty(testConfiguration.DataTypeConversion))
             {
-                parameters.Add(SparkParameters.DataTypeConv, testConfiguration.DataTypeConversion!);
+                parameters.Add(HiveServer2Parameters.DataTypeConv, testConfiguration.DataTypeConversion!);
             }
 
             return parameters;
         }
 
-        protected SparkServerType ServerType => ((SparkConnection)Connection).ServerType;
+        public SparkServerType ServerType => ((SparkConnection)Connection).ServerType;
 
         public override string VendorVersion => ((HiveServer2Connection)Connection).VendorVersion;
 

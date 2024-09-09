@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
@@ -84,8 +83,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string tableName) => throw new System.NotImplementedException();
 
-        internal override SchemaParser SchemaParser => throw new NotImplementedException();
+        internal override SchemaParser SchemaParser { get; } = new HiveServer2SchemaParser();
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => throw new NotImplementedException();
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: DataTypeConversion);
     }
 }
