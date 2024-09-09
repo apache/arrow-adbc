@@ -417,9 +417,17 @@ Be sure to go through on the following checklist:
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
 
-   Write a release announcement (see `example <https://lists.apache.org/thread/6rkjwvyjjfodrxffllh66pcqnp729n3k>`_) and send to announce@apache.org and dev@arrow.apache.org.
+   Write a release announcement and send to announce@apache.org and
+   dev@arrow.apache.org.
 
-   The announcement to announce@apache.org must be sent from your apache.org e-mail address to be accepted.
+   The announcement to announce@apache.org must be sent from your apache.org
+   e-mail address to be accepted.
+
+   Template:
+
+   .. code-block:: Bash
+
+      dev/release/post-09-announce.sh
 
 .. dropdown:: Remove old artifacts
    :class-title: sd-fs-5
@@ -429,7 +437,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      dev/release/post-09-remove-old-artifacts.sh
+      dev/release/post-10-remove-old-artifacts.sh
 
 .. dropdown:: Bump versions
    :class-title: sd-fs-5
@@ -439,8 +447,8 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-10-bump-versions.sh ../arrow
-      dev/release/post-10-bump-versions.sh <arrow-dir>
+      # dev/release/post-11-bump-versions.sh ../arrow
+      dev/release/post-11-bump-versions.sh <arrow-dir>
 
 .. dropdown:: Publish release blog post
    :class-title: sd-fs-5
@@ -452,7 +460,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-11-website.sh ../arrow-site
-      dev/release/post-11-website.sh <arrow-site-dir>
+      # dev/release/post-12-website.sh ../arrow-site
+      dev/release/post-12-website.sh <arrow-site-dir>
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml
