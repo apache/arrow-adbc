@@ -91,7 +91,7 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
 
       .. code-block:: cpp
 
-         #include "adbc.h"
+         #include "arrow-adbc/adbc.h"
 
          // Ignoring error handling
          struct AdbcDatabase database;
@@ -328,6 +328,23 @@ being read or written.
                 adjusted to the PostgreSQL epoch (2000-01-01) and so may
                 overflow/underflow; an error will be returned if this would be
                 the case.
+
+Unknown Types
+~~~~~~~~~~~~~
+
+Types without direct Arrow equivalents can still be returned by the driver.
+In this case, the Arrow type will be binary, and the contents will be the raw
+bytes as provided by the PostgreSQL wire protocol.
+
+For Arrow implementations that support the :external:doc:`Opaque canonical
+extension type <format/CanonicalExtensions>`, the extension type metadata is
+also always present.  This helps differentiate when the driver intentionally
+returned a binary column from when it returned a binary column as a fallback.
+
+.. warning:: Currently, the driver also attaches a metadata key named
+             ``ADBC:posgresql:typname`` to the schema field of the unknown
+             column, but this has been deprecated in favor of the Opaque type
+             and you should not rely on this key continuing to exist.
 
 Software Versions
 =================

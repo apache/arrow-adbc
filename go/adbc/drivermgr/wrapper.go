@@ -24,7 +24,7 @@ package drivermgr
 // #if !defined(ADBC_EXPORTING)
 // #define ADBC_EXPORTING
 // #endif
-// #include "adbc.h"
+// #include "arrow-adbc/adbc.h"
 // #include <stdlib.h>
 // #include <string.h>
 //
@@ -53,9 +53,9 @@ import (
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v17/arrow"
-	"github.com/apache/arrow/go/v17/arrow/array"
-	"github.com/apache/arrow/go/v17/arrow/cdata"
+	"github.com/apache/arrow/go/v18/arrow"
+	"github.com/apache/arrow/go/v18/arrow/array"
+	"github.com/apache/arrow/go/v18/arrow/cdata"
 )
 
 type option struct {

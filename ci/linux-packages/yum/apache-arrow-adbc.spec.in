@@ -122,6 +122,7 @@ Libraries and header files for ADBC driver manager.
 %license LICENSE.txt NOTICE.txt
 %{_includedir}/adbc.h
 %{_includedir}/adbc_driver_manager.h
+%{_includedir}/arrow-adbc
 %{_libdir}/cmake/AdbcDriverManager/
 %{_libdir}/libadbc_driver_manager.a
 %{_libdir}/libadbc_driver_manager.so

@@ -24,10 +24,10 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v17/arrow"
-	"github.com/apache/arrow/go/v17/arrow/array"
-	"github.com/apache/arrow/go/v17/arrow/ipc"
-	"github.com/apache/arrow/go/v17/arrow/memory"
+	"github.com/apache/arrow/go/v18/arrow"
+	"github.com/apache/arrow/go/v18/arrow/array"
+	"github.com/apache/arrow/go/v18/arrow/ipc"
+	"github.com/apache/arrow/go/v18/arrow/memory"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -124,7 +124,7 @@ func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allo
 		curChIndex: 0,
 		err:        nil,
 		cancelFn:   cancelFn,
-		schema:     nil,
+		schema:     rdr.Schema(),
 	}
 
 	go func() {

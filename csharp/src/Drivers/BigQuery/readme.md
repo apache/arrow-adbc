@@ -51,6 +51,9 @@ https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/G
 **adbc.bigquery.auth_json_credential**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Required if using `service` authentication. This value is passed to the [GoogleCredential.FromJson](https://cloud.google.com/dotnet/docs/reference/Google.Apis/latest/Google.Apis.Auth.OAuth2.GoogleCredential#Google_Apis_Auth_OAuth2_GoogleCredential_FromJson_System_String) method.
 
+**adbc.bigquery.get_query_results_options.timeout**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the timeout (in minutes) for the GetQueryResultsOptions value. If not set, defaults to 5 minutes.
+
 **adbc.bigquery.include_constraints_getobjects**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Some callers do not need the constraint details when they get the table information and can improve the speed of obtaining the results. Setting this value to `"false"` will not include the constraint details. The default value is `"true"`.
 

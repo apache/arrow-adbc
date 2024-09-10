@@ -53,6 +53,7 @@ namespace Apache.Arrow.Adbc.Extensions
             {
                 Field field = schemaFields[i];
                 ArrayData dataField = data[i].Data;
+
                 if (field.DataType.TypeId != dataField.DataType.TypeId)
                 {
                     throw new ArgumentException($"Expecting data type {field.DataType} but found {data[i].Data.DataType} on field with name {field.Name}.", nameof(data));
@@ -65,10 +66,25 @@ namespace Apache.Arrow.Adbc.Extensions
                 else if (field.DataType.TypeId == ArrowTypeId.List)
                 {
                     ListType listType = (ListType)field.DataType;
-                    if (listType.Fields.Count > 0)
+                    int j = 0;
+                    Field f = listType.Fields[j];
+
+                    List<Field> fieldsToValidate = new List<Field>();
+                    List<ContainerArray> arrayDataToValidate = new List<ContainerArray>();
+
+                    ArrayData? child = j < dataField.Children.Length ? dataField.Children[j] : null;
+
+                    if (child != null)
                     {
-                        Validate(listType.Fields, dataField.Children.Select(e => new ContainerArray(e)).ToList());
+                        fieldsToValidate.Add(f);
+                        arrayDataToValidate.Add(new ContainerArray(child));
                     }
+                    else if (!f.IsNullable)
+                    {
+                        throw new InvalidOperationException("Received a null value for a non-nullable field");
+                    }
+
+                    Validate(fieldsToValidate, arrayDataToValidate);
                 }
                 else if (field.DataType.TypeId == ArrowTypeId.Union)
                 {

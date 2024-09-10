@@ -19,14 +19,18 @@ package driverbase
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
-	"github.com/apache/arrow/go/v17/arrow"
-	"github.com/apache/arrow/go/v17/arrow/array"
-	"github.com/apache/arrow/go/v17/arrow/memory"
+	"github.com/apache/arrow/go/v18/arrow"
+	"github.com/apache/arrow/go/v18/arrow/array"
+	"github.com/apache/arrow/go/v18/arrow/memory"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -84,9 +88,9 @@ type AutocommitSetter interface {
 // for catalogs, dbSchemas and tables, the driverbase is able to provide the full
 // GetObjects functionality for arbitrary search patterns and lookup depth.
 type DbObjectsEnumerator interface {
-	GetObjectsCatalogs(ctx context.Context, catalog *string) ([]string, error)
-	GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, metadataRecords []internal.Metadata) (map[string][]string, error)
-	GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (map[internal.CatalogAndSchema][]internal.TableInfo, error)
+	GetCatalogs(ctx context.Context, catalogFilter *string) ([]string, error)
+	GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) ([]string, error)
+	GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]TableInfo, error)
 }
 
 // Connection is the interface satisfied by the result of the NewConnection constructor,
@@ -263,6 +267,8 @@ type connection struct {
 	driverInfoPreparer  DriverInfoPreparer
 	tableTypeLister     TableTypeLister
 	autocommitSetter    AutocommitSetter
+
+	concurrency int
 }
 
 type ConnectionBuilder struct {
@@ -270,7 +276,7 @@ type ConnectionBuilder struct {
 }
 
 func NewConnectionBuilder(impl ConnectionImpl) *ConnectionBuilder {
-	return &ConnectionBuilder{connection: &connection{ConnectionImpl: impl}}
+	return &ConnectionBuilder{connection: &connection{ConnectionImpl: impl, concurrency: -1}}
 }
 
 func (b *ConnectionBuilder) WithDbObjectsEnumerator(helper DbObjectsEnumerator) *ConnectionBuilder {
@@ -278,6 +284,14 @@ func (b *ConnectionBuilder) WithDbObjectsEnumerator(helper DbObjectsEnumerator) 
 		panic("nil ConnectionBuilder: cannot reuse after calling Connection()")
 	}
 	b.connection.dbObjectsEnumerator = helper
+	return b
+}
+
+func (b *ConnectionBuilder) WithConcurrency(concurrency int) *ConnectionBuilder {
+	if b == nil {
+		panic("nil ConnectionBuilder: cannot reuse after calling Connection()")
+	}
+	b.connection.concurrency = concurrency
 	return b
 }
 
@@ -328,29 +342,98 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 		return cnxn.ConnectionImpl.GetObjects(ctx, depth, catalog, dbSchema, tableName, columnName, tableType)
 	}
 
-	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
-	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
-	if err := g.Init(cnxn.Base().Alloc, helper.GetObjectsDbSchemas, helper.GetObjectsTables); err != nil {
-		return nil, err
-	}
-	defer g.Release()
-
-	catalogs, err := helper.GetObjectsCatalogs(ctx, catalog)
+	catalogs, err := helper.GetCatalogs(ctx, catalog)
 	if err != nil {
 		return nil, err
 	}
 
-	foundCatalog := false
-	for _, catalog := range catalogs {
-		g.AppendCatalog(catalog)
-		foundCatalog = true
+	bufferSize := len(catalogs)
+	addCatalogCh := make(chan GetObjectsInfo, bufferSize)
+	for _, cat := range catalogs {
+		addCatalogCh <- GetObjectsInfo{CatalogName: Nullable(cat)}
 	}
 
-	// Implementations like Dremio report no catalogs, but still have schemas
-	if !foundCatalog && depth != adbc.ObjectDepthCatalogs {
-		g.AppendCatalog("")
+	close(addCatalogCh)
+
+	if depth == adbc.ObjectDepthCatalogs {
+		return BuildGetObjectsRecordReader(cnxn.Base().Alloc, addCatalogCh)
 	}
-	return g.Finish()
+
+	g, ctxG := errgroup.WithContext(ctx)
+
+	gSchemas, ctxSchemas := errgroup.WithContext(ctxG)
+	gSchemas.SetLimit(cnxn.concurrency)
+	addDbSchemasCh := make(chan GetObjectsInfo, bufferSize)
+	for info := range addCatalogCh {
+		info := info
+		gSchemas.Go(func() error {
+			dbSchemas, err := helper.GetDBSchemasForCatalog(ctxSchemas, ValueOrZero(info.CatalogName), dbSchema)
+			if err != nil {
+				return err
+			}
+
+			info.CatalogDbSchemas = make([]DBSchemaInfo, len(dbSchemas))
+			for i, sch := range dbSchemas {
+				info.CatalogDbSchemas[i] = DBSchemaInfo{DbSchemaName: Nullable(sch)}
+			}
+
+			addDbSchemasCh <- info
+
+			return nil
+		})
+	}
+
+	g.Go(func() error { defer close(addDbSchemasCh); return gSchemas.Wait() })
+
+	if depth == adbc.ObjectDepthDBSchemas {
+		rdr, err := BuildGetObjectsRecordReader(cnxn.Base().Alloc, addDbSchemasCh)
+		return rdr, errors.Join(err, g.Wait())
+	}
+
+	gTables, ctxTables := errgroup.WithContext(ctxG)
+	gTables.SetLimit(cnxn.concurrency)
+	addTablesCh := make(chan GetObjectsInfo, bufferSize)
+	for info := range addDbSchemasCh {
+		info := info
+
+		gTables.Go(func() error {
+			gTablesInner, ctxTablesInner := errgroup.WithContext(ctxTables)
+			gTablesInner.SetLimit(cnxn.concurrency)
+			dbSchemaInfoCh := make(chan DBSchemaInfo, len(info.CatalogDbSchemas))
+			for _, catalogDbSchema := range info.CatalogDbSchemas {
+				catalogDbSchema := catalogDbSchema
+				gTablesInner.Go(func() error {
+					includeColumns := depth == adbc.ObjectDepthColumns
+					tables, err := helper.GetTablesForDBSchema(ctxTablesInner, ValueOrZero(info.CatalogName), ValueOrZero(catalogDbSchema.DbSchemaName), tableName, columnName, includeColumns)
+					if err != nil {
+						return err
+					}
+
+					catalogDbSchema.DbSchemaTables = tables
+					dbSchemaInfoCh <- catalogDbSchema
+
+					return nil
+				})
+			}
+
+			g.Go(func() error { defer close(dbSchemaInfoCh); return gTablesInner.Wait() })
+
+			var i int
+			for dbSchema := range dbSchemaInfoCh {
+				info.CatalogDbSchemas[i] = dbSchema
+				i++
+			}
+
+			addTablesCh <- info
+
+			return nil
+		})
+	}
+
+	g.Go(func() error { defer close(addTablesCh); return gTables.Wait() })
+
+	rdr, err := BuildGetObjectsRecordReader(cnxn.Base().Alloc, addTablesCh)
+	return rdr, errors.Join(err, g.Wait())
 }
 
 func (cnxn *connection) GetOption(key string) (string, error) {
@@ -470,6 +553,198 @@ func (cnxn *connection) Close() error {
 	}
 
 	return err
+}
+
+// ConstraintColumnUsage is a structured representation of adbc.UsageSchema
+type ConstraintColumnUsage struct {
+	ForeignKeyCatalog  *string `json:"fk_catalog,omitempty"`
+	ForeignKeyDbSchema *string `json:"fk_db_schema,omitempty"`
+	ForeignKeyTable    string  `json:"fk_table"`
+	ForeignKeyColumn   string  `json:"fk_column_name"`
+}
+
+// ConstraintInfo is a structured representation of adbc.ConstraintSchema
+type ConstraintInfo struct {
+	ConstraintName        *string                 `json:"constraint_name,omitempty"`
+	ConstraintType        string                  `json:"constraint_type"`
+	ConstraintColumnNames requiredList[string]    `json:"constraint_column_names"`
+	ConstraintColumnUsage []ConstraintColumnUsage `json:"constraint_column_usage,omitempty"`
+}
+
+// RequiredList is a wrapper for a slice of values that is not considered
+// "nullable" for serialization purposes.
+// When marshaling JSON, the empty value is serialized as "[]" instead of "null".
+func RequiredList[T any](vals []T) requiredList[T] {
+	return requiredList[T](vals)
+}
+
+type requiredList[T any] []T
+
+func (n requiredList[T]) UnmarshalJSON(data []byte) error {
+	v := []T(n)
+	return json.Unmarshal(data, &v)
+}
+
+func (n requiredList[T]) MarshalJSON() ([]byte, error) {
+	if n == nil {
+		return []byte("[]"), nil
+	}
+
+	v := []T(n)
+	return json.Marshal(v)
+}
+
+// ColumnInfo is a structured representation of adbc.ColumnSchema
+type ColumnInfo struct {
+	ColumnName            string  `json:"column_name"`
+	OrdinalPosition       *int32  `json:"ordinal_position,omitempty"`
+	Remarks               *string `json:"remarks,omitempty"`
+	XdbcDataType          *int16  `json:"xdbc_data_type,omitempty"`
+	XdbcTypeName          *string `json:"xdbc_type_name,omitempty"`
+	XdbcColumnSize        *int32  `json:"xdbc_column_size,omitempty"`
+	XdbcDecimalDigits     *int16  `json:"xdbc_decimal_digits,omitempty"`
+	XdbcNumPrecRadix      *int16  `json:"xdbc_num_prec_radix,omitempty"`
+	XdbcNullable          *int16  `json:"xdbc_nullable,omitempty"`
+	XdbcColumnDef         *string `json:"xdbc_column_def,omitempty"`
+	XdbcSqlDataType       *int16  `json:"xdbc_sql_data_type,omitempty"`
+	XdbcDatetimeSub       *int16  `json:"xdbc_datetime_sub,omitempty"`
+	XdbcCharOctetLength   *int32  `json:"xdbc_char_octet_length,omitempty"`
+	XdbcIsNullable        *string `json:"xdbc_is_nullable,omitempty"`
+	XdbcScopeCatalog      *string `json:"xdbc_scope_catalog,omitempty"`
+	XdbcScopeSchema       *string `json:"xdbc_scope_schema,omitempty"`
+	XdbcScopeTable        *string `json:"xdbc_scope_table,omitempty"`
+	XdbcIsAutoincrement   *bool   `json:"xdbc_is_autoincrement,omitempty"`
+	XdbcIsGeneratedcolumn *bool   `json:"xdbc_is_generatedcolumn,omitempty"`
+}
+
+// TableInfo is a structured representation of adbc.TableSchema
+type TableInfo struct {
+	TableName        string           `json:"table_name"`
+	TableType        string           `json:"table_type"`
+	TableColumns     []ColumnInfo     `json:"table_columns,omitempty"`
+	TableConstraints []ConstraintInfo `json:"table_constraints,omitempty"`
+}
+
+// DBSchemaInfo is a structured representation of adbc.DBSchemaSchema
+type DBSchemaInfo struct {
+	DbSchemaName   *string     `json:"db_schema_name,omitempty"`
+	DbSchemaTables []TableInfo `json:"db_schema_tables,omitempty"`
+}
+
+// GetObjectsInfo is a structured representation of adbc.GetObjectsSchema
+type GetObjectsInfo struct {
+	CatalogName      *string        `json:"catalog_name,omitempty"`
+	CatalogDbSchemas []DBSchemaInfo `json:"catalog_db_schemas,omitempty"`
+}
+
+// Scan implements sql.Scanner.
+func (g *GetObjectsInfo) Scan(src any) error {
+	if src == nil {
+		return nil
+	}
+
+	var b []byte
+	switch s := src.(type) {
+	case []byte:
+		b = s
+	case string:
+		b = []byte(s)
+	default:
+		return fmt.Errorf("unexpected driver value for GetObjectsInfo: %s", s)
+	}
+
+	return json.Unmarshal(b, g)
+}
+
+// BuildGetObjectsRecordReader constructs a RecordReader for the GetObjects ADBC method.
+// It accepts a channel of GetObjectsInfo to allow concurrent retrieval of metadata and
+// serialization to Arrow record.
+func BuildGetObjectsRecordReader(mem memory.Allocator, in chan GetObjectsInfo) (array.RecordReader, error) {
+	bldr := array.NewRecordBuilder(mem, adbc.GetObjectsSchema)
+	defer bldr.Release()
+
+	for catalog := range in {
+		b, err := json.Marshal(catalog)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := json.Unmarshal(b, bldr); err != nil {
+			return nil, err
+		}
+	}
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+	return array.NewRecordReader(adbc.GetObjectsSchema, []arrow.Record{rec})
+}
+
+func PatternToNamedArg(name string, pattern *string) sql.NamedArg {
+	if pattern == nil {
+		return sql.Named(name, "%")
+	}
+	return sql.Named(name, *pattern)
+}
+
+func ToXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
+	switch dt.ID() {
+	case arrow.EXTENSION:
+		return ToXdbcDataType(dt.(arrow.ExtensionType).StorageType())
+	case arrow.DICTIONARY:
+		return ToXdbcDataType(dt.(*arrow.DictionaryType).ValueType)
+	case arrow.RUN_END_ENCODED:
+		return ToXdbcDataType(dt.(*arrow.RunEndEncodedType).Encoded())
+	case arrow.INT8, arrow.UINT8:
+		return internal.XdbcDataType_XDBC_TINYINT
+	case arrow.INT16, arrow.UINT16:
+		return internal.XdbcDataType_XDBC_SMALLINT
+	case arrow.INT32, arrow.UINT32:
+		return internal.XdbcDataType_XDBC_SMALLINT
+	case arrow.INT64, arrow.UINT64:
+		return internal.XdbcDataType_XDBC_BIGINT
+	case arrow.FLOAT32, arrow.FLOAT16, arrow.FLOAT64:
+		return internal.XdbcDataType_XDBC_FLOAT
+	case arrow.DECIMAL, arrow.DECIMAL256:
+		return internal.XdbcDataType_XDBC_DECIMAL
+	case arrow.STRING, arrow.LARGE_STRING:
+		return internal.XdbcDataType_XDBC_VARCHAR
+	case arrow.BINARY, arrow.LARGE_BINARY:
+		return internal.XdbcDataType_XDBC_BINARY
+	case arrow.FIXED_SIZE_BINARY:
+		return internal.XdbcDataType_XDBC_BINARY
+	case arrow.BOOL:
+		return internal.XdbcDataType_XDBC_BIT
+	case arrow.TIME32, arrow.TIME64:
+		return internal.XdbcDataType_XDBC_TIME
+	case arrow.DATE32, arrow.DATE64:
+		return internal.XdbcDataType_XDBC_DATE
+	case arrow.TIMESTAMP:
+		return internal.XdbcDataType_XDBC_TIMESTAMP
+	case arrow.DENSE_UNION, arrow.SPARSE_UNION:
+		return internal.XdbcDataType_XDBC_VARBINARY
+	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST:
+		return internal.XdbcDataType_XDBC_VARBINARY
+	case arrow.STRUCT, arrow.MAP:
+		return internal.XdbcDataType_XDBC_VARBINARY
+	default:
+		return internal.XdbcDataType_XDBC_UNKNOWN_TYPE
+	}
+}
+
+// Nullable wraps a value and returns a pointer to the value, which is
+// how nullable values are represented for purposes of JSON serialization.
+func Nullable[T any](val T) *T {
+	return &val
+}
+
+// ValueOrZero safely dereferences a pointer, returning the zero-value
+// of the underlying type in the case of a nil pointer.
+func ValueOrZero[T any](val *T) T {
+	var res T
+	if val == nil {
+		return res
+	}
+	return *val
 }
 
 var _ ConnectionImpl = (*ConnectionImplBase)(nil)

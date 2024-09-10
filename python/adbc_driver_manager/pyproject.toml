@@ -21,7 +21,7 @@ description = "A generic entrypoint for ADBC drivers."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dynamic = ["version"]
 dependencies = ["typing-extensions"]
 

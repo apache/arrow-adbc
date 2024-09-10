@@ -18,7 +18,8 @@
 *.o
 *.so
 *.dll
-adbc.h
 Makevars
 sqlite3.c
 sqlite3.h
+c/
+arrow-adbc/

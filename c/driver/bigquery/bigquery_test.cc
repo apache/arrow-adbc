@@ -15,15 +15,18 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <adbc.h>
+#include <algorithm>
+#include <cstring>
+#include <random>
+#include <thread>
+
+#include <arrow-adbc/adbc.h>
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
-#include <algorithm>
-#include <cstring>
-#include <random>
+
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
@@ -120,7 +123,9 @@ class BigQueryQuirks : public adbc_validation::DriverQuirks {
     create += "` (int64s INT, strings TEXT)";
     CHECK_OK(AdbcStatementSetSqlQuery(&statement.value, create.c_str(), error));
     CHECK_OK(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
-    sleep(5);
+    // XXX: is there a better way to wait for BigQuery? (Why does 'CREATE
+    // TABLE' not wait for commit?)
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     std::string insert = "INSERT INTO `ADBC_TESTING.";
     insert += name;

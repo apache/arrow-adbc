@@ -27,7 +27,7 @@
 #include <utility>
 #include <vector>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
@@ -42,6 +42,10 @@ namespace adbc_validation {
 std::optional<std::string> ConnectionGetOption(struct AdbcConnection* connection,
                                                std::string_view option,
                                                struct AdbcError* error);
+
+std::optional<std::string> StatementGetOption(struct AdbcStatement* statement,
+                                              std::string_view option,
+                                              struct AdbcError* error);
 
 // ------------------------------------------------------------
 // Helpers to print values

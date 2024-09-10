@@ -22,7 +22,6 @@ on:
     branches:
       - main
     paths:
-      - "adbc.h"
       - "c/**"
       - "ci/**"
       - "docs/**"
@@ -33,7 +32,6 @@ on:
       - ".github/workflows/native-unix.yml"
   push:
     paths:
-      - "adbc.h"
       - "c/**"
       - "ci/**"
       - "docs/**"
@@ -132,12 +130,23 @@ jobs:
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
+      # XXX: GitHub broke upload/download-artifact.  To avoid symlinks being
+      # converted into weird files, tar the files ourselves first.
+      # https://github.com/apache/arrow-adbc/issues/2061
+      # https://github.com/actions/download-artifact/issues/346
+
+      - name: tar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar czf ~/local.tgz local
+
       - uses: actions/upload-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
           path: |
-            ~/local
+            ~/local.tgz
 
   # ------------------------------------------------------------
   # C/C++ (builds and tests)
@@ -357,7 +366,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
-          path: ~/local
+          path: "~"
+
+      - name: untar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar xvf ~/local.tgz
 
       - name: Build GLib Driver Manager
         shell: bash -l {0}
@@ -379,11 +394,18 @@ jobs:
     strategy:
       matrix:
         os: ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: 'google-github-actions/auth@v2'
+        continue-on-error: true # if auth fails, bigquery driver tests should skip
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       - uses: actions/setup-go@v5
         with:
           go-version-file: "go/adbc/go.mod"
@@ -430,11 +452,18 @@ jobs:
             goarch: x64
     env:
       CGO_ENABLED: "1"
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: 'google-github-actions/auth@v2'
+        continue-on-error: true # if auth fails, bigquery driver tests should skip
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       - name: Get required Go version
         run: |
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
@@ -479,7 +508,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
-          path: ~/local
+          path: "~"
+
+      - name: untar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar xvf ~/local.tgz
 
       - name: Go Build
         shell: bash -l {0}
@@ -512,7 +547,7 @@ jobs:
     strategy:
       matrix:
         os: ["macos-13", "macos-latest", "ubuntu-latest"]
-        python: ["3.9", "3.11"]
+        python: ["3.9", "3.12"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -563,7 +598,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
-          path: ~/local
+          path: "~"
+
+      - name: untar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar xvf ~/local.tgz
 
       - name: Build
         shell: bash -l {0}
@@ -670,10 +711,17 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
+
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
-          path: ~/local
+          path: "~"
+
+      - name: untar artifacts
+        shell: bash -l {0}
+        run: |
+          cd
+          tar xvf ~/local.tgz
 
       - name: Build Python
         shell: bash -l {0}

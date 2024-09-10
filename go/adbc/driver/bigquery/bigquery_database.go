@@ -64,6 +64,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		WithAutocommitSetter(conn).
 		WithCurrentNamespacer(conn).
 		WithTableTypeLister(conn).
+		WithDbObjectsEnumerator(conn).
 		Connection(), nil
 }
 

@@ -30,9 +30,9 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/apache/arrow/go/v17/arrow/array"
-	"github.com/apache/arrow/go/v17/arrow/flight"
-	"github.com/apache/arrow/go/v17/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v18/arrow/array"
+	"github.com/apache/arrow/go/v18/arrow/flight"
+	"github.com/apache/arrow/go/v18/arrow/flight/flightsql"
 	"github.com/bluele/gcache"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -499,7 +499,6 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	return driverbase.NewConnectionBuilder(conn).
 		WithDriverInfoPreparer(conn).
 		WithAutocommitSetter(conn).
-		WithDbObjectsEnumerator(conn).
 		WithCurrentNamespacer(conn).
 		Connection(), nil
 }

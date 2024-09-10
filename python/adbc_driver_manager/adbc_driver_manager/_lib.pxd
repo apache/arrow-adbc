@@ -20,7 +20,7 @@
 from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t
 
 
-cdef extern from "adbc.h" nogil:
+cdef extern from "arrow-adbc/adbc.h" nogil:
     # C ABI
 
     ctypedef void (*CArrowSchemaRelease)(void*)
@@ -289,5 +289,5 @@ cdef const CAdbcError* PyAdbcErrorFromArrayStream(
 cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *
 cdef object convert_error(CAdbcStatusCode status, CAdbcError* error)
 
-cdef extern from "adbc_driver_manager.h":
+cdef extern from "arrow-adbc/adbc_driver_manager.h":
     const char* CAdbcStatusCodeMessage"AdbcStatusCodeMessage"(CAdbcStatusCode code)

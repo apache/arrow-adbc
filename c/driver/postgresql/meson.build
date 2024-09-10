@@ -25,9 +25,10 @@ adbc_postgres_driver_lib = library(
         'database.cc',
         'postgresql.cc',
         'result_helper.cc',
+        'result_reader.cc',
         'statement.cc',
     ],
-    include_directories: [root_dir],
+    include_directories: [include_dir, c_dir],
     link_with: [adbc_common_lib, adbc_framework_lib],
     dependencies: [nanoarrow_dep, fmt_dep, libpq_dep],
 )
@@ -62,7 +63,7 @@ if get_option('tests')
         exc = executable(
             'adbc-' + name + '-test',
             sources: conf['sources'],
-            include_directories: [root_dir, driver_dir],
+            include_directories: [include_dir, driver_dir, c_dir],
             link_with: [
                 adbc_common_lib,
                 adbc_postgres_driver_lib,

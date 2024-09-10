@@ -58,9 +58,23 @@ jobs:
           PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
           echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      # Usually, pak::pkg_install() will run bootstrap.R if it is included and is declared;
+      # however, this doesn't work for local:: for some reason (which is what
+      # setup-r-dependencies uses under the hood)
+      - name: Bootstrap R Package
+        run: |
+          pushd r/adbcdrivermanager
+          R -e 'if (!requireNamespace("nanoarrow", quietly = TRUE)) install.packages("nanoarrow", repos = "https://cloud.r-project.org/")'
+          R CMD INSTALL . --preclean
+          popd
+          pushd "r/${{ inputs.pkg }}"
+          Rscript bootstrap.R
+          popd
+        shell: bash
+
+      - uses: r-lib/actions/setup-r-dependencies@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
         with:
-          extra-packages: any::rcmdcheck, local::../adbcdrivermanager
+          extra-packages: any::rcmdcheck
           needs: check
           working-directory: r/${{ inputs.pkg }}
 

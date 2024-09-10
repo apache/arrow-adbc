@@ -88,6 +88,44 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         }
 
         /// <summary>
+        /// Validates if the DEFAULT_ROLE works correctly for ADBC.
+        /// </summary>
+        [SkippableFact, Order(1)]
+        public void ValidateUserRole()
+        {
+            Skip.If(_testConfiguration.RoleInfo == null);
+
+            // first test with the DEFAULT_ROLE value
+            Assert.True(CurrentRoleIsExpectedRole(_connection, _testConfiguration.RoleInfo.DefaultRole)); ;
+
+            // now connect with the new role and ensure we get the new role successfully
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            Dictionary<string, string> options = new Dictionary<string, string>();
+
+            using AdbcDriver localSnowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_testConfiguration, out parameters);
+            parameters.Add(SnowflakeParameters.ROLE, _testConfiguration.RoleInfo.NewRole);
+
+            using AdbcDatabase localDatabase = localSnowflakeDriver.Open(parameters);
+            using AdbcConnection localConnection = localDatabase.Connect(options);
+            Assert.True(CurrentRoleIsExpectedRole(localConnection, _testConfiguration.RoleInfo.NewRole));
+        }
+
+        private bool CurrentRoleIsExpectedRole(AdbcConnection cn, string expectedRole)
+        {
+            using AdbcStatement statement = cn.CreateStatement();
+            statement.SqlQuery = "SELECT CURRENT_ROLE() as CURRENT_ROLE;";
+
+            QueryResult queryResult = statement.ExecuteQuery();
+            using RecordBatch? recordBatch = queryResult.Stream?.ReadNextRecordBatchAsync().Result;
+            Assert.True(recordBatch != null);
+
+            StringArray stringArray = (StringArray)recordBatch.Column("CURRENT_ROLE");
+            Assert.True(stringArray.Length > 0);
+
+            return expectedRole == stringArray.GetString(0);
+        }
+
+        /// <summary>
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
@@ -397,6 +435,24 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             QueryResult queryResult = statement.ExecuteQuery();
 
             Tests.DriverTests.CanExecuteQuery(queryResult, _testConfiguration.ExpectedResultsCount);
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and execute a parameterized query.
+        /// </summary>
+        [SkippableFact, Order(6)]
+        public void CanExecuteParameterizedQuery()
+        {
+            using AdbcStatement statement = _connection.CreateStatement();
+            statement.SqlQuery = "SELECT * FROM (SELECT column1 FROM (VALUES (1), (2), (3))) WHERE column1 < ?";
+
+            Schema parameterSchema = new Schema(new[] { new Field("column1", Int32Type.Default, false) }, null);
+            RecordBatch parameters = new RecordBatch(parameterSchema, new[] { new Int32Array.Builder().Append(2).Build() }, 1);
+            statement.Bind(parameters, parameterSchema);
+
+            QueryResult queryResult = statement.ExecuteQuery();
+
+            Tests.DriverTests.CanExecuteQuery(queryResult, 1);
         }
 
         [SkippableFact, Order(7)]

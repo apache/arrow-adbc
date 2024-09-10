@@ -17,28 +17,29 @@
 
 include(FetchContent)
 
-add_library(adbc_driver_framework STATIC base_driver.cc catalog.cc objects.cc)
+add_library(adbc_driver_framework STATIC catalog.cc objects.cc)
 adbc_configure_target(adbc_driver_framework)
 set_target_properties(adbc_driver_framework PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(adbc_driver_framework
-                           PRIVATE "${REPOSITORY_ROOT}" "${REPOSITORY_ROOT}/c/"
+                           PRIVATE "${REPOSITORY_ROOT}/c/" "${REPOSITORY_ROOT}/c/include"
                                    "${REPOSITORY_ROOT}/c/vendor")
 target_link_libraries(adbc_driver_framework PUBLIC adbc_driver_common fmt::fmt)
 
-# if(ADBC_BUILD_TESTS)
-#   add_test_case(driver_framework_test
-#                 PREFIX
-#                 adbc
-#                 EXTRA_LABELS
-#                 driver-framework
-#                 SOURCES
-#                 utils_test.cc
-#                 driver_test.cc
-#                 EXTRA_LINK_LIBS
-#                 adbc_driver_framework
-#                 nanoarrow)
-#   target_compile_features(adbc-driver-framework-test PRIVATE cxx_std_17)
-#   target_include_directories(adbc-driver-framework-test
-#                              PRIVATE "${REPOSITORY_ROOT}" "${REPOSITORY_ROOT}/c/vendor")
-#   adbc_configure_target(adbc-driver-framework-test)
-# endif()
+if(ADBC_BUILD_TESTS)
+  add_test_case(driver_framework_test
+                PREFIX
+                adbc
+                EXTRA_LABELS
+                driver-framework
+                SOURCES
+                base_driver_test.cc
+                EXTRA_LINK_LIBS
+                adbc_driver_framework
+                nanoarrow)
+  target_compile_features(adbc-driver-framework-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-driver-framework-test
+                             PRIVATE "${REPOSITORY_ROOT}/c/"
+                                     "${REPOSITORY_ROOT}/c/include"
+                                     "${REPOSITORY_ROOT}/c/vendor")
+  adbc_configure_target(adbc-driver-framework-test)
+endif()

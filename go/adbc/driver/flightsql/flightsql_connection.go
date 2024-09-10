@@ -29,13 +29,13 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/apache/arrow/go/v17/arrow"
-	"github.com/apache/arrow/go/v17/arrow/array"
-	"github.com/apache/arrow/go/v17/arrow/flight"
-	"github.com/apache/arrow/go/v17/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v17/arrow/flight/flightsql/schema_ref"
-	flightproto "github.com/apache/arrow/go/v17/arrow/flight/gen/flight"
-	"github.com/apache/arrow/go/v17/arrow/ipc"
+	"github.com/apache/arrow/go/v18/arrow"
+	"github.com/apache/arrow/go/v18/arrow/array"
+	"github.com/apache/arrow/go/v18/arrow/flight"
+	"github.com/apache/arrow/go/v18/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v18/arrow/flight/flightsql/schema_ref"
+	flightproto "github.com/apache/arrow/go/v18/arrow/flight/gen/flight"
+	"github.com/apache/arrow/go/v18/arrow/ipc"
 	"github.com/bluele/gcache"
 	"google.golang.org/grpc"
 	grpccodes "google.golang.org/grpc/codes"
@@ -55,6 +55,32 @@ type connectionImpl struct {
 	timeouts    timeoutOption
 	txn         *flightsql.Txn
 	supportInfo support
+}
+
+func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
+	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
+	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
+	if err := g.Init(c.Base().Alloc, c.GetObjectsDbSchemas, c.GetObjectsTables); err != nil {
+		return nil, err
+	}
+	defer g.Release()
+
+	catalogs, err := c.GetObjectsCatalogs(ctx, catalog)
+	if err != nil {
+		return nil, err
+	}
+
+	foundCatalog := false
+	for _, catalog := range catalogs {
+		g.AppendCatalog(catalog)
+		foundCatalog = true
+	}
+
+	// Implementations like Dremio report no catalogs, but still have schemas
+	if !foundCatalog && depth != adbc.ObjectDepthCatalogs {
+		g.AppendCatalog("")
+	}
+	return g.Finish()
 }
 
 // GetCurrentCatalog implements driverbase.CurrentNamespacer.

@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 
@@ -629,9 +629,18 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
 
   struct StatementReader* reader = (struct StatementReader*)self->private_data;
   if (reader->initial_batch.release != NULL) {
-    memcpy(out, &reader->initial_batch, sizeof(*out));
-    memset(&reader->initial_batch, 0, sizeof(reader->initial_batch));
-    return 0;
+    // Canonically return zero-row results as a stream with zero batches
+    if (reader->initial_batch.length == 0) {
+      reader->initial_batch.release(&reader->initial_batch);
+      reader->done = true;
+
+      out->release = NULL;
+      return 0;
+    } else {
+      memcpy(out, &reader->initial_batch, sizeof(*out));
+      memset(&reader->initial_batch, 0, sizeof(reader->initial_batch));
+      return 0;
+    }
   } else if (reader->done) {
     out->release = NULL;
     return 0;

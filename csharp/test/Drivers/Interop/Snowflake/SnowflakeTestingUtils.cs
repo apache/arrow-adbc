@@ -33,6 +33,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public const string ACCOUNT = "adbc.snowflake.sql.account";
         public const string USERNAME = "username";
         public const string PASSWORD = "password";
+        public const string ROLE = "adbc.snowflake.sql.role";
         public const string WAREHOUSE = "adbc.snowflake.sql.warehouse";
         public const string AUTH_TYPE = "adbc.snowflake.sql.auth_type";
         public const string AUTH_TOKEN = "adbc.snowflake.sql.client_option.auth_token";

@@ -55,7 +55,21 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             QueryOptions? queryOptions = ValidateOptions();
             BigQueryJob job = this.client.CreateQueryJob(SqlQuery, null, queryOptions);
-            BigQueryResults results = job.GetQueryResults();
+
+            GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
+
+            if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes, out string? timeoutMinutes) == true)
+            {
+                if (int.TryParse(timeoutMinutes, out int minutes))
+                {
+                    if (minutes >= 0)
+                    {
+                        getQueryResultsOptions.Timeout = TimeSpan.FromMinutes(minutes);
+                    }
+                }
+            }
+
+            BigQueryResults results = job.GetQueryResults(getQueryResultsOptions);
 
             BigQueryReadClientBuilder readClientBuilder = new BigQueryReadClientBuilder();
             readClientBuilder.Credential = this.credential;
@@ -247,10 +261,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     List<Dictionary<string, object?>?> children = new List<Dictionary<string, object?>?>();
 
-                    if (structArray1.Length > 1)
+                    for (int j = 0; j < structArray1.Length; j++)
                     {
-                        for (int j = 0; j < structArray1.Length; j++)
-                            children.Add(ParseStructArray(structArray1, j));
+                        children.Add(ParseStructArray(structArray1, j));
                     }
 
                     if (children.Count > 0)

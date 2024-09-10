@@ -81,6 +81,9 @@ update_versions() {
 
   sed -i.bak \
     -E "s|<VersionPrefix>.+</VersionPrefix>|<VersionPrefix>${csharp_version}</VersionPrefix>|" \
+    "${ADBC_DIR}/csharp/Directory.Build.props"
+  rm "${ADBC_DIR}/csharp/Directory.Build.props.bak"
+  sed -i.bak \
     -E "s|<VersionSuffix>.+</VersionSuffix>|<VersionSuffix>${csharp_suffix}</VersionSuffix>|" \
     "${ADBC_DIR}/csharp/Directory.Build.props"
   rm "${ADBC_DIR}/csharp/Directory.Build.props.bak"

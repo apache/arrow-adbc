@@ -207,7 +207,7 @@ namespace Apache.Arrow.Adbc.Tests
         {
             // find the adbc.h file from the repo
 
-            string path = Path.Combine(new string[] { "..", "..", "..", "..", "..", "adbc.h" });
+            string path = Path.Combine(new string[] { "..", "..", "..", "..", "..", "c", "include", "arrow-adbc", "adbc.h"});
 
             Assert.True(File.Exists(path));
 

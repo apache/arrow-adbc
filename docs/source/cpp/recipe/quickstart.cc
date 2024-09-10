@@ -62,7 +62,7 @@
 #include <cstring>
 #include <iostream>
 
-#include <adbc.h>
+#include <arrow-adbc/adbc.h>
 #include <nanoarrow.h>
 
 /// Then we'll add some (very basic) error checking helpers.

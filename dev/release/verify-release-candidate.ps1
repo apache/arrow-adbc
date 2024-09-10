@@ -140,6 +140,7 @@ New-Item -ItemType Directory -Force -Path $CppBuildDir | Out-Null
 # XXX(apache/arrow-adbc#634): not working on Windows due to it picking
 # up MSVC as the C compiler, which then blows up when /Werror gets
 # passed in by some package
+$env:BUILD_DRIVER_BIGQUERY = "0"
 $env:BUILD_DRIVER_FLIGHTSQL = "0"
 $env:BUILD_DRIVER_SNOWFLAKE = "0"
 

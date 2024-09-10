@@ -94,7 +94,11 @@ namespace Apache.Arrow.Adbc.Tests
         /// </summary>
         /// <param name="adbcConnection">The <see cref="Adbc.Client.AdbcConnection"/> to use.</param>
         /// <param name="testConfiguration">The <see cref="TestConfiguration"/> to use</param>
-        public static void CanClientExecuteQuery(Adbc.Client.AdbcConnection adbcConnection, TestConfiguration testConfiguration)
+        /// <param name="additionalCommandOptionsSetter">Allows additional options to be set on the command before execution</param>
+        public static void CanClientExecuteQuery(
+            Adbc.Client.AdbcConnection adbcConnection,
+            TestConfiguration testConfiguration,
+            Action<AdbcCommand>? additionalCommandOptionsSetter = null)
         {
             if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
             if (testConfiguration == null) throw new ArgumentNullException(nameof(testConfiguration));
@@ -104,6 +108,7 @@ namespace Apache.Arrow.Adbc.Tests
             adbcConnection.Open();
 
             using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+            additionalCommandOptionsSetter?.Invoke(adbcCommand);
             using AdbcDataReader reader = adbcCommand.ExecuteReader();
 
             try

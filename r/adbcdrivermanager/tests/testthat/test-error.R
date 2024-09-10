@@ -52,8 +52,8 @@ test_that("stop_for_error() gives a custom error class with extra info", {
     expect_s3_class(e, "adbc_status_not_found")
     expect_identical(e$error$status, 3L)
     expect_identical(
-      e$error$detail[["adbc.driver_base.option_key"]],
-      c(charToRaw("this option does not exist"), as.raw(0x00))
+      e$error$detail[["r.driver_test.option_key"]],
+      charToRaw("this option does not exist")
     )
   })
 

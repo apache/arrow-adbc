@@ -33,9 +33,11 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/apache/arrow/go/v17/arrow"
+	"github.com/apache/arrow/go/v18/arrow"
 	"golang.org/x/oauth2"
+	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
@@ -59,6 +61,184 @@ type connectionImpl struct {
 	prefetchConcurrency    int
 
 	client *bigquery.Client
+}
+
+func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string) ([]string, error) {
+	catalogPattern, err := internal.PatternToRegexp(catalogFilter)
+	if err != nil {
+		return nil, err
+	}
+	if catalogPattern == nil {
+		catalogPattern = internal.AcceptAll
+	}
+
+	// Connections to BQ are scoped to a particular Project, which corresponds to catalog-level namespacing.
+	// TODO: Consider enumerating projects with ResourceManager API, but this may not be "idiomatic" usage.
+	project := c.client.Project()
+	res := make([]string, 0)
+	if catalogPattern.MatchString(project) {
+		res = append(res, project)
+	}
+
+	return res, nil
+}
+
+func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) ([]string, error) {
+	schemaPattern, err := internal.PatternToRegexp(schemaFilter)
+	if err != nil {
+		return nil, err
+	}
+	if schemaPattern == nil {
+		schemaPattern = internal.AcceptAll
+	}
+
+	it := c.client.Datasets(ctx)
+	it.ProjectID = catalog
+
+	res := make([]string, 0)
+	for {
+		ds, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if schemaPattern.MatchString(ds.DatasetID) {
+			res = append(res, ds.DatasetID)
+		}
+
+	}
+
+	return res, nil
+}
+
+func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {
+	tablePattern, err := internal.PatternToRegexp(tableFilter)
+	if err != nil {
+		return nil, err
+	}
+	if tablePattern == nil {
+		tablePattern = internal.AcceptAll
+	}
+
+	it := c.client.DatasetInProject(catalog, schema).Tables(ctx)
+
+	res := make([]driverbase.TableInfo, 0)
+	for {
+		table, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if !tablePattern.MatchString(table.TableID) {
+			continue
+		}
+
+		md, err := table.Metadata(ctx, bigquery.WithMetadataView(bigquery.BasicMetadataView))
+		if err != nil {
+			return nil, err
+		}
+
+		var constraints []driverbase.ConstraintInfo
+		if md.TableConstraints != nil {
+			constraints = make([]driverbase.ConstraintInfo, 0)
+			if md.TableConstraints.PrimaryKey != nil {
+				constraints = append(constraints, driverbase.ConstraintInfo{
+					// BigQuery Primary Keys are unnamed
+					ConstraintType:        internal.PrimaryKey,
+					ConstraintColumnNames: driverbase.RequiredList(md.TableConstraints.PrimaryKey.Columns),
+				})
+			}
+
+			for _, fk := range md.TableConstraints.ForeignKeys {
+				var columnUsage []driverbase.ConstraintColumnUsage
+				if len(fk.ColumnReferences) > 0 {
+					columnUsage = make([]driverbase.ConstraintColumnUsage, len(fk.ColumnReferences))
+				}
+				for i, ref := range fk.ColumnReferences {
+					columnUsage[i] = driverbase.ConstraintColumnUsage{
+						ForeignKeyCatalog:  driverbase.Nullable(fk.ReferencedTable.ProjectID),
+						ForeignKeyDbSchema: driverbase.Nullable(fk.ReferencedTable.DatasetID),
+						ForeignKeyTable:    fk.ReferencedTable.TableID,
+						ForeignKeyColumn:   ref.ReferencedColumn,
+					}
+				}
+				constraints = append(constraints, driverbase.ConstraintInfo{
+					ConstraintName:        driverbase.Nullable(fk.Name),
+					ConstraintType:        internal.ForeignKey,
+					ConstraintColumnUsage: columnUsage,
+				})
+			}
+		}
+
+		var columns []driverbase.ColumnInfo
+		if includeColumns {
+			columnPattern, err := internal.PatternToRegexp(columnFilter)
+			if err != nil {
+				return nil, err
+			}
+			if columnPattern == nil {
+				columnPattern = internal.AcceptAll
+			}
+
+			columns = make([]driverbase.ColumnInfo, 0)
+			for pos, fieldschema := range md.Schema {
+				if columnPattern.MatchString(fieldschema.Name) {
+					xdbcIsNullable := "YES"
+					xdbcNullable := int16(1)
+					if fieldschema.Required {
+						xdbcIsNullable = "NO"
+						xdbcNullable = 0
+					}
+
+					xdbcColumnSize := fieldschema.MaxLength
+					if xdbcColumnSize == 0 {
+						xdbcColumnSize = fieldschema.Precision
+					}
+
+					var xdbcCharOctetLength int32
+					if fieldschema.Type == bigquery.BytesFieldType {
+						xdbcCharOctetLength = int32(fieldschema.MaxLength)
+					}
+
+					field, err := buildField(fieldschema, 0)
+					if err != nil {
+						return nil, err
+					}
+					xdbcDataType := driverbase.ToXdbcDataType(field.Type)
+
+					columns = append(columns, driverbase.ColumnInfo{
+						ColumnName:          fieldschema.Name,
+						OrdinalPosition:     driverbase.Nullable(int32(pos + 1)),
+						Remarks:             driverbase.Nullable(fieldschema.Description),
+						XdbcDataType:        driverbase.Nullable(int16(field.Type.ID())),
+						XdbcTypeName:        driverbase.Nullable(string(fieldschema.Type)),
+						XdbcNullable:        driverbase.Nullable(xdbcNullable),
+						XdbcSqlDataType:     driverbase.Nullable(int16(xdbcDataType)),
+						XdbcIsNullable:      driverbase.Nullable(xdbcIsNullable),
+						XdbcDecimalDigits:   driverbase.Nullable(int16(fieldschema.Scale)),
+						XdbcColumnSize:      driverbase.Nullable(int32(xdbcColumnSize)),
+						XdbcCharOctetLength: driverbase.Nullable(xdbcCharOctetLength),
+						XdbcScopeCatalog:    driverbase.Nullable(catalog),
+						XdbcScopeSchema:     driverbase.Nullable(schema),
+						XdbcScopeTable:      driverbase.Nullable(table.TableID),
+					})
+				}
+			}
+		}
+
+		res = append(res, driverbase.TableInfo{
+			TableName:        table.TableID,
+			TableType:        string(md.Type),
+			TableConstraints: constraints,
+			TableColumns:     columns,
+		})
+	}
+
+	return res, nil
 }
 
 type bigQueryTokenResponse struct {
@@ -255,8 +435,8 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 // NewStatement initializes a new statement object tied to this connection
 func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	return &statement{
-		connectionImpl:         c,
-		query:                  c.client.Query(""),
+		alloc:                  c.Alloc,
+		cnxn:                   c,
 		parameterMode:          OptionValueQueryParameterModePositional,
 		resultRecordBufferSize: c.resultRecordBufferSize,
 		prefetchConcurrency:    c.prefetchConcurrency,
@@ -483,8 +663,12 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	metadata["Required"] = strconv.FormatBool(schema.Required)
 	field.Nullable = !schema.Required
 	metadata["Type"] = string(schema.Type)
-	policyTagList, err := json.Marshal(schema.PolicyTags)
-	if err != nil {
+
+	if schema.PolicyTags != nil {
+		policyTagList, err := json.Marshal(schema.PolicyTags)
+		if err != nil {
+			return arrow.Field{}, err
+		}
 		metadata["PolicyTags"] = string(policyTagList)
 	}
 

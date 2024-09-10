@@ -56,3 +56,8 @@ Set timeouts and other options
 ------------------------------
 
 .. recipe:: flightsql_sqlite_options.py
+
+Set the max gRPC message size
+-----------------------------
+
+.. recipe:: flightsql_sqlite_max_msg_size.py

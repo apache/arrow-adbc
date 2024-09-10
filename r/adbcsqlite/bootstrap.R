@@ -15,68 +15,21 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# If we are building within the repo, copy the latest adbc.h and driver source
-# into src/
-source_files <- c(
-  "adbc.h",
-  "c/driver/sqlite/sqlite.cc",
-  "c/driver/sqlite/statement_reader.c",
-  "c/driver/sqlite/statement_reader.h",
-  "c/driver/common/options.h",
-  "c/driver/common/utils.c",
-  "c/driver/common/utils.h",
-  "c/driver/framework/base_connection.h",
-  "c/driver/framework/base_database.h",
-  "c/driver/framework/base_driver.cc",
-  "c/driver/framework/base_driver.h",
-  "c/driver/framework/base_statement.h",
-  "c/driver/framework/catalog.h",
-  "c/driver/framework/objects.h",
-  "c/driver/framework/status.h",
-  "c/driver/framework/type_fwd.h",
-  "c/driver/framework/catalog.cc",
-  "c/driver/framework/objects.cc",
-  "c/vendor/fmt/include/fmt/args.h",
-  "c/vendor/fmt/include/fmt/base.h",
-  "c/vendor/fmt/include/fmt/chrono.h",
-  "c/vendor/fmt/include/fmt/color.h",
-  "c/vendor/fmt/include/fmt/compile.h",
-  "c/vendor/fmt/include/fmt/core.h",
-  "c/vendor/fmt/include/fmt/format-inl.h",
-  "c/vendor/fmt/include/fmt/format.h",
-  "c/vendor/fmt/include/fmt/os.h",
-  "c/vendor/fmt/include/fmt/ostream.h",
-  "c/vendor/fmt/include/fmt/printf.h",
-  "c/vendor/fmt/include/fmt/ranges.h",
-  "c/vendor/fmt/include/fmt/std.h",
-  "c/vendor/fmt/include/fmt/xchar.h",
-  "c/vendor/nanoarrow/nanoarrow.h",
-  "c/vendor/nanoarrow/nanoarrow.hpp",
-  "c/vendor/nanoarrow/nanoarrow.c",
-  "c/vendor/sqlite3/sqlite3.h",
-  "c/vendor/sqlite3/sqlite3.c"
-)
-files_to_vendor <- file.path("../..", source_files)
+dir.create("src/arrow-adbc", showWarnings = FALSE)
+file.copy("../../c/include/arrow-adbc/adbc.h", "src/arrow-adbc/adbc.h")
 
-if (all(file.exists(files_to_vendor))) {
-  files_dst <- file.path("src", basename(files_to_vendor))
+source_files <- list.files("../../c", "\\.(h|c|cc|hpp)$", recursive = TRUE)
+source_files <- source_files[!grepl("_test\\.cc", source_files)]
+source_files <- source_files[!grepl("^(build|out)/", source_files)]
+# backward C++ causes CRAN warnings and the drivers do not use it
+source_files <- source_files[!grepl("^vendor/backward", source_files)]
+source_files <- file.path("c", source_files)
+src <- file.path("../..", source_files)
+dst <- file.path("src", source_files)
 
-  n_removed <- suppressWarnings(sum(file.remove(files_dst)))
-  if (n_removed > 0) {
-    cat(sprintf("Removed %d previously vendored files from src/\n", n_removed))
-  }
-
-  cat(
-    sprintf(
-      "Vendoring files from arrow-adbc to src/:\n%s\n",
-      paste("-", files_to_vendor, collapse = "\n")
-    )
-  )
-
-  if (all(file.copy(files_to_vendor, "src"))) {
-    file.rename(files_dst, file.path("src", source_files))
-    cat("All files successfully copied to src/\n")
-  } else {
-    stop("Failed to vendor all files")
-  }
+unlink("src/c", recursive = TRUE)
+for (dir_name in rev(unique(dirname(dst)))) {
+  dir.create(dir_name, showWarnings = FALSE, recursive = TRUE)
 }
+
+stopifnot(all(file.copy(src, dst)))

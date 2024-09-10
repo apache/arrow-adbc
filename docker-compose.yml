@@ -79,6 +79,20 @@ services:
       - .:/adbc:delegated
     command: "/bin/bash -c '/adbc/ci/scripts/python_conda_test.sh /adbc /adbc/build'"
 
+  python-debug:
+    image: ${REPO}:${ARCH}-python-${PYTHON}-debug-adbc
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:${ARCH}-python-${PYTHON}-debug-adbc
+      dockerfile: ci/docker/python-debug.dockerfile
+      args:
+        ARCH: ${ARCH}
+        GO: ${GO}
+    volumes:
+      - .:/adbc:delegated
+    command: /adbc/ci/docker/python-debug.sh
+
   ############################ Python sdist ##################################
 
   python-sdist:
