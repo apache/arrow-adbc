@@ -452,6 +452,32 @@ void CompareArray(struct ArrowArrayView* array,
         ASSERT_EQ(interval.months, (*v)->months);
         ASSERT_EQ(interval.days, (*v)->days);
         ASSERT_EQ(interval.ns, (*v)->ns);
+
+      } else if constexpr (
+          // Possibly a more effective way to do this using template magic
+          // Not included but possible are the std::optional<> variants of this
+          std::is_same<T, std::vector<bool>>::value ||
+          std::is_same<T, std::vector<int8_t>>::value ||
+          std::is_same<T, std::vector<int16_t>>::value ||
+          std::is_same<T, std::vector<int32_t>>::value ||
+          std::is_same<T, std::vector<int64_t>>::value ||
+          std::is_same<T, std::vector<uint8_t>>::value ||
+          std::is_same<T, std::vector<uint16_t>>::value ||
+          std::is_same<T, std::vector<uint32_t>>::value ||
+          std::is_same<T, std::vector<uint64_t>>::value ||
+          std::is_same<T, std::vector<double>>::value ||
+          std::is_same<T, std::vector<float>>::value ||
+          std::is_same<T, std::vector<std::string>>::value ||
+          std::is_same<T, std::vector<std::vector<std::byte>>>::value) {
+        using child_t = typename T::value_type;
+        std::vector<std::optional<child_t>> value_nullable;
+        for (const auto& child_value : *v) {
+          value_nullable.push_back(child_value);
+        }
+        SCOPED_TRACE("List item");
+
+        // TODO!
+
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
       }

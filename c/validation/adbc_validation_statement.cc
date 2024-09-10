@@ -503,15 +503,21 @@ void StatementTest::TestSqlIngestStringDictionary() {
 }
 
 void StatementTest::TestSqlIngestListOfInt32() {
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(NANOARROW_TYPE_STRING,
-                                                         {"", "", "1234", "例"},
-                                                         /*dictionary_encode*/ true));
+  SchemaField field =
+      SchemaField::Nested("col", NANOARROW_TYPE_LIST, {{"item", NANOARROW_TYPE_INT32}});
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<int32_t>>(
+      field, {std::vector<int32_t>{1, 2, 3}, std::vector<int32_t>{4, 5}, std::nullopt},
+      /*dictionary_encode*/ false));
 }
 
 void StatementTest::TestSqlIngestListOfString() {
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(NANOARROW_TYPE_STRING,
-                                                         {"", "", "1234", "例"},
-                                                         /*dictionary_encode*/ true));
+  SchemaField field =
+      SchemaField::Nested("col", NANOARROW_TYPE_LIST, {{"item", NANOARROW_TYPE_STRING}});
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<std::string>>(
+      field,
+      {std::vector<std::string>{"abc", "defg"}, std::vector<std::string>{"hijk"},
+       std::nullopt},
+      /*dictionary_encode*/ false));
 }
 
 void StatementTest::TestSqlIngestStreamZeroArrays() {

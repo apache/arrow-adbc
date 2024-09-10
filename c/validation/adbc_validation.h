@@ -503,6 +503,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                       \
   TEST_F(FIXTURE, SqlIngestStringDictionary) { TestSqlIngestStringDictionary(); }       \
+  TEST_F(FIXTURE, SqlIngestListOfInt32) { TestSqlIngestListOfInt32(); }                 \
   TEST_F(FIXTURE, TestSqlIngestStreamZeroArrays) { TestSqlIngestStreamZeroArrays(); }   \
   TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }             \
   TEST_F(FIXTURE, SqlIngestColumnEscaping) { TestSqlIngestColumnEscaping(); }           \
