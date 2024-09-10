@@ -27,23 +27,30 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public static IReadOnlyCollection<HiveServer2DataTypeConversion> Parse(string? dataTypeConversion)
         {
-            var result = new HashSet<HiveServer2DataTypeConversion>();
+            // Using a sorted set to make testing repeatable.
+            var result = new SortedSet<HiveServer2DataTypeConversion>();
             if (dataTypeConversion == null) {
+                // Default
+                result.Add(HiveServer2DataTypeConversion.Scalar);
                 return result;
             }
+
             string[] conversions = dataTypeConversion.Split(',');
             foreach (string? conversion in conversions)
             {
                 HiveServer2DataTypeConversion dataTypeConversionValue = (conversion?.Trim().ToLowerInvariant()) switch
                 {
                     null or "" => HiveServer2DataTypeConversion.Empty,
-                    Scalar => HiveServer2DataTypeConversion.Scalar,
                     None => HiveServer2DataTypeConversion.None,
+                    Scalar => HiveServer2DataTypeConversion.Scalar,
                     _ => HiveServer2DataTypeConversion.Invalid,
                 };
 
-                if (!result.Contains(dataTypeConversionValue)) result.Add(dataTypeConversionValue);
+                if (!result.Contains(dataTypeConversionValue) && dataTypeConversionValue != HiveServer2DataTypeConversion.Empty) result.Add(dataTypeConversionValue);
             }
+
+            // Default
+            if (result.Count == 0) result.Add(HiveServer2DataTypeConversion.Scalar);
 
             return result;
         }

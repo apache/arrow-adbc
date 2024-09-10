@@ -47,8 +47,4 @@
     </None>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Hive2\" />
-  </ItemGroup>
-
 </Project>
