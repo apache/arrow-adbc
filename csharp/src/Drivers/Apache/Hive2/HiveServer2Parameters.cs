@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+using System.Collections.Generic;
+
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     public static class HiveServer2DataTypeConversionConstants
@@ -23,15 +25,27 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public const string Scalar = "scalar";
         public const string SupportedList = None + ", " + Scalar;
 
-        public static HiveServer2DataTypeConversion Parse(string? dataTypeConversion)
+        public static IReadOnlyCollection<HiveServer2DataTypeConversion> Parse(string? dataTypeConversion)
         {
-            return (dataTypeConversion?.Trim().ToLowerInvariant()) switch
+            var result = new HashSet<HiveServer2DataTypeConversion>();
+            if (dataTypeConversion == null) {
+                return result;
+            }
+            string[] conversions = dataTypeConversion.Split(',');
+            foreach (string? conversion in conversions)
             {
-                null or "" => HiveServer2DataTypeConversion.Empty,
-                Scalar => HiveServer2DataTypeConversion.Scalar,
-                None => HiveServer2DataTypeConversion.None,
-                _ => HiveServer2DataTypeConversion.Invalid,
-            };
+                HiveServer2DataTypeConversion dataTypeConversionValue = (conversion?.Trim().ToLowerInvariant()) switch
+                {
+                    null or "" => HiveServer2DataTypeConversion.Empty,
+                    Scalar => HiveServer2DataTypeConversion.Scalar,
+                    None => HiveServer2DataTypeConversion.None,
+                    _ => HiveServer2DataTypeConversion.Invalid,
+                };
+
+                if (!result.Contains(dataTypeConversionValue)) result.Add(dataTypeConversionValue);
+            }
+
+            return result;
         }
     }
 

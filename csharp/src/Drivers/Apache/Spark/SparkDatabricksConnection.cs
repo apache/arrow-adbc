@@ -17,7 +17,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net.Http.Headers;
+using System.Linq;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Ipc;
@@ -49,14 +49,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override void ValidateOptions()
         {
             Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
-            HiveServer2DataTypeConversion dataTypeConvValue = HiveServer2DataTypeConversionConstants.Parse(dataTypeConv);
-            DataTypeConversion = dataTypeConvValue switch
-            {
-                // Note: In Databricks, scalar types are provided implicitly.
-                HiveServer2DataTypeConversion.None
-                or HiveServer2DataTypeConversion.Scalar => dataTypeConvValue,
-                _ => throw new NotImplementedException($"Invalid or unsupported data type conversion option: '{dataTypeConv}'. Supported values: {HiveServer2DataTypeConversionConstants.SupportedList}"),
-            };
+            IReadOnlyCollection<HiveServer2DataTypeConversion> dataTypeConvValue = HiveServer2DataTypeConversionConstants.Parse(dataTypeConv);
+            // Note: In Databricks, scalar types are provided implicitly.
+            IReadOnlyCollection<HiveServer2DataTypeConversion> unsupportedConversions = dataTypeConvValue
+                .Except([HiveServer2DataTypeConversion.None, HiveServer2DataTypeConversion.Scalar, HiveServer2DataTypeConversion.Empty])
+                .ToList();
+            if (unsupportedConversions.Count > 0) {
+                throw new NotImplementedException($"Invalid or unsupported data type conversion option: '{dataTypeConv}'. Supported values: {HiveServer2DataTypeConversionConstants.SupportedList}");
+            }
+            DataTypeConversion = dataTypeConvValue;
         }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>

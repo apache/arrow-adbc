@@ -33,7 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         private HiveServer2Statement? _statement;
         private readonly long _batchSize;
-        private readonly HiveServer2DataTypeConversion _dataTypeConversion;
+        private readonly IReadOnlyCollection<HiveServer2DataTypeConversion> _dataTypeConversion;
         private static readonly IReadOnlyDictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>> s_arrowStringConverters =
             new Dictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>>()
             {
@@ -46,8 +46,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            long batchSize = HiveServer2Connection.BatchSizeDefault,
-            HiveServer2DataTypeConversion dataTypeConversion = HiveServer2DataTypeConversion.None)
+            IReadOnlyCollection<HiveServer2DataTypeConversion> dataTypeConversion,
+            long batchSize = HiveServer2Connection.BatchSizeDefault)
         {
             _statement = statement;
             Schema = schema;
@@ -69,7 +69,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             int columnCount = response.Results.Columns.Count;
             IList<IArrowArray> columnData = [];
-            bool shouldConvertScalar = _dataTypeConversion == HiveServer2DataTypeConversion.Scalar;
+            bool shouldConvertScalar = _dataTypeConversion.Contains(HiveServer2DataTypeConversion.Scalar);
             for (int i = 0; i < columnCount; i++)
             {
                 IArrowType? expectedType = shouldConvertScalar ? Schema.FieldsList[i].DataType : null;
