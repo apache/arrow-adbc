@@ -26,6 +26,10 @@
             "password": ""
         }
     },
+    "roleInfo": {
+        "defaultRole": "",
+        "newRole": ""
+    },
     "query": "",
     "expectedResults": 0
 }
