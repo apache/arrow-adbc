@@ -836,34 +836,16 @@ TEST_P(PostgresCopyListTest, PostgresCopyWriteListSmallInt) {
   adbc_validation::Handle<struct ArrowArray> array;
   struct ArrowError na_error;
 
+  ASSERT_EQ(adbc_validation::MakeSchema(
+                &schema.value, {adbc_validation::SchemaField::Nested(
+                                   "col", GetParam(), {{"item", NANOARROW_TYPE_INT16}})}),
+            ADBC_STATUS_OK);
 
-
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema.value, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema.value, 1), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], GetParam()), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetName(schema->children[0], "col"), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema->children[0]->children[0], NANOARROW_TYPE_INT16),
-            NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayInitFromSchema(&array.value, &schema.value, nullptr), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayStartAppending(&array.value), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayAppendInt(array->children[0]->children[0], -123), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendInt(array->children[0]->children[0], -1), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishElement(array->children[0]), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishElement(&array.value), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayAppendInt(array->children[0]->children[0], 0), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendInt(array->children[0]->children[0], 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendInt(array->children[0]->children[0], 123), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishElement(array->children[0]), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishElement(&array.value), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayAppendNull(array->children[0], 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishElement(&array.value), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array.value, &na_error), NANOARROW_OK);
+  ASSERT_EQ(adbc_validation::MakeBatch<std::vector<int16_t>>(
+                &schema.value, &array.value, &na_error,
+                {std::vector<int16_t>{-123, -1}, std::vector<int16_t>{0, 1, 123},
+                 std::nullopt}),
+            ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
   ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);

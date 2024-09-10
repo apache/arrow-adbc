@@ -311,8 +311,8 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
         CHECK_OK(ArrowArrayAppendInterval(array, *v));
       } else if constexpr (std::is_same<T, ArrowDecimal*>::value) {
         CHECK_OK(ArrowArrayAppendDecimal(array, *v));
-      } else if constexpr (std::is_same<T, std::vector<int32_t>>::value) {
-        for (const auto child_value : v) {
+      } else if constexpr (std::is_same<T, std::vector<int16_t>>::value) {
+        for (const auto child_value : *v) {
           CHECK_OK(ArrowArrayAppendInt(array->children[0], child_value));
         }
         CHECK_OK(ArrowArrayFinishElement(array));
