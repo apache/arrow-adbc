@@ -313,6 +313,7 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
         CHECK_OK(ArrowArrayAppendDecimal(array, *v));
       } else if constexpr (
           // Possibly a more effective way to do this using template magic
+          // Not included but possible are the std::optional<> variants of this
           std::is_same<T, std::vector<bool>>::value ||
           std::is_same<T, std::vector<int8_t>>::value ||
           std::is_same<T, std::vector<int16_t>>::value ||
@@ -463,9 +464,7 @@ void CompareArray(struct ArrowArrayView* array,
 
 /// \brief Compare a schema for equality against a vector of (name,
 ///   type, nullable) tuples.
-void CompareSchema(
-    struct ArrowSchema* schema,
-    const std::vector<std::tuple<std::optional<std::string>, ArrowType, bool>>& fields);
+void CompareSchema(struct ArrowSchema* schema, const std::vector<SchemaField>& fields);
 
 /// \brief Helper method to get the vendor version of a driver
 std::string GetDriverVendorVersion(struct AdbcConnection* connection);

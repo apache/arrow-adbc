@@ -79,9 +79,12 @@ void StatementTest::TestRelease() {
 }
 
 template <typename CType>
-void StatementTest::TestSqlIngestType(ArrowType type,
+void StatementTest::TestSqlIngestType(SchemaField field,
                                       const std::vector<std::optional<CType>>& values,
                                       bool dictionary_encode) {
+  // Override the field name
+  field.name = "col";
+
   if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     GTEST_SKIP();
   }
@@ -92,7 +95,7 @@ void StatementTest::TestSqlIngestType(ArrowType type,
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  ASSERT_THAT(MakeSchema(&schema.value, {{"col", type}}), IsOkErrno());
+  ASSERT_THAT(MakeSchema(&schema.value, {field}), IsOkErrno());
   ASSERT_THAT(MakeBatch<CType>(&schema.value, &array.value, &na_error, values),
               IsOkErrno());
 
@@ -155,16 +158,16 @@ void StatementTest::TestSqlIngestType(ArrowType type,
                 ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
 
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-    ArrowType round_trip_type = quirks()->IngestSelectRoundTripType(type);
-    ASSERT_NO_FATAL_FAILURE(
-        CompareSchema(&reader.schema.value, {{"col", round_trip_type, NULLABLE}}));
+    SchemaField round_trip_field = quirks()->IngestSelectRoundTripType(field);
+    ASSERT_NO_FATAL_FAILURE(CompareSchema(&reader.schema.value, {round_trip_field}));
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
     ASSERT_EQ(values.size(), reader.array->length);
     ASSERT_EQ(1, reader.array->n_children);
 
-    if (round_trip_type == type) {
+    if (round_trip_field.type == field.type) {
+      // XXX: This won't work for list types?
       // XXX: for now we can't compare values; we would need casting
       ASSERT_NO_FATAL_FAILURE(
           CompareArray<CType>(reader.array_view->children[0], values));
@@ -174,6 +177,14 @@ void StatementTest::TestSqlIngestType(ArrowType type,
     ASSERT_EQ(nullptr, reader.array->release);
   }
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
+template <typename CType>
+void StatementTest::TestSqlIngestType(ArrowType type,
+                                      const std::vector<std::optional<CType>>& values,
+                                      bool dictionary_encode) {
+  SchemaField field("col", type);
+  TestSqlIngestType<CType>(field, values, dictionary_encode);
 }
 
 template <typename CType>
@@ -486,6 +497,18 @@ void StatementTest::TestSqlIngestInterval() {
 }
 
 void StatementTest::TestSqlIngestStringDictionary() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(NANOARROW_TYPE_STRING,
+                                                         {"", "", "1234", "例"},
+                                                         /*dictionary_encode*/ true));
+}
+
+void StatementTest::TestSqlIngestListOfInt32() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(NANOARROW_TYPE_STRING,
+                                                         {"", "", "1234", "例"},
+                                                         /*dictionary_encode*/ true));
+}
+
+void StatementTest::TestSqlIngestListOfString() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(NANOARROW_TYPE_STRING,
                                                          {"", "", "1234", "例"},
                                                          /*dictionary_encode*/ true));

@@ -271,9 +271,7 @@ void MakeStream(struct ArrowArrayStream* stream, struct ArrowSchema* schema,
   stream->private_data = new ConstantArrayStream(schema, std::move(batches));
 }
 
-void CompareSchema(
-    struct ArrowSchema* schema,
-    const std::vector<std::tuple<std::optional<std::string>, ArrowType, bool>>& fields) {
+void CompareSchema(struct ArrowSchema* schema, const std::vector<SchemaField>& fields) {
   struct ArrowError na_error;
   struct ArrowSchemaView view;
 
@@ -288,12 +286,11 @@ void CompareSchema(
     struct ArrowSchemaView field_view;
     ASSERT_THAT(ArrowSchemaViewInit(&field_view, schema->children[i], &na_error),
                 IsOkErrno(&na_error));
-    ASSERT_EQ(std::get<1>(fields[i]), field_view.type);
-    ASSERT_EQ(std::get<2>(fields[i]),
-              (schema->children[i]->flags & ARROW_FLAG_NULLABLE) != 0)
+    ASSERT_EQ(fields[i].type, field_view.type);
+    ASSERT_EQ(fields[i].nullable, (schema->children[i]->flags & ARROW_FLAG_NULLABLE) != 0)
         << "Nullability mismatch";
-    if (std::get<0>(fields[i]).has_value()) {
-      ASSERT_STRCASEEQ(std::get<0>(fields[i])->c_str(), schema->children[i]->name);
+    if (fields[i].name != "") {
+      ASSERT_STRCASEEQ(fields[i].name.c_str(), schema->children[i]->name);
     }
   }
 }
