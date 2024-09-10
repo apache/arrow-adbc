@@ -1,0 +1,16 @@
+{
+    "hostName": "<hostName>",
+    "path": "<path>",
+    "token": "<token>",
+    "auth_type": "token",
+    "type": "databricks",
+    "data_type_conv": "none",
+    "query": "",
+    "expectedResults": 0,
+    "metadata": {
+        "catalog": "hive_metastore",
+        "schema": "default",
+        "table": "<tableName>",
+        "expectedColumnCount": 19
+    }
+}

@@ -32,21 +32,30 @@ namespace Apache.Arrow.Adbc.Tests
     /// <summary>
     /// Provides a base class for ADBC tests.
     /// </summary>
-    /// <typeparam name="T">A TestConfiguration type to use when accessing test configuration files.</typeparam>
-    public abstract class TestBase<T> : IDisposable where T : TestConfiguration
+    /// <typeparam name="TConfig">A TestConfiguration type to use when accessing test configuration files.</typeparam>
+    public abstract class TestBase<TConfig, TEnv> : IDisposable
+        where TConfig : TestConfiguration
+        where TEnv : TestEnvironment<TConfig>
     {
         private bool _disposedValue;
-        private T? _testConfiguration;
-        private AdbcConnection? _connection = null;
-        private AdbcStatement? _statement = null;
+        private readonly Lazy<TConfig> _testConfiguration;
+        private readonly Lazy<AdbcConnection> _connection;
+        private readonly Lazy<AdbcStatement> _statement;
+        private readonly TestEnvironment<TConfig>.Factory<TEnv> _testEnvFactory;
+        private readonly Lazy<TEnv> _testEnvironment;
 
         /// <summary>
         /// Constructs a new TestBase object with an output helper.
         /// </summary>
         /// <param name="outputHelper">Test output helper for writing test output.</param>
-        public TestBase(ITestOutputHelper? outputHelper)
+        public TestBase(ITestOutputHelper? outputHelper, TestEnvironment<TConfig>.Factory<TEnv> testEnvFacltory)
         {
             OutputHelper = outputHelper;
+            _testEnvFactory = testEnvFacltory;
+            _testEnvironment = new Lazy<TEnv>(() => _testEnvFactory.Create(() => Connection));
+            _testConfiguration = new Lazy<TConfig>(() => Utils.LoadTestConfiguration<TConfig>(TestConfigVariable));
+            _connection = new Lazy<AdbcConnection>(() => NewConnection());
+            _statement = new Lazy<AdbcStatement>(() => Connection.CreateStatement());
         }
 
         /// <summary>
@@ -54,10 +63,17 @@ namespace Apache.Arrow.Adbc.Tests
         /// </summary>
         protected ITestOutputHelper? OutputHelper { get; }
 
+        public TEnv TestEnvironment => _testEnvironment.Value;
+
         /// <summary>
         /// The name of the environment variable that stores the full location of the test configuration file.
         /// </summary>
-        protected abstract string TestConfigVariable { get; }
+        protected string TestConfigVariable => TestEnvironment.TestConfigVariable;
+
+        protected string VendorVersion => TestEnvironment.VendorVersion;
+
+        protected Version VendorVersionAsVersion => new Lazy<Version>(() => new Version(VendorVersion)).Value;
+
 
         /// <summary>
         /// Creates a temporary table (if possible) using the native SQL dialect.
@@ -65,10 +81,10 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="statement">The ADBC statement to apply the update.</param>
         /// <param name="columns">The columns definition in the native SQL dialect.</param>
         /// <returns>A disposable temporary table object that will drop the table when disposed.</returns>
-        protected virtual async ValueTask<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string columns)
+        protected async Task<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string columns)
         {
             string tableName = NewTableName();
-            string sqlUpdate = string.Format("CREATE TEMPORARY IF NOT EXISTS TABLE {0} ({1})", tableName, columns);
+            string sqlUpdate = TestEnvironment.GetCreateTemporaryTableStatement(tableName, columns);
             return await TemporaryTable.NewTemporaryTableAsync(statement, tableName, sqlUpdate);
         }
 
@@ -76,74 +92,52 @@ namespace Apache.Arrow.Adbc.Tests
         /// Creates a new unique table name .
         /// </summary>
         /// <returns>A unique table name.</returns>
-        protected virtual string NewTableName() => string.Format(
-                        "{0}.{1}.{2}",
-                        TestConfiguration.Metadata.Catalog,
-                        TestConfiguration.Metadata.Schema,
-                        Guid.NewGuid().ToString().Replace("-", "")
+        protected string NewTableName() => string.Format(
+                        "{0}{1}{2}",
+                        string.IsNullOrEmpty(TestConfiguration.Metadata.Catalog) ? string.Empty : DelimitIdentifier(TestConfiguration.Metadata.Catalog) + ".",
+                        string.IsNullOrEmpty(TestConfiguration.Metadata.Schema) ? string.Empty : DelimitIdentifier(TestConfiguration.Metadata.Schema) + ".",
+                        DelimitIdentifier(Guid.NewGuid().ToString().Replace("-", ""))
                     );
 
         /// <summary>
         /// Gets the relative resource location of source SQL data used in driver testing.
         /// </summary>
-        protected abstract string SqlDataResourceLocation { get; }
+        protected string SqlDataResourceLocation => TestEnvironment.SqlDataResourceLocation;
+
+        protected int ExpectedColumnCount => TestEnvironment.ExpectedColumnCount;
 
         /// <summary>
         /// Creates a new driver.
         /// </summary>
-        protected abstract AdbcDriver NewDriver { get; }
+        protected AdbcDriver NewDriver => TestEnvironment.CreateNewDriver();
+
+        protected bool SupportsDelete => TestEnvironment.SupportsDelete;
+
+        protected bool SupportsUpdate => TestEnvironment.SupportsUpdate;
+
+        protected bool ValidateAffectedRows => TestEnvironment.ValidateAffectedRows;
 
         /// <summary>
         /// Gets the parameters from the test configuration that are passed to the driver as a dictionary.
         /// </summary>
         /// <param name="testConfiguration">The test configuration as input.</param>
         /// <returns>Ditionary of parameters for the driver.</returns>
-        protected abstract Dictionary<string, string> GetDriverParameters(T testConfiguration);
+        protected virtual Dictionary<string, string> GetDriverParameters(TConfig testConfiguration) => TestEnvironment.GetDriverParameters(testConfiguration);
 
         /// <summary>
         /// Gets a single ADBC Connection for the object.
         /// </summary>
-        protected AdbcConnection Connection
-        {
-            get
-            {
-                if (_connection == null)
-                {
-                    _connection = NewConnection();
-                }
-                return _connection;
-            }
-        }
+        protected AdbcConnection Connection => _connection.Value;
 
         /// <summary>
         /// Gets as single ADBC Statement for the object.
         /// </summary>
-        protected AdbcStatement Statement
-        {
-            get
-            {
-                if (_statement == null)
-                {
-                    _statement = Connection.CreateStatement();
-                }
-                return _statement;
-            }
-        }
+        protected AdbcStatement Statement => _statement.Value;
 
         /// <summary>
         /// Gets the test configuration file.
         /// </summary>
-        protected T TestConfiguration
-        {
-            get
-            {
-                if (_testConfiguration == null)
-                {
-                    _testConfiguration = Utils.LoadTestConfiguration<T>(TestConfigVariable);
-                }
-                return _testConfiguration;
-            }
-        }
+        protected TConfig TestConfiguration => _testConfiguration.Value;
 
         /// <summary>
         /// Parses the queries from internal resource location
@@ -159,7 +153,10 @@ namespace Apache.Arrow.Adbc.Tests
                 if (line.TrimStart().StartsWith("--")) { continue; }
                 if (line.Contains(placeholder))
                 {
-                    string modifiedLine = line.Replace(placeholder, $"{TestConfiguration.Metadata.Catalog}.{TestConfiguration.Metadata.Schema}.{TestConfiguration.Metadata.Table}");
+                    string table = TestConfiguration.Metadata.Table;
+                    string catlog = !string.IsNullOrEmpty(TestConfiguration.Metadata.Catalog) ? TestConfiguration.Metadata.Catalog + "." : string.Empty;
+                    string schema = !string.IsNullOrEmpty(TestConfiguration.Metadata.Schema) ? TestConfiguration.Metadata.Schema + "." : string.Empty;
+                    string modifiedLine = line.Replace(placeholder, $"{catlog}{schema}{table}");
                     content.AppendLine(modifiedLine);
                 }
                 else
@@ -179,7 +176,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="testConfiguration"><see cref="Tests.TestConfiguration"/></param>
         /// <param name="connectionOptions"></param>
         /// <returns></returns>
-        protected AdbcConnection NewConnection(T? testConfiguration = null, IReadOnlyDictionary<string, string>? connectionOptions = null)
+        protected AdbcConnection NewConnection(TConfig? testConfiguration = null, IReadOnlyDictionary<string, string>? connectionOptions = null)
         {
             Dictionary<string, string> parameters = GetDriverParameters(testConfiguration ?? TestConfiguration);
             AdbcDatabase database = NewDriver.Open(parameters);
@@ -200,7 +197,7 @@ namespace Apache.Arrow.Adbc.Tests
             await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
             await SelectAndValidateValuesAsync(selectStatement, value, 1);
             string whereClause = GetWhereClause(columnName, formattedValue ?? value);
-            await DeleteFromTableAsync(tableName, whereClause, 1);
+            if (SupportsDelete) await DeleteFromTableAsync(tableName, whereClause, 1);
         }
 
         /// <summary>
@@ -216,8 +213,75 @@ namespace Apache.Arrow.Adbc.Tests
             await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
             await SelectAndValidateValuesAsync(tableName, columnName, value, 1, formattedValue);
             string whereClause = GetWhereClause(columnName, formattedValue ?? value);
-            await DeleteFromTableAsync(tableName, whereClause, 1);
+            if (SupportsDelete) await DeleteFromTableAsync(tableName, whereClause, 1);
         }
+
+        /// <summary>
+        /// Validates that two inserts, select and delete statement works with the given value.
+        /// </summary>
+        /// <param name="tableName">The name of the table to use.</param>
+        /// <param name="columnName">The name of the column.</param>
+        /// <param name="value">The value to insert, select and delete.</param>
+        /// <param name="formattedValue">The formated value to insert, select and delete.</param>
+        /// <returns></returns>
+        protected async Task ValidateInsertSelectDeleteTwoValuesAsync(string tableName, string columnName, object? value, string? formattedValue = null)
+        {
+            await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
+            await InsertSingleValueAsync(tableName, columnName, formattedValue ?? value?.ToString());
+            await SelectAndValidateValuesAsync(tableName, columnName, [value, value], 2, formattedValue);
+            string whereClause = GetWhereClause(columnName, formattedValue ?? value);
+            if (SupportsDelete) await DeleteFromTableAsync(tableName, whereClause, 2);
+        }
+
+        /// <summary>
+        /// Validates "multi-value" scenarios
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <param name="columnName"></param>
+        /// <param name="indexColumnName"></param>
+        /// <param name="values"></param>
+        /// <param name="formattedValues"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        protected async Task ValidateInsertSelectDeleteMultipleValuesAsync(string tableName, string columnName, string indexColumnName, object?[] values, string?[]? formattedValues = null)
+        {
+            await InsertMultipleValuesWithIndexColumnAsync(tableName, columnName, indexColumnName, values, formattedValues);
+
+            string selectStatement = $"SELECT {columnName}, {indexColumnName} FROM {tableName}";
+            await SelectAndValidateValuesAsync(selectStatement, values, values.Length, hasIndexColumn: true);
+
+            if (SupportsDelete) await DeleteFromTableAsync(tableName, "", values.Length);
+        }
+
+        /// <summary>
+        /// Inserts multiple values
+        /// </summary>
+        /// <param name="tableName">Name of the table to perform the insert</param>
+        /// <param name="columnName">Name of the value column to insert</param>
+        /// <param name="indexColumnName">Name of the index column to insert index values</param>
+        /// <param name="values">The array of values to insert</param>
+        /// <param name="formattedValues">The array of formatted values to insert</param>
+        /// <returns></returns>
+        protected async Task InsertMultipleValuesWithIndexColumnAsync(string tableName, string columnName, string indexColumnName, object?[] values, string?[]? formattedValues)
+        {
+            string insertStatement = GetInsertStatementWithIndexColumn(tableName, columnName, indexColumnName, values, formattedValues);
+            OutputHelper?.WriteLine(insertStatement);
+            Statement.SqlQuery = insertStatement;
+            UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
+            if (ValidateAffectedRows) Assert.Equal(values.Length, updateResult.AffectedRows);
+        }
+
+        /// <summary>
+        /// Gets the SQL INSERT statement for inserting multiple values with an index column
+        /// </summary>
+        /// <param name="tableName">Name of the table to perform the insert</param>
+        /// <param name="columnName">Name of the value column to insert</param>
+        /// <param name="indexColumnName">Name of the index column to insert index values</param>
+        /// <param name="values">The array of values to insert</param>
+        /// <param name="formattedValues">The array of formatted values to insert</param>
+        /// <returns></returns>
+        protected string GetInsertStatementWithIndexColumn(string tableName, string columnName, string indexColumnName, object?[] values, string?[]? formattedValues) =>
+            TestEnvironment.GetInsertStatementWithIndexColumn(tableName, columnName, indexColumnName, values, formattedValues);
 
         /// <summary>
         /// Inserts a single value into a table.
@@ -225,13 +289,13 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to insert.</param>
-        protected virtual async Task InsertSingleValueAsync(string tableName, string columnName, string? value)
+        protected async Task InsertSingleValueAsync(string tableName, string columnName, string? value)
         {
-            string insertNumberStatement = GetInsertValueStatement(tableName, columnName, value);
-            OutputHelper?.WriteLine(insertNumberStatement);
-            Statement.SqlQuery = insertNumberStatement;
+            string insertStatement = GetInsertStatement(tableName, columnName, value);
+            OutputHelper?.WriteLine(insertStatement);
+            Statement.SqlQuery = insertStatement;
             UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
-            Assert.Equal(1, updateResult.AffectedRows);
+            if (ValidateAffectedRows) Assert.Equal(1, updateResult.AffectedRows);
         }
 
         /// <summary>
@@ -241,8 +305,8 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to insert.</param>
         /// <returns></returns>
-        protected virtual string GetInsertValueStatement(string tableName, string columnName, string? value) =>
-            string.Format("INSERT INTO {0} ({1}) VALUES ({2});", tableName, columnName, value ?? "NULL");
+        protected string GetInsertStatement(string tableName, string columnName, string? value) =>
+            TestEnvironment.GetInsertStatement(tableName, columnName, value);
 
         /// <summary>
         /// Deletes a (single) value from a table.
@@ -250,13 +314,13 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="whereClause">The WHERE clause string.</param>
         /// <param name="expectedRowsAffected">The expected number of affected rows.</param>
-        protected virtual async Task DeleteFromTableAsync(string tableName, string whereClause, int expectedRowsAffected)
+        protected async Task DeleteFromTableAsync(string tableName, string whereClause, int expectedRowsAffected)
         {
             string deleteNumberStatement = GetDeleteValueStatement(tableName, whereClause);
             OutputHelper?.WriteLine(deleteNumberStatement);
             Statement.SqlQuery = deleteNumberStatement;
             UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
-            Assert.Equal(expectedRowsAffected, updateResult.AffectedRows);
+            if (ValidateAffectedRows) Assert.Equal(expectedRowsAffected, updateResult.AffectedRows);
         }
 
         /// <summary>
@@ -265,8 +329,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="whereClause">The WHERE clause string.</param>
         /// <returns></returns>
-        protected virtual string GetDeleteValueStatement(string tableName, string whereClause) =>
-            string.Format("DELETE FROM {0} WHERE {1};", tableName, whereClause);
+        protected string GetDeleteValueStatement(string tableName, string whereClause) => TestEnvironment.GetDeleteValueStatement(tableName, whereClause);
 
         /// <summary>
         /// Selects a single value and validates it equality with expected value and number of results.
@@ -276,10 +339,24 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to select and validate.</param>
         /// <param name="expectedLength">The number of expected results (rows).</param>
         /// <returns></returns>
-        protected virtual async Task SelectAndValidateValuesAsync(string table, string columnName, object? value, int expectedLength, string? formattedValue = null)
+        protected async Task SelectAndValidateValuesAsync(string table, string columnName, object? value, int expectedLength, string? formattedValue = null)
         {
             string selectNumberStatement = GetSelectSingleValueStatement(table, columnName, formattedValue ?? value);
             await SelectAndValidateValuesAsync(selectNumberStatement, value, expectedLength);
+        }
+
+        /// <summary>
+        /// Selects a single value and validates it equality with expected value and number of results.
+        /// </summary>
+        /// <param name="tableName">The name of the table to use.</param>
+        /// <param name="columnName">The name of the column.</param>
+        /// <param name="values">The value to select and validate.</param>
+        /// <param name="expectedLength">The number of expected results (rows).</param>
+        /// <returns></returns>
+        protected async Task SelectAndValidateValuesAsync(string table, string columnName, object?[] values, int expectedLength, string? formattedValue = null)
+        {
+            string selectNumberStatement = GetSelectSingleValueStatement(table, columnName, formattedValue ?? values[0]);
+            await SelectAndValidateValuesAsync(selectNumberStatement, values, expectedLength);
         }
 
         /// <summary>
@@ -289,7 +366,19 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value to select and validate.</param>
         /// <param name="expectedLength">The number of expected results (rows).</param>
         /// <returns></returns>
-        protected virtual async Task SelectAndValidateValuesAsync(string selectStatement, object? value, int expectedLength)
+        protected async Task SelectAndValidateValuesAsync(string selectStatement, object? value, int expectedLength)
+        {
+            await SelectAndValidateValuesAsync(selectStatement, [value], expectedLength);
+        }
+
+        /// <summary>
+        /// Selects a single value and validates it equality with expected value and number of results.
+        /// </summary>
+        /// <param name="selectStatement">The SQL statement to execute.</param>
+        /// <param name="values">The array of values to select and validate.</param>
+        /// <param name="expectedLength">The number of expected results (rows).</param>
+        /// <returns></returns>
+        protected async Task SelectAndValidateValuesAsync(string selectStatement, object?[] values, int expectedLength, bool hasIndexColumn = false)
         {
             Statement.SqlQuery = selectStatement;
             OutputHelper?.WriteLine(selectStatement);
@@ -309,67 +398,68 @@ namespace Apache.Arrow.Adbc.Tests
                             case Decimal128Type:
                                 Decimal128Array decimalArray = (Decimal128Array)nextBatch.Column(0);
                                 actualLength += decimalArray.Length;
-                                ValidateValue(value, decimalArray.Length, (i) => decimalArray.GetSqlDecimal(i));
+                                ValidateValue((i) => values?[i], decimalArray.Length, (i) => decimalArray.GetSqlDecimal(i));
                                 break;
                             case DoubleType:
                                 DoubleArray doubleArray = (DoubleArray)nextBatch.Column(0);
                                 actualLength += doubleArray.Length;
-                                ValidateValue(value, doubleArray.Length, (i) => doubleArray.GetValue(i));
+                                ValidateValue((i) => values?[i], doubleArray.Length, (i) => doubleArray.GetValue(i));
                                 break;
                             case FloatType:
                                 FloatArray floatArray = (FloatArray)nextBatch.Column(0);
                                 actualLength += floatArray.Length;
-                                ValidateValue(value, floatArray.Length, (i) => floatArray.GetValue(i));
+                                ValidateValue((i) => values?[i], floatArray.Length, (i) => floatArray.GetValue(i));
                                 break;
                             case Int64Type:
                                 Int64Array int64Array = (Int64Array)nextBatch.Column(0);
                                 actualLength += int64Array.Length;
-                                ValidateValue(value, int64Array.Length, (i) => int64Array.GetValue(i));
+                                ValidateValue((i) => values?[i], int64Array.Length, (i) => int64Array.GetValue(i));
                                 break;
                             case Int32Type:
                                 Int32Array intArray = (Int32Array)nextBatch.Column(0);
                                 actualLength += intArray.Length;
-                                ValidateValue(value, intArray.Length, (i) => intArray.GetValue(i));
+                                ValidateValue((i) => values?[i], intArray.Length, (i) => intArray.GetValue(i));
                                 break;
                             case Int16Type:
                                 Int16Array shortArray = (Int16Array)nextBatch.Column(0);
                                 actualLength += shortArray.Length;
-                                ValidateValue(value, shortArray.Length, (i) => shortArray.GetValue(i));
+                                ValidateValue((i) => values?[i], shortArray.Length, (i) => shortArray.GetValue(i));
                                 break;
                             case Int8Type:
                                 Int8Array tinyIntArray = (Int8Array)nextBatch.Column(0);
                                 actualLength += tinyIntArray.Length;
-                                ValidateValue(value, tinyIntArray.Length, (i) => tinyIntArray.GetValue(i));
+                                ValidateValue((i) => values?[i], tinyIntArray.Length, (i) => tinyIntArray.GetValue(i));
                                 break;
                             case StringType:
                                 StringArray stringArray = (StringArray)nextBatch.Column(0);
                                 actualLength += stringArray.Length;
-                                ValidateValue(value, stringArray.Length, (i) => stringArray.GetString(i));
+                                ValidateValue((i) => values?[i], stringArray.Length, (i) => stringArray.GetString(i));
                                 break;
                             case TimestampType:
                                 TimestampArray timestampArray = (TimestampArray)nextBatch.Column(0);
                                 actualLength += timestampArray.Length;
-                                ValidateValue(value, timestampArray.Length, (i) => timestampArray.GetTimestamp(i));
+                                ValidateValue((i) => values?[i], timestampArray.Length, (i) => timestampArray.GetTimestamp(i));
                                 break;
                             case Date32Type:
                                 Date32Array date32Array = (Date32Array)nextBatch.Column(0);
                                 actualLength += date32Array.Length;
-                                ValidateValue(value, date32Array.Length, (i) => date32Array.GetDateTimeOffset(i));
+                                ValidateValue((i) => values?[i], date32Array.Length, (i) => date32Array.GetDateTimeOffset(i));
                                 break;
                             case BooleanType:
                                 BooleanArray booleanArray = (BooleanArray)nextBatch.Column(0);
+                                Int32Array? indexArray = hasIndexColumn ? (Int32Array)nextBatch.Column(1) : null;
                                 actualLength += booleanArray.Length;
-                                ValidateValue(value, booleanArray.Length, (i) => booleanArray.GetValue(i));
+                                ValidateValue((i) => values?[i], booleanArray.Length, (i) => booleanArray.GetValue(i), indexArray);
                                 break;
                             case BinaryType:
                                 BinaryArray binaryArray = (BinaryArray)nextBatch.Column(0);
                                 actualLength += binaryArray.Length;
-                                ValidateValue(value, binaryArray.Length, (i) => binaryArray.GetBytes(i).ToArray());
+                                ValidateBinaryArrayValue((i) => values?[i], binaryArray);
                                 break;
                             case NullType:
                                 NullArray nullArray = (NullArray)nextBatch.Column(0);
                                 actualLength += nullArray.Length;
-                                ValidateValue(value == null, nullArray.Length, (i) => nullArray.IsNull(i));
+                                ValidateValue((i) => values?[i] == null, nullArray.Length, (i) => nullArray.IsNull(i));
                                 break;
                             default:
                                 Assert.Fail($"Unhandled datatype {field.DataType}");
@@ -385,14 +475,34 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Validates a single values for all results (in the batch).
         /// </summary>
+        /// <param name="expectedValues">The value to validate.</param>
+        /// <param name="binaryArray">The binary array to validate</param>
+        private static void ValidateBinaryArrayValue(Func<int, object?> expectedValues, BinaryArray binaryArray)
+        {
+            for (int i = 0; i < binaryArray.Length; i++)
+            {
+                // Note: null is indicated in output flag 'isNull'.
+                byte[] byteArray = binaryArray.GetBytes(i, out bool isNull).ToArray();
+                byte[]? nullableByteArray = isNull ? null : byteArray;
+                var expectedValue = expectedValues(i);
+                Assert.Equal<object>(expectedValue, nullableByteArray);
+            }
+        }
+
+        /// <summary>
+        /// Validates a single values for all results (in the batch).
+        /// </summary>
         /// <param name="value">The value to validate.</param>
         /// <param name="length">The length of the current batch/array.</param>
         /// <param name="getter">The getter function to retrieve the actual value.</param>
-        private static void ValidateValue(object? value, int length, Func<int, object?> getter)
+        private static void ValidateValue(Func<int, object?> value, int length, Func<int, object?> getter, Int32Array? indexColumn = null)
         {
             for (int i = 0; i < length; i++)
             {
-                Assert.Equal(value, getter(i));
+                int valueIndex = indexColumn?.GetValue(i) ?? i;
+                object? expected = value(valueIndex);
+                object? actual = getter(i);
+                Assert.Equal<object>(expected, actual);
             }
         }
 
@@ -403,13 +513,13 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to select and validate.</param>
         /// <returns>The native SQL statement.</returns>
-        protected virtual string GetSelectSingleValueStatement(string table, string columnName, object? value) =>
-            $"SELECT {columnName} FROM {table} WHERE {GetWhereClause(columnName, value)}";
+        protected string GetSelectSingleValueStatement(string table, string columnName, object? value) =>
+            $"SELECT {columnName} FROM {table} {GetWhereClause(columnName, value)}";
 
-        protected virtual string GetWhereClause(string columnName, object? value) =>
+        protected string GetWhereClause(string columnName, object? value) =>
             value == null
-                ? $"{columnName} IS NULL"
-                : string.Format("{0} = {1}", columnName, MaybeDoubleToString(value));
+                ? $"WHERE {columnName} IS NULL"
+                : string.Format("WHERE {0} = {1}", columnName, MaybeDoubleToString(value));
 
         private static object MaybeDoubleToString(object value) =>
             value.GetType() == typeof(float)
@@ -428,11 +538,11 @@ namespace Apache.Arrow.Adbc.Tests
             switch (value)
             {
                 case double.PositiveInfinity:
-                    return "'inf'";
+                    return "double('infinity')";
                 case double.NegativeInfinity:
-                    return "'-inf'";
+                    return "double('-infinity')";
                 case double.NaN:
-                    return "'NaN'";
+                    return "double('NaN')";
 #if NET472
                 // Double.ToString() rounds max/min values, causing Snowflake to store +/- infinity
                 case double.MaxValue:
@@ -455,11 +565,11 @@ namespace Apache.Arrow.Adbc.Tests
             switch (value)
             {
                 case float.PositiveInfinity:
-                    return "'inf'";
+                    return "float('infinity')";
                 case float.NegativeInfinity:
-                    return "'-inf'";
+                    return "float('-infinity')";
                 case float.NaN:
-                    return "'NaN'";
+                    return "float('NaN')";
 #if NET472
                 // Float.ToString() rounds max/min values, causing Snowflake to store +/- infinity
                 case float.MaxValue:
@@ -482,15 +592,13 @@ namespace Apache.Arrow.Adbc.Tests
             {
                 if (disposing)
                 {
-                    if (_statement != null)
+                    if (_statement.IsValueCreated)
                     {
-                        _statement.Dispose();
-                        _statement = null;
+                        _statement.Value.Dispose();
                     }
-                    if (_connection != null)
+                    if (_connection.IsValueCreated)
                     {
-                        _connection.Dispose();
-                        _connection = null;
+                        _connection.Value.Dispose();
                     }
                 }
 
@@ -510,12 +618,12 @@ namespace Apache.Arrow.Adbc.Tests
             return $"'{value.Replace("'", "''")}'";
         }
 
-        protected virtual string DelimitIdentifier(string value)
+        protected string DelimitIdentifier(string value)
         {
             return $"{Delimiter}{value.Replace(Delimiter, $"{Delimiter}{Delimiter}")}{Delimiter}";
         }
 
-        protected virtual string Delimiter => "\"";
+        protected string Delimiter => TestEnvironment.Delimiter;
 
         protected static void AssertContainsAll(string[] expectedTexts, string value)
         {
@@ -533,15 +641,18 @@ namespace Apache.Arrow.Adbc.Tests
         /// <returns>An enumeration of patterns to match produced from the identifier.</returns>
         protected static IEnumerable<object[]> GetPatterns(string? name)
         {
-            if (string.IsNullOrEmpty(name)) yield break;
+            if (name == null) yield break;
 
             yield return new object[] { name! };
-            yield return new object[] { $"{GetPartialNameForPatternMatch(name!)}%" };
-            yield return new object[] { $"{GetPartialNameForPatternMatch(name!).ToLower()}%" };
-            yield return new object[] { $"{GetPartialNameForPatternMatch(name!).ToUpper()}%" };
-            yield return new object[] { $"_{GetNameWithoutFirstChatacter(name!)}" };
-            yield return new object[] { $"_{GetNameWithoutFirstChatacter(name!).ToLower()}" };
-            yield return new object[] { $"_{GetNameWithoutFirstChatacter(name!).ToUpper()}" };
+            if (!string.IsNullOrEmpty(name))
+            {
+                yield return new object[] { $"{GetPartialNameForPatternMatch(name!)}%" };
+                yield return new object[] { $"{GetPartialNameForPatternMatch(name!).ToLower()}%" };
+                yield return new object[] { $"{GetPartialNameForPatternMatch(name!).ToUpper()}%" };
+                yield return new object[] { $"_{GetNameWithoutFirstChatacter(name!)}" };
+                yield return new object[] { $"_{GetNameWithoutFirstChatacter(name!).ToLower()}" };
+                yield return new object[] { $"_{GetNameWithoutFirstChatacter(name!).ToUpper()}" };
+            }
         }
 
         private static string GetPartialNameForPatternMatch(string name)
@@ -561,7 +672,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Represents a temporary table that can create and drop the table automatically.
         /// </summary>
-        protected class TemporaryTable : IDisposable
+        public class TemporaryTable : IDisposable
         {
             private bool _disposedValue;
             private readonly AdbcStatement _statement;
@@ -584,7 +695,7 @@ namespace Apache.Arrow.Adbc.Tests
             /// <param name="tableName">The name of temporary table to create.</param>
             /// <param name="sqlUpdate">The SQL query to create the table in the native SQL dialect.</param>
             /// <returns></returns>
-            public static async ValueTask<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string tableName, string sqlUpdate)
+            public static async Task<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string tableName, string sqlUpdate)
             {
                 statement.SqlQuery = sqlUpdate;
                 await statement.ExecuteUpdateAsync();
@@ -636,7 +747,8 @@ namespace Apache.Arrow.Adbc.Tests
             public static async ValueTask<TemporarySchema> NewTemporarySchemaAsync(string catalogName, AdbcStatement statement)
             {
                 TemporarySchema schema = new TemporarySchema(catalogName, statement);
-                statement.SqlQuery = $"CREATE SCHEMA IF NOT EXISTS {schema.CatalogName}.{schema.SchemaName}";
+                string catalog = string.IsNullOrEmpty(schema.CatalogName) ? string.Empty : schema.CatalogName + ".";
+                statement.SqlQuery = $"CREATE SCHEMA IF NOT EXISTS {catalog}{schema.SchemaName}";
                 await statement.ExecuteUpdateAsync();
                 return schema;
             }
@@ -651,7 +763,8 @@ namespace Apache.Arrow.Adbc.Tests
                 {
                     if (disposing)
                     {
-                        _statement.SqlQuery = $"DROP SCHEMA IF EXISTS {CatalogName}.{SchemaName}";
+                        string catalog = string.IsNullOrEmpty(CatalogName) ? string.Empty : CatalogName + ".";
+                        _statement.SqlQuery = $"DROP SCHEMA IF EXISTS {catalog}{SchemaName}";
                         _statement.ExecuteUpdate();
                     }
 

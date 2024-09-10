@@ -27,10 +27,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Spark\Resources\sparkconfig.json">
+    <None Update="Spark\Resources\sparkconfig-http.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Spark\Resources\sparkconfig-databricks.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Impala\Resources\impalaconfig.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Spark\Resources\SparkData-3.4.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Spark\Resources\SparkData.sql">

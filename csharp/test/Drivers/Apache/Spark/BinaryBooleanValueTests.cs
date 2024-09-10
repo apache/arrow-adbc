@@ -30,9 +30,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// <summary>
     /// Validates that specific binary and boolean values can be inserted, retrieved and targeted correctly
     /// </summary>
-    public class BinaryBooleanValueTests : SparkTestBase
+    public class BinaryBooleanValueTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
-        public BinaryBooleanValueTests(ITestOutputHelper output) : base(output) { }
+        public BinaryBooleanValueTests(ITestOutputHelper output) : base(output, new SparkTestEnvironment.Factory()) { }
 
         public static IEnumerable<object[]> ByteArrayData(int size)
         {
@@ -46,14 +46,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if driver can send and receive specific Binary values correctly.
         /// </summary>
         [SkippableTheory]
+        [InlineData(null)]
         [MemberData(nameof(ByteArrayData), 0)]
         [MemberData(nameof(ByteArrayData), 2)]
         [MemberData(nameof(ByteArrayData), 1024)]
-        public async Task TestBinaryData(byte[] value)
+        public async Task TestBinaryData(byte[]? value)
         {
             string columnName = "BINARYTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "BINARY"));
-            string formattedValue = $"X'{BitConverter.ToString(value).Replace("-", "")}'";
+            string? formattedValue = value != null ? $"X'{BitConverter.ToString(value).Replace("-", "")}'" : null;
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
@@ -72,8 +73,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string columnName = "BOOLEANTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "BOOLEAN"));
-            string? formattedValue =  value == null ? null : QuoteValue($"{value?.ToString(CultureInfo.InvariantCulture)}");
-            await ValidateInsertSelectDeleteSingleValueAsync(
+            string? formattedValue = value == null ? null : $"{value?.ToString(CultureInfo.InvariantCulture)}";
+            await ValidateInsertSelectDeleteTwoValuesAsync(
                 table.TableName,
                 columnName,
                 value,
@@ -96,13 +97,51 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("CAST(NULL AS VARCHAR(10))")]
         [InlineData("CAST(NULL AS CHAR(10))")]
         [InlineData("CAST(NULL AS BOOLEAN)")]
-        // TODO: Returns byte[] [] (i.e., empty array) - expecting null value.
-        //[InlineData("CAST(NULL AS BINARY)", Skip = "Returns empty array - expecting null value.")]
+        [InlineData("CAST(NULL AS BINARY)")]
         public async Task TestNullData(string projectionClause)
         {
             string selectStatement = $"SELECT {projectionClause};";
             // Note: by default, this returns as String type, not NULL type.
-            await SelectAndValidateValuesAsync(selectStatement, null, 1);
+            await SelectAndValidateValuesAsync(selectStatement, (object?)null, 1);
+        }
+
+        [SkippableTheory]
+        [InlineData(1)]
+        [InlineData(7)]
+        [InlineData(8)]
+        [InlineData(9)]
+        [InlineData(15)]
+        [InlineData(16)]
+        [InlineData(17)]
+        [InlineData(23)]
+        [InlineData(24)]
+        [InlineData(25)]
+        [InlineData(31)]
+        [InlineData(32)] // Full integer
+        [InlineData(33)]
+        [InlineData(39)]
+        [InlineData(40)]
+        [InlineData(41)]
+        [InlineData(47)]
+        [InlineData(48)]
+        [InlineData(49)]
+        [InlineData(63)]
+        [InlineData(64)] // Full 2 integers
+        [InlineData(65)]
+        public async Task TestMultilineNullData(int numberOfValues)
+        {
+            Random rnd = new();
+            int percentIsNull = 50;
+
+            object?[] values = new object?[numberOfValues];
+            for (int i = 0; i < numberOfValues; i++)
+            {
+                values[i] = rnd.Next(0, 100) < percentIsNull ? null : rnd.Next(0, 2) != 0;
+            }
+            string columnName = "BOOLEANTYPE";
+            string indexColumnName = "INDEXCOL";
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}, {2} {3}", indexColumnName, "INT", columnName, "BOOLEAN"));
+            await ValidateInsertSelectDeleteMultipleValuesAsync(table.TableName, columnName, indexColumnName, values);
         }
     }
 }

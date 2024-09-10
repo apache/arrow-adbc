@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
@@ -37,7 +38,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// queries to run.
     /// </remarks>
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
-    public class DriverTests : SparkTestBase
+    public class DriverTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
         /// <summary>
         /// Supported Spark data types as a subset of <see cref="SparkConnection.ColumnTypeId"/>
@@ -73,7 +74,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         private static List<string> DefaultTableTypes => new() { "TABLE", "VIEW" };
 
-        public DriverTests(ITestOutputHelper? outputHelper) : base(outputHelper)
+        public DriverTests(ITestOutputHelper? outputHelper) : base(outputHelper, new SparkTestEnvironment.Factory())
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));
         }
@@ -88,15 +89,27 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
             string[] queries = GetQueries();
 
-            List<int> expectedResults = new() {
-                -1, // DROP   TABLE
-                -1, // CREATE TABLE
-                1,  // INSERT
-                1,  // INSERT
-                1,  // INSERT
-                1,  // UPDATE
-                1,  // DELETE
-            };
+            List<int> expectedResults = VendorVersionAsVersion < Version.Parse("3.4.0")
+                ? new()
+                {
+                    -1, // DROP   TABLE
+                    -1, // CREATE TABLE
+                    1,  // INSERT
+                    1,  // INSERT
+                    1,  // INSERT
+                    //1,  // UPDATE
+                    //1,  // DELETE
+                }
+                : new List<int>()
+                {
+                    -1, // DROP   TABLE
+                    -1, // CREATE TABLE
+                    1,  // INSERT
+                    1,  // INSERT
+                    1,  // INSERT
+                    1,  // UPDATE
+                    1,  // DELETE
+                };
 
             for (int i = 0; i < queries.Length; i++)
             {
@@ -106,7 +119,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
                 UpdateResult updateResult = statement.ExecuteUpdate();
 
-                Assert.Equal(expectedResults[i], updateResult.AffectedRows);
+                if (ValidateAffectedRows) Assert.Equal(expectedResults[i], updateResult.AffectedRows);
             }
         }
 
@@ -212,7 +225,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// <param name="pattern"></param>
         [SkippableTheory, Order(3)]
         [MemberData(nameof(CatalogNamePatternData))]
-        public void GetGetObjectsCatalogs(string pattern)
+        public void GetGetObjectsCatalogs(string? pattern)
         {
             string? catalogName = TestConfiguration.Metadata.Catalog;
             string? schemaName = TestConfiguration.Metadata.Schema;
@@ -230,7 +243,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, catalogName, null);
             AdbcCatalog? catalog = catalogs.Where((catalog) => string.Equals(catalog.Name, catalogName)).FirstOrDefault();
 
-            Assert.True(catalog != null, "catalog should not be null");
+            Assert.True((pattern == string.Empty && catalog == null) || catalog != null, "catalog should not be null");
         }
 
         /// <summary>
@@ -416,7 +429,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string schemaPrefix = Guid.NewGuid().ToString().Replace("-", "");
             using TemporarySchema schema = TemporarySchema.NewTemporarySchemaAsync(catalogName, Statement).Result;
             string schemaName = schema.SchemaName;
-            string fullTableName = $"{DelimitIdentifier(catalogName)}.{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
+            string catalogFormatted = string.IsNullOrEmpty(catalogName) ? string.Empty : DelimitIdentifier(catalogName) + ".";
+            string fullTableName = $"{catalogFormatted}{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
             using TemporaryTable temporaryTable = TemporaryTable.NewTemporaryTableAsync(Statement, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)").Result;
 
             using IArrowArrayStream stream = Connection.GetObjects(
@@ -509,6 +523,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
             using AdbcStatement statement = adbcConnection.CreateStatement();
             statement.SqlQuery = TestConfiguration.Query;
+            OutputHelper?.WriteLine(statement.SqlQuery);
 
             QueryResult queryResult = statement.ExecuteQuery();
 
@@ -542,10 +557,65 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             using AdbcStatement statement = adbcConnection.CreateStatement();
             using TemporaryTable temporaryTable = await NewTemporaryTableAsync(statement, "INDEX INT");
 
-            statement.SqlQuery = GetInsertValueStatement(temporaryTable.TableName, "INDEX", "1");
+            statement.SqlQuery = GetInsertStatement(temporaryTable.TableName, "INDEX", "1");
             UpdateResult updateResult = await statement.ExecuteUpdateAsync();
 
-            Assert.Equal(1, updateResult.AffectedRows);
+            if (ValidateAffectedRows) Assert.Equal(1, updateResult.AffectedRows);
+        }
+
+        [SkippableFact, Order(13)]
+        public void CanDetectInvalidAuthentication()
+        {
+            AdbcDriver driver = NewDriver;
+            Assert.NotNull(driver);
+            Dictionary<string, string> parameters = GetDriverParameters(TestConfiguration);
+
+            bool hasToken = parameters.TryGetValue(SparkParameters.Token, out var token) && !string.IsNullOrEmpty(token);
+            bool hasUsername = parameters.TryGetValue(AdbcOptions.Username, out var username) && !string.IsNullOrEmpty(username);
+            bool hasPassword = parameters.TryGetValue(AdbcOptions.Password, out var password) && !string.IsNullOrEmpty(password);
+            if (hasToken)
+            {
+                parameters[SparkParameters.Token] = "invalid-token";
+            }
+            else if (hasUsername && hasPassword)
+            {
+                parameters[AdbcOptions.Password] = "invalid-password";
+            }
+            else
+            {
+                Assert.Fail($"Unexpected configuration. Must provide '{SparkParameters.Token}' or '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.");
+            }
+
+            AdbcDatabase database = driver.Open(parameters);
+            AggregateException exception = Assert.ThrowsAny<AggregateException>(() => database.Connect(parameters));
+            OutputHelper?.WriteLine(exception.Message);
+        }
+
+        [SkippableFact, Order(14)]
+        public void CanDetectInvalidServer()
+        {
+            AdbcDriver driver = NewDriver;
+            Assert.NotNull(driver);
+            Dictionary<string, string> parameters = GetDriverParameters(TestConfiguration);
+
+            bool hasUri = parameters.TryGetValue(AdbcOptions.Uri, out var uri) && !string.IsNullOrEmpty(uri);
+            bool hasHostName = parameters.TryGetValue(SparkParameters.HostName, out var hostName) && !string.IsNullOrEmpty(hostName);
+            if (hasUri)
+            {
+                parameters[AdbcOptions.Uri] = "http://unknownhost.azure.com/cliservice";
+            }
+            else if (hasHostName)
+            {
+                parameters[SparkParameters.HostName] = "unknownhost.azure.com";
+            }
+            else
+            {
+                Assert.Fail($"Unexpected configuration. Must provide '{AdbcOptions.Uri}' or '{SparkParameters.HostName}'.");
+            }
+
+            AdbcDatabase database = driver.Open(parameters);
+            AggregateException exception = Assert.ThrowsAny<AggregateException>(() => database.Connect(parameters));
+            OutputHelper?.WriteLine(exception.Message);
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()

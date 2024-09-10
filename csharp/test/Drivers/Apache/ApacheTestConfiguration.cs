@@ -33,5 +33,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
         [JsonPropertyName("path"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Path { get; set; } = string.Empty;
 
+        [JsonPropertyName("username"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Username { get; set; } = string.Empty;
+
+        [JsonPropertyName("password"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Password { get; set; } = string.Empty;
+
+        [JsonPropertyName("auth_type"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string AuthType { get; set; } = string.Empty;
+
+        [JsonPropertyName("uri"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Uri { get; set; } = string.Empty;
+
     }
 }
