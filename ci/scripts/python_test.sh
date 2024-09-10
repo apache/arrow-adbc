@@ -21,6 +21,7 @@ set -e
 : ${ADBC_USE_ASAN:=OFF}
 : ${ADBC_USE_UBSAN:=OFF}
 : ${BUILD_ALL:=1}
+: ${BUILD_DRIVER_BIGQUERY:=${BUILD_ALL}}
 : ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
@@ -70,6 +71,10 @@ main() {
 
     if [[ -z "${install_dir}" ]]; then
         install_dir="${build_dir}/local"
+    fi
+
+    if [[ "${BUILD_DRIVER_BIGQUERY}" -gt 0 ]]; then
+        test_subproject "${source_dir}" "${install_dir}" adbc_driver_bigquery
     fi
 
     if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then

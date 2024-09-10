@@ -52,6 +52,7 @@ class TupleReader final {
         row_id_(-1),
         batch_size_hint_bytes_(16777216),
         is_finished_(false) {
+    ArrowErrorInit(&na_error_);
     data_.data.as_char = nullptr;
     data_.size_bytes = 0;
   }
@@ -68,9 +69,9 @@ class TupleReader final {
  private:
   friend class PostgresStatement;
 
-  int InitQueryAndFetchFirst(struct ArrowError* error);
-  int AppendRowAndFetchNext(struct ArrowError* error);
-  int BuildOutput(struct ArrowArray* out, struct ArrowError* error);
+  int GetCopyData();
+  int AppendRowAndFetchNext();
+  int BuildOutput(struct ArrowArray* out);
 
   static int GetSchemaTrampoline(struct ArrowArrayStream* self, struct ArrowSchema* out);
   static int GetNextTrampoline(struct ArrowArrayStream* self, struct ArrowArray* out);
@@ -79,6 +80,7 @@ class TupleReader final {
 
   AdbcStatusCode status_;
   struct AdbcError error_;
+  struct ArrowError na_error_;
   PGconn* conn_;
   PGresult* result_;
   char* pgbuf_;

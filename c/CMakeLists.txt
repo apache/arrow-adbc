@@ -35,10 +35,6 @@ add_subdirectory(vendor/nanoarrow)
 add_subdirectory(driver/common)
 add_subdirectory(driver/framework)
 
-install(FILES "${REPOSITORY_ROOT}/c/include/adbc.h" DESTINATION include)
-install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/adbc.h"
-        DESTINATION include/arrow-adbc)
-
 if(ADBC_BUILD_TESTS)
   add_subdirectory(validation)
 endif()

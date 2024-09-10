@@ -20,7 +20,7 @@
 
   <groupId>org.apache.arrow.adbc</groupId>
   <artifactId>arrow-adbc-java-root</artifactId>
-  <version>0.14.0-SNAPSHOT</version>
+  <version>0.15.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Arrow ADBC Java Root POM</name>
@@ -29,7 +29,8 @@
 
   <properties>
     <dep.arrow.version>15.0.0</dep.arrow.version>
-    <adbc.version>0.14.0-SNAPSHOT</adbc.version>
+    <dep.org.checkerframework.version>3.47.0</dep.org.checkerframework.version>
+    <adbc.version>0.15.0-SNAPSHOT</adbc.version>
   </properties>
 
   <scm>
@@ -139,7 +140,7 @@
       <dependency>
         <groupId>org.checkerframework</groupId>
         <artifactId>checker-qual</artifactId>
-        <version>3.46.0</version>
+        <version>${dep.org.checkerframework.version}</version>
       </dependency>
 
       <!-- Testing -->
@@ -319,7 +320,7 @@
                 <path>
                   <groupId>org.checkerframework</groupId>
                   <artifactId>checker</artifactId>
-                  <version>3.46.0</version>
+                  <version>${dep.org.checkerframework.version}</version>
                 </path>
               </annotationProcessorPaths>
               <annotationProcessors>
