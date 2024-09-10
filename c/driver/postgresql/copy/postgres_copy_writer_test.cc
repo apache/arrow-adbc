@@ -836,6 +836,8 @@ TEST_P(PostgresCopyListTest, PostgresCopyWriteListSmallInt) {
   adbc_validation::Handle<struct ArrowArray> array;
   struct ArrowError na_error;
 
+
+
   ASSERT_EQ(ArrowSchemaInitFromType(&schema.value, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema.value, 1), NANOARROW_OK);
 

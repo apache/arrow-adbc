@@ -165,16 +165,43 @@ void IsAdbcStatusCode::DescribeNegationTo(std::ostream* os) const {
     }                                                 \
   } while (false);
 
+static int MakeSchemaColumnImpl(struct ArrowSchema* column, const SchemaField& field) {
+  CHECK_ERRNO(ArrowSchemaSetType(column, field.type));
+  CHECK_ERRNO(ArrowSchemaSetName(column, field.name.c_str()));
+
+  if (!field.nullable) {
+    column->flags &= ~ARROW_FLAG_NULLABLE;
+  }
+
+  if (static_cast<size_t>(column->n_children) != field.children.size()) {
+    return EINVAL;
+  }
+
+  switch (field.type) {
+    // SetType for a list will allocate and initialize children
+    case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_LARGE_LIST:
+    case NANOARROW_TYPE_MAP: {
+      size_t i = 0;
+      for (const SchemaField& child : field.children) {
+        CHECK_ERRNO(MakeSchemaColumnImpl(column->children[i], child));
+        ++i;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  return 0;
+}
+
 int MakeSchema(struct ArrowSchema* schema, const std::vector<SchemaField>& fields) {
   ArrowSchemaInit(schema);
   CHECK_ERRNO(ArrowSchemaSetTypeStruct(schema, fields.size()));
   size_t i = 0;
   for (const SchemaField& field : fields) {
-    CHECK_ERRNO(ArrowSchemaSetType(schema->children[i], field.type));
-    CHECK_ERRNO(ArrowSchemaSetName(schema->children[i], field.name.c_str()));
-    if (!field.nullable) {
-      schema->children[i]->flags &= ~ARROW_FLAG_NULLABLE;
-    }
+    CHECK_ERRNO(MakeSchemaColumnImpl(schema->children[i], field));
     i++;
   }
   return 0;

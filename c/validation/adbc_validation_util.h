@@ -257,12 +257,20 @@ struct SchemaField {
   std::string name;
   ArrowType type = NANOARROW_TYPE_UNINITIALIZED;
   bool nullable = true;
+  std::vector<SchemaField> children;
 
   SchemaField(std::string name, ArrowType type, bool nullable)
       : name(std::move(name)), type(type), nullable(nullable) {}
 
   SchemaField(std::string name, ArrowType type)
       : SchemaField(std::move(name), type, /*nullable=*/true) {}
+
+  static SchemaField Nested(std::string name, ArrowType type,
+                            std::vector<SchemaField> children) {
+    SchemaField out(name, type);
+    out.children = std::move(children);
+    return out;
+  }
 };
 
 /// \brief Make a schema from a vector of (name, type, nullable) tuples.
@@ -303,6 +311,11 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
         CHECK_OK(ArrowArrayAppendInterval(array, *v));
       } else if constexpr (std::is_same<T, ArrowDecimal*>::value) {
         CHECK_OK(ArrowArrayAppendDecimal(array, *v));
+      } else if constexpr (std::is_same<T, std::vector<int32_t>>::value) {
+        for (const auto child_value : v) {
+          CHECK_OK(ArrowArrayAppendInt(array->children[0], child_value));
+        }
+        CHECK_OK(ArrowArrayFinishElement(array));
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
         return ENOTSUP;
