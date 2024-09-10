@@ -311,10 +311,27 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
         CHECK_OK(ArrowArrayAppendInterval(array, *v));
       } else if constexpr (std::is_same<T, ArrowDecimal*>::value) {
         CHECK_OK(ArrowArrayAppendDecimal(array, *v));
-      } else if constexpr (std::is_same<T, std::vector<int16_t>>::value) {
-        for (const auto child_value : *v) {
-          CHECK_OK(ArrowArrayAppendInt(array->children[0], child_value));
+      } else if constexpr (
+          // Possibly a more effective way to do this using template magic
+          std::is_same<T, std::vector<bool>>::value ||
+          std::is_same<T, std::vector<int8_t>>::value ||
+          std::is_same<T, std::vector<int16_t>>::value ||
+          std::is_same<T, std::vector<int32_t>>::value ||
+          std::is_same<T, std::vector<int64_t>>::value ||
+          std::is_same<T, std::vector<uint8_t>>::value ||
+          std::is_same<T, std::vector<uint16_t>>::value ||
+          std::is_same<T, std::vector<uint32_t>>::value ||
+          std::is_same<T, std::vector<uint64_t>>::value ||
+          std::is_same<T, std::vector<double>>::value ||
+          std::is_same<T, std::vector<float>>::value ||
+          std::is_same<T, std::vector<std::string>>::value ||
+          std::is_same<T, std::vector<std::vector<std::byte>>>::value) {
+        using child_t = typename T::value_type;
+        std::vector<std::optional<child_t>> value_nullable;
+        for (const auto& child_value : *v) {
+          value_nullable.push_back(child_value);
         }
+        CHECK_OK(MakeArray(array, array->children[0], value_nullable));
         CHECK_OK(ArrowArrayFinishElement(array));
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
