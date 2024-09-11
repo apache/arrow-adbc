@@ -515,8 +515,8 @@ void StatementTest::TestSqlIngestListOfString() {
       SchemaField::Nested("col", NANOARROW_TYPE_LIST, {{"item", NANOARROW_TYPE_STRING}});
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<std::string>>(
       field,
-      {std::vector<std::string>{"abc", "defg"}, std::vector<std::string>{"hijk"},
-       std::nullopt},
+      {std::nullopt, std::vector<std::string>{"abc", "defg"},
+       std::vector<std::string>{"hijk"}},
       /*dictionary_encode*/ false));
 }
 
