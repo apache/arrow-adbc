@@ -390,9 +390,13 @@ void MakeStream(struct ArrowArrayStream* stream, struct ArrowSchema* schema,
 /// \brief Compare an array for equality against a vector of values.
 template <typename T>
 void CompareArray(struct ArrowArrayView* array,
-                  const std::vector<std::optional<T>>& values) {
-  ASSERT_EQ(static_cast<int64_t>(values.size()), array->array->length);
-  int64_t i = 0;
+                  const std::vector<std::optional<T>>& values, int64_t offset = 0,
+                  int64_t length = -1) {
+  if (length == -1) {
+    length = array->length;
+  }
+  ASSERT_EQ(static_cast<int64_t>(values.size()), length);
+  int64_t i = offset;
   for (const auto& v : values) {
     SCOPED_TRACE("Array index " + std::to_string(i));
     if (v.has_value()) {
@@ -474,9 +478,12 @@ void CompareArray(struct ArrowArrayView* array,
         for (const auto& child_value : *v) {
           value_nullable.push_back(child_value);
         }
-        SCOPED_TRACE("List item");
 
-        ASSERT_FALSE(true) << "Comparison not implemented";
+        SCOPED_TRACE("List item");
+        int64_t child_offset = ArrowArrayViewListChildOffset(array, i);
+        int64_t child_length = ArrowArrayViewListChildOffset(array, i + 1) - child_offset;
+        CompareArray<child_t>(array->children[0], value_nullable, child_offset,
+                              child_length);
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
       }
