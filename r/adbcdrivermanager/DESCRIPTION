@@ -21,7 +21,7 @@ Suggests:
     withr
 Config/testthat/edition: 3
 Config/build/bootstrap: TRUE
-URL: https://github.com/apache/arrow-adbc, https://arrow.apache.org/adbc/current/r/adbcdrivermanager/
+URL: https://arrow.apache.org/adbc/current/r/adbcdrivermanager/, https://github.com/apache/arrow-adbc
 BugReports: https://github.com/apache/arrow-adbc/issues
 Imports:
     nanoarrow (>= 0.3.0)
