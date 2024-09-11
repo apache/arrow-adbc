@@ -476,8 +476,7 @@ void CompareArray(struct ArrowArrayView* array,
         }
         SCOPED_TRACE("List item");
 
-        // TODO!
-
+        ASSERT_FALSE(true) << "Comparison not implemented";
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
       }
