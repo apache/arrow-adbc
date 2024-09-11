@@ -18,6 +18,7 @@
 url: https://arrow.apache.org/adbc/current/r/adbcsqlite/
 template:
   bootstrap: 5
+  light-switch: true
   # Link back to ADBC R documentation
   includes:
     before_title: |
