@@ -183,6 +183,13 @@ class PostgresType {
   const std::string& field_name() const { return field_name_; }
   int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
   const PostgresType& child(int64_t i) const { return children_[i]; }
+  const std::string create_table_name() const {
+    if (type_id_ == PostgresTypeId::kArray) {
+      return children_[0].create_table_name() + " ARRAY";
+    } else {
+      return typname_;
+    }
+  }
 
   // Sets appropriate fields of an ArrowSchema that has been initialized using
   // ArrowSchemaInit. This is a recursive operation (i.e., nested types will
