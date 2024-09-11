@@ -184,10 +184,23 @@ class PostgresType {
   int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
   const PostgresType& child(int64_t i) const { return children_[i]; }
   const std::string create_table_name() const {
-    if (type_id_ == PostgresTypeId::kArray) {
-      return children_[0].create_table_name() + " ARRAY";
-    } else {
-      return typname_;
+    switch (type_id_) {
+      case PostgresTypeId::kArray:
+        return children_[0].create_table_name() + " ARRAY";
+      case PostgresTypeId::kBool:
+        return "BOOLEAN";
+      case PostgresTypeId::kInt2:
+        return "SMALLINT";
+      case PostgresTypeId::kInt4:
+        return "INTEGER";
+      case PostgresTypeId::kInt8:
+        return "BIGINT";
+      case PostgresTypeId::kFloat4:
+        return "REAL";
+      case PostgresTypeId::kFloat8:
+        return "DOUBLE PRECISION";
+      default:
+        return typname_;
     }
   }
 
@@ -558,10 +571,30 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
     case NANOARROW_TYPE_DOUBLE:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kFloat8), out, error);
     case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_LARGE_STRING:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kText), out, error);
     case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_LARGE_BINARY:
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kBytea), out, error);
+    case NANOARROW_TYPE_DATE32:
+    case NANOARROW_TYPE_DATE64:
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kDate), out, error);
+    case NANOARROW_TYPE_TIME32:
+    case NANOARROW_TYPE_TIME64:
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kTime), out, error);
+    case NANOARROW_TYPE_DURATION:
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kInterval), out, error);
+    case NANOARROW_TYPE_TIMESTAMP:
+      if (strcmp("", schema_view.timezone) == 0) {
+        return resolver.Find(resolver.GetOID(PostgresTypeId::kTimestamptz), out, error);
+      } else {
+        return resolver.Find(resolver.GetOID(PostgresTypeId::kTimestamp), out, error);
+      }
+    case NANOARROW_TYPE_DECIMAL128:
+    case NANOARROW_TYPE_DECIMAL256:
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kNumeric), out, error);
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST: {
