@@ -616,7 +616,6 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
                                &escaped_table, &escaped_field_list, error);
       },
       error));
-  RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
 
   std::string query = "COPY ";
   query += escaped_table;
