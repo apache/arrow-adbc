@@ -15,9 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-url: ~
+url: https://arrow.apache.org/adbc/current/r/adbcpostgresql/
 template:
   bootstrap: 5
+  light-switch: true
   # Link back to ADBC R documentation
   includes:
     before_title: |
