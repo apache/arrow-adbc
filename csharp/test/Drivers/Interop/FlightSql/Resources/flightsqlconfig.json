@@ -2,14 +2,47 @@
     "driverPath": "",
     "driverEntryPoint": "",
     "datasourceKind": "",
-    "uri": "",
-    "sslSkipVerify": "",
-    "headers": {
-        "routing_tag": "",
-        "routing_queue": ""
-    },
-    "authorization": "",
-    "authority": "",
-    "query": "",
-    "expectedResults": 50
+    "testEnvironment": "",
+    "environments": {
+        "<env1>": {
+            "uri": "",
+            "sslSkipVerify": true,
+            "headers": {
+                "routing_tag": "",
+                "routing_queue": ""
+            },
+            "supportsWriteUpdate": true,
+            "supportsCatalogs": true,
+            "metadata": {
+                "catalog": "",
+                "schema": "",
+                "table": "",
+                "expectedColumnCount": 0
+            },
+            "authorization": "",
+            "authority": "",
+            "query": "",
+            "expectedResults": 0
+        },
+        "<env2>": {
+            "uri": "",
+            "sslSkipVerify": false,
+            "headers": {
+                "routing_tag": "",
+                "routing_queue": ""
+            },
+            "supportsWriteUpdate": false,
+            "supportsCatalogs": false,
+            "metadata": {
+                "catalog": "",
+                "schema": "",
+                "table": "",
+                "expectedColumnCount": 0
+            },
+            "authorization": "",
+            "authority": "",
+            "query": "",
+            "expectedResults": 0
+        }
+    }
 }

@@ -36,9 +36,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class ClientTests
     {
+        readonly FlightSqlTestConfiguration _testConfiguration;
+        readonly FlightSqlTestEnvironment _environment;
+
         public ClientTests()
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
+            _testConfiguration = FlightSqlTestingUtils.LoadFlightSqlTestConfiguration(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
+            _environment = FlightSqlTestingUtils.GetTestEnvironment(_testConfiguration);
         }
 
         /// <summary>
@@ -47,15 +52,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(1)]
         public void CanClientExecuteUpdate()
         {
-            FlightSqlTestConfiguration testConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
             {
-                string[] queries = FlightSqlTestingUtils.GetQueries(testConfiguration);
+                string[] queries = FlightSqlTestingUtils.GetQueries(_environment);
 
                 List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
-                Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, testConfiguration, queries, expectedResults);
+                Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, _environment, queries, expectedResults);
             }
         }
 
@@ -65,15 +68,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(2)]
         public void CanClientExecuteUpdateUsingExecuteReader()
         {
-            FlightSqlTestConfiguration testConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
             {
                 adbcConnection.Open();
 
-                string[] queries = FlightSqlTestingUtils.GetQueries(testConfiguration);
+                string[] queries = FlightSqlTestingUtils.GetQueries(_environment);
 
-                List<object> expectedResults = new List<object>() { $"Table {testConfiguration.Metadata.Table} successfully created.", new SqlDecimal(1L), new SqlDecimal(1L) };
+                List<object> expectedResults = new List<object>() { $"Table {_environment.Metadata.Table} successfully created.", new SqlDecimal(1L), new SqlDecimal(1L) };
 
                 for (int i = 0; i < queries.Length; i++)
                 {
@@ -101,11 +102,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(3)]
         public void CanClientGetSchema()
         {
-            FlightSqlTestConfiguration testConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
             {
-                Tests.ClientTests.CanClientGetSchema(adbcConnection, testConfiguration);
+                Tests.ClientTests.CanClientGetSchema(adbcConnection, _environment);
             }
         }
 
@@ -116,11 +115,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(4)]
         public void CanClientExecuteQuery()
         {
-            FlightSqlTestConfiguration testConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
             {
-                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, _environment);
             }
         }
 
@@ -131,13 +128,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(4)]
         public void CanClientExecuteQueryWithNoResults()
         {
-            FlightSqlTestConfiguration testConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
-            testConfiguration.Query = "SELECT * WHERE 0=1";
-            testConfiguration.ExpectedResultsCount = 0;
+            FlightSqlTestEnvironment environment = FlightSqlTestingUtils.GetTestEnvironment(_testConfiguration);
+            environment.Query = "SELECT * WHERE 0=1";
+            environment.ExpectedResultsCount = 0;
 
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
             {
-                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, environment);
             }
         }
 
@@ -148,9 +145,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(6)]
         public void VerifyTypesAndValues()
         {
-            FlightSqlTestConfiguration testConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
             {
                 SampleDataBuilder sampleDataBuilder = FlightSqlData.GetSampleData();
 
@@ -161,9 +156,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact]
         public void VerifySchemaTables()
         {
-            FlightSqlTestConfiguration testConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
             {
                 adbcConnection.Open();
 
@@ -210,40 +203,49 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         {
             // see https://arrow.apache.org/adbc/main/driver/flight_sql.html
 
+            FlightSqlTestEnvironment environment = _environment;
+
             DbConnectionStringBuilder builder = new DbConnectionStringBuilder(true);
-            //builder[SnowflakeParameters.ACCOUNT] = testConfiguration.Account;
-            //builder[SnowflakeParameters.WAREHOUSE] = testConfiguration.Warehouse;
-            //builder[SnowflakeParameters.HOST] = testConfiguration.Host;
-            //builder[SnowflakeParameters.DATABASE] = testConfiguration.Database;
-            //builder[SnowflakeParameters.USERNAME] = testConfiguration.User;
-            //if (authType == SnowflakeAuthentication.AuthJwt)
-            //{
-            //    string privateKey = testConfiguration.Authentication.SnowflakeJwt.PrivateKey;
-            //    builder[SnowflakeParameters.AUTH_TYPE] = SnowflakeAuthentication.AuthJwt;
-            //    builder[SnowflakeParameters.PKCS8_VALUE] = privateKey;
-            //    builder[SnowflakeParameters.USERNAME] = testConfiguration.Authentication.SnowflakeJwt.User;
-            //    if (!string.IsNullOrEmpty(testConfiguration.Authentication.SnowflakeJwt.PrivateKeyPassPhrase))
-            //    {
-            //        builder[SnowflakeParameters.PKCS8_PASS] = testConfiguration.Authentication.SnowflakeJwt.PrivateKeyPassPhrase;
-            //    }
-            //}
-            //else if (authType == SnowflakeAuthentication.AuthOAuth)
-            //{
-            //    builder[SnowflakeParameters.AUTH_TYPE] = SnowflakeAuthentication.AuthOAuth;
-            //    builder[SnowflakeParameters.AUTH_TOKEN] = testConfiguration.Authentication.OAuth.Token;
-            //    if (testConfiguration.Authentication.OAuth.User != null)
-            //    {
-            //        builder[SnowflakeParameters.USERNAME] = testConfiguration.Authentication.OAuth.User;
-            //    }
-            //}
-            //else if (string.IsNullOrEmpty(authType) || authType == SnowflakeAuthentication.AuthSnowflake)
-            //{
-            //    // if no auth type is specified, use the snowflake auth
-            //    builder[SnowflakeParameters.AUTH_TYPE] = SnowflakeAuthentication.AuthSnowflake;
-            //    builder[SnowflakeParameters.USERNAME] = testConfiguration.Authentication.Default.User;
-            //    builder[SnowflakeParameters.PASSWORD] = testConfiguration.Authentication.Default.Password;
-            //}
+            if (!string.IsNullOrEmpty(environment.Uri))
+            {
+                builder[FlightSqlParameters.Uri] = environment.Uri;
+            }
+
+            foreach (string key in environment.RPCCallHeaders.Keys)
+            {
+                builder[FlightSqlParameters.OptionRPCCallHeaderPrefix + key] = environment.RPCCallHeaders[key];
+            }
+
+            if (!string.IsNullOrEmpty(environment.AuthorizationHeader))
+            {
+                builder[FlightSqlParameters.OptionAuthorizationHeader] = environment.AuthorizationHeader;
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(environment.Username) && !string.IsNullOrEmpty(environment.Password))
+                {
+                    builder[FlightSqlParameters.Username] = environment.Username;
+                    builder[FlightSqlParameters.Password] = environment.Password;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(environment.TimeoutQuery))
+                builder[FlightSqlParameters.OptionTimeoutQuery] = environment.TimeoutQuery;
+
+            if (!string.IsNullOrEmpty(environment.TimeoutFetch))
+                builder[FlightSqlParameters.OptionTimeoutFetch] = environment.TimeoutFetch;
+
+            if (!string.IsNullOrEmpty(environment.TimeoutUpdate))
+                builder[FlightSqlParameters.OptionTimeoutUpdate] = environment.TimeoutUpdate;
+
+            if (environment.SSLSkipVerify)
+                builder[FlightSqlParameters.OptionSSLSkipVerify] = Convert.ToString(environment.SSLSkipVerify).ToLowerInvariant();
+
+            if (!string.IsNullOrEmpty(environment.Authority))
+                builder[FlightSqlParameters.OptionAuthority] = environment.Authority;
+
             AdbcDriver driver = FlightSqlTestingUtils.GetFlightSqlAdbcDriver(testConfiguration);
+
             return new Adbc.Client.AdbcConnection(builder.ConnectionString)
             {
                 AdbcDriver = driver

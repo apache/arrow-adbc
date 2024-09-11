@@ -36,6 +36,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
     public class DriverTests : IDisposable
     {
         readonly FlightSqlTestConfiguration _testConfiguration;
+        readonly FlightSqlTestEnvironment _environment;
         readonly AdbcDriver _adbcDriver;
         readonly AdbcDatabase _database;
         readonly AdbcConnection _connection;
@@ -55,30 +56,31 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         public static IEnumerable<object[]> CatalogNamePatternData()
         {
-            string? databaseName = FlightSqlTestingUtils.TestConfiguration?.Metadata.Catalog;
+            string? databaseName = FlightSqlTestingUtils.GetTestEnvironment(FlightSqlTestingUtils.LoadFlightSqlTestConfiguration()).Metadata.Catalog;
             return GetPatterns(databaseName);
         }
 
         public static IEnumerable<object[]> DbSchemasNamePatternData()
         {
-            string? dbSchemaName = FlightSqlTestingUtils.TestConfiguration?.Metadata.Schema;
+            string? dbSchemaName = FlightSqlTestingUtils.GetTestEnvironment(FlightSqlTestingUtils.LoadFlightSqlTestConfiguration()).Metadata.Schema;
             return GetPatterns(dbSchemaName);
         }
 
         public static IEnumerable<object[]> TableNamePatternData()
         {
-            string? tableName = FlightSqlTestingUtils.TestConfiguration?.Metadata.Table;
+            string? tableName = FlightSqlTestingUtils.GetTestEnvironment(FlightSqlTestingUtils.LoadFlightSqlTestConfiguration()).Metadata.Table;
             return GetPatterns(tableName);
         }
 
         public DriverTests()
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
-            _testConfiguration = FlightSqlTestingUtils.TestConfiguration;
+            _testConfiguration = FlightSqlTestingUtils.LoadFlightSqlTestConfiguration();
+            _environment = FlightSqlTestingUtils.GetTestEnvironment(_testConfiguration);
 
             Dictionary<string, string> parameters = new Dictionary<string, string>();
             Dictionary<string, string> options = new Dictionary<string, string>();
-            _adbcDriver = FlightSqlTestingUtils.GetAdbcDriver(_testConfiguration, out parameters);
+            _adbcDriver = FlightSqlTestingUtils.GetAdbcDriver(_testConfiguration, _environment, out parameters);
 
             _database = _adbcDriver.Open(parameters);
             _connection = _database.Connect(options);
@@ -96,9 +98,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public void CanExecuteUpdate()
         {
             // Dremio doesn't have acceptPut implemented by design.
-            Skip.If(_testConfiguration.SupportsWriteUpdate != true);
+            Skip.If(_environment.SupportsWriteUpdate != true);
 
-            string[] queries = FlightSqlTestingUtils.GetQueries(_testConfiguration);
+            string[] queries = FlightSqlTestingUtils.GetQueries(_environment);
 
             List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
@@ -120,9 +122,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(1)]
         public void AcceptPutNotImplemented()
         {
-            Skip.If(_testConfiguration.SupportsWriteUpdate != true);
+            Skip.If(_environment.SupportsWriteUpdate != true);
 
-            string[] queries = FlightSqlTestingUtils.GetQueries(_testConfiguration);
+            string[] queries = FlightSqlTestingUtils.GetQueries(_environment);
 
             List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
@@ -171,10 +173,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public void CanGetObjectsCatalogs(string catalogPattern)
         {
             // Dremio doesn't use catalogs
-            Skip.If(_testConfiguration.SupportsCatalogs != true);
+            Skip.If(_environment.SupportsCatalogs != true);
 
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
+            string databaseName = _environment.Metadata.Catalog;
+            string schemaName = _environment.Metadata.Schema;
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Catalogs,
@@ -200,8 +202,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public void CanGetObjectsDbSchemas(string dbSchemaPattern)
         {
             // need to add the database
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
+            string databaseName = _environment.Metadata.Catalog;
+            string schemaName = _environment.Metadata.Schema;
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.DbSchemas,
@@ -235,9 +237,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public void CanGetObjectsTables(string tableNamePattern)
         {
             // need to add the database
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
-            string tableName = _testConfiguration.Metadata.Table;
+            string databaseName = _environment.Metadata.Catalog;
+            string schemaName = _environment.Metadata.Schema;
+            string tableName = _environment.Metadata.Table;
 
             using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Tables,
@@ -276,9 +278,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(3)]
         public void CanGetObjectsAll()
         {
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
-            string tableName = _testConfiguration.Metadata.Table;
+            string databaseName = _environment.Metadata.Catalog;
+            string schemaName = _environment.Metadata.Schema;
+            string tableName = _environment.Metadata.Table;
             string? columnName = null;
 
             using IArrowArrayStream stream = _connection.GetObjects(
@@ -317,7 +319,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             List<AdbcColumn>? columns = table.Columns;
 
             Assert.True(columns != null, "Columns cannot be null");
-            Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
+            Assert.Equal(_environment.Metadata.ExpectedColumnCount, columns.Count);
 
             // TODO: Test if high precision is an issue
 
@@ -357,7 +359,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public void CanGetObjectsTablesWithSpecialCharacter(string databaseName, string schemaName, string tableName)
         {
             // Dremio doesn't support write operations so temporary table needs to be re-thought
-            Skip.If(_testConfiguration.SupportsWriteUpdate != true);
+            Skip.If(_environment.SupportsWriteUpdate != true);
 
             CreateDatabaseAndTable(databaseName, schemaName, tableName);
 
@@ -400,15 +402,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(4)]
         public void CanGetTableSchema()
         {
-            string databaseName = _testConfiguration.Metadata.Catalog;
-            string schemaName = _testConfiguration.Metadata.Schema;
-            string tableName = _testConfiguration.Metadata.Table;
+            string databaseName = _environment.Metadata.Catalog;
+            string schemaName = _environment.Metadata.Schema;
+            string tableName = _environment.Metadata.Table;
 
             Schema schema = _connection.GetTableSchema(databaseName, schemaName, tableName);
 
             int numberOfFields = schema.FieldsList.Count;
 
-            Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
+            Assert.Equal(_environment.Metadata.ExpectedColumnCount, numberOfFields);
         }
 
         /// <summary>
@@ -451,11 +453,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public void CanExecuteQuery()
         {
             using AdbcStatement statement = _connection.CreateStatement();
-            statement.SqlQuery = _testConfiguration.Query;
+            statement.SqlQuery = _environment.Query;
 
             QueryResult queryResult = statement.ExecuteQuery();
 
-            Tests.DriverTests.CanExecuteQuery(queryResult, _testConfiguration.ExpectedResultsCount);
+            Tests.DriverTests.CanExecuteQuery(queryResult, _environment.ExpectedResultsCount);
         }
 
         private void CreateDatabaseAndTable(string databaseName, string schemaName, string tableName)

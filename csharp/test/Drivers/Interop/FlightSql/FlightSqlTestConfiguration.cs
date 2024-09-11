@@ -20,13 +20,11 @@ using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 {
-    internal class FlightSqlTestConfiguration : TestConfiguration
+    internal class FlightSqlTestConfiguration
     {
         public FlightSqlTestConfiguration()
         {
-            this.RPCCallHeaders = new Dictionary<string, string>();
-            this.SupportsWriteUpdate = false;
-            this.SupportsCatalogs = false;
+            this.Environments = new Dictionary<string, FlightSqlTestEnvironment>();
         }
 
         /// <summary>
@@ -42,6 +40,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public string? DriverEntryPoint { get; set; }
 
         /// <summary>
+        /// The active test environment.
+        /// </summary>
+        [JsonPropertyName("testEnvironment")]
+        public string? TestEnvironmentName { get; set; }
+
+        /// <summary>
+        /// The active test environment.
+        /// </summary>
+        [JsonPropertyName("environments")]
+        public Dictionary<string, FlightSqlTestEnvironment> Environments { get; set; }
+    }
+
+    internal class FlightSqlTestEnvironment : TestConfiguration
+    {
+        public FlightSqlTestEnvironment()
+        {
+            this.RPCCallHeaders = new Dictionary<string, string>();
+            this.SupportsWriteUpdate = false;
+            this.SupportsCatalogs = false;
+        }
+
+        /// <summary>
         /// The service URI.
         /// </summary>
         [JsonPropertyName("uri")]
@@ -51,7 +71,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         /// Additional headers to add to the gRPC call.
         /// </summary>
         [JsonPropertyName("headers")]
-        public Dictionary<string,string> RPCCallHeaders { get; set; }
+        public Dictionary<string, string> RPCCallHeaders { get; set; }
 
         /// <summary>
         /// The authorization header.
@@ -69,7 +89,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public string? TimeoutUpdate { get; set; }
 
         [JsonPropertyName("sslSkipVerify")]
-        public string? SSLSkipVerify { get; set; }
+        public bool SSLSkipVerify { get; set; }
 
         [JsonPropertyName("authority")]
         public string? Authority { get; set; }
