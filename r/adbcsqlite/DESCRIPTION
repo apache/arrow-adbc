@@ -22,6 +22,6 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Config/build/bootstrap: TRUE
-URL: https://github.com/apache/arrow-adbc, https://arrow.apache.org/adbc/current/r/adbcsqlite/
+URL: https://arrow.apache.org/adbc/current/r/adbcsqlite/, https://github.com/apache/arrow-adbc
 BugReports: https://github.com/apache/arrow-adbc/issues
 Imports: adbcdrivermanager
