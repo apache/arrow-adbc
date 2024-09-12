@@ -34,12 +34,20 @@ class PqResultArrayReader {
  public:
   PqResultArrayReader(PGconn* conn, std::shared_ptr<PostgresTypeResolver> type_resolver,
                       std::string query)
-      : conn_(conn), helper_(conn, std::move(query)), type_resolver_(type_resolver) {
+      : conn_(conn),
+        helper_(conn, std::move(query)),
+        type_resolver_(type_resolver),
+        autocommit_(false) {
     ArrowErrorInit(&na_error_);
     error_ = ADBC_ERROR_INIT;
   }
 
   ~PqResultArrayReader() { ResetErrors(); }
+
+  // Ensure the reader knows what the autocommit status was on creation. This is used
+  // so that the temporary timezone setting required for parameter binding can be wrapped
+  // in a transaction (or not) accordingly.
+  void SetAutocommit(bool autocommit) { autocommit_ = autocommit; }
 
   void SetBind(struct ArrowArrayStream* stream) {
     bind_stream_ = std::make_unique<BindStream>();
@@ -62,6 +70,7 @@ class PqResultArrayReader {
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   std::vector<std::unique_ptr<PostgresCopyFieldReader>> field_readers_;
   nanoarrow::UniqueSchema schema_;
+  bool autocommit_;
   struct AdbcError error_;
   struct ArrowError na_error_;
 
