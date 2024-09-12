@@ -428,7 +428,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
                     PostgresType::FromSchema(*type_resolver_, source_schema.children[i],
                                              &pg_type, &na_error),
                     &na_error, error);
-    create += " " + pg_type.create_table_name();
+    create += " " + pg_type.sql_type_name();
   }
 
   if (ingest_.mode == IngestMode::kAppend) {

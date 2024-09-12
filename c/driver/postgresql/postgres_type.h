@@ -183,22 +183,15 @@ class PostgresType {
   const std::string& field_name() const { return field_name_; }
   int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
   const PostgresType& child(int64_t i) const { return children_[i]; }
-  const std::string create_table_name() const {
+
+  // The name used to communicate this type in a CREATE TABLE statement.
+  // These are not necessarily the most idiomatic names to use but PostgreSQL
+  // will accept typname() according to the "aliases" column in
+  // https://www.postgresql.org/docs/current/datatype.html
+  const std::string sql_type_name() const {
     switch (type_id_) {
       case PostgresTypeId::kArray:
-        return children_[0].create_table_name() + " ARRAY";
-      case PostgresTypeId::kBool:
-        return "BOOLEAN";
-      case PostgresTypeId::kInt2:
-        return "SMALLINT";
-      case PostgresTypeId::kInt4:
-        return "INTEGER";
-      case PostgresTypeId::kInt8:
-        return "BIGINT";
-      case PostgresTypeId::kFloat4:
-        return "REAL";
-      case PostgresTypeId::kFloat8:
-        return "DOUBLE PRECISION";
+        return children_[0].sql_type_name() + " ARRAY";
       default:
         return typname_;
     }
