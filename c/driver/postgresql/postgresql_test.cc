@@ -1779,7 +1779,7 @@ TEST_P(PostgresTypeTest, SelectValue) {
   // check type
   ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
-      &reader.schema.value, {{std::nullopt, GetParam().arrow_type, true}}));
+      &reader.schema.value, {{"", GetParam().arrow_type, true}}));
   if (GetParam().arrow_type == NANOARROW_TYPE_TIMESTAMP) {
     if (GetParam().sql_type.find("WITH TIME ZONE") == std::string::npos) {
       ASSERT_STREQ(reader.schema->children[0]->format, "tsu:");
