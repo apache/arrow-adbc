@@ -167,7 +167,6 @@ void StatementTest::TestSqlIngestType(SchemaField field,
     ASSERT_EQ(1, reader.array->n_children);
 
     if (round_trip_field.type == field.type) {
-      // XXX: This won't work for list types?
       // XXX: for now we can't compare values; we would need casting
       ASSERT_NO_FATAL_FAILURE(
           CompareArray<CType>(reader.array_view->children[0], values));
