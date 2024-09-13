@@ -35,11 +35,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         public override string TestConfigVariable => "SPARK_TEST_CONFIG_FILE";
 
-        public override string SqlDataResourceLocation => VendorVersionAsVersion >= Version.Parse("3.4.0")
-            ? "Spark/Resources/SparkData-3.4.sql"
+        public override string SqlDataResourceLocation => ServerType == SparkServerType.Databricks
+            ? "Spark/Resources/SparkData-Databricks.sql"
             : "Spark/Resources/SparkData.sql";
 
-        public override int ExpectedColumnCount => VendorVersionAsVersion >= Version.Parse("3.4.0") ? 19 : 17;
+        public override int ExpectedColumnCount => ServerType == SparkServerType.Databricks ? 19 : 17;
 
         public override AdbcDriver CreateNewDriver() => new SparkDriver();
 

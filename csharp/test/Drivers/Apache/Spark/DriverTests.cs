@@ -89,9 +89,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
             string[] queries = GetQueries();
 
-            List<int> expectedResults = VendorVersionAsVersion < Version.Parse("3.4.0")
-                ? new()
-                {
+            List<int> expectedResults = TestEnvironment.ServerType != SparkServerType.Databricks
+                ?
+                [
                     -1, // DROP   TABLE
                     -1, // CREATE TABLE
                     1,  // INSERT
@@ -99,9 +99,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                     1,  // INSERT
                     //1,  // UPDATE
                     //1,  // DELETE
-                }
-                : new List<int>()
-                {
+                ]
+                :
+                [
                     -1, // DROP   TABLE
                     -1, // CREATE TABLE
                     1,  // INSERT
@@ -109,7 +109,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                     1,  // INSERT
                     1,  // UPDATE
                     1,  // DELETE
-                };
+                ];
 
             for (int i = 0; i < queries.Length; i++)
             {
