@@ -1008,7 +1008,8 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
           "parameter count mismatch: expected {} but found {}", expected, actual);
     }
 
-    int64_t rows = 0;
+    int64_t output_rows = 0;
+    int64_t changed_rows = 0;
 
     SqliteMutexGuard guard(conn_);
 
@@ -1027,7 +1028,11 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
       }
 
       while (sqlite3_step(stmt_) == SQLITE_ROW) {
-        rows++;
+        output_rows++;
+      }
+
+      if (sqlite3_column_count(stmt_) == 0) {
+        changed_rows += sqlite3_changes(conn_);
       }
 
       if (!binder_.schema.release) break;
@@ -1041,9 +1046,10 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     }
 
     if (sqlite3_column_count(stmt_) == 0) {
-      rows = sqlite3_changes(conn_);
+      return changed_rows;
+    } else {
+      return output_rows;
     }
-    return rows;
   }
 
   Result<int64_t> ExecuteUpdateImpl(PreparedState& state) { return ExecuteUpdateImpl(); }
