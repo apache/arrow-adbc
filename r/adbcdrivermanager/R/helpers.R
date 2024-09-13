@@ -36,7 +36,7 @@
 #' @param ... Passed to S3 methods.
 #'
 #' @return
-#'   - `read_adbc()`: A [nanoarrow_array_stream][as_nanoarrow_array_stream]
+#'   - `read_adbc()`: A [nanoarrow_array_stream][nanoarrow::as_nanoarrow_array_stream]
 #'   - `execute_adbc()`: `db_or_con`, invisibly.
 #'   - `write_adbc()`: `tbl`, invisibly.
 #' @export

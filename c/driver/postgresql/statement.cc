@@ -318,11 +318,11 @@ AdbcStatusCode PostgresStatement::Cancel(struct AdbcError* error) {
   return connection_->Cancel(error);
 }
 
-AdbcStatusCode PostgresStatement::CreateBulkTable(
-    const std::string& current_schema, const struct ArrowSchema& source_schema,
-    const std::vector<struct ArrowSchemaView>& source_schema_fields,
-    std::string* escaped_table, std::string* escaped_field_list,
-    struct AdbcError* error) {
+AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_schema,
+                                                  const struct ArrowSchema& source_schema,
+                                                  std::string* escaped_table,
+                                                  std::string* escaped_field_list,
+                                                  struct AdbcError* error) {
   PGconn* conn = connection_->conn();
 
   if (!ingest_.db_schema.empty() && ingest_.temporary) {
@@ -405,7 +405,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
   create += *escaped_table;
   create += " (";
 
-  for (size_t i = 0; i < source_schema_fields.size(); i++) {
+  for (int64_t i = 0; i < source_schema.n_children; i++) {
     if (i > 0) {
       create += ", ";
       *escaped_field_list += ", ";
@@ -422,82 +422,13 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
     *escaped_field_list += escaped;
     PQfreemem(escaped);
 
-    switch (source_schema_fields[i].type) {
-      case ArrowType::NANOARROW_TYPE_BOOL:
-        create += " BOOLEAN";
-        break;
-      case ArrowType::NANOARROW_TYPE_INT8:
-      case ArrowType::NANOARROW_TYPE_INT16:
-        create += " SMALLINT";
-        break;
-      case ArrowType::NANOARROW_TYPE_INT32:
-        create += " INTEGER";
-        break;
-      case ArrowType::NANOARROW_TYPE_INT64:
-        create += " BIGINT";
-        break;
-      case ArrowType::NANOARROW_TYPE_FLOAT:
-        create += " REAL";
-        break;
-      case ArrowType::NANOARROW_TYPE_DOUBLE:
-        create += " DOUBLE PRECISION";
-        break;
-      case ArrowType::NANOARROW_TYPE_STRING:
-      case ArrowType::NANOARROW_TYPE_LARGE_STRING:
-        create += " TEXT";
-        break;
-      case ArrowType::NANOARROW_TYPE_BINARY:
-        create += " BYTEA";
-        break;
-      case ArrowType::NANOARROW_TYPE_DATE32:
-        create += " DATE";
-        break;
-      case ArrowType::NANOARROW_TYPE_TIMESTAMP:
-        if (strcmp("", source_schema_fields[i].timezone)) {
-          create += " TIMESTAMPTZ";
-        } else {
-          create += " TIMESTAMP";
-        }
-        break;
-      case ArrowType::NANOARROW_TYPE_DURATION:
-      case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
-        create += " INTERVAL";
-        break;
-      case ArrowType::NANOARROW_TYPE_DECIMAL128:
-      case ArrowType::NANOARROW_TYPE_DECIMAL256:
-        create += " DECIMAL";
-        break;
-      case ArrowType::NANOARROW_TYPE_DICTIONARY: {
-        struct ArrowSchemaView value_view;
-        CHECK_NA(INTERNAL,
-                 ArrowSchemaViewInit(&value_view, source_schema.children[i]->dictionary,
-                                     nullptr),
-                 error);
-        switch (value_view.type) {
-          case NANOARROW_TYPE_BINARY:
-          case NANOARROW_TYPE_LARGE_BINARY:
-            create += " BYTEA";
-            break;
-          case NANOARROW_TYPE_STRING:
-          case NANOARROW_TYPE_LARGE_STRING:
-            create += " TEXT";
-            break;
-          default:
-            SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
-                     static_cast<uint64_t>(i + 1), " ('", source_schema.children[i]->name,
-                     "') has unsupported dictionary value type for ingestion ",
-                     ArrowTypeString(value_view.type));
-            return ADBC_STATUS_NOT_IMPLEMENTED;
-        }
-        break;
-      }
-      default:
-        SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
-                 static_cast<uint64_t>(i + 1), " ('", source_schema.children[i]->name,
-                 "') has unsupported type for ingestion ",
-                 ArrowTypeString(source_schema_fields[i].type));
-        return ADBC_STATUS_NOT_IMPLEMENTED;
-    }
+    PostgresType pg_type;
+    struct ArrowError na_error;
+    CHECK_NA_DETAIL(INTERNAL,
+                    PostgresType::FromSchema(*type_resolver_, source_schema.children[i],
+                                             &pg_type, &na_error),
+                    &na_error, error);
+    create += " " + pg_type.sql_type_name();
   }
 
   if (ingest_.mode == IngestMode::kAppend) {
@@ -682,11 +613,9 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   RAISE_ADBC(bind_stream.Begin(
       [&]() -> AdbcStatusCode {
         return CreateBulkTable(current_schema, bind_stream.bind_schema.value,
-                               bind_stream.bind_schema_fields, &escaped_table,
-                               &escaped_field_list, error);
+                               &escaped_table, &escaped_field_list, error);
       },
       error));
-  RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
 
   std::string query = "COPY ";
   query += escaped_table;

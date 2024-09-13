@@ -4,10 +4,10 @@
 ^bootstrap\.R$
 ^README\.Rmd$
 ^src/Makevars$
-^src/sqlite3\.c$
-^src/sqlite3\.h$
 ^\.vscode$
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
 ^cran-comments\.md$
+^compile_commands\.json$
+^\.cache$

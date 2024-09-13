@@ -41,6 +41,7 @@ fi
 # ADBC repo into this package. If the file doesn't exist, we're installing
 # from a pre-built tarball.
 if [ -f bootstrap.R ]; then
+  echo "Running bootstrap.R..."
   "$RSCRIPT_BIN" bootstrap.R
 fi
 

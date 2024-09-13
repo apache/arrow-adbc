@@ -425,10 +425,10 @@ void CheckGetObjectsSchema(struct ArrowSchema* schema) {
                              {"constraint_column_names", NANOARROW_TYPE_LIST, NOT_NULL},
                              {"constraint_column_usage", NANOARROW_TYPE_LIST, NULLABLE},
                          }));
-  ASSERT_NO_FATAL_FAILURE(CompareSchema(
-      constraint_schema->children[2], {
-                                          {std::nullopt, NANOARROW_TYPE_STRING, NULLABLE},
-                                      }));
+  ASSERT_NO_FATAL_FAILURE(CompareSchema(constraint_schema->children[2],
+                                        {
+                                            {"", NANOARROW_TYPE_STRING, NULLABLE},
+                                        }));
 
   struct ArrowSchema* usage_schema = constraint_schema->children[3]->children[0];
   ASSERT_NO_FATAL_FAILURE(
