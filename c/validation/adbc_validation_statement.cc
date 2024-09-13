@@ -2136,6 +2136,66 @@ void StatementTest::TestSqlPrepareErrorParamCountMismatch() {
       ::testing::Not(IsOkStatus(&error)));
 }
 
+void StatementTest::TestSqlBind() {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(quirks()->DropTable(&connection, "bindtest", &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "CREATE TABLE bindtest (col1 INTEGER, col2 TEXT)", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ASSERT_THAT(MakeSchema(&schema.value,
+                         {{"", NANOARROW_TYPE_INT32}, {"", NANOARROW_TYPE_STRING}}),
+              IsOkErrno());
+
+  std::vector<std::optional<int32_t>> int_values{std::nullopt, -123, 123};
+  std::vector<std::optional<std::string>> string_values{"abc", std::nullopt, "defg"};
+
+  int batch_result = MakeBatch<int32_t, std::string>(
+      &schema.value, &array.value, &na_error, int_values, string_values);
+  ASSERT_THAT(batch_result, IsOkErrno());
+
+  auto insert_query = std::string("INSERT INTO bindtest VALUES (") +
+                      quirks()->BindParameter(0) + ", " + quirks()->BindParameter(1) +
+                      ")";
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, insert_query.c_str(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+  int64_t rows_affected = -10;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(-1), ::testing::Eq(3)));
+
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(
+          &statement, "SELECT * FROM bindtest ORDER BY \"col1\" ASC NULLS FIRST", &error),
+      IsOkStatus(&error));
+  {
+    StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(0), ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->length, 3);
+    CompareArray(reader.array_view->children[0], int_values);
+    CompareArray(reader.array_view->children[1], string_values);
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+}
+
 void StatementTest::TestSqlQueryEmpty() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 

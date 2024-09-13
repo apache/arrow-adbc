@@ -259,6 +259,7 @@ struct BindStream {
       }
 
       param_lengths[col] = static_cast<int>(param_length);
+      last_offset = param_buffer->size_bytes;
     }
 
     last_offset = 0;
