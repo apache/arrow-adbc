@@ -320,11 +320,10 @@ TEST(PostgresTypeTest, PostgresTypeFromSchema) {
   schema.reset();
 
   ArrowError error;
-  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INTERVAL_MONTHS),
             NANOARROW_OK);
   EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, &error), ENOTSUP);
-  EXPECT_STREQ(error.message,
-               "Can't map Arrow type 'interval_month_day_nano' to Postgres type");
+  EXPECT_STREQ(error.message, "Can't map Arrow type 'interval_months' to Postgres type");
   schema.reset();
 }
 

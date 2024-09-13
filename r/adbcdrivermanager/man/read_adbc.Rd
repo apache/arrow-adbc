@@ -43,7 +43,7 @@ is not compatible or append otherwise).}
 }
 \value{
 \itemize{
-\item \code{read_adbc()}: A \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}
+\item \code{read_adbc()}: A \link[nanoarrow:as_nanoarrow_array_stream]{nanoarrow_array_stream}
 \item \code{execute_adbc()}: \code{db_or_con}, invisibly.
 \item \code{write_adbc()}: \code{tbl}, invisibly.
 }

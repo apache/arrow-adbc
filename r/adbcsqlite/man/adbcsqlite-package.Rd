@@ -3,7 +3,6 @@
 \docType{package}
 \name{adbcsqlite-package}
 \alias{adbcsqlite-package}
-\alias{_PACKAGE}
 \title{adbcsqlite: 'Arrow' Database Connectivity ('ADBC') 'SQLite' Driver}
 \description{
 Provides a developer-facing interface to the 'Arrow' Database Connectivity ('ADBC') 'SQLite' driver for the purposes of building high-level database interfaces for users. 'ADBC' \url{https://arrow.apache.org/adbc/} is an API standard for database access libraries that uses 'Arrow' for result sets and query parameters.
