@@ -17,6 +17,10 @@
 
 #pragma once
 
+#if !defined(NOMINMAX)
+#define NOMINMAX
+#endif
+
 #include <memory>
 #include <string>
 #include <utility>
