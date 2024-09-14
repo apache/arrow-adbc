@@ -22,7 +22,7 @@
 #endif
 
 #include <algorithm>
-#include <limits>
+#include <climits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -253,7 +253,7 @@ struct BindStream {
       }
 
       int64_t param_length = param_buffer->size_bytes - last_offset - sizeof(int32_t);
-      if (param_length > std::numeric_limits<int>::max()) {
+      if (param_length > INT32_MAX) {
         SetError(error, "Parameter %" PRId64 " serialized to >2GB of binary", col);
         return ADBC_STATUS_INTERNAL;
       }
