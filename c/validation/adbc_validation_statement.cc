@@ -2137,6 +2137,10 @@ void StatementTest::TestSqlPrepareErrorParamCountMismatch() {
 }
 
 void StatementTest::TestSqlBind() {
+  if (!quirks()->supports_dynamic_parameter_binding()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
   ASSERT_THAT(quirks()->DropTable(&connection, "bindtest", &error), IsOkStatus(&error));
