@@ -534,8 +534,8 @@ class StatementTest {
   TEST_F(FIXTURE, SqlPrepareErrorNoQuery) { TestSqlPrepareErrorNoQuery(); }             \
   TEST_F(FIXTURE, SqlPrepareErrorParamCountMismatch) {                                  \
     TestSqlPrepareErrorParamCountMismatch();                                            \
-  }   \
-  TEST_F(FIXTURE, SqlBind) { TestSqlBind(); }                               \
+  }                                                                                     \
+  TEST_F(FIXTURE, SqlBind) { TestSqlBind(); }                                           \
   TEST_F(FIXTURE, SqlQueryEmpty) { TestSqlQueryEmpty(); }                               \
   TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
   TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \
