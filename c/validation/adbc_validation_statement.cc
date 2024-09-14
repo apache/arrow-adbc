@@ -2166,6 +2166,7 @@ void StatementTest::TestSqlBind() {
                       ")";
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, insert_query.c_str(), &error),
               IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
               IsOkStatus(&error));
   int64_t rows_affected = -10;
