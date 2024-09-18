@@ -68,7 +68,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 Add(new(new() { [SparkParameters.Type] = " " }, typeof(ArgumentException)));
                 Add(new(new() { [SparkParameters.Type] = "xxx" }, typeof(ArgumentOutOfRangeException)));
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Standard }, typeof(ArgumentOutOfRangeException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.HDInsight }, typeof(ArgumentOutOfRangeException)));
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = " " }, typeof(ArgumentException)));
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "invalid!server.com" }, typeof(ArgumentException)));
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "http://valid.server.com" }, typeof(ArgumentException)));
