@@ -31,6 +31,11 @@ namespace Apache.Arrow.Adbc
         private bool _readOnly = false;
         private IsolationLevel _isolationLevel = IsolationLevel.Default;
 
+        public static string CurrentCatalogOption = "adbc.connection.catalog";
+        public static string CurrentDbSchemaOption = "adbc.connection.db_schema";
+        public static string ReadOnlyOption = "adbc.connection.readonly";
+        public static string AutoCommitOption = "adbc.connection.autocommit";
+
         /// <summary>
         /// Commit the pending transaction.
         /// </summary>

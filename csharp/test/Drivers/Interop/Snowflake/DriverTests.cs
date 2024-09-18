@@ -125,6 +125,42 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             return expectedRole == stringArray.GetString(0);
         }
 
+        [SkippableFact, Order(1)]
+        public void CanSetDatabase()
+        {
+            Skip.If(string.IsNullOrEmpty(_testConfiguration.Metadata.Catalog));
+
+            // connect without the parameter and ensure we get the DATABASE successfully
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            Dictionary<string, string> options = new Dictionary<string, string>();
+
+            using AdbcDriver localSnowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_testConfiguration, out parameters);
+            parameters.Remove(SnowflakeParameters.DATABASE);
+            using AdbcDatabase localDatabase = localSnowflakeDriver.Open(parameters);
+            using AdbcConnection localConnection = localDatabase.Connect(options);
+
+            localConnection.SetOption(AdbcConnection.CurrentCatalogOption, _testConfiguration.Metadata.Catalog);
+
+            Assert.True(CurrentDatabaseIsExpectedCatalog(localConnection, _testConfiguration.Metadata.Catalog));
+
+            localConnection.GetObjects(AdbcConnection.GetObjectsDepth.All, _testConfiguration.Metadata.Catalog, _testConfiguration.Metadata.Schema, _testConfiguration.Metadata.Table, _tableTypes, null);
+        }
+
+        private bool CurrentDatabaseIsExpectedCatalog(AdbcConnection cn, string expectedCatalog)
+        {
+            using AdbcStatement statement = cn.CreateStatement();
+            statement.SqlQuery = "SELECT CURRENT_DATABASE() as CURRENT_DATABASE;"; // GetOption doesn't exist in 1.0, only 1.1
+
+            QueryResult queryResult = statement.ExecuteQuery();
+            using RecordBatch? recordBatch = queryResult.Stream?.ReadNextRecordBatchAsync().Result;
+            Assert.True(recordBatch != null);
+
+            StringArray stringArray = (StringArray)recordBatch.Column("CURRENT_DATABASE");
+            Assert.True(stringArray.Length > 0);
+
+            return expectedCatalog == stringArray.GetString(0);
+        }
+
         /// <summary>
         /// Validates if the driver can connect to a live server and
         /// parse the results.

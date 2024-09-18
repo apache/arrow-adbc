@@ -162,6 +162,24 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		sql.Named("UNIQUE_QUERY_ID", uniqueQueryID),
 	}
 
+	// the connection that is used is not the same connection context where the database may have been set
+	// if the caller called SetCurrentCatalog() so need to ensure the database context is appropriate
+	if !isNilOrEmpty(catalog) {
+		_, e := conn.ExecContext(context.Background(), fmt.Sprintf("USE DATABASE %s;", *catalog), nil)
+		if e != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, e)
+		}
+	}
+
+	// the connection that is used is not the same connection context where the schema may have been set
+	// if the caller called SetCurrentDbSchema() so need to ensure the schema context is appropriate
+	if !isNilOrEmpty(dbSchema) {
+		_, e2 := conn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA %s;", *dbSchema), nil)
+		if e2 != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, e2)
+		}
+	}
+
 	query := bldr.String()
 	rows, err := conn.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -214,6 +232,10 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	}
 }
 
+func isNilOrEmpty(str *string) bool {
+	return str == nil || *str == ""
+}
+
 // PrepareDriverInfo implements driverbase.DriverInfoPreparer.
 func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
 	if err := c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoVendorSql, true); err != nil {
@@ -239,13 +261,13 @@ func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
 
 // SetCurrentCatalog implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) SetCurrentCatalog(value string) error {
-	_, err := c.cn.ExecContext(context.Background(), "USE DATABASE ?", []driver.NamedValue{{Value: value}})
+	_, err := c.cn.ExecContext(context.Background(), fmt.Sprintf("USE DATABASE %s", value), nil)
 	return err
 }
 
 // SetCurrentDbSchema implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) SetCurrentDbSchema(value string) error {
-	_, err := c.cn.ExecContext(context.Background(), "USE SCHEMA ?", []driver.NamedValue{{Value: value}})
+	_, err := c.cn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA %s", value), nil)
 	return err
 }
 
