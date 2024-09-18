@@ -29,11 +29,12 @@
 #include <vector>
 
 #include <arrow-adbc/adbc.h>
+#include <framework/objects.h>
 #include <libpq-fe.h>
 
 #include "database.h"
 #include "driver/common/utils.h"
-#include "driver/framework/catalog.h"
+#include "driver/framework/utility.h"
 #include "error.h"
 #include "result_helper.h"
 
@@ -109,7 +110,7 @@ class PqGetObjectsHelper {
 
  private:
   AdbcStatusCode InitArrowArray() {
-    RAISE_ADBC(adbc::driver::AdbcInitConnectionObjectsSchema(schema_).ToAdbc(error_));
+    RAISE_ADBC(adbc::driver::MakeGetObjectsSchema(schema_).ToAdbc(error_));
 
     CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(array_, schema_, &na_error_),
                     &na_error_, error_);
@@ -634,17 +635,22 @@ AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
-    const uint32_t* info_codes, size_t info_codes_length, struct ArrowSchema* schema,
-    struct ArrowArray* array, struct AdbcError* error) {
-  RAISE_ADBC(adbc::driver::AdbcInitConnectionGetInfoSchema(schema, array).ToAdbc(error));
+AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
+                                           const uint32_t* info_codes,
+                                           size_t info_codes_length,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error) {
+  if (!info_codes) {
+    info_codes = kSupportedInfoCodes;
+    info_codes_length = sizeof(kSupportedInfoCodes) / sizeof(kSupportedInfoCodes[0]);
+  }
+
+  std::vector<adbc::driver::InfoValue> infos;
 
   for (size_t i = 0; i < info_codes_length; i++) {
     switch (info_codes[i]) {
       case ADBC_INFO_VENDOR_NAME:
-        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(array, info_codes[i],
-                                                                   "PostgreSQL")
-                       .ToAdbc(error));
+        infos.push_back({info_codes[i], "PostgreSQL"});
         break;
       case ADBC_INFO_VENDOR_VERSION: {
         const char* stmt = "SHOW server_version_num";
@@ -656,71 +662,30 @@ AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
           return ADBC_STATUS_INTERNAL;
         }
         const char* server_version_num = (*it)[0].data;
-
-        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(array, info_codes[i],
-                                                                   server_version_num)
-                       .ToAdbc(error));
+        infos.push_back({info_codes[i], server_version_num});
         break;
       }
       case ADBC_INFO_DRIVER_NAME:
-        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(
-                       array, info_codes[i], "ADBC PostgreSQL Driver")
-                       .ToAdbc(error));
+        infos.push_back({info_codes[i], "ADBC PostgreSQL Driver"});
         break;
       case ADBC_INFO_DRIVER_VERSION:
         // TODO(lidavidm): fill in driver version
-        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(array, info_codes[i],
-                                                                   "(unknown)")
-                       .ToAdbc(error));
+        infos.push_back({info_codes[i], "(unknown)"});
         break;
       case ADBC_INFO_DRIVER_ARROW_VERSION:
-        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendString(array, info_codes[i],
-                                                                   NANOARROW_VERSION)
-                       .ToAdbc(error));
+        infos.push_back({info_codes[i], NANOARROW_VERSION});
         break;
       case ADBC_INFO_DRIVER_ADBC_VERSION:
-        RAISE_ADBC(adbc::driver::AdbcConnectionGetInfoAppendInt(array, info_codes[i],
-                                                                ADBC_VERSION_1_1_0)
-                       .ToAdbc(error));
+        infos.push_back({info_codes[i], ADBC_VERSION_1_1_0});
         break;
       default:
         // Ignore
         continue;
     }
-    CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
   }
 
-  struct ArrowError na_error = {0};
-  CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array, &na_error), &na_error,
-                  error);
-
+  RAISE_ADBC(adbc::driver::MakeGetInfoStream(infos, out).ToAdbc(error));
   return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
-                                           const uint32_t* info_codes,
-                                           size_t info_codes_length,
-                                           struct ArrowArrayStream* out,
-                                           struct AdbcError* error) {
-  if (!info_codes) {
-    info_codes = kSupportedInfoCodes;
-    info_codes_length = sizeof(kSupportedInfoCodes) / sizeof(kSupportedInfoCodes[0]);
-  }
-
-  struct ArrowSchema schema;
-  std::memset(&schema, 0, sizeof(schema));
-  struct ArrowArray array;
-  std::memset(&array, 0, sizeof(array));
-
-  AdbcStatusCode status = PostgresConnectionGetInfoImpl(info_codes, info_codes_length,
-                                                        &schema, &array, error);
-  if (status != ADBC_STATUS_OK) {
-    if (schema.release) schema.release(&schema);
-    if (array.release) array.release(&array);
-    return status;
-  }
-
-  return BatchToArrayStream(&array, &schema, out, error);
 }
 
 AdbcStatusCode PostgresConnection::GetObjects(

@@ -27,6 +27,7 @@
 
 #include "driver/framework/base_driver.h"
 #include "driver/framework/status.h"
+#include "driver/framework/utility.h"
 
 namespace adbc::driver {
 
@@ -87,7 +88,7 @@ class Statement : public BaseStatement<Derived> {
           .ToAdbc(error);
     }
     if (bind_parameters_.release) bind_parameters_.release(&bind_parameters_);
-    AdbcMakeArrayStream(schema, values, &bind_parameters_);
+    MakeArrayStream(schema, values, &bind_parameters_);
     return ADBC_STATUS_OK;
   }
 
