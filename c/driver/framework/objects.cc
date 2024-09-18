@@ -22,6 +22,7 @@
 #include "nanoarrow/nanoarrow.hpp"
 
 #include "driver/framework/status.h"
+#include "driver/framework/utility.h"
 
 namespace adbc::driver {
 
@@ -525,7 +526,7 @@ Status BuildGetObjects(GetObjectsHelper* helper, GetObjectsDepth depth,
                                   table_filter, column_filter, table_types, schema.get(),
                                   array.get())
                     .Build());
-  nanoarrow::VectorArrayStream(schema.get(), array.get()).ToArrayStream(out);
+  MakeArrayStream(schema.get(), array.get(), out);
   return status::Ok();
 }
 }  // namespace adbc::driver

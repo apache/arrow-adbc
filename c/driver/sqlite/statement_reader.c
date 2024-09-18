@@ -105,14 +105,6 @@ AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode AdbcSqliteBinderSetArray(struct AdbcSqliteBinder* binder,
-                                        struct ArrowArray* values,
-                                        struct ArrowSchema* schema,
-                                        struct AdbcError* error) {
-  AdbcSqliteBinderRelease(binder);
-  RAISE_ADBC(BatchToArrayStream(values, schema, &binder->params, error));
-  return AdbcSqliteBinderSet(binder, error);
-}  // NOLINT(whitespace/indent)
 AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
                                               struct ArrowArrayStream* values,
                                               struct AdbcError* error) {

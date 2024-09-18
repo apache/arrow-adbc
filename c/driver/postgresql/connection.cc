@@ -708,7 +708,8 @@ AdbcStatusCode PostgresConnection::GetObjects(
     return status;
   }
 
-  return BatchToArrayStream(&array, &schema, out, error);
+  adbc::driver::MakeArrayStream(&schema, &array, out);
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresConnection::GetOption(const char* option, char* value,
@@ -1041,7 +1042,8 @@ AdbcStatusCode PostgresConnection::GetStatistics(const char* catalog,
     return status;
   }
 
-  return BatchToArrayStream(&array, &schema, out, error);
+  adbc::driver::MakeArrayStream(&schema, &array, out);
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresConnectionGetStatisticNamesImpl(struct ArrowSchema* schema,
@@ -1090,7 +1092,9 @@ AdbcStatusCode PostgresConnection::GetStatisticNames(struct ArrowArrayStream* ou
     if (array.release) array.release(&array);
     return status;
   }
-  return BatchToArrayStream(&array, &schema, out, error);
+
+  adbc::driver::MakeArrayStream(&schema, &array, out);
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
@@ -1207,7 +1211,9 @@ AdbcStatusCode PostgresConnection::GetTableTypes(struct AdbcConnection* connecti
     if (array.release) array.release(&array);
     return status;
   }
-  return BatchToArrayStream(&array, &schema, out, error);
+
+  adbc::driver::MakeArrayStream(&schema, &array, out);
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
