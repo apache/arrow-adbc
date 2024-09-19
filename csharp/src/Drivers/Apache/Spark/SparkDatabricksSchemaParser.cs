@@ -16,7 +16,6 @@
 */
 
 using System;
-using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -25,7 +24,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkDatabricksSchemaParser : SchemaParser
     {
-        public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, IReadOnlyCollection<HiveServer2DataTypeConversion> dataTypeConversion)
+        public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, HiveServer2DataTypeConversion dataTypeConversion)
         {
             return thriftType.Type switch
             {

@@ -71,7 +71,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal TSessionHandle? SessionHandle { get; private set; }
 
-        protected internal IReadOnlyCollection<HiveServer2DataTypeConversion> DataTypeConversion { get; set; } = [HiveServer2DataTypeConversion.None];
+        protected internal HiveServer2DataTypeConversion DataTypeConversion { get; set; } = HiveServer2DataTypeConversion.None;
 
         protected abstract Task<TTransport> CreateTransportAsync();
 

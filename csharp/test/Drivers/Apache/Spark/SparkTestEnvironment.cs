@@ -49,10 +49,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         public string? GetValueForProtocolVersion(string? hiveValue, string? databrickValue) =>
-            ServerType != SparkServerType.Databricks && ((HiveServer2Connection)Connection).DataTypeConversion.Contains(HiveServer2DataTypeConversion.None) ? hiveValue : databrickValue;
+            ServerType != SparkServerType.Databricks && ((HiveServer2Connection)Connection).DataTypeConversion.HasFlag(HiveServer2DataTypeConversion.None) ? hiveValue : databrickValue;
 
         public object? GetValueForProtocolVersion(object? hiveValue, object? databrickValue) =>
-            ServerType != SparkServerType.Databricks && ((HiveServer2Connection)Connection).DataTypeConversion.Contains(HiveServer2DataTypeConversion.None) ? hiveValue : databrickValue;
+            ServerType != SparkServerType.Databricks && ((HiveServer2Connection)Connection).DataTypeConversion.HasFlag(HiveServer2DataTypeConversion.None) ? hiveValue : databrickValue;
 
         public override string Delimiter => "`";
 

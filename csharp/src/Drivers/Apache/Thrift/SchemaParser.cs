@@ -16,9 +16,7 @@
 */
 
 using System;
-using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -26,7 +24,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
 {
     internal abstract class SchemaParser
     {
-        internal Schema GetArrowSchema(TTableSchema thriftSchema, IReadOnlyCollection<HiveServer2DataTypeConversion> dataTypeConversion)
+        internal Schema GetArrowSchema(TTableSchema thriftSchema, HiveServer2DataTypeConversion dataTypeConversion)
         {
             Field[] fields = new Field[thriftSchema.Columns.Count];
             for (int i = 0; i < thriftSchema.Columns.Count; i++)
@@ -38,7 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             return new Schema(fields, null);
         }
 
-        IArrowType GetArrowType(TTypeEntry thriftType, IReadOnlyCollection<HiveServer2DataTypeConversion> dataTypeConversion)
+        IArrowType GetArrowType(TTypeEntry thriftType, HiveServer2DataTypeConversion dataTypeConversion)
         {
             if (thriftType.PrimitiveEntry != null)
             {
@@ -47,7 +45,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             throw new InvalidOperationException();
         }
 
-        public abstract IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, IReadOnlyCollection<HiveServer2DataTypeConversion> dataTypeConversion);
+        public abstract IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, HiveServer2DataTypeConversion dataTypeConversion);
 
         protected static Decimal128Type NewDecima128Type(TPrimitiveTypeEntry thriftType) =>
             new(thriftType.TypeQualifiers.Qualifiers["precision"].I32Value, thriftType.TypeQualifiers.Qualifiers["scale"].I32Value);
