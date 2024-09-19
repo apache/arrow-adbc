@@ -17,6 +17,9 @@
 
 #include "driver/framework/utility.h"
 
+#include <string>
+#include <vector>
+
 #include "arrow-adbc/adbc.h"
 #include "nanoarrow/nanoarrow.hpp"
 

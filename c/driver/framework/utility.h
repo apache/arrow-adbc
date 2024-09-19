@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include <string>
+#include <utility>
+#include <vector>
+
 #include <arrow-adbc/adbc.h>
 
 #include "driver/framework/status.h"
