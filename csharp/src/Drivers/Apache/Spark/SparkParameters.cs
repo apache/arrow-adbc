@@ -82,7 +82,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public const string Http = "http";
         public const string Databricks = "databricks";
         public const string Standard = "standard";
-        public const string HDInsight = "hdinsight";
         internal const string SupportedList = Http + ", " + Databricks;
 
         public static bool TryParse(string? serverType, out SparkServerType serverTypeValue)
@@ -102,9 +101,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 case Standard:
                     serverTypeValue = SparkServerType.Standard;
                     return true;
-                case HDInsight:
-                    serverTypeValue = SparkServerType.HDInsight;
-                    return true;
                 default:
                     serverTypeValue = SparkServerType.Invalid;
                     return false;
@@ -118,7 +114,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         Http,
         Databricks,
         Standard,
-        HDInsight,
         Empty = int.MaxValue,
     }
 
