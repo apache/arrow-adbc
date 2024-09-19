@@ -165,7 +165,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	// the connection that is used is not the same connection context where the database may have been set
 	// if the caller called SetCurrentCatalog() so need to ensure the database context is appropriate
 	if !isNilOrEmpty(catalog) {
-		_, e := conn.ExecContext(context.Background(), fmt.Sprintf("USE DATABASE %s;", quoteTblName(*catalog)), nil)
+		_, e := conn.ExecContext(context.Background(), fmt.Sprintf("USE DATABASE IDENTIFIER('%s');", *catalog), nil)
 		if e != nil {
 			return nil, errToAdbcErr(adbc.StatusIO, e)
 		}
@@ -174,7 +174,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	// the connection that is used is not the same connection context where the schema may have been set
 	// if the caller called SetCurrentDbSchema() so need to ensure the schema context is appropriate
 	if !isNilOrEmpty(dbSchema) {
-		_, e2 := conn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA %s;", quoteTblName(*dbSchema)), nil)
+		_, e2 := conn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA IDENTIFIER('%s');", *dbSchema), nil)
 		if e2 != nil {
 			return nil, errToAdbcErr(adbc.StatusIO, e2)
 		}
@@ -261,13 +261,13 @@ func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
 
 // SetCurrentCatalog implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) SetCurrentCatalog(value string) error {
-	_, err := c.cn.ExecContext(context.Background(), fmt.Sprintf("USE DATABASE %s", quoteTblName(value)), nil)
+	_, err := c.cn.ExecContext(context.Background(), fmt.Sprintf("USE DATABASE IDENTIFIER('%s');", value), nil)
 	return err
 }
 
 // SetCurrentDbSchema implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) SetCurrentDbSchema(value string) error {
-	_, err := c.cn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA %s", quoteTblName(value)), nil)
+	_, err := c.cn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA IDENTIFIER('%s')", value), nil)
 	return err
 }
 
