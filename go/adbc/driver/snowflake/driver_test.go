@@ -264,7 +264,6 @@ func createTempSchema(database string, uri string) string {
 }
 
 func dropTempSchema(uri, schema string) {
-
 	db, err := sql.Open("snowflake", uri)
 	if err != nil {
 		panic(err)
@@ -2137,12 +2136,11 @@ func (suite *SnowflakeTests) TestChangeDatabaseAndGetObjects() {
 	cfg, err := gosnowflake.ParseDSN(uri)
 	suite.NoError(err)
 
-	db := newCatalog
 	cnxnopt, ok := suite.cnxn.(adbc.PostInitOptions)
 	suite.True(ok)
-	err = cnxnopt.SetOption(adbc.OptionKeyCurrentCatalog, db)
+	err = cnxnopt.SetOption(adbc.OptionKeyCurrentCatalog, newCatalog)
 	suite.NoError(err)
 
-	_, err2 := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthAll, &db, &cfg.Schema, &getObjectsTable, nil, nil)
+	_, err2 := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthAll, &newCatalog, &cfg.Schema, &getObjectsTable, nil, nil)
 	suite.NoError(err2)
 }

@@ -139,7 +139,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             using AdbcDatabase localDatabase = localSnowflakeDriver.Open(parameters);
             using AdbcConnection localConnection = localDatabase.Connect(options);
 
-            localConnection.SetOption(AdbcConnection.CurrentCatalogOption, _testConfiguration.Metadata.Catalog);
+            localConnection.SetOption(AdbcOptions.Connection.CurrentCatalog, _testConfiguration.Metadata.Catalog);
 
             Assert.True(CurrentDatabaseIsExpectedCatalog(localConnection, _testConfiguration.Metadata.Catalog));
 

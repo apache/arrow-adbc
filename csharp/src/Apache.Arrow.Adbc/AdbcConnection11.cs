@@ -32,10 +32,6 @@ namespace Apache.Arrow.Adbc
         , IAsyncDisposable
 #endif
     {
-        public static string CurrentCatalogOption = "adbc.connection.catalog";
-        public static string CurrentDbSchemaOption = "adbc.connection.db_schema";
-        public static string ReadOnlyOption = "adbc.connection.readonly";
-        public static string AutoCommitOption = "adbc.connection.autocommit";
 
         ~AdbcConnection11() => Dispose(false);
 
