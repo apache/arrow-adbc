@@ -29,11 +29,11 @@
 #include <vector>
 
 #include <arrow-adbc/adbc.h>
-#include <framework/objects.h>
 #include <libpq-fe.h>
 
 #include "database.h"
 #include "driver/common/utils.h"
+#include "driver/framework/objects.h"
 #include "driver/framework/utility.h"
 #include "error.h"
 #include "result_helper.h"

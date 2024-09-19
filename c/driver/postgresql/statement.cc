@@ -16,7 +16,6 @@
 // under the License.
 
 // Windows
-#include <framework/utility.h>
 #define NOMINMAX
 
 #include "statement.h"
@@ -41,6 +40,7 @@
 #include "connection.h"
 #include "driver/common/options.h"
 #include "driver/common/utils.h"
+#include "driver/framework/utility.h"
 #include "error.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
