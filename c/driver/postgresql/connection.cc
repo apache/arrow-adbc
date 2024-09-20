@@ -1164,55 +1164,16 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   return final_status;
 }
 
-AdbcStatusCode PostgresConnectionGetTableTypesImpl(struct ArrowSchema* schema,
-                                                   struct ArrowArray* array,
-                                                   struct AdbcError* error) {
-  // See 'relkind' in https://www.postgresql.org/docs/current/catalog-pg-class.html
-  auto uschema = nanoarrow::UniqueSchema();
-  ArrowSchemaInit(uschema.get());
-
-  CHECK_NA(INTERNAL, ArrowSchemaSetType(uschema.get(), NANOARROW_TYPE_STRUCT), error);
-  CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(uschema.get(), /*num_columns=*/1),
-           error);
-  ArrowSchemaInit(uschema.get()->children[0]);
-  CHECK_NA(INTERNAL,
-           ArrowSchemaSetType(uschema.get()->children[0], NANOARROW_TYPE_STRING), error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetName(uschema.get()->children[0], "table_type"), error);
-  uschema.get()->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
-
-  CHECK_NA(INTERNAL, ArrowArrayInitFromSchema(array, uschema.get(), NULL), error);
-  CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
-
-  for (auto const& table_type : kPgTableTypes) {
-    CHECK_NA(INTERNAL,
-             ArrowArrayAppendString(array->children[0],
-                                    ArrowCharView(table_type.first.c_str())),
-             error);
-    CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
-  }
-
-  CHECK_NA(INTERNAL, ArrowArrayFinishBuildingDefault(array, NULL), error);
-
-  uschema.move(schema);
-  return ADBC_STATUS_OK;
-}
-
 AdbcStatusCode PostgresConnection::GetTableTypes(struct AdbcConnection* connection,
                                                  struct ArrowArrayStream* out,
                                                  struct AdbcError* error) {
-  struct ArrowSchema schema;
-  std::memset(&schema, 0, sizeof(schema));
-  struct ArrowArray array;
-  std::memset(&array, 0, sizeof(array));
-
-  AdbcStatusCode status = PostgresConnectionGetTableTypesImpl(&schema, &array, error);
-  if (status != ADBC_STATUS_OK) {
-    if (schema.release) schema.release(&schema);
-    if (array.release) array.release(&array);
-    return status;
+  std::vector<std::string> table_types;
+  table_types.reserve(kPgTableTypes.size());
+  for (auto const& table_type : kPgTableTypes) {
+    table_types.push_back(table_type.first);
   }
 
-  adbc::driver::MakeArrayStream(&schema, &array, out);
+  RAISE_STATUS(error, adbc::driver::MakeTableTypesStream(table_types, out));
   return ADBC_STATUS_OK;
 }
 
