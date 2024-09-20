@@ -64,4 +64,38 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         None = 1,
         Scalar = 2,
     }
+
+    public static class HiveServer2TlsOptionConstants
+    {
+        public const string AllowInvalidCertificate = "allowinvalidcertificate";
+        public const string AllowInvalidHostnames = "allowinvalidhostnames";
+        internal const string SupportedList = AllowInvalidCertificate + "," + AllowInvalidHostnames;
+
+        public static HiveServer2TlsOption Parse(string? tlsOptions)
+        {
+            HiveServer2TlsOption options = HiveServer2TlsOption.Empty;
+            if (tlsOptions == null) return options;
+
+            string[] valueList = tlsOptions.Split(',');
+            foreach (string tlsOption in valueList)
+            {
+                options |= (tlsOption?.Trim().ToLowerInvariant()) switch
+                {
+                    null or "" => HiveServer2TlsOption.Empty,
+                    AllowInvalidCertificate => HiveServer2TlsOption.AllowInvalidCertificate,
+                    AllowInvalidHostnames => HiveServer2TlsOption.AllowInvalidHostnames,
+                    _ => throw new ArgumentOutOfRangeException(nameof(tlsOptions), tlsOption, "Invalid or unsupported TLS option"),
+                };
+            }
+            return options;
+        }
+    }
+
+    [Flags]
+    public enum HiveServer2TlsOption
+    {
+        Empty = 0,
+        AllowInvalidCertificate = 1,
+        AllowInvalidHostnames = 2,
+    }
 }

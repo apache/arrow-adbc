@@ -25,16 +25,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
     public class HiveServer2ParametersTest
     {
         [SkippableTheory]
-        [MemberData(nameof(GetParametersTestData))]
-        public void TestParametersParse(string? dataTypeConversion, HiveServer2DataTypeConversion expected, Type? excptionType = default)
+        [MemberData(nameof(GetParametersDataTypeConvTestData))]
+        public void TestParametersDataTypeConvParse(string? dataTypeConversion, HiveServer2DataTypeConversion expected, Type? exceptionType = default)
         {
-            if (excptionType == default)
+            if (exceptionType == default)
                 Assert.Equal(expected, HiveServer2DataTypeConversionConstants.Parse(dataTypeConversion));
             else
-                Assert.Throws(excptionType, () => HiveServer2DataTypeConversionConstants.Parse(dataTypeConversion));
+                Assert.Throws(exceptionType, () => HiveServer2DataTypeConversionConstants.Parse(dataTypeConversion));
         }
 
-        public static IEnumerable<object?[]> GetParametersTestData()
+        [SkippableTheory]
+        [MemberData(nameof(GetParametersTlsOptionTestData))]
+        public void TestParametersTlsOptionParse(string? tlsOptions, HiveServer2TlsOption expected, Type? exceptionType = default)
+        {
+            if (exceptionType == default)
+                Assert.Equal(expected, HiveServer2TlsOptionConstants.Parse(tlsOptions));
+            else
+                Assert.Throws(exceptionType, () => HiveServer2TlsOptionConstants.Parse(tlsOptions));
+        }
+
+        public static IEnumerable<object?[]> GetParametersDataTypeConvTestData()
         {
             // Default
             yield return new object?[] { null, HiveServer2DataTypeConversion.Scalar };
@@ -57,6 +67,27 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             // Invalid options
             yield return new object?[] { $"xxx", HiveServer2DataTypeConversion.Empty, typeof(ArgumentOutOfRangeException) };
             yield return new object?[] { $"none,scalar,xxx", HiveServer2DataTypeConversion.None | HiveServer2DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException)  };
+        }
+
+        public static IEnumerable<object?[]> GetParametersTlsOptionTestData()
+        {
+            // Default
+            yield return new object?[] { null, HiveServer2TlsOption.Empty };
+            yield return new object?[] { "", HiveServer2TlsOption.Empty};
+            yield return new object?[] { " ", HiveServer2TlsOption.Empty };
+            // Explicit
+            yield return new object?[] { $"{HiveServer2TlsOptionConstants.AllowInvalidCertificate}", HiveServer2TlsOption.AllowInvalidCertificate };
+            yield return new object?[] { $"{HiveServer2TlsOptionConstants.AllowInvalidHostnames}", HiveServer2TlsOption.AllowInvalidHostnames };
+            // Ignore empty
+            yield return new object?[] { $",{HiveServer2TlsOptionConstants.AllowInvalidCertificate}", HiveServer2TlsOption.AllowInvalidCertificate };
+            yield return new object?[] { $",{HiveServer2TlsOptionConstants.AllowInvalidHostnames},", HiveServer2TlsOption.AllowInvalidHostnames };
+            // Combined, embedded space, mixed-case
+            yield return new object?[] { $"{HiveServer2TlsOptionConstants.AllowInvalidCertificate},{HiveServer2TlsOptionConstants.AllowInvalidHostnames}", HiveServer2TlsOption.AllowInvalidCertificate | HiveServer2TlsOption.AllowInvalidHostnames };
+            yield return new object?[] { $"{HiveServer2TlsOptionConstants.AllowInvalidHostnames},{HiveServer2TlsOptionConstants.AllowInvalidCertificate}", HiveServer2TlsOption.AllowInvalidCertificate  | HiveServer2TlsOption.AllowInvalidHostnames };
+            yield return new object?[] { $" {HiveServer2TlsOptionConstants.AllowInvalidHostnames} , {HiveServer2TlsOptionConstants.AllowInvalidCertificate} ", HiveServer2TlsOption.AllowInvalidCertificate | HiveServer2TlsOption.AllowInvalidHostnames };
+            yield return new object?[] { $"{HiveServer2TlsOptionConstants.AllowInvalidCertificate.ToUpperInvariant()},{HiveServer2TlsOptionConstants.AllowInvalidHostnames.ToUpperInvariant()}", HiveServer2TlsOption.AllowInvalidCertificate | HiveServer2TlsOption.AllowInvalidHostnames };
+            // Invalid
+            yield return new object?[] { $"xxx,{HiveServer2TlsOptionConstants.AllowInvalidCertificate.ToUpperInvariant()},{HiveServer2TlsOptionConstants.AllowInvalidHostnames.ToUpperInvariant()}", HiveServer2TlsOption.Empty, typeof(ArgumentOutOfRangeException) };
         }
     }
 }

@@ -17,10 +17,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
@@ -99,6 +97,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             if (!string.IsNullOrEmpty(testConfiguration.DataTypeConversion))
             {
                 parameters.Add(SparkParameters.DataTypeConv, testConfiguration.DataTypeConversion!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.TlsOptions))
+            {
+                parameters.Add(SparkParameters.TLSOptions, testConfiguration.TlsOptions!);
             }
 
             return parameters;

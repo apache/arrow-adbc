@@ -21,6 +21,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -116,6 +117,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
             DataTypeConversion = HiveServer2DataTypeConversionConstants.Parse(dataTypeConv);
+
+            Properties.TryGetValue(SparkParameters.TLSOptions, out string? tlsOptions);
+            TlsOptions = HiveServer2TlsOptionConstants.Parse(tlsOptions);
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
@@ -141,7 +145,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password);
 
-            HttpClient httpClient = new();
+            HttpClientHandler httpClientHandler = NewHttpClientHandler();
+            HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
             httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(s_userAgent);
@@ -152,6 +157,25 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TConfiguration config = new();
             ThriftHttpTransport transport = new(httpClient, config);
             return Task.FromResult<TTransport>(transport);
+        }
+
+        private HttpClientHandler NewHttpClientHandler()
+        {
+            HttpClientHandler httpClientHandler = new();
+            if (TlsOptions != HiveServer2TlsOption.Empty)
+            {
+                httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>
+                {
+                    if (policyErrors == SslPolicyErrors.None) return true;
+
+                    return
+                       (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowInvalidCertificate))
+                    && (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNotAvailable) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowInvalidCertificate))
+                    && (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowInvalidHostnames));
+                };
+            }
+
+            return httpClientHandler;
         }
 
         private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password)
