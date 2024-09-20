@@ -32,6 +32,8 @@ void MakeEmptyStream(ArrowSchema* schema, ArrowArrayStream* out) {
 void MakeArrayStream(ArrowSchema* schema, ArrowArray* array, ArrowArrayStream* out) {
   if (array->length == 0) {
     ArrowArrayRelease(array);
+    std::memset(array, 0, sizeof(ArrowArray));
+
     MakeEmptyStream(schema, out);
   } else {
     nanoarrow::VectorArrayStream(schema, array).ToArrayStream(out);
