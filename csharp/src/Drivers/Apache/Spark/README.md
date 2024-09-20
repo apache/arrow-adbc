@@ -26,7 +26,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 
 | Property               | Description | Default |
 | :---                   | :---        | :---    |
-| `adbc.spark.type`      | (Required) Indicates the Spark server type. One of `databricks`, `http` (future: `standard`, `hdinsight`) | |
+| `adbc.spark.type`      | (Required) Indicates the Spark server type. One of `databricks`, `http` (future: `standard`) | |
 | `adbc.spark.auth_type` | An indicator of the intended type of authentication. Allowed values: `none`, `username_only`, `basic`, and `token`. This property is optional. The authentication type can be inferred from `token`, `username`, and `password`. If a `token` value is provided, token authentication is used. Otherwise, if both `username` and `password` values are provided, basic authentication is used. | |
 | `adbc.spark.host`      | Host name for the data source. Do not include scheme or port number. Example: `sparkserver.region.cloudapp.azure.com` |  |
 | `adbc.spark.port`      | The port number the data source listens on for a new connections. | `443` |
@@ -120,4 +120,10 @@ This is currently unsupported.
 
 ### Azure Spark HDInsight
 
-This is currently unsupported.
+To read data from Azure HDInsight Spark Cluster, use the following parameters:
+adbc.spark.type = "http"
+adbc.spark.port = "443"
+adbc.spark.path = "/sparkhive2"
+adbc.spark.host = $"{clusterHostName}"
+username = $"{clusterUserName}"
+password = $"{clusterPassword}"

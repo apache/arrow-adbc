@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-using System.Collections.Generic;
+using System;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
@@ -25,42 +25,43 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public const string Scalar = "scalar";
         public const string SupportedList = None + ", " + Scalar;
 
-        public static IReadOnlyCollection<HiveServer2DataTypeConversion> Parse(string? dataTypeConversion)
+        public static HiveServer2DataTypeConversion Parse(string? dataTypeConversion)
         {
-            // Using a sorted set to make testing repeatable.
-            var result = new SortedSet<HiveServer2DataTypeConversion>();
-            if (dataTypeConversion == null) {
+            HiveServer2DataTypeConversion result = HiveServer2DataTypeConversion.Empty;
+
+            if (string.IsNullOrWhiteSpace(dataTypeConversion)) {
                 // Default
-                result.Add(HiveServer2DataTypeConversion.Scalar);
-                return result;
+                return HiveServer2DataTypeConversion.Scalar;
             }
 
-            string[] conversions = dataTypeConversion.Split(',');
+            string[] conversions = dataTypeConversion!.Split(',');
             foreach (string? conversion in conversions)
             {
-                HiveServer2DataTypeConversion dataTypeConversionValue = (conversion?.Trim().ToLowerInvariant()) switch
+                result |= (conversion?.Trim().ToLowerInvariant()) switch
                 {
                     null or "" => HiveServer2DataTypeConversion.Empty,
                     None => HiveServer2DataTypeConversion.None,
                     Scalar => HiveServer2DataTypeConversion.Scalar,
-                    _ => HiveServer2DataTypeConversion.Invalid,
+                    _ => throw new ArgumentOutOfRangeException(nameof(dataTypeConversion), conversion, "Invalid or unsupported data type conversion"),
                 };
-
-                if (!result.Contains(dataTypeConversionValue) && dataTypeConversionValue != HiveServer2DataTypeConversion.Empty) result.Add(dataTypeConversionValue);
             }
 
+            if (result.HasFlag(HiveServer2DataTypeConversion.None) && result.HasFlag(HiveServer2DataTypeConversion.Scalar))
+            {
+                throw new ArgumentOutOfRangeException(nameof(dataTypeConversion), dataTypeConversion, "Conflicting data type conversion options");
+            }
             // Default
-            if (result.Count == 0) result.Add(HiveServer2DataTypeConversion.Scalar);
+            if (result == HiveServer2DataTypeConversion.Empty) result = HiveServer2DataTypeConversion.Scalar;
 
             return result;
         }
     }
 
+    [Flags]
     public enum HiveServer2DataTypeConversion
     {
-        Invalid = 0,
-        None,
-        Scalar,
-        Empty = int.MaxValue,
+        Empty = 0,
+        None = 1,
+        Scalar = 2,
     }
 }

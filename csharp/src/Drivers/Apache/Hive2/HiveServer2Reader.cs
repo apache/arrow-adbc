@@ -19,10 +19,8 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Globalization;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -33,7 +31,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         private HiveServer2Statement? _statement;
         private readonly long _batchSize;
-        private readonly IReadOnlyCollection<HiveServer2DataTypeConversion> _dataTypeConversion;
+        private readonly HiveServer2DataTypeConversion _dataTypeConversion;
         private static readonly IReadOnlyDictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>> s_arrowStringConverters =
             new Dictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>>()
             {
@@ -46,7 +44,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            IReadOnlyCollection<HiveServer2DataTypeConversion> dataTypeConversion,
+            HiveServer2DataTypeConversion dataTypeConversion,
             long batchSize = HiveServer2Connection.BatchSizeDefault)
         {
             _statement = statement;
@@ -69,7 +67,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             int columnCount = response.Results.Columns.Count;
             IList<IArrowArray> columnData = [];
-            bool shouldConvertScalar = _dataTypeConversion.Contains(HiveServer2DataTypeConversion.Scalar);
+            bool shouldConvertScalar = _dataTypeConversion.HasFlag(HiveServer2DataTypeConversion.Scalar);
             for (int i = 0; i < columnCount; i++)
             {
                 IArrowType? expectedType = shouldConvertScalar ? Schema.FieldsList[i].DataType : null;

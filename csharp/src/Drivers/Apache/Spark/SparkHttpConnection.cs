@@ -18,7 +18,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -116,15 +115,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override void ValidateOptions()
         {
             Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
-            IReadOnlyCollection<HiveServer2DataTypeConversion> dataTypeConversionValue = HiveServer2DataTypeConversionConstants.Parse(dataTypeConv);
-            IReadOnlyCollection<HiveServer2DataTypeConversion> unsupportedConversions = dataTypeConversionValue
-                .Except([HiveServer2DataTypeConversion.None, HiveServer2DataTypeConversion.Scalar, HiveServer2DataTypeConversion.Empty])
-                .ToList();
-            if (unsupportedConversions.Count > 0)
-            {
-                throw new NotImplementedException($"Invalid or unsupported data type conversion option: '{dataTypeConv}'. Supported values: {HiveServer2DataTypeConversionConstants.SupportedList}");
-            }
-            DataTypeConversion = dataTypeConversionValue;
+            DataTypeConversion = HiveServer2DataTypeConversionConstants.Parse(dataTypeConv);
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
