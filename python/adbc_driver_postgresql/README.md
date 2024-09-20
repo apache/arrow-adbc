@@ -62,7 +62,7 @@ For users building from the arrow-adbc source repository, you can alternately us
 For example, assuming you run cmake from the project root:
 
 ```shell
-cmake -S c -B build --preset debug -DADBC_BUILD_PYTHON=ON
+cmake -S c -B build --preset debug -DADBC_BUILD_PYTHON=ON -DADBC_DRIVER_POSTSGRESQL=ON
 cmake --build build --target python
 ```
 

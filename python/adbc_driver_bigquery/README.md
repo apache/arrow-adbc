@@ -49,7 +49,7 @@ For users building from the arrow-adbc source repository, you can alternately us
 For example, assuming you run cmake from the project root:
 
 ```shell
-cmake -S c -B build --preset debug -DADBC_BUILD_PYTHON=ON
+cmake -S c -B build --preset debug -DADBC_BUILD_PYTHON=ON -DADBC_DRIVER_BIGQUERY=ON
 cmake --build build --target python
 ```
 
@@ -65,11 +65,11 @@ import adbc_driver_bigquery.dbapi
 from adbc_driver_bigquery import DatabaseOptions
 
 db_kwargs = {
-    DatabaseOptions.AUTH_TYPE: DatabaseOptions.AUTH_VALUE_CREDENTIALS_FILE,
-    DatabaseOptions.CREDENTIALS: "credentials.json",
-    DatabaseOptions.PROJECT_ID: "bigquery-poc-418913",
-    DatabaseOptions.DATASET_ID: "google_trends",
-    DatabaseOptions.TABLE_ID: "small_top_terms",
+    DatabaseOptions.AUTH_TYPE.value: DatabaseOptions.AUTH_VALUE_CREDENTIALS_FILE,
+    DatabaseOptions.CREDENTIALS.value: "credentials.json",
+    DatabaseOptions.PROJECT_ID.value: "bigquery-poc-418913",
+    DatabaseOptions.DATASET_ID.value: "google_trends",
+    DatabaseOptions.TABLE_ID.value: "small_top_terms",
 }
 with adbc_driver_bigquery.dbapi.connect(db_kwargs) as conn:
     with conn.cursor() as cur:
