@@ -190,10 +190,6 @@ func (dm *DriverMgrSuite) TestGetObjectsCatalog() {
 
 	expSchema := adbc.GetObjectsSchema
 	dm.True(expSchema.Equal(rdr.Schema()))
-	dm.True(rdr.Next())
-
-	rec := rdr.Record()
-	dm.Equal(int64(0), rec.NumRows())
 	dm.False(rdr.Next())
 }
 
