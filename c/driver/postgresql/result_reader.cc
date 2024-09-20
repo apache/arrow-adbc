@@ -142,7 +142,7 @@ AdbcStatusCode PqResultArrayReader::Initialize(int64_t* rows_affected,
   // there is a result with more than zero rows to populate.
   if (bind_stream_) {
     RAISE_ADBC(bind_stream_->Begin([] { return ADBC_STATUS_OK; }, error));
-    RAISE_ADBC(bind_stream_->SetParamTypes(*type_resolver_, error));
+    RAISE_ADBC(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_, error));
     RAISE_ADBC(helper_.Prepare(bind_stream_->param_types, error));
 
     RAISE_ADBC(BindNextAndExecute(nullptr, error));
@@ -251,7 +251,7 @@ AdbcStatusCode PqResultArrayReader::ExecuteAll(int64_t* affected_rows, AdbcError
   // stream (if there is one) or execute the query without binding.
   if (bind_stream_) {
     RAISE_ADBC(bind_stream_->Begin([] { return ADBC_STATUS_OK; }, error));
-    RAISE_ADBC(bind_stream_->SetParamTypes(*type_resolver_, error));
+    RAISE_ADBC(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_, error));
     RAISE_ADBC(helper_.Prepare(bind_stream_->param_types, error));
 
     // Reset affected rows to zero before binding and executing any

@@ -456,6 +456,7 @@ AdbcStatusCode PostgresStatement::ExecuteBind(struct ArrowArrayStream* stream,
                                               int64_t* rows_affected,
                                               struct AdbcError* error) {
   PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
+  reader.SetAutocommit(connection_->autocommit());
   reader.SetBind(&bind_);
   RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
   return ADBC_STATUS_OK;

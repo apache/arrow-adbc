@@ -401,42 +401,22 @@ void CompareArray(struct ArrowArrayView* array,
     SCOPED_TRACE("Array index " + std::to_string(i));
     if (v.has_value()) {
       ASSERT_FALSE(ArrowArrayViewIsNull(array, i));
-      if constexpr (std::is_same<T, float>::value) {
+      if constexpr (std::is_same<T, float>::value || std::is_same<T, double>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_float[i]);
-      } else if constexpr (std::is_same<T, double>::value) {
+        ASSERT_EQ(ArrowArrayViewGetDoubleUnsafe(array, i), *v);
+      } else if constexpr (std::is_same<T, bool>::value ||
+                           std::is_same<T, int8_t>::value ||
+                           std::is_same<T, int16_t>::value ||
+                           std::is_same<T, int32_t>::value ||
+                           std::is_same<T, int64_t>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_double[i]);
-      } else if constexpr (std::is_same<T, float>::value) {
+        ASSERT_EQ(ArrowArrayViewGetIntUnsafe(array, i), *v);
+      } else if constexpr (std::is_same<T, uint8_t>::value ||
+                           std::is_same<T, uint16_t>::value ||
+                           std::is_same<T, uint32_t>::value ||
+                           std::is_same<T, uint64_t>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_float[i]);
-      } else if constexpr (std::is_same<T, bool>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, ArrowBitGet(array->buffer_views[1].data.as_uint8, i));
-      } else if constexpr (std::is_same<T, int8_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_int8[i]);
-      } else if constexpr (std::is_same<T, int16_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_int16[i]);
-      } else if constexpr (std::is_same<T, int32_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_int32[i]);
-      } else if constexpr (std::is_same<T, int64_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_int64[i]);
-      } else if constexpr (std::is_same<T, uint8_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_uint8[i]);
-      } else if constexpr (std::is_same<T, uint16_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_uint16[i]);
-      } else if constexpr (std::is_same<T, uint32_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_uint32[i]);
-      } else if constexpr (std::is_same<T, uint64_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_uint64[i]);
+        ASSERT_EQ(ArrowArrayViewGetUIntUnsafe(array, i), *v);
       } else if constexpr (std::is_same<T, std::string>::value) {
         struct ArrowStringView view = ArrowArrayViewGetStringUnsafe(array, i);
         std::string str(view.data, view.size_bytes);
