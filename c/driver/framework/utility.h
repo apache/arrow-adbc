@@ -27,13 +27,34 @@
 
 namespace adbc::driver {
 
+/// \brief Create an ArrowArrayStream with zero batches from a given ArrowSchema.
+/// \ingroup adbc-framework-catalog
+///
+/// This function takes ownership of schema; the caller is responsible for
+/// releasing out.
 void MakeEmptyStream(ArrowSchema* schema, ArrowArrayStream* out);
 
+/// \brief Create an ArrowArrayStream from a given ArrowSchema and ArrowArray.
+/// \ingroup adbc-framework-catalog
+///
+/// The resulting ArrowArrayStream will contain zero batches if the length of the
+/// array is zero, or exactly one batch if the length of the array is non-zero.
+/// This function takes ownership of schema and array; the caller is responsible for
+/// releasing out.
 void MakeArrayStream(ArrowSchema* schema, ArrowArray* array, ArrowArrayStream* out);
 
+/// \brief Create an ArrowArrayStream representation of a vector of table types.
+/// \ingroup adbc-framework-catalog
+///
+/// Create an ArrowArrayStream representation of an array of table types
+/// that can be used to implement AdbcConnectionGetTableTypes(). The caller is responsible
+/// for releasing out on success.
 Status MakeTableTypesStream(const std::vector<std::string>& table_types,
                             ArrowArrayStream* out);
 
+/// \brief Representation of a single item in an array to be returned
+/// from AdbcConnectionGetInfo().
+/// \ingroup adbc-framework-catalog
 struct InfoValue {
   uint32_t code;
   std::variant<std::string, int64_t> value;
@@ -43,6 +64,10 @@ struct InfoValue {
   InfoValue(uint32_t code, const char* value) : InfoValue(code, std::string(value)) {}
 };
 
+/// \brief Create an ArrowArrayStream to be returned from AdbcConnectionGetInfo().
+/// \ingroup adbc-framework-catalog
+///
+/// The caller is responsible for releasing out on success.
 Status MakeGetInfoStream(const std::vector<InfoValue>& infos, ArrowArrayStream* out);
 
 }  // namespace adbc::driver

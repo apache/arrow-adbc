@@ -21,14 +21,19 @@
 #include <string_view>
 #include <vector>
 
-#include <nanoarrow/nanoarrow.h>
-
+#include <arrow-adbc/adbc.h>
 #include "driver/framework/status.h"
 #include "driver/framework/type_fwd.h"
 
 namespace adbc::driver {
 
-Status MakeGetObjectsSchema(struct ArrowSchema* schema);
+/// \defgroup adbc-framework-catalog Catalog Utilities
+/// Utilities for implementing catalog/metadata-related functions.
+///
+/// @{
+
+/// \brief Create the ArrowSchema for AdbcConnectionGetObjects().
+Status MakeGetObjectsSchema(ArrowSchema* schema);
 
 /// \brief The GetObjects level.
 enum class GetObjectsDepth {
@@ -39,6 +44,9 @@ enum class GetObjectsDepth {
 };
 
 /// \brief Helper to implement GetObjects.
+///
+/// Drivers can implement methods of the GetObjectsHelper in a driver-specific
+/// class to get a compliant implementation of AdbcConnectionGetObjects().
 struct GetObjectsHelper {
   virtual ~GetObjectsHelper() = default;
 
@@ -136,5 +144,5 @@ Status BuildGetObjects(GetObjectsHelper* helper, GetObjectsDepth depth,
                        std::optional<std::string_view> table_filter,
                        std::optional<std::string_view> column_filter,
                        const std::vector<std::string_view>& table_types,
-                       struct ArrowArrayStream* out);
+                       ArrowArrayStream* out);
 }  // namespace adbc::driver
