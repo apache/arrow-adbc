@@ -86,7 +86,7 @@ class Connection : public ObjectBase {
 
     std::vector<uint32_t> codes(info_codes, info_codes + info_codes_length);
     RAISE_RESULT(error, auto infos, impl().InfoImpl(codes));
-    RAISE_STATUS(error, adbc::driver::MakeGetInfoStream(infos, out));
+    RAISE_STATUS(error, MakeGetInfoStream(infos, out));
     return ADBC_STATUS_OK;
   }
 
