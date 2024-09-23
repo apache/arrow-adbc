@@ -161,7 +161,7 @@ AdbcStatusCode PqResultArrayReader::Initialize(int64_t* rows_affected,
       *rows_affected = -1;
     }
   } else {
-    RAISE_ADBC(helper_.Execute(error));
+    RAISE_STATUS(error, helper_.Execute());
     if (rows_affected != nullptr) {
       *rows_affected = helper_.AffectedRows();
     }
@@ -263,7 +263,7 @@ AdbcStatusCode PqResultArrayReader::ExecuteAll(int64_t* affected_rows, AdbcError
       RAISE_ADBC(BindNextAndExecute(affected_rows, error));
     } while (bind_stream_);
   } else {
-    RAISE_ADBC(helper_.Execute(error));
+    RAISE_STATUS(error, helper_.Execute());
 
     if (affected_rows != nullptr) {
       *affected_rows = helper_.AffectedRows();

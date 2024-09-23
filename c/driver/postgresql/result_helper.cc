@@ -64,9 +64,8 @@ Status PqResultHelper::DescribePrepared() {
   return adbc::driver::status::Ok();
 }
 
-AdbcStatusCode PqResultHelper::Execute(struct AdbcError* error,
-                                       const std::vector<std::string>& params,
-                                       PostgresType* param_types) {
+Status PqResultHelper::Execute(const std::vector<std::string>& params,
+                               PostgresType* param_types) {
   if (params.size() == 0 && param_types == nullptr && output_format_ == Format::kText) {
     ClearResult();
     result_ = PQexec(conn_, query_.c_str());
@@ -99,13 +98,11 @@ AdbcStatusCode PqResultHelper::Execute(struct AdbcError* error,
 
   ExecStatusType status = PQresultStatus(result_);
   if (status != PGRES_TUPLES_OK && status != PGRES_COMMAND_OK) {
-    AdbcStatusCode status =
-        SetError(error, result_, "[libpq] Failed to execute query '%s': %s",
-                 query_.c_str(), PQerrorMessage(conn_));
-    return status;
+    return MakeStatus(result_, "[libpq] Failed to execute query '{}': {}", query_.c_str(),
+                      PQerrorMessage(conn_));
   }
 
-  return ADBC_STATUS_OK;
+  return adbc::driver::status::Ok();
 }
 
 AdbcStatusCode PqResultHelper::ExecuteCopy(struct AdbcError* error) {
