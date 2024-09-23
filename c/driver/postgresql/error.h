@@ -64,7 +64,8 @@ static const std::vector<DetailField> kDetailFields = {
 #endif
 
 /// \brief Set an error based on a PGresult, inferring the proper ADBC status
-///   code from the PGresult.
+///   code from the PGresult. Deprecated and is currently a thin wrapper around
+///   MakeStatus() below.
 AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* format,
                         ...) ADBC_CHECK_PRINTF_ATTRIBUTE(3, 4);
 
@@ -77,6 +78,10 @@ Status MakeStatus(PGresult* result, const char* format_string, Args&&... args) {
   AdbcStatusCode code = ADBC_STATUS_IO;
   char sqlstate_out[5];
   std::memset(sqlstate_out, 0, sizeof(sqlstate_out));
+
+  if (result == nullptr) {
+    return Status(code, message);
+  }
 
   const char* sqlstate = PQresultErrorField(result, PG_DIAG_SQLSTATE);
   if (sqlstate) {
