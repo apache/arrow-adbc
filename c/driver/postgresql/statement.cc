@@ -459,7 +459,7 @@ AdbcStatusCode PostgresStatement::ExecuteBind(struct ArrowArrayStream* stream,
   PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
   reader.SetAutocommit(connection_->autocommit());
   reader.SetBind(&bind_);
-  RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
+  RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
   return ADBC_STATUS_OK;
 }
 
@@ -487,7 +487,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   // execute using the PqResultArrayReader.
   if (!stream || !use_copy_) {
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
-    RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
+    RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
     return ADBC_STATUS_OK;
   }
 
@@ -505,7 +505,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   if (root_type.n_children() == 0) {
     // Could/should move the helper into the reader instead of repreparing
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
-    RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
+    RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
     return ADBC_STATUS_OK;
   }
 
