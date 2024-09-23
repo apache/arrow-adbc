@@ -126,7 +126,7 @@ class Status {
   }
 
   // Helpers to create statuses with known codes
-  static Status Ok() { return driver::Status(); }
+  static Status Ok() { return Status(); }
 
 #define STATUS_CTOR(NAME, CODE)                  \
   template <typename... Args>                    \
