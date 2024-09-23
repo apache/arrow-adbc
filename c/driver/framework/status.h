@@ -125,6 +125,27 @@ class Status {
     return status;
   }
 
+  // Helpers to create statuses with known codes
+  static Status Ok() { return driver::Status(); }
+
+#define STATUS_CTOR(NAME, CODE)                  \
+  template <typename... Args>                    \
+  static Status NAME(Args&&... args) {           \
+    std::stringstream ss;                        \
+    ([&] { ss << args; }(), ...);                \
+    return Status(ADBC_STATUS_##CODE, ss.str()); \
+  }
+
+  STATUS_CTOR(Internal, INTERNAL)
+  STATUS_CTOR(InvalidArgument, INVALID_ARGUMENT)
+  STATUS_CTOR(InvalidState, INVALID_STATE)
+  STATUS_CTOR(IO, IO)
+  STATUS_CTOR(NotFound, NOT_FOUND)
+  STATUS_CTOR(NotImplemented, NOT_IMPLEMENTED)
+  STATUS_CTOR(Unknown, UNKNOWN)
+
+#undef STATUS_CTOR
+
  private:
   struct Impl {
     // invariant: code is never OK

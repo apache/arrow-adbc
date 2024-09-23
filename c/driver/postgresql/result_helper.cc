@@ -40,7 +40,7 @@ Status PqResultHelper::PrepareInternal(int n_params, const Oid* param_oids) {
   }
 
   PQclear(result);
-  return adbc::driver::status::Ok();
+  return Status::Ok();
 }
 
 Status PqResultHelper::Prepare() { return PrepareInternal(0, nullptr); }
@@ -60,7 +60,7 @@ Status PqResultHelper::DescribePrepared() {
     return status;
   }
 
-  return adbc::driver::status::Ok();
+  return Status::Ok();
 }
 
 Status PqResultHelper::Execute(const std::vector<std::string>& params,
@@ -101,7 +101,7 @@ Status PqResultHelper::Execute(const std::vector<std::string>& params,
                       PQerrorMessage(conn_));
   }
 
-  return adbc::driver::status::Ok();
+  return Status::Ok();
 }
 
 Status PqResultHelper::ExecuteCopy() {
@@ -126,7 +126,7 @@ Status PqResultHelper::ExecuteCopy() {
     return status;
   }
 
-  return adbc::driver::status::Ok();
+  return Status::Ok();
 }
 
 Status PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_resolver,
@@ -141,9 +141,9 @@ Status PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_resolver,
     const Oid pg_oid = PQparamtype(result_, i);
     PostgresType pg_type;
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      Status status = adbc::driver::status::NotImplemented(
-          "[libpq] Parameter #", i + 1, " (\"", PQfname(result_, i),
-          "\") has unknown type code ", pg_oid);
+      Status status = Status::NotImplemented("[libpq] Parameter #", i + 1, " (\"",
+                                             PQfname(result_, i),
+                                             "\") has unknown type code ", pg_oid);
       ClearResult();
       return status;
     }
@@ -152,7 +152,7 @@ Status PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_resolver,
   }
 
   *param_types = root_type;
-  return adbc::driver::status::Ok();
+  return Status::Ok();
 }
 
 Status PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_resolver,
@@ -167,9 +167,9 @@ Status PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_resolver,
     const Oid pg_oid = PQftype(result_, i);
     PostgresType pg_type;
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      Status status = adbc::driver::status::NotImplemented(
-          "[libpq] Column #", i + 1, " (\"", PQfname(result_, i),
-          "\") has unknown type code ", pg_oid);
+      Status status =
+          Status::NotImplemented("[libpq] Column #", i + 1, " (\"", PQfname(result_, i),
+                                 "\") has unknown type code ", pg_oid);
       ClearResult();
       return status;
     }
@@ -178,7 +178,7 @@ Status PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_resolver,
   }
 
   *result_types = root_type;
-  return adbc::driver::status::Ok();
+  return Status::Ok();
 }
 
 PGresult* PqResultHelper::ReleaseResult() {
