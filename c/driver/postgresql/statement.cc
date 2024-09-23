@@ -499,7 +499,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   // unsupported types before issuing the COPY query). This could be lazier
   // (i.e., executed on the first call to GetSchema() or GetNext()).
   PostgresType root_type;
-  RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &root_type, error));
+  RAISE_STATUS(error, helper.ResolveOutputTypes(*type_resolver_, &root_type));
 
   // If there will be no columns in the result, we can also avoid COPY
   if (root_type.n_children() == 0) {
@@ -570,7 +570,7 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
   RAISE_STATUS(error, helper.DescribePrepared());
 
   PostgresType output_type;
-  RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &output_type, error));
+  RAISE_STATUS(error, helper.ResolveOutputTypes(*type_resolver_, &output_type));
 
   nanoarrow::UniqueSchema tmp;
   ArrowSchemaInit(tmp.get());
