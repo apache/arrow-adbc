@@ -150,7 +150,7 @@ def test_query_invalid(postgres: dbapi.Connection) -> None:
         with pytest.raises(
             postgres.ProgrammingError, match="Failed to prepare query"
         ) as excinfo:
-            cur.execute("SELECT * FROM tabledoesnotexist")
+            cur.executescript("SELECT * FROM tabledoesnotexist")
 
         assert excinfo.value.sqlstate == "42P01"
         assert len(excinfo.value.details) > 0
