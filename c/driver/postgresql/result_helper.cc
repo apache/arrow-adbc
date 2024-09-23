@@ -21,7 +21,6 @@
 #include <memory>
 
 #define ADBC_FRAMEWORK_USE_FMT
-#include "driver/common/utils.h"
 #include "driver/framework/status.h"
 #include "error.h"
 
