@@ -32,6 +32,7 @@ namespace Apache.Arrow.Adbc
         , IAsyncDisposable
 #endif
     {
+
         ~AdbcConnection11() => Dispose(false);
 
         /// <summary>
