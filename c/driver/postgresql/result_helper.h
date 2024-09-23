@@ -104,8 +104,8 @@ class PqResultHelper {
   Status Execute(const std::vector<std::string>& params = {},
                  PostgresType* param_types = nullptr);
   Status ExecuteCopy();
-  AdbcStatusCode ResolveParamTypes(PostgresTypeResolver& type_resolver,
-                                   PostgresType* param_types, struct AdbcError* error);
+  Status ResolveParamTypes(PostgresTypeResolver& type_resolver,
+                           PostgresType* param_types);
   AdbcStatusCode ResolveOutputTypes(PostgresTypeResolver& type_resolver,
                                     PostgresType* result_types, struct AdbcError* error);
 
