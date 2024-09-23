@@ -88,19 +88,10 @@ Status MakeStatus(PGresult* result, const char* format_string, Args&&... args) {
       // Class 42 — Syntax Error or Access Rule Violation
       code = ADBC_STATUS_INVALID_ARGUMENT;
     }
-
-    static_assert(sizeof(sqlstate_out) == 5, "");
-    // N.B. strncpy generates warnings when used for this purpose
-    int i = 0;
-    for (; sqlstate[i] != '\0' && i < 5; i++) {
-      sqlstate_out[i] = sqlstate[i];
-    }
-    for (; i < 5; i++) {
-      sqlstate_out[i] = '\0';
-    }
   }
 
   Status status(code, message);
+  status.SetSqlState(sqlstate);
   for (const auto& field : kDetailFields) {
     const char* value = PQresultErrorField(result, field.code);
     if (value) {

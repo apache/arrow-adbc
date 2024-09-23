@@ -69,6 +69,19 @@ class Status {
     impl_->details.push_back({std::move(key), std::move(value)});
   }
 
+  /// \brief Set the sqlstate of this status
+  void SetSqlState(std::string sqlstate) {
+    assert(impl_ != nullptr);
+    std::memset(impl_->sql_state, 0, sizeof(impl_->sql_state));
+    for (size_t i = 0; i < sqlstate.size(); i++) {
+      if (i >= sizeof(impl_->sql_state)) {
+        break;
+      }
+
+      impl_->sql_state[i] = sqlstate[i];
+    }
+  }
+
   /// \brief Export this status to an AdbcError.
   AdbcStatusCode ToAdbc(AdbcError* adbc_error) const {
     if (impl_ == nullptr) return ADBC_STATUS_OK;

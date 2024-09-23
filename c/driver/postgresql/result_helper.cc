@@ -50,18 +50,18 @@ Status PqResultHelper::Prepare(const std::vector<Oid>& param_oids) {
   return PrepareInternal(param_oids.size(), param_oids.data());
 }
 
-AdbcStatusCode PqResultHelper::DescribePrepared(struct AdbcError* error) {
+Status PqResultHelper::DescribePrepared() {
   ClearResult();
   result_ = PQdescribePrepared(conn_, /*stmtName=*/"");
   if (PQresultStatus(result_) != PGRES_COMMAND_OK) {
-    AdbcStatusCode code = SetError(
-        error, result_, "[libpq] Failed to describe prepared statement: %s\nQuery was:%s",
+    Status status = MakeStatus(
+        result_, "[libpq] Failed to describe prepared statement: {}\nQuery was:{}",
         PQerrorMessage(conn_), query_.c_str());
     ClearResult();
-    return code;
+    return status;
   }
 
-  return ADBC_STATUS_OK;
+  return adbc::driver::status::Ok();
 }
 
 AdbcStatusCode PqResultHelper::Execute(struct AdbcError* error,

@@ -493,7 +493,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
 
   PqResultHelper helper(connection_->conn(), query_);
   RAISE_STATUS(error, helper.Prepare());
-  RAISE_ADBC(helper.DescribePrepared(error));
+  RAISE_STATUS(error, helper.DescribePrepared());
 
   // Initialize the copy reader and infer the output schema (i.e., error for
   // unsupported types before issuing the COPY query). This could be lazier
@@ -567,7 +567,7 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
     RAISE_STATUS(error, helper.Prepare());
   }
 
-  RAISE_ADBC(helper.DescribePrepared(error));
+  RAISE_STATUS(error, helper.DescribePrepared());
 
   PostgresType output_type;
   RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &output_type, error));

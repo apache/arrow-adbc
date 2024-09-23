@@ -151,7 +151,7 @@ AdbcStatusCode PqResultArrayReader::Initialize(int64_t* rows_affected,
     // to populate the schema. If there were any arrays in the bind stream,
     // the last one will still be in helper_ even if it had zero rows.
     if (!helper_.HasResult()) {
-      RAISE_ADBC(helper_.DescribePrepared(error));
+      RAISE_STATUS(error, helper_.DescribePrepared());
     }
 
     // We can't provide affected row counts if there is a bind stream and
