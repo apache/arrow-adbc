@@ -105,7 +105,7 @@ Status PqResultHelper::Execute(const std::vector<std::string>& params,
   return adbc::driver::status::Ok();
 }
 
-AdbcStatusCode PqResultHelper::ExecuteCopy(struct AdbcError* error) {
+Status PqResultHelper::ExecuteCopy() {
   // Remove trailing semicolon(s) from the query before feeding it into COPY
   while (!query_.empty() && query_.back() == ';') {
     query_.pop_back();
@@ -119,15 +119,15 @@ AdbcStatusCode PqResultHelper::ExecuteCopy(struct AdbcError* error) {
                          static_cast<int>(Format::kBinary));
 
   if (PQresultStatus(result_) != PGRES_COPY_OUT) {
-    AdbcStatusCode code = SetError(
-        error, result_,
-        "[libpq] Failed to execute query: could not begin COPY: %s\nQuery was: %s",
+    Status status = MakeStatus(
+        result_,
+        "[libpq] Failed to execute query: could not begin COPY: {}\nQuery was: {}",
         PQerrorMessage(conn_), copy_query.c_str());
     ClearResult();
-    return code;
+    return status;
   }
 
-  return ADBC_STATUS_OK;
+  return adbc::driver::status::Ok();
 }
 
 AdbcStatusCode PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_resolver,

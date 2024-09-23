@@ -519,7 +519,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                   error);
 
   // Execute the COPY query
-  RAISE_ADBC(helper.ExecuteCopy(error));
+  RAISE_STATUS(error, helper.ExecuteCopy());
 
   // We need the PQresult back for the reader
   reader_.result_ = helper.ReleaseResult();
