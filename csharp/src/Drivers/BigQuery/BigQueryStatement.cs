@@ -94,6 +94,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 results = firstQueryJob.GetQueryResults();
             }
 
+            if (results.TableReference == null)
+            {
+                throw new AdbcException("There is no query statement");
+            }
+
             string table = $"projects/{results.TableReference.ProjectId}/datasets/{results.TableReference.DatasetId}/tables/{results.TableReference.TableId}";
 
             ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
