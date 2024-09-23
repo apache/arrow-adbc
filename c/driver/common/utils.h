@@ -68,11 +68,6 @@ void StringBuilderReset(struct StringBuilder* builder);
 
 #undef ADBC_CHECK_PRINTF_ATTRIBUTE
 
-/// Wrap a single batch as a stream.
-AdbcStatusCode BatchToArrayStream(struct ArrowArray* values, struct ArrowSchema* schema,
-                                  struct ArrowArrayStream* stream,
-                                  struct AdbcError* error);
-
 /// Check an NanoArrow status code.
 #define CHECK_NA(CODE, EXPR, ERROR)                                                 \
   do {                                                                              \

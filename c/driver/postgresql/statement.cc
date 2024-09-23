@@ -40,6 +40,7 @@
 #include "connection.h"
 #include "driver/common/options.h"
 #include "driver/common/utils.h"
+#include "driver/framework/utility.h"
 #include "error.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
@@ -296,7 +297,7 @@ AdbcStatusCode PostgresStatement::Bind(struct ArrowArray* values,
 
   if (bind_.release) bind_.release(&bind_);
   // Make a one-value stream
-  nanoarrow::VectorArrayStream(schema, values).ToArrayStream(&bind_);
+  adbc::driver::MakeArrayStream(schema, values, &bind_);
   return ADBC_STATUS_OK;
 }
 
