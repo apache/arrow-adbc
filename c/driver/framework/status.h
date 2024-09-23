@@ -146,6 +146,8 @@ class Status {
   template <typename DatabaseT, typename ConnectionT, typename StatementT>
   friend class Driver;
 
+  // Allow access to these for drivers transitioning to the framework
+ public:
   int CDetailCount() const { return impl_ ? static_cast<int>(impl_->details.size()) : 0; }
 
   AdbcErrorDetail CDetail(int index) const {
@@ -157,6 +159,7 @@ class Status {
             detail.second.size()};
   }
 
+ private:
   static void CRelease(AdbcError* error) {
     if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
       auto* error_obj = reinterpret_cast<Status*>(error->private_data);

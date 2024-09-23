@@ -25,8 +25,10 @@
 #include "connection.h"
 #include "database.h"
 #include "driver/common/utils.h"
+#include "driver/framework/status.h"
 #include "statement.h"
 
+using adbc::driver::Status;
 using adbcpq::PostgresConnection;
 using adbcpq::PostgresDatabase;
 using adbcpq::PostgresStatement;
@@ -59,11 +61,25 @@ const struct AdbcError* PostgresErrorFromArrayStream(struct ArrowArrayStream* st
 }  // namespace
 
 int AdbcErrorGetDetailCount(const struct AdbcError* error) {
-  return CommonErrorGetDetailCount(error);
+  if (IsCommonError(error)) {
+    return CommonErrorGetDetailCount(error);
+  }
+
+  if (error->vendor_code != ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
+    return 0;
+  }
+
+  auto error_obj = reinterpret_cast<Status*>(error->private_data);
+  return error_obj->CDetailCount();
 }
 
 struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index) {
-  return CommonErrorGetDetail(error, index);
+  if (IsCommonError(error)) {
+    return CommonErrorGetDetail(error, index);
+  }
+
+  auto error_obj = reinterpret_cast<Status*>(error->private_data);
+  return error_obj->CDetail(index);
 }
 
 const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream,

@@ -53,6 +53,7 @@ void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* 
 
 int CommonErrorGetDetailCount(const struct AdbcError* error);
 struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int index);
+bool IsCommonError(const struct AdbcError* error);
 
 struct StringBuilder {
   char* buffer;
