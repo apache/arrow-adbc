@@ -106,8 +106,8 @@ class PqResultHelper {
   Status ExecuteCopy();
   Status ResolveParamTypes(PostgresTypeResolver& type_resolver,
                            PostgresType* param_types);
-  AdbcStatusCode ResolveOutputTypes(PostgresTypeResolver& type_resolver,
-                                    PostgresType* result_types, struct AdbcError* error);
+  Status ResolveOutputTypes(PostgresTypeResolver& type_resolver,
+                            PostgresType* result_types);
 
   bool HasResult() { return result_ != nullptr; }
 
