@@ -22,7 +22,35 @@
 #include <arrow-adbc/adbc.h>
 #include <libpq-fe.h>
 
+#include <fmt/core.h>
+
+#include "driver/framework/status.h"
+
+using adbc::driver::Status;
+
 namespace adbcpq {
+
+struct DetailField {
+  int code;
+  std::string key;
+};
+
+static const std::vector<DetailField> kDetailFields = {
+    {PG_DIAG_COLUMN_NAME, "PG_DIAG_COLUMN_NAME"},
+    {PG_DIAG_CONTEXT, "PG_DIAG_CONTEXT"},
+    {PG_DIAG_CONSTRAINT_NAME, "PG_DIAG_CONSTRAINT_NAME"},
+    {PG_DIAG_DATATYPE_NAME, "PG_DIAG_DATATYPE_NAME"},
+    {PG_DIAG_INTERNAL_POSITION, "PG_DIAG_INTERNAL_POSITION"},
+    {PG_DIAG_INTERNAL_QUERY, "PG_DIAG_INTERNAL_QUERY"},
+    {PG_DIAG_MESSAGE_PRIMARY, "PG_DIAG_MESSAGE_PRIMARY"},
+    {PG_DIAG_MESSAGE_DETAIL, "PG_DIAG_MESSAGE_DETAIL"},
+    {PG_DIAG_MESSAGE_HINT, "PG_DIAG_MESSAGE_HINT"},
+    {PG_DIAG_SEVERITY_NONLOCALIZED, "PG_DIAG_SEVERITY_NONLOCALIZED"},
+    {PG_DIAG_SQLSTATE, "PG_DIAG_SQLSTATE"},
+    {PG_DIAG_STATEMENT_POSITION, "PG_DIAG_STATEMENT_POSITION"},
+    {PG_DIAG_SCHEMA_NAME, "PG_DIAG_SCHEMA_NAME"},
+    {PG_DIAG_TABLE_NAME, "PG_DIAG_TABLE_NAME"},
+};
 
 // The printf checking attribute doesn't work properly on gcc 4.8
 // and results in spurious compiler warnings
@@ -38,5 +66,49 @@ AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* f
                         ...) ADBC_CHECK_PRINTF_ATTRIBUTE(3, 4);
 
 #undef ADBC_CHECK_PRINTF_ATTRIBUTE
+
+template <typename... Args>
+Status MakeStatus(PGresult* result, const char* format_string, Args&&... args) {
+  auto message = ::fmt::vformat(format_string, ::fmt::make_format_args(args...));
+
+  AdbcStatusCode code = ADBC_STATUS_IO;
+  char sqlstate_out[5];
+  std::memset(sqlstate_out, 0, sizeof(sqlstate_out));
+
+  const char* sqlstate = PQresultErrorField(result, PG_DIAG_SQLSTATE);
+  if (sqlstate) {
+    // https://www.postgresql.org/docs/current/errcodes-appendix.html
+    // This can be extended in the future
+    if (std::strcmp(sqlstate, "57014") == 0) {
+      code = ADBC_STATUS_CANCELLED;
+    } else if (std::strcmp(sqlstate, "42P01") == 0 ||
+               std::strcmp(sqlstate, "42602") == 0) {
+      code = ADBC_STATUS_NOT_FOUND;
+    } else if (std::strncmp(sqlstate, "42", 0) == 0) {
+      // Class 42 — Syntax Error or Access Rule Violation
+      code = ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    static_assert(sizeof(sqlstate_out) == 5, "");
+    // N.B. strncpy generates warnings when used for this purpose
+    int i = 0;
+    for (; sqlstate[i] != '\0' && i < 5; i++) {
+      sqlstate_out[i] = sqlstate[i];
+    }
+    for (; i < 5; i++) {
+      sqlstate_out[i] = '\0';
+    }
+  }
+
+  Status status(code, message);
+  for (const auto& field : kDetailFields) {
+    const char* value = PQresultErrorField(result, field.code);
+    if (value) {
+      status.AddDetail(field.key, value);
+    }
+  }
+
+  return status;
+}
 
 }  // namespace adbcpq

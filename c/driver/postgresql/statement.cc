@@ -492,7 +492,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   }
 
   PqResultHelper helper(connection_->conn(), query_);
-  RAISE_ADBC(helper.Prepare(error));
+  RAISE_STATUS(error, helper.Prepare());
   RAISE_ADBC(helper.DescribePrepared(error));
 
   // Initialize the copy reader and infer the output schema (i.e., error for
@@ -562,9 +562,9 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
       param_oids[i] = pg_type.oid();
     }
 
-    RAISE_ADBC(helper.Prepare(param_oids, error));
+    RAISE_STATUS(error, helper.Prepare(param_oids));
   } else {
-    RAISE_ADBC(helper.Prepare(error));
+    RAISE_STATUS(error, helper.Prepare());
   }
 
   RAISE_ADBC(helper.DescribePrepared(error));

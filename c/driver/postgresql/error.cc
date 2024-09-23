@@ -29,30 +29,6 @@
 
 namespace adbcpq {
 
-namespace {
-struct DetailField {
-  int code;
-  std::string key;
-};
-
-static const std::vector<DetailField> kDetailFields = {
-    {PG_DIAG_COLUMN_NAME, "PG_DIAG_COLUMN_NAME"},
-    {PG_DIAG_CONTEXT, "PG_DIAG_CONTEXT"},
-    {PG_DIAG_CONSTRAINT_NAME, "PG_DIAG_CONSTRAINT_NAME"},
-    {PG_DIAG_DATATYPE_NAME, "PG_DIAG_DATATYPE_NAME"},
-    {PG_DIAG_INTERNAL_POSITION, "PG_DIAG_INTERNAL_POSITION"},
-    {PG_DIAG_INTERNAL_QUERY, "PG_DIAG_INTERNAL_QUERY"},
-    {PG_DIAG_MESSAGE_PRIMARY, "PG_DIAG_MESSAGE_PRIMARY"},
-    {PG_DIAG_MESSAGE_DETAIL, "PG_DIAG_MESSAGE_DETAIL"},
-    {PG_DIAG_MESSAGE_HINT, "PG_DIAG_MESSAGE_HINT"},
-    {PG_DIAG_SEVERITY_NONLOCALIZED, "PG_DIAG_SEVERITY_NONLOCALIZED"},
-    {PG_DIAG_SQLSTATE, "PG_DIAG_SQLSTATE"},
-    {PG_DIAG_STATEMENT_POSITION, "PG_DIAG_STATEMENT_POSITION"},
-    {PG_DIAG_SCHEMA_NAME, "PG_DIAG_SCHEMA_NAME"},
-    {PG_DIAG_TABLE_NAME, "PG_DIAG_TABLE_NAME"},
-};
-}  // namespace
-
 AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* format,
                         ...) {
   va_list args;

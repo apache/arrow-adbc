@@ -143,7 +143,7 @@ AdbcStatusCode PqResultArrayReader::Initialize(int64_t* rows_affected,
   if (bind_stream_) {
     RAISE_ADBC(bind_stream_->Begin([] { return ADBC_STATUS_OK; }, error));
     RAISE_ADBC(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_, error));
-    RAISE_ADBC(helper_.Prepare(bind_stream_->param_types, error));
+    RAISE_STATUS(error, helper_.Prepare(bind_stream_->param_types));
 
     RAISE_ADBC(BindNextAndExecute(nullptr, error));
 
@@ -252,7 +252,7 @@ AdbcStatusCode PqResultArrayReader::ExecuteAll(int64_t* affected_rows, AdbcError
   if (bind_stream_) {
     RAISE_ADBC(bind_stream_->Begin([] { return ADBC_STATUS_OK; }, error));
     RAISE_ADBC(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_, error));
-    RAISE_ADBC(helper_.Prepare(bind_stream_->param_types, error));
+    RAISE_STATUS(error, helper_.Prepare(bind_stream_->param_types));
 
     // Reset affected rows to zero before binding and executing any
     if (affected_rows) {

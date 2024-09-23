@@ -28,6 +28,9 @@
 #include <libpq-fe.h>
 
 #include "copy/reader.h"
+#include "driver/framework/status.h"
+
+using adbc::driver::Status;
 
 namespace adbcpq {
 
@@ -95,8 +98,8 @@ class PqResultHelper {
   void set_param_format(Format format) { param_format_ = format; }
   void set_output_format(Format format) { output_format_ = format; }
 
-  AdbcStatusCode Prepare(struct AdbcError* error);
-  AdbcStatusCode Prepare(const std::vector<Oid>& param_oids, struct AdbcError* error);
+  Status Prepare();
+  Status Prepare(const std::vector<Oid>& param_oids);
   AdbcStatusCode DescribePrepared(struct AdbcError* error);
   AdbcStatusCode Execute(struct AdbcError* error,
                          const std::vector<std::string>& params = {},
@@ -170,8 +173,7 @@ class PqResultHelper {
   Format param_format_ = Format::kText;
   Format output_format_ = Format::kText;
 
-  AdbcStatusCode PrepareInternal(int n_params, const Oid* param_oids,
-                                 struct AdbcError* error);
+  Status PrepareInternal(int n_params, const Oid* param_oids);
 };
 
 }  // namespace adbcpq
