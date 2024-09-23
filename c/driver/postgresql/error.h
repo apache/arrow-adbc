@@ -19,6 +19,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include <arrow-adbc/adbc.h>
 #include <libpq-fe.h>
 
