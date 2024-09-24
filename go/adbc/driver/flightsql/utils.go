@@ -19,6 +19,7 @@ package flightsql
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -38,7 +39,7 @@ func adbcFromFlightStatus(err error, context string, args ...any) error {
 }
 
 func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, context string, args ...any) error {
-	if _, ok := adbc.AdbcError(err); ok {
+	if ok := errors.Is(err, adbc.Error{}); ok {
 		return err
 	}
 

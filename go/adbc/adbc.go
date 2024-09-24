@@ -38,7 +38,6 @@ package adbc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/apache/arrow/go/v18/arrow"
@@ -129,16 +128,6 @@ type Error struct {
 	SqlState [5]byte
 	// Details is an array of additional driver-specific error details.
 	Details []ErrorDetail
-}
-
-// AdbcError helper function returns an adbc.Error representation
-// of a given error
-func AdbcError(err error) (*Error, bool) {
-	var adbcErr Error
-	if errors.As(err, &adbcErr) {
-		return &adbcErr, true
-	}
-	return nil, false
 }
 
 func (e Error) Error() string {
