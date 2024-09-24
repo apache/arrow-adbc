@@ -17,5 +17,5 @@
 
 #include <arrow-adbc/adbc.h>
 
-extern "C" AdbcStatusCode ExampleDriverInitFunc(int version, void* raw_driver,
+extern "C" AdbcStatusCode AdbcDriverExampleInit(int version, void* raw_driver,
                                                 AdbcError* error);

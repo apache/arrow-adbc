@@ -22,7 +22,7 @@
 /// uses to build its SQLite and PostgreSQL drivers and abstracts away
 /// the details of C callables and catalog/metadata functions that can be
 /// difficult to implement but are essential for efficiently leveraging
-// the rest of the ADBC ecosystem.
+/// the rest of the ADBC ecosystem.
 
 /// Installation
 /// ============
@@ -58,7 +58,11 @@
 /// Building an ADBC Driver using C++
 /// =================================
 ///
-/// Let's start with some includes:
+/// Let's start with some includes. Notably, we'll need the driver framework
+/// header files and nanoarrow_, which we'll use to create and consume the
+/// Arrow C data interface structures in this example driver.
+
+/// .. _nanoarrow: https://arrow.apache.org/nanoarrow
 
 #include "driver_example.h"
 
@@ -73,46 +77,187 @@
 
 #include "arrow-adbc/adbc.h"
 
+/// Next, we'll bring a few essential framework types into the namespace
+/// to reduce the verbosity of the implementation:
+///
+/// * ``Option``: Options can be set on an ADBC database, connection, and
+///   statmenent. They can be strings, opaque binary, doubles, or integers.
+///   The ``Option`` class abstracts the details of how to get, set, and parse
+///   these values.
+/// * ``Status``: The ``Status`` is the ADBC driver framework's error handling
+///   mechanism: functions with no return value that can fail return a ``Status``.
+///   You can use ``UNWRAP_STATUS(some_call())`` as shorthand for
+///   ``Status status = some_call(); if (!status.ok()) return status;`` to
+///   succinctly propagate errors.
+/// * ``Result``: The ``Result<T>`` is used as a return value for functions that
+///   on success return a value of type ``T`` and on failure communicate their
+///   error using a ``Status``. You can use ``UNWRAP_RESULT(some_type value,
+///   some_call())`` as shorthand for
+///
+///   .. code-block:: cpp
+///      some_type value;
+///      Result<some_type> maybe_value = some_call();``,
+///      if (!maybe_value.status().ok()) {
+///        return maybe_value.status();
+///      } else {
+///        value = *maybe_value;
+///      }
+
 using adbc::driver::Option;
 using adbc::driver::Result;
 using adbc::driver::Status;
+
+namespace {
+
+/// Next, we'll provide the database implementation. The driver framework uses
+/// the Curiously Recurring Template Pattern (CRTP_). The details of this are
+/// handled by the framework, but functionally this is still just overriding
+/// methods from a base class that handles the details.
+///
+/// Here, our database implementation will simply record the ``uri`` passed
+/// by the user. Our interpretation of this will be a ``file://`` uri to
+/// a directory to which our IPC files should be written and/or IPC files
+/// should be read. This is the role of the database in ADBC: a shared
+/// handle to a database that potentially caches some shared state among
+/// connections, but which still allows multiple connections to execute
+/// against the database concurrently.
+///
+/// .. note::
+///
+/// .. _CRTP: https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern
 
 class DriverExampleDatabase : public adbc::driver::Database<DriverExampleDatabase> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[example]";
 
   Status SetOptionImpl(std::string_view key, Option value) override {
+    // Handle and validate options implemented by this driver
     if (key == "uri") {
-      UNWRAP_RESULT(uri_, value.AsString());
+      UNWRAP_RESULT(std::string_view uri, value.AsString());
+
+      if (uri.find("file://") != 0) {
+        return adbc::driver::status::InvalidArgument(
+            "[example] uri must start with 'file://'");
+      }
+
+      uri_ = uri;
       return adbc::driver::status::Ok();
     }
 
+    // Defer to the base implementation to handle state managed by the base
+    // class (and error for all other options).
     return Base::SetOptionImpl(key, value);
   }
 
   Result<Option> GetOption(std::string_view key) override {
+    // Return the value of options implemented by this driver
     if (key == "uri") {
       return Option(uri_);
     }
 
+    // Defer to the base implementation to handle state managed by the base
+    // class (and error for all other options).
     return Base::GetOption(key);
   }
+
+  // This is called after zero or more calls to SetOption() on
+  Status InitImpl() override {
+    if (uri_.empty()) {
+      return adbc::driver::status::InvalidArgument(
+          "[example] Must set uri to a non-empty value");
+    }
+
+    return Base::InitImpl();
+  }
+
+  // Getters for members needed by the connection and/or statement:
+  const std::string& uri() { return uri_; }
 
  private:
   std::string uri_;
 };
 
+/// Next, we implement the connection. While the role of the database is typically
+/// to store or cache information, the role of the connection is to provide
+/// resource handles that might be expensive to obtain (e.g., negotiating authentication
+/// when connecting to a database). Because our example "database" is just a directory, we
+/// don't need to do much in our connection in terms of resource management except to
+/// provide a way for child statements to access the database's uri.
+///
+/// Another role of the connection is to provide metadata about tables, columns,
+/// statistics, and other catalog-like information a caller might want to know before
+/// issuing a query. The driver framework base classes provide helpers to implement these
+/// functions such that you can mostly implement them in terms of the C++17 standard
+/// library (as opposed to building the C-level arrays yourself).
+
 class DriverExampleConnection : public adbc::driver::Connection<DriverExampleConnection> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[example]";
+
+  // Get information from the database and/or store a reference if needed.
+  Status InitImpl(void* parent) {
+    auto& database = *reinterpret_cast<DriverExampleDatabase*>(parent);
+    uri_ = database.uri();
+    return Base::InitImpl(parent);
+  }
+
+  // Getters for members needed by the statement:
+  const std::string& uri() { return uri_; }
+
+ private:
+  std::string uri_;
 };
+
+/// Next, we provide the statement implementation. The statement is where query execution
+/// is managed. Because our data source is quite literally Arrow data, we don't have to
+/// provide a layer that manages type or value conversion. The SQLite and PostgreSQL
+/// drivers both dedicate many lines of code to implementing and testing these conversions
+/// efficiently. The nanoarrow library can be used to implement conversions in both
+/// directions and is the scope of a separate article.
 
 class DriverExampleStatement : public adbc::driver::Statement<DriverExampleStatement> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[example]";
+
+  Status InitImpl(void* parent) {
+    auto& connection = *reinterpret_cast<DriverExampleConnection*>(parent);
+    uri_ = connection.uri();
+    return Base::InitImpl(parent);
+  }
+
+  Status SetSqlQueryImpl(std::string_view query) {
+    return adbc::driver::status::NotImplemented("SetSqlQuery");
+  }
+
+  Status BindStreamImpl(ArrowArrayStream* stream) {
+    return adbc::driver::status::NotImplemented("BindStream");
+  }
+
+  Status GetParameterSchemaImpl(struct ArrowSchema* schema) {
+    return adbc::driver::status::NotImplemented("GetParameterSchema");
+  }
+
+  Status PrepareImpl() { return adbc::driver::status::NotImplemented("Prepare"); }
+
+  Result<int64_t> ExecuteQueryImpl(ArrowArrayStream* stream) {
+    return adbc::driver::status::NotImplemented("ExecuteQuery");
+  }
+
+ private:
+  std::string uri_;
+  nanoarrow::UniqueArrayStream bind_;
 };
 
-extern "C" AdbcStatusCode ExampleDriverInitFunc(int version, void* raw_driver,
+}  // namespace
+
+/// Finally, we create the driver initializer function, which is what the driver
+/// manager needs to provide implementations for the ``Adbc**()` functions that
+/// comprise the ADBC C API. The name of this function matters: this file will
+/// be built into a shared library named ``libdriver_example.(so|dll|dylib)``,
+/// so the driver manager will look for the symbol ``AdbcDriverExampleInit()``
+/// as the default entry point when asked to load the driver ``"driver_example"``.
+
+extern "C" AdbcStatusCode AdbcDriverExampleInit(int version, void* raw_driver,
                                                 AdbcError* error) {
   using ExampleDriver =
       adbc::driver::Driver<DriverExampleDatabase, DriverExampleConnection,
