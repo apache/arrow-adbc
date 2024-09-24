@@ -85,7 +85,7 @@ func (d *ProtobufErrorDetail) Serialize() ([]byte, error) {
 	return proto.Marshal(any)
 }
 
-// ProtobufErrorDetail is an ErrorDetail backed by a human-readable string.
+// TextErrorDetail is an ErrorDetail backed by a human-readable string.
 type TextErrorDetail struct {
 	Name   string
 	Detail string
@@ -100,7 +100,7 @@ func (d *TextErrorDetail) Serialize() ([]byte, error) {
 	return []byte(d.Detail), nil
 }
 
-// ProtobufErrorDetail is an ErrorDetail backed by a binary payload.
+// BinaryErrorDetail is an ErrorDetail backed by a binary payload.
 type BinaryErrorDetail struct {
 	Name   string
 	Detail []byte
