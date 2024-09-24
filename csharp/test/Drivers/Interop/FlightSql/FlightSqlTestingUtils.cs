@@ -131,8 +131,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         {
             if (string.IsNullOrEmpty(environmentName))
                 return;
-
-
         }
 
         /// <summary>

@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Text;
+using Apache.Arrow.Scalars;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
@@ -85,10 +86,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                           new ColumnNetTypeArrowTypeValue("Time", typeof(TimeSpan), typeof(Time64Type), new TimeSpan(12, 34, 56)),
 #endif
                           new ColumnNetTypeArrowTypeValue("Timestamp", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2024, 9, 10, 12, 34, 56), TimeSpan.Zero)),
-
-                          // despite a value specified, this is coming back as null from the client call
-                          new ColumnNetTypeArrowTypeValue("Interval", typeof(IntervalType), typeof(IntervalType), null),
-
+                          new ColumnNetTypeArrowTypeValue("Interval", typeof(MonthDayNanosecondInterval), typeof(IntervalType), new MonthDayNanosecondInterval(12, 0, 0)),
                           new ColumnNetTypeArrowTypeValue("JSON", typeof(string), typeof(StringType), "[1, 2, 3]"),
                           new ColumnNetTypeArrowTypeValue("JSON_Array", typeof(string), typeof(StringType), "[{\"key\": \"value\"}]"),
 

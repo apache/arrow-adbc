@@ -241,7 +241,12 @@ namespace Apache.Arrow.Adbc
                     return uInt32Array.GetValue(index);
                 case UInt64Array uInt64Array:
                     return uInt64Array.GetValue(index);
-
+                case DayTimeIntervalArray dayTimeIntervalArray:
+                    return dayTimeIntervalArray.GetValue(index);
+                case MonthDayNanosecondIntervalArray monthDayNanosecondIntervalArray:
+                    return monthDayNanosecondIntervalArray.GetValue(index);
+                case YearMonthIntervalArray yearMonthIntervalArray:
+                    return yearMonthIntervalArray.GetValue(index);
                 case BinaryArray binaryArray:
                     if (!binaryArray.IsNull(index))
                         return binaryArray.GetBytes(index).ToArray();
@@ -250,6 +255,7 @@ namespace Apache.Arrow.Adbc
 
                     // not covered:
                     // -- struct array
+                    // -- map array
                     // -- dictionary array
                     // -- fixed size binary
                     // -- list array
