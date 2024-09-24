@@ -21,7 +21,6 @@ import secrets
 import threading
 import time
 
-import google.protobuf.any_pb2 as any_pb2
 import google.protobuf.wrappers_pb2 as wrappers_pb2
 import pytest
 
@@ -30,10 +29,8 @@ def assert_detail(e):
     # Check that the expected error details are present
     found = set()
     for _, detail in e.details:
-        anyproto = any_pb2.Any()
-        anyproto.ParseFromString(detail)
         string = wrappers_pb2.StringValue()
-        anyproto.Unpack(string)
+        string.ParseFromString(detail)
         found.add(string.value)
     assert found == {"detail1", "detail2"}
 

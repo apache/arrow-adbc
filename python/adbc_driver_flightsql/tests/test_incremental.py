@@ -18,7 +18,6 @@
 import re
 import threading
 
-import google.protobuf.any_pb2 as any_pb2
 import google.protobuf.wrappers_pb2 as wrappers_pb2
 import pyarrow
 import pyarrow.flight
@@ -46,10 +45,8 @@ def test_incremental_error(test_dbapi) -> None:
 
         found = set()
         for _, detail in exc_info.value.details:
-            anyproto = any_pb2.Any()
-            anyproto.ParseFromString(detail)
             string = wrappers_pb2.StringValue()
-            anyproto.Unpack(string)
+            string.ParseFromString(detail)
             found.add(string.value)
         assert found == {"detail1", "detail2"}
 
