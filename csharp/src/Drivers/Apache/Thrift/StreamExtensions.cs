@@ -45,6 +45,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
             buffer[offset + 3] = (byte)(value >> 24);
         }
 
+        public static void ReverseEndianI64AtOffset(Span<byte> buffer, int offset)
+        {
+            // Check if the buffer is large enough to contain an i64 at the given offset
+            if (offset < 0 || buffer.Length < offset + sizeof(long))
+                throw new ArgumentOutOfRangeException(nameof(offset), "Buffer is too small or offset is out of bounds.");
+
+            // Swap the bytes to reverse the endianness of the i64
+            byte temp;
+            for (int startIndex = offset, endIndex = offset + (sizeof(long) - 1); startIndex < endIndex; startIndex++, endIndex--)
+            {
+                temp = buffer[startIndex];
+                buffer[startIndex] = buffer[endIndex];
+                buffer[endIndex] = temp;
+            }
+        }
+
         public static void ReverseEndianI32AtOffset(Span<byte> buffer, int offset)
         {
             // Check if the buffer is large enough to contain an i32 at the given offset
@@ -64,6 +80,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
             buffer[offset + 1] = buffer[offset + 2];
             buffer[offset + 2] = temp;
         }
+
         public static void ReverseEndiannessInt16(Span<byte> buffer, int offset)
         {
             if (buffer == null)

@@ -22,6 +22,6 @@ Suggests:
 SystemRequirements: GNU make, Go (>= 1.21)
 Config/testthat/edition: 3
 Config/build/bootstrap: TRUE
-URL: https://github.com/apache/arrow-adbc, https://arrow.apache.org/adbc/current/r/adbcflightsql/
+URL: https://arrow.apache.org/adbc/current/r/adbcflightsql/, https://github.com/apache/arrow-adbc
 BugReports: https://github.com/apache/arrow-adbc/issues
 Imports: adbcdrivermanager

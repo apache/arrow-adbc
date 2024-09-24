@@ -1139,10 +1139,11 @@ TEST_F(PostgresStatementTest, SqlIngestTimestampOverflow) {
                 IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
-                IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
-    ASSERT_THAT(error.message,
-                ::testing::HasSubstr("Row #1 has value '9223372036854775807' which "
-                                     "exceeds PostgreSQL timestamp limits"));
+                IsStatus(ADBC_STATUS_INTERNAL, &error));
+    ASSERT_THAT(
+        error.message,
+        ::testing::HasSubstr(
+            "Row 0 timestamp value 9223372036854775807 with unit 0 would overflow"));
   }
 
   {
@@ -1169,10 +1170,11 @@ TEST_F(PostgresStatementTest, SqlIngestTimestampOverflow) {
                 IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
-                IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
-    ASSERT_THAT(error.message,
-                ::testing::HasSubstr("Row #1 has value '-9223372036854775808' which "
-                                     "exceeds PostgreSQL timestamp limits"));
+                IsStatus(ADBC_STATUS_INTERNAL, &error));
+    ASSERT_THAT(
+        error.message,
+        ::testing::HasSubstr(
+            "Row 0 timestamp value -9223372036854775808 with unit 0 would overflow"));
   }
 }
 
@@ -1779,7 +1781,7 @@ TEST_P(PostgresTypeTest, SelectValue) {
   // check type
   ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
-      &reader.schema.value, {{std::nullopt, GetParam().arrow_type, true}}));
+      &reader.schema.value, {{"", GetParam().arrow_type, true}}));
   if (GetParam().arrow_type == NANOARROW_TYPE_TIMESTAMP) {
     if (GetParam().sql_type.find("WITH TIME ZONE") == std::string::npos) {
       ASSERT_STREQ(reader.schema->children[0]->format, "tsu:");

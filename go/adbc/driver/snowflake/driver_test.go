@@ -2111,3 +2111,36 @@ func TestIngestCancelContext(t *testing.T) {
 		require.Equal(t, "", buf.String())
 	})
 }
+
+func (suite *SnowflakeTests) TestChangeDatabaseAndGetObjects() {
+	// this test demonstrates:
+	// 1. changing the database context
+	// 2. being able to call GetObjects after changing the database context
+	//    (this uses a different connection context but still executes successfully)
+
+	uri, ok := os.LookupEnv("SNOWFLAKE_URI")
+	if !ok {
+		suite.T().Skip("Cannot find the `SNOWFLAKE_URI` value")
+	}
+
+	newCatalog, ok := os.LookupEnv("SNOWFLAKE_NEW_CATALOG")
+	if !ok {
+		suite.T().Skip("Cannot find the `SNOWFLAKE_NEW_CATALOG` value")
+	}
+
+	getObjectsTable, ok := os.LookupEnv("SNOWFLAKE_TABLE_GETOBJECTS")
+	if !ok {
+		suite.T().Skip("Cannot find the `SNOWFLAKE_TABLE_GETOBJECTS` value")
+	}
+
+	cfg, err := gosnowflake.ParseDSN(uri)
+	suite.NoError(err)
+
+	cnxnopt, ok := suite.cnxn.(adbc.PostInitOptions)
+	suite.True(ok)
+	err = cnxnopt.SetOption(adbc.OptionKeyCurrentCatalog, newCatalog)
+	suite.NoError(err)
+
+	_, err2 := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthAll, &newCatalog, &cfg.Schema, &getObjectsTable, nil, nil)
+	suite.NoError(err2)
+}

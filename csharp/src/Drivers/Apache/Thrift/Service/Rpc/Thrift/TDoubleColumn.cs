@@ -29,7 +29,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
   public partial class TDoubleColumn : TBase
   {
-
     public DoubleArray Values { get; set; }
 
     public TDoubleColumn()
@@ -78,14 +77,13 @@ namespace Apache.Hive.Service.Rpc.Thrift
                   var _list178 = await iprot.ReadListBeginAsync(cancellationToken);
                   length = _list178.Count;
 
-                  buffer = new byte[length * 8];
+                  buffer = new byte[length * sizeof(double)];
                   var memory = buffer.AsMemory();
-                  var typedMemory = Unsafe.As<Memory<byte>, Memory<long>>(ref memory).Slice(0, length);
                   iprot.Transport.CheckReadBytesAvailable(buffer.Length);
                   await transport.ReadExactlyAsync(memory, cancellationToken);
                   for (int _i179 = 0; _i179 < length; ++_i179)
                   {
-                    typedMemory.Span[_i179] = BinaryPrimitives.ReverseEndianness(typedMemory.Span[_i179]);
+                    StreamExtensions.ReverseEndianI64AtOffset(memory.Span, _i179 * sizeof(double));
                   }
                   await iprot.ReadListEndAsync(cancellationToken);
                 }
@@ -125,7 +123,8 @@ namespace Apache.Hive.Service.Rpc.Thrift
           throw new TProtocolException(TProtocolException.INVALID_DATA);
         }
 
-        Values = new DoubleArray(new ArrowBuffer(buffer), new ArrowBuffer(nulls), length, BitUtility.CountBits(nulls), 0);
+        ArrowBuffer validityBitmapBuffer = BitmapUtilities.GetValidityBitmapBuffer(ref nulls, length, out int nullCount);
+        Values = new DoubleArray(new ArrowBuffer(buffer), validityBitmapBuffer, length, nullCount, 0);
       }
       finally
       {

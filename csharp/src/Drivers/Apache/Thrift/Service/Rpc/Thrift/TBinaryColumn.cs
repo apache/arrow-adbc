@@ -30,7 +30,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
   public partial class TBinaryColumn : TBase
   {
-
     public BinaryArray Values { get; set; }
 
     public TBinaryColumn()
@@ -83,14 +82,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
                   values = new ArrowBuffer.Builder<byte>();
                   int offset = 0;
-                  offsetBuffer = new byte[(length + 1) * 4];
+                  offsetBuffer = new byte[(length + 1) * sizeof(int)];
                   var memory = offsetBuffer.AsMemory();
-                  var typedMemory = Unsafe.As<Memory<byte>, Memory<int>>(ref memory).Slice(0, length + 1);
 
                   for(int _i197 = 0; _i197 < length; ++_i197)
                   {
-                    //typedMemory.Span[_i197] = offset;
-                    StreamExtensions.WriteInt32LittleEndian(offset, memory.Span, _i197 * 4);
+                    StreamExtensions.WriteInt32LittleEndian(offset, memory.Span, _i197 * sizeof(int));
                     var size = await iprot.ReadI32Async(cancellationToken);
                     offset += size;
 
@@ -109,8 +106,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
                     await transport.ReadExactlyAsync(tmp.AsMemory(0, size), cancellationToken);
                     values.Append(tmp.AsMemory(0, size).Span);
                   }
-                  typedMemory.Span[length] = offset;
-                  StreamExtensions.WriteInt32LittleEndian(offset, memory.Span, length * 4);
+                  StreamExtensions.WriteInt32LittleEndian(offset, memory.Span, length * sizeof(int));
 
                   await iprot.ReadListEndAsync(cancellationToken);
                 }
@@ -150,7 +146,8 @@ namespace Apache.Hive.Service.Rpc.Thrift
           throw new TProtocolException(TProtocolException.INVALID_DATA);
         }
 
-        Values = new BinaryArray(BinaryType.Default, length, new ArrowBuffer(offsetBuffer), values.Build(), new ArrowBuffer(nulls), BitUtility.CountBits(nulls));
+        ArrowBuffer validityBitmapBuffer = BitmapUtilities.GetValidityBitmapBuffer(ref nulls, length, out int nullCount);
+        Values = new BinaryArray(BinaryType.Default, length, new ArrowBuffer(offsetBuffer), values.Build(), validityBitmapBuffer, nullCount);
       }
       finally
       {

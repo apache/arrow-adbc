@@ -75,11 +75,6 @@ class PostgresConnection {
   bool autocommit() const { return autocommit_; }
 
  private:
-  AdbcStatusCode PostgresConnectionGetInfoImpl(const uint32_t* info_codes,
-                                               size_t info_codes_length,
-                                               struct ArrowSchema* schema,
-                                               struct ArrowArray* array,
-                                               struct AdbcError* error);
   std::shared_ptr<PostgresDatabase> database_;
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   PGconn* conn_;

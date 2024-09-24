@@ -84,6 +84,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [JsonPropertyName("authentication")]
         public SnowflakeAuthentication Authentication { get; set; } = new SnowflakeAuthentication();
 
+        /// <summary>
+        /// The snowflake Authentication
+        /// </summary>
+        [JsonPropertyName("roleInfo")]
+        public RoleInfo? RoleInfo { get; set; }
     }
 
     public class SnowflakeAuthentication
@@ -133,5 +138,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
         [JsonPropertyName("password")]
         public string Password { get; set; } = string.Empty;
+    }
+
+    public class RoleInfo
+    {
+        [JsonPropertyName("defaultRole")]
+        public string DefaultRole { get; set; } = string.Empty;
+
+        [JsonPropertyName("newRole")]
+        public string NewRole { get; set; } = string.Empty;
     }
 }

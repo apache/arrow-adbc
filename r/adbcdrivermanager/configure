@@ -22,5 +22,6 @@
 # ADBC repo into this package. If the file doesn't exist, we're installing
 # from a pre-built tarball.
 if [ -f bootstrap.R ]; then
-  $R_HOME/bin/Rscript bootstrap.R --vanilla
+  echo "Running bootstrap.R..."
+  "$R_HOME/bin/Rscript" bootstrap.R --vanilla
 fi

@@ -15,19 +15,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <cstdarg>
 #include <limits>
 
 #include <arrow-adbc/adbc.h>
-#include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 #include <nanoarrow/nanoarrow.hpp>
 
 #define ADBC_FRAMEWORK_USE_FMT
-#include "driver/common/options.h"
-#include "driver/common/utils.h"
 #include "driver/framework/base_driver.h"
-#include "driver/framework/catalog.h"
 #include "driver/framework/connection.h"
 #include "driver/framework/database.h"
 #include "driver/framework/statement.h"
@@ -934,21 +929,25 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     }
     assert(stmt != nullptr);
 
-    AdbcStatusCode status = ADBC_STATUS_OK;
+    AdbcStatusCode status_code = ADBC_STATUS_OK;
+    Status status = status::Ok();
     struct AdbcError error = ADBC_ERROR_INIT;
     while (true) {
       char finished = 0;
-      status = AdbcSqliteBinderBindNext(&binder_, conn_, stmt, &finished, &error);
-      if (status != ADBC_STATUS_OK || finished) break;
+      status_code = AdbcSqliteBinderBindNext(&binder_, conn_, stmt, &finished, &error);
+      if (status_code != ADBC_STATUS_OK || finished) {
+        status = Status::FromAdbc(status_code, error);
+        break;
+      }
 
       int rc = 0;
       do {
         rc = sqlite3_step(stmt);
       } while (rc == SQLITE_ROW);
       if (rc != SQLITE_DONE) {
-        SetError(&error, "failed to execute: %s\nquery was: %s", sqlite3_errmsg(conn_),
-                 insert.data());
-        status = ADBC_STATUS_INTERNAL;
+        status = status::fmt::Internal("failed to execute: {}\nquery was: {}",
+                                       sqlite3_errmsg(conn_), insert.data());
+        status_code = ADBC_STATUS_INTERNAL;
         break;
       }
       row_count++;
@@ -956,15 +955,15 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     std::ignore = sqlite3_finalize(stmt);
 
     if (is_autocommit) {
-      if (status == ADBC_STATUS_OK) {
+      if (status_code == ADBC_STATUS_OK) {
         UNWRAP_STATUS(::adbc::sqlite::SqliteQuery::Execute(conn_, "COMMIT"));
       } else {
         UNWRAP_STATUS(::adbc::sqlite::SqliteQuery::Execute(conn_, "ROLLBACK"));
       }
     }
 
-    if (status != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status, error);
+    if (status_code != ADBC_STATUS_OK) {
+      return status;
     }
     return row_count;
   }
@@ -1008,7 +1007,8 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
           "parameter count mismatch: expected {} but found {}", expected, actual);
     }
 
-    int64_t rows = 0;
+    int64_t output_rows = 0;
+    int64_t changed_rows = 0;
 
     SqliteMutexGuard guard(conn_);
 
@@ -1027,7 +1027,11 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
       }
 
       while (sqlite3_step(stmt_) == SQLITE_ROW) {
-        rows++;
+        output_rows++;
+      }
+
+      if (sqlite3_column_count(stmt_) == 0) {
+        changed_rows += sqlite3_changes(conn_);
       }
 
       if (!binder_.schema.release) break;
@@ -1041,9 +1045,10 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     }
 
     if (sqlite3_column_count(stmt_) == 0) {
-      rows = sqlite3_changes(conn_);
+      return changed_rows;
+    } else {
+      return output_rows;
     }
-    return rows;
   }
 
   Result<int64_t> ExecuteUpdateImpl(PreparedState& state) { return ExecuteUpdateImpl(); }

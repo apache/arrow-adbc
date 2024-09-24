@@ -78,15 +78,13 @@ namespace Apache.Hive.Service.Rpc.Thrift
                   var _list151 = await iprot.ReadListBeginAsync(cancellationToken);
                   length = _list151.Count;
 
-                  buffer = new byte[length * 2];
+                  buffer = new byte[length * sizeof(short)];
                   var memory = buffer.AsMemory();
-                  var typedMemory = Unsafe.As<Memory<byte>, Memory<short>>(ref memory).Slice(0, length);
                   iprot.Transport.CheckReadBytesAvailable(buffer.Length);
                   await transport.ReadExactlyAsync(memory, cancellationToken);
                   for (int _i152 = 0; _i152 < length; ++_i152)
                   {
-                    //typedMemory.Span[_i152] = BinaryPrimitives.ReverseEndianness(typedMemory.Span[_i152]);
-                    StreamExtensions.ReverseEndiannessInt16(memory.Span, _i152 * 2);
+                    StreamExtensions.ReverseEndiannessInt16(memory.Span, _i152 * sizeof(short));
                   }
                   await iprot.ReadListEndAsync(cancellationToken);
                 }
@@ -125,8 +123,8 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           throw new TProtocolException(TProtocolException.INVALID_DATA);
         }
-
-        Values = new Int16Array(new ArrowBuffer(buffer), new ArrowBuffer(nulls), length, BitUtility.CountBits(nulls), 0);
+        ArrowBuffer validityBitmapBuffer = BitmapUtilities.GetValidityBitmapBuffer(ref nulls, length, out int nullCount);
+        Values = new Int16Array(new ArrowBuffer(buffer), validityBitmapBuffer, length, nullCount, 0);
       }
       finally
       {

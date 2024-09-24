@@ -26,6 +26,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
+using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.Storage.V1;
@@ -74,6 +75,31 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             BigQueryReadClientBuilder readClientBuilder = new BigQueryReadClientBuilder();
             readClientBuilder.Credential = this.credential;
             BigQueryReadClient readClient = readClientBuilder.Build();
+
+            if (results.TableReference == null)
+            {
+                // To get the results of all statements in a multi-statement query, enumerate the child jobs and call jobs.getQueryResults on each of them.
+                // Related public docs: https://cloud.google.com/bigquery/docs/multi-statement-queries#get_all_executed_statements
+                ListJobsOptions listJobsOptions = new ListJobsOptions();
+                listJobsOptions.ParentJobId = results.JobReference.JobId;
+                PagedEnumerable<JobList, BigQueryJob> joblist = client.ListJobs(listJobsOptions);
+                BigQueryJob firstQueryJob = new BigQueryJob(client, job.Resource);
+                foreach (BigQueryJob childJob in joblist)
+                {
+                    var tempJob = client.GetJob(childJob.Reference.JobId);
+                    var query = tempJob.Resource?.Configuration?.Query;
+                    if (query != null && query.DestinationTable != null && query.DestinationTable.ProjectId != null && query.DestinationTable.DatasetId != null && query.DestinationTable.TableId != null)
+                    {
+                        firstQueryJob = tempJob;
+                    }
+                }
+                results = firstQueryJob.GetQueryResults();
+            }
+
+            if (results.TableReference == null)
+            {
+                throw new AdbcException("There is no query statement");
+            }
 
             string table = $"projects/{results.TableReference.ProjectId}/datasets/{results.TableReference.DatasetId}/tables/{results.TableReference.TableId}";
 

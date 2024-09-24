@@ -16,13 +16,13 @@
 # under the License.
 
 CXX_STD = CXX17
-PKG_CPPFLAGS=-I../src/ -I../src/c/ -I../src/c/vendor/ -I../src/c/vendor/fmt/include/ @cppflags@ -DADBC_EXPORT="" -DFMT_HEADER_ONLY=1 -D_LIBCPP_DISABLE_AVAILABILITY
+PKG_CPPFLAGS=-I../src/c -I../src/c/include -I../src/c/vendor/ -I../src/c/vendor/fmt/include @cppflags@ -DADBC_EXPORT="" -DFMT_HEADER_ONLY=1 -D_LIBCPP_DISABLE_AVAILABILITY
 PKG_LIBS=@libs@
 
 OBJECTS = init.o \
     c/driver/common/utils.o \
-    c/driver/framework/catalog.o \
     c/driver/framework/objects.o \
+    c/driver/framework/utility.o \
     c/driver/sqlite/sqlite.o \
     c/driver/sqlite/statement_reader.o \
     c/vendor/nanoarrow/nanoarrow.o \

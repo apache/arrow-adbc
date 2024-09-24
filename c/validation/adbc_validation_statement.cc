@@ -79,9 +79,12 @@ void StatementTest::TestRelease() {
 }
 
 template <typename CType>
-void StatementTest::TestSqlIngestType(ArrowType type,
+void StatementTest::TestSqlIngestType(SchemaField field,
                                       const std::vector<std::optional<CType>>& values,
                                       bool dictionary_encode) {
+  // Override the field name
+  field.name = "col";
+
   if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     GTEST_SKIP();
   }
@@ -92,7 +95,7 @@ void StatementTest::TestSqlIngestType(ArrowType type,
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  ASSERT_THAT(MakeSchema(&schema.value, {{"col", type}}), IsOkErrno());
+  ASSERT_THAT(MakeSchema(&schema.value, {field}), IsOkErrno());
   ASSERT_THAT(MakeBatch<CType>(&schema.value, &array.value, &na_error, values),
               IsOkErrno());
 
@@ -155,16 +158,15 @@ void StatementTest::TestSqlIngestType(ArrowType type,
                 ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
 
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-    ArrowType round_trip_type = quirks()->IngestSelectRoundTripType(type);
-    ASSERT_NO_FATAL_FAILURE(
-        CompareSchema(&reader.schema.value, {{"col", round_trip_type, NULLABLE}}));
+    SchemaField round_trip_field = quirks()->IngestSelectRoundTripType(field);
+    ASSERT_NO_FATAL_FAILURE(CompareSchema(&reader.schema.value, {round_trip_field}));
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
     ASSERT_EQ(values.size(), reader.array->length);
     ASSERT_EQ(1, reader.array->n_children);
 
-    if (round_trip_type == type) {
+    if (round_trip_field.type == field.type) {
       // XXX: for now we can't compare values; we would need casting
       ASSERT_NO_FATAL_FAILURE(
           CompareArray<CType>(reader.array_view->children[0], values));
@@ -174,6 +176,14 @@ void StatementTest::TestSqlIngestType(ArrowType type,
     ASSERT_EQ(nullptr, reader.array->release);
   }
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
+template <typename CType>
+void StatementTest::TestSqlIngestType(ArrowType type,
+                                      const std::vector<std::optional<CType>>& values,
+                                      bool dictionary_encode) {
+  SchemaField field("col", type);
+  TestSqlIngestType<CType>(field, values, dictionary_encode);
 }
 
 template <typename CType>
@@ -489,6 +499,24 @@ void StatementTest::TestSqlIngestStringDictionary() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(NANOARROW_TYPE_STRING,
                                                          {"", "", "1234", "例"},
                                                          /*dictionary_encode*/ true));
+}
+
+void StatementTest::TestSqlIngestListOfInt32() {
+  SchemaField field =
+      SchemaField::Nested("col", NANOARROW_TYPE_LIST, {{"item", NANOARROW_TYPE_INT32}});
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<int32_t>>(
+      field, {std::nullopt, std::vector<int32_t>{1, 2, 3}, std::vector<int32_t>{4, 5}},
+      /*dictionary_encode*/ false));
+}
+
+void StatementTest::TestSqlIngestListOfString() {
+  SchemaField field =
+      SchemaField::Nested("col", NANOARROW_TYPE_LIST, {{"item", NANOARROW_TYPE_STRING}});
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<std::string>>(
+      field,
+      {std::nullopt, std::vector<std::string>{"abc", "defg"},
+       std::vector<std::string>{"hijk"}},
+      /*dictionary_encode*/ false));
 }
 
 void StatementTest::TestSqlIngestStreamZeroArrays() {
@@ -2106,6 +2134,71 @@ void StatementTest::TestSqlPrepareErrorParamCountMismatch() {
         return ADBC_STATUS_OK;
       })(),
       ::testing::Not(IsOkStatus(&error)));
+}
+
+void StatementTest::TestSqlBind() {
+  if (!quirks()->supports_dynamic_parameter_binding()) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(quirks()->DropTable(&connection, "bindtest", &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "CREATE TABLE bindtest (col1 INTEGER, col2 TEXT)", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ASSERT_THAT(MakeSchema(&schema.value,
+                         {{"", NANOARROW_TYPE_INT32}, {"", NANOARROW_TYPE_STRING}}),
+              IsOkErrno());
+
+  std::vector<std::optional<int32_t>> int_values{std::nullopt, -123, 123};
+  std::vector<std::optional<std::string>> string_values{"abc", std::nullopt, "defg"};
+
+  int batch_result = MakeBatch<int32_t, std::string>(
+      &schema.value, &array.value, &na_error, int_values, string_values);
+  ASSERT_THAT(batch_result, IsOkErrno());
+
+  auto insert_query = std::string("INSERT INTO bindtest VALUES (") +
+                      quirks()->BindParameter(0) + ", " + quirks()->BindParameter(1) +
+                      ")";
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, insert_query.c_str(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+  int64_t rows_affected = -10;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(-1), ::testing::Eq(3)));
+
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(
+          &statement, "SELECT * FROM bindtest ORDER BY \"col1\" ASC NULLS FIRST", &error),
+      IsOkStatus(&error));
+  {
+    StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(0), ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->length, 3);
+    CompareArray(reader.array_view->children[0], int_values);
+    CompareArray(reader.array_view->children[1], string_values);
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
 }
 
 void StatementTest::TestSqlQueryEmpty() {

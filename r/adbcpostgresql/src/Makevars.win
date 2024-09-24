@@ -18,13 +18,14 @@
 VERSION = 13.2.0
 RWINLIB = ../windows/libpq-$(VERSION)
 CXX_STD = CXX17
-PKG_CPPFLAGS = -I$(RWINLIB)/include -I../src -I../src/c/ -I../src/c/vendor/ -I../src/c/vendor/fmt/include/ -DADBC_EXPORT="" -D__USE_MINGW_ANSI_STDIO -DFMT_HEADER_ONLY=1
+PKG_CPPFLAGS = -I$(RWINLIB)/include -I../src/c -I../src/c/include -I../src/c/vendor/ -I../src/c/vendor/fmt/include -DADBC_EXPORT="" -D__USE_MINGW_ANSI_STDIO -DFMT_HEADER_ONLY=1
 PKG_LIBS = -L$(RWINLIB)/lib${R_ARCH}${CRT} \
 	-lpq -lpgport -lpgcommon -lssl -lcrypto -lwsock32 -lsecur32 -lws2_32 -lgdi32 -lcrypt32 -lwldap32
 
 OBJECTS = init.o \
     c/driver/common/utils.o \
-    c/driver/framework/catalog.o \
+    c/driver/framework/objects.o \
+    c/driver/framework/utility.o \
     c/driver/postgresql/connection.o \
     c/driver/postgresql/database.o \
     c/driver/postgresql/error.o \

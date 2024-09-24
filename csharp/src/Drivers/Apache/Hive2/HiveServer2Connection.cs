@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -27,21 +26,19 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    public abstract class HiveServer2Connection : AdbcConnection
+    internal abstract class HiveServer2Connection : AdbcConnection
     {
-        const string userAgent = "AdbcExperimental/0.0";
+        internal const long BatchSizeDefault = 50000;
+        internal const int PollTimeMillisecondsDefault = 500;
 
-        protected TOperationHandle? operationHandle;
-        protected readonly IReadOnlyDictionary<string, string> properties;
-        internal TTransport? transport;
-        internal TCLIService.Client? client;
-        internal TSessionHandle? sessionHandle;
+        private TTransport? _transport;
+        private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
-            this.properties = properties;
+            Properties = properties;
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
             // will retry until it successfully returns a value without an exception.
@@ -52,26 +49,37 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal TCLIService.Client Client
         {
-            get { return this.client ?? throw new InvalidOperationException("connection not open"); }
+            get { return _client ?? throw new InvalidOperationException("connection not open"); }
         }
 
-        protected string VendorVersion => _vendorVersion.Value;
+        internal string VendorVersion => _vendorVersion.Value;
 
-        protected string VendorName => _vendorName.Value;
+        internal string VendorName => _vendorName.Value;
+
+        internal IReadOnlyDictionary<string, string> Properties { get; }
 
         internal async Task OpenAsync()
         {
-            TProtocol protocol = await CreateProtocolAsync();
-            this.transport = protocol.Transport;
-            this.client = new TCLIService.Client(protocol);
-
-            var s0 = await this.client.OpenSession(CreateSessionRequest());
-            this.sessionHandle = s0.SessionHandle;
+            TTransport transport = await CreateTransportAsync();
+            TProtocol protocol = await CreateProtocolAsync(transport);
+            _transport = protocol.Transport;
+            _client = new TCLIService.Client(protocol);
+            TOpenSessionReq request = CreateSessionRequest();
+            TOpenSessionResp? session = await Client.OpenSession(request);
+            SessionHandle = session.SessionHandle;
         }
 
-        protected abstract ValueTask<TProtocol> CreateProtocolAsync();
+        internal TSessionHandle? SessionHandle { get; private set; }
+
+        protected abstract Task<TTransport> CreateTransportAsync();
+
+        protected abstract Task<TProtocol> CreateProtocolAsync(TTransport transport);
 
         protected abstract TOpenSessionReq CreateSessionRequest();
+
+        internal abstract SchemaParser SchemaParser { get; }
+
+        internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
@@ -83,14 +91,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             throw new NotImplementedException();
         }
 
-        protected void PollForResponse()
+        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds)
         {
             TGetOperationStatusResp? statusResponse = null;
             do
             {
-                if (statusResponse != null) { Thread.Sleep(500); }
-                TGetOperationStatusReq request = new TGetOperationStatusReq(this.operationHandle);
-                statusResponse = this.Client.GetOperationStatus(request).Result;
+                if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds); }
+                TGetOperationStatusReq request = new(operationHandle);
+                statusResponse = await client.GetOperationStatus(request);
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
         }
 
@@ -98,7 +106,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             TGetInfoReq req = new()
             {
-                SessionHandle = this.sessionHandle ?? throw new InvalidOperationException("session not created"),
+                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
                 InfoType = infoType,
             };
 
@@ -115,23 +123,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override void Dispose()
         {
-            if (this.client != null)
+            if (_client != null)
             {
-                TCloseSessionReq r6 = new TCloseSessionReq(this.sessionHandle);
-                this.client.CloseSession(r6).Wait();
+                TCloseSessionReq r6 = new TCloseSessionReq(SessionHandle);
+                _client.CloseSession(r6).Wait();
 
-                this.transport?.Close();
-                this.client.Dispose();
-                this.transport = null;
-                this.client = null;
+                _transport?.Close();
+                _client.Dispose();
+                _transport = null;
+                _client = null;
             }
         }
 
-        protected Schema GetSchema()
+        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
-            TGetResultSetMetadataReq request = new TGetResultSetMetadataReq(this.operationHandle);
-            TGetResultSetMetadataResp response = this.Client.GetResultSetMetadata(request).Result;
-            return SchemaParser.GetArrowSchema(response.Schema);
+            TGetResultSetMetadataReq request = new(operationHandle);
+            TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
+            return response;
         }
     }
 }

@@ -88,6 +88,80 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         }
 
         /// <summary>
+        /// Validates if the DEFAULT_ROLE works correctly for ADBC.
+        /// </summary>
+        [SkippableFact, Order(1)]
+        public void ValidateUserRole()
+        {
+            Skip.If(_testConfiguration.RoleInfo == null);
+
+            // first test with the DEFAULT_ROLE value
+            Assert.True(CurrentRoleIsExpectedRole(_connection, _testConfiguration.RoleInfo.DefaultRole)); ;
+
+            // now connect with the new role and ensure we get the new role successfully
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            Dictionary<string, string> options = new Dictionary<string, string>();
+
+            using AdbcDriver localSnowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_testConfiguration, out parameters);
+            parameters.Add(SnowflakeParameters.ROLE, _testConfiguration.RoleInfo.NewRole);
+
+            using AdbcDatabase localDatabase = localSnowflakeDriver.Open(parameters);
+            using AdbcConnection localConnection = localDatabase.Connect(options);
+            Assert.True(CurrentRoleIsExpectedRole(localConnection, _testConfiguration.RoleInfo.NewRole));
+        }
+
+        private bool CurrentRoleIsExpectedRole(AdbcConnection cn, string expectedRole)
+        {
+            using AdbcStatement statement = cn.CreateStatement();
+            statement.SqlQuery = "SELECT CURRENT_ROLE() as CURRENT_ROLE;";
+
+            QueryResult queryResult = statement.ExecuteQuery();
+            using RecordBatch? recordBatch = queryResult.Stream?.ReadNextRecordBatchAsync().Result;
+            Assert.True(recordBatch != null);
+
+            StringArray stringArray = (StringArray)recordBatch.Column("CURRENT_ROLE");
+            Assert.True(stringArray.Length > 0);
+
+            return expectedRole == stringArray.GetString(0);
+        }
+
+        [SkippableFact, Order(1)]
+        public void CanSetDatabase()
+        {
+            Skip.If(string.IsNullOrEmpty(_testConfiguration.Metadata.Catalog));
+
+            // connect without the parameter and ensure we get the DATABASE successfully
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            Dictionary<string, string> options = new Dictionary<string, string>();
+
+            using AdbcDriver localSnowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_testConfiguration, out parameters);
+            parameters.Remove(SnowflakeParameters.DATABASE);
+            using AdbcDatabase localDatabase = localSnowflakeDriver.Open(parameters);
+            using AdbcConnection localConnection = localDatabase.Connect(options);
+
+            localConnection.SetOption(AdbcOptions.Connection.CurrentCatalog, _testConfiguration.Metadata.Catalog);
+
+            Assert.True(CurrentDatabaseIsExpectedCatalog(localConnection, _testConfiguration.Metadata.Catalog));
+
+            localConnection.GetObjects(AdbcConnection.GetObjectsDepth.All, _testConfiguration.Metadata.Catalog, _testConfiguration.Metadata.Schema, _testConfiguration.Metadata.Table, _tableTypes, null);
+        }
+
+        private bool CurrentDatabaseIsExpectedCatalog(AdbcConnection cn, string expectedCatalog)
+        {
+            using AdbcStatement statement = cn.CreateStatement();
+            statement.SqlQuery = "SELECT CURRENT_DATABASE() as CURRENT_DATABASE;"; // GetOption doesn't exist in 1.0, only 1.1
+
+            QueryResult queryResult = statement.ExecuteQuery();
+            using RecordBatch? recordBatch = queryResult.Stream?.ReadNextRecordBatchAsync().Result;
+            Assert.True(recordBatch != null);
+
+            StringArray stringArray = (StringArray)recordBatch.Column("CURRENT_DATABASE");
+            Assert.True(stringArray.Length > 0);
+
+            return expectedCatalog == stringArray.GetString(0);
+        }
+
+        /// <summary>
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>

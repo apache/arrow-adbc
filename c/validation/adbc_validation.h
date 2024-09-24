@@ -27,6 +27,8 @@
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
 
+#include "adbc_validation_util.h"
+
 namespace adbc_validation {
 
 #define ADBCV_STRINGIFY(s) #s
@@ -158,6 +160,18 @@ class DriverQuirks {
   ///   will the database return when that column is selected?
   virtual ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const {
     return ingest_type;
+  }
+
+  /// \brief For a given Arrow type of (possibly nested) ingested data, what Arrow type
+  ///   will the database return when that column is selected?
+  virtual SchemaField IngestSelectRoundTripType(SchemaField ingest_field) const {
+    SchemaField out(ingest_field.name, IngestSelectRoundTripType(ingest_field.type),
+                    ingest_field.nullable);
+    for (const auto& child : ingest_field.children) {
+      out.children.push_back(IngestSelectRoundTripType(child));
+    }
+
+    return out;
   }
 
   /// \brief Whether bulk ingest is supported
@@ -344,7 +358,7 @@ class StatementTest {
   void TestNewInit();
   void TestRelease();
 
-  // ---- Type-specific tests --------------------
+  // ---- Type-specific ingest tests -------------
 
   void TestSqlIngestBool();
 
@@ -376,6 +390,10 @@ class StatementTest {
 
   // Dictionary-encoded
   void TestSqlIngestStringDictionary();
+
+  // Nested
+  void TestSqlIngestListOfInt32();
+  void TestSqlIngestListOfString();
 
   void TestSqlIngestStreamZeroArrays();
 
@@ -409,6 +427,8 @@ class StatementTest {
   void TestSqlPrepareErrorNoQuery();
   void TestSqlPrepareErrorParamCountMismatch();
 
+  void TestSqlBind();
+
   void TestSqlQueryEmpty();
   void TestSqlQueryInts();
   void TestSqlQueryFloats();
@@ -439,6 +459,11 @@ class StatementTest {
   struct AdbcDatabase database;
   struct AdbcConnection connection;
   struct AdbcStatement statement;
+
+  template <typename CType>
+  void TestSqlIngestType(SchemaField type,
+                         const std::vector<std::optional<CType>>& values,
+                         bool dictionary_encode);
 
   template <typename CType>
   void TestSqlIngestType(ArrowType type, const std::vector<std::optional<CType>>& values,
@@ -480,6 +505,8 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                       \
   TEST_F(FIXTURE, SqlIngestStringDictionary) { TestSqlIngestStringDictionary(); }       \
+  TEST_F(FIXTURE, SqlIngestListOfInt32) { TestSqlIngestListOfInt32(); }                 \
+  TEST_F(FIXTURE, SqlIngestListOfString) { TestSqlIngestListOfString(); }               \
   TEST_F(FIXTURE, TestSqlIngestStreamZeroArrays) { TestSqlIngestStreamZeroArrays(); }   \
   TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }             \
   TEST_F(FIXTURE, SqlIngestColumnEscaping) { TestSqlIngestColumnEscaping(); }           \
@@ -508,6 +535,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlPrepareErrorParamCountMismatch) {                                  \
     TestSqlPrepareErrorParamCountMismatch();                                            \
   }                                                                                     \
+  TEST_F(FIXTURE, SqlBind) { TestSqlBind(); }                                           \
   TEST_F(FIXTURE, SqlQueryEmpty) { TestSqlQueryEmpty(); }                               \
   TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
   TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \

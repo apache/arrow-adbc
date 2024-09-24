@@ -30,14 +30,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// <summary>
     /// Validates that specific date, timestamp and interval values can be inserted, retrieved and targeted correctly
     /// </summary>
-    public class DateTimeValueTests : SparkTestBase
+    public class DateTimeValueTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
         // Spark handles microseconds but not nanoseconds. Truncated to 6 decimal places.
         const string DateTimeZoneFormat = "yyyy-MM-dd'T'HH:mm:ss'.'ffffffK";
+        const string DateTimeFormat = "yyyy-MM-dd' 'HH:mm:ss";
         const string DateFormat = "yyyy-MM-dd";
 
-        private static readonly DateTimeOffset[] s_timestampValues = new[]
-        {
+        private static readonly DateTimeOffset[] s_timestampValues =
+        [
 #if NET5_0_OR_GREATER
             DateTimeOffset.UnixEpoch,
 #endif
@@ -45,9 +46,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             DateTimeOffset.MaxValue,
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(4))
-        };
+        ];
 
-        public DateTimeValueTests(ITestOutputHelper output) : base(output) { }
+        public DateTimeValueTests(ITestOutputHelper output) : base(output, new SparkTestEnvironment.Factory()) { }
 
         /// <summary>
         /// Validates if driver can send and receive specific Timstamp values correctly
@@ -57,17 +58,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [MemberData(nameof(TimestampData), "TIMESTAMP_LTZ")]
         public async Task TestTimestampData(DateTimeOffset value, string columnType)
         {
+            Skip.If((VendorVersionAsVersion < Version.Parse("3.4.0")) && (columnType.Equals("TIMESTAMP_LTZ") || value == DateTimeOffset.MaxValue));
+
             string columnName = "TIMESTAMPTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
 
-            string formattedValue = $"{value.ToString(DateTimeZoneFormat, CultureInfo.InvariantCulture)}";
-            DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, DateTimeZoneFormat, CultureInfo.InvariantCulture);
+            string format = TestEnvironment.GetValueForProtocolVersion(DateTimeFormat, DateTimeZoneFormat)!;
+            string formattedValue = $"{value.ToString(format, CultureInfo.InvariantCulture)}";
+            DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, format, CultureInfo.InvariantCulture);
 
+            object expectedValue = TestEnvironment.GetValueForProtocolVersion(formattedValue, truncatedValue)!;
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
-                truncatedValue,
-                QuoteValue(formattedValue));
+                expectedValue ,
+                "TO_TIMESTAMP(" + QuoteValue(formattedValue) + ")");
         }
 
         /// <summary>
@@ -78,7 +83,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestTimestampNoTimezoneData(DateTimeOffset value, string columnType)
         {
             // Note: Minimum value falls outside range of valid values on server when no time zone is included. Cannot be selected
-            Skip.If(value == DateTimeOffset.MinValue);
+            Skip.If(value == DateTimeOffset.MinValue || VendorVersionAsVersion < Version.Parse("3.4.0"));
 
             string columnName = "TIMESTAMPTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
@@ -107,12 +112,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string formattedValue = $"{value.ToString(DateFormat, CultureInfo.InvariantCulture)}";
             DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, DateFormat, CultureInfo.InvariantCulture);
 
+            // Remove timezone offset
+            object expectedValue = TestEnvironment.GetValueForProtocolVersion(formattedValue, new DateTimeOffset(truncatedValue.DateTime, TimeSpan.Zero))!;
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
-                // Remove timezone offset
-                new DateTimeOffset(truncatedValue.DateTime, TimeSpan.Zero),
-                QuoteValue(formattedValue));
+                expectedValue,
+                "TO_DATE(" + QuoteValue(formattedValue) + ")");
         }
 
         /// <summary>

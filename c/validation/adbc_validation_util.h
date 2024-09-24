@@ -257,12 +257,20 @@ struct SchemaField {
   std::string name;
   ArrowType type = NANOARROW_TYPE_UNINITIALIZED;
   bool nullable = true;
+  std::vector<SchemaField> children;
 
   SchemaField(std::string name, ArrowType type, bool nullable)
       : name(std::move(name)), type(type), nullable(nullable) {}
 
   SchemaField(std::string name, ArrowType type)
       : SchemaField(std::move(name), type, /*nullable=*/true) {}
+
+  static SchemaField Nested(std::string name, ArrowType type,
+                            std::vector<SchemaField> children) {
+    SchemaField out(name, type);
+    out.children = std::move(children);
+    return out;
+  }
 };
 
 /// \brief Make a schema from a vector of (name, type, nullable) tuples.
@@ -303,6 +311,29 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
         CHECK_OK(ArrowArrayAppendInterval(array, *v));
       } else if constexpr (std::is_same<T, ArrowDecimal*>::value) {
         CHECK_OK(ArrowArrayAppendDecimal(array, *v));
+      } else if constexpr (
+          // Possibly a more effective way to do this using template magic
+          // Not included but possible are the std::optional<> variants of this
+          std::is_same<T, std::vector<bool>>::value ||
+          std::is_same<T, std::vector<int8_t>>::value ||
+          std::is_same<T, std::vector<int16_t>>::value ||
+          std::is_same<T, std::vector<int32_t>>::value ||
+          std::is_same<T, std::vector<int64_t>>::value ||
+          std::is_same<T, std::vector<uint8_t>>::value ||
+          std::is_same<T, std::vector<uint16_t>>::value ||
+          std::is_same<T, std::vector<uint32_t>>::value ||
+          std::is_same<T, std::vector<uint64_t>>::value ||
+          std::is_same<T, std::vector<double>>::value ||
+          std::is_same<T, std::vector<float>>::value ||
+          std::is_same<T, std::vector<std::string>>::value ||
+          std::is_same<T, std::vector<std::vector<std::byte>>>::value) {
+        using child_t = typename T::value_type;
+        std::vector<std::optional<child_t>> value_nullable;
+        for (const auto& child_value : *v) {
+          value_nullable.push_back(child_value);
+        }
+        CHECK_OK(MakeArray(array, array->children[0], value_nullable));
+        CHECK_OK(ArrowArrayFinishElement(array));
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
         return ENOTSUP;
@@ -359,49 +390,33 @@ void MakeStream(struct ArrowArrayStream* stream, struct ArrowSchema* schema,
 /// \brief Compare an array for equality against a vector of values.
 template <typename T>
 void CompareArray(struct ArrowArrayView* array,
-                  const std::vector<std::optional<T>>& values) {
-  ASSERT_EQ(static_cast<int64_t>(values.size()), array->array->length);
-  int64_t i = 0;
+                  const std::vector<std::optional<T>>& values, int64_t offset = 0,
+                  int64_t length = -1) {
+  if (length == -1) {
+    length = array->length;
+  }
+  ASSERT_EQ(static_cast<int64_t>(values.size()), length);
+  int64_t i = offset;
   for (const auto& v : values) {
     SCOPED_TRACE("Array index " + std::to_string(i));
     if (v.has_value()) {
       ASSERT_FALSE(ArrowArrayViewIsNull(array, i));
-      if constexpr (std::is_same<T, float>::value) {
+      if constexpr (std::is_same<T, float>::value || std::is_same<T, double>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_float[i]);
-      } else if constexpr (std::is_same<T, double>::value) {
+        ASSERT_EQ(ArrowArrayViewGetDoubleUnsafe(array, i), *v);
+      } else if constexpr (std::is_same<T, bool>::value ||
+                           std::is_same<T, int8_t>::value ||
+                           std::is_same<T, int16_t>::value ||
+                           std::is_same<T, int32_t>::value ||
+                           std::is_same<T, int64_t>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_double[i]);
-      } else if constexpr (std::is_same<T, float>::value) {
+        ASSERT_EQ(ArrowArrayViewGetIntUnsafe(array, i), *v);
+      } else if constexpr (std::is_same<T, uint8_t>::value ||
+                           std::is_same<T, uint16_t>::value ||
+                           std::is_same<T, uint32_t>::value ||
+                           std::is_same<T, uint64_t>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_float[i]);
-      } else if constexpr (std::is_same<T, bool>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, ArrowBitGet(array->buffer_views[1].data.as_uint8, i));
-      } else if constexpr (std::is_same<T, int8_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_int8[i]);
-      } else if constexpr (std::is_same<T, int16_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_int16[i]);
-      } else if constexpr (std::is_same<T, int32_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_int32[i]);
-      } else if constexpr (std::is_same<T, int64_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_int64[i]);
-      } else if constexpr (std::is_same<T, uint8_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_uint8[i]);
-      } else if constexpr (std::is_same<T, uint16_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_uint16[i]);
-      } else if constexpr (std::is_same<T, uint32_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_uint32[i]);
-      } else if constexpr (std::is_same<T, uint64_t>::value) {
-        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_uint64[i]);
+        ASSERT_EQ(ArrowArrayViewGetUIntUnsafe(array, i), *v);
       } else if constexpr (std::is_same<T, std::string>::value) {
         struct ArrowStringView view = ArrowArrayViewGetStringUnsafe(array, i);
         std::string str(view.data, view.size_bytes);
@@ -421,6 +436,34 @@ void CompareArray(struct ArrowArrayView* array,
         ASSERT_EQ(interval.months, (*v)->months);
         ASSERT_EQ(interval.days, (*v)->days);
         ASSERT_EQ(interval.ns, (*v)->ns);
+
+      } else if constexpr (
+          // Possibly a more effective way to do this using template magic
+          // Not included but possible are the std::optional<> variants of this
+          std::is_same<T, std::vector<bool>>::value ||
+          std::is_same<T, std::vector<int8_t>>::value ||
+          std::is_same<T, std::vector<int16_t>>::value ||
+          std::is_same<T, std::vector<int32_t>>::value ||
+          std::is_same<T, std::vector<int64_t>>::value ||
+          std::is_same<T, std::vector<uint8_t>>::value ||
+          std::is_same<T, std::vector<uint16_t>>::value ||
+          std::is_same<T, std::vector<uint32_t>>::value ||
+          std::is_same<T, std::vector<uint64_t>>::value ||
+          std::is_same<T, std::vector<double>>::value ||
+          std::is_same<T, std::vector<float>>::value ||
+          std::is_same<T, std::vector<std::string>>::value ||
+          std::is_same<T, std::vector<std::vector<std::byte>>>::value) {
+        using child_t = typename T::value_type;
+        std::vector<std::optional<child_t>> value_nullable;
+        for (const auto& child_value : *v) {
+          value_nullable.push_back(child_value);
+        }
+
+        SCOPED_TRACE("List item");
+        int64_t child_offset = ArrowArrayViewListChildOffset(array, i);
+        int64_t child_length = ArrowArrayViewListChildOffset(array, i + 1) - child_offset;
+        CompareArray<child_t>(array->children[0], value_nullable, child_offset,
+                              child_length);
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
       }
@@ -433,9 +476,7 @@ void CompareArray(struct ArrowArrayView* array,
 
 /// \brief Compare a schema for equality against a vector of (name,
 ///   type, nullable) tuples.
-void CompareSchema(
-    struct ArrowSchema* schema,
-    const std::vector<std::tuple<std::optional<std::string>, ArrowType, bool>>& fields);
+void CompareSchema(struct ArrowSchema* schema, const std::vector<SchemaField>& fields);
 
 /// \brief Helper method to get the vendor version of a driver
 std::string GetDriverVendorVersion(struct AdbcConnection* connection);
