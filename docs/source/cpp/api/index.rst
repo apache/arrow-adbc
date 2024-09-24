@@ -24,3 +24,4 @@ C/C++ API Reference
 
    adbc
    adbc_driver_manager
+   driver_framework

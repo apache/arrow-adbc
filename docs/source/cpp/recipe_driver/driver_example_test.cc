@@ -21,25 +21,27 @@
 #include "gtest/gtest.h"
 
 TEST(DriverExample, TestLifecycle) {
-  struct AdbcDriver driver;
-  ASSERT_EQ(AdbcLoadDriverFromInitFunc(&ExampleDriverInitFunc, ADBC_VERSION_1_1_0,
-                                       &driver, nullptr),
-            ADBC_STATUS_OK);
+  struct AdbcError error = ADBC_ERROR_INIT;
 
   struct AdbcDatabase database;
-  ASSERT_EQ(AdbcDatabaseNew(&database, nullptr), ADBC_STATUS_OK);
-  ASSERT_EQ(AdbcDatabaseInit(&database, nullptr), ADBC_STATUS_OK);
+  ASSERT_EQ(AdbcDatabaseNew(&database, &error), ADBC_STATUS_OK);
+  AdbcDriverManagerDatabaseSetInitFunc(&database, &AdbcDriverExampleInit, &error);
+  ASSERT_EQ(AdbcDatabaseSetOption(&database, "uri", "file://foofy", &error),
+            ADBC_STATUS_OK);
+  ASSERT_EQ(AdbcDatabaseInit(&database, &error), ADBC_STATUS_OK) << error.message;
 
   struct AdbcConnection connection;
-  ASSERT_EQ(AdbcConnectionNew(&connection, nullptr), ADBC_STATUS_OK);
-  ASSERT_EQ(AdbcConnectionInit(&connection, &database, nullptr), ADBC_STATUS_OK);
+  ASSERT_EQ(AdbcConnectionNew(&connection, &error), ADBC_STATUS_OK);
+  ASSERT_EQ(AdbcConnectionInit(&connection, &database, &error), ADBC_STATUS_OK);
 
   struct AdbcStatement statement;
-  ASSERT_EQ(AdbcStatementNew(&connection, &statement, nullptr), ADBC_STATUS_OK);
+  ASSERT_EQ(AdbcStatementNew(&connection, &statement, &error), ADBC_STATUS_OK);
 
-  ASSERT_EQ(AdbcStatementRelease(&statement, nullptr), ADBC_STATUS_OK);
-  ASSERT_EQ(AdbcConnectionRelease(&connection, nullptr), ADBC_STATUS_OK);
-  ASSERT_EQ(AdbcDatabaseRelease(&database, nullptr), ADBC_STATUS_OK);
+  ASSERT_EQ(AdbcStatementRelease(&statement, &error), ADBC_STATUS_OK);
+  ASSERT_EQ(AdbcConnectionRelease(&connection, &error), ADBC_STATUS_OK);
+  ASSERT_EQ(AdbcDatabaseRelease(&database, &error), ADBC_STATUS_OK);
 
-  ASSERT_EQ(driver.release(&driver, nullptr), ADBC_STATUS_OK);
+  if (error.release) {
+    error.release(&error);
+  }
 }
