@@ -62,6 +62,8 @@
 
 #include "driver_example.h"
 
+#include <string>
+
 #include "driver/framework/connection.h"
 #include "driver/framework/database.h"
 #include "driver/framework/statement.h"
