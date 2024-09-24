@@ -58,9 +58,8 @@ const struct AdbcError* PostgresErrorFromArrayStream(struct ArrowArrayStream* st
   // Currently only valid for TupleReader
   return adbcpq::TupleReader::ErrorFromArrayStream(stream, status);
 }
-}  // namespace
 
-int AdbcErrorGetDetailCount(const struct AdbcError* error) {
+int PostgresErrorGetDetailCount(const struct AdbcError* error) {
   if (IsCommonError(error)) {
     return CommonErrorGetDetailCount(error);
   }
@@ -73,13 +72,22 @@ int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return error_obj->CDetailCount();
 }
 
-struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index) {
+struct AdbcErrorDetail PostgresErrorGetDetail(const struct AdbcError* error, int index) {
   if (IsCommonError(error)) {
     return CommonErrorGetDetail(error, index);
   }
 
   auto error_obj = reinterpret_cast<Status*>(error->private_data);
   return error_obj->CDetail(index);
+}
+}  // namespace
+
+int AdbcErrorGetDetailCount(const struct AdbcError* error) {
+  return PostgresErrorGetDetailCount(error);
+}
+
+struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index) {
+  return PostgresErrorGetDetail(error, index);
 }
 
 const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream,
@@ -876,8 +884,8 @@ AdbcStatusCode PostgresqlDriverInit(int version, void* raw_driver,
   if (version >= ADBC_VERSION_1_1_0) {
     std::memset(driver, 0, ADBC_DRIVER_1_1_0_SIZE);
 
-    driver->ErrorGetDetailCount = CommonErrorGetDetailCount;
-    driver->ErrorGetDetail = CommonErrorGetDetail;
+    driver->ErrorGetDetailCount = PostgresErrorGetDetailCount;
+    driver->ErrorGetDetail = PostgresErrorGetDetail;
     driver->ErrorFromArrayStream = PostgresErrorFromArrayStream;
 
     driver->DatabaseGetOption = PostgresDatabaseGetOption;
