@@ -30,13 +30,15 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
+const grpcStatusDetailsBin = "grpc-status-details-bin"
+
 func adbcFromFlightStatus(err error, context string, args ...any) error {
 	var header, trailer metadata.MD
 	return adbcFromFlightStatusWithDetails(err, header, trailer, context, args...)
 }
 
 func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, context string, args ...any) error {
-	if _, ok := err.(adbc.Error); ok {
+	if _, ok := adbc.AdbcError(err); ok {
 		return err
 	}
 
@@ -84,7 +86,13 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 
 	details := []adbc.ErrorDetail{}
 	for _, detail := range grpcStatus.Proto().Details {
-		details = append(details, &anyErrorDetail{name: "grpc-status-details-bin", message: detail})
+		if detailProto, err := detail.UnmarshalNew(); err != nil {
+			// if we could decode into proto, use ProtobufErrorDetail
+			details = append(details, &adbc.ProtobufErrorDetail{Name: grpcStatusDetailsBin, Message: detailProto})
+		} else {
+			// proceed with any, maybe the user knows how to deserialize?
+			details = append(details, &anyErrorDetail{name: grpcStatusDetailsBin, message: detail})
+		}
 	}
 
 	// XXX(https://github.com/grpc/grpc-go/issues/5485): don't count on
@@ -97,7 +105,7 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 		case key == "content-type":
 			// Not useful info
 			continue
-		case key == "grpc-status-details-bin":
+		case key == grpcStatusDetailsBin:
 			// gRPC library parses this above via grpcStatus.Proto()
 			continue
 		case strings.HasSuffix(key, "-bin"):
@@ -116,7 +124,7 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 		case key == "content-type":
 			// Not useful info
 			continue
-		case key == "grpc-status-details-bin":
+		case key == grpcStatusDetailsBin:
 			// gRPC library parses this above via grpcStatus.Proto()
 			continue
 		case strings.HasSuffix(key, "-bin"):
