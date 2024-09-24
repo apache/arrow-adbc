@@ -115,6 +115,9 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 			}
 		default:
 			for _, value := range values {
+				if strings.HasPrefix(value, "Grpc-") {
+					continue
+				}
 				details = append(details, &adbc.TextErrorDetail{Name: key, Detail: value})
 			}
 		}
@@ -134,6 +137,9 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 			}
 		default:
 			for _, value := range values {
+				if strings.HasPrefix(value, "Grpc-") {
+					continue
+				}
 				details = append(details, &adbc.TextErrorDetail{Name: key, Detail: value})
 			}
 		}
