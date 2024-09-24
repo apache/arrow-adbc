@@ -24,7 +24,6 @@
 /// difficult to implement but are essential for efficiently leveraging
 // the rest of the ADBC ecosystem.
 
-
 /// Installation
 /// ============
 ///
@@ -60,6 +59,8 @@
 /// =================================
 ///
 /// Let's start with some includes:
+
+#include "driver_example.h"
 
 #include "driver/framework/connection.h"
 #include "driver/framework/database.h"
@@ -110,7 +111,7 @@ class DriverExampleStatement : public adbc::driver::Statement<DriverExampleState
 };
 
 extern "C" AdbcStatusCode ExampleDriverInitFunc(int version, void* raw_driver,
-                                            AdbcError* error) {
+                                                AdbcError* error) {
   using ExampleDriver =
       adbc::driver::Driver<DriverExampleDatabase, DriverExampleConnection,
                            DriverExampleStatement>;
