@@ -15,15 +15,9 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=========
-C and C++
-=========
+==============
+Driver Example
+==============
 
-.. toctree::
-   :maxdepth: 2
-
-   quickstart
-   driver_manager
-   concurrency
-   driver_example
-   api/index
+.. recipe:: recipe_driver/driver_example.cc
+   :language: cpp

@@ -36,11 +36,40 @@ fetchcontent_declare(nanoarrow
                      GIT_SHALLOW TRUE)
 fetchcontent_makeavailable(nanoarrow)
 
+# TODO: We could allow this to be installed + linked to as a target; however,
+# fetchcontent is a little nicer for this kind of thing (statically linked
+# pinned version of something that doesn't rely on a system libraray).
 add_library(adbc_driver_framework ../../../../c/driver/framework/utility.cc
                                   ../../../../c/driver/framework/objects.cc)
-target_include_directories(adbc_driver_framework PRIVATE ../../../../c ../../../../c/include)
+target_include_directories(adbc_driver_framework PRIVATE ../../../../c
+                                                         ../../../../c/include)
 target_link_libraries(adbc_driver_framework PRIVATE nanoarrow::nanoarrow)
 
+# TODO: Do we want any symbol visiblity presets here to ensure that the only one exposed
+# is the init function?
 add_library(driver_example SHARED driver_example.cc)
 target_include_directories(driver_example PRIVATE ../../../../c ../../../../c/include)
 target_link_libraries(driver_example PRIVATE adbc_driver_framework nanoarrow::nanoarrow)
+
+# TODO: Do we want to have this as part of the example? We could make the validation library
+# available but I am not sure it is ready to promise that kind of stability (e.g., C++
+# helpers to manage database/connection/statement lifecycle might make it much nicer
+# to write tests).
+if(ADBC_DRIVER_EXAMPLE_BUILD_TESTS)
+  fetchcontent_declare(googletest
+                       URL https://github.com/google/googletest/archive/refs/tags/v1.15.1.tar.gz
+                       URL_HASH SHA256=5052e088b16bdd8c6f0c7f9cafc942fd4f7c174f1dac6b15a8dd83940ed35195
+  )
+  fetchcontent_makeavailable(googletest)
+
+  find_package(AdbcDriverManager REQUIRED)
+
+  add_executable(driver_example_test driver_example_test.cc)
+  target_link_libraries(driver_example_test
+                        PRIVATE gtest_main driver_example
+                                AdbcDriverManager::adbc_driver_manager_static)
+
+  include(GoogleTest)
+  gtest_discover_tests(driver_example_test)
+
+endif()
