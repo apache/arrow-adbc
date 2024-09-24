@@ -78,6 +78,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (results.TableReference == null)
             {
+                // To get the results of all statements in a multi-statement query, enumerate the child jobs and call jobs.getQueryResults on each of them.
+                // Related public docs: https://cloud.google.com/bigquery/docs/multi-statement-queries#get_all_executed_statements
                 ListJobsOptions listJobsOptions = new ListJobsOptions();
                 listJobsOptions.ParentJobId = results.JobReference.JobId;
                 PagedEnumerable<JobList, BigQueryJob> joblist = client.ListJobs(listJobsOptions);
