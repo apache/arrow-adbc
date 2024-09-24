@@ -29,42 +29,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         public const string DataTypeConv = "adbc.impala.data_type_conv";
     }
 
-    public static class ImpalaAuthTypeConstants
+    public static class AuthTypeOptions
     {
         public const string None = "none";
         public const string UsernameOnly = "username_only";
         public const string Basic = "basic";
-
-        public static bool TryParse(string? authType, out ImpalaAuthType authTypeValue)
-        {
-            switch (authType?.Trim().ToLowerInvariant())
-            {
-                case null:
-                case "":
-                    authTypeValue = ImpalaAuthType.Empty;
-                    return true;
-                case None:
-                    authTypeValue = ImpalaAuthType.None;
-                    return true;
-                case UsernameOnly:
-                    authTypeValue = ImpalaAuthType.UsernameOnly;
-                    return true;
-                case Basic:
-                    authTypeValue = ImpalaAuthType.Basic;
-                    return true;
-                default:
-                    authTypeValue = ImpalaAuthType.Invalid;
-                    return false;
-            }
-        }
-    }
-
-    public enum ImpalaAuthType
-    {
-        Invalid = 0,
-        None,
-        UsernameOnly,
-        Basic,
-        Empty = int.MaxValue,
     }
 }

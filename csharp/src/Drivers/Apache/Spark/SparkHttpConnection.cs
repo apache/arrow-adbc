@@ -49,7 +49,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = SparkAuthTypeConstants.TryParse(authType, out SparkAuthType authTypeValue);
+            bool isValidAuthType = AuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
             switch (authTypeValue)
             {
                 case SparkAuthType.Token:
@@ -115,7 +115,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override void ValidateOptions()
         {
             Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
-            DataTypeConversion = HiveServer2DataTypeConversionConstants.Parse(dataTypeConv);
+            DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
@@ -132,7 +132,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(SparkParameters.Path, out string? path);
             Properties.TryGetValue(SparkParameters.Port, out string? port);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = SparkAuthTypeConstants.TryParse(authType, out SparkAuthType authTypeValue);
+            bool isValidAuthType = AuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
             Properties.TryGetValue(SparkParameters.Token, out string? token);
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);

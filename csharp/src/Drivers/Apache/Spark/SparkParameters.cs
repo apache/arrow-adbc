@@ -39,42 +39,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public const string UsernameOnly = "username_only";
         public const string Basic = "basic";
         public const string Token = "token";
-
-        public static bool TryParse(string? authType, out SparkAuthType authTypeValue)
-        {
-            switch (authType?.Trim().ToLowerInvariant())
-            {
-                case null:
-                case "":
-                    authTypeValue = SparkAuthType.Empty;
-                    return true;
-                case None:
-                    authTypeValue = SparkAuthType.None;
-                    return true;
-                case UsernameOnly:
-                    authTypeValue = SparkAuthType.UsernameOnly;
-                    return true;
-                case Basic:
-                    authTypeValue = SparkAuthType.Basic;
-                    return true;
-                case Token:
-                    authTypeValue = SparkAuthType.Token;
-                    return true;
-                default:
-                    authTypeValue = SparkAuthType.Invalid;
-                    return false;
-            }
-        }
-    }
-
-    public enum SparkAuthType
-    {
-        Invalid = 0,
-        None,
-        UsernameOnly,
-        Basic,
-        Token,
-        Empty = int.MaxValue,
     }
 
     public static class SparkServerTypeConstants
@@ -82,38 +46,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public const string Http = "http";
         public const string Databricks = "databricks";
         public const string Standard = "standard";
-        internal const string SupportedList = Http + ", " + Databricks;
-
-        public static bool TryParse(string? serverType, out SparkServerType serverTypeValue)
-        {
-            switch (serverType?.Trim().ToLowerInvariant())
-            {
-                case null:
-                case "":
-                    serverTypeValue = SparkServerType.Empty;
-                    return true;
-                case Databricks:
-                    serverTypeValue = SparkServerType.Databricks;
-                    return true;
-                case Http:
-                    serverTypeValue = SparkServerType.Http;
-                    return true;
-                case Standard:
-                    serverTypeValue = SparkServerType.Standard;
-                    return true;
-                default:
-                    serverTypeValue = SparkServerType.Invalid;
-                    return false;
-            }
-        }
-    }
-
-    public enum SparkServerType
-    {
-        Invalid = 0,
-        Http,
-        Databricks,
-        Standard,
-        Empty = int.MaxValue,
     }
 }

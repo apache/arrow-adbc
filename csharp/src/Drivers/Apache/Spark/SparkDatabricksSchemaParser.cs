@@ -24,7 +24,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkDatabricksSchemaParser : SchemaParser
     {
-        public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, HiveServer2DataTypeConversion dataTypeConversion)
+        public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, DataTypeConversion dataTypeConversion)
         {
             return thriftType.Type switch
             {

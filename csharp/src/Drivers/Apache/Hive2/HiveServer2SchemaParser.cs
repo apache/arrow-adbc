@@ -23,9 +23,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2SchemaParser : SchemaParser
     {
-        public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, HiveServer2DataTypeConversion dataTypeConversion)
+        public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, DataTypeConversion dataTypeConversion)
         {
-            bool convertScalar = dataTypeConversion.HasFlag(HiveServer2DataTypeConversion.Scalar);
+            bool convertScalar = dataTypeConversion.HasFlag(DataTypeConversion.Scalar);
             return thriftType.Type switch
             {
                 TTypeId.BIGINT_TYPE => Int64Type.Default,

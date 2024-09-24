@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
@@ -53,7 +52,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("你好")]
         [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", SparkServerType.Databricks)]
         [InlineData(" Leading and trailing spaces ")]
-        public async Task TestStringData(string? value, SparkServerType? serverType = default)
+        internal async Task TestStringData(string? value, SparkServerType? serverType = default)
         {
             Skip.If(serverType != null && TestEnvironment.ServerType != serverType);
             string columnName = "STRINGTYPE";
@@ -74,7 +73,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("你好")]
         [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", SparkServerType.Databricks)]
         [InlineData(" Leading and trailing spaces ")]
-        public async Task TestVarcharData(string? value, SparkServerType? serverType = default)
+        internal async Task TestVarcharData(string? value, SparkServerType? serverType = default)
         {
             Skip.If(serverType != null && TestEnvironment.ServerType != serverType);
             string columnName = "VARCHARTYPE";
@@ -97,7 +96,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("你好")]
         [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", SparkServerType.Databricks)]
         [InlineData(" Leading and trailing spaces ")]
-        public async Task TestCharData(string? value, SparkServerType? serverType = default)
+        internal async Task TestCharData(string? value, SparkServerType? serverType = default)
         {
             Skip.If(serverType != null && TestEnvironment.ServerType != serverType);
             string columnName = "CHARTYPE";

@@ -26,37 +26,37 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
     {
         [SkippableTheory]
         [MemberData(nameof(GetParametersTestData))]
-        public void TestParametersParse(string? dataTypeConversion, HiveServer2DataTypeConversion expected, Type? excptionType = default)
+        internal void TestParametersParse(string? dataTypeConversion, DataTypeConversion expected, Type? exceptionType = default)
         {
-            if (excptionType == default)
-                Assert.Equal(expected, HiveServer2DataTypeConversionConstants.Parse(dataTypeConversion));
+            if (exceptionType == default)
+                Assert.Equal(expected, DataTypeConversionParser.Parse(dataTypeConversion));
             else
-                Assert.Throws(excptionType, () => HiveServer2DataTypeConversionConstants.Parse(dataTypeConversion));
+                Assert.Throws(exceptionType, () => DataTypeConversionParser.Parse(dataTypeConversion));
         }
 
         public static IEnumerable<object?[]> GetParametersTestData()
         {
             // Default
-            yield return new object?[] { null, HiveServer2DataTypeConversion.Scalar };
-            yield return new object?[] { "", HiveServer2DataTypeConversion.Scalar };
-            yield return new object?[] { ",", HiveServer2DataTypeConversion.Scalar };
+            yield return new object?[] { null, DataTypeConversion.Scalar };
+            yield return new object?[] { "", DataTypeConversion.Scalar };
+            yield return new object?[] { ",", DataTypeConversion.Scalar };
             // Explicit
-            yield return new object?[] { $"scalar", HiveServer2DataTypeConversion.Scalar };
-            yield return new object?[] { $"none", HiveServer2DataTypeConversion.None };
+            yield return new object?[] { $"scalar", DataTypeConversion.Scalar };
+            yield return new object?[] { $"none", DataTypeConversion.None };
             // Ignore "empty", embedded space, mixed-case
-            yield return new object?[] { $"scalar,", HiveServer2DataTypeConversion.Scalar };
-            yield return new object?[] { $",scalar,", HiveServer2DataTypeConversion.Scalar };
-            yield return new object?[] { $",scAlAr,", HiveServer2DataTypeConversion.Scalar };
-            yield return new object?[] { $"scAlAr", HiveServer2DataTypeConversion.Scalar };
-            yield return new object?[] { $" scalar ", HiveServer2DataTypeConversion.Scalar };
+            yield return new object?[] { $"scalar,", DataTypeConversion.Scalar };
+            yield return new object?[] { $",scalar,", DataTypeConversion.Scalar };
+            yield return new object?[] { $",scAlAr,", DataTypeConversion.Scalar };
+            yield return new object?[] { $"scAlAr", DataTypeConversion.Scalar };
+            yield return new object?[] { $" scalar ", DataTypeConversion.Scalar };
             // Combined - conflicting
-            yield return new object?[] { $"none,scalar", HiveServer2DataTypeConversion.None | HiveServer2DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException) };
-            yield return new object?[] { $" nOnE, scAlAr ", HiveServer2DataTypeConversion.None | HiveServer2DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException) };
-            yield return new object?[] { $", none, scalar, ", HiveServer2DataTypeConversion.None | HiveServer2DataTypeConversion.Scalar , typeof(ArgumentOutOfRangeException) };
-            yield return new object?[] { $"scalar,none", HiveServer2DataTypeConversion.None | HiveServer2DataTypeConversion.Scalar , typeof(ArgumentOutOfRangeException) };
+            yield return new object?[] { $"none,scalar", DataTypeConversion.None | DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException) };
+            yield return new object?[] { $" nOnE, scAlAr ", DataTypeConversion.None | DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException) };
+            yield return new object?[] { $", none, scalar, ", DataTypeConversion.None | DataTypeConversion.Scalar , typeof(ArgumentOutOfRangeException) };
+            yield return new object?[] { $"scalar,none", DataTypeConversion.None | DataTypeConversion.Scalar , typeof(ArgumentOutOfRangeException) };
             // Invalid options
-            yield return new object?[] { $"xxx", HiveServer2DataTypeConversion.Empty, typeof(ArgumentOutOfRangeException) };
-            yield return new object?[] { $"none,scalar,xxx", HiveServer2DataTypeConversion.None | HiveServer2DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException)  };
+            yield return new object?[] { $"xxx", DataTypeConversion.Empty, typeof(ArgumentOutOfRangeException) };
+            yield return new object?[] { $"none,scalar,xxx", DataTypeConversion.None | DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException)  };
         }
     }
 }

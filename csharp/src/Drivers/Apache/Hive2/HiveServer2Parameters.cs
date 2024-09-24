@@ -19,49 +19,9 @@ using System;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    public static class HiveServer2DataTypeConversionConstants
+    public static class DataTypeConversionOptions
     {
         public const string None = "none";
         public const string Scalar = "scalar";
-        public const string SupportedList = None + ", " + Scalar;
-
-        public static HiveServer2DataTypeConversion Parse(string? dataTypeConversion)
-        {
-            HiveServer2DataTypeConversion result = HiveServer2DataTypeConversion.Empty;
-
-            if (string.IsNullOrWhiteSpace(dataTypeConversion)) {
-                // Default
-                return HiveServer2DataTypeConversion.Scalar;
-            }
-
-            string[] conversions = dataTypeConversion!.Split(',');
-            foreach (string? conversion in conversions)
-            {
-                result |= (conversion?.Trim().ToLowerInvariant()) switch
-                {
-                    null or "" => HiveServer2DataTypeConversion.Empty,
-                    None => HiveServer2DataTypeConversion.None,
-                    Scalar => HiveServer2DataTypeConversion.Scalar,
-                    _ => throw new ArgumentOutOfRangeException(nameof(dataTypeConversion), conversion, "Invalid or unsupported data type conversion"),
-                };
-            }
-
-            if (result.HasFlag(HiveServer2DataTypeConversion.None) && result.HasFlag(HiveServer2DataTypeConversion.Scalar))
-            {
-                throw new ArgumentOutOfRangeException(nameof(dataTypeConversion), dataTypeConversion, "Conflicting data type conversion options");
-            }
-            // Default
-            if (result == HiveServer2DataTypeConversion.Empty) result = HiveServer2DataTypeConversion.Scalar;
-
-            return result;
-        }
-    }
-
-    [Flags]
-    public enum HiveServer2DataTypeConversion
-    {
-        Empty = 0,
-        None = 1,
-        Scalar = 2,
     }
 }
