@@ -31,7 +31,7 @@ namespace adbcpq {
 
 AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* format,
                         ...) {
-  if (!error && error->release) {
+  if (error && error->release) {
     // TODO: combine the errors if possible
     error->release(error);
   }
