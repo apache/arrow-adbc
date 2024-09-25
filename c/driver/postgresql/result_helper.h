@@ -18,9 +18,12 @@
 #pragma once
 
 #include <cassert>
+#include <charconv>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -30,6 +33,7 @@
 #include "copy/reader.h"
 #include "driver/framework/status.h"
 
+using adbc::driver::Result;
 using adbc::driver::Status;
 
 namespace adbcpq {
@@ -47,6 +51,33 @@ struct PqRecord {
       return std::nullopt;
     }
     return result;
+  }
+
+  Result<int64_t> ParseInteger() const {
+    const char* last = data + len;
+    int64_t value = 0;
+    auto result = std::from_chars<int64_t>(data, last, value, 10);
+    if (result.ec == std::errc() && result.ptr == last) {
+      return value;
+    } else {
+      return Status::Internal("Can't parse '", data, "' as integer");
+    }
+  }
+
+  Result<std::vector<std::string>> ParseTextArray() {
+    std::string text_array(data, len);
+    text_array.erase(0, 1);
+    text_array.erase(text_array.size() - 1);
+
+    std::vector<std::string> elements;
+    std::stringstream ss(std::move(text_array));
+    std::string tmp;
+
+    while (getline(ss, tmp, ',')) {
+      elements.push_back(std::move(tmp));
+    }
+
+    return elements;
   }
 
   std::string_view value() { return std::string_view(data, len); }
