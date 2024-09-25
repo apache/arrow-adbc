@@ -35,7 +35,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `uri`                  | The full URI that includes scheme, host, port and path. If set, this property takes precedence over `adbc.spark.host`, `adbc.spark.port` and `adbc.spark.path`. | |
 | `username`             | The user name used for basic authentication | |
 | `password`             | The password for the user name used for basic authentication. | |
-| `adbc.spark.data_type_conv` | Comma-separated list of data conversion options. Each option indicates the type of conversion to perform on data returned from the Spark server. <br><br>Allowed values: `none`. <br><br>Option `none` indicates there is no conversion from Spark type to native type (i.e., no conversion from String to Timestamp for Apache Spark over HTTP). Example `adbc.spark.conv_data_type=none`. <br><br>(_Planned supported values_: `scalar`. Option `scalar` will perform conversion (if necessary) from the Spark data type to corresponding Arrow data types for types `DATE/Date32/DateTime`, `DECIMAL/Decimal128/SqlDecimal`, and `TIMESTAMP/Timestamp/DateTimeOffset`. Example `adbc.spark.conv_data_type=scalar`) | `scalar` |
+| `adbc.spark.data_type_conv` | Comma-separated list of data conversion options. Each option indicates the type of conversion to perform on data returned from the Spark server. <br><br>Allowed values: `none`, `scalar`. <br><br>Option `none` indicates there is no conversion from Spark type to native type (i.e., no conversion from String to Timestamp for Apache Spark over HTTP). Example `adbc.spark.conv_data_type=none`. <br><br>Option `scalar` will perform conversion (if necessary) from the Spark data type to corresponding Arrow data types for types `DATE/Date32/DateTime`, `DECIMAL/Decimal128/SqlDecimal`, and `TIMESTAMP/Timestamp/DateTimeOffset`. Example `adbc.spark.conv_data_type=scalar` | `scalar` |
 | `adbc.statement.batch_size` | Sets the maximum number of rows to retrieve in a single batch request. | `50000` |
 | `adbc.statement.polltime_milliseconds` | If polling is necessary to get a result, this option sets the length of time (in milliseconds) to wait between polls. | `500` |
 
@@ -70,32 +70,32 @@ The following table depicts how the Spark ADBC driver converts a Spark type to a
 | USER_DEFINED         | String     | string |
 | VARCHAR              | String     | string |
 
-### Apache Spark over HTTP (when: adbc.spark.data_type_conv = none)
+### Apache Spark over HTTP (adbc.spark.data_type_conv = ?)
 
-| Spark Type           | Arrow Type | C# Type |
-| :---                 | :---:      | :---:   |
-| ARRAY*               | String     | string  |
-| BIGINT               | Int64      | long |
-| BINARY               | Binary     | byte[] |
-| BOOLEAN              | Boolean    | bool |
-| CHAR                 | String     | string |
-| DATE*                | *String*   | *string* |
-| DECIMAL*             | *String*   | *string* |
-| DOUBLE               | Double     | double |
-| FLOAT                | *Double*   | *double* |
-| INT                  | Int32      | int |
-| INTERVAL_DAY_TIME+   | String     | string |
-| INTERVAL_YEAR_MONTH+ | String     | string |
-| MAP*                 | String     | string |
-| NULL                 | String     | string |
-| SMALLINT             | Int16      | short |
-| STRING               | String     | string |
-| STRUCT*              | String     | string |
-| TIMESTAMP*           | *String*   | *string* |
-| TINYINT              | Int8       | sbyte |
-| UNION                | String     | string |
-| USER_DEFINED         | String     | string |
-| VARCHAR              | String     | string |
+| Spark Type           | Arrow Type (`none`) | C# Type (`none`) | Arrow Type (`scalar`) | C# Type (`scalar`) |
+| :---                 | :---:      | :---:   | :---:                 | :---:              |
+| ARRAY*               | String     | string  | | |
+| BIGINT               | Int64      | long | | |
+| BINARY               | Binary     | byte[] | | |
+| BOOLEAN              | Boolean    | bool | | |
+| CHAR                 | String     | string | | |
+| DATE*                | *String*   | *string* | Date32 | DateTime |
+| DECIMAL*             | *String*   | *string* | Decimal128 | SqlDecimal |
+| DOUBLE               | Double     | double | | |
+| FLOAT                | *Double*   | *double* | | |
+| INT                  | Int32      | int | | |
+| INTERVAL_DAY_TIME+   | String     | string | | |
+| INTERVAL_YEAR_MONTH+ | String     | string | | |
+| MAP*                 | String     | string | | |
+| NULL                 | String     | string | | |
+| SMALLINT             | Int16      | short | | |
+| STRING               | String     | string | | |
+| STRUCT*              | String     | string | | |
+| TIMESTAMP*           | *String*   | *string* | Timestamp | DateTimeOffset |
+| TINYINT              | Int8       | sbyte | | |
+| UNION                | String     | string | | |
+| USER_DEFINED         | String     | string | | |
+| VARCHAR              | String     | string | | |
 
 \* Types are returned as strings instead of "native" types<br>
 \+ Interval types are returned as strings
@@ -112,7 +112,7 @@ Basic (username and password) authenication is not supported, at this time.
 
 ### Apache Spark over HTPP
 
-This is currently unsupported. (Under development)
+Support for Spark over HTTP is initial.
 
 ### Apache Spark Standard
 

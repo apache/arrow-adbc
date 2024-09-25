@@ -19,7 +19,6 @@ using System;
 using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
@@ -34,11 +33,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         public override string TestConfigVariable => "SPARK_TEST_CONFIG_FILE";
 
-        public override string SqlDataResourceLocation => VendorVersionAsVersion >= Version.Parse("3.4.0")
-            ? "Spark/Resources/SparkData-3.4.sql"
+        public override string SqlDataResourceLocation => ServerType == SparkServerType.Databricks
+            ? "Spark/Resources/SparkData-Databricks.sql"
             : "Spark/Resources/SparkData.sql";
 
-        public override int ExpectedColumnCount => VendorVersionAsVersion >= Version.Parse("3.4.0") ? 19 : 17;
+        public override int ExpectedColumnCount => ServerType == SparkServerType.Databricks ? 19 : 17;
 
         public override AdbcDriver CreateNewDriver() => new SparkDriver();
 
@@ -47,9 +46,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             return string.Format("CREATE TABLE {0} ({1})", tableName, columns);
         }
 
-        public string? GetValueForProtocolVersion(string? hiveValue, string? databrickValue) => ServerType != SparkServerType.Databricks ? hiveValue : databrickValue;
+        public string? GetValueForProtocolVersion(string? hiveValue, string? databrickValue) =>
+            ServerType != SparkServerType.Databricks && ((HiveServer2Connection)Connection).DataTypeConversion.HasFlag(DataTypeConversion.None) ? hiveValue : databrickValue;
 
-        public object? GetValueForProtocolVersion(object? hiveValue, object? databrickValue) => ServerType != SparkServerType.Databricks ? hiveValue : databrickValue;
+        public object? GetValueForProtocolVersion(object? hiveValue, object? databrickValue) =>
+            ServerType != SparkServerType.Databricks && ((HiveServer2Connection)Connection).DataTypeConversion.HasFlag(DataTypeConversion.None) ? hiveValue : databrickValue;
 
         public override string Delimiter => "`";
 
@@ -101,7 +102,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             return parameters;
         }
 
-        protected SparkServerType ServerType => ((SparkConnection)Connection).ServerType;
+        internal SparkServerType ServerType => ((SparkConnection)Connection).ServerType;
 
         public override string VendorVersion => ((HiveServer2Connection)Connection).VendorVersion;
 

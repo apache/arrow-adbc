@@ -15,36 +15,24 @@
  * limitations under the License.
  */
 
-using static System.Net.WebRequestMethods;
-
-namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     /// <summary>
-    /// Parameters used for connecting to Spark data sources.
+    /// Parameters used for connecting to Impala data sources.
     /// </summary>
-    public static class SparkParameters
+    public static class ImpalaParameters
     {
-        public const string HostName = "adbc.spark.host";
-        public const string Port = "adbc.spark.port";
-        public const string Path = "adbc.spark.path";
-        public const string Token = "adbc.spark.token";
-        public const string AuthType = "adbc.spark.auth_type";
-        public const string Type = "adbc.spark.type";
-        public const string DataTypeConv = "adbc.spark.data_type_conv";
+        public const string HostName = "adbc.impala.host";
+        public const string Port = "adbc.impala.port";
+        public const string Path = "adbc.impala.path";
+        public const string AuthType = "adbc.impala.auth_type";
+        public const string DataTypeConv = "adbc.impala.data_type_conv";
     }
 
-    public static class SparkAuthTypeConstants
+    public static class AuthTypeOptions
     {
         public const string None = "none";
         public const string UsernameOnly = "username_only";
         public const string Basic = "basic";
-        public const string Token = "token";
-    }
-
-    public static class SparkServerTypeConstants
-    {
-        public const string Http = "http";
-        public const string Databricks = "databricks";
-        public const string Standard = "standard";
     }
 }

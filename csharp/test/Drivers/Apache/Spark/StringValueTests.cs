@@ -17,9 +17,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -50,11 +50,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData(null)]
         [InlineData("")]
         [InlineData("你好")]
-        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", "3.4.0")]
+        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", SparkServerType.Databricks)]
         [InlineData(" Leading and trailing spaces ")]
-        public async Task TestStringData(string? value, string? minVersion = null)
+        internal async Task TestStringData(string? value, SparkServerType? serverType = default)
         {
-            Skip.If(IsBelowMinimumVersion(minVersion));
+            Skip.If(serverType != null && TestEnvironment.ServerType != serverType);
             string columnName = "STRINGTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "STRING"));
             await ValidateInsertSelectDeleteSingleValueAsync(
@@ -71,11 +71,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData(null)]
         [InlineData("")]
         [InlineData("你好")]
-        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", "3.4.0")]
+        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", SparkServerType.Databricks)]
         [InlineData(" Leading and trailing spaces ")]
-        public async Task TestVarcharData(string? value, string? minVersion = null)
+        internal async Task TestVarcharData(string? value, SparkServerType? serverType = default)
         {
-            Skip.If(IsBelowMinimumVersion(minVersion));
+            Skip.If(serverType != null && TestEnvironment.ServerType != serverType);
             string columnName = "VARCHARTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "VARCHAR(100)"));
             await ValidateInsertSelectDeleteSingleValueAsync(
@@ -94,11 +94,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData(null)]
         [InlineData("")]
         [InlineData("你好")]
-        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", "3.4.0")]
+        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", SparkServerType.Databricks)]
         [InlineData(" Leading and trailing spaces ")]
-        public async Task TestCharData(string? value, string? minVersion = null)
+        internal async Task TestCharData(string? value, SparkServerType? serverType = default)
         {
-            Skip.If(IsBelowMinimumVersion(minVersion));
+            Skip.If(serverType != null && TestEnvironment.ServerType != serverType);
             string columnName = "CHARTYPE";
             int fieldLength = 100;
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, $"CHAR({fieldLength})"));
@@ -127,13 +127,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 value,
                 value != null ? QuoteValue(value) : value));
 
-            bool version34OrGreater = VendorVersionAsVersion >= Version.Parse("3.4.0");
-            string[] expectedTexts = version34OrGreater
+            bool serverTypeDatabricks = TestEnvironment.ServerType == SparkServerType.Databricks;
+            string[] expectedTexts = serverTypeDatabricks
                 ? ["DELTA_EXCEED_CHAR_VARCHAR_LIMIT", "DeltaInvariantViolationException"]
                 : ["Exceeds", "length limitation: 10"];
             AssertContainsAll(expectedTexts, exception.Message);
 
-            string? expectedSqlState = version34OrGreater ? "22001" : null;
+            string? expectedSqlState = serverTypeDatabricks ? "22001" : null;
             Assert.Equal(expectedSqlState, exception.SqlState);
         }
 

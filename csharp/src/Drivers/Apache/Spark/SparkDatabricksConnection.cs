@@ -15,11 +15,10 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Ipc;
-using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
@@ -32,7 +31,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkDatabricksReader(statement, schema);
 
-        internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
+        internal override SchemaParser SchemaParser => new SparkDatabricksSchemaParser();
 
         internal override SparkServerType ServerType => SparkServerType.Databricks;
 
@@ -45,7 +44,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return req;
         }
 
-        protected override void ValidateOptions() { }
+        protected override void ValidateOptions()
+        {
+            Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
+            // Note: In Databricks, scalar types are provided implicitly.
+            DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
+        }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
@@ -66,39 +70,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Task.FromResult(response.DirectResults.ResultSet.Results);
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
-
-        internal class DatabricksSchemaParser : SchemaParser
-        {
-            public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType)
-            {
-                return thriftType.Type switch
-                {
-                    TTypeId.BIGINT_TYPE => Int64Type.Default,
-                    TTypeId.BINARY_TYPE => BinaryType.Default,
-                    TTypeId.BOOLEAN_TYPE => BooleanType.Default,
-                    TTypeId.DATE_TYPE => Date32Type.Default,
-                    TTypeId.DOUBLE_TYPE => DoubleType.Default,
-                    TTypeId.FLOAT_TYPE => FloatType.Default,
-                    TTypeId.INT_TYPE => Int32Type.Default,
-                    TTypeId.NULL_TYPE => NullType.Default,
-                    TTypeId.SMALLINT_TYPE => Int16Type.Default,
-                    TTypeId.TIMESTAMP_TYPE => new TimestampType(TimeUnit.Microsecond, (string?)null),
-                    TTypeId.TINYINT_TYPE => Int8Type.Default,
-                    TTypeId.DECIMAL_TYPE => new Decimal128Type(thriftType.TypeQualifiers.Qualifiers["precision"].I32Value, thriftType.TypeQualifiers.Qualifiers["scale"].I32Value),
-                    TTypeId.CHAR_TYPE
-                    or TTypeId.STRING_TYPE
-                    or TTypeId.VARCHAR_TYPE
-                    or TTypeId.INTERVAL_DAY_TIME_TYPE
-                    or TTypeId.INTERVAL_YEAR_MONTH_TYPE
-                    or TTypeId.ARRAY_TYPE
-                    or TTypeId.MAP_TYPE
-                    or TTypeId.STRUCT_TYPE
-                    or TTypeId.UNION_TYPE
-                    or TTypeId.USER_DEFINED_TYPE => StringType.Default,
-                    TTypeId.TIMESTAMPLOCALTZ_TYPE => throw new NotImplementedException(),
-                    _ => throw new NotImplementedException(),
-                };
-            }
-        }
     }
 }

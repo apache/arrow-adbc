@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks Condition="'$(IsWindows)'=='true'">net8.0;net472</TargetFrameworks>
@@ -27,6 +27,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Impala\Resources\ImpalaData.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Spark\Resources\sparkconfig-http.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -36,16 +39,12 @@
     <None Update="Impala\Resources\impalaconfig.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Spark\Resources\SparkData-3.4.sql">
+    <None Update="Spark\Resources\SparkData-Databricks.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Spark\Resources\SparkData.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Hive2\" />
   </ItemGroup>
 
 </Project>
