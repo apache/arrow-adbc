@@ -48,6 +48,8 @@ struct PqRecord {
     }
     return result;
   }
+
+  std::string_view value() { return std::string_view(data, len); }
 };
 
 // Used by PqResultHelper to provide index-based access to the records within each

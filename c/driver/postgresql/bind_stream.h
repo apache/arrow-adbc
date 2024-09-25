@@ -31,6 +31,7 @@
 #include "error.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
+#include "result_helper.h"
 
 namespace adbcpq {
 
@@ -121,7 +122,7 @@ struct BindStream {
       // tz-aware timestamps require special handling to set the timezone to UTC
       // prior to sending over the binary protocol; must be reset after execute
       if (!has_tz_field && type.type_id() == PostgresTypeId::kTimestamptz) {
-        RAISE_ADBC(SetDatabaseTimezoneUTC(pg_conn, autocommit, error));
+        RAISE_STATUS(error, SetDatabaseTimezoneUTC(pg_conn, autocommit, error));
         has_tz_field = true;
       }
 
@@ -140,44 +141,22 @@ struct BindStream {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode SetDatabaseTimezoneUTC(PGconn* pg_conn, const bool autocommit,
-                                        struct AdbcError* error) {
+  Status SetDatabaseTimezoneUTC(PGconn* pg_conn, const bool autocommit,
+                                struct AdbcError* error) {
     if (autocommit) {
-      PGresult* begin_result = PQexec(pg_conn, "BEGIN");
-      if (PQresultStatus(begin_result) != PGRES_COMMAND_OK) {
-        AdbcStatusCode code =
-            SetError(error, begin_result,
-                     "[libpq] Failed to begin transaction for timezone data: %s",
-                     PQerrorMessage(pg_conn));
-        PQclear(begin_result);
-        return code;
-      }
-      PQclear(begin_result);
+      PqResultHelper helper(pg_conn, "BEGIN");
+      UNWRAP_STATUS(helper.Execute());
     }
 
-    PGresult* get_tz_result = PQexec(pg_conn, "SELECT current_setting('TIMEZONE')");
-    if (PQresultStatus(get_tz_result) != PGRES_TUPLES_OK) {
-      AdbcStatusCode code =
-          SetError(error, get_tz_result, "[libpq] Could not query current timezone: %s",
-                   PQerrorMessage(pg_conn));
-      PQclear(get_tz_result);
-      return code;
+    PqResultHelper get_tz(pg_conn, "SELECT current_setting('TIMEZONE')");
+    UNWRAP_STATUS(get_tz.Execute());
+    for (auto row : get_tz) {
+      tz_setting = row[0].value();
     }
 
-    tz_setting = std::string(PQgetvalue(get_tz_result, 0, 0));
-    PQclear(get_tz_result);
+    PqResultHelper set_utc(pg_conn, "SET TIME ZONE 'UTC'");
 
-    PGresult* set_utc_result = PQexec(pg_conn, "SET TIME ZONE 'UTC'");
-    if (PQresultStatus(set_utc_result) != PGRES_COMMAND_OK) {
-      AdbcStatusCode code =
-          SetError(error, set_utc_result, "[libpq] Failed to set time zone to UTC: %s",
-                   PQerrorMessage(pg_conn));
-      PQclear(set_utc_result);
-      return code;
-    }
-    PQclear(set_utc_result);
-
-    return ADBC_STATUS_OK;
+    return Status::Ok();
   }
 
   AdbcStatusCode Prepare(PGconn* pg_conn, const std::string& query,
