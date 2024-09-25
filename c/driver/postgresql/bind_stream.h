@@ -160,40 +160,40 @@ struct BindStream {
     return Status::Ok();
   }
 
-  AdbcStatusCode PullNextArray(AdbcError* error) {
+  Status PullNextArray() {
     if (current->release != nullptr) ArrowArrayRelease(&current.value);
 
-    CHECK_NA_DETAIL(IO, ArrowArrayStreamGetNext(&bind.value, &current.value, &na_error),
-                    &na_error, error);
+    UNWRAP_NANOARROW(na_error, IO,
+                     ArrowArrayStreamGetNext(&bind.value, &current.value, &na_error));
 
     if (current->release != nullptr) {
-      CHECK_NA_DETAIL(
-          INTERNAL, ArrowArrayViewSetArray(&array_view.value, &current.value, &na_error),
-          &na_error, error);
+      UNWRAP_NANOARROW(
+          na_error, Internal,
+          ArrowArrayViewSetArray(&array_view.value, &current.value, &na_error));
     }
 
-    return ADBC_STATUS_OK;
+    return Status::Ok();
   }
 
-  AdbcStatusCode EnsureNextRow(AdbcError* error) {
+  Status EnsureNextRow() {
     if (current->release != nullptr) {
       current_row++;
       if (current_row < current->length) {
-        return ADBC_STATUS_OK;
+        return Status::Ok();
       }
     }
 
     // Pull until we have an array with at least one row or the stream is finished
     do {
-      RAISE_ADBC(PullNextArray(error));
+      UNWRAP_STATUS(PullNextArray());
       if (current->release == nullptr) {
         current_row = -1;
-        return ADBC_STATUS_OK;
+        return Status::Ok();
       }
     } while (current->length == 0);
 
     current_row = 0;
-    return ADBC_STATUS_OK;
+    return Status::Ok();
   }
 
   AdbcStatusCode BindAndExecuteCurrentRow(PGconn* pg_conn, PGresult** result_out,
@@ -291,7 +291,7 @@ struct BindStream {
     CHECK_NA_DETAIL(INTERNAL, writer.WriteHeader(&na_error), &na_error, error);
 
     while (true) {
-      RAISE_ADBC(PullNextArray(error));
+      RAISE_STATUS(error, PullNextArray());
       if (!current->release) break;
 
       CHECK_NA(INTERNAL, writer.SetArray(&current.value), error);

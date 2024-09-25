@@ -223,10 +223,7 @@ Status PqResultArrayReader::BindNextAndExecute(int64_t* affected_rows) {
   // we receive results with zero rows.
   AdbcStatusCode status_code;
   do {
-    status_code = bind_stream_->EnsureNextRow(&error_);
-    if (status_code != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status_code, error_);
-    }
+    UNWRAP_STATUS(bind_stream_->EnsureNextRow());
 
     if (!bind_stream_->current->release) {
       status_code = bind_stream_->Cleanup(conn_, &error_);
