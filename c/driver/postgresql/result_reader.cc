@@ -21,9 +21,7 @@
 #include <utility>
 
 #include "copy/reader.h"
-#include "driver/common/utils.h"
-
-#include "error.h"
+#include "driver/framework/status.h"
 
 namespace adbcpq {
 
@@ -31,8 +29,9 @@ int PqResultArrayReader::GetSchema(struct ArrowSchema* out) {
   ResetErrors();
 
   if (schema_->release == nullptr) {
-    AdbcStatusCode status = Initialize(nullptr, &error_);
-    if (status != ADBC_STATUS_OK) {
+    Status status = Initialize(nullptr);
+    if (!status.ok()) {
+      status.ToAdbc(&error_);
       return EINVAL;
     }
   }
@@ -43,10 +42,11 @@ int PqResultArrayReader::GetSchema(struct ArrowSchema* out) {
 int PqResultArrayReader::GetNext(struct ArrowArray* out) {
   ResetErrors();
 
-  AdbcStatusCode status;
+  Status status;
   if (schema_->release == nullptr) {
-    AdbcStatusCode status = Initialize(nullptr, &error_);
-    if (status != ADBC_STATUS_OK) {
+    status = Initialize(nullptr);
+    if (!status.ok()) {
+      status.ToAdbc(&error_);
       return EINVAL;
     }
   }
@@ -63,8 +63,9 @@ int PqResultArrayReader::GetNext(struct ArrowArray* out) {
     }
 
     // Keep binding and executing until we have a result to return
-    status = BindNextAndExecute(nullptr, &error_);
-    if (status != ADBC_STATUS_OK) {
+    status = BindNextAndExecute(nullptr);
+    if (!status.ok()) {
+      status.ToAdbc(&error_);
       return EIO;
     }
 
@@ -133,25 +134,33 @@ const char* PqResultArrayReader::GetLastError() {
   }
 }
 
-AdbcStatusCode PqResultArrayReader::Initialize(int64_t* rows_affected,
-                                               struct AdbcError* error) {
+Status PqResultArrayReader::Initialize(int64_t* rows_affected) {
   helper_.set_output_format(PqResultHelper::Format::kBinary);
   helper_.set_param_format(PqResultHelper::Format::kBinary);
 
   // If we have to do binding, set up the bind stream an execute until
   // there is a result with more than zero rows to populate.
+  AdbcStatusCode status_code;
   if (bind_stream_) {
-    RAISE_ADBC(bind_stream_->Begin([] { return ADBC_STATUS_OK; }, error));
-    RAISE_ADBC(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_, error));
-    RAISE_ADBC(helper_.Prepare(bind_stream_->param_types, error));
+    status_code = bind_stream_->Begin([] { return ADBC_STATUS_OK; }, &error_);
+    if (status_code != ADBC_STATUS_OK) {
+      return Status::FromAdbc(status_code, error_);
+    }
+    status_code =
+        bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_, &error_);
+    if (status_code != ADBC_STATUS_OK) {
+      return Status::FromAdbc(status_code, error_);
+    }
 
-    RAISE_ADBC(BindNextAndExecute(nullptr, error));
+    UNWRAP_STATUS(helper_.Prepare(bind_stream_->param_types));
+
+    UNWRAP_STATUS(BindNextAndExecute(nullptr));
 
     // If there were no arrays in the bind stream, we still need a result
     // to populate the schema. If there were any arrays in the bind stream,
     // the last one will still be in helper_ even if it had zero rows.
     if (!helper_.HasResult()) {
-      RAISE_ADBC(helper_.DescribePrepared(error));
+      UNWRAP_STATUS(helper_.DescribePrepared());
     }
 
     // We can't provide affected row counts if there is a bind stream and
@@ -161,7 +170,7 @@ AdbcStatusCode PqResultArrayReader::Initialize(int64_t* rows_affected,
       *rows_affected = -1;
     }
   } else {
-    RAISE_ADBC(helper_.Execute(error));
+    UNWRAP_STATUS(helper_.Execute());
     if (rows_affected != nullptr) {
       *rows_affected = helper_.AffectedRows();
     }
@@ -169,90 +178,104 @@ AdbcStatusCode PqResultArrayReader::Initialize(int64_t* rows_affected,
 
   // Build the schema for which we are about to build results
   ArrowSchemaInit(schema_.get());
-  CHECK_NA_DETAIL(INTERNAL, ArrowSchemaSetTypeStruct(schema_.get(), helper_.NumColumns()),
-                  &na_error_, error);
+  UNWRAP_NANOARROW(na_error_, Internal,
+                   ArrowSchemaSetTypeStruct(schema_.get(), helper_.NumColumns()));
 
   for (int i = 0; i < helper_.NumColumns(); i++) {
     PostgresType child_type;
-    CHECK_NA_DETAIL(INTERNAL,
-                    type_resolver_->Find(helper_.FieldType(i), &child_type, &na_error_),
-                    &na_error_, error);
+    UNWRAP_NANOARROW(na_error_, Internal,
+                     type_resolver_->Find(helper_.FieldType(i), &child_type, &na_error_));
 
-    CHECK_NA(INTERNAL, child_type.SetSchema(schema_->children[i]), error);
-    CHECK_NA(INTERNAL, ArrowSchemaSetName(schema_->children[i], helper_.FieldName(i)),
-             error);
+    UNWRAP_ERRNO(Internal, child_type.SetSchema(schema_->children[i]));
+    UNWRAP_ERRNO(Internal,
+                 ArrowSchemaSetName(schema_->children[i], helper_.FieldName(i)));
 
     std::unique_ptr<PostgresCopyFieldReader> child_reader;
-    CHECK_NA_DETAIL(
-        INTERNAL,
-        MakeCopyFieldReader(child_type, schema_->children[i], &child_reader, &na_error_),
-        &na_error_, error);
+    UNWRAP_NANOARROW(
+        na_error_, Internal,
+        MakeCopyFieldReader(child_type, schema_->children[i], &child_reader, &na_error_));
 
     child_reader->Init(child_type);
-    CHECK_NA_DETAIL(INTERNAL, child_reader->InitSchema(schema_->children[i]), &na_error_,
-                    error);
+    UNWRAP_NANOARROW(na_error_, Internal, child_reader->InitSchema(schema_->children[i]));
 
     field_readers_.push_back(std::move(child_reader));
   }
 
-  return ADBC_STATUS_OK;
+  return Status::Ok();
 }
 
-AdbcStatusCode PqResultArrayReader::ToArrayStream(int64_t* affected_rows,
-                                                  struct ArrowArrayStream* out,
-                                                  struct AdbcError* error) {
+Status PqResultArrayReader::ToArrayStream(int64_t* affected_rows,
+                                          struct ArrowArrayStream* out) {
   if (out == nullptr) {
     // If there is no output requested, we still need to execute and
     // set affected_rows if needed. We don't need an output schema or to set up a copy
     // reader, so we can skip those steps by going straight to Execute(). This also
     // enables us to support queries with multiple statements because we can call PQexec()
     // instead of PQexecParams().
-    RAISE_ADBC(ExecuteAll(affected_rows, error));
-    return ADBC_STATUS_OK;
+    UNWRAP_STATUS(ExecuteAll(affected_rows));
+    return Status::Ok();
   }
 
   // Otherwise, execute until we have a result to return. We need this to provide row
   // counts for DELETE and CREATE TABLE queries as well as to provide more informative
   // errors until this reader class is wired up to provide extended AdbcError information.
-  RAISE_ADBC(Initialize(affected_rows, error));
+  UNWRAP_STATUS(Initialize(affected_rows));
 
   nanoarrow::ArrayStreamFactory<PqResultArrayReader>::InitArrayStream(
       new PqResultArrayReader(this), out);
 
-  return ADBC_STATUS_OK;
+  return Status::Ok();
 }
 
-AdbcStatusCode PqResultArrayReader::BindNextAndExecute(int64_t* affected_rows,
-                                                       AdbcError* error) {
+Status PqResultArrayReader::BindNextAndExecute(int64_t* affected_rows) {
   // Keep pulling from the bind stream and executing as long as
   // we receive results with zero rows.
+  AdbcStatusCode status_code;
   do {
-    RAISE_ADBC(bind_stream_->EnsureNextRow(error));
+    status_code = bind_stream_->EnsureNextRow(&error_);
+    if (status_code != ADBC_STATUS_OK) {
+      return Status::FromAdbc(status_code, error_);
+    }
+
     if (!bind_stream_->current->release) {
-      RAISE_ADBC(bind_stream_->Cleanup(conn_, error));
+      status_code = bind_stream_->Cleanup(conn_, &error_);
+      if (status_code != ADBC_STATUS_OK) {
+        return Status::FromAdbc(status_code, error_);
+      }
       bind_stream_.reset();
-      return ADBC_STATUS_OK;
+      return Status::Ok();
     }
 
     PGresult* result;
-    RAISE_ADBC(bind_stream_->BindAndExecuteCurrentRow(
-        conn_, &result, /*result_format*/ kPgBinaryFormat, error));
+    status_code = bind_stream_->BindAndExecuteCurrentRow(
+        conn_, &result, /*result_format*/ kPgBinaryFormat, &error_);
+    if (status_code != ADBC_STATUS_OK) {
+      return Status::FromAdbc(status_code, error_);
+    }
     helper_.SetResult(result);
     if (affected_rows) {
       (*affected_rows) += helper_.AffectedRows();
     }
   } while (helper_.NumRows() == 0);
 
-  return ADBC_STATUS_OK;
+  return Status::Ok();
 }
 
-AdbcStatusCode PqResultArrayReader::ExecuteAll(int64_t* affected_rows, AdbcError* error) {
+Status PqResultArrayReader::ExecuteAll(int64_t* affected_rows) {
   // For the case where we don't need a result, we either need to exhaust the bind
   // stream (if there is one) or execute the query without binding.
   if (bind_stream_) {
-    RAISE_ADBC(bind_stream_->Begin([] { return ADBC_STATUS_OK; }, error));
-    RAISE_ADBC(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_, error));
-    RAISE_ADBC(helper_.Prepare(bind_stream_->param_types, error));
+    AdbcStatusCode status_code =
+        bind_stream_->Begin([] { return ADBC_STATUS_OK; }, &error_);
+    if (status_code != ADBC_STATUS_OK) {
+      return Status::FromAdbc(status_code, error_);
+    }
+    status_code =
+        bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_, &error_);
+    if (status_code != ADBC_STATUS_OK) {
+      return Status::FromAdbc(status_code, error_);
+    }
+    UNWRAP_STATUS(helper_.Prepare(bind_stream_->param_types));
 
     // Reset affected rows to zero before binding and executing any
     if (affected_rows) {
@@ -260,17 +283,17 @@ AdbcStatusCode PqResultArrayReader::ExecuteAll(int64_t* affected_rows, AdbcError
     }
 
     do {
-      RAISE_ADBC(BindNextAndExecute(affected_rows, error));
+      UNWRAP_STATUS(BindNextAndExecute(affected_rows));
     } while (bind_stream_);
   } else {
-    RAISE_ADBC(helper_.Execute(error));
+    UNWRAP_STATUS(helper_.Execute());
 
     if (affected_rows != nullptr) {
       *affected_rows = helper_.AffectedRows();
     }
   }
 
-  return ADBC_STATUS_OK;
+  return Status::Ok();
 }
 
 }  // namespace adbcpq

@@ -17,8 +17,8 @@
 
 #include "error.h"
 
-#include <postgres_ext.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -29,72 +29,27 @@
 
 namespace adbcpq {
 
-namespace {
-struct DetailField {
-  int code;
-  std::string key;
-};
-
-static const std::vector<DetailField> kDetailFields = {
-    {PG_DIAG_COLUMN_NAME, "PG_DIAG_COLUMN_NAME"},
-    {PG_DIAG_CONTEXT, "PG_DIAG_CONTEXT"},
-    {PG_DIAG_CONSTRAINT_NAME, "PG_DIAG_CONSTRAINT_NAME"},
-    {PG_DIAG_DATATYPE_NAME, "PG_DIAG_DATATYPE_NAME"},
-    {PG_DIAG_INTERNAL_POSITION, "PG_DIAG_INTERNAL_POSITION"},
-    {PG_DIAG_INTERNAL_QUERY, "PG_DIAG_INTERNAL_QUERY"},
-    {PG_DIAG_MESSAGE_PRIMARY, "PG_DIAG_MESSAGE_PRIMARY"},
-    {PG_DIAG_MESSAGE_DETAIL, "PG_DIAG_MESSAGE_DETAIL"},
-    {PG_DIAG_MESSAGE_HINT, "PG_DIAG_MESSAGE_HINT"},
-    {PG_DIAG_SEVERITY_NONLOCALIZED, "PG_DIAG_SEVERITY_NONLOCALIZED"},
-    {PG_DIAG_SQLSTATE, "PG_DIAG_SQLSTATE"},
-    {PG_DIAG_STATEMENT_POSITION, "PG_DIAG_STATEMENT_POSITION"},
-    {PG_DIAG_SCHEMA_NAME, "PG_DIAG_SCHEMA_NAME"},
-    {PG_DIAG_TABLE_NAME, "PG_DIAG_TABLE_NAME"},
-};
-}  // namespace
-
 AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* format,
                         ...) {
+  if (error && error->release) {
+    // TODO: combine the errors if possible
+    error->release(error);
+  }
+
   va_list args;
   va_start(args, format);
-  SetErrorVariadic(error, format, args);
+  std::string message;
+  message.resize(1024);
+  int chars_needed = vsnprintf(message.data(), message.size(), format, args);
   va_end(args);
 
-  AdbcStatusCode code = ADBC_STATUS_IO;
-
-  const char* sqlstate = PQresultErrorField(result, PG_DIAG_SQLSTATE);
-  if (sqlstate) {
-    // https://www.postgresql.org/docs/current/errcodes-appendix.html
-    // This can be extended in the future
-    if (std::strcmp(sqlstate, "57014") == 0) {
-      code = ADBC_STATUS_CANCELLED;
-    } else if (std::strcmp(sqlstate, "42P01") == 0 ||
-               std::strcmp(sqlstate, "42602") == 0) {
-      code = ADBC_STATUS_NOT_FOUND;
-    } else if (std::strncmp(sqlstate, "42", 0) == 0) {
-      // Class 42 — Syntax Error or Access Rule Violation
-      code = ADBC_STATUS_INVALID_ARGUMENT;
-    }
-
-    static_assert(sizeof(error->sqlstate) == 5, "");
-    // N.B. strncpy generates warnings when used for this purpose
-    int i = 0;
-    for (; sqlstate[i] != '\0' && i < 5; i++) {
-      error->sqlstate[i] = sqlstate[i];
-    }
-    for (; i < 5; i++) {
-      error->sqlstate[i] = '\0';
-    }
+  if (chars_needed > 0) {
+    message.resize(chars_needed);
+  } else {
+    message.resize(0);
   }
 
-  for (const auto& field : kDetailFields) {
-    const char* value = PQresultErrorField(result, field.code);
-    if (value) {
-      AppendErrorDetail(error, field.key.c_str(), reinterpret_cast<const uint8_t*>(value),
-                        std::strlen(value));
-    }
-  }
-  return code;
+  return MakeStatus(result, "{}", message).ToAdbc(error);
 }
 
 }  // namespace adbcpq
