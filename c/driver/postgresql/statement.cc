@@ -612,12 +612,13 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   std::memset(&bind_, 0, sizeof(bind_));
   std::string escaped_table;
   std::string escaped_field_list;
-  RAISE_ADBC(bind_stream.Begin(
-      [&]() -> AdbcStatusCode {
-        return CreateBulkTable(current_schema, bind_stream.bind_schema.value,
-                               &escaped_table, &escaped_field_list, error);
-      },
-      error));
+  RAISE_STATUS(error, bind_stream.Begin([&]() -> Status {
+    struct AdbcError tmp_error = ADBC_ERROR_INIT;
+    AdbcStatusCode status_code =
+        CreateBulkTable(current_schema, bind_stream.bind_schema.value, &escaped_table,
+                        &escaped_field_list, &tmp_error);
+    return Status::FromAdbc(status_code, tmp_error);
+  }));
 
   std::string query = "COPY ";
   query += escaped_table;

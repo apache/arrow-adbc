@@ -72,32 +72,29 @@ struct BindStream {
   }
 
   template <typename Callback>
-  AdbcStatusCode Begin(Callback&& callback, struct AdbcError* error) {
-    CHECK_NA_DETAIL(INTERNAL,
-                    ArrowArrayStreamGetSchema(&bind.value, &bind_schema.value, &na_error),
-                    &na_error, error);
+  Status Begin(Callback&& callback) {
+    UNWRAP_NANOARROW(
+        na_error, Internal,
+        ArrowArrayStreamGetSchema(&bind.value, &bind_schema.value, &na_error));
 
     struct ArrowSchemaView bind_schema_view;
-    CHECK_NA_DETAIL(INTERNAL,
-                    ArrowSchemaViewInit(&bind_schema_view, &bind_schema.value, &na_error),
-                    &na_error, error);
+    UNWRAP_NANOARROW(
+        na_error, Internal,
+        ArrowSchemaViewInit(&bind_schema_view, &bind_schema.value, &na_error));
     if (bind_schema_view.type != ArrowType::NANOARROW_TYPE_STRUCT) {
-      SetError(error, "%s", "[libpq] Bind parameters must have type STRUCT");
-      return ADBC_STATUS_INVALID_STATE;
+      return Status::InvalidState("[libpq] Bind parameters must have type STRUCT");
     }
 
     bind_schema_fields.resize(bind_schema->n_children);
     for (size_t i = 0; i < bind_schema_fields.size(); i++) {
-      CHECK_NA(INTERNAL,
-               ArrowSchemaViewInit(&bind_schema_fields[i], bind_schema->children[i],
-                                   /*error*/ nullptr),
-               error);
+      UNWRAP_ERRNO(Internal,
+                   ArrowSchemaViewInit(&bind_schema_fields[i], bind_schema->children[i],
+                                       /*error*/ nullptr));
     }
 
-    CHECK_NA_DETAIL(
-        INTERNAL,
-        ArrowArrayViewInitFromSchema(&array_view.value, &bind_schema.value, &na_error),
-        &na_error, error);
+    UNWRAP_NANOARROW(
+        na_error, Internal,
+        ArrowArrayViewInitFromSchema(&array_view.value, &bind_schema.value, &na_error));
 
     ArrowBufferInit(&param_buffer.value);
 

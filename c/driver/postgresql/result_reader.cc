@@ -140,12 +140,8 @@ Status PqResultArrayReader::Initialize(int64_t* rows_affected) {
 
   // If we have to do binding, set up the bind stream an execute until
   // there is a result with more than zero rows to populate.
-  AdbcStatusCode status_code;
   if (bind_stream_) {
-    status_code = bind_stream_->Begin([] { return ADBC_STATUS_OK; }, &error_);
-    if (status_code != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status_code, error_);
-    }
+    UNWRAP_STATUS(bind_stream_->Begin([] { return Status::Ok(); }));
 
     UNWRAP_STATUS(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_));
     UNWRAP_STATUS(helper_.Prepare(bind_stream_->param_types));
@@ -260,11 +256,7 @@ Status PqResultArrayReader::ExecuteAll(int64_t* affected_rows) {
   // For the case where we don't need a result, we either need to exhaust the bind
   // stream (if there is one) or execute the query without binding.
   if (bind_stream_) {
-    AdbcStatusCode status_code =
-        bind_stream_->Begin([] { return ADBC_STATUS_OK; }, &error_);
-    if (status_code != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status_code, error_);
-    }
+    UNWRAP_STATUS(bind_stream_->Begin([] { return Status::Ok(); }));
     UNWRAP_STATUS(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_));
     UNWRAP_STATUS(helper_.Prepare(bind_stream_->param_types));
 
