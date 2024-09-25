@@ -23,6 +23,7 @@
 #include <cstddef>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -82,7 +83,7 @@ static const std::string kTablesQueryAll =
 static const std::string kTablesQuery = kTablesQueryAll + " AND c.relname LIKE $2";
 
 // schema_name, table_name
-static const std::string kColumnsQuery =
+static const std::string kColumnsQueryAll =
     "SELECT attr.attname, attr.attnum, "
     "pg_catalog.col_description(cls.oid, attr.attnum) "
     "FROM pg_catalog.pg_attribute AS attr "
@@ -90,6 +91,87 @@ static const std::string kColumnsQuery =
     "INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
     "WHERE attr.attnum > 0 AND NOT attr.attisdropped "
     "AND nsp.nspname LIKE $1 AND cls.relname LIKE $2";
+
+// schema_name, table_name, column_name
+static const std::string kColumnsQuery = kColumnsQueryAll + " AND attr.attname LIKE $3";
+
+// schema_name, table_name
+static const std::string kConstraintsQueryAll =
+    "WITH fk_unnest AS ( "
+    "    SELECT "
+    "        con.conname, "
+    "        'FOREIGN KEY' AS contype, "
+    "        conrelid, "
+    "        UNNEST(con.conkey) AS conkey, "
+    "        confrelid, "
+    "        UNNEST(con.confkey) AS confkey "
+    "    FROM pg_catalog.pg_constraint AS con "
+    "    INNER JOIN pg_catalog.pg_class AS cls ON cls.oid = conrelid "
+    "    INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
+    "    WHERE con.contype = 'f' AND nsp.nspname LIKE $1 "
+    "    AND cls.relname LIKE $2 "
+    "), "
+    "fk_names AS ( "
+    "    SELECT "
+    "        fk_unnest.conname, "
+    "        fk_unnest.contype, "
+    "        fk_unnest.conkey, "
+    "        fk_unnest.confkey, "
+    "        attr.attname, "
+    "        fnsp.nspname AS fschema, "
+    "        fcls.relname AS ftable, "
+    "        fattr.attname AS fattname "
+    "    FROM fk_unnest "
+    "    INNER JOIN pg_catalog.pg_class AS cls ON cls.oid = fk_unnest.conrelid "
+    "    INNER JOIN pg_catalog.pg_class AS fcls ON fcls.oid = fk_unnest.confrelid "
+    "    INNER JOIN pg_catalog.pg_namespace AS fnsp ON fnsp.oid = fcls.relnamespace"
+    "    INNER JOIN pg_catalog.pg_attribute AS attr ON attr.attnum = "
+    "fk_unnest.conkey "
+    "        AND attr.attrelid = fk_unnest.conrelid "
+    "    LEFT JOIN pg_catalog.pg_attribute AS fattr ON fattr.attnum =  "
+    "fk_unnest.confkey "
+    "        AND fattr.attrelid = fk_unnest.confrelid "
+    "), "
+    "fkeys AS ( "
+    "    SELECT "
+    "        conname, "
+    "        contype, "
+    "        ARRAY_AGG(attname ORDER BY conkey) AS colnames, "
+    "        fschema, "
+    "        ftable, "
+    "        ARRAY_AGG(fattname ORDER BY confkey) AS fcolnames "
+    "    FROM fk_names "
+    "    GROUP BY "
+    "        conname, "
+    "        contype, "
+    "        fschema, "
+    "        ftable "
+    "), "
+    "other_constraints AS ( "
+    "    SELECT con.conname, CASE con.contype WHEN 'c' THEN 'CHECK' WHEN 'u' THEN  "
+    "    'UNIQUE' WHEN 'p' THEN 'PRIMARY KEY' END AS contype, "
+    "    ARRAY_AGG(attr.attname) AS colnames "
+    "    FROM pg_catalog.pg_constraint AS con  "
+    "    CROSS JOIN UNNEST(conkey) AS conkeys  "
+    "    INNER JOIN pg_catalog.pg_class AS cls ON cls.oid = con.conrelid  "
+    "    INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace  "
+    "    INNER JOIN pg_catalog.pg_attribute AS attr ON attr.attnum = conkeys  "
+    "    AND cls.oid = attr.attrelid  "
+    "    WHERE con.contype IN ('c', 'u', 'p') AND nsp.nspname LIKE $1 "
+    "    AND cls.relname LIKE $2 "
+    "    GROUP BY conname, contype "
+    ") "
+    "SELECT "
+    "    conname, contype, colnames, fschema, ftable, fcolnames "
+    "FROM fkeys "
+    "UNION ALL "
+    "SELECT "
+    "    conname, contype, colnames, NULL, NULL, NULL "
+    "FROM other_constraints";
+
+// schema_name, table_name, column_name
+static const std::string kConstraintsQuery =
+    kConstraintsQueryAll + " WHERE conname LIKE $3";
 
 class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
  public:
@@ -100,7 +182,10 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
         some_schemas_(conn, kSchemaQuery),
         all_tables_(conn, kTablesQueryAll),
         some_tables_(conn, kTablesQuery),
-        some_columns_(conn, kColumnsQuery) {}
+        all_columns_(conn, kColumnsQueryAll),
+        some_columns_(conn, kColumnsQuery),
+        all_constraints_(conn, kConstraintsQueryAll),
+        some_constraints_(conn, kConstraintsQuery) {}
 
   Status Load(adbc::driver::GetObjectsDepth depth,
               std::optional<std::string_view> catalog_filter,
@@ -124,33 +209,103 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
     }
 
     const auto& row = *it;
-    return row[0].value(0);
+    return row[0].value();
   }
 
   Status LoadSchemas(std::string_view catalog) {
-    UNWRAP_STATUS(all_catalogs_.Execute());
-    catalogs_ = std::make_unique<PqResultHelper::iterator>(all_catalogs_);
+    UNWRAP_STATUS(all_schemas_.Execute());
+    schemas_ = std::make_unique<PqResultHelper::iterator>(all_schemas_);
     return Status::Ok();
   };
 
-  Result<std::optional<std::string_view>> NextSchema() { return std::nullopt; }
+  Result<std::optional<std::string_view>> NextSchema() {
+    auto& it = *schemas_;
+    if (it == it.end()) {
+      return std::nullopt;
+    }
+
+    const auto& row = *it;
+    return row[0].value();
+  }
 
   Status LoadTables(std::string_view catalog, std::string_view schema) {
-    return Status::NotImplemented("GetObjects at depth = table");
+    UNWRAP_STATUS(some_tables_.Execute({std::string(schema)}));
+    tables_ = std::make_unique<PqResultHelper::iterator>(some_tables_);
+    return Status::Ok();
   };
 
-  Result<std::optional<Table>> NextTable() { return std::nullopt; }
+  Result<std::optional<Table>> NextTable() {
+    auto& it = *tables_;
+    if (it == it.end()) {
+      return std::nullopt;
+    }
+
+    const auto& row = *it;
+    return Table{row[0].value(), row[1].value()};
+  }
 
   Status LoadColumns(std::string_view catalog, std::string_view schema,
                      std::string_view table) {
-    std::vector<std::string_view> params = {schema, table};
-    UNWRAP_STATUS(some_columns_.Execute({std::string(schema), std::string(table)}))
+    UNWRAP_STATUS(all_columns_.Execute({std::string(schema), std::string(table)}))
+    UNWRAP_STATUS(all_constraints_.Execute({std::string(schema), std::string(table)}))
     return Status::Ok();
   };
 
-  Result<std::optional<Column>> NextColumn() { return std::nullopt; }
+  Result<std::optional<Column>> NextColumn() {
+    auto& it = *columns_;
+    if (it == it.end()) {
+      return std::nullopt;
+    }
 
-  Result<std::optional<Constraint>> NextConstraint() { return std::nullopt; }
+    const auto& row = *it;
+
+    Column col;
+    col.column_name = row[0].value();
+    UNWRAP_RESULT(col.ordinal_position, row[1].ParseInteger());
+    if (!row[2].is_null) {
+      col.remarks = row[2].value();
+    }
+
+    return col;
+  }
+
+  Result<std::optional<Constraint>> NextConstraint() {
+    auto& it = *columns_;
+    if (it == it.end()) {
+      return std::nullopt;
+    }
+
+    const auto& row = *it;
+
+    Constraint out;
+    out.name = row[0].data;
+    out.type = row[1].data;
+
+    if (out.type == "FOREIGN KEY") {
+      assert(!row[3].is_null);
+      assert(!row[3].is_null);
+      assert(!row[4].is_null);
+      assert(!row[5].is_null);  // TODO: Unused?
+
+      // Because Constraint fields are all views
+      UNWRAP_RESULT(auto constraint_fcolumn_names_, row[2].ParseTextArray());
+      std::vector<std::string_view> fcolumn_names_view;
+      for (const std::string& item : constraint_fcolumn_names_) {
+        fcolumn_names_view.push_back(item);
+      }
+      out.column_names = std::move(fcolumn_names_view);
+
+      out.column_names = fcolumn_names_view;
+
+      ConstraintUsage usage;
+      usage.schema = row[3].data;
+      usage.table = row[4].data;
+      // TODO: column name?
+      out.usage = {usage};
+    }
+
+    return out;
+  }
 
  private:
   PqResultHelper all_catalogs_;
@@ -159,11 +314,16 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
   PqResultHelper some_schemas_;
   PqResultHelper all_tables_;
   PqResultHelper some_tables_;
+  PqResultHelper all_columns_;
   PqResultHelper some_columns_;
+  PqResultHelper all_constraints_;
+  PqResultHelper some_constraints_;
   std::unique_ptr<PqResultHelper::iterator> catalogs_;
   std::unique_ptr<PqResultHelper::iterator> schemas_;
   std::unique_ptr<PqResultHelper::iterator> tables_;
   std::unique_ptr<PqResultHelper::iterator> columns_;
+  std::unique_ptr<PqResultHelper::iterator> constraints_;
+  std::vector<std::string> constraint_fcolumn_names_;
 };
 
 class PqGetObjectsHelper {
