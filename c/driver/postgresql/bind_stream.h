@@ -104,8 +104,8 @@ struct BindStream {
     return std::move(callback)();
   }
 
-  AdbcStatusCode SetParamTypes(PGconn* pg_conn, const PostgresTypeResolver& type_resolver,
-                               const bool autocommit, struct AdbcError* error) {
+  Status SetParamTypes(PGconn* pg_conn, const PostgresTypeResolver& type_resolver,
+                       const bool autocommit) {
     param_types.resize(bind_schema->n_children);
     param_values.resize(bind_schema->n_children);
     param_lengths.resize(bind_schema->n_children);
@@ -114,35 +114,32 @@ struct BindStream {
 
     for (size_t i = 0; i < bind_field_writers.size(); i++) {
       PostgresType type;
-      CHECK_NA_DETAIL(INTERNAL,
-                      PostgresType::FromSchema(type_resolver, bind_schema->children[i],
-                                               &type, &na_error),
-                      &na_error, error);
+      UNWRAP_NANOARROW(na_error, Internal,
+                       PostgresType::FromSchema(type_resolver, bind_schema->children[i],
+                                                &type, &na_error));
 
       // tz-aware timestamps require special handling to set the timezone to UTC
       // prior to sending over the binary protocol; must be reset after execute
       if (!has_tz_field && type.type_id() == PostgresTypeId::kTimestamptz) {
-        RAISE_STATUS(error, SetDatabaseTimezoneUTC(pg_conn, autocommit, error));
+        UNWRAP_STATUS(SetDatabaseTimezoneUTC(pg_conn, autocommit));
         has_tz_field = true;
       }
 
       std::unique_ptr<PostgresCopyFieldWriter> writer;
-      CHECK_NA_DETAIL(
-          INTERNAL,
+      UNWRAP_NANOARROW(
+          na_error, Internal,
           MakeCopyFieldWriter(bind_schema->children[i], array_view->children[i],
-                              type_resolver, &writer, &na_error),
-          &na_error, error);
+                              type_resolver, &writer, &na_error));
 
       param_types[i] = type.oid();
       param_formats[i] = kPgBinaryFormat;
       bind_field_writers[i] = std::move(writer);
     }
 
-    return ADBC_STATUS_OK;
+    return Status::Ok();
   }
 
-  Status SetDatabaseTimezoneUTC(PGconn* pg_conn, const bool autocommit,
-                                struct AdbcError* error) {
+  Status SetDatabaseTimezoneUTC(PGconn* pg_conn, const bool autocommit) {
     if (autocommit) {
       PqResultHelper helper(pg_conn, "BEGIN");
       UNWRAP_STATUS(helper.Execute());
@@ -155,23 +152,15 @@ struct BindStream {
     }
 
     PqResultHelper set_utc(pg_conn, "SET TIME ZONE 'UTC'");
+    UNWRAP_STATUS(set_utc.Execute());
 
     return Status::Ok();
   }
 
-  AdbcStatusCode Prepare(PGconn* pg_conn, const std::string& query,
-                         struct AdbcError* error) {
-    PGresult* result = PQprepare(pg_conn, /*stmtName=*/"", query.c_str(),
-                                 /*nParams=*/bind_schema->n_children, param_types.data());
-    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-      AdbcStatusCode code =
-          SetError(error, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
-                   PQerrorMessage(pg_conn), query.c_str());
-      PQclear(result);
-      return code;
-    }
-    PQclear(result);
-    return ADBC_STATUS_OK;
+  Status Prepare(PGconn* pg_conn, const std::string& query) {
+    PqResultHelper helper(pg_conn, query);
+    UNWRAP_STATUS(helper.Prepare(param_types));
+    return Status::Ok();
   }
 
   AdbcStatusCode PullNextArray(AdbcError* error) {

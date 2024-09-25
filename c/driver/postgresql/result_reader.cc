@@ -146,14 +146,9 @@ Status PqResultArrayReader::Initialize(int64_t* rows_affected) {
     if (status_code != ADBC_STATUS_OK) {
       return Status::FromAdbc(status_code, error_);
     }
-    status_code =
-        bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_, &error_);
-    if (status_code != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status_code, error_);
-    }
 
+    UNWRAP_STATUS(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_));
     UNWRAP_STATUS(helper_.Prepare(bind_stream_->param_types));
-
     UNWRAP_STATUS(BindNextAndExecute(nullptr));
 
     // If there were no arrays in the bind stream, we still need a result
@@ -270,11 +265,7 @@ Status PqResultArrayReader::ExecuteAll(int64_t* affected_rows) {
     if (status_code != ADBC_STATUS_OK) {
       return Status::FromAdbc(status_code, error_);
     }
-    status_code =
-        bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_, &error_);
-    if (status_code != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status_code, error_);
-    }
+    UNWRAP_STATUS(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_));
     UNWRAP_STATUS(helper_.Prepare(bind_stream_->param_types));
 
     // Reset affected rows to zero before binding and executing any
