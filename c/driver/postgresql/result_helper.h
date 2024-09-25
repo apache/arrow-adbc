@@ -60,7 +60,7 @@ class PqResultRow {
     ncols_ = PQnfields(result);
   }
 
-  PqRecord operator[](const int& col_num) {
+  PqRecord operator[](const int& col_num) const {
     assert(col_num < ncols_);
     const char* data = PQgetvalue(result_, row_num_, col_num);
     const int len = PQgetlength(result_, row_num_, col_num);
@@ -143,6 +143,7 @@ class PqResultHelper {
    public:
     explicit iterator(const PqResultHelper& outer, int curr_row = 0)
         : outer_(outer), curr_row_(curr_row) {}
+    iterator end() const { return outer_.end(); }
     iterator& operator++() {
       curr_row_++;
       return *this;
@@ -164,8 +165,8 @@ class PqResultHelper {
     using reference = const std::vector<PqResultRow>&;
   };
 
-  iterator begin() { return iterator(*this); }
-  iterator end() { return iterator(*this, NumRows()); }
+  iterator begin() const { return iterator(*this); }
+  iterator end() const { return iterator(*this, NumRows()); }
 
  private:
   PGresult* result_ = nullptr;

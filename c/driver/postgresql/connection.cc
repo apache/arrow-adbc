@@ -20,10 +20,12 @@
 #include <cassert>
 #include <cinttypes>
 #include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -38,6 +40,9 @@
 #include "error.h"
 #include "result_helper.h"
 
+using adbc::driver::Result;
+using adbc::driver::Status;
+
 namespace adbcpq {
 namespace {
 
@@ -50,6 +55,116 @@ static const uint32_t kSupportedInfoCodes[] = {
 static const std::unordered_map<std::string, std::string> kPgTableTypes = {
     {"table", "r"},       {"view", "v"},          {"materialized_view", "m"},
     {"toast_table", "t"}, {"foreign_table", "f"}, {"partitioned_table", "p"}};
+
+static const std::string kCatalogQueryAll = "SELECT datname FROM pg_catalog.pg_database";
+
+// catalog_name
+static const std::string kCatalogQuery = kCatalogQueryAll + " WHERE datname = $1";
+
+static const std::string kSchemaQueryAll =
+    "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
+    "nspname !~ '^pg_' AND nspname <> 'information_schema'";
+
+// schema_name
+static const std::string kSchemaQuery = kSchemaQueryAll + " AND nspname = $1";
+
+// schema_name
+static const std::string kTablesQueryAll =
+    "SELECT c.relname, CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' "
+    "WHEN 'm' THEN 'materialized view' WHEN 't' THEN 'TOAST table' "
+    "WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table' END "
+    "AS reltype FROM pg_catalog.pg_class c "
+    "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+    "WHERE c.relkind IN ('r','v','m','t','f','p') "
+    "AND pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = $1";
+
+// schema_name, table_name
+static const std::string kTablesQuery = kTablesQueryAll + " AND c.relname LIKE $2";
+
+// schema_name, table_name
+static const std::string kColumnsQuery =
+    "SELECT attr.attname, attr.attnum, "
+    "pg_catalog.col_description(cls.oid, attr.attnum) "
+    "FROM pg_catalog.pg_attribute AS attr "
+    "INNER JOIN pg_catalog.pg_class AS cls ON attr.attrelid = cls.oid "
+    "INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
+    "WHERE attr.attnum > 0 AND NOT attr.attisdropped "
+    "AND nsp.nspname LIKE $1 AND cls.relname LIKE $2";
+
+class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
+ public:
+  PostgresGetObjectsHelper(PGconn* conn)
+      : all_catalogs_(conn, kCatalogQueryAll),
+        some_catalogs_(conn, kCatalogQuery),
+        all_schemas_(conn, kSchemaQueryAll),
+        some_schemas_(conn, kSchemaQuery),
+        all_tables_(conn, kTablesQueryAll),
+        some_tables_(conn, kTablesQuery),
+        some_columns_(conn, kColumnsQuery) {}
+
+  Status Load(adbc::driver::GetObjectsDepth depth,
+              std::optional<std::string_view> catalog_filter,
+              std::optional<std::string_view> schema_filter,
+              std::optional<std::string_view> table_filter,
+              std::optional<std::string_view> column_filter,
+              const std::vector<std::string_view>& table_types) {
+    return Status::Ok();
+  }
+
+  Status LoadCatalogs() {
+    UNWRAP_STATUS(all_catalogs_.Execute());
+    catalogs_ = std::make_unique<PqResultHelper::iterator>(all_catalogs_);
+    return Status::Ok();
+  };
+
+  Result<std::optional<std::string_view>> NextCatalog() {
+    auto& it = *catalogs_;
+    if (it == it.end()) {
+      return std::nullopt;
+    }
+
+    const auto& row = *it;
+    return row[0].value(0);
+  }
+
+  Status LoadSchemas(std::string_view catalog) {
+    UNWRAP_STATUS(all_catalogs_.Execute());
+    catalogs_ = std::make_unique<PqResultHelper::iterator>(all_catalogs_);
+    return Status::Ok();
+  };
+
+  Result<std::optional<std::string_view>> NextSchema() { return std::nullopt; }
+
+  Status LoadTables(std::string_view catalog, std::string_view schema) {
+    return Status::NotImplemented("GetObjects at depth = table");
+  };
+
+  Result<std::optional<Table>> NextTable() { return std::nullopt; }
+
+  Status LoadColumns(std::string_view catalog, std::string_view schema,
+                     std::string_view table) {
+    std::vector<std::string_view> params = {schema, table};
+    UNWRAP_STATUS(some_columns_.Execute({std::string(schema), std::string(table)}))
+    return Status::Ok();
+  };
+
+  Result<std::optional<Column>> NextColumn() { return std::nullopt; }
+
+  Result<std::optional<Constraint>> NextConstraint() { return std::nullopt; }
+
+ private:
+  PqResultHelper all_catalogs_;
+  PqResultHelper some_catalogs_;
+  PqResultHelper all_schemas_;
+  PqResultHelper some_schemas_;
+  PqResultHelper all_tables_;
+  PqResultHelper some_tables_;
+  PqResultHelper some_columns_;
+  std::unique_ptr<PqResultHelper::iterator> catalogs_;
+  std::unique_ptr<PqResultHelper::iterator> schemas_;
+  std::unique_ptr<PqResultHelper::iterator> tables_;
+  std::unique_ptr<PqResultHelper::iterator> columns_;
+};
 
 class PqGetObjectsHelper {
  public:
