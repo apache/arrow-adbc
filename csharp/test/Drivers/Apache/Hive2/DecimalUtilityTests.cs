@@ -83,7 +83,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             }
             stopwatch.Stop();
             _outputHelper.WriteLine($"DecimalUtility.GetBytes: {testCount} iterations took {stopwatch.ElapsedMilliseconds} elapsed milliseconds");
-
         }
 
         public static IEnumerable<object[]> Decimal128Data()

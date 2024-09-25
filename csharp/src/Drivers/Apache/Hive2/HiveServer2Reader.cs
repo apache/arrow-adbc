@@ -136,7 +136,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 bool isKnownFormat = date.Length >= 8 && date[4] == AsciiDash && date[7] == AsciiDash;
                 if (isKnownFormat)
                 {
-                    DateTime value = ConverToDateTime(date);
+                    DateTime value = ConvertToDateTime(date);
                     resultArray.Append(value);
                 }
                 else
@@ -148,7 +148,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return resultArray.Build();
         }
 
-        private static DateTime ConverToDateTime(ReadOnlySpan<char> date)
+        private static DateTime ConvertToDateTime(ReadOnlySpan<char> date)
         {
             int year;
             int month;

@@ -54,9 +54,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 throw new ArgumentOutOfRangeException(nameof(byteWidth), byteWidth, $"value for byteWidth {byteWidth} exceeds the the size of bytes.");
             }
 
-            BigInteger intergerValue = ToBigInteger(value, precision, scale);
+            BigInteger integerValue = ToBigInteger(value, precision, scale);
 
-            FillBytes(bytes, intergerValue, byteWidth);
+            FillBytes(bytes, integerValue, byteWidth);
         }
 
         private static void FillBytes(Span<byte> bytes, BigInteger integerValue, int byteWidth)
@@ -85,15 +85,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private static BigInteger ToBigInteger(string value, int precision, int scale)
         {
-            BigInteger intergerValue;
+            BigInteger integerValue;
 #if NETCOREAPP
             ReadOnlySpan<char> significantValue = GetSignificantValue(value, precision, scale);
-            intergerValue = BigInteger.Parse(significantValue);
+            integerValue = BigInteger.Parse(significantValue);
 #else
             ReadOnlySpan<char> significantValue = GetSignificantValue(value.AsSpan(), precision, scale);
-            intergerValue = BigInteger.Parse(significantValue.ToString());
+            integerValue = BigInteger.Parse(significantValue.ToString());
 #endif
-            return intergerValue;
+            return integerValue;
         }
 
         private static ReadOnlySpan<char> GetSignificantValue(ReadOnlySpan<char> value, int precision, int scale)
@@ -402,7 +402,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         throw new ArgumentOutOfRangeException(nameof(value), value.ToString(), $"Invalid numeric value at index {index}.");
                 }
             }
-            // Trim leading zeros from integer porttion
+            // Trim leading zeros from integer portion
             if (state.IntegerStart != -1 && state.IntegerEnd != -1)
             {
                 for (int i = state.IntegerStart; i <= state.IntegerEnd; i++)
