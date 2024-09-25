@@ -140,20 +140,11 @@ Status PqResultArrayReader::Initialize(int64_t* rows_affected) {
 
   // If we have to do binding, set up the bind stream an execute until
   // there is a result with more than zero rows to populate.
-  AdbcStatusCode status_code;
   if (bind_stream_) {
-    status_code = bind_stream_->Begin([] { return ADBC_STATUS_OK; }, &error_);
-    if (status_code != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status_code, error_);
-    }
-    status_code =
-        bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_, &error_);
-    if (status_code != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status_code, error_);
-    }
+    UNWRAP_STATUS(bind_stream_->Begin([] { return Status::Ok(); }));
 
+    UNWRAP_STATUS(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_));
     UNWRAP_STATUS(helper_.Prepare(bind_stream_->param_types));
-
     UNWRAP_STATUS(BindNextAndExecute(nullptr));
 
     // If there were no arrays in the bind stream, we still need a result
@@ -230,28 +221,18 @@ Status PqResultArrayReader::ToArrayStream(int64_t* affected_rows,
 Status PqResultArrayReader::BindNextAndExecute(int64_t* affected_rows) {
   // Keep pulling from the bind stream and executing as long as
   // we receive results with zero rows.
-  AdbcStatusCode status_code;
   do {
-    status_code = bind_stream_->EnsureNextRow(&error_);
-    if (status_code != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status_code, error_);
-    }
+    UNWRAP_STATUS(bind_stream_->EnsureNextRow());
 
     if (!bind_stream_->current->release) {
-      status_code = bind_stream_->Cleanup(conn_, &error_);
-      if (status_code != ADBC_STATUS_OK) {
-        return Status::FromAdbc(status_code, error_);
-      }
+      UNWRAP_STATUS(bind_stream_->Cleanup(conn_));
       bind_stream_.reset();
       return Status::Ok();
     }
 
     PGresult* result;
-    status_code = bind_stream_->BindAndExecuteCurrentRow(
-        conn_, &result, /*result_format*/ kPgBinaryFormat, &error_);
-    if (status_code != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status_code, error_);
-    }
+    UNWRAP_STATUS(bind_stream_->BindAndExecuteCurrentRow(
+        conn_, &result, /*result_format*/ kPgBinaryFormat));
     helper_.SetResult(result);
     if (affected_rows) {
       (*affected_rows) += helper_.AffectedRows();
@@ -265,16 +246,8 @@ Status PqResultArrayReader::ExecuteAll(int64_t* affected_rows) {
   // For the case where we don't need a result, we either need to exhaust the bind
   // stream (if there is one) or execute the query without binding.
   if (bind_stream_) {
-    AdbcStatusCode status_code =
-        bind_stream_->Begin([] { return ADBC_STATUS_OK; }, &error_);
-    if (status_code != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status_code, error_);
-    }
-    status_code =
-        bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_, &error_);
-    if (status_code != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status_code, error_);
-    }
+    UNWRAP_STATUS(bind_stream_->Begin([] { return Status::Ok(); }));
+    UNWRAP_STATUS(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_));
     UNWRAP_STATUS(helper_.Prepare(bind_stream_->param_types));
 
     // Reset affected rows to zero before binding and executing any
