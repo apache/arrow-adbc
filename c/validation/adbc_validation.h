@@ -358,7 +358,7 @@ class StatementTest {
   void TestNewInit();
   void TestRelease();
 
-  // ---- Type-specific tests --------------------
+  // ---- Type-specific ingest tests -------------
 
   void TestSqlIngestBool();
 
@@ -426,6 +426,8 @@ class StatementTest {
   void TestSqlPrepareUpdateStream();
   void TestSqlPrepareErrorNoQuery();
   void TestSqlPrepareErrorParamCountMismatch();
+
+  void TestSqlBind();
 
   void TestSqlQueryEmpty();
   void TestSqlQueryInts();
@@ -533,6 +535,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlPrepareErrorParamCountMismatch) {                                  \
     TestSqlPrepareErrorParamCountMismatch();                                            \
   }                                                                                     \
+  TEST_F(FIXTURE, SqlBind) { TestSqlBind(); }                                           \
   TEST_F(FIXTURE, SqlQueryEmpty) { TestSqlQueryEmpty(); }                               \
   TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
   TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \

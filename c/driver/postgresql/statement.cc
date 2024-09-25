@@ -40,6 +40,7 @@
 #include "connection.h"
 #include "driver/common/options.h"
 #include "driver/common/utils.h"
+#include "driver/framework/utility.h"
 #include "error.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
@@ -296,7 +297,7 @@ AdbcStatusCode PostgresStatement::Bind(struct ArrowArray* values,
 
   if (bind_.release) bind_.release(&bind_);
   // Make a one-value stream
-  nanoarrow::VectorArrayStream(schema, values).ToArrayStream(&bind_);
+  adbc::driver::MakeArrayStream(schema, values, &bind_);
   return ADBC_STATUS_OK;
 }
 
@@ -456,8 +457,9 @@ AdbcStatusCode PostgresStatement::ExecuteBind(struct ArrowArrayStream* stream,
                                               int64_t* rows_affected,
                                               struct AdbcError* error) {
   PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
+  reader.SetAutocommit(connection_->autocommit());
   reader.SetBind(&bind_);
-  RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
+  RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
   return ADBC_STATUS_OK;
 }
 
@@ -485,25 +487,25 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   // execute using the PqResultArrayReader.
   if (!stream || !use_copy_) {
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
-    RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
+    RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
     return ADBC_STATUS_OK;
   }
 
   PqResultHelper helper(connection_->conn(), query_);
-  RAISE_ADBC(helper.Prepare(error));
-  RAISE_ADBC(helper.DescribePrepared(error));
+  RAISE_STATUS(error, helper.Prepare());
+  RAISE_STATUS(error, helper.DescribePrepared());
 
   // Initialize the copy reader and infer the output schema (i.e., error for
   // unsupported types before issuing the COPY query). This could be lazier
   // (i.e., executed on the first call to GetSchema() or GetNext()).
   PostgresType root_type;
-  RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &root_type, error));
+  RAISE_STATUS(error, helper.ResolveOutputTypes(*type_resolver_, &root_type));
 
   // If there will be no columns in the result, we can also avoid COPY
   if (root_type.n_children() == 0) {
     // Could/should move the helper into the reader instead of repreparing
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
-    RAISE_ADBC(reader.ToArrayStream(rows_affected, stream, error));
+    RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
     return ADBC_STATUS_OK;
   }
 
@@ -517,7 +519,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                   error);
 
   // Execute the COPY query
-  RAISE_ADBC(helper.ExecuteCopy(error));
+  RAISE_STATUS(error, helper.ExecuteCopy());
 
   // We need the PQresult back for the reader
   reader_.result_ = helper.ReleaseResult();
@@ -560,15 +562,15 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
       param_oids[i] = pg_type.oid();
     }
 
-    RAISE_ADBC(helper.Prepare(param_oids, error));
+    RAISE_STATUS(error, helper.Prepare(param_oids));
   } else {
-    RAISE_ADBC(helper.Prepare(error));
+    RAISE_STATUS(error, helper.Prepare());
   }
 
-  RAISE_ADBC(helper.DescribePrepared(error));
+  RAISE_STATUS(error, helper.DescribePrepared());
 
   PostgresType output_type;
-  RAISE_ADBC(helper.ResolveOutputTypes(*type_resolver_, &output_type, error));
+  RAISE_STATUS(error, helper.ResolveOutputTypes(*type_resolver_, &output_type));
 
   nanoarrow::UniqueSchema tmp;
   ArrowSchemaInit(tmp.get());
@@ -596,7 +598,7 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   std::string current_schema;
   {
     PqResultHelper result_helper{connection_->conn(), "SELECT CURRENT_SCHEMA"};
-    RAISE_ADBC(result_helper.Execute(error));
+    RAISE_STATUS(error, result_helper.Execute());
     auto it = result_helper.begin();
     if (it == result_helper.end()) {
       SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
@@ -610,12 +612,13 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   std::memset(&bind_, 0, sizeof(bind_));
   std::string escaped_table;
   std::string escaped_field_list;
-  RAISE_ADBC(bind_stream.Begin(
-      [&]() -> AdbcStatusCode {
-        return CreateBulkTable(current_schema, bind_stream.bind_schema.value,
-                               &escaped_table, &escaped_field_list, error);
-      },
-      error));
+  RAISE_STATUS(error, bind_stream.Begin([&]() -> Status {
+    struct AdbcError tmp_error = ADBC_ERROR_INIT;
+    AdbcStatusCode status_code =
+        CreateBulkTable(current_schema, bind_stream.bind_schema.value, &escaped_table,
+                        &escaped_field_list, &tmp_error);
+    return Status::FromAdbc(status_code, tmp_error);
+  }));
 
   std::string query = "COPY ";
   query += escaped_table;
@@ -632,8 +635,9 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   }
 
   PQclear(result);
-  RAISE_ADBC(bind_stream.ExecuteCopy(connection_->conn(), *connection_->type_resolver(),
-                                     rows_affected, error));
+  RAISE_STATUS(error,
+               bind_stream.ExecuteCopy(connection_->conn(), *connection_->type_resolver(),
+                                       rows_affected));
   return ADBC_STATUS_OK;
 }
 

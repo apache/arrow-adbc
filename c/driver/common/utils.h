@@ -53,6 +53,7 @@ void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* 
 
 int CommonErrorGetDetailCount(const struct AdbcError* error);
 struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int index);
+bool IsCommonError(const struct AdbcError* error);
 
 struct StringBuilder {
   char* buffer;
@@ -67,11 +68,6 @@ int ADBC_CHECK_PRINTF_ATTRIBUTE StringBuilderAppend(struct StringBuilder* builde
 void StringBuilderReset(struct StringBuilder* builder);
 
 #undef ADBC_CHECK_PRINTF_ATTRIBUTE
-
-/// Wrap a single batch as a stream.
-AdbcStatusCode BatchToArrayStream(struct ArrowArray* values, struct ArrowSchema* schema,
-                                  struct ArrowArrayStream* stream,
-                                  struct AdbcError* error);
 
 /// Check an NanoArrow status code.
 #define CHECK_NA(CODE, EXPR, ERROR)                                                 \

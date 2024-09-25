@@ -445,8 +445,11 @@ class SqliteReaderTest : public ::testing::Test {
   }
 
   void Bind(struct ArrowArray* batch, struct ArrowSchema* schema) {
-    ASSERT_THAT(AdbcSqliteBinderSetArray(&binder, batch, schema, &error),
-                IsOkStatus(&error));
+    Handle<struct ArrowArrayStream> stream;
+    struct ArrowArray batch_internal = *batch;
+    batch->release = nullptr;
+    adbc_validation::MakeStream(&stream.value, schema, {batch_internal});
+    ASSERT_NO_FATAL_FAILURE(Bind(&stream.value));
   }
 
   void Bind(struct ArrowArrayStream* stream) {

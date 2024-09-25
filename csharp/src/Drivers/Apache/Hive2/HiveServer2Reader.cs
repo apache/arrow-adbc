@@ -29,9 +29,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2Reader : IArrowArrayStream
     {
+        private const char AsciiZero = '0';
+        private const int AsciiDigitMaxIndex = '9' - AsciiZero;
+        private const char AsciiDash = '-';
+        private const char AsciiSpace = ' ';
+        private const char AsciiColon = ':';
+        private const char AsciiPeriod = '.';
+
         private HiveServer2Statement? _statement;
         private readonly long _batchSize;
-        private readonly HiveServer2DataTypeConversion _dataTypeConversion;
+        private readonly DataTypeConversion _dataTypeConversion;
         private static readonly IReadOnlyDictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>> s_arrowStringConverters =
             new Dictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>>()
             {
@@ -44,7 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            HiveServer2DataTypeConversion dataTypeConversion,
+            DataTypeConversion dataTypeConversion,
             long batchSize = HiveServer2Connection.BatchSizeDefault)
         {
             _statement = statement;
@@ -67,7 +74,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             int columnCount = response.Results.Columns.Count;
             IList<IArrowArray> columnData = [];
-            bool shouldConvertScalar = _dataTypeConversion.HasFlag(HiveServer2DataTypeConversion.Scalar);
+            bool shouldConvertScalar = _dataTypeConversion.HasFlag(DataTypeConversion.Scalar);
             for (int i = 0; i < columnCount; i++)
             {
                 IArrowType? expectedType = shouldConvertScalar ? Schema.FieldsList[i].DataType : null;
@@ -119,26 +126,69 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             var resultArray = new Date32Array.Builder();
             foreach (string item in (IReadOnlyCollection<string>)array)
             {
-                resultArray.Append(DateTime.Parse(item));
+                if (item == null)
+                {
+                    resultArray.AppendNull();
+                    continue;
+                }
+
+                ReadOnlySpan<char> date = item.AsSpan();
+                bool isKnownFormat = date.Length >= 8 && date[4] == AsciiDash && date[7] == AsciiDash;
+                if (isKnownFormat)
+                {
+                    DateTime value = ConvertToDateTime(date);
+                    resultArray.Append(value);
+                }
+                else
+                {
+                    resultArray.Append(DateTime.Parse(item, CultureInfo.InvariantCulture));
+                }
             }
 
             return resultArray.Build();
         }
 
+        private static DateTime ConvertToDateTime(ReadOnlySpan<char> date)
+        {
+            int year;
+            int month;
+            int day;
+#if NETCOREAPP
+            year = int.Parse(date.Slice(0, 4));
+            month = int.Parse(date.Slice(5, 2));
+            day = int.Parse(date.Slice(8, 2));
+#else
+            year = int.Parse(date.Slice(0, 4).ToString());
+            month = int.Parse(date.Slice(5, 2).ToString());
+            day = int.Parse(date.Slice(8, 2).ToString());
+#endif
+            DateTime value = new(year, month, day);
+            return value;
+        }
+
         private static Decimal128Array ConvertToDecimal128(StringArray array, IArrowType schemaType)
         {
             // Using the schema type to get the precision and scale.
-            var resultArray = new Decimal128Array.Builder((Decimal128Type)schemaType);
+            Decimal128Type decimalType = (Decimal128Type)schemaType;
+            var resultArray = new Decimal128Array.Builder(decimalType);
+            Span<byte> buffer = stackalloc byte[decimalType.ByteWidth];
             foreach (string item in (IReadOnlyList<string>)array)
             {
-                // Trying to parse the value into a decimal to handle the exponent syntax. But this might overflow.
+                if (item == null)
+                {
+                    resultArray.AppendNull();
+                    continue;
+                }
+
+                // Try to parse the value into a decimal because it is the most performant and handles the exponent syntax. But this might overflow.
                 if (decimal.TryParse(item, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal decimalValue))
                 {
                     resultArray.Append(new SqlDecimal(decimalValue));
                 }
                 else
                 {
-                    resultArray.Append(item);
+                    DecimalUtility.GetBytes(item, decimalType.Precision, decimalType.Scale, decimalType.ByteWidth, buffer);
+                    resultArray.Append(buffer);
                 }
             }
             return resultArray.Build();
@@ -147,13 +197,81 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private static TimestampArray ConvertToTimestamp(StringArray array, IArrowType _)
         {
             // Match the precision of the server
-            var resultArrayBuiilder = new TimestampArray.Builder(TimeUnit.Microsecond);
+            var resultArrayBuilder = new TimestampArray.Builder(TimeUnit.Microsecond);
             foreach (string item in (IReadOnlyList<string>)array)
             {
-                DateTimeOffset value = DateTimeOffset.Parse(item, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal);
-                resultArrayBuiilder.Append(value);
+                if (item == null)
+                {
+                    resultArrayBuilder.AppendNull();
+                    continue;
+                }
+
+                ReadOnlySpan<char> date = item.AsSpan();
+                bool isKnownFormat = date.Length >= 17 && date[4] == AsciiDash && date[7] == AsciiDash && date[10] == AsciiSpace && date[13] == AsciiColon && date[16] == AsciiColon;
+                if (isKnownFormat)
+                {
+                    DateTimeOffset value = ConvertToDateTimeOffset(date);
+                    resultArrayBuilder.Append(value);
+                }
+                else
+                {
+                    DateTimeOffset value = DateTimeOffset.Parse(item, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal);
+                    resultArrayBuilder.Append(value);
+                }
             }
-            return resultArrayBuiilder.Build();
+            return resultArrayBuilder.Build();
+        }
+
+        private static DateTimeOffset ConvertToDateTimeOffset(ReadOnlySpan<char> date)
+        {
+            int year;
+            int month;
+            int day;
+            int hour;
+            int minute;
+            int second;
+#if NETCOREAPP
+            year = int.Parse(date.Slice(0, 4));
+            month = int.Parse(date.Slice(5, 2));
+            day = int.Parse(date.Slice(8, 2));
+            hour = int.Parse(date.Slice(11, 2));
+            minute = int.Parse(date.Slice(14, 2));
+            second = int.Parse(date.Slice(17, 2));
+#else
+            year = int.Parse(date.Slice(0, 4).ToString());
+            month = int.Parse(date.Slice(5, 2).ToString());
+            day = int.Parse(date.Slice(8, 2).ToString());
+            hour = int.Parse(date.Slice(11, 2).ToString());
+            minute = int.Parse(date.Slice(14, 2).ToString());
+            second = int.Parse(date.Slice(17, 2).ToString());
+#endif
+            DateTimeOffset dateValue = new(year, month, day, hour, minute, second, TimeSpan.Zero);
+            int length = date.Length;
+            if (length >= 20 && date[19] == AsciiPeriod)
+            {
+                int start = -1;
+                int end = 20;
+                while (end < length && (uint)(date[end] - AsciiZero) <= AsciiDigitMaxIndex)
+                {
+                    if (start == -1) start = end;
+                    end++;
+                }
+                int subSeconds = 0;
+                int subSecondsLength = start != -1 ? end - start : 0;
+                if (subSecondsLength > 0)
+                {
+#if NETCOREAPP
+                    subSeconds = int.Parse(date.Slice(start, subSecondsLength));
+#else
+                    subSeconds = int.Parse(date.Slice(start, subSecondsLength).ToString());
+#endif
+                }
+                double factorOfMilliseconds = Math.Pow(10, subSecondsLength - 3);
+                long ticks = (long)(subSeconds * (TimeSpan.TicksPerMillisecond / factorOfMilliseconds));
+                dateValue = dateValue.AddTicks(ticks);
+            }
+
+            return dateValue;
         }
     }
 }

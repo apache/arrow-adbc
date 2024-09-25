@@ -17,6 +17,10 @@
 
 #pragma once
 
+#if !defined(NOMINMAX)
+#define NOMINMAX
+#endif
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -34,12 +38,20 @@ class PqResultArrayReader {
  public:
   PqResultArrayReader(PGconn* conn, std::shared_ptr<PostgresTypeResolver> type_resolver,
                       std::string query)
-      : conn_(conn), helper_(conn, std::move(query)), type_resolver_(type_resolver) {
+      : conn_(conn),
+        helper_(conn, std::move(query)),
+        type_resolver_(type_resolver),
+        autocommit_(false) {
     ArrowErrorInit(&na_error_);
     error_ = ADBC_ERROR_INIT;
   }
 
   ~PqResultArrayReader() { ResetErrors(); }
+
+  // Ensure the reader knows what the autocommit status was on creation. This is used
+  // so that the temporary timezone setting required for parameter binding can be wrapped
+  // in a transaction (or not) accordingly.
+  void SetAutocommit(bool autocommit) { autocommit_ = autocommit; }
 
   void SetBind(struct ArrowArrayStream* stream) {
     bind_stream_ = std::make_unique<BindStream>();
@@ -50,10 +62,9 @@ class PqResultArrayReader {
   int GetNext(struct ArrowArray* out);
   const char* GetLastError();
 
-  AdbcStatusCode ToArrayStream(int64_t* affected_rows, struct ArrowArrayStream* out,
-                               struct AdbcError* error);
+  Status ToArrayStream(int64_t* affected_rows, struct ArrowArrayStream* out);
 
-  AdbcStatusCode Initialize(int64_t* affected_rows, struct AdbcError* error);
+  Status Initialize(int64_t* affected_rows);
 
  private:
   PGconn* conn_;
@@ -62,6 +73,7 @@ class PqResultArrayReader {
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   std::vector<std::unique_ptr<PostgresCopyFieldReader>> field_readers_;
   nanoarrow::UniqueSchema schema_;
+  bool autocommit_;
   struct AdbcError error_;
   struct ArrowError na_error_;
 
@@ -76,8 +88,8 @@ class PqResultArrayReader {
     error_ = ADBC_ERROR_INIT;
   }
 
-  AdbcStatusCode BindNextAndExecute(int64_t* affected_rows, AdbcError* error);
-  AdbcStatusCode ExecuteAll(int64_t* affected_rows, AdbcError* error);
+  Status BindNextAndExecute(int64_t* affected_rows);
+  Status ExecuteAll(int64_t* affected_rows);
 
   void ResetErrors() {
     ArrowErrorInit(&na_error_);

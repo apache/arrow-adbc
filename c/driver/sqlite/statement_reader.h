@@ -41,11 +41,6 @@ struct ADBC_EXPORT AdbcSqliteBinder {
 };
 
 ADBC_EXPORT
-AdbcStatusCode AdbcSqliteBinderSetArray(struct AdbcSqliteBinder* binder,
-                                        struct ArrowArray* values,
-                                        struct ArrowSchema* schema,
-                                        struct AdbcError* error);
-ADBC_EXPORT
 AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
                                               struct ArrowArrayStream* values,
                                               struct AdbcError* error);

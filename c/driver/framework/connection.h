@@ -27,8 +27,8 @@
 #include <arrow-adbc/adbc.h>
 
 #include "driver/framework/base_driver.h"
-#include "driver/framework/catalog.h"
 #include "driver/framework/objects.h"
+#include "driver/framework/utility.h"
 
 namespace adbc::driver {
 /// \brief The CRTP base implementation of an AdbcConnection.
@@ -86,7 +86,7 @@ class Connection : public ObjectBase {
 
     std::vector<uint32_t> codes(info_codes, info_codes + info_codes_length);
     RAISE_RESULT(error, auto infos, impl().InfoImpl(codes));
-    RAISE_STATUS(error, AdbcGetInfo(infos, out));
+    RAISE_STATUS(error, MakeGetInfoStream(infos, out));
     return ADBC_STATUS_OK;
   }
 
@@ -204,7 +204,7 @@ class Connection : public ObjectBase {
     }
 
     RAISE_RESULT(error, std::vector<std::string> table_types, impl().GetTableTypesImpl());
-    RAISE_STATUS(error, AdbcGetTableTypes(table_types, out));
+    RAISE_STATUS(error, MakeTableTypesStream(table_types, out));
     return ADBC_STATUS_OK;
   }
 

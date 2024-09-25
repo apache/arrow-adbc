@@ -28,6 +28,9 @@
 #include <libpq-fe.h>
 
 #include "copy/reader.h"
+#include "driver/framework/status.h"
+
+using adbc::driver::Status;
 
 namespace adbcpq {
 
@@ -45,6 +48,8 @@ struct PqRecord {
     }
     return result;
   }
+
+  std::string_view value() { return std::string_view(data, len); }
 };
 
 // Used by PqResultHelper to provide index-based access to the records within each
@@ -95,17 +100,16 @@ class PqResultHelper {
   void set_param_format(Format format) { param_format_ = format; }
   void set_output_format(Format format) { output_format_ = format; }
 
-  AdbcStatusCode Prepare(struct AdbcError* error);
-  AdbcStatusCode Prepare(const std::vector<Oid>& param_oids, struct AdbcError* error);
-  AdbcStatusCode DescribePrepared(struct AdbcError* error);
-  AdbcStatusCode Execute(struct AdbcError* error,
-                         const std::vector<std::string>& params = {},
-                         PostgresType* param_types = nullptr);
-  AdbcStatusCode ExecuteCopy(struct AdbcError* error);
-  AdbcStatusCode ResolveParamTypes(PostgresTypeResolver& type_resolver,
-                                   PostgresType* param_types, struct AdbcError* error);
-  AdbcStatusCode ResolveOutputTypes(PostgresTypeResolver& type_resolver,
-                                    PostgresType* result_types, struct AdbcError* error);
+  Status Prepare();
+  Status Prepare(const std::vector<Oid>& param_oids);
+  Status DescribePrepared();
+  Status Execute(const std::vector<std::string>& params = {},
+                 PostgresType* param_types = nullptr);
+  Status ExecuteCopy();
+  Status ResolveParamTypes(PostgresTypeResolver& type_resolver,
+                           PostgresType* param_types);
+  Status ResolveOutputTypes(PostgresTypeResolver& type_resolver,
+                            PostgresType* result_types);
 
   bool HasResult() { return result_ != nullptr; }
 
@@ -170,8 +174,7 @@ class PqResultHelper {
   Format param_format_ = Format::kText;
   Format output_format_ = Format::kText;
 
-  AdbcStatusCode PrepareInternal(int n_params, const Oid* param_oids,
-                                 struct AdbcError* error);
+  Status PrepareInternal(int n_params, const Oid* param_oids);
 };
 
 }  // namespace adbcpq

@@ -71,7 +71,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal TSessionHandle? SessionHandle { get; private set; }
 
-        protected internal HiveServer2DataTypeConversion DataTypeConversion { get; set; } = HiveServer2DataTypeConversion.None;
+        protected internal DataTypeConversion DataTypeConversion { get; set; } = DataTypeConversion.None;
 
         protected internal HiveServer2TlsOption TlsOptions { get; set; } = HiveServer2TlsOption.Empty;
 

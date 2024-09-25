@@ -17,7 +17,7 @@
 
 include(FetchContent)
 
-add_library(adbc_driver_framework STATIC catalog.cc objects.cc)
+add_library(adbc_driver_framework STATIC objects.cc utility.cc)
 adbc_configure_target(adbc_driver_framework)
 set_target_properties(adbc_driver_framework PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(adbc_driver_framework
