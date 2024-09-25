@@ -49,7 +49,8 @@ target_link_libraries(adbc_driver_framework PRIVATE nanoarrow::nanoarrow)
 # is the init function?
 add_library(driver_example SHARED driver_example.cc)
 target_include_directories(driver_example PRIVATE ../../../../c ../../../../c/include)
-target_link_libraries(driver_example PRIVATE adbc_driver_framework nanoarrow::nanoarrow)
+target_link_libraries(driver_example PRIVATE adbc_driver_framework
+                                             nanoarrow::nanoarrow_ipc)
 
 # TODO: Do we want to have this as part of the example? We could make the validation library
 # available but I am not sure it is ready to promise that kind of stability (e.g., C++

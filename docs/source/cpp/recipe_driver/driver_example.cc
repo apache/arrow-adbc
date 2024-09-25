@@ -66,6 +66,7 @@
 
 #include "driver_example.h"
 
+#include <cstdio>
 #include <string>
 
 #include "driver/framework/connection.h"
@@ -219,33 +220,66 @@ class DriverExampleStatement : public adbc::driver::Statement<DriverExampleState
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[example]";
 
+  // Get information from the connection and/or store a reference if needed.
   Status InitImpl(void* parent) {
     auto& connection = *reinterpret_cast<DriverExampleConnection*>(parent);
     uri_ = connection.uri();
     return Base::InitImpl(parent);
   }
 
-  Status SetSqlQueryImpl(std::string_view query) {
-    return adbc::driver::status::NotImplemented("SetSqlQuery");
+  // Our implementation of a bulk ingestion is to write an Arrow IPC stream as a file
+  // using the target table as the filename.
+  Result<int64_t> ExecuteIngestImpl(IngestState& state) {
+    std::string directory = uri_.substr(strlen("file://"));
+    std::string filename = directory + "/" + *state.target_table;
+
+    nanoarrow::ipc::UniqueOutputStream output_stream;
+    FILE* c_file = std::fopen(filename.c_str(), "wb");
+    UNWRAP_ERRNO(Internal, ArrowIpcOutputStreamInitFile(output_stream.get(), c_file,
+                                                        /*close_on_release*/ true));
+
+    nanoarrow::ipc::UniqueWriter writer;
+    UNWRAP_ERRNO(Internal, ArrowIpcWriterInit(writer.get(), output_stream.get()));
+
+    ArrowError nanoarrow_error;
+    ArrowErrorInit(&nanoarrow_error);
+    UNWRAP_NANOARROW(nanoarrow_error, Internal,
+                     ArrowIpcWriterWriteArrayStream(writer.get(), &bind_parameters_,
+                                                    &nanoarrow_error));
+
+    return -1;
   }
 
-  Status BindStreamImpl(ArrowArrayStream* stream) {
-    return adbc::driver::status::NotImplemented("BindStream");
+  // Our implementation of query execution is to accept a simple query in the form
+  // SELECT * FROM (the filename).
+  Result<int64_t> ExecuteQueryImpl(QueryState& state, ArrowArrayStream* stream) {
+    std::string prefix("SELECT * FROM ");
+    if (state.query.find(prefix) != 0) {
+      return adbc::driver::status::InvalidArgument(
+          "[example] Query must be in the form 'SELECT * FROM filename'");
+    }
+
+    std::string directory = uri_.substr(strlen("file://"));
+    std::string filename = directory + "/" + state.query.substr(prefix.size());
+
+    nanoarrow::ipc::UniqueInputStream input_stream;
+    FILE* c_file = std::fopen(filename.c_str(), "rb");
+    UNWRAP_ERRNO(Internal, ArrowIpcInputStreamInitFile(input_stream.get(), c_file,
+                                                       /*close_on_release*/ true));
+
+    UNWRAP_ERRNO(Internal,
+                 ArrowIpcArrayStreamReaderInit(stream, input_stream.get(), nullptr));
+    return -1;
   }
 
-  Status GetParameterSchemaImpl(struct ArrowSchema* schema) {
-    return adbc::driver::status::NotImplemented("GetParameterSchema");
-  }
-
-  Status PrepareImpl() { return adbc::driver::status::NotImplemented("Prepare"); }
-
-  Result<int64_t> ExecuteQueryImpl(ArrowArrayStream* stream) {
-    return adbc::driver::status::NotImplemented("ExecuteQuery");
+  // This path is taken when the user calls Prepare() first.
+  Result<int64_t> ExecuteQueryImpl(PreparedState& state, ArrowArrayStream* stream) {
+    QueryState query_state{state.query};
+    return ExecuteQueryImpl(query_state, stream);
   }
 
  private:
   std::string uri_;
-  nanoarrow::UniqueArrayStream bind_;
 };
 
 }  // namespace
