@@ -221,25 +221,18 @@ Status PqResultArrayReader::ToArrayStream(int64_t* affected_rows,
 Status PqResultArrayReader::BindNextAndExecute(int64_t* affected_rows) {
   // Keep pulling from the bind stream and executing as long as
   // we receive results with zero rows.
-  AdbcStatusCode status_code;
   do {
     UNWRAP_STATUS(bind_stream_->EnsureNextRow());
 
     if (!bind_stream_->current->release) {
-      status_code = bind_stream_->Cleanup(conn_, &error_);
-      if (status_code != ADBC_STATUS_OK) {
-        return Status::FromAdbc(status_code, error_);
-      }
+      UNWRAP_STATUS(bind_stream_->Cleanup(conn_));
       bind_stream_.reset();
       return Status::Ok();
     }
 
     PGresult* result;
-    status_code = bind_stream_->BindAndExecuteCurrentRow(
-        conn_, &result, /*result_format*/ kPgBinaryFormat, &error_);
-    if (status_code != ADBC_STATUS_OK) {
-      return Status::FromAdbc(status_code, error_);
-    }
+    UNWRAP_STATUS(bind_stream_->BindAndExecuteCurrentRow(
+        conn_, &result, /*result_format*/ kPgBinaryFormat));
     helper_.SetResult(result);
     if (affected_rows) {
       (*affected_rows) += helper_.AffectedRows();

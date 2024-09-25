@@ -196,8 +196,8 @@ struct BindStream {
     return Status::Ok();
   }
 
-  AdbcStatusCode BindAndExecuteCurrentRow(PGconn* pg_conn, PGresult** result_out,
-                                          int result_format, AdbcError* error) {
+  Status BindAndExecuteCurrentRow(PGconn* pg_conn, PGresult** result_out,
+                                  int result_format) {
     param_buffer->size_bytes = 0;
     int64_t last_offset = 0;
 
@@ -205,18 +205,16 @@ struct BindStream {
       if (!ArrowArrayViewIsNull(array_view->children[col], current_row)) {
         // Note that this Write() call currently writes the (int32_t) byte size of the
         // field in addition to the serialized value.
-        CHECK_NA_DETAIL(
-            INTERNAL,
-            bind_field_writers[col]->Write(&param_buffer.value, current_row, &na_error),
-            &na_error, error);
+        UNWRAP_NANOARROW(
+            na_error, Internal,
+            bind_field_writers[col]->Write(&param_buffer.value, current_row, &na_error));
       } else {
-        CHECK_NA(INTERNAL, ArrowBufferAppendInt32(&param_buffer.value, 0), error);
+        UNWRAP_ERRNO(Internal, ArrowBufferAppendInt32(&param_buffer.value, 0));
       }
 
       int64_t param_length = param_buffer->size_bytes - last_offset - sizeof(int32_t);
       if (param_length > (std::numeric_limits<int>::max)()) {
-        SetError(error, "Parameter %" PRId64 " serialized to >2GB of binary", col);
-        return ADBC_STATUS_INTERNAL;
+        return Status::Internal("Paramter ", col, "serialized to >2GB of binary");
       }
 
       param_lengths[col] = static_cast<int>(param_length);
@@ -241,42 +239,27 @@ struct BindStream {
 
     ExecStatusType pg_status = PQresultStatus(result);
     if (pg_status != PGRES_COMMAND_OK && pg_status != PGRES_TUPLES_OK) {
-      AdbcStatusCode code =
-          SetError(error, result, "[libpq] Failed to execute prepared statement: %s %s",
-                   PQresStatus(pg_status), PQerrorMessage(pg_conn));
+      Status status =
+          MakeStatus(result, "[libpq] Failed to execute prepared statement: {} {}",
+                     PQresStatus(pg_status), PQerrorMessage(pg_conn));
       PQclear(result);
-      return code;
+      return status;
     }
 
     *result_out = result;
-    return ADBC_STATUS_OK;
+    return Status::Ok();
   }
 
-  AdbcStatusCode Cleanup(PGconn* pg_conn, AdbcError* error) {
+  Status Cleanup(PGconn* pg_conn) {
     if (has_tz_field) {
-      std::string reset_query = "SET TIME ZONE '" + tz_setting + "'";
-      PGresult* reset_tz_result = PQexec(pg_conn, reset_query.c_str());
-      if (PQresultStatus(reset_tz_result) != PGRES_COMMAND_OK) {
-        AdbcStatusCode code =
-            SetError(error, reset_tz_result, "[libpq] Failed to reset time zone: %s",
-                     PQerrorMessage(pg_conn));
-        PQclear(reset_tz_result);
-        return code;
-      }
-      PQclear(reset_tz_result);
+      PqResultHelper reset(pg_conn, "SET TIME ZONE '" + tz_setting + "'");
+      UNWRAP_STATUS(reset.Execute());
 
-      PGresult* commit_result = PQexec(pg_conn, "COMMIT");
-      if (PQresultStatus(commit_result) != PGRES_COMMAND_OK) {
-        AdbcStatusCode code =
-            SetError(error, commit_result, "[libpq] Failed to commit transaction: %s",
-                     PQerrorMessage(pg_conn));
-        PQclear(commit_result);
-        return code;
-      }
-      PQclear(commit_result);
+      PqResultHelper commit(pg_conn, "COMMIT");
+      UNWRAP_STATUS(reset.Execute());
     }
 
-    return ADBC_STATUS_OK;
+    return Status::Ok();
   }
 
   AdbcStatusCode ExecuteCopy(PGconn* pg_conn, const PostgresTypeResolver& type_resolver,
