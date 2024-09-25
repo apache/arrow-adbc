@@ -635,8 +635,9 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   }
 
   PQclear(result);
-  RAISE_ADBC(bind_stream.ExecuteCopy(connection_->conn(), *connection_->type_resolver(),
-                                     rows_affected, error));
+  RAISE_STATUS(error,
+               bind_stream.ExecuteCopy(connection_->conn(), *connection_->type_resolver(),
+                                       rows_affected));
   return ADBC_STATUS_OK;
 }
 

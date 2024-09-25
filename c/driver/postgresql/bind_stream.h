@@ -262,22 +262,22 @@ struct BindStream {
     return Status::Ok();
   }
 
-  AdbcStatusCode ExecuteCopy(PGconn* pg_conn, const PostgresTypeResolver& type_resolver,
-                             int64_t* rows_affected, struct AdbcError* error) {
+  Status ExecuteCopy(PGconn* pg_conn, const PostgresTypeResolver& type_resolver,
+                     int64_t* rows_affected) {
     if (rows_affected) *rows_affected = 0;
 
     PostgresCopyStreamWriter writer;
-    CHECK_NA(INTERNAL, writer.Init(&bind_schema.value), error);
-    CHECK_NA_DETAIL(INTERNAL, writer.InitFieldWriters(type_resolver, &na_error),
-                    &na_error, error);
+    UNWRAP_ERRNO(Internal, writer.Init(&bind_schema.value));
+    UNWRAP_NANOARROW(na_error, Internal,
+                     writer.InitFieldWriters(type_resolver, &na_error));
 
-    CHECK_NA_DETAIL(INTERNAL, writer.WriteHeader(&na_error), &na_error, error);
+    UNWRAP_NANOARROW(na_error, Internal, writer.WriteHeader(&na_error));
 
     while (true) {
-      RAISE_STATUS(error, PullNextArray());
+      UNWRAP_STATUS(PullNextArray());
       if (!current->release) break;
 
-      CHECK_NA(INTERNAL, writer.SetArray(&current.value), error);
+      UNWRAP_ERRNO(Internal, writer.SetArray(&current.value));
 
       // build writer buffer
       int write_result;
@@ -287,42 +287,38 @@ struct BindStream {
 
       // check if not ENODATA at exit
       if (write_result != ENODATA) {
-        SetError(error, "Error occurred writing COPY data: %s", PQerrorMessage(pg_conn));
-        return ADBC_STATUS_IO;
+        return Status::IO("Error occurred writing COPY data: ", PQerrorMessage(pg_conn));
       }
 
-      RAISE_ADBC(FlushCopyWriterToConn(pg_conn, writer, error));
+      UNWRAP_STATUS(FlushCopyWriterToConn(pg_conn, writer));
 
       if (rows_affected) *rows_affected += current->length;
       writer.Rewind();
     }
 
     // If there were no arrays in the stream, we haven't flushed yet
-    RAISE_ADBC(FlushCopyWriterToConn(pg_conn, writer, error));
+    UNWRAP_STATUS(FlushCopyWriterToConn(pg_conn, writer));
 
     if (PQputCopyEnd(pg_conn, NULL) <= 0) {
-      SetError(error, "Error message returned by PQputCopyEnd: %s",
-               PQerrorMessage(pg_conn));
-      return ADBC_STATUS_IO;
+      return Status::IO("Error message returned by PQputCopyEnd: ",
+                        PQerrorMessage(pg_conn));
     }
 
     PGresult* result = PQgetResult(pg_conn);
     ExecStatusType pg_status = PQresultStatus(result);
     if (pg_status != PGRES_COMMAND_OK) {
-      AdbcStatusCode code =
-          SetError(error, result, "[libpq] Failed to execute COPY statement: %s %s",
-                   PQresStatus(pg_status), PQerrorMessage(pg_conn));
+      Status status =
+          MakeStatus(result, "[libpq] Failed to execute COPY statement: {} {}",
+                     PQresStatus(pg_status), PQerrorMessage(pg_conn));
       PQclear(result);
-      return code;
+      return status;
     }
 
     PQclear(result);
-    return ADBC_STATUS_OK;
+    return Status::Ok();
   }
 
-  AdbcStatusCode FlushCopyWriterToConn(PGconn* pg_conn,
-                                       const PostgresCopyStreamWriter& writer,
-                                       struct AdbcError* error) {
+  Status FlushCopyWriterToConn(PGconn* pg_conn, const PostgresCopyStreamWriter& writer) {
     // https://github.com/apache/arrow-adbc/issues/1921: PostgreSQL has a max
     // size for a single message that we need to respect (1 GiB - 1).  Since
     // the buffer can be chunked up as much as we want, go for 16 MiB as our
@@ -336,14 +332,13 @@ struct BindStream {
     while (remaining > 0) {
       int64_t to_write = std::min<int64_t>(remaining, kMaxCopyBufferSize);
       if (PQputCopyData(pg_conn, data, to_write) <= 0) {
-        SetError(error, "Error writing tuple field data: %s", PQerrorMessage(pg_conn));
-        return ADBC_STATUS_IO;
+        return Status::IO("Error writing tuple field data: ", PQerrorMessage(pg_conn));
       }
       remaining -= to_write;
       data += to_write;
     }
 
-    return ADBC_STATUS_OK;
+    return Status::Ok();
   }
 };
 }  // namespace adbcpq
