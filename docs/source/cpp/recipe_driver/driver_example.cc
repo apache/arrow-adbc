@@ -23,7 +23,12 @@
 /// the details of C callables and catalog/metadata functions that can be
 /// difficult to implement but are essential for efficiently leveraging
 /// the rest of the ADBC ecosystem.
-
+///
+/// At a high level, we'll be building a driver whose "database" is a directory
+/// where each "table" in the database is a file containing an Arrow IPC stream.
+/// Tables can be written using the bulk ingest feature and tables can be read
+/// with a simple query in the form ``SELECT * FROM (the file)``.
+///
 /// Installation
 /// ============
 ///
@@ -39,7 +44,7 @@
 ///    mamba install cmake compilers libadbc-driver-manager
 ///
 /// .. _conda-forge: https://conda-forge.org/
-
+///
 /// Building
 /// ========
 ///
@@ -54,7 +59,7 @@
 ///    ctest
 ///
 /// .. _CMake: https://cmake.org/
-
+///
 /// Building an ADBC Driver using C++
 /// =================================
 ///
