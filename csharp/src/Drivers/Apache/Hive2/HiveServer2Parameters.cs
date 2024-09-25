@@ -24,4 +24,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public const string None = "none";
         public const string Scalar = "scalar";
     }
+
+    public static class TlsOptions
+    {
+        public const string AllowInvalidCertificate = "allowinvalidcertificate";
+        public const string AllowInvalidHostnames = "allowinvalidhostnames";
+    }
 }
