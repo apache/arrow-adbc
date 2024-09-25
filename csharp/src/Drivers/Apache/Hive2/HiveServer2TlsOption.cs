@@ -20,7 +20,7 @@ using System;
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     [Flags]
-    public enum HiveServer2TlsOption
+    internal enum HiveServer2TlsOption
     {
         Empty = 0,
         AllowInvalidCertificate = 1,
@@ -32,7 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal const string SupportedList = TlsOptions.AllowInvalidCertificate + "," + TlsOptions.AllowInvalidHostnames;
 
-        public static HiveServer2TlsOption Parse(string? tlsOptions)
+        internal static HiveServer2TlsOption Parse(string? tlsOptions)
         {
             HiveServer2TlsOption options = HiveServer2TlsOption.Empty;
             if (tlsOptions == null) return options;

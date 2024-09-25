@@ -36,7 +36,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
 
         [SkippableTheory]
         [MemberData(nameof(GetParametersTlsOptionTestData))]
-        public void TestParametersTlsOptionParse(string? tlsOptions, HiveServer2TlsOption expected, Type? exceptionType = default)
+        internal void TestParametersTlsOptionParse(string? tlsOptions, HiveServer2TlsOption expected, Type? exceptionType = default)
         {
             if (exceptionType == default)
                 Assert.Equal(expected, TlsOptionsParser.Parse(tlsOptions));
