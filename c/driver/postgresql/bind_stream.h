@@ -27,7 +27,6 @@
 #include <arrow-adbc/adbc.h>
 
 #include "copy/writer.h"
-#include "driver/common/utils.h"
 #include "error.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
