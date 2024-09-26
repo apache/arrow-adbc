@@ -95,7 +95,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             FlightSqlTestEnvironment? environment = null;
 
             // the user can specify a test environment:
-            // - in the config,
+            // - in the config
             // - in the environment variable
             // - attempt to just use the first one from the config
             if (string.IsNullOrEmpty(testConfiguration.TestEnvironmentName))

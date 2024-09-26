@@ -57,6 +57,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public FlightSqlTestEnvironment()
         {
             this.RPCCallHeaders = new Dictionary<string, string>();
+            this.TableTypes = new List<string>();
             this.SupportsWriteUpdate = false;
             this.SupportsCatalogs = false;
         }
@@ -105,5 +106,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         [JsonPropertyName("supportsCatalogs")]
         public bool SupportsCatalogs { get; set; }
+
+        [JsonPropertyName("tableTypes")]
+        public List<string> TableTypes { get; set; }
     }
 }

@@ -40,7 +40,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         readonly AdbcDriver _adbcDriver;
         readonly AdbcDatabase _database;
         readonly AdbcConnection _connection;
-        readonly List<string> _tableTypes = ["TABLE", "SYSTEM_TABLE", "VIEW"];
+        readonly List<string> _tableTypes;
 
         public static IEnumerable<object[]> GetPatterns(string? namePattern)
         {
@@ -77,6 +77,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
             _testConfiguration = FlightSqlTestingUtils.LoadFlightSqlTestConfiguration();
             _environment = FlightSqlTestingUtils.GetTestEnvironment(_testConfiguration);
+            _tableTypes = _environment.TableTypes;
 
             Dictionary<string, string> parameters = new Dictionary<string, string>();
             Dictionary<string, string> options = new Dictionary<string, string>();
@@ -122,7 +123,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(1)]
         public void AcceptPutNotImplemented()
         {
-            Skip.If(_environment.SupportsWriteUpdate != true);
+            Skip.If(_environment.SupportsWriteUpdate);
 
             string[] queries = FlightSqlTestingUtils.GetQueries(_environment);
 
