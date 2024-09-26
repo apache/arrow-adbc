@@ -168,9 +168,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     if (policyErrors == SslPolicyErrors.None) return true;
 
                     return
-                       (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowInvalidCertificate))
-                    && (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNotAvailable) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowInvalidCertificate))
-                    && (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowInvalidHostnames));
+                       (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowSelfSigned))
+                    && (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowHostnameMismatch));
                 };
             }
 

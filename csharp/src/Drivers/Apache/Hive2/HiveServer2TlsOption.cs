@@ -23,14 +23,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     internal enum HiveServer2TlsOption
     {
         Empty = 0,
-        AllowInvalidCertificate = 1,
-        AllowInvalidHostnames = 2,
+        AllowSelfSigned = 1,
+        AllowHostnameMismatch = 2,
     }
 
     internal static class TlsOptionsParser
     {
-
-        internal const string SupportedList = TlsOptions.AllowInvalidCertificate + "," + TlsOptions.AllowInvalidHostnames;
+        internal const string SupportedList = TlsOptions.AllowSelfSigned + "," + TlsOptions.AllowHostnameMismatch;
 
         internal static HiveServer2TlsOption Parse(string? tlsOptions)
         {
@@ -43,8 +42,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 options |= (tlsOption?.Trim().ToLowerInvariant()) switch
                 {
                     null or "" => HiveServer2TlsOption.Empty,
-                    TlsOptions.AllowInvalidCertificate => HiveServer2TlsOption.AllowInvalidCertificate,
-                    TlsOptions.AllowInvalidHostnames => HiveServer2TlsOption.AllowInvalidHostnames,
+                    TlsOptions.AllowSelfSigned => HiveServer2TlsOption.AllowSelfSigned,
+                    TlsOptions.AllowHostnameMismatch => HiveServer2TlsOption.AllowHostnameMismatch,
                     _ => throw new ArgumentOutOfRangeException(nameof(tlsOptions), tlsOption, "Invalid or unsupported TLS option"),
                 };
             }

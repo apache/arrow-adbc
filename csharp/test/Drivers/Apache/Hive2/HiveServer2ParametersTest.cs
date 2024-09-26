@@ -76,18 +76,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             yield return new object?[] { "", HiveServer2TlsOption.Empty};
             yield return new object?[] { " ", HiveServer2TlsOption.Empty };
             // Explicit
-            yield return new object?[] { $"{TlsOptions.AllowInvalidCertificate}", HiveServer2TlsOption.AllowInvalidCertificate };
-            yield return new object?[] { $"{TlsOptions.AllowInvalidHostnames}", HiveServer2TlsOption.AllowInvalidHostnames };
+            yield return new object?[] { $"{TlsOptions.AllowSelfSigned}", HiveServer2TlsOption.AllowSelfSigned };
+            yield return new object?[] { $"{TlsOptions.AllowHostnameMismatch}", HiveServer2TlsOption.AllowHostnameMismatch };
             // Ignore empty
-            yield return new object?[] { $",{TlsOptions.AllowInvalidCertificate}", HiveServer2TlsOption.AllowInvalidCertificate };
-            yield return new object?[] { $",{TlsOptions.AllowInvalidHostnames},", HiveServer2TlsOption.AllowInvalidHostnames };
+            yield return new object?[] { $",{TlsOptions.AllowSelfSigned}", HiveServer2TlsOption.AllowSelfSigned };
+            yield return new object?[] { $",{TlsOptions.AllowHostnameMismatch},", HiveServer2TlsOption.AllowHostnameMismatch };
             // Combined, embedded space, mixed-case
-            yield return new object?[] { $"{TlsOptions.AllowInvalidCertificate},{TlsOptions.AllowInvalidHostnames}", HiveServer2TlsOption.AllowInvalidCertificate | HiveServer2TlsOption.AllowInvalidHostnames };
-            yield return new object?[] { $"{TlsOptions.AllowInvalidHostnames},{TlsOptions.AllowInvalidCertificate}", HiveServer2TlsOption.AllowInvalidCertificate  | HiveServer2TlsOption.AllowInvalidHostnames };
-            yield return new object?[] { $" {TlsOptions.AllowInvalidHostnames} , {TlsOptions.AllowInvalidCertificate} ", HiveServer2TlsOption.AllowInvalidCertificate | HiveServer2TlsOption.AllowInvalidHostnames };
-            yield return new object?[] { $"{TlsOptions.AllowInvalidCertificate.ToUpperInvariant()},{TlsOptions.AllowInvalidHostnames.ToUpperInvariant()}", HiveServer2TlsOption.AllowInvalidCertificate | HiveServer2TlsOption.AllowInvalidHostnames };
+            yield return new object?[] { $"{TlsOptions.AllowSelfSigned},{TlsOptions.AllowHostnameMismatch}", HiveServer2TlsOption.AllowSelfSigned | HiveServer2TlsOption.AllowHostnameMismatch };
+            yield return new object?[] { $"{TlsOptions.AllowHostnameMismatch},{TlsOptions.AllowSelfSigned}", HiveServer2TlsOption.AllowSelfSigned  | HiveServer2TlsOption.AllowHostnameMismatch };
+            yield return new object?[] { $" {TlsOptions.AllowHostnameMismatch} , {TlsOptions.AllowSelfSigned} ", HiveServer2TlsOption.AllowSelfSigned | HiveServer2TlsOption.AllowHostnameMismatch };
+            yield return new object?[] { $"{TlsOptions.AllowSelfSigned.ToUpperInvariant()},{TlsOptions.AllowHostnameMismatch.ToUpperInvariant()}", HiveServer2TlsOption.AllowSelfSigned | HiveServer2TlsOption.AllowHostnameMismatch };
             // Invalid
-            yield return new object?[] { $"xxx,{TlsOptions.AllowInvalidCertificate.ToUpperInvariant()},{TlsOptions.AllowInvalidHostnames.ToUpperInvariant()}", HiveServer2TlsOption.Empty, typeof(ArgumentOutOfRangeException) };
+            yield return new object?[] { $"xxx,{TlsOptions.AllowSelfSigned.ToUpperInvariant()},{TlsOptions.AllowHostnameMismatch.ToUpperInvariant()}", HiveServer2TlsOption.Empty, typeof(ArgumentOutOfRangeException) };
         }
     }
 }

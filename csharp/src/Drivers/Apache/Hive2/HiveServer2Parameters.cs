@@ -27,7 +27,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
     public static class TlsOptions
     {
-        public const string AllowInvalidCertificate = "allowinvalidcertificate";
-        public const string AllowInvalidHostnames = "allowinvalidhostnames";
+        public const string AllowSelfSigned = "allow_self_signed";
+        public const string AllowHostnameMismatch = "allow_hostname_mismatch";
     }
 }
