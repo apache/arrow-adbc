@@ -265,7 +265,9 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
     return schemas[next_schema++];
   }
 
-  Status LoadTables(std::string_view catalog, std::string_view schema) override {
+  Status LoadTables(std::string_view catalog, std::string_view schema,
+                    std::optional<std::string_view> table_filter,
+                    const std::vector<std::string_view>& table_types) override {
     next_table = 0;
     tables.clear();
     if (!schema.empty()) return status::Ok();

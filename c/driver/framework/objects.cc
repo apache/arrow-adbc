@@ -323,7 +323,7 @@ struct GetObjectsBuilder {
   }
 
   Status AppendTables(std::string_view catalog, std::string_view schema) {
-    UNWRAP_STATUS(helper->LoadTables(catalog, schema));
+    UNWRAP_STATUS(helper->LoadTables(catalog, schema, table_filter, table_types));
     while (true) {
       UNWRAP_RESULT(auto maybe_table, helper->NextTable());
       if (!maybe_table.has_value()) break;

@@ -121,7 +121,9 @@ struct GetObjectsHelper {
 
   virtual Result<std::optional<std::string_view>> NextSchema() { return std::nullopt; }
 
-  virtual Status LoadTables(std::string_view catalog, std::string_view schema) {
+  virtual Status LoadTables(std::string_view catalog, std::string_view schema,
+                            std::optional<std::string_view> table_filter,
+                            const std::vector<std::string_view>& table_types) {
     return status::NotImplemented("GetObjects at depth = table");
   };
 
