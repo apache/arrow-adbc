@@ -88,12 +88,10 @@ struct PqRecord {
 class PqResultRow {
  public:
   PqResultRow() : result_(nullptr), row_num_(-1) {}
-  PqResultRow(PGresult* result, int row_num) : result_(result), row_num_(row_num) {
-    ncols_ = PQnfields(result);
-  }
+  PqResultRow(PGresult* result, int row_num) : result_(result), row_num_(row_num) {}
 
   PqRecord operator[](const int& col_num) const {
-    assert(col_num < ncols_);
+    assert(col_num < PQnfields(result_));
     const char* data = PQgetvalue(result_, row_num_, col_num);
     const int len = PQgetlength(result_, row_num_, col_num);
     const bool is_null = PQgetisnull(result_, row_num_, col_num);
@@ -108,7 +106,6 @@ class PqResultRow {
  private:
   PGresult* result_ = nullptr;
   int row_num_;
-  int ncols_;
 };
 
 // Helper to manager the lifecycle of a PQResult. The query argument
@@ -171,7 +168,7 @@ class PqResultHelper {
     return PQfname(result_, column_number);
   }
   Oid FieldType(int column_number) const { return PQftype(result_, column_number); }
-  PqResultRow Row(int i = 0) { return PqResultRow(result_, i); }
+  PqResultRow Row(int i) { return PqResultRow(result_, i); }
 
   class iterator {
     const PqResultHelper& outer_;

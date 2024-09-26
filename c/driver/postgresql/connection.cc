@@ -192,17 +192,23 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
               std::optional<std::string_view> schema_filter,
               std::optional<std::string_view> table_filter,
               std::optional<std::string_view> column_filter,
-              const std::vector<std::string_view>& table_types) {
+              const std::vector<std::string_view>& table_types) override {
     return Status::Ok();
   }
 
-  Status LoadCatalogs() {
-    UNWRAP_STATUS(all_catalogs_.Execute());
-    next_catalog_ = all_catalogs_.Row(-1);
+  Status LoadCatalogs(std::optional<std::string_view> catalog_filter) override {
+    if (catalog_filter.has_value()) {
+      UNWRAP_STATUS(some_catalogs_.Execute({std::string(*catalog_filter)}));
+      next_catalog_ = some_catalogs_.Row(-1);
+    } else {
+      UNWRAP_STATUS(all_catalogs_.Execute());
+      next_catalog_ = all_catalogs_.Row(-1);
+    }
+
     return Status::Ok();
   };
 
-  Result<std::optional<std::string_view>> NextCatalog() {
+  Result<std::optional<std::string_view>> NextCatalog() override {
     next_catalog_ = next_catalog_.Next();
     if (!next_catalog_.IsValid()) {
       return std::nullopt;
@@ -211,22 +217,26 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
     return next_catalog_[0].value();
   }
 
-  // Status LoadSchemas(std::string_view catalog) {
-  //   UNWRAP_STATUS(all_schemas_.Execute());
-  //   schemas_ = std::make_unique<PqResultHelper::iterator>(all_schemas_);
-  //   return Status::Ok();
-  // };
+  Status LoadSchemas(std::string_view catalog,
+                     std::optional<std::string_view> schema_filter) override {
+    if (schema_filter.has_value()) {
+      UNWRAP_STATUS(some_schemas_.Execute({std::string(*schema_filter)}));
+      next_schema_ = some_schemas_.Row(-1);
+    } else {
+      UNWRAP_STATUS(all_schemas_.Execute());
+      next_schema_ = all_schemas_.Row(-1);
+    }
+    return Status::Ok();
+  };
 
-  // Result<std::optional<std::string_view>> NextSchema() {
-  //   auto& it = *schemas_;
-  //   if (it == it.end()) {
-  //     return std::nullopt;
-  //   }
+  Result<std::optional<std::string_view>> NextSchema() override {
+    next_schema_ = next_schema_.Next();
+    if (!next_schema_.IsValid()) {
+      return std::nullopt;
+    }
 
-  //   const auto& row = *it;
-  //   ++it;
-  //   return row[0].value();
-  // }
+    return next_schema_[0].value();
+  }
 
   // Status LoadTables(std::string_view catalog, std::string_view schema) {
   //   UNWRAP_STATUS(some_tables_.Execute({std::string(schema)}));
@@ -976,7 +986,7 @@ AdbcStatusCode PostgresConnection::GetObjects(
   struct ArrowArray array;
   std::memset(&array, 0, sizeof(array));
 
-  if (c_depth == ADBC_OBJECT_DEPTH_CATALOGS) {
+  if (c_depth == ADBC_OBJECT_DEPTH_CATALOGS || c_depth == ADBC_OBJECT_DEPTH_DB_SCHEMAS) {
     PostgresGetObjectsHelper new_helper(conn_);
 
     const auto catalog_filter =

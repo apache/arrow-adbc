@@ -108,13 +108,14 @@ struct GetObjectsHelper {
     return status::NotImplemented("GetObjects");
   }
 
-  virtual Status LoadCatalogs() {
+  virtual Status LoadCatalogs(std::optional<std::string_view> catalog_filter) {
     return status::NotImplemented("GetObjects at depth = catalog");
   };
 
   virtual Result<std::optional<std::string_view>> NextCatalog() { return std::nullopt; }
 
-  virtual Status LoadSchemas(std::string_view catalog) {
+  virtual Status LoadSchemas(std::string_view catalog,
+                             std::optional<std::string_view> schema_filter) {
     return status::NotImplemented("GetObjects at depth = schema");
   };
 

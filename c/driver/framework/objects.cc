@@ -284,7 +284,7 @@ struct GetObjectsBuilder {
   }
 
   Status AppendCatalogs() {
-    UNWRAP_STATUS(helper->LoadCatalogs());
+    UNWRAP_STATUS(helper->LoadCatalogs(catalog_filter));
     while (true) {
       UNWRAP_RESULT(auto maybe_catalog, helper->NextCatalog());
       if (!maybe_catalog.has_value()) break;
@@ -302,7 +302,7 @@ struct GetObjectsBuilder {
   }
 
   Status AppendSchemas(std::string_view catalog) {
-    UNWRAP_STATUS(helper->LoadSchemas(catalog));
+    UNWRAP_STATUS(helper->LoadSchemas(catalog, schema_filter));
     while (true) {
       UNWRAP_RESULT(auto maybe_schema, helper->NextSchema());
       if (!maybe_schema.has_value()) break;

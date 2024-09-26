@@ -245,14 +245,17 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
     return status::Ok();
   }
 
-  Status LoadCatalogs() override { return status::Ok(); };
+  Status LoadCatalogs(std::optional<std::string_view> catalog_filter) override {
+    return status::Ok();
+  };
 
   Result<std::optional<std::string_view>> NextCatalog() override {
     if (next_catalog >= catalogs.size()) return std::nullopt;
     return catalogs[next_catalog++];
   }
 
-  Status LoadSchemas(std::string_view catalog) override {
+  Status LoadSchemas(std::string_view catalog,
+                     std::optional<std::string_view> schema_filter) override {
     next_schema = 0;
     return status::Ok();
   };
