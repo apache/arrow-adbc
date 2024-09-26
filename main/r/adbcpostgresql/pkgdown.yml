@@ -2,7 +2,7 @@ pandoc: '3.4'
 pkgdown: 2.1.1
 pkgdown_sha: ~
 articles: {}
-last_built: 2024-09-25T17:59Z
+last_built: 2024-09-26T21:13Z
 urls:
   reference: https://arrow.apache.org/adbc/current/r/adbcpostgresql/reference
   article: https://arrow.apache.org/adbc/current/r/adbcpostgresql/articles
