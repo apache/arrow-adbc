@@ -348,7 +348,7 @@ struct GetObjectsBuilder {
 
   Status AppendColumns(std::string_view catalog, std::string_view schema,
                        std::string_view table) {
-    UNWRAP_STATUS(helper->LoadColumns(catalog, schema, table));
+    UNWRAP_STATUS(helper->LoadColumns(catalog, schema, table, column_filter));
     while (true) {
       UNWRAP_RESULT(auto maybe_column, helper->NextColumn());
       if (!maybe_column.has_value()) break;
