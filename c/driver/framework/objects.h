@@ -130,7 +130,8 @@ struct GetObjectsHelper {
   virtual Result<std::optional<Table>> NextTable() { return std::nullopt; }
 
   virtual Status LoadColumns(std::string_view catalog, std::string_view schema,
-                             std::string_view table) {
+                             std::string_view table,
+                             std::optional<std::string_view> column_filter) {
     return status::NotImplemented("GetObjects at depth = column");
   };
 

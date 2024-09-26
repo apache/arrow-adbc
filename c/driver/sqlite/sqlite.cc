@@ -310,7 +310,8 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
   }
 
   Status LoadColumns(std::string_view catalog, std::string_view schema,
-                     std::string_view table) override {
+                     std::string_view table,
+                     std::optional<std::string_view> column_filter) override {
     // XXX: pragma_table_info doesn't appear to work with bind parameters
     // XXX: because we're saving the SqliteQuery, we also need to save the string builder
     columns_query.Reset();
