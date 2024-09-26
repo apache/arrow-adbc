@@ -218,10 +218,6 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
     std::string query =
         "SELECT DISTINCT name FROM pragma_database_list() WHERE name LIKE ?";
 
-    this->table_filter = table_filter;
-    this->column_filter = column_filter;
-    this->table_types = table_types;
-
     UNWRAP_STATUS(SqliteQuery::Scan(
         conn, query,
         [&](sqlite3_stmt* stmt) {
@@ -488,9 +484,6 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
   };
 
   sqlite3* conn = nullptr;
-  std::optional<std::string_view> table_filter;
-  std::optional<std::string_view> column_filter;
-  std::vector<std::string_view> table_types;
   std::vector<std::string> catalogs;
   std::vector<std::string> schemas;
   std::vector<std::pair<std::string, std::string>> tables;
