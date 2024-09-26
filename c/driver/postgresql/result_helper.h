@@ -87,6 +87,7 @@ struct PqRecord {
 // row of a PGresult
 class PqResultRow {
  public:
+  PqResultRow() : result_(nullptr), row_num_(-1) {}
   PqResultRow(PGresult* result, int row_num) : result_(result), row_num_(row_num) {
     ncols_ = PQnfields(result);
   }
@@ -99,6 +100,10 @@ class PqResultRow {
 
     return PqRecord{data, len, is_null};
   }
+
+  bool IsValid() { return result_ && row_num_ >= 0 && row_num_ < PQntuples(result_); }
+
+  PqResultRow Next() { return PqResultRow(result_, row_num_ + 1); }
 
  private:
   PGresult* result_ = nullptr;
@@ -166,6 +171,7 @@ class PqResultHelper {
     return PQfname(result_, column_number);
   }
   Oid FieldType(int column_number) const { return PQftype(result_, column_number); }
+  PqResultRow Row(int i = 0) { return PqResultRow(result_, i); }
 
   class iterator {
     const PqResultHelper& outer_;
