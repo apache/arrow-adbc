@@ -69,7 +69,7 @@ static const std::string kSchemaQueryAll =
 // schema_name
 static const std::string kSchemaQuery = kSchemaQueryAll + " AND nspname = $1";
 
-// schema_name
+// schema_name, relkind
 static const std::string kTablesQueryAll =
     "SELECT c.relname, CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' "
     "WHEN 'm' THEN 'materialized view' WHEN 't' THEN 'TOAST table' "
@@ -77,10 +77,11 @@ static const std::string kTablesQueryAll =
     "AS reltype FROM pg_catalog.pg_class c "
     "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
     "WHERE c.relkind IN ('r','v','m','t','f','p') "
-    "AND pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = $1";
+    "AND pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = $1 AND c.relkind = "
+    "ANY($2)";
 
-// schema_name, table_name
-static const std::string kTablesQuery = kTablesQueryAll + " AND c.relname LIKE $2";
+// schema_name, relkind, table_name
+static const std::string kTablesQuery = kTablesQueryAll + " AND c.relname LIKE $3";
 
 // schema_name, table_name
 static const std::string kColumnsQueryAll =
@@ -238,22 +239,60 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
     return next_schema_[0].value();
   }
 
-  // Status LoadTables(std::string_view catalog, std::string_view schema) {
-  //   UNWRAP_STATUS(some_tables_.Execute({std::string(schema)}));
-  //   tables_ = std::make_unique<PqResultHelper::iterator>(some_tables_);
-  //   return Status::Ok();
-  // };
+  Status LoadTables(std::string_view catalog, std::string_view schema,
+                    std::optional<std::string_view> table_filter,
+                    const std::vector<std::string_view>& table_types) override {
+    std::stringstream table_types_bind;
+    table_types_bind << "{";
+    int table_types_bind_len = 0;
 
-  // Result<std::optional<Table>> NextTable() {
-  //   auto& it = *tables_;
-  //   if (it == it.end()) {
-  //     return std::nullopt;
-  //   }
+    if (table_types.empty()) {
+      for (const auto& item : kPgTableTypes) {
+        if (table_types_bind_len > 0) {
+          table_types_bind << ", ";
+        }
 
-  //   const auto& row = *it;
-  //   ++it;
-  //   return Table{row[0].value(), row[1].value()};
-  // }
+        table_types_bind << "'" << item.second << "'";
+        table_types_bind_len++;
+      }
+    } else {
+      for (auto type : table_types) {
+        const auto maybe_item = kPgTableTypes.find(std::string(type));
+        if (maybe_item == kPgTableTypes.end()) {
+          continue;
+        }
+
+        if (table_types_bind_len > 0) {
+          table_types_bind << ", ";
+        }
+
+        table_types_bind << "'" << maybe_item->second << "'";
+        table_types_bind_len++;
+      }
+    }
+
+    table_types_bind << "}";
+
+    if (table_filter.has_value()) {
+      UNWRAP_STATUS(some_tables_.Execute(
+          {std::string(schema), table_types_bind.str(), std::string(*table_filter)}));
+      next_table_ = some_tables_.Row(-1);
+    } else {
+      UNWRAP_STATUS(all_tables_.Execute({std::string(schema), table_types_bind.str()}));
+      next_table_ = all_tables_.Row(-1);
+    }
+
+    return Status::Ok();
+  };
+
+  Result<std::optional<Table>> NextTable() override {
+    next_table_ = next_table_.Next();
+    if (!next_table_.IsValid()) {
+      return std::nullopt;
+    }
+
+    return Table{next_table_[0].value(), next_table_[1].value()};
+  }
 
   // Status LoadColumns(std::string_view catalog, std::string_view schema,
   //                    std::string_view table) {
@@ -986,7 +1025,8 @@ AdbcStatusCode PostgresConnection::GetObjects(
   struct ArrowArray array;
   std::memset(&array, 0, sizeof(array));
 
-  if (c_depth == ADBC_OBJECT_DEPTH_CATALOGS || c_depth == ADBC_OBJECT_DEPTH_DB_SCHEMAS) {
+  if (c_depth == ADBC_OBJECT_DEPTH_CATALOGS || c_depth == ADBC_OBJECT_DEPTH_DB_SCHEMAS ||
+      c_depth == ADBC_OBJECT_DEPTH_TABLES) {
     PostgresGetObjectsHelper new_helper(conn_);
 
     const auto catalog_filter =
