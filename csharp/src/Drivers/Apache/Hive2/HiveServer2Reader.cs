@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Buffers.Text;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Globalization;
@@ -29,12 +30,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2Reader : IArrowArrayStream
     {
-        private const char AsciiZero = '0';
+        private const byte AsciiZero = (byte)'0';
         private const int AsciiDigitMaxIndex = '9' - AsciiZero;
-        private const char AsciiDash = '-';
-        private const char AsciiSpace = ' ';
-        private const char AsciiColon = ':';
-        private const char AsciiPeriod = '.';
+        private const byte AsciiDash = (byte)'-';
+        private const byte AsciiSpace = (byte)' ';
+        private const byte AsciiColon = (byte)':';
+        private const byte AsciiPeriod = (byte)'.';
 
         private HiveServer2Statement? _statement;
         private readonly long _batchSize;
@@ -124,46 +125,44 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private static Date32Array ConvertToDate32(StringArray array, IArrowType _)
         {
             var resultArray = new Date32Array.Builder();
-            foreach (string item in (IReadOnlyCollection<string>)array)
+            int length = array.Length;
+            for (int i = 0; i < length; i++)
             {
-                if (item == null)
+                // Work with UTF8 string.
+                ReadOnlySpan<byte> date = array.GetBytes(i, out bool isNull);
+                if (isNull)
                 {
                     resultArray.AppendNull();
-                    continue;
-                }
 
-                ReadOnlySpan<char> date = item.AsSpan();
-                bool isKnownFormat = date.Length >= 8 && date[4] == AsciiDash && date[7] == AsciiDash;
-                if (isKnownFormat)
+                }
+                else if (TryParse(date, out DateTime dateTime)
+                    || Utf8Parser.TryParse(date, out dateTime, out int _, standardFormat: 'O')
+                    || DateTime.TryParse(array.GetString(i), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out dateTime))
                 {
-                    DateTime value = ConvertToDateTime(date);
-                    resultArray.Append(value);
+                    resultArray.Append(dateTime);
                 }
                 else
                 {
-                    resultArray.Append(DateTime.Parse(item, CultureInfo.InvariantCulture));
+                    throw new FormatException($"unable to convert value '{array.GetString(i)}' to DateTime");
                 }
             }
 
             return resultArray.Build();
         }
 
-        private static DateTime ConvertToDateTime(ReadOnlySpan<char> date)
+        private static bool TryParse(ReadOnlySpan<byte> date, out DateTime dateTime)
         {
-            int year;
-            int month;
-            int day;
-#if NETCOREAPP
-            year = int.Parse(date.Slice(0, 4));
-            month = int.Parse(date.Slice(5, 2));
-            day = int.Parse(date.Slice(8, 2));
-#else
-            year = int.Parse(date.Slice(0, 4).ToString());
-            month = int.Parse(date.Slice(5, 2).ToString());
-            day = int.Parse(date.Slice(8, 2).ToString());
-#endif
-            DateTime value = new(year, month, day);
-            return value;
+            if (date.Length >= 10 && date[4] == AsciiDash && date[7] == AsciiDash
+                && Utf8Parser.TryParse(date.Slice(0), out int year, out _)
+                && Utf8Parser.TryParse(date.Slice(5), out int month, out _)
+                && Utf8Parser.TryParse(date.Slice(8), out int day, out _))
+            {
+                dateTime = new(year, month, day);
+                return true;
+            }
+
+            dateTime = default;
+            return false;
         }
 
         private static Decimal128Array ConvertToDecimal128(StringArray array, IArrowType schemaType)
@@ -172,16 +171,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Decimal128Type decimalType = (Decimal128Type)schemaType;
             var resultArray = new Decimal128Array.Builder(decimalType);
             Span<byte> buffer = stackalloc byte[decimalType.ByteWidth];
-            foreach (string item in (IReadOnlyList<string>)array)
+
+            int length = array.Length;
+            for (int i = 0; i < length; i++)
             {
-                if (item == null)
+                // Work with UTF8 string.
+                ReadOnlySpan<byte> item = array.GetBytes(i, out bool isNull);
+                if (isNull)
                 {
                     resultArray.AppendNull();
-                    continue;
                 }
-
                 // Try to parse the value into a decimal because it is the most performant and handles the exponent syntax. But this might overflow.
-                if (decimal.TryParse(item, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal decimalValue))
+                else if (Utf8Parser.TryParse(item, out decimal decimalValue, out int _))
                 {
                     resultArray.Append(new SqlDecimal(decimalValue));
                 }
@@ -198,80 +199,96 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             // Match the precision of the server
             var resultArrayBuilder = new TimestampArray.Builder(TimeUnit.Microsecond);
-            foreach (string item in (IReadOnlyList<string>)array)
+            for (int i = 0; i < array.Length; i++)
             {
-                if (item == null)
+                // Work with UTF8 string.
+                ReadOnlySpan<byte> date = array.GetBytes(i, out bool isNull);
+                if (isNull)
                 {
                     resultArrayBuilder.AppendNull();
-                    continue;
                 }
-
-                ReadOnlySpan<char> date = item.AsSpan();
-                bool isKnownFormat = date.Length >= 17 && date[4] == AsciiDash && date[7] == AsciiDash && date[10] == AsciiSpace && date[13] == AsciiColon && date[16] == AsciiColon;
-                if (isKnownFormat)
+                else if (TryParse(date, out DateTimeOffset dateValue)
+                    || Utf8Parser.TryParse(date, out dateValue, out int _, standardFormat: 'O')
+                    || DateTimeOffset.TryParse(array.GetString(i), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out dateValue))
                 {
-                    DateTimeOffset value = ConvertToDateTimeOffset(date);
-                    resultArrayBuilder.Append(value);
+                    resultArrayBuilder.Append(dateValue);
                 }
                 else
                 {
-                    DateTimeOffset value = DateTimeOffset.Parse(item, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal);
-                    resultArrayBuilder.Append(value);
+                    throw new FormatException($"unable to convert value '{array.GetString(i)}' to DateTimeOffset");
                 }
             }
+
             return resultArrayBuilder.Build();
         }
 
-        private static DateTimeOffset ConvertToDateTimeOffset(ReadOnlySpan<char> date)
+        private static bool TryParse(ReadOnlySpan<byte> date, out DateTimeOffset dateValue)
         {
-            int year;
-            int month;
-            int day;
-            int hour;
-            int minute;
-            int second;
-#if NETCOREAPP
-            year = int.Parse(date.Slice(0, 4));
-            month = int.Parse(date.Slice(5, 2));
-            day = int.Parse(date.Slice(8, 2));
-            hour = int.Parse(date.Slice(11, 2));
-            minute = int.Parse(date.Slice(14, 2));
-            second = int.Parse(date.Slice(17, 2));
-#else
-            year = int.Parse(date.Slice(0, 4).ToString());
-            month = int.Parse(date.Slice(5, 2).ToString());
-            day = int.Parse(date.Slice(8, 2).ToString());
-            hour = int.Parse(date.Slice(11, 2).ToString());
-            minute = int.Parse(date.Slice(14, 2).ToString());
-            second = int.Parse(date.Slice(17, 2).ToString());
-#endif
-            DateTimeOffset dateValue = new(year, month, day, hour, minute, second, TimeSpan.Zero);
+            const int YearMonthSepIndex = 4;
+            const int MonthDaySepIndex = 7;
+            const int KnownFormatLength = 19;
+            const int DayHourSepIndex = 10;
+            const int HourMinuteSepIndex = 13;
+            const int MinuteSecondSepIndex = 16;
+            const int YearIndex = 0;
+            const int MonthIndex = 5;
+            const int DayIndex = 8;
+            const int HourIndex = 11;
+            const int MinuteIndex = 14;
+            const int SecondIndex = 17;
+            const int SecondSubsecondSepIndex = 19;
+            const int SubsecondIndex = 20;
+            const int MillisecondDecimalPlaces = 3;
+
+            bool isKnownFormat = date.Length >= KnownFormatLength
+                && date[YearMonthSepIndex] == AsciiDash
+                && date[MonthDaySepIndex] == AsciiDash
+                && date[DayHourSepIndex] == AsciiSpace
+                && date[HourMinuteSepIndex] == AsciiColon
+                && date[MinuteSecondSepIndex] == AsciiColon;
+
+            if (!isKnownFormat
+                || !Utf8Parser.TryParse(date.Slice(YearIndex), out int year, out _)
+                || !Utf8Parser.TryParse(date.Slice(MonthIndex), out int month, out _)
+                || !Utf8Parser.TryParse(date.Slice(DayIndex), out int day, out _)
+                || !Utf8Parser.TryParse(date.Slice(HourIndex), out int hour, out _)
+                || !Utf8Parser.TryParse(date.Slice(MinuteIndex), out int minute, out _)
+                || !Utf8Parser.TryParse(date.Slice(SecondIndex), out int second, out _))
+            {
+                dateValue = default;
+                return false;
+            }
+
+            dateValue = new(year, month, day, hour, minute, second, TimeSpan.Zero);
+
+            // Retrieve subseconds, if available
             int length = date.Length;
-            if (length >= 20 && date[19] == AsciiPeriod)
+            if (length > SubsecondIndex && date[SecondSubsecondSepIndex] == AsciiPeriod)
             {
                 int start = -1;
-                int end = 20;
+                int end = SubsecondIndex;
                 while (end < length && (uint)(date[end] - AsciiZero) <= AsciiDigitMaxIndex)
                 {
                     if (start == -1) start = end;
                     end++;
                 }
-                int subSeconds = 0;
+
                 int subSecondsLength = start != -1 ? end - start : 0;
                 if (subSecondsLength > 0)
                 {
-#if NETCOREAPP
-                    subSeconds = int.Parse(date.Slice(start, subSecondsLength));
-#else
-                    subSeconds = int.Parse(date.Slice(start, subSecondsLength).ToString());
-#endif
+                    if (!Utf8Parser.TryParse(date.Slice(start, subSecondsLength), out int subSeconds, out _))
+                    {
+                        dateValue = default;
+                        return false;
+                    }
+
+                    double factorOfMilliseconds = Math.Pow(10, subSecondsLength - MillisecondDecimalPlaces);
+                    long ticks = (long)(subSeconds * (TimeSpan.TicksPerMillisecond / factorOfMilliseconds));
+                    dateValue = dateValue.AddTicks(ticks);
                 }
-                double factorOfMilliseconds = Math.Pow(10, subSecondsLength - 3);
-                long ticks = (long)(subSeconds * (TimeSpan.TicksPerMillisecond / factorOfMilliseconds));
-                dateValue = dateValue.AddTicks(ticks);
             }
 
-            return dateValue;
+            return true;
         }
     }
 }
