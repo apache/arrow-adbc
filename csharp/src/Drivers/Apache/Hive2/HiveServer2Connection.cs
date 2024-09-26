@@ -73,6 +73,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal DataTypeConversion DataTypeConversion { get; set; } = DataTypeConversion.None;
 
+        protected internal HiveServer2TlsOption TlsOptions { get; set; } = HiveServer2TlsOption.Empty;
+
         protected abstract Task<TTransport> CreateTransportAsync();
 
         protected abstract Task<TProtocol> CreateProtocolAsync(TTransport transport);
