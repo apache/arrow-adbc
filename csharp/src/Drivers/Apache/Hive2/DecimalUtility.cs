@@ -80,7 +80,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             tempBytes.CopyTo(bytes);
 #endif
             byte fillByte = (byte)(integerValue < 0 ? 255 : 0);
-            for (int i = 0; i < byteWidth; i++)
+            for (int i = bytesWritten; i < byteWidth; i++)
             {
                 bytes[i] = fillByte;
             }
@@ -88,9 +88,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private static BigInteger ToBigInteger(ReadOnlySpan<byte> value, int precision, int scale)
         {
-            BigInteger integerValue;
             ReadOnlySpan<byte> significantValue = GetSignificantValue(value, precision, scale);
-            integerValue = BigInteger.Parse(Encoding.UTF8.GetString(significantValue));
+            BigInteger integerValue = BigInteger.Parse(Encoding.UTF8.GetString(significantValue));
             return integerValue;
         }
 

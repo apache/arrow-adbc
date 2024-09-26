@@ -182,7 +182,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     resultArray.AppendNull();
                 }
                 // Try to parse the value into a decimal because it is the most performant and handles the exponent syntax. But this might overflow.
-                else if (Utf8Parser.TryParse(item, out decimal decimalValue, out int _))
+                else if (Utf8Parser.TryParse(item, out decimal decimalValue, out int _, standardFormat: 'E'))
                 {
                     resultArray.Append(new SqlDecimal(decimalValue));
                 }
@@ -199,7 +199,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             // Match the precision of the server
             var resultArrayBuilder = new TimestampArray.Builder(TimeUnit.Microsecond);
-            for (int i = 0; i < array.Length; i++)
+            int length = array.Length;
+            for (int i = 0; i < length; i++)
             {
                 // Work with UTF8 string.
                 ReadOnlySpan<byte> date = array.GetBytes(i, out bool isNull);

@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Buffers.Text;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Diagnostics;
@@ -52,36 +53,37 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             if (expectedDecimal != null) Assert.Equal(expectedDecimal, actualDecimal);
         }
 
-        [Fact()]
+        [Fact(Skip = "Run manually to confirm equivalent performance")]
         public void TestConvertDecimalPerformance()
         {
             Stopwatch stopwatch = new();
 
             int testCount = 1000000;
-            string testValue = "99999999999999999999999999999999999999";
+            ReadOnlySpan<byte> testValue = "99999999999999999999999999999999999999"u8;
+            string testValueString = "99999999999999999999999999999999999999";
             int byteWidth = 16;
             byte[] buffer = new byte[byteWidth];
             Decimal128Array.Builder builder = new(new Types.Decimal128Type(38, 0));
             stopwatch.Restart();
             for (int i = 0; i < testCount; i++)
             {
-                if (decimal.TryParse(testValue, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out decimal actualDecimal))
+                if (Utf8Parser.TryParse(testValue, out decimal actualDecimal, out _, standardFormat: 'E'))
                 {
                     builder.Append(new SqlDecimal(actualDecimal));
                 }
                 else
                 {
-                    builder.Append(testValue);
+                    builder.Append(testValueString);
                 }
             }
             stopwatch.Stop();
             _outputHelper.WriteLine($"Decimal128Builder.Append: {testCount} iterations took {stopwatch.ElapsedMilliseconds} elapsed milliseconds");
 
-            ReadOnlySpan<byte> testValueSpan = Encoding.UTF8.GetBytes(testValue);
+            builder = new(new Types.Decimal128Type(38, 0));
             stopwatch.Restart();
             for (int i = 0; i < testCount; i++)
             {
-                DecimalUtility.GetBytes(testValueSpan, 38, 0, byteWidth, buffer);
+                DecimalUtility.GetBytes(testValue, 38, 0, byteWidth, buffer);
                 builder.Append(buffer);
             }
             stopwatch.Stop();
