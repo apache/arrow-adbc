@@ -175,7 +175,7 @@ static const std::string kConstraintsQuery =
 
 class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
  public:
-  PostgresGetObjectsHelper(PGconn* conn)
+  explicit PostgresGetObjectsHelper(PGconn* conn)
       : all_catalogs_(conn, kCatalogQueryAll),
         some_catalogs_(conn, kCatalogQuery),
         all_schemas_(conn, kSchemaQueryAll),
@@ -198,114 +198,116 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
 
   Status LoadCatalogs() {
     UNWRAP_STATUS(all_catalogs_.Execute());
-    catalogs_ = std::make_unique<PqResultHelper::iterator>(all_catalogs_);
+    next_catalog_ = all_catalogs_.Row(-1);
     return Status::Ok();
   };
 
   Result<std::optional<std::string_view>> NextCatalog() {
-    auto& it = *catalogs_;
-    if (it == it.end()) {
+    next_catalog_ = next_catalog_.Next();
+    if (!next_catalog_.IsValid()) {
       return std::nullopt;
     }
 
-    const auto& row = *it;
-    return row[0].value();
+    return next_catalog_[0].value();
   }
 
-  Status LoadSchemas(std::string_view catalog) {
-    UNWRAP_STATUS(all_schemas_.Execute());
-    schemas_ = std::make_unique<PqResultHelper::iterator>(all_schemas_);
-    return Status::Ok();
-  };
+  // Status LoadSchemas(std::string_view catalog) {
+  //   UNWRAP_STATUS(all_schemas_.Execute());
+  //   schemas_ = std::make_unique<PqResultHelper::iterator>(all_schemas_);
+  //   return Status::Ok();
+  // };
 
-  Result<std::optional<std::string_view>> NextSchema() {
-    auto& it = *schemas_;
-    if (it == it.end()) {
-      return std::nullopt;
-    }
+  // Result<std::optional<std::string_view>> NextSchema() {
+  //   auto& it = *schemas_;
+  //   if (it == it.end()) {
+  //     return std::nullopt;
+  //   }
 
-    const auto& row = *it;
-    return row[0].value();
-  }
+  //   const auto& row = *it;
+  //   ++it;
+  //   return row[0].value();
+  // }
 
-  Status LoadTables(std::string_view catalog, std::string_view schema) {
-    UNWRAP_STATUS(some_tables_.Execute({std::string(schema)}));
-    tables_ = std::make_unique<PqResultHelper::iterator>(some_tables_);
-    return Status::Ok();
-  };
+  // Status LoadTables(std::string_view catalog, std::string_view schema) {
+  //   UNWRAP_STATUS(some_tables_.Execute({std::string(schema)}));
+  //   tables_ = std::make_unique<PqResultHelper::iterator>(some_tables_);
+  //   return Status::Ok();
+  // };
 
-  Result<std::optional<Table>> NextTable() {
-    auto& it = *tables_;
-    if (it == it.end()) {
-      return std::nullopt;
-    }
+  // Result<std::optional<Table>> NextTable() {
+  //   auto& it = *tables_;
+  //   if (it == it.end()) {
+  //     return std::nullopt;
+  //   }
 
-    const auto& row = *it;
-    return Table{row[0].value(), row[1].value()};
-  }
+  //   const auto& row = *it;
+  //   ++it;
+  //   return Table{row[0].value(), row[1].value()};
+  // }
 
-  Status LoadColumns(std::string_view catalog, std::string_view schema,
-                     std::string_view table) {
-    UNWRAP_STATUS(all_columns_.Execute({std::string(schema), std::string(table)}))
-    UNWRAP_STATUS(all_constraints_.Execute({std::string(schema), std::string(table)}))
-    return Status::Ok();
-  };
+  // Status LoadColumns(std::string_view catalog, std::string_view schema,
+  //                    std::string_view table) {
+  //   UNWRAP_STATUS(all_columns_.Execute({std::string(schema), std::string(table)}))
+  //   UNWRAP_STATUS(all_constraints_.Execute({std::string(schema), std::string(table)}))
+  //   return Status::Ok();
+  // };
 
-  Result<std::optional<Column>> NextColumn() {
-    auto& it = *columns_;
-    if (it == it.end()) {
-      return std::nullopt;
-    }
+  // Result<std::optional<Column>> NextColumn() {
+  //   auto& it = *columns_;
+  //   if (it == it.end()) {
+  //     return std::nullopt;
+  //   }
 
-    const auto& row = *it;
+  //   const auto& row = *it;
+  //   ++it;
 
-    Column col;
-    col.column_name = row[0].value();
-    UNWRAP_RESULT(col.ordinal_position, row[1].ParseInteger());
-    if (!row[2].is_null) {
-      col.remarks = row[2].value();
-    }
+  //   Column col;
+  //   col.column_name = row[0].value();
+  //   UNWRAP_RESULT(col.ordinal_position, row[1].ParseInteger());
+  //   if (!row[2].is_null) {
+  //     col.remarks = row[2].value();
+  //   }
 
-    return col;
-  }
+  //   return col;
+  // }
 
-  Result<std::optional<Constraint>> NextConstraint() {
-    auto& it = *columns_;
-    if (it == it.end()) {
-      return std::nullopt;
-    }
+  // Result<std::optional<Constraint>> NextConstraint() {
+  //   auto& it = *columns_;
+  //   if (it == it.end()) {
+  //     return std::nullopt;
+  //   }
 
-    const auto& row = *it;
+  //   const auto& row = *it;
 
-    Constraint out;
-    out.name = row[0].data;
-    out.type = row[1].data;
+  //   Constraint out;
+  //   out.name = row[0].data;
+  //   out.type = row[1].data;
 
-    if (out.type == "FOREIGN KEY") {
-      assert(!row[3].is_null);
-      assert(!row[3].is_null);
-      assert(!row[4].is_null);
-      assert(!row[5].is_null);  // TODO: Unused?
+  //   if (out.type == "FOREIGN KEY") {
+  //     assert(!row[3].is_null);
+  //     assert(!row[3].is_null);
+  //     assert(!row[4].is_null);
+  //     assert(!row[5].is_null);  // TODO: Unused?
 
-      // Because Constraint fields are all views
-      UNWRAP_RESULT(auto constraint_fcolumn_names_, row[2].ParseTextArray());
-      std::vector<std::string_view> fcolumn_names_view;
-      for (const std::string& item : constraint_fcolumn_names_) {
-        fcolumn_names_view.push_back(item);
-      }
-      out.column_names = std::move(fcolumn_names_view);
+  //     // Because Constraint fields are all views
+  //     UNWRAP_RESULT(auto constraint_fcolumn_names_, row[2].ParseTextArray());
+  //     std::vector<std::string_view> fcolumn_names_view;
+  //     for (const std::string& item : constraint_fcolumn_names_) {
+  //       fcolumn_names_view.push_back(item);
+  //     }
+  //     out.column_names = std::move(fcolumn_names_view);
 
-      out.column_names = fcolumn_names_view;
+  //     out.column_names = fcolumn_names_view;
 
-      ConstraintUsage usage;
-      usage.schema = row[3].data;
-      usage.table = row[4].data;
-      // TODO: column name?
-      out.usage = {usage};
-    }
+  //     ConstraintUsage usage;
+  //     usage.schema = row[3].data;
+  //     usage.table = row[4].data;
+  //     // TODO: column name?
+  //     out.usage = {usage};
+  //   }
 
-    return out;
-  }
+  //   return out;
+  // }
 
  private:
   PqResultHelper all_catalogs_;
@@ -318,11 +320,13 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
   PqResultHelper some_columns_;
   PqResultHelper all_constraints_;
   PqResultHelper some_constraints_;
-  std::unique_ptr<PqResultHelper::iterator> catalogs_;
-  std::unique_ptr<PqResultHelper::iterator> schemas_;
-  std::unique_ptr<PqResultHelper::iterator> tables_;
-  std::unique_ptr<PqResultHelper::iterator> columns_;
-  std::unique_ptr<PqResultHelper::iterator> constraints_;
+
+  PqResultRow next_catalog_;
+  PqResultRow next_schema_;
+  PqResultRow next_table_;
+  PqResultRow next_column_;
+  PqResultRow next_constraint_;
+
   std::vector<std::string> constraint_fcolumn_names_;
 };
 
@@ -964,16 +968,63 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode PostgresConnection::GetObjects(
-    struct AdbcConnection* connection, int depth, const char* catalog,
-    const char* db_schema, const char* table_name, const char** table_types,
+    struct AdbcConnection* connection, int c_depth, const char* catalog,
+    const char* db_schema, const char* table_name, const char** table_type,
     const char* column_name, struct ArrowArrayStream* out, struct AdbcError* error) {
   struct ArrowSchema schema;
   std::memset(&schema, 0, sizeof(schema));
   struct ArrowArray array;
   std::memset(&array, 0, sizeof(array));
 
+  if (c_depth == ADBC_OBJECT_DEPTH_CATALOGS) {
+    PostgresGetObjectsHelper new_helper(conn_);
+
+    const auto catalog_filter =
+        catalog ? std::make_optional(std::string_view(catalog)) : std::nullopt;
+    const auto schema_filter =
+        db_schema ? std::make_optional(std::string_view(db_schema)) : std::nullopt;
+    const auto table_filter =
+        table_name ? std::make_optional(std::string_view(table_name)) : std::nullopt;
+    const auto column_filter =
+        column_name ? std::make_optional(std::string_view(column_name)) : std::nullopt;
+    std::vector<std::string_view> table_type_filter;
+    while (table_type && *table_type) {
+      if (*table_type) {
+        table_type_filter.push_back(std::string_view(*table_type));
+      }
+      table_type++;
+    }
+
+    using adbc::driver::GetObjectsDepth;
+
+    GetObjectsDepth depth = GetObjectsDepth::kColumns;
+    switch (c_depth) {
+      case ADBC_OBJECT_DEPTH_CATALOGS:
+        depth = GetObjectsDepth::kCatalogs;
+        break;
+      case ADBC_OBJECT_DEPTH_COLUMNS:
+        depth = GetObjectsDepth::kColumns;
+        break;
+      case ADBC_OBJECT_DEPTH_DB_SCHEMAS:
+        depth = GetObjectsDepth::kSchemas;
+        break;
+      case ADBC_OBJECT_DEPTH_TABLES:
+        depth = GetObjectsDepth::kTables;
+        break;
+      default:
+        return Status::InvalidArgument("[libpq] GetObjects: invalid depth ", c_depth)
+            .ToAdbc(error);
+    }
+
+    auto status = BuildGetObjects(&new_helper, depth, catalog_filter, schema_filter,
+                                  table_filter, column_filter, table_type_filter, out);
+    RAISE_STATUS(error, new_helper.Close());
+    RAISE_STATUS(error, status);
+    return ADBC_STATUS_OK;
+  }
+
   PqGetObjectsHelper helper =
-      PqGetObjectsHelper(conn_, depth, catalog, db_schema, table_name, table_types,
+      PqGetObjectsHelper(conn_, c_depth, catalog, db_schema, table_name, table_type,
                          column_name, &schema, &array, error);
   AdbcStatusCode status = helper.GetObjects();
 
