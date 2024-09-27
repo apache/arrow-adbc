@@ -45,7 +45,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 throw new ArgumentOutOfRangeException(nameof(precision), precision, "precision value must be greater than zero.");
             }
-            if (scale < 0 || scale >= precision)
+            if (scale < 0 || scale > precision)
             {
                 throw new ArgumentOutOfRangeException(nameof(scale), scale, "scale value must be in the range 0 .. precision.");
             }
@@ -165,8 +165,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     frac_length = Math.Max(Math.Min(frac_length - exponent, tempSignificant.Length - int_length), 0);
                 }
                 // Reset the integer and fractional span
-                integerSpan = tempSignificant.Slice(0, int_length);
                 fractionalSpan = tempSignificant.Slice(int_length, frac_length);
+                integerSpan = tempSignificant.Slice(0, int_length);
+                // Trim leading zeros fron new integer span
+                while (integerSpan.Length > 0 && integerSpan[0] == AsciiZero)
+                {
+                    integerSpan = integerSpan.Slice(1);
+                    int_length -= 1;
+                }
             }
 
             int neededPrecision = int_length + frac_length;
