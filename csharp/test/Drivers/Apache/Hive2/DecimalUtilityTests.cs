@@ -143,6 +143,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             yield return new object[] { "-0.1E0", 38, 3, 16, new byte[] { 156, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255 }, new SqlDecimal(-0.1) };
             yield return new object[] { "-1e-1", 38, 3, 16, new byte[] { 156, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255 }, new SqlDecimal(-0.1) };
             yield return new object[] { "-0.01e1", 38, 3, 16, new byte[] { 156, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255 }, new SqlDecimal(-0.1) };
+
+            yield return new object[] { "0.99999999999999999999999999999999999999", 38, 38, 16, new byte[] { 255, 255, 255, 255, 63, 34, 138, 9, 122, 196, 134, 90, 168, 76, 59, 75 } };
+            yield return new object[] { "0.99999999999999999999999999999999999999E0", 38, 38, 16, new byte[] { 255, 255, 255, 255, 63, 34, 138, 9, 122, 196, 134, 90, 168, 76, 59, 75 } };
+            yield return new object[] { "9.99999999999999999999999999999999999990e-1", 38, 38, 16, new byte[] { 255, 255, 255, 255, 63, 34, 138, 9, 122, 196, 134, 90, 168, 76, 59, 75 } };
+            yield return new object[] { "0.0000000000000000000000000000000000000099999999999999999999999999999999999999e38", 38, 38, 16, new byte[] { 255, 255, 255, 255, 63, 34, 138, 9, 122, 196, 134, 90, 168, 76, 59, 75 } };
         }
 
         private static SqlDecimal GetSqlDecimal128(in byte[] valueBuffer, int index, int precision, int scale)
