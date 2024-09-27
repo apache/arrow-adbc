@@ -36,6 +36,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const byte AsciiSpace = (byte)' ';
         private const byte AsciiColon = (byte)':';
         private const byte AsciiPeriod = (byte)'.';
+        private const char StandardFormatRoundTrippable = 'O';
+        private const char StandardFormatExponent = 'E';
+        private const int YearMonthSepIndex = 4;
+        private const int MonthDaySepIndex = 7;
+        private const int KnownFormatLength = 19;
+        private const int DayHourSepIndex = 10;
+        private const int HourMinuteSepIndex = 13;
+        private const int MinuteSecondSepIndex = 16;
+        private const int YearIndex = 0;
+        private const int MonthIndex = 5;
+        private const int DayIndex = 8;
+        private const int HourIndex = 11;
+        private const int MinuteIndex = 14;
+        private const int SecondIndex = 17;
+        private const int SecondSubsecondSepIndex = 19;
+        private const int SubsecondIndex = 20;
+        private const int MillisecondDecimalPlaces = 3;
 
         private HiveServer2Statement? _statement;
         private readonly long _batchSize;
@@ -136,7 +153,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 }
                 else if (TryParse(date, out DateTime dateTime)
-                    || Utf8Parser.TryParse(date, out dateTime, out int _, standardFormat: 'O')
+                    || Utf8Parser.TryParse(date, out dateTime, out int _, standardFormat: StandardFormatRoundTrippable)
                     || DateTime.TryParse(array.GetString(i), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out dateTime))
                 {
                     resultArray.Append(dateTime);
@@ -152,10 +169,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private static bool TryParse(ReadOnlySpan<byte> date, out DateTime dateTime)
         {
-            if (date.Length >= 10 && date[4] == AsciiDash && date[7] == AsciiDash
-                && Utf8Parser.TryParse(date.Slice(0), out int year, out _)
-                && Utf8Parser.TryParse(date.Slice(5), out int month, out _)
-                && Utf8Parser.TryParse(date.Slice(8), out int day, out _))
+            if (date.Length >= 10 && date[YearMonthSepIndex] == AsciiDash && date[MonthDaySepIndex] == AsciiDash
+                && Utf8Parser.TryParse(date.Slice(YearIndex), out int year, out _)
+                && Utf8Parser.TryParse(date.Slice(MonthIndex), out int month, out _)
+                && Utf8Parser.TryParse(date.Slice(DayIndex), out int day, out _))
             {
                 dateTime = new(year, month, day);
                 return true;
@@ -182,7 +199,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     resultArray.AppendNull();
                 }
                 // Try to parse the value into a decimal because it is the most performant and handles the exponent syntax. But this might overflow.
-                else if (Utf8Parser.TryParse(item, out decimal decimalValue, out int _, standardFormat: 'E'))
+                else if (Utf8Parser.TryParse(item, out decimal decimalValue, out int _, standardFormat: StandardFormatExponent))
                 {
                     resultArray.Append(new SqlDecimal(decimalValue));
                 }
@@ -209,7 +226,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     resultArrayBuilder.AppendNull();
                 }
                 else if (TryParse(date, out DateTimeOffset dateValue)
-                    || Utf8Parser.TryParse(date, out dateValue, out int _, standardFormat: 'O')
+                    || Utf8Parser.TryParse(date, out dateValue, out int _, standardFormat: StandardFormatRoundTrippable)
                     || DateTimeOffset.TryParse(array.GetString(i), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out dateValue))
                 {
                     resultArrayBuilder.Append(dateValue);
@@ -225,22 +242,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private static bool TryParse(ReadOnlySpan<byte> date, out DateTimeOffset dateValue)
         {
-            const int YearMonthSepIndex = 4;
-            const int MonthDaySepIndex = 7;
-            const int KnownFormatLength = 19;
-            const int DayHourSepIndex = 10;
-            const int HourMinuteSepIndex = 13;
-            const int MinuteSecondSepIndex = 16;
-            const int YearIndex = 0;
-            const int MonthIndex = 5;
-            const int DayIndex = 8;
-            const int HourIndex = 11;
-            const int MinuteIndex = 14;
-            const int SecondIndex = 17;
-            const int SecondSubsecondSepIndex = 19;
-            const int SubsecondIndex = 20;
-            const int MillisecondDecimalPlaces = 3;
-
             bool isKnownFormat = date.Length >= KnownFormatLength
                 && date[YearMonthSepIndex] == AsciiDash
                 && date[MonthDaySepIndex] == AsciiDash
