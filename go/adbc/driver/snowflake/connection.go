@@ -94,7 +94,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 			// which doesn't require a database context
 			gQueryIDs.Go(func() error {
 				return conn.Raw(func(driverConn any) error {
-					rows, err := driverConn.(driver.QueryerContext).QueryContext(context.Background(), "SHOW TERSE DATABASES", nil)
+					rows, err := driverConn.(driver.QueryerContext).QueryContext(gQueryIDsCtx, "SHOW TERSE DATABASES", nil)
 					if err != nil {
 						return err
 					}

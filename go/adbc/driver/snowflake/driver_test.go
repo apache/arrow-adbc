@@ -2146,9 +2146,7 @@ func (suite *SnowflakeTests) TestChangeDatabaseAndGetObjects() {
 }
 
 func (suite *SnowflakeTests) TestGetObjectsWithNilCatalog() {
-	// this test demonstrates:
-	// 1. having a null catalog
-	// 2. being able to call GetObjects with the catalog depth
+	// this test demonstrates calling GetObjects with the catalog depth and a nil catalog
 	_, err := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthCatalogs, nil, nil, nil, nil, nil)
 	suite.NoError(err)
 }
