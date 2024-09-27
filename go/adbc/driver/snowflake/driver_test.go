@@ -2144,3 +2144,11 @@ func (suite *SnowflakeTests) TestChangeDatabaseAndGetObjects() {
 	_, err2 := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthAll, &newCatalog, &cfg.Schema, &getObjectsTable, nil, nil)
 	suite.NoError(err2)
 }
+
+func (suite *SnowflakeTests) TestNilDatabaseAndGetObjects() {
+	// this test demonstrates:
+	// 1. having a null catalog
+	// 2. being able to call GetObjects with the catalog depth
+	_, err := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthCatalogs, nil, nil, nil, nil, nil)
+	suite.NoError(err)
+}

@@ -41,10 +41,11 @@ const (
 	defaultStatementQueueSize  = 200
 	defaultPrefetchConcurrency = 10
 
-	queryTemplateGetObjectsAll       = "get_objects_all.sql"
-	queryTemplateGetObjectsCatalogs  = "get_objects_catalogs.sql"
-	queryTemplateGetObjectsDbSchemas = "get_objects_dbschemas.sql"
-	queryTemplateGetObjectsTables    = "get_objects_tables.sql"
+	queryTemplateGetObjectsAll           = "get_objects_all.sql"
+	queryTemplateGetObjectsCatalogs      = "get_objects_catalogs.sql"
+	queryTemplateGetObjectsDbSchemas     = "get_objects_dbschemas.sql"
+	queryTemplateGetObjectsTables        = "get_objects_tables.sql"
+	queryTemplateGetObjectsTerseCatalogs = "get_objects_terse_catalogs.sql"
 )
 
 //go:embed queries/*
@@ -74,7 +75,7 @@ type connectionImpl struct {
 
 func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	var (
-		pkQueryID, fkQueryID, uniqueQueryID string
+		pkQueryID, fkQueryID, uniqueQueryID, terseDbQueryID string
 	)
 
 	conn, err := c.sqldb.Conn(ctx)
@@ -83,11 +84,28 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	}
 	defer conn.Close()
 
-	gConstraints, gContraintsCtx := errgroup.WithContext(ctx)
+	gQueryIDs, gQueryIDsCtx := errgroup.WithContext(ctx)
 	queryFile := queryTemplateGetObjectsAll
 	switch depth {
 	case adbc.ObjectDepthCatalogs:
-		queryFile = queryTemplateGetObjectsCatalogs
+		if catalog == nil {
+			queryFile = queryTemplateGetObjectsTerseCatalogs
+			// if the catalog is null, show the terse databases
+			// which doesn't require a database context
+			gQueryIDs.Go(func() error {
+				return conn.Raw(func(driverConn any) error {
+					rows, err := driverConn.(driver.QueryerContext).QueryContext(context.Background(), "SHOW TERSE DATABASES", nil)
+					if err != nil {
+						return err
+					}
+
+					terseDbQueryID = rows.(gosnowflake.SnowflakeRows).GetQueryID()
+					return rows.Close()
+				})
+			})
+		} else {
+			queryFile = queryTemplateGetObjectsCatalogs
+		}
 	case adbc.ObjectDepthDBSchemas:
 		queryFile = queryTemplateGetObjectsDbSchemas
 	case adbc.ObjectDepthTables:
@@ -96,9 +114,9 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	default:
 		// Detailed constraint info not available in information_schema
 		// Need to dispatch SHOW queries and use conn.Raw to extract the queryID for reuse in GetObjects query
-		gConstraints.Go(func() error {
+		gQueryIDs.Go(func() error {
 			return conn.Raw(func(driverConn any) error {
-				rows, err := driverConn.(driver.QueryerContext).QueryContext(gContraintsCtx, "SHOW PRIMARY KEYS", nil)
+				rows, err := driverConn.(driver.QueryerContext).QueryContext(gQueryIDsCtx, "SHOW PRIMARY KEYS", nil)
 				if err != nil {
 					return err
 				}
@@ -108,9 +126,9 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 			})
 		})
 
-		gConstraints.Go(func() error {
+		gQueryIDs.Go(func() error {
 			return conn.Raw(func(driverConn any) error {
-				rows, err := driverConn.(driver.QueryerContext).QueryContext(gContraintsCtx, "SHOW IMPORTED KEYS", nil)
+				rows, err := driverConn.(driver.QueryerContext).QueryContext(gQueryIDsCtx, "SHOW IMPORTED KEYS", nil)
 				if err != nil {
 					return err
 				}
@@ -120,9 +138,9 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 			})
 		})
 
-		gConstraints.Go(func() error {
+		gQueryIDs.Go(func() error {
 			return conn.Raw(func(driverConn any) error {
-				rows, err := driverConn.(driver.QueryerContext).QueryContext(gContraintsCtx, "SHOW UNIQUE KEYS", nil)
+				rows, err := driverConn.(driver.QueryerContext).QueryContext(gQueryIDsCtx, "SHOW UNIQUE KEYS", nil)
 				if err != nil {
 					return err
 				}
@@ -145,7 +163,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	}
 
 	// Need constraint subqueries to complete before we can query GetObjects
-	if err := gConstraints.Wait(); err != nil {
+	if err := gQueryIDs.Wait(); err != nil {
 		return nil, err
 	}
 
@@ -157,9 +175,11 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		driverbase.PatternToNamedArg("COLUMN", columnName),
 
 		// QueryIDs for constraint data if depth is tables or deeper
+		// or if the depth is catalog and catalog is null
 		sql.Named("PK_QUERY_ID", pkQueryID),
 		sql.Named("FK_QUERY_ID", fkQueryID),
 		sql.Named("UNIQUE_QUERY_ID", uniqueQueryID),
+		sql.Named("TERSE_QUERY_ID", terseDbQueryID),
 	}
 
 	// the connection that is used is not the same connection context where the database may have been set
