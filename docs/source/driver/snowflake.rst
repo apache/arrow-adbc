@@ -446,6 +446,9 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
     disabled by setting this to ``true``. Value should be either ``true``
     or ``false``.
 
+``adbc.snowflake.sql.client_option.config_file``
+    Specifies the location of the client configuration json file.
+
 ``adbc.snowflake.sql.client_option.tracing``
     Set the logging level
 
