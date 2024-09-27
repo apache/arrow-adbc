@@ -25,13 +25,17 @@ namespace Apache.Arrow.Adbc.Client
     sealed public class AdbcParameter : DbParameter
     {
         public override DbType DbType { get; set; }
-        public override ParameterDirection Direction { get => ParameterDirection.Input; set => throw new NotImplementedException(); }
+        public override ParameterDirection Direction
+        {
+            get => ParameterDirection.Input;
+            set { if (value != ParameterDirection.Input) { throw new NotSupportedException(); } }
+        }
         public override bool IsNullable { get; set; } = true;
 #if NET5_0_OR_GREATER
         [AllowNull]
 #endif
         public override string ParameterName { get; set; } = string.Empty;
-        public override int Size { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public override int Size { get; set; }
 #if NET5_0_OR_GREATER
         [AllowNull]
 #endif
