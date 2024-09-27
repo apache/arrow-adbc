@@ -149,17 +149,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public void CanClientExecuteParameterizedQuery()
         {
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-            testConfiguration.Query = "SELECT * FROM (SELECT column1 FROM (VALUES (1), (2), (3))) WHERE column1 < ?";
+            testConfiguration.Query = "SELECT ? as A, ? as B, ? as C, * FROM (SELECT column1 FROM (VALUES (1), (2), (3))) WHERE column1 < ?";
             testConfiguration.ExpectedResultsCount = 1;
 
             using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
             {
                 Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration, command =>
                 {
-                    DbParameter parameter1 = command.CreateParameter();
-                    parameter1.Value = 2;
-                    parameter1.DbType = DbType.Int32;
-                    command.Parameters.Add(parameter1);
+                    DbParameter CreateParameter(DbType dbType, object value)
+                    {
+                        DbParameter result = command.CreateParameter();
+                        result.DbType = dbType;
+                        result.Value = value;
+                        return result;
+                    }
+
+                    // TODO: Add tests for decimal and time once supported by the driver or gosnowflake
+                    command.Parameters.Add(CreateParameter(DbType.Int32, 2));
+                    command.Parameters.Add(CreateParameter(DbType.String, "text"));
+                    command.Parameters.Add(CreateParameter(DbType.Double, 2.5));
+                    command.Parameters.Add(CreateParameter(DbType.Int32, 2));
                 });
             }
         }
