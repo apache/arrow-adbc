@@ -27,5 +27,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         [JsonPropertyName("data_type_conv"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string DataTypeConversion { get; set; } = string.Empty;
+
+        [JsonPropertyName("tls_options"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string TlsOptions { get; set; } = string.Empty;
     }
 }
