@@ -48,7 +48,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 throw new ArgumentOutOfRangeException(nameof(precision), precision, "precision value must be greater than zero.");
             }
-            if (scale < 0 || scale > precision)
+            if (scale < 0 || scale >= precision)
             {
                 throw new ArgumentOutOfRangeException(nameof(scale), scale, "scale value must be in the range 0 .. precision.");
             }
