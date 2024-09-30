@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Tests
@@ -22,7 +23,7 @@ namespace Apache.Arrow.Adbc.Tests
     /// <summary>
     /// Base test configuration values.
     /// </summary>
-    public abstract class TestConfiguration
+    public abstract class TestConfiguration : ICloneable
     {
         /// <summary>
         /// The query to run.
@@ -41,6 +42,8 @@ namespace Apache.Arrow.Adbc.Tests
         /// </summary>
         [JsonPropertyName("metadata")]
         public TestMetadata Metadata { get; set; } = new TestMetadata();
+
+        public virtual object Clone() => MemberwiseClone();
     }
 
     /// <summary>

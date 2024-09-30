@@ -37,7 +37,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const char AsciiPeriod = '.';
 
         private HiveServer2Statement? _statement;
-        private readonly long _batchSize;
         private readonly DataTypeConversion _dataTypeConversion;
         private static readonly IReadOnlyDictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>> s_arrowStringConverters =
             new Dictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>>()
@@ -51,12 +50,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            DataTypeConversion dataTypeConversion,
-            long batchSize = HiveServer2Connection.BatchSizeDefault)
+            DataTypeConversion dataTypeConversion)
         {
             _statement = statement;
             Schema = schema;
-            _batchSize = batchSize;
             _dataTypeConversion = dataTypeConversion;
         }
 
@@ -69,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return null;
             }
 
-            var request = new TFetchResultsReq(_statement.OperationHandle, TFetchOrientation.FETCH_NEXT, _batchSize);
+            var request = new TFetchResultsReq(_statement.OperationHandle, TFetchOrientation.FETCH_NEXT, _statement.BatchSize);
             TFetchResultsResp response = await _statement.Connection.Client.FetchResults(request, cancellationToken);
 
             int columnCount = response.Results.Columns.Count;
