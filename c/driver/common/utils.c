@@ -235,6 +235,10 @@ struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int i
   };
 }
 
+bool IsCommonError(const struct AdbcError* error) {
+  return error->release == ReleaseErrorWithDetails || error->release == ReleaseError;
+}
+
 int StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
   builder->buffer = (char*)malloc(initial_size);
   if (builder->buffer == NULL) return errno;

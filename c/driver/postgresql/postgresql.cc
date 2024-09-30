@@ -25,8 +25,10 @@
 #include "connection.h"
 #include "database.h"
 #include "driver/common/utils.h"
+#include "driver/framework/status.h"
 #include "statement.h"
 
+using adbc::driver::Status;
 using adbcpq::PostgresConnection;
 using adbcpq::PostgresDatabase;
 using adbcpq::PostgresStatement;
@@ -56,14 +58,36 @@ const struct AdbcError* PostgresErrorFromArrayStream(struct ArrowArrayStream* st
   // Currently only valid for TupleReader
   return adbcpq::TupleReader::ErrorFromArrayStream(stream, status);
 }
+
+int PostgresErrorGetDetailCount(const struct AdbcError* error) {
+  if (IsCommonError(error)) {
+    return CommonErrorGetDetailCount(error);
+  }
+
+  if (error->vendor_code != ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
+    return 0;
+  }
+
+  auto error_obj = reinterpret_cast<Status*>(error->private_data);
+  return error_obj->CDetailCount();
+}
+
+struct AdbcErrorDetail PostgresErrorGetDetail(const struct AdbcError* error, int index) {
+  if (IsCommonError(error)) {
+    return CommonErrorGetDetail(error, index);
+  }
+
+  auto error_obj = reinterpret_cast<Status*>(error->private_data);
+  return error_obj->CDetail(index);
+}
 }  // namespace
 
 int AdbcErrorGetDetailCount(const struct AdbcError* error) {
-  return CommonErrorGetDetailCount(error);
+  return PostgresErrorGetDetailCount(error);
 }
 
 struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index) {
-  return CommonErrorGetDetail(error, index);
+  return PostgresErrorGetDetail(error, index);
 }
 
 const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream,
@@ -860,8 +884,8 @@ AdbcStatusCode PostgresqlDriverInit(int version, void* raw_driver,
   if (version >= ADBC_VERSION_1_1_0) {
     std::memset(driver, 0, ADBC_DRIVER_1_1_0_SIZE);
 
-    driver->ErrorGetDetailCount = CommonErrorGetDetailCount;
-    driver->ErrorGetDetail = CommonErrorGetDetail;
+    driver->ErrorGetDetailCount = PostgresErrorGetDetailCount;
+    driver->ErrorGetDetail = PostgresErrorGetDetail;
     driver->ErrorFromArrayStream = PostgresErrorFromArrayStream;
 
     driver->DatabaseGetOption = PostgresDatabaseGetOption;

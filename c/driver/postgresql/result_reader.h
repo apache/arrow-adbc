@@ -62,10 +62,9 @@ class PqResultArrayReader {
   int GetNext(struct ArrowArray* out);
   const char* GetLastError();
 
-  AdbcStatusCode ToArrayStream(int64_t* affected_rows, struct ArrowArrayStream* out,
-                               struct AdbcError* error);
+  Status ToArrayStream(int64_t* affected_rows, struct ArrowArrayStream* out);
 
-  AdbcStatusCode Initialize(int64_t* affected_rows, struct AdbcError* error);
+  Status Initialize(int64_t* affected_rows);
 
  private:
   PGconn* conn_;
@@ -89,8 +88,8 @@ class PqResultArrayReader {
     error_ = ADBC_ERROR_INIT;
   }
 
-  AdbcStatusCode BindNextAndExecute(int64_t* affected_rows, AdbcError* error);
-  AdbcStatusCode ExecuteAll(int64_t* affected_rows, AdbcError* error);
+  Status BindNextAndExecute(int64_t* affected_rows);
+  Status ExecuteAll(int64_t* affected_rows);
 
   void ResetErrors() {
     ArrowErrorInit(&na_error_);

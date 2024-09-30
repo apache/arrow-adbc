@@ -19,6 +19,7 @@ using System;
 using System.Data.SqlTypes;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -261,7 +262,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string valueString = ConvertFloatToString(value);
             await InsertSingleValueAsync(table.TableName, columnName, valueString);
             object doubleValue = (double)value;
-            object floatValue = TestEnvironment.GetValueForProtocolVersion(doubleValue, value)!;
+            // Spark over HTTP returns float as double whereas Spark on Databricks returns float.
+            object floatValue = TestEnvironment.ServerType != SparkServerType.Databricks ? doubleValue : value;
             await base.SelectAndValidateValuesAsync(table.TableName, columnName, floatValue, 1);
             string whereClause = GetWhereClause(columnName, value);
             if (SupportsDelete) await DeleteFromTableAsync(table.TableName, whereClause, 1);

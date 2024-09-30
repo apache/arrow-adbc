@@ -48,10 +48,10 @@ namespace Apache.Arrow.Adbc.Tests
         /// Constructs a new TestBase object with an output helper.
         /// </summary>
         /// <param name="outputHelper">Test output helper for writing test output.</param>
-        public TestBase(ITestOutputHelper? outputHelper, TestEnvironment<TConfig>.Factory<TEnv> testEnvFacltory)
+        public TestBase(ITestOutputHelper? outputHelper, TestEnvironment<TConfig>.Factory<TEnv> testEnvFactory)
         {
             OutputHelper = outputHelper;
-            _testEnvFactory = testEnvFacltory;
+            _testEnvFactory = testEnvFactory;
             _testEnvironment = new Lazy<TEnv>(() => _testEnvFactory.Create(() => Connection));
             _testConfiguration = new Lazy<TConfig>(() => Utils.LoadTestConfiguration<TConfig>(TestConfigVariable));
             _connection = new Lazy<AdbcConnection>(() => NewConnection());

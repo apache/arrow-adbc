@@ -55,10 +55,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("2147483647")]
         public void CanSetOptionPollTime(string value, bool throws = false)
         {
+            var testConfiguration = TestConfiguration.Clone() as SparkTestConfiguration;
+            testConfiguration!.PollTimeMilliseconds = value;
+            if (throws)
+            {
+                Assert.Throws<ArgumentOutOfRangeException>(() => NewConnection(testConfiguration).CreateStatement());
+            }
+
             AdbcStatement statement = NewConnection().CreateStatement();
             if (throws)
             {
-                Assert.Throws<ArgumentException>(() => statement.SetOption(SparkStatement.Options.PollTimeMilliseconds, value));
+                Assert.Throws<ArgumentOutOfRangeException>(() => statement.SetOption(SparkStatement.Options.PollTimeMilliseconds, value));
             }
             else
             {
@@ -73,16 +80,25 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("-1", true)]
         [InlineData("one", true)]
         [InlineData("-2147483648", true)]
-        [InlineData("2147483648", true)]
+        [InlineData("2147483648", false)]
+        [InlineData("9223372036854775807", false)]
+        [InlineData("9223372036854775808", true)]
         [InlineData("0", true)]
         [InlineData("1")]
         [InlineData("2147483647")]
         public void CanSetOptionBatchSize(string value, bool throws = false)
         {
+            var testConfiguration = TestConfiguration.Clone() as SparkTestConfiguration;
+            testConfiguration!.BatchSize = value;
+            if (throws)
+            {
+                Assert.Throws<ArgumentOutOfRangeException>(() => NewConnection(testConfiguration).CreateStatement());
+            }
+
             AdbcStatement statement = NewConnection().CreateStatement();
             if (throws)
             {
-                Assert.Throws<ArgumentException>(() => statement.SetOption(SparkStatement.Options.BatchSize, value));
+                Assert.Throws<ArgumentOutOfRangeException>(() => statement!.SetOption(SparkStatement.Options.BatchSize, value));
             }
             else
             {

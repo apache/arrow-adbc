@@ -18,20 +18,15 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Reflection;
+using System.Net.Security;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
-using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Ipc;
-using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
@@ -55,7 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = SparkAuthTypeConstants.TryParse(authType, out SparkAuthType authTypeValue);
+            bool isValidAuthType = AuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
             switch (authTypeValue)
             {
                 case SparkAuthType.Token:
@@ -121,15 +116,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override void ValidateOptions()
         {
             Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
-            SparkDataTypeConversionConstants.TryParse(dataTypeConv, out SparkDataTypeConversion dataTypeConversionValue);
-            DataTypeConversion = dataTypeConversionValue switch
-            {
-                SparkDataTypeConversion.None => dataTypeConversionValue!,
-                _ => throw new NotImplementedException($"Invalid or unsupported data type conversion option: '{dataTypeConv}'. Supported values: {SparkDataTypeConversionConstants.SupportedList}"),
-            };
+            DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
+            Properties.TryGetValue(SparkParameters.TLSOptions, out string? tlsOptions);
+            TlsOptions = Hive2.TlsOptionsParser.Parse(tlsOptions);
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         protected override Task<TTransport> CreateTransportAsync()
         {
@@ -143,7 +135,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(SparkParameters.Path, out string? path);
             Properties.TryGetValue(SparkParameters.Port, out string? port);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = SparkAuthTypeConstants.TryParse(authType, out SparkAuthType authTypeValue);
+            bool isValidAuthType = AuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
             Properties.TryGetValue(SparkParameters.Token, out string? token);
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
@@ -152,7 +144,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password);
 
-            HttpClient httpClient = new();
+            HttpClientHandler httpClientHandler = NewHttpClientHandler();
+            HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
             httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(s_userAgent);
@@ -163,6 +156,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TConfiguration config = new();
             ThriftHttpTransport transport = new(httpClient, config);
             return Task.FromResult<TTransport>(transport);
+        }
+
+        private HttpClientHandler NewHttpClientHandler()
+        {
+            HttpClientHandler httpClientHandler = new();
+            if (TlsOptions != HiveServer2TlsOption.Empty)
+            {
+                httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>
+                {
+                    if (policyErrors == SslPolicyErrors.None) return true;
+
+                    return
+                       (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowSelfSigned))
+                    && (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowHostnameMismatch));
+                };
+            }
+
+            return httpClientHandler;
         }
 
         private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password)
@@ -248,39 +259,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override SparkServerType ServerType => SparkServerType.Http;
-
-        internal class HiveServer2SchemaParser : SchemaParser
-        {
-            public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType)
-            {
-                return thriftType.Type switch
-                {
-                    TTypeId.BIGINT_TYPE => Int64Type.Default,
-                    TTypeId.BINARY_TYPE => BinaryType.Default,
-                    TTypeId.BOOLEAN_TYPE => BooleanType.Default,
-                    TTypeId.DOUBLE_TYPE
-                    or TTypeId.FLOAT_TYPE => DoubleType.Default,
-                    TTypeId.INT_TYPE => Int32Type.Default,
-                    TTypeId.SMALLINT_TYPE => Int16Type.Default,
-                    TTypeId.TINYINT_TYPE => Int8Type.Default,
-                    TTypeId.CHAR_TYPE
-                    or TTypeId.DATE_TYPE
-                    or TTypeId.DECIMAL_TYPE
-                    or TTypeId.NULL_TYPE
-                    or TTypeId.STRING_TYPE
-                    or TTypeId.TIMESTAMP_TYPE
-                    or TTypeId.VARCHAR_TYPE
-                    or TTypeId.INTERVAL_DAY_TIME_TYPE
-                    or TTypeId.INTERVAL_YEAR_MONTH_TYPE
-                    or TTypeId.ARRAY_TYPE
-                    or TTypeId.MAP_TYPE
-                    or TTypeId.STRUCT_TYPE
-                    or TTypeId.UNION_TYPE
-                    or TTypeId.USER_DEFINED_TYPE => StringType.Default,
-                    TTypeId.TIMESTAMPLOCALTZ_TYPE => throw new NotImplementedException(),
-                    _ => throw new NotImplementedException(),
-                };
-            }
-        }
     }
 }

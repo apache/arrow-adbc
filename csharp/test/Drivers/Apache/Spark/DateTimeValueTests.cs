@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -58,7 +59,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [MemberData(nameof(TimestampData), "TIMESTAMP_LTZ")]
         public async Task TestTimestampData(DateTimeOffset value, string columnType)
         {
-            Skip.If((VendorVersionAsVersion < Version.Parse("3.4.0")) && (columnType.Equals("TIMESTAMP_LTZ") || value == DateTimeOffset.MaxValue));
+            Skip.If((TestEnvironment.ServerType != SparkServerType.Databricks) && (columnType.Equals("TIMESTAMP_LTZ") || value == DateTimeOffset.MaxValue));
 
             string columnName = "TIMESTAMPTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
@@ -83,7 +84,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task TestTimestampNoTimezoneData(DateTimeOffset value, string columnType)
         {
             // Note: Minimum value falls outside range of valid values on server when no time zone is included. Cannot be selected
-            Skip.If(value == DateTimeOffset.MinValue || VendorVersionAsVersion < Version.Parse("3.4.0"));
+            Skip.If(value == DateTimeOffset.MinValue || TestEnvironment.ServerType != SparkServerType.Databricks);
 
             string columnName = "TIMESTAMPTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
