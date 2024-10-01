@@ -15,13 +15,8 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-===================
-C/C++ API Reference
-===================
+================
+Driver Framework
+================
 
-.. toctree::
-   :maxdepth: 2
-
-   adbc
-   adbc_driver_manager
-   driver_framework
+.. doxygengroup:: adbc-framework-catalog
