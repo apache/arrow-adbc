@@ -16,19 +16,22 @@
 */
 
 using System;
+using System.Buffers.Text;
 using System.Numerics;
+using System.Text;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal static class DecimalUtility
     {
-        private const char AsciiZero = '0';
+        private const byte AsciiZero = (byte)'0';
         private const int AsciiDigitMaxIndex = '9' - AsciiZero;
-        private const char AsciiMinus = '-';
-        private const char AsciiPlus = '+';
-        private const char AsciiUpperE = 'E';
-        private const char AsciiLowerE = 'e';
-        private const char AsciiPeriod = '.';
+        private const byte AsciiMinus = (byte)'-';
+        private const byte AsciiPlus = (byte)'+';
+        private const byte AsciiUpperE = (byte)'E';
+        private const byte AsciiLowerE = (byte)'e';
+        private const byte AsciiPeriod = (byte)'.';
+        private const byte AsciiSpace = (byte)' ';
 
         /// <summary>
         /// Gets the BigInteger bytes for the given string value.
@@ -39,7 +42,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// <param name="byteWidth">The width in bytes for the target buffer. Should match the length of the bytes parameter.</param>
         /// <param name="bytes">The buffer to place the BigInteger bytes into.</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        internal static void GetBytes(string value, int precision, int scale, int byteWidth, Span<byte> bytes)
+        internal static void GetBytes(ReadOnlySpan<byte> value, int precision, int scale, int byteWidth, Span<byte> bytes)
         {
             if (precision < 1)
             {
@@ -70,7 +73,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 #else
             byte[] tempBytes = integerValue.ToByteArray();
             bytesWritten = tempBytes.Length;
-            if (bytesWritten > bytes.Length)
+            if (bytesWritten > byteWidth)
             {
                 throw new OverflowException($"Decimal size greater than {byteWidth} bytes: {bytesWritten}");
             }
@@ -83,20 +86,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        private static BigInteger ToBigInteger(string value, int precision, int scale)
+        private static BigInteger ToBigInteger(ReadOnlySpan<byte> value, int precision, int scale)
         {
-            BigInteger integerValue;
+            ReadOnlySpan<byte> significantValue = GetSignificantValue(value, precision, scale);
 #if NETCOREAPP
-            ReadOnlySpan<char> significantValue = GetSignificantValue(value, precision, scale);
-            integerValue = BigInteger.Parse(significantValue);
+            // We can rely on the fact that all the characters in the span have already been confirmed to be ASCII (i.e., < 128)
+            Span<char> chars = stackalloc char[significantValue.Length];
+            Encoding.UTF8.GetChars(significantValue, chars);
+            return BigInteger.Parse(chars);
 #else
-            ReadOnlySpan<char> significantValue = GetSignificantValue(value.AsSpan(), precision, scale);
-            integerValue = BigInteger.Parse(significantValue.ToString());
+            return BigInteger.Parse(Encoding.UTF8.GetString(significantValue));
 #endif
-            return integerValue;
         }
 
-        private static ReadOnlySpan<char> GetSignificantValue(ReadOnlySpan<char> value, int precision, int scale)
+        private static ReadOnlySpan<byte> GetSignificantValue(ReadOnlySpan<byte> value, int precision, int scale)
         {
             ParseDecimal(value, out ParserState state);
 
@@ -104,12 +107,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 precision,
                 scale,
                 state,
-                out char sign,
-                out ReadOnlySpan<char> integerSpan,
-                out ReadOnlySpan<char> fractionalSpan,
+                out byte sign,
+                out ReadOnlySpan<byte> integerSpan,
+                out ReadOnlySpan<byte> fractionalSpan,
                 out int neededScale);
 
-            Span<char> significant = new char[precision + 1];
+            Span<byte> significant = new byte[precision + 1];
             BuildSignificantValue(
                 sign,
                 scale,
@@ -121,7 +124,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return significant;
         }
 
-        private static void ProcessDecimal(ReadOnlySpan<char> value, int precision, int scale, ParserState state, out char sign, out ReadOnlySpan<char> integerSpan, out ReadOnlySpan<char> fractionalSpan, out int neededScale)
+        private static void ProcessDecimal(ReadOnlySpan<byte> value, int precision, int scale, ParserState state, out byte sign, out ReadOnlySpan<byte> integerSpan, out ReadOnlySpan<byte> fractionalSpan, out int neededScale)
         {
             int int_length = 0;
             int frac_length = 0;
@@ -133,19 +136,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 int expStart = state.ExpSignIndex != -1 ? state.ExpSignIndex : state.ExponentStart;
                 int expLength = state.ExponentEnd - expStart + 1;
-                ReadOnlySpan<char> exponentSpan = value.Slice(expStart, expLength);
-#if NETCOREAPP
-                exponent = int.Parse(exponentSpan);
-#else
-                exponent = int.Parse(exponentSpan.ToString());
-#endif
+                ReadOnlySpan<byte> exponentSpan = value.Slice(expStart, expLength);
+                if (!Utf8Parser.TryParse(exponentSpan, out exponent, out int _))
+                {
+                    throw new FormatException($"unable to parse exponent value '{Encoding.UTF8.GetString(exponentSpan)}'");
+                }
             }
             integerSpan = int_length > 0 ? value.Slice(state.IntegerStart, state.IntegerEnd - state.IntegerStart + 1) : [];
             fractionalSpan = frac_length > 0 ? value.Slice(state.FractionalStart, state.FractionalEnd - state.FractionalStart + 1) : [];
-            Span<char> tempSignificant;
+            Span<byte> tempSignificant;
             if (exponent != 0)
             {
-                tempSignificant = new char[int_length + frac_length];
+                tempSignificant = new byte[int_length + frac_length];
                 if (int_length > 0) value.Slice(state.IntegerStart, state.IntegerEnd - state.IntegerStart + 1).CopyTo(tempSignificant.Slice(0));
                 if (frac_length > 0) value.Slice(state.FractionalStart, state.FractionalEnd - state.FractionalStart + 1).CopyTo(tempSignificant.Slice(int_length));
                 // Trim trailing zeros from combined string
@@ -179,22 +181,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             neededScale = frac_length;
             if (neededPrecision > precision)
             {
-                throw new OverflowException($"Decimal precision cannot be greater than that in the Arrow vector: {value.ToString()} has precision > {precision}");
+                throw new OverflowException($"Decimal precision cannot be greater than that in the Arrow vector: {Encoding.UTF8.GetString(value)} has precision > {precision}");
             }
             if (neededScale > scale)
             {
-                throw new OverflowException($"Decimal scale cannot be greater than that in the Arrow vector: {value.ToString()} has scale > {scale}");
+                throw new OverflowException($"Decimal scale cannot be greater than that in the Arrow vector: {Encoding.UTF8.GetString(value)} has scale > {scale}");
             }
             sign = state.SignIndex != -1 ? value[state.SignIndex] : AsciiPlus;
         }
 
         private static void BuildSignificantValue(
-            char sign,
+            byte sign,
             int scale,
-            ReadOnlySpan<char> integerSpan,
-            ReadOnlySpan<char> fractionalSpan,
+            ReadOnlySpan<byte> integerSpan,
+            ReadOnlySpan<byte> fractionalSpan,
             int neededScale,
-            Span<char> significant)
+            Span<byte> significant)
         {
             significant[0] = sign;
             int end = 0;
@@ -242,18 +244,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             public ParserState() { }
         }
 
-        private static void ParseDecimal(ReadOnlySpan<char> value, out ParserState parserState)
+        private static void ParseDecimal(ReadOnlySpan<byte> value, out ParserState parserState)
         {
-            ParserState state = new ParserState();
+            ParserState state = new();
             int index = 0;
             int length = value.Length;
             while (index < length)
             {
-                char c = value[index];
+                byte c = value[index];
                 switch (state.CurrentState)
                 {
                     case ParseState.StartWhiteSpace:
-                        if (!char.IsWhiteSpace(c))
+                        if (c != AsciiSpace)
                         {
                             state.CurrentState = ParseState.SignOrDigitOrDecimal;
                         }
@@ -284,7 +286,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             index++;
                             state.CurrentState = ParseState.FractionOrExponent;
                         }
-                        else if (char.IsWhiteSpace(c))
+                        else if (c == AsciiSpace)
                         {
                             index++;
                             state.CurrentState = ParseState.EndWhiteSpace;
@@ -315,7 +317,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             index++;
                             state.CurrentState = ParseState.ExpSignOrExpValue;
                         }
-                        else if (char.IsWhiteSpace(c))
+                        else if (c == AsciiSpace)
                         {
                             index++;
                             state.CurrentState = ParseState.EndWhiteSpace;
@@ -340,7 +342,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             index++;
                             state.CurrentState = ParseState.ExpSignOrExpValue;
                         }
-                        else if (char.IsWhiteSpace(c))
+                        else if (c == AsciiSpace)
                         {
                             index++;
                             state.CurrentState = ParseState.EndWhiteSpace;
@@ -365,7 +367,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             index++;
                             state.CurrentState = ParseState.ExpValue;
                         }
-                        else if (char.IsWhiteSpace(c))
+                        else if (c == AsciiSpace)
                         {
                             index++;
                             state.CurrentState = ParseState.EndWhiteSpace;
@@ -383,7 +385,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             state.ExponentEnd = index;
                             index++;
                         }
-                        else if (char.IsWhiteSpace(c))
+                        else if (c == AsciiSpace)
                         {
                             index++;
                             state.CurrentState = ParseState.EndWhiteSpace;
@@ -394,7 +396,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         }
                         break;
                     case ParseState.EndWhiteSpace:
-                        if (char.IsWhiteSpace(c))
+                        if (c == AsciiSpace)
                         {
                             index++;
                             state.CurrentState = ParseState.EndWhiteSpace;
@@ -405,7 +407,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         }
                         break;
                     case ParseState.Invalid:
-                        throw new ArgumentOutOfRangeException(nameof(value), value.ToString(), $"Invalid numeric value at index {index}.");
+                        throw new ArgumentOutOfRangeException(nameof(value), Encoding.UTF8.GetString(value), $"Invalid numeric value at index {index}.");
                 }
             }
             // Trim leading zeros from integer portion
@@ -444,7 +446,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             if (state.IntegerStart == -1 && state.FractionalStart == -1)
             {
                 if (!state.HasZero)
-                    throw new ArgumentOutOfRangeException(nameof(value), value.ToString(), "input does not contain a valid numeric value.");
+                    throw new ArgumentOutOfRangeException(nameof(value), Encoding.UTF8.GetString(value), "input does not contain a valid numeric value.");
                 else
                 {
                     state.IntegerStart = value.IndexOf(AsciiZero);
@@ -455,4 +457,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             parserState = state;
         }
     }
+
+#if !NETCOREAPP
+    internal static class EncodingExtensions
+    {
+        public static string GetString(this Encoding encoding, ReadOnlySpan<byte> source)
+        {
+            return encoding.GetString(source.ToArray());
+        }
+    }
+#endif
 }
