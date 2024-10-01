@@ -16,10 +16,12 @@
 */
 
 using System;
+using System.Buffers.Text;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Xunit;
 using Xunit.Abstractions;
@@ -35,8 +37,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
 
         [SkippableTheory]
         [MemberData(nameof(Decimal128Data))]
-        public void TestCanConvertDecimal(string value, int precision, int scale, int byteWidth, byte[] expected, SqlDecimal? expectedDecimal = default)
+        public void TestCanConvertDecimal(string stringValue, int precision, int scale, int byteWidth, byte[] expected, SqlDecimal? expectedDecimal = default)
         {
+            ReadOnlySpan<byte> value = Encoding.UTF8.GetBytes(stringValue);
             byte[] actual = new byte[byteWidth];
             DecimalUtility.GetBytes(value, precision, scale, byteWidth, actual);
             Assert.Equal(expected, actual);
@@ -56,25 +59,27 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             Stopwatch stopwatch = new();
 
             int testCount = 1000000;
-            string testValue = "99999999999999999999999999999999999999";
+            ReadOnlySpan<byte> testValue = "99999999999999999999999999999999999999"u8;
+            string testValueString = "99999999999999999999999999999999999999";
             int byteWidth = 16;
             byte[] buffer = new byte[byteWidth];
-            Decimal128Array.Builder builder = new Decimal128Array.Builder(new Types.Decimal128Type(38, 0));
+            Decimal128Array.Builder builder = new(new Types.Decimal128Type(38, 0));
             stopwatch.Restart();
             for (int i = 0; i < testCount; i++)
             {
-                if (decimal.TryParse(testValue, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var actualDecimal))
+                if (Utf8Parser.TryParse(testValue, out decimal actualDecimal, out _, standardFormat: 'E'))
                 {
                     builder.Append(new SqlDecimal(actualDecimal));
                 }
                 else
                 {
-                    builder.Append(testValue);
+                    builder.Append(testValueString);
                 }
             }
             stopwatch.Stop();
             _outputHelper.WriteLine($"Decimal128Builder.Append: {testCount} iterations took {stopwatch.ElapsedMilliseconds} elapsed milliseconds");
 
+            builder = new(new Types.Decimal128Type(38, 0));
             stopwatch.Restart();
             for (int i = 0; i < testCount; i++)
             {
