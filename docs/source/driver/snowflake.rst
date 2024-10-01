@@ -447,7 +447,8 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
     or ``false``.
 
 ``adbc.snowflake.sql.client_option.config_file``
-    Specifies the location of the client configuration json file.
+    Specifies the location of the client configuration JSON file. See the
+    [Snowflake Go docs](https://github.com/snowflakedb/gosnowflake/blob/a26ac8a1b9a0dda854ac5db9c2c145f79d5ac4c0/doc.go#L130) for more details.
 
 ``adbc.snowflake.sql.client_option.tracing``
     Set the logging level
