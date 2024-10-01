@@ -33,5 +33,10 @@ keywords = ["arrow"]
 categories = ["database"]
 
 [workspace.dependencies]
-arrow = { version = "51.0.0", default-features = false, features = ["ffi"] }
 adbc_core = { path = "./core" }
+arrow-array = { version = "53.0.0", default-features = false, features = [
+    "ffi",
+] }
+arrow-buffer = { version = "53.0.0", default-features = false }
+arrow-schema = { version = "53.0.0", default-features = false }
+arrow-select = { version = "53.0.0", default-features = false }

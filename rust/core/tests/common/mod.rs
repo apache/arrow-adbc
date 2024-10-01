@@ -29,11 +29,12 @@ use adbc_core::options::{
 use adbc_core::schemas;
 use adbc_core::{Connection, Database, Driver, Optionable, Statement};
 
-use arrow::array::{as_string_array, Array, Float64Array, Int64Array, StringArray};
-use arrow::compute::concat_batches;
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-use arrow::error::ArrowError;
-use arrow::record_batch::{RecordBatch, RecordBatchReader};
+use arrow_array::{
+    cast::as_string_array, Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader,
+    StringArray,
+};
+use arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef};
+use arrow_select::concat::concat_batches;
 
 pub struct SingleBatchReader {
     batch: Option<RecordBatch>,

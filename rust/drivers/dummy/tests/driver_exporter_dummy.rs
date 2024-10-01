@@ -22,10 +22,9 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use arrow::array::{Array, Float64Array, Int64Array, StringArray};
-use arrow::compute::concat_batches;
-use arrow::datatypes::{DataType, Field, Schema};
-use arrow::record_batch::{RecordBatch, RecordBatchReader};
+use arrow_array::{Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader, StringArray};
+use arrow_schema::{DataType, Field, Schema};
+use arrow_select::concat::concat_batches;
 
 use adbc_core::driver_manager::{
     ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement,

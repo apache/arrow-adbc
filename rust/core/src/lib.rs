@@ -70,8 +70,8 @@ pub mod schemas;
 
 use std::collections::HashSet;
 
-use arrow::datatypes::Schema;
-use arrow::record_batch::{RecordBatch, RecordBatchReader};
+use arrow_array::{RecordBatch, RecordBatchReader};
+use arrow_schema::Schema;
 
 use error::Result;
 use options::{OptionConnection, OptionDatabase, OptionStatement, OptionValue};

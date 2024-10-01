@@ -20,7 +20,7 @@
 use std::os::raw::c_char;
 use std::{ffi::NulError, fmt::Display};
 
-use arrow::error::ArrowError;
+use arrow_schema::ArrowError;
 
 /// Status of an operation.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
