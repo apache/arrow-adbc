@@ -44,6 +44,8 @@ defaults:
 jobs:
   native-unix:
     uses: ./.github/workflows/native-unix.yml
+    permissions:
+      id-token: write
 
   rust:
     needs: [native-unix]
