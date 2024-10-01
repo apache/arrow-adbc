@@ -89,8 +89,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private static BigInteger ToBigInteger(ReadOnlySpan<byte> value, int precision, int scale)
         {
             ReadOnlySpan<byte> significantValue = GetSignificantValue(value, precision, scale);
-            BigInteger integerValue = BigInteger.Parse(Encoding.UTF8.GetString(significantValue));
-            return integerValue;
+#if NETCOREAPP
+            // We can rely on the fact that all the characters in the span have already been confirmed to be ASCII (i.e., < 128)
+            Span<char> chars = stackalloc char[significantValue.Length];
+            Encoding.UTF8.GetChars(significantValue, chars);
+            return BigInteger.Parse(chars);
+#else
+            return BigInteger.Parse(Encoding.UTF8.GetString(significantValue));
+#endif
         }
 
         private static ReadOnlySpan<byte> GetSignificantValue(ReadOnlySpan<byte> value, int precision, int scale)

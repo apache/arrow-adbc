@@ -40,7 +40,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const char StandardFormatExponent = 'E';
         private const int YearMonthSepIndex = 4;
         private const int MonthDaySepIndex = 7;
-        private const int KnownFormatLength = 19;
+        private const int KnownFormatDateLength = 10;
+        private const int KnownFormatDateTimeLength = 19;
         private const int DayHourSepIndex = 10;
         private const int HourMinuteSepIndex = 13;
         private const int MinuteSecondSepIndex = 16;
@@ -53,7 +54,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const int SecondSubsecondSepIndex = 19;
         private const int SubsecondIndex = 20;
         private const int MillisecondDecimalPlaces = 3;
-
         private HiveServer2Statement? _statement;
         private readonly long _batchSize;
         private readonly DataTypeConversion _dataTypeConversion;
@@ -139,8 +139,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return arrowArray;
         }
 
-        private static Date32Array ConvertToDate32(StringArray array, IArrowType _)
+        internal static Date32Array ConvertToDate32(StringArray array, IArrowType _)
         {
+            const DateTimeStyles DateTimeStyles = DateTimeStyles.AllowWhiteSpaces;
             var resultArray = new Date32Array.Builder();
             int length = array.Length;
             for (int i = 0; i < length; i++)
@@ -150,11 +151,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 if (isNull)
                 {
                     resultArray.AppendNull();
-
                 }
                 else if (TryParse(date, out DateTime dateTime)
                     || Utf8Parser.TryParse(date, out dateTime, out int _, standardFormat: StandardFormatRoundTrippable)
-                    || DateTime.TryParse(array.GetString(i), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out dateTime))
+                    || DateTime.TryParse(array.GetString(i), CultureInfo.InvariantCulture, DateTimeStyles, out dateTime))
                 {
                     resultArray.Append(dateTime);
                 }
@@ -167,15 +167,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return resultArray.Build();
         }
 
-        private static bool TryParse(ReadOnlySpan<byte> date, out DateTime dateTime)
+        internal static bool TryParse(ReadOnlySpan<byte> date, out DateTime dateTime)
         {
-            if (date.Length >= 10 && date[YearMonthSepIndex] == AsciiDash && date[MonthDaySepIndex] == AsciiDash
-                && Utf8Parser.TryParse(date.Slice(YearIndex), out int year, out _)
-                && Utf8Parser.TryParse(date.Slice(MonthIndex), out int month, out _)
-                && Utf8Parser.TryParse(date.Slice(DayIndex), out int day, out _))
+            if (date.Length == KnownFormatDateLength
+                && date[YearMonthSepIndex] == AsciiDash && date[MonthDaySepIndex] == AsciiDash
+                && Utf8Parser.TryParse(date.Slice(YearIndex, 4), out int year, out int bytesConsumed) && bytesConsumed == 4
+                && Utf8Parser.TryParse(date.Slice(MonthIndex, 2), out int month, out bytesConsumed) && bytesConsumed == 2
+                && Utf8Parser.TryParse(date.Slice(DayIndex, 2), out int day, out bytesConsumed) && bytesConsumed == 2)
             {
-                dateTime = new(year, month, day);
-                return true;
+                try
+                {
+                    dateTime = new(year, month, day);
+                    return true;
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    dateTime = default;
+                    return false;
+                }
             }
 
             dateTime = default;
@@ -212,8 +221,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return resultArray.Build();
         }
 
-        private static TimestampArray ConvertToTimestamp(StringArray array, IArrowType _)
+        internal static TimestampArray ConvertToTimestamp(StringArray array, IArrowType _)
         {
+            const DateTimeStyles DateTimeStyles = DateTimeStyles.AssumeUniversal | DateTimeStyles.AllowWhiteSpaces;
             // Match the precision of the server
             var resultArrayBuilder = new TimestampArray.Builder(TimeUnit.Microsecond);
             int length = array.Length;
@@ -227,7 +237,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
                 else if (TryParse(date, out DateTimeOffset dateValue)
                     || Utf8Parser.TryParse(date, out dateValue, out int _, standardFormat: StandardFormatRoundTrippable)
-                    || DateTimeOffset.TryParse(array.GetString(i), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out dateValue))
+                    || DateTimeOffset.TryParse(array.GetString(i), CultureInfo.InvariantCulture, DateTimeStyles, out dateValue))
                 {
                     resultArrayBuilder.Append(dateValue);
                 }
@@ -240,9 +250,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return resultArrayBuilder.Build();
         }
 
-        private static bool TryParse(ReadOnlySpan<byte> date, out DateTimeOffset dateValue)
+        internal static bool TryParse(ReadOnlySpan<byte> date, out DateTimeOffset dateValue)
         {
-            bool isKnownFormat = date.Length >= KnownFormatLength
+            bool isKnownFormat = date.Length >= KnownFormatDateTimeLength
                 && date[YearMonthSepIndex] == AsciiDash
                 && date[MonthDaySepIndex] == AsciiDash
                 && date[DayHourSepIndex] == AsciiSpace
@@ -250,43 +260,65 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 && date[MinuteSecondSepIndex] == AsciiColon;
 
             if (!isKnownFormat
-                || !Utf8Parser.TryParse(date.Slice(YearIndex), out int year, out _)
-                || !Utf8Parser.TryParse(date.Slice(MonthIndex), out int month, out _)
-                || !Utf8Parser.TryParse(date.Slice(DayIndex), out int day, out _)
-                || !Utf8Parser.TryParse(date.Slice(HourIndex), out int hour, out _)
-                || !Utf8Parser.TryParse(date.Slice(MinuteIndex), out int minute, out _)
-                || !Utf8Parser.TryParse(date.Slice(SecondIndex), out int second, out _))
+                || !Utf8Parser.TryParse(date.Slice(YearIndex, 4), out int year, out int bytesConsumed, standardFormat: 'D') || bytesConsumed != 4
+                || !Utf8Parser.TryParse(date.Slice(MonthIndex, 2), out int month, out bytesConsumed, standardFormat: 'D') || bytesConsumed != 2
+                || !Utf8Parser.TryParse(date.Slice(DayIndex, 2), out int day, out bytesConsumed, standardFormat: 'D') || bytesConsumed != 2
+                || !Utf8Parser.TryParse(date.Slice(HourIndex, 2), out int hour, out bytesConsumed, standardFormat: 'D') || bytesConsumed != 2
+                || !Utf8Parser.TryParse(date.Slice(MinuteIndex, 2), out int minute, out bytesConsumed, standardFormat: 'D') || bytesConsumed != 2
+                || !Utf8Parser.TryParse(date.Slice(SecondIndex, 2), out int second, out bytesConsumed, standardFormat: 'D') || bytesConsumed != 2)
             {
                 dateValue = default;
                 return false;
             }
 
-            dateValue = new(year, month, day, hour, minute, second, TimeSpan.Zero);
+            try
+            {
+                dateValue = new(year, month, day, hour, minute, second, TimeSpan.Zero);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                dateValue = default;
+                return false;
+            }
 
             // Retrieve subseconds, if available
             int length = date.Length;
-            if (length > SubsecondIndex && date[SecondSubsecondSepIndex] == AsciiPeriod)
+            if (length > SecondSubsecondSepIndex)
             {
-                int start = -1;
-                int end = SubsecondIndex;
-                while (end < length && (uint)(date[end] - AsciiZero) <= AsciiDigitMaxIndex)
+                if (date[SecondSubsecondSepIndex] == AsciiPeriod)
                 {
-                    if (start == -1) start = end;
-                    end++;
-                }
-
-                int subSecondsLength = start != -1 ? end - start : 0;
-                if (subSecondsLength > 0)
-                {
-                    if (!Utf8Parser.TryParse(date.Slice(start, subSecondsLength), out int subSeconds, out _))
+                    int start = -1;
+                    int end = SubsecondIndex;
+                    while (end < length && (uint)(date[end] - AsciiZero) <= AsciiDigitMaxIndex)
                     {
+                        if (start == -1) start = end;
+                        end++;
+                    }
+                    if (end < length)
+                    {
+                        // Indicates unrecognized trailing character(s)
                         dateValue = default;
                         return false;
                     }
 
-                    double factorOfMilliseconds = Math.Pow(10, subSecondsLength - MillisecondDecimalPlaces);
-                    long ticks = (long)(subSeconds * (TimeSpan.TicksPerMillisecond / factorOfMilliseconds));
-                    dateValue = dateValue.AddTicks(ticks);
+                    int subSecondsLength = start != -1 ? end - start : 0;
+                    if (subSecondsLength > 0)
+                    {
+                        if (!Utf8Parser.TryParse(date.Slice(start, subSecondsLength), out int subSeconds, out _))
+                        {
+                            dateValue = default;
+                            return false;
+                        }
+
+                        double factorOfMilliseconds = Math.Pow(10, subSecondsLength - MillisecondDecimalPlaces);
+                        long ticks = (long)(subSeconds * (TimeSpan.TicksPerMillisecond / factorOfMilliseconds));
+                        dateValue = dateValue.AddTicks(ticks);
+                    }
+                }
+                else
+                {
+                    dateValue = default;
+                    return false;
                 }
             }
 
