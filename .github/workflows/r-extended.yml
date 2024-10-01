@@ -126,7 +126,7 @@ jobs:
           R -e 'if (!requireNamespace("nanoarrow", quietly = TRUE)) install.packages("nanoarrow", repos = "https://cloud.r-project.org/")'
           R CMD INSTALL . --preclean
           popd
-          pushd "r/${{ inputs.pkg }}"
+          pushd "r/${{ matrix.pkg }}"
           Rscript bootstrap.R
           popd
         shell: bash
