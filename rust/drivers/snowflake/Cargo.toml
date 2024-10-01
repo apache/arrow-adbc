@@ -15,25 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[workspace]
-members = ["core", "drivers/*"]
-resolver = "2"
+[package]
+name = "adbc_snowflake"
+description = "Snowflake Arrow Database Connectivity (ADBC) driver"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
 
-[workspace.package]
-version = "0.15.0"
-description = "Rust implementation of Arrow Database Connectivity (ADBC)"
-edition = "2021"
-authors = ["Apache Arrow <dev@arrow.apache.org>"]
-license = "Apache-2.0"
-documentation = "https://docs.rs/adbc_core/"
-readme = "README.md"
-homepage = "https://arrow.apache.org/adbc/"
-repository = "https://github.com/apache/arrow-adbc"
-keywords = ["arrow"]
-categories = ["database"]
-
-[workspace.dependencies]
-adbc_core = { path = "./core" }
-arrow = { version = "51.0.0", default-features = false, features = ["ffi"] }
-arrow-array = { version = "51.0.0", default-features = false }
-arrow-schema = { version = "51.0.0", default-features = false }
+[dependencies]
+adbc_core = { path = "../../core", features = ["driver_manager"] }
+arrow-array.workspace = true
+arrow-schema.workspace = true

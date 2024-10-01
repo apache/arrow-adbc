@@ -20,6 +20,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "adbc_snowflake"
+version = "0.15.0"
+dependencies = [
+ "adbc_core",
+ "arrow-array",
+ "arrow-schema",
+]
+
+[[package]]
 name = "ahash"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"

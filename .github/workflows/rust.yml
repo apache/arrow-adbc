@@ -67,6 +67,15 @@ jobs:
         run: |
           rustup toolchain install stable --no-self-update
           rustup default stable
+      - name: Get required Go version
+        run: |
+          (. ../.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "${{ env.GO_VERSION }}"
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
