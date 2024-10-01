@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -40,10 +41,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public string? DriverEntryPoint { get; set; }
 
         /// <summary>
-        /// The active test environment.
+        /// A comma separated list of testable environments.
         /// </summary>
         [JsonPropertyName("testEnvironment")]
-        public string? TestEnvironmentName { get; set; }
+        public string? TestableEnvironments { get; set; }
 
         /// <summary>
         /// The active test environment.
@@ -61,6 +62,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             this.SupportsWriteUpdate = false;
             this.SupportsCatalogs = false;
         }
+
+        /// <summary>
+        /// The name of the environment.
+        /// </summary>
+        public string? Name { get; set; }
 
         /// <summary>
         /// The service URI.
@@ -109,5 +115,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         [JsonPropertyName("tableTypes")]
         public List<string> TableTypes { get; set; }
+    }
+
+    internal class FlightSqlDriverDatabaseConnection : IDisposable
+    {
+        public AdbcDriver? Driver { get; set; }
+        public AdbcDatabase? Database { get; set; }
+        public AdbcConnection? Connection { get; set; }
+
+        public void Dispose()
+        {
+            this.Connection?.Dispose();
+            this.Database?.Dispose();
+            this.Driver?.Dispose();
+        }
     }
 }

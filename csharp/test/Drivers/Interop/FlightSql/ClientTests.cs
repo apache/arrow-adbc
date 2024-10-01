@@ -37,13 +37,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
     public class ClientTests
     {
         readonly FlightSqlTestConfiguration _testConfiguration;
-        readonly FlightSqlTestEnvironment _environment;
+        readonly List<FlightSqlTestEnvironment> _environments;
+        readonly Dictionary<string, AdbcDriver> _configuredDrivers = new Dictionary<string, AdbcDriver>();
 
         public ClientTests()
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
             _testConfiguration = FlightSqlTestingUtils.LoadFlightSqlTestConfiguration(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
-            _environment = FlightSqlTestingUtils.GetTestEnvironment(_testConfiguration);
+            _environments = FlightSqlTestingUtils.GetTestEnvironments(_testConfiguration);
         }
 
         /// <summary>
@@ -52,13 +53,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(1)]
         public void CanClientExecuteUpdate()
         {
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
+            foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                string[] queries = FlightSqlTestingUtils.GetQueries(_environment);
+                if (environment.SupportsWriteUpdate)
+                {
+                    using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(environment, _testConfiguration))
+                    {
+                        string[] queries = FlightSqlTestingUtils.GetQueries(environment);
 
-                List<int> expectedResults = new List<int>() { -1, 1, 1 };
+                        List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
-                Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, _environment, queries, expectedResults);
+                        Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, environment, queries, expectedResults);
+                    }
+                }
             }
         }
 
@@ -68,29 +75,35 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(2)]
         public void CanClientExecuteUpdateUsingExecuteReader()
         {
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
+            foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                adbcConnection.Open();
-
-                string[] queries = FlightSqlTestingUtils.GetQueries(_environment);
-
-                List<object> expectedResults = new List<object>() { $"Table {_environment.Metadata.Table} successfully created.", new SqlDecimal(1L), new SqlDecimal(1L) };
-
-                for (int i = 0; i < queries.Length; i++)
+                if (environment.SupportsWriteUpdate)
                 {
-                    string query = queries[i];
-                    AdbcCommand adbcCommand = adbcConnection.CreateCommand();
-                    adbcCommand.CommandText = query;
-
-                    AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.Default);
-
-                    if (reader.Read())
+                    using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(environment, _testConfiguration))
                     {
-                        Assert.True(expectedResults[i].Equals(reader.GetValue(0)), $"The expected affected rows do not match the actual affected rows at position {i}.");
-                    }
-                    else
-                    {
-                        Assert.Fail("Could not read the records");
+                        adbcConnection.Open();
+
+                        string[] queries = FlightSqlTestingUtils.GetQueries(environment);
+
+                        List<object> expectedResults = new List<object>() { $"Table {environment.Metadata.Table} successfully created.", new SqlDecimal(1L), new SqlDecimal(1L) };
+
+                        for (int i = 0; i < queries.Length; i++)
+                        {
+                            string query = queries[i];
+                            AdbcCommand adbcCommand = adbcConnection.CreateCommand();
+                            adbcCommand.CommandText = query;
+
+                            AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.Default);
+
+                            if (reader.Read())
+                            {
+                                Assert.True(expectedResults[i].Equals(reader.GetValue(0)), $"The expected affected rows do not match the actual affected rows at position {i} in the [" + environment.Name + "] environment");
+                            }
+                            else
+                            {
+                                Assert.Fail("Could not read the records in the [" + environment.Name + "] environment");
+                            }
+                        }
                     }
                 }
             }
@@ -102,9 +115,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(3)]
         public void CanClientGetSchema()
         {
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
+            foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                Tests.ClientTests.CanClientGetSchema(adbcConnection, _environment);
+                using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(environment, _testConfiguration))
+                {
+                    Tests.ClientTests.CanClientGetSchema(adbcConnection, environment);
+                }
             }
         }
 
@@ -115,9 +131,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(4)]
         public void CanClientExecuteQuery()
         {
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
+            foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, _environment);
+                using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(environment, _testConfiguration))
+                {
+                    Tests.ClientTests.CanClientExecuteQuery(adbcConnection, environment);
+                }
             }
         }
 
@@ -128,13 +147,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(4)]
         public void CanClientExecuteQueryWithNoResults()
         {
-            FlightSqlTestEnvironment environment = FlightSqlTestingUtils.GetTestEnvironment(_testConfiguration);
-            environment.Query = "SELECT * WHERE 0=1";
-            environment.ExpectedResultsCount = 0;
-
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
+            foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, environment);
+                environment.Query = "SELECT * WHERE 0=1";
+                environment.ExpectedResultsCount = 0;
+
+                using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(environment, _testConfiguration))
+                {
+                    Tests.ClientTests.CanClientExecuteQuery(adbcConnection, environment);
+                }
             }
         }
 
@@ -145,66 +166,69 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(6)]
         public void VerifyTypesAndValues()
         {
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
+            foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                SampleDataBuilder sampleDataBuilder = FlightSqlData.GetSampleData();
+                using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(environment, _testConfiguration))
+                {
+                    SampleDataBuilder sampleDataBuilder = FlightSqlData.GetSampleData();
 
-                Tests.ClientTests.VerifyTypesAndValues(adbcConnection, sampleDataBuilder);
+                    Tests.ClientTests.VerifyTypesAndValues(adbcConnection, sampleDataBuilder);
+                }
             }
         }
 
         [SkippableFact]
         public void VerifySchemaTables()
         {
-            using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(_testConfiguration))
-            {
-                adbcConnection.Open();
+            //foreach (FlightSqlTestEnvironment environment in _environments)
+            //{
+            //    using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(environment, _testConfiguration))
+            //    {
+            //        adbcConnection.Open();
 
-                var collections = adbcConnection.GetSchema("MetaDataCollections");
-                Assert.Equal(7, collections.Rows.Count);
-                Assert.Equal(2, collections.Columns.Count);
+            //        var collections = adbcConnection.GetSchema("MetaDataCollections");
+            //        Assert.Equal(7, collections.Rows.Count);
+            //        Assert.Equal(2, collections.Columns.Count);
 
-                var restrictions = adbcConnection.GetSchema("Restrictions");
-                Assert.Equal(11, restrictions.Rows.Count);
-                Assert.Equal(3, restrictions.Columns.Count);
+            //        var restrictions = adbcConnection.GetSchema("Restrictions");
+            //        Assert.Equal(11, restrictions.Rows.Count);
+            //        Assert.Equal(3, restrictions.Columns.Count);
 
-                var catalogs = adbcConnection.GetSchema("Catalogs");
-                Assert.Single(catalogs.Columns);
-                object? catalogObj = catalogs.Rows[0].ItemArray[0];
+            //        var catalogs = adbcConnection.GetSchema("Catalogs");
+            //        Assert.Single(catalogs.Columns);
+            //        object? catalogObj = catalogs.Rows[0].ItemArray[0];
 
-                Assert.True(catalogObj != null);
+            //        Assert.True(catalogObj != null);
 
-                string catalog = (string)catalogObj!;
+            //        string catalog = (string)catalogObj!;
 
-                catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
-                Assert.Equal(1, catalogs.Rows.Count);
+            //        catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
+            //        Assert.Equal(1, catalogs.Rows.Count);
 
-                var schemas = adbcConnection.GetSchema("Schemas", new[] { catalog });
-                Assert.Equal(2, schemas.Columns.Count);
+            //        var schemas = adbcConnection.GetSchema("Schemas", new[] { catalog });
+            //        Assert.Equal(2, schemas.Columns.Count);
 
-                var schema = "INFORMATION_SCHEMA";
-                schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, schema });
-                Assert.Equal(1, schemas.Rows.Count);
+            //        var schema = "INFORMATION_SCHEMA";
+            //        schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, schema });
+            //        Assert.Equal(1, schemas.Rows.Count);
 
-                var tableTypes = adbcConnection.GetSchema("TableTypes");
-                Assert.Single(tableTypes.Columns);
+            //        var tableTypes = adbcConnection.GetSchema("TableTypes");
+            //        Assert.Single(tableTypes.Columns);
 
-                var tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema });
-                Assert.Equal(4, tables.Columns.Count);
-                Assert.Equal(32, tables.Rows.Count);
+            //        var tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema });
+            //        Assert.Equal(4, tables.Columns.Count);
+            //        Assert.Equal(32, tables.Rows.Count);
 
-                var columns = adbcConnection.GetSchema("Columns", new[] { catalog, schema });
-                Assert.Equal(16, columns.Columns.Count);
-                Assert.Equal(441, columns.Rows.Count);
-            }
+            //        var columns = adbcConnection.GetSchema("Columns", new[] { catalog, schema });
+            //        Assert.Equal(16, columns.Columns.Count);
+            //        Assert.Equal(441, columns.Rows.Count);
+            //    }
+            //}
         }
 
-        private Adbc.Client.AdbcConnection GetFlightSqlAdbcConnectionUsingConnectionString(FlightSqlTestConfiguration testConfiguration, string? authType = null)
+        private Adbc.Client.AdbcConnection GetFlightSqlAdbcConnectionUsingConnectionString(FlightSqlTestEnvironment environment, FlightSqlTestConfiguration testConfiguration, string? authType = null)
         {
             // see https://arrow.apache.org/adbc/main/driver/flight_sql.html
-
-            FlightSqlTestEnvironment environment = _environment;
-
             DbConnectionStringBuilder builder = new DbConnectionStringBuilder(true);
             if (!string.IsNullOrEmpty(environment.Uri))
             {

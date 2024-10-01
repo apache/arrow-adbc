@@ -25,30 +25,8 @@ using Apache.Arrow.Adbc.Drivers.Interop.FlightSql;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 {
-    public class FlightSqlParameters
-    {
-        public const string Uri = "uri";
-        public const string OptionAuthorizationHeader = "adbc.flight.sql.authorization_header";
-        public const string OptionRPCCallHeaderPrefix = "adbc.flight.sql.rpc.call_header.";
-        public const string OptionTimeoutFetch = "adbc.flight.sql.rpc.timeout_seconds.fetch";
-        public const string OptionTimeoutQuery = "adbc.flight.sql.rpc.timeout_seconds.query";
-        public const string OptionTimeoutUpdate = "adbc.flight.sql.rpc.timeout_seconds.update";
-        public const string OptionSSLSkipVerify = "adbc.flight.sql.client_option.tls_skip_verify";
-        public const string OptionAuthority = "adbc.flight.sql.client_option.authority";
-        public const string Username = "username";
-        public const string Password = "password";
 
-        // not used, but also available:
-        //public const string OptionMTLSCertChain = "adbc.flight.sql.client_option.mtls_cert_chain";
-        //public const string OptionMTLSPrivateKey = "adbc.flight.sql.client_option.mtls_private_key";
-        //public const string OptionSSLOverrideHostname = "adbc.flight.sql.client_option.tls_override_hostname";
-        //public const string OptionSSLRootCerts = "adbc.flight.sql.client_option.tls_root_certs";
-        //public const string OptionWithBlock = "adbc.flight.sql.client_option.with_block";
-        //public const string OptionWithMaxMsgSize = "adbc.flight.sql.client_option.with_max_msg_size";
-        //public const string OptionCookieMiddleware = "adbc.flight.sql.rpc.with_cookie_middleware";
-    }
-
-    internal class FlightSqlTestingUtils
+    class FlightSqlTestingUtils
     {
         internal const string FLIGHTSQL_TEST_CONFIG_VARIABLE = "FLIGHTSQL_TEST_CONFIG_FILE";
         internal const string FLIGHTSQL_TEST_ENV_NAME = "FLIGHTSQL_TEST_ENV_NAME";
@@ -84,7 +62,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             return testConfiguration;
         }
 
-        internal static FlightSqlTestEnvironment GetTestEnvironment(FlightSqlTestConfiguration testConfiguration)
+        internal static List<FlightSqlTestEnvironment> GetTestEnvironments(FlightSqlTestConfiguration testConfiguration)
         {
             if (testConfiguration == null)
                 throw new ArgumentNullException(nameof(testConfiguration));
@@ -92,13 +70,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             if (testConfiguration.Environments == null || testConfiguration.Environments.Count == 0)
                 throw new InvalidOperationException("There are no environments configured");
 
-            FlightSqlTestEnvironment? environment = null;
+            List<FlightSqlTestEnvironment> environments = new List<FlightSqlTestEnvironment>();
 
             // the user can specify a test environment:
             // - in the config
             // - in the environment variable
             // - attempt to just use the first one from the config
-            if (string.IsNullOrEmpty(testConfiguration.TestEnvironmentName))
+            if (string.IsNullOrEmpty(testConfiguration.TestableEnvironments))
             {
                 string? testEnvNameFromEnvVariable = Environment.GetEnvironmentVariable(FlightSqlTestingUtils.FLIGHTSQL_TEST_ENV_NAME);
 
@@ -106,31 +84,53 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                 {
                     if (testConfiguration.Environments.Count > 0)
                     {
-                        environment = testConfiguration.Environments.Values.First();
+                        FlightSqlTestEnvironment firstEnvironment = testConfiguration.Environments.Values.First();
+                        firstEnvironment.Name = testConfiguration.Environments.Keys.First();
+                        environments.Add(firstEnvironment);
                     }
                 }
                 else
                 {
-                    if (testConfiguration.Environments.TryGetValue(testEnvNameFromEnvVariable!, out FlightSqlTestEnvironment? flightSqlTestEnvironment))
-                        environment = flightSqlTestEnvironment!;
+                    foreach (string environmentName in GetEnvironmentNames(testEnvNameFromEnvVariable))
+                    {
+                        if (testConfiguration.Environments.TryGetValue(environmentName, out FlightSqlTestEnvironment? flightSqlTestEnvironment))
+                        {
+                            if (flightSqlTestEnvironment != null)
+                            {
+                                flightSqlTestEnvironment.Name = environmentName;
+                                environments.Add(flightSqlTestEnvironment);
+                            }
+                        }
+                    }
                 }
             }
             else
             {
-                if (testConfiguration.Environments.TryGetValue(testConfiguration.TestEnvironmentName!, out FlightSqlTestEnvironment? flightSqlTestEnvironment))
-                    environment = flightSqlTestEnvironment!;
+                foreach (string environmentName in GetEnvironmentNames(testConfiguration.TestableEnvironments!))
+                {
+                    if (testConfiguration.Environments.TryGetValue(environmentName, out FlightSqlTestEnvironment? flightSqlTestEnvironment))
+                    {
+                        if (flightSqlTestEnvironment != null)
+                        {
+                            flightSqlTestEnvironment.Name = environmentName;
+                            environments.Add(flightSqlTestEnvironment);
+                        }
+                    }
+                }
             }
 
-           if (environment == null)
+           if (environments.Count == 0)
                 throw new InvalidOperationException("Could not find a configured Flight SQL environment");
 
-            return environment;
+            return environments;
         }
 
-        private void TrySetFlightSqlEnvironment(string? environmentName)
+        private static List<string> GetEnvironmentNames(string names)
         {
-            if (string.IsNullOrEmpty(environmentName))
-                return;
+            if (string.IsNullOrEmpty(names))
+                return new List<string>();
+
+            return names.Split(',').Select(x => x.Trim()).ToList();
         }
 
         /// <summary>
@@ -256,4 +256,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             return queries;
         }
     }
+
+
 }

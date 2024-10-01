@@ -36,11 +36,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
     public class DriverTests : IDisposable
     {
         readonly FlightSqlTestConfiguration _testConfiguration;
-        readonly FlightSqlTestEnvironment _environment;
-        readonly AdbcDriver _adbcDriver;
-        readonly AdbcDatabase _database;
-        readonly AdbcConnection _connection;
-        readonly List<string> _tableTypes;
+        readonly List<FlightSqlTestEnvironment> _environments;
+        readonly Dictionary<string, FlightSqlDriverDatabaseConnection> _configuredDriverDatabaseConnections = new Dictionary<string, FlightSqlDriverDatabaseConnection>();
 
         public static IEnumerable<object[]> GetPatterns(string? namePattern)
         {
@@ -56,35 +53,55 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         public static IEnumerable<object[]> CatalogNamePatternData()
         {
-            string? databaseName = FlightSqlTestingUtils.GetTestEnvironment(FlightSqlTestingUtils.LoadFlightSqlTestConfiguration()).Metadata.Catalog;
-            return GetPatterns(databaseName);
+            foreach (FlightSqlTestEnvironment environment in FlightSqlTestingUtils.GetTestEnvironments(FlightSqlTestingUtils.LoadFlightSqlTestConfiguration()))
+            {
+                string? databaseName = environment.Metadata.Catalog;
+                yield return GetPatterns(databaseName).ToArray();
+            }
         }
 
         public static IEnumerable<object[]> DbSchemasNamePatternData()
         {
-            string? dbSchemaName = FlightSqlTestingUtils.GetTestEnvironment(FlightSqlTestingUtils.LoadFlightSqlTestConfiguration()).Metadata.Schema;
-            return GetPatterns(dbSchemaName);
+            foreach (FlightSqlTestEnvironment environment in FlightSqlTestingUtils.GetTestEnvironments(FlightSqlTestingUtils.LoadFlightSqlTestConfiguration()))
+            {
+                string? dbSchemaName = environment.Metadata.Schema;
+                yield return GetPatterns(dbSchemaName).ToArray();
+            }
         }
 
         public static IEnumerable<object[]> TableNamePatternData()
         {
-            string? tableName = FlightSqlTestingUtils.GetTestEnvironment(FlightSqlTestingUtils.LoadFlightSqlTestConfiguration()).Metadata.Table;
-            return GetPatterns(tableName);
+            foreach (FlightSqlTestEnvironment environment in FlightSqlTestingUtils.GetTestEnvironments(FlightSqlTestingUtils.LoadFlightSqlTestConfiguration()))
+            {
+                string? tableName = environment.Metadata.Table;
+                yield return GetPatterns(tableName).ToArray();
+            }
         }
 
         public DriverTests()
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
             _testConfiguration = FlightSqlTestingUtils.LoadFlightSqlTestConfiguration();
-            _environment = FlightSqlTestingUtils.GetTestEnvironment(_testConfiguration);
-            _tableTypes = _environment.TableTypes;
+            _environments = FlightSqlTestingUtils.GetTestEnvironments(_testConfiguration);
 
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-            Dictionary<string, string> options = new Dictionary<string, string>();
-            _adbcDriver = FlightSqlTestingUtils.GetAdbcDriver(_testConfiguration, _environment, out parameters);
+            foreach (FlightSqlTestEnvironment environment in _environments)
+            {
+                Dictionary<string, string> parameters = new Dictionary<string, string>();
+                Dictionary<string, string> options = new Dictionary<string, string>();
+                AdbcDriver driver = FlightSqlTestingUtils.GetAdbcDriver(_testConfiguration, environment, out parameters);
+                AdbcDatabase database = driver.Open(parameters);
+                AdbcConnection connection = database.Connect(options);
 
-            _database = _adbcDriver.Open(parameters);
-            _connection = _database.Connect(options);
+                FlightSqlDriverDatabaseConnection driverDatabaseConnection = new FlightSqlDriverDatabaseConnection()
+                {
+                    Driver = driver,
+                    Database = database,
+                    Connection = connection
+                };
+
+                _configuredDriverDatabaseConnections.Add(environment.Name!, driverDatabaseConnection);
+            }
+
         }
 
         /// <summary>
@@ -98,18 +115,23 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(1)]
         public void CanExecuteUpdate()
         {
-            // Dremio doesn't have acceptPut implemented by design.
-            Skip.If(_environment.SupportsWriteUpdate != true);
-
-            string[] queries = FlightSqlTestingUtils.GetQueries(_environment);
-
-            List<int> expectedResults = new List<int>() { -1, 1, 1 };
-
-            for (int i = 0; i < queries.Length; i++)
+            foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                string query = queries[i];
-                UpdateResult updateResult = ExecuteUpdateStatement(query);
-                Assert.Equal(expectedResults[i], updateResult.AffectedRows);
+                // Dremio doesn't have acceptPut implemented by design.
+                //Skip.If(environment.SupportsWriteUpdate != true);
+                if (environment.SupportsWriteUpdate)
+                {
+                    string[] queries = FlightSqlTestingUtils.GetQueries(environment);
+
+                    List<int> expectedResults = new List<int>() { -1, 1, 1 };
+
+                    for (int i = 0; i < queries.Length; i++)
+                    {
+                        string query = queries[i];
+                        UpdateResult updateResult = ExecuteUpdateStatement(environment, query);
+                        Assert.Equal(expectedResults[i], updateResult.AffectedRows);
+                    }
+                }
             }
         }
 
@@ -123,17 +145,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(1)]
         public void AcceptPutNotImplemented()
         {
-            Skip.If(_environment.SupportsWriteUpdate);
-
-            string[] queries = FlightSqlTestingUtils.GetQueries(_environment);
-
-            List<int> expectedResults = new List<int>() { -1, 1, 1 };
-
-            for (int i = 0; i < queries.Length; i++)
+            foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                string query = queries[i];
-                AdbcException ex = Assert.Throws<AdbcException>(() => ExecuteUpdateStatement(query));
-                Assert.Equal("[FlightSQL] [FlightSQL] acceptPut is not implemented. (Unimplemented; ExecuteQuery)", ex.Message);
+                //Skip.If(_environment.SupportsWriteUpdate);
+                if (environment.SupportsWriteUpdate)
+                {
+                    string[] queries = FlightSqlTestingUtils.GetQueries(environment);
+
+                    List<int> expectedResults = new List<int>() { -1, 1, 1 };
+
+                    for (int i = 0; i < queries.Length; i++)
+                    {
+                        string query = queries[i];
+                        AdbcException ex = Assert.Throws<AdbcException>(() => ExecuteUpdateStatement(environment, query));
+                        Assert.Equal("[FlightSQL] [FlightSQL] acceptPut is not implemented. (Unimplemented; ExecuteQuery)", ex.Message);
+                    }
+                }
             }
         }
 
@@ -143,25 +170,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(2)]
         public void CanGetInfo()
         {
-            using IArrowArrayStream stream = _connection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
-            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
-            UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
-
-            List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "VendorName" };
-
-            for (int i = 0; i < infoNameArray.Length; i++)
+            foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                uint? uintValue = infoNameArray.GetValue(i);
+                using IArrowArrayStream stream = GetAdbcConnection(environment.Name).GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
+                using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+                UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
 
-                if (uintValue.HasValue)
+                List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "VendorName" };
+
+                for (int i = 0; i < infoNameArray.Length; i++)
                 {
-                    AdbcInfoCode value = (AdbcInfoCode)uintValue;
-                    DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
+                    uint? uintValue = infoNameArray.GetValue(i);
 
-                    Assert.Contains(value.ToString(), expectedValues);
+                    if (uintValue.HasValue)
+                    {
+                        AdbcInfoCode value = (AdbcInfoCode)uintValue;
+                        DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
 
-                    StringArray stringArray = (StringArray)valueArray.Fields[0];
-                    Console.WriteLine($"{value}={stringArray.GetString(i)}");
+                        Assert.Contains(value.ToString(), expectedValues);
+
+                        StringArray stringArray = (StringArray)valueArray.Fields[0];
+                        Console.WriteLine($"{value}={stringArray.GetString(i)}");
+                    }
                 }
             }
         }
@@ -173,26 +203,32 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [MemberData(nameof(CatalogNamePatternData))]
         public void CanGetObjectsCatalogs(string catalogPattern)
         {
-            // Dremio doesn't use catalogs
-            Skip.If(_environment.SupportsCatalogs != true);
+            foreach (FlightSqlTestEnvironment environment in _environments)
+            {
+                // Dremio doesn't use catalogs
+                //Skip.If(_environment.SupportsCatalogs != true);
 
-            string databaseName = _environment.Metadata.Catalog;
-            string schemaName = _environment.Metadata.Schema;
+                if (environment.SupportsCatalogs)
+                {
+                    string databaseName = environment.Metadata.Catalog;
+                    string schemaName = environment.Metadata.Schema;
 
-            using IArrowArrayStream stream = _connection.GetObjects(
-                    depth: AdbcConnection.GetObjectsDepth.Catalogs,
-                    catalogPattern: catalogPattern,
-                    dbSchemaPattern: null,
-                    tableNamePattern: null,
-                    tableTypes: _tableTypes,
-                    columnNamePattern: null);
+                    using IArrowArrayStream stream = GetAdbcConnection(environment.Name).GetObjects(
+                            depth: AdbcConnection.GetObjectsDepth.Catalogs,
+                            catalogPattern: catalogPattern,
+                            dbSchemaPattern: null,
+                            tableNamePattern: null,
+                            tableTypes: environment.TableTypes,
+                            columnNamePattern: null);
 
-            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+                    using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, null);
-            AdbcCatalog? catalog = catalogs.Where((catalog) => string.Equals(catalog.Name, databaseName)).FirstOrDefault();
+                    List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, null);
+                    AdbcCatalog? catalog = catalogs.Where((catalog) => string.Equals(catalog.Name, databaseName)).FirstOrDefault();
 
-            Assert.True(catalog != null, "catalog should not be null");
+                    Assert.True(catalog != null, "catalog should not be null in the [" + environment.Name + "] environment");
+                }
+            }
         }
 
         /// <summary>
@@ -202,32 +238,35 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [MemberData(nameof(DbSchemasNamePatternData))]
         public void CanGetObjectsDbSchemas(string dbSchemaPattern)
         {
-            // need to add the database
-            string databaseName = _environment.Metadata.Catalog;
-            string schemaName = _environment.Metadata.Schema;
+            foreach (FlightSqlTestEnvironment environment in _environments)
+            {
+                // need to add the database
+                string databaseName = environment.Metadata.Catalog;
+                string schemaName = environment.Metadata.Schema;
 
-            using IArrowArrayStream stream = _connection.GetObjects(
-                    depth: AdbcConnection.GetObjectsDepth.DbSchemas,
-                    catalogPattern: databaseName,
-                    dbSchemaPattern: dbSchemaPattern,
-                    tableNamePattern: null,
-                    tableTypes: _tableTypes,
-                    columnNamePattern: null);
+                using IArrowArrayStream stream = GetAdbcConnection(environment.Name).GetObjects(
+                        depth: AdbcConnection.GetObjectsDepth.DbSchemas,
+                        catalogPattern: databaseName,
+                        dbSchemaPattern: dbSchemaPattern,
+                        tableNamePattern: null,
+                        tableTypes: environment.TableTypes,
+                        columnNamePattern: null);
 
-            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+                using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+                List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            List<AdbcDbSchema>? dbSchemas = catalogs
-                .Where(c => string.Equals(c.Name, databaseName))
-                .Select(c => c.DbSchemas)
-                .FirstOrDefault();
+                List<AdbcDbSchema>? dbSchemas = catalogs
+                    .Where(c => string.Equals(c.Name, databaseName))
+                    .Select(c => c.DbSchemas)
+                    .FirstOrDefault();
 
-            Assert.True(dbSchemas != null, "dbSchemas should not be null");
+                Assert.True(dbSchemas != null, "dbSchemas should not be null in the [" + environment.Name + "] environment");
 
-            AdbcDbSchema? dbSchema = dbSchemas.Where((dbSchema) => string.Equals(dbSchema.Name, schemaName)).FirstOrDefault();
+                AdbcDbSchema? dbSchema = dbSchemas.Where((dbSchema) => string.Equals(dbSchema.Name, schemaName)).FirstOrDefault();
 
-            Assert.True(dbSchema != null, "dbSchema should not be null");
+                Assert.True(dbSchema != null, "dbSchema should not be null in the [" + environment.Name + "] environment");
+            }
         }
 
         /// <summary>
@@ -237,40 +276,43 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [MemberData(nameof(TableNamePatternData))]
         public void CanGetObjectsTables(string tableNamePattern)
         {
-            // need to add the database
-            string databaseName = _environment.Metadata.Catalog;
-            string schemaName = _environment.Metadata.Schema;
-            string tableName = _environment.Metadata.Table;
+            foreach (FlightSqlTestEnvironment environment in _environments)
+            {
+                // need to add the database
+                string databaseName = environment.Metadata.Catalog;
+                string schemaName = environment.Metadata.Schema;
+                string tableName = environment.Metadata.Table;
 
-            using IArrowArrayStream stream = _connection.GetObjects(
-                    depth: AdbcConnection.GetObjectsDepth.Tables,
-                    catalogPattern: databaseName,
-                    dbSchemaPattern: schemaName,
-                    tableNamePattern: tableNamePattern,
-                    tableTypes: _tableTypes,
-                    columnNamePattern: null);
+                using IArrowArrayStream stream = GetAdbcConnection(environment.Name).GetObjects(
+                        depth: AdbcConnection.GetObjectsDepth.Tables,
+                        catalogPattern: databaseName,
+                        dbSchemaPattern: schemaName,
+                        tableNamePattern: tableNamePattern,
+                        tableTypes: environment.TableTypes,
+                        columnNamePattern: null);
 
-            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+                using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+                List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            List<AdbcDbSchema>? schemas = catalogs
-                .Where(c => string.Equals(c.Name, databaseName))
-                .Select(c => c.DbSchemas)
-                .FirstOrDefault();
+                List<AdbcDbSchema>? schemas = catalogs
+                    .Where(c => string.Equals(c.Name, databaseName))
+                    .Select(c => c.DbSchemas)
+                    .FirstOrDefault();
 
-            Assert.True(schemas != null, "schemas should not be null");
+                Assert.True(schemas != null, "schemas should not be null in the [" + environment.Name + "] environment");
 
-            List<AdbcTable>? tables  = schemas
-                .Where(s => string.Equals(s.Name, schemaName))
-                .Select(s => s.Tables)
-                .FirstOrDefault();
+                List<AdbcTable>? tables = schemas
+                    .Where(s => string.Equals(s.Name, schemaName))
+                    .Select(s => s.Tables)
+                    .FirstOrDefault();
 
-            Assert.True(tables != null, "schemas should not be null");
+                Assert.True(tables != null, "schemas should not be null in the [" + environment.Name + "] environment");
 
-            AdbcTable? table = tables.Where((table) => string.Equals(table.Name, tableName)).FirstOrDefault();
-            Assert.True(table != null, "table should not be null");
-            Assert.Equal("TABLE", table.Type);
+                AdbcTable? table = tables.Where((table) => string.Equals(table.Name, tableName)).FirstOrDefault();
+                Assert.True(table != null, "table should not be null in the [" + environment.Name + "] environment");
+                Assert.Equal("TABLE", table.Type);
+            }
         }
 
         /// <summary>
@@ -279,64 +321,67 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(3)]
         public void CanGetObjectsAll()
         {
-            string databaseName = _environment.Metadata.Catalog;
-            string schemaName = _environment.Metadata.Schema;
-            string tableName = _environment.Metadata.Table;
-            string? columnName = null;
+            foreach (FlightSqlTestEnvironment environment in _environments)
+            {
+                string databaseName = environment.Metadata.Catalog;
+                string schemaName = environment.Metadata.Schema;
+                string tableName = environment.Metadata.Table;
+                string? columnName = null;
 
-            using IArrowArrayStream stream = _connection.GetObjects(
-                    depth: AdbcConnection.GetObjectsDepth.All,
-                    catalogPattern: databaseName,
-                    dbSchemaPattern: schemaName,
-                    tableNamePattern: tableName,
-                    tableTypes: _tableTypes,
-                    columnNamePattern: columnName);
+                using IArrowArrayStream stream = GetAdbcConnection(environment.Name).GetObjects(
+                        depth: AdbcConnection.GetObjectsDepth.All,
+                        catalogPattern: databaseName,
+                        dbSchemaPattern: schemaName,
+                        tableNamePattern: tableName,
+                        tableTypes: environment.TableTypes,
+                        columnNamePattern: columnName);
 
-            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+                using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+                List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            List<AdbcDbSchema>? schemas = catalogs
-                .Where(c => string.Equals(c.Name, databaseName))
-                .Select(c => c.DbSchemas)
-                .FirstOrDefault();
+                List<AdbcDbSchema>? schemas = catalogs
+                    .Where(c => string.Equals(c.Name, databaseName))
+                    .Select(c => c.DbSchemas)
+                    .FirstOrDefault();
 
-            Assert.True(schemas != null, "schemas should not be null");
+                Assert.True(schemas != null, "schemas should not be null in the [" + environment.Name + "] environment");
 
-            List<AdbcTable>? tables = schemas
-                .Where(s => string.Equals(s.Name, schemaName))
-                .Select(s => s.Tables)
-                .FirstOrDefault();
+                List<AdbcTable>? tables = schemas
+                    .Where(s => string.Equals(s.Name, schemaName))
+                    .Select(s => s.Tables)
+                    .FirstOrDefault();
 
-            Assert.True(tables != null, "tables should not be null");
+                Assert.True(tables != null, "tables should not be null in the [" + environment.Name + "] environment");
 
-            AdbcTable? table = tables
-                .Where(t => string.Equals(t.Name, tableName))
-                .FirstOrDefault();
+                AdbcTable? table = tables
+                    .Where(t => string.Equals(t.Name, tableName))
+                    .FirstOrDefault();
 
-            Assert.True(table != null, "table should not be null");
+                Assert.True(table != null, "table should not be null in the [" + environment.Name + "] environment");
 
-            Assert.Equal("TABLE", table.Type);
-            List<AdbcColumn>? columns = table.Columns;
+                Assert.Equal("TABLE", table.Type);
+                List<AdbcColumn>? columns = table.Columns;
 
-            Assert.True(columns != null, "Columns cannot be null");
-            Assert.Equal(_environment.Metadata.ExpectedColumnCount, columns.Count);
+                Assert.True(columns != null, "Columns cannot be null in the [" + environment.Name + "] environment");
+                Assert.Equal(environment.Metadata.ExpectedColumnCount, columns.Count);
 
-            // TODO: Test if high precision is an issue
+                // TODO: Test if high precision is an issue
 
-            //if (_testConfiguration.UseHighPrecision)
-            //{
-            //    IEnumerable<AdbcColumn> highPrecisionColumns = columns.Where(c => c.XdbcTypeName == "NUMBER");
+                //if (_testConfiguration.UseHighPrecision)
+                //{
+                //    IEnumerable<AdbcColumn> highPrecisionColumns = columns.Where(c => c.XdbcTypeName == "NUMBER");
 
-            //    if (highPrecisionColumns.Count() > 0)
-            //    {
-            //        // ensure they all are coming back as XdbcDataType_XDBC_DECIMAL because they are Decimal128
-            //        short XdbcDataType_XDBC_DECIMAL = 3;
-            //        IEnumerable<AdbcColumn> invalidHighPrecisionColumns = highPrecisionColumns.Where(c => c.XdbcSqlDataType != XdbcDataType_XDBC_DECIMAL);
-            //        int count = invalidHighPrecisionColumns.Count();
-            //        Assert.True(count == 0, $"There are {count} columns that do not map to the correct XdbcSqlDataType when UseHighPrecision=true");
-            //    }
-            //}
+                //    if (highPrecisionColumns.Count() > 0)
+                //    {
+                //        // ensure they all are coming back as XdbcDataType_XDBC_DECIMAL because they are Decimal128
+                //        short XdbcDataType_XDBC_DECIMAL = 3;
+                //        IEnumerable<AdbcColumn> invalidHighPrecisionColumns = highPrecisionColumns.Where(c => c.XdbcSqlDataType != XdbcDataType_XDBC_DECIMAL);
+                //        int count = invalidHighPrecisionColumns.Count();
+                //        Assert.True(count == 0, $"There are {count} columns that do not map to the correct XdbcSqlDataType when UseHighPrecision=true");
+                //    }
+                //}
+            }
         }
 
         /// <summary>
@@ -359,42 +404,47 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "ONE")]
         public void CanGetObjectsTablesWithSpecialCharacter(string databaseName, string schemaName, string tableName)
         {
-            // Dremio doesn't support write operations so temporary table needs to be re-thought
-            Skip.If(_environment.SupportsWriteUpdate != true);
+            foreach (FlightSqlTestEnvironment environment in _environments)
+            {
+                // Dremio doesn't support write operations so temporary table needs to be re-thought
+                //Skip.If(_environment.SupportsWriteUpdate != true);
+                if (environment.SupportsWriteUpdate)
+                {
+                    CreateDatabaseAndTable(environment, databaseName, schemaName, tableName);
 
-            CreateDatabaseAndTable(databaseName, schemaName, tableName);
+                    using IArrowArrayStream stream = GetAdbcConnection(environment.Name).GetObjects(
+                            depth: AdbcConnection.GetObjectsDepth.Tables,
+                            catalogPattern: databaseName,
+                            dbSchemaPattern: schemaName,
+                            tableNamePattern: tableName,
+                            tableTypes: environment.TableTypes,
+                            columnNamePattern: null);
 
-            using IArrowArrayStream stream = _connection.GetObjects(
-                    depth: AdbcConnection.GetObjectsDepth.Tables,
-                    catalogPattern: databaseName,
-                    dbSchemaPattern: schemaName,
-                    tableNamePattern: tableName,
-                    tableTypes: _tableTypes,
-                    columnNamePattern: null);
+                    using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+                    List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+                    List<AdbcDbSchema>? schemas = catalogs
+                        .Where(c => string.Equals(c.Name, databaseName))
+                        .Select(c => c.DbSchemas)
+                        .FirstOrDefault();
 
-            List<AdbcDbSchema>? schemas = catalogs
-                .Where(c => string.Equals(c.Name, databaseName))
-                .Select(c => c.DbSchemas)
-                .FirstOrDefault();
+                    Assert.True(schemas != null, "schemas should not be null in the [" + environment.Name + "] environment");
 
-            Assert.True(schemas != null, "schemas should not be null");
+                    List<AdbcTable>? tables = schemas
+                        .Where(s => string.Equals(s.Name, schemaName))
+                        .Select(s => s.Tables)
+                        .FirstOrDefault();
 
-            List<AdbcTable>? tables = schemas
-                .Where(s => string.Equals(s.Name, schemaName))
-                .Select(s => s.Tables)
-                .FirstOrDefault();
+                    Assert.True(tables != null, "tables should not be null in the [" + environment.Name + "] environment");
 
-            Assert.True(tables != null, "tables should not be null");
+                    AdbcTable? table = tables.FirstOrDefault();
 
-            AdbcTable? table = tables.FirstOrDefault();
-
-            Assert.True(table != null, "table should not be null");
-            Assert.Equal(tableName, table.Name, true);
-            DropDatabaseAndTable(databaseName, schemaName, tableName);
+                    Assert.True(table != null, "table should not be null in the [" + environment.Name + "] environment");
+                    Assert.Equal(tableName, table.Name, true);
+                    DropDatabaseAndTable(environment, databaseName, schemaName, tableName);
+                }
+            }
         }
 
         /// <summary>
@@ -403,15 +453,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(4)]
         public void CanGetTableSchema()
         {
-            string databaseName = _environment.Metadata.Catalog;
-            string schemaName = _environment.Metadata.Schema;
-            string tableName = _environment.Metadata.Table;
+            foreach (FlightSqlTestEnvironment environment in _environments)
+            {
+                string databaseName = environment.Metadata.Catalog;
+                string schemaName = environment.Metadata.Schema;
+                string tableName = environment.Metadata.Table;
 
-            Schema schema = _connection.GetTableSchema(databaseName, schemaName, tableName);
+                Schema schema = GetAdbcConnection(environment.Name).GetTableSchema(databaseName, schemaName, tableName);
 
-            int numberOfFields = schema.FieldsList.Count;
+                int numberOfFields = schema.FieldsList.Count;
 
-            Assert.Equal(_environment.Metadata.ExpectedColumnCount, numberOfFields);
+                Assert.True(environment.Metadata.ExpectedColumnCount == numberOfFields, "ExpectedColumnCount not equal in the [" + environment.Name + "] environment");
+            }
         }
 
         /// <summary>
@@ -420,30 +473,30 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(5)]
         public void CanGetTableTypes()
         {
-            using IArrowArrayStream arrowArrayStream = _connection.GetTableTypes();
-
-            using RecordBatch recordBatch = arrowArrayStream.ReadNextRecordBatchAsync().Result;
-
-            StringArray stringArray = (StringArray)recordBatch.Column("table_type");
-
-            List<string> known_types = new List<string>
+            foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                "TABLE", "SYSTEM_TABLE", "VIEW"
-            };
+                using IArrowArrayStream arrowArrayStream = GetAdbcConnection(environment.Name).GetTableTypes();
 
-            int results = 0;
+                using RecordBatch recordBatch = arrowArrayStream.ReadNextRecordBatchAsync().Result;
 
-            for (int i = 0; i < stringArray.Length; i++)
-            {
-                string value = stringArray.GetString(i);
+                StringArray stringArray = (StringArray)recordBatch.Column("table_type");
 
-                if (known_types.Contains(value))
+                List<string> known_types = environment.TableTypes;
+
+                int results = 0;
+
+                for (int i = 0; i < stringArray.Length; i++)
                 {
-                    results++;
-                }
-            }
+                    string value = stringArray.GetString(i);
 
-            Assert.Equal(known_types.Count, results);
+                    if (known_types.Contains(value))
+                    {
+                        results++;
+                    }
+                }
+
+                Assert.True(known_types.Count == results, "TableTypes not equal in the [" + environment.Name + "] environment");
+            }
         }
 
         /// <summary>
@@ -453,33 +506,36 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         [SkippableFact, Order(6)]
         public void CanExecuteQuery()
         {
-            using AdbcStatement statement = _connection.CreateStatement();
-            statement.SqlQuery = _environment.Query;
+            foreach (FlightSqlTestEnvironment environment in _environments)
+            {
+                using AdbcStatement statement = GetAdbcConnection(environment.Name).CreateStatement();
+                statement.SqlQuery = environment.Query;
 
-            QueryResult queryResult = statement.ExecuteQuery();
+                QueryResult queryResult = statement.ExecuteQuery();
 
-            Tests.DriverTests.CanExecuteQuery(queryResult, _environment.ExpectedResultsCount);
+                Tests.DriverTests.CanExecuteQuery(queryResult, environment.ExpectedResultsCount);
+            }
         }
 
-        private void CreateDatabaseAndTable(string databaseName, string schemaName, string tableName)
+        private void CreateDatabaseAndTable(FlightSqlTestEnvironment environment, string databaseName, string schemaName, string tableName)
         {
             databaseName = databaseName.Replace("\"", "\"\"");
             schemaName = schemaName.Replace("\"", "\"\"");
             tableName = tableName.Replace("\"", "\"\"");
 
             string createDatabase = string.Format("CREATE DATABASE IF NOT EXISTS \"{0}\"", databaseName);
-            ExecuteUpdateStatement(createDatabase);
+            ExecuteUpdateStatement(environment, createDatabase);
 
             string createSchema = string.Format("CREATE SCHEMA IF NOT EXISTS \"{0}\".\"{1}\"", databaseName, schemaName);
-            ExecuteUpdateStatement(createSchema);
+            ExecuteUpdateStatement(environment, createSchema);
 
             string fullyQualifiedTableName = string.Format("\"{0}\".\"{1}\".\"{2}\"", databaseName, schemaName, tableName);
             string createTableStatement = string.Format("CREATE OR REPLACE TABLE {0} (INDEX INT)", fullyQualifiedTableName);
-            ExecuteUpdateStatement(createTableStatement);
+            ExecuteUpdateStatement(environment, createTableStatement);
 
         }
 
-        private void DropDatabaseAndTable(string databaseName, string schemaName, string tableName)
+        private void DropDatabaseAndTable(FlightSqlTestEnvironment environment, string databaseName, string schemaName, string tableName)
         {
             tableName = tableName.Replace("\"", "\"\"");
             schemaName = schemaName.Replace("\"", "\"\"");
@@ -487,22 +543,32 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
             string fullyQualifiedTableName = string.Format("\"{0}\".\"{1}\".\"{2}\"", databaseName, schemaName, tableName);
             string createTableStatement = string.Format("DROP TABLE IF EXISTS {0} ", fullyQualifiedTableName);
-            ExecuteUpdateStatement(createTableStatement);
+            ExecuteUpdateStatement(environment, createTableStatement);
 
             string createSchema = string.Format("DROP SCHEMA IF EXISTS \"{0}\".\"{1}\"", databaseName, schemaName);
-            ExecuteUpdateStatement(createSchema);
+            ExecuteUpdateStatement(environment, createSchema);
 
             string createDatabase = string.Format("DROP DATABASE IF EXISTS \"{0}\"", databaseName);
-            ExecuteUpdateStatement(createDatabase);
+            ExecuteUpdateStatement(environment, createDatabase);
 
         }
 
-        private UpdateResult ExecuteUpdateStatement(string query)
+        private UpdateResult ExecuteUpdateStatement(FlightSqlTestEnvironment environment, string query)
         {
-            using AdbcStatement statement = _connection.CreateStatement();
+            using AdbcStatement statement = GetAdbcConnection(environment.Name).CreateStatement();
             statement.SqlQuery = query;
             UpdateResult updateResult = statement.ExecuteUpdate();
             return updateResult;
+        }
+
+        private AdbcConnection GetAdbcConnection(string? environmentName)
+        {
+            if (string.IsNullOrEmpty(environmentName))
+            {
+                throw new ArgumentNullException(nameof(environmentName));
+            }
+
+            return _configuredDriverDatabaseConnections[environmentName!].Connection!;
         }
 
         private static string GetPartialNameForPatternMatch(string name)
@@ -521,9 +587,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         public void Dispose()
         {
-            _connection.Dispose();
-            _database.Dispose();
-            _adbcDriver.Dispose();
+            foreach (FlightSqlDriverDatabaseConnection configuredDriverDatabaseConnection in this._configuredDriverDatabaseConnections.Values)
+            {
+                configuredDriverDatabaseConnection.Dispose();
+            }
+
+            _configuredDriverDatabaseConnections.Clear();
         }
     }
 }
