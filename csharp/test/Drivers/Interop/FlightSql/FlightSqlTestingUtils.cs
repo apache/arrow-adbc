@@ -29,7 +29,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
     class FlightSqlTestingUtils
     {
         internal const string FLIGHTSQL_TEST_CONFIG_VARIABLE = "FLIGHTSQL_TEST_CONFIG_FILE";
-        internal const string FLIGHTSQL_TEST_ENV_NAME = "FLIGHTSQL_TEST_ENV_NAME";
+        internal const string FLIGHTSQL_TEST_ENV_NAME = "FLIGHTSQL_TEST_ENV_NAMES";
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
@@ -227,7 +227,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         {
             StringBuilder content = new StringBuilder();
 
-            string[] sql = File.ReadAllLines("resources/FlightSqlData.sql");
+            string[] sql = File.ReadAllLines(environment.FlightSqlFile!);
 
             Dictionary<string, string> placeholderValues = new Dictionary<string, string>() {
                 {"{ADBC_CATALOG}", environment.Metadata.Catalog },

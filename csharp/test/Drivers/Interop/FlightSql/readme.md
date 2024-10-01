@@ -26,8 +26,15 @@ To compile, navigate to the `go/adbc/pkg` directory of the cloned [arrow-adbc](h
 The environment variable `FLIGHTSQL_TEST_CONFIG_FILE` must be set to a configuration JSON file for the tests to execute. If it is not, the tests will show as passed with an output message that they are skipped. A template configuration file can be found in the Resources directory.
 
 ## Configuration
+Multiple data sources can support a Flight SQL interface. The configuration file supports targeting multiple data sources
+simultaneously. To use multiple data sources, you can configure comma delimited names in:
+
+- The `testEnvironments` field in the configuration file
+- The `FLIGHTSQL_TEST_ENV_NAMES` environment variable
+
+If neither is specified, the first configured environment is used.
 
 ## Data
-This project contains a SQL script to generate Flight SQL data in the `resources/FlightSqlData.sql` file. This can be used to populate a table in your Flight SQL instance with data.
+This project contains SQL scripts to generate Flight SQL data in the `sqlFile` file specified for each environment. This can be used to populate a table in your Flight SQL instance with data.
 
 The tests included assume this script has been run.

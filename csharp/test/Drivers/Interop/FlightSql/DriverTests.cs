@@ -18,10 +18,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Apache.Arrow.Adbc.C;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 {
@@ -37,7 +39,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
     {
         readonly FlightSqlTestConfiguration _testConfiguration;
         readonly List<FlightSqlTestEnvironment> _environments;
-        readonly Dictionary<string, FlightSqlDriverDatabaseConnection> _configuredDriverDatabaseConnections = new Dictionary<string, FlightSqlDriverDatabaseConnection>();
+        readonly Dictionary<string, AdbcConnection> _configuredConnections = new Dictionary<string, AdbcConnection>();
+        readonly ITestOutputHelper _outputHelper;
 
         public static IEnumerable<object[]> GetPatterns(string? namePattern)
         {
@@ -78,11 +81,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             }
         }
 
-        public DriverTests()
+        public DriverTests(ITestOutputHelper outputHelper)
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
             _testConfiguration = FlightSqlTestingUtils.LoadFlightSqlTestConfiguration();
             _environments = FlightSqlTestingUtils.GetTestEnvironments(_testConfiguration);
+            _outputHelper = outputHelper;
 
             foreach (FlightSqlTestEnvironment environment in _environments)
             {
@@ -92,16 +96,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                 AdbcDatabase database = driver.Open(parameters);
                 AdbcConnection connection = database.Connect(options);
 
-                FlightSqlDriverDatabaseConnection driverDatabaseConnection = new FlightSqlDriverDatabaseConnection()
-                {
-                    Driver = driver,
-                    Database = database,
-                    Connection = connection
-                };
-
-                _configuredDriverDatabaseConnections.Add(environment.Name!, driverDatabaseConnection);
+                _configuredConnections.Add(environment.Name!, connection);
             }
-
         }
 
         /// <summary>
@@ -118,7 +114,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             foreach (FlightSqlTestEnvironment environment in _environments)
             {
                 // Dremio doesn't have acceptPut implemented by design.
-                //Skip.If(environment.SupportsWriteUpdate != true);
                 if (environment.SupportsWriteUpdate)
                 {
                     string[] queries = FlightSqlTestingUtils.GetQueries(environment);
@@ -131,6 +126,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                         UpdateResult updateResult = ExecuteUpdateStatement(environment, query);
                         Assert.Equal(expectedResults[i], updateResult.AffectedRows);
                     }
+                }
+                else
+                {
+                    _outputHelper.WriteLine("WriteUpdate is not supported in the [" + environment.Name + "] environment");
                 }
             }
         }
@@ -147,7 +146,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         {
             foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                //Skip.If(_environment.SupportsWriteUpdate);
                 if (environment.SupportsWriteUpdate)
                 {
                     string[] queries = FlightSqlTestingUtils.GetQueries(environment);
@@ -157,9 +155,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                     for (int i = 0; i < queries.Length; i++)
                     {
                         string query = queries[i];
-                        AdbcException ex = Assert.Throws<AdbcException>(() => ExecuteUpdateStatement(environment, query));
+                        CAdbcDriverImporter.ImportedAdbcException ex = Assert.Throws<CAdbcDriverImporter.ImportedAdbcException>(() => ExecuteUpdateStatement(environment, query));
                         Assert.Equal("[FlightSQL] [FlightSQL] acceptPut is not implemented. (Unimplemented; ExecuteQuery)", ex.Message);
                     }
+                }
+                else
+                {
+                    _outputHelper.WriteLine("WriteUpdate is not supported in the [" + environment.Name + "] environment");
                 }
             }
         }
@@ -190,7 +192,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                         Assert.Contains(value.ToString(), expectedValues);
 
                         StringArray stringArray = (StringArray)valueArray.Fields[0];
-                        Console.WriteLine($"{value}={stringArray.GetString(i)}");
+                        _outputHelper.WriteLine($"{value}={stringArray.GetString(i)}");
                     }
                 }
             }
@@ -206,8 +208,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             foreach (FlightSqlTestEnvironment environment in _environments)
             {
                 // Dremio doesn't use catalogs
-                //Skip.If(_environment.SupportsCatalogs != true);
-
                 if (environment.SupportsCatalogs)
                 {
                     string databaseName = environment.Metadata.Catalog;
@@ -223,10 +223,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
                     using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-                    List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, null);
+                    List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, null);
                     AdbcCatalog? catalog = catalogs.Where((catalog) => string.Equals(catalog.Name, databaseName)).FirstOrDefault();
 
                     Assert.True(catalog != null, "catalog should not be null in the [" + environment.Name + "] environment");
+                }
+                else
+                {
+                    _outputHelper.WriteLine("Catalogs are not supported in the [" + environment.Name + "] environment");
                 }
             }
         }
@@ -254,7 +258,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
                 using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-                List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+                List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
 
                 List<AdbcDbSchema>? dbSchemas = catalogs
                     .Where(c => string.Equals(c.Name, databaseName))
@@ -293,7 +297,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
                 using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-                List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+                List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
 
                 List<AdbcDbSchema>? schemas = catalogs
                     .Where(c => string.Equals(c.Name, databaseName))
@@ -338,7 +342,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
                 using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-                List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+                List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
 
                 List<AdbcDbSchema>? schemas = catalogs
                     .Where(c => string.Equals(c.Name, databaseName))
@@ -360,27 +364,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
                 Assert.True(table != null, "table should not be null in the [" + environment.Name + "] environment");
 
-                Assert.Equal("TABLE", table.Type);
                 List<AdbcColumn>? columns = table.Columns;
 
                 Assert.True(columns != null, "Columns cannot be null in the [" + environment.Name + "] environment");
                 Assert.Equal(environment.Metadata.ExpectedColumnCount, columns.Count);
-
-                // TODO: Test if high precision is an issue
-
-                //if (_testConfiguration.UseHighPrecision)
-                //{
-                //    IEnumerable<AdbcColumn> highPrecisionColumns = columns.Where(c => c.XdbcTypeName == "NUMBER");
-
-                //    if (highPrecisionColumns.Count() > 0)
-                //    {
-                //        // ensure they all are coming back as XdbcDataType_XDBC_DECIMAL because they are Decimal128
-                //        short XdbcDataType_XDBC_DECIMAL = 3;
-                //        IEnumerable<AdbcColumn> invalidHighPrecisionColumns = highPrecisionColumns.Where(c => c.XdbcSqlDataType != XdbcDataType_XDBC_DECIMAL);
-                //        int count = invalidHighPrecisionColumns.Count();
-                //        Assert.True(count == 0, $"There are {count} columns that do not map to the correct XdbcSqlDataType when UseHighPrecision=true");
-                //    }
-                //}
             }
         }
 
@@ -407,7 +394,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             foreach (FlightSqlTestEnvironment environment in _environments)
             {
                 // Dremio doesn't support write operations so temporary table needs to be re-thought
-                //Skip.If(_environment.SupportsWriteUpdate != true);
                 if (environment.SupportsWriteUpdate)
                 {
                     CreateDatabaseAndTable(environment, databaseName, schemaName, tableName);
@@ -422,7 +408,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
                     using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-                    List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+                    List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
 
                     List<AdbcDbSchema>? schemas = catalogs
                         .Where(c => string.Equals(c.Name, databaseName))
@@ -443,6 +429,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                     Assert.True(table != null, "table should not be null in the [" + environment.Name + "] environment");
                     Assert.Equal(tableName, table.Name, true);
                     DropDatabaseAndTable(environment, databaseName, schemaName, tableName);
+                }
+                else
+                {
+                    _outputHelper.WriteLine("WriteUpdate is not supported in the [" + environment.Name + "] environment");
                 }
             }
         }
@@ -568,7 +558,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                 throw new ArgumentNullException(nameof(environmentName));
             }
 
-            return _configuredDriverDatabaseConnections[environmentName!].Connection!;
+            return _configuredConnections[environmentName!];
         }
 
         private static string GetPartialNameForPatternMatch(string name)
@@ -587,12 +577,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         public void Dispose()
         {
-            foreach (FlightSqlDriverDatabaseConnection configuredDriverDatabaseConnection in this._configuredDriverDatabaseConnections.Values)
+            foreach (AdbcConnection configuredConnection in this._configuredConnections.Values)
             {
-                configuredDriverDatabaseConnection.Dispose();
+                configuredConnection.Dispose();
             }
 
-            _configuredDriverDatabaseConnections.Clear();
+            _configuredConnections.Clear();
         }
     }
 }

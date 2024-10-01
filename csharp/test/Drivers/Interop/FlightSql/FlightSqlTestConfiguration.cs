@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -43,7 +42,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         /// <summary>
         /// A comma separated list of testable environments.
         /// </summary>
-        [JsonPropertyName("testEnvironment")]
+        [JsonPropertyName("testEnvironments")]
         public string? TestableEnvironments { get; set; }
 
         /// <summary>
@@ -81,6 +80,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public Dictionary<string, string> RPCCallHeaders { get; set; }
 
         /// <summary>
+        /// Additional headers to add to the gRPC call.
+        /// </summary>
+        [JsonPropertyName("sqlFile")]
+
+        public string? FlightSqlFile { get; set; }
+
+        /// <summary>
         /// The authorization header.
         /// </summary>
         [JsonPropertyName("authorization")]
@@ -115,19 +121,5 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         [JsonPropertyName("tableTypes")]
         public List<string> TableTypes { get; set; }
-    }
-
-    internal class FlightSqlDriverDatabaseConnection : IDisposable
-    {
-        public AdbcDriver? Driver { get; set; }
-        public AdbcDatabase? Database { get; set; }
-        public AdbcConnection? Connection { get; set; }
-
-        public void Dispose()
-        {
-            this.Connection?.Dispose();
-            this.Database?.Dispose();
-            this.Driver?.Dispose();
-        }
     }
 }

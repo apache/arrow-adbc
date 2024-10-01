@@ -23,6 +23,7 @@ using System.Data.SqlTypes;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 {
@@ -39,12 +40,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         readonly FlightSqlTestConfiguration _testConfiguration;
         readonly List<FlightSqlTestEnvironment> _environments;
         readonly Dictionary<string, AdbcDriver> _configuredDrivers = new Dictionary<string, AdbcDriver>();
+        readonly ITestOutputHelper _outputHelper;
 
-        public ClientTests()
+        public ClientTests(ITestOutputHelper outputHelper)
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
             _testConfiguration = FlightSqlTestingUtils.LoadFlightSqlTestConfiguration(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
             _environments = FlightSqlTestingUtils.GetTestEnvironments(_testConfiguration);
+            _outputHelper = outputHelper;
         }
 
         /// <summary>
@@ -65,6 +68,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
                         Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, environment, queries, expectedResults);
                     }
+                }
+                else
+                {
+                    _outputHelper.WriteLine("WriteUpdate is not supported in the [" + environment.Name + "] environment");
                 }
             }
         }
@@ -105,6 +112,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                             }
                         }
                     }
+                }
+                else
+                {
+                    _outputHelper.WriteLine("WriteUpdate is not supported in the [" + environment.Name + "] environment");
                 }
             }
         }
