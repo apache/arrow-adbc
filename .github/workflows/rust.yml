@@ -45,6 +45,7 @@ jobs:
   native-unix:
     uses: ./.github/workflows/native-unix.yml
     permissions:
+      contents: read
       id-token: write
 
   rust:
