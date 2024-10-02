@@ -2158,3 +2158,9 @@ func (suite *SnowflakeTests) TestGetSetClientConfigFile() {
 	suite.NoError(err)
 	suite.True(file == result)
 }
+
+func (suite *SnowflakeTests) TestGetObjectsWithNilCatalog() {
+	// this test demonstrates calling GetObjects with the catalog depth and a nil catalog
+	_, err := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthCatalogs, nil, nil, nil, nil, nil)
+	suite.NoError(err)
+}
