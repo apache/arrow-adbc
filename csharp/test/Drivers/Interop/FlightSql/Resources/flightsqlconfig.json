@@ -13,6 +13,7 @@
             },
             "supportsWriteUpdate": true,
             "supportsCatalogs": true,
+            "type": "DuckDB",
             "metadata": {
                 "catalog": "",
                 "schema": "",
@@ -33,6 +34,7 @@
             },
             "supportsWriteUpdate": false,
             "supportsCatalogs": false,
+            "type": "Dremio",
             "metadata": {
                 "catalog": "",
                 "schema": "",

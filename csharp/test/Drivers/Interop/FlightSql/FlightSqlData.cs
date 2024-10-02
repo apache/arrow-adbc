@@ -32,35 +32,41 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         /// <summary>
         /// Sample data
         /// </summary>
-        public static SampleDataBuilder GetSampleData()
+        /// <param name="environmentType">
+        /// The type of environment to get the sample data for.
+        /// </param>
+        public static SampleDataBuilder GetSampleData(
+            FlightSqlTestEnvironmentType environmentType
+        )
         {
             SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
 
-            // DuckDB
-            sampleDataBuilder.Samples.Add(
-                new SampleData()
-                {
-                    Query = "SELECT " +
-                            "42 AS \"TinyInt\", "  +
-                            "12345 AS \"SmallInt\", " +
-                            "987654321 AS \"Integer\", "  +
-                            "1234567890123 AS \"BigInt\", " +
-                            "3.141592 AS \"Real\", " +
-                            "123.456789123456 AS \"Double\", " +
-                            "DECIMAL '12345.67' AS \"Decimal\",  " +
-                            "'DuckDB' AS \"Varchar\", " +
-                            "BLOB 'abc' AS \"Blob\", " +
-                            "TRUE AS \"Boolean\"," +
-                            "DATE '2024-09-10' AS \"Date\", " +
-                            "TIME '12:34:56' AS \"Time\", " +
-                            "TIMESTAMP '2024-09-10 12:34:56' AS \"Timestamp\", " +
-                            "INTERVAL '1 year' AS \"Interval\", " +
-                            "'[1, 2, 3]'::JSON AS \"JSON\", " +
-                            "'[{\"key\": \"value\"}]'::JSON AS \"JSON_Array\", " +
-                            "to_json([true, false, null]) AS \"List_JSON\", " + // need to convert List values to json
-                            "to_json(MAP {'key': 'value'}) AS \"Map_JSON\" ", // need to convert Map values to json
-                    ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+            if (environmentType == FlightSqlTestEnvironmentType.DuckDB)
+            {
+                sampleDataBuilder.Samples.Add(
+                    new SampleData()
                     {
+                        Query = "SELECT " +
+                                "42 AS \"TinyInt\", " +
+                                "12345 AS \"SmallInt\", " +
+                                "987654321 AS \"Integer\", " +
+                                "1234567890123 AS \"BigInt\", " +
+                                "3.141592 AS \"Real\", " +
+                                "123.456789123456 AS \"Double\", " +
+                                "DECIMAL '12345.67' AS \"Decimal\",  " +
+                                "'DuckDB' AS \"Varchar\", " +
+                                "BLOB 'abc' AS \"Blob\", " +
+                                "TRUE AS \"Boolean\"," +
+                                "DATE '2024-09-10' AS \"Date\", " +
+                                "TIME '12:34:56' AS \"Time\", " +
+                                "TIMESTAMP '2024-09-10 12:34:56' AS \"Timestamp\", " +
+                                "INTERVAL '1 year' AS \"Interval\", " +
+                                "'[1, 2, 3]'::JSON AS \"JSON\", " +
+                                "'[{\"key\": \"value\"}]'::JSON AS \"JSON_Array\", " +
+                                "to_json([true, false, null]) AS \"List_JSON\", " + // need to convert List values to json
+                                "to_json(MAP {'key': 'value'}) AS \"Map_JSON\" ", // need to convert Map values to json
+                        ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                        {
                           new ColumnNetTypeArrowTypeValue("TinyInt", typeof(int), typeof(Int32Type), 42),
                           new ColumnNetTypeArrowTypeValue("SmallInt", typeof(int), typeof(Int32Type), 12345),
                           new ColumnNetTypeArrowTypeValue("Integer", typeof(int), typeof(Int32Type), 987654321),
@@ -83,12 +89,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                           new ColumnNetTypeArrowTypeValue("JSON_Array", typeof(string), typeof(StringType), "[{\"key\": \"value\"}]"),
                           new ColumnNetTypeArrowTypeValue("List_JSON", typeof(string), typeof(StringType),"[true,false,null]"),
                           new ColumnNetTypeArrowTypeValue("Map_JSON", typeof(string), typeof(StringType), "{\"key\":\"value\"}"),
-                    }
-                });
+                        }
+                    });
+            }
 
             // TODO: SQLite
+            if (environmentType == FlightSqlTestEnvironmentType.SQLite)
+            {
+            }
 
             // TODO: Dremio
+            if (environmentType == FlightSqlTestEnvironmentType.Dremio)
+            {
+
+            }
 
             return sampleDataBuilder;
         }

@@ -52,6 +52,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public Dictionary<string, FlightSqlTestEnvironment> Environments { get; set; }
     }
 
+    internal enum FlightSqlTestEnvironmentType
+    {
+        DuckDB,
+        SQLite,
+        Dremio
+    }
+
     internal class FlightSqlTestEnvironment : TestConfiguration
     {
         public FlightSqlTestEnvironment()
@@ -66,6 +73,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         /// The name of the environment.
         /// </summary>
         public string? Name { get; set; }
+
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        [JsonPropertyName("type")]
+        public FlightSqlTestEnvironmentType EnvironmentType { get; set; }
 
         /// <summary>
         /// The service URI.

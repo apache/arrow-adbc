@@ -503,7 +503,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
                 QueryResult queryResult = statement.ExecuteQuery();
 
-                Tests.DriverTests.CanExecuteQuery(queryResult, environment.ExpectedResultsCount);
+                Tests.DriverTests.CanExecuteQuery(queryResult, environment.ExpectedResultsCount, environment.Name);
             }
         }
 
