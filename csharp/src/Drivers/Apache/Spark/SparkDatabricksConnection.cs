@@ -49,6 +49,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
             // Note: In Databricks, scalar types are provided implicitly.
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
+
+            Properties.TryGetValue(SparkParameters.TLSOptions, out string? tlsOptions);
+            TlsOptions = TlsOptionsParser.Parse(tlsOptions);
         }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>

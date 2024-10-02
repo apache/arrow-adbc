@@ -98,6 +98,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             {
                 parameters.Add(SparkParameters.DataTypeConv, testConfiguration.DataTypeConversion!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.TlsOptions))
+            {
+                parameters.Add(SparkParameters.TLSOptions, testConfiguration.TlsOptions!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.BatchSize))
+            {
+                parameters.Add(HiveServer2Statement.Options.BatchSize, testConfiguration.BatchSize!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.PollTimeMilliseconds))
+            {
+                parameters.Add(HiveServer2Statement.Options.PollTimeMilliseconds, testConfiguration.PollTimeMilliseconds!);
+            }
 
             return parameters;
         }
