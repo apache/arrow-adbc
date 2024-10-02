@@ -2144,3 +2144,17 @@ func (suite *SnowflakeTests) TestChangeDatabaseAndGetObjects() {
 	_, err2 := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthAll, &newCatalog, &cfg.Schema, &getObjectsTable, nil, nil)
 	suite.NoError(err2)
 }
+
+func (suite *SnowflakeTests) TestGetSetClientConfigFile() {
+	file := "fileNameJustForTest.json"
+	options := map[string]string{
+		driver.OptionClientConfigFile: file,
+	}
+	getSetDB, ok := suite.db.(adbc.GetSetOptions)
+	suite.True(ok)
+	err := suite.db.SetOptions(options)
+	suite.NoError(err)
+	result, err := getSetDB.GetOption(driver.OptionClientConfigFile)
+	suite.NoError(err)
+	suite.True(file == result)
+}
