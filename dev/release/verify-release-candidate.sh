@@ -390,7 +390,7 @@ install_conda() {
       show_info "Installing miniconda at ${prefix}..."
       local arch=$(uname -m)
       local platform=$(uname)
-      local url="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-${platform}-${arch}.sh"
+      local url="https://github.com/conda-forge/miniforge/releases/latest/download/miniforge3-${platform}-${arch}.sh"
       curl -sL -o miniconda.sh $url
       bash miniconda.sh -b -p $prefix
       rm -f miniconda.sh
