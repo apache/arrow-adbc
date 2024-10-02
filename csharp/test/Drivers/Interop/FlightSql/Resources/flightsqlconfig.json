@@ -2,7 +2,7 @@
     "driverPath": "",
     "driverEntryPoint": "",
     "datasourceKind": "",
-    "testEnvironment": "",
+    "testEnvironments": "",
     "environments": {
         "<env1>": {
             "uri": "",
