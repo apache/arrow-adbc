@@ -21,4 +21,4 @@ SELECT
     'catalog_name': "name",
     'catalog_db_schemas': null
     } get_objects
-FROM TABLE(RESULT_SCAN(:TERSE_QUERY_ID))
+FROM TABLE(RESULT_SCAN(:SHOW_DB_QUERY_ID))

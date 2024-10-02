@@ -179,7 +179,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		sql.Named("PK_QUERY_ID", pkQueryID),
 		sql.Named("FK_QUERY_ID", fkQueryID),
 		sql.Named("UNIQUE_QUERY_ID", uniqueQueryID),
-		sql.Named("TERSE_QUERY_ID", terseDbQueryID),
+		sql.Named("SHOW_DB_QUERY_ID", terseDbQueryID),
 	}
 
 	// the connection that is used is not the same connection context where the database may have been set
