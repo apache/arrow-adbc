@@ -93,9 +93,35 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                     });
             }
 
-            // TODO: SQLite
             if (environmentType == FlightSqlTestEnvironmentType.SQLite)
             {
+                string tempTable = Guid.NewGuid().ToString().Replace("-","");
+                sampleDataBuilder.Samples.Add(
+                    new SampleData()
+                    {
+                        // for SQLite, we can't just select data without a
+                        // table because we get mixed schemas that are returned,
+                        // resulting in an error. so create a temp table,
+                        // insert data, select data, then remove the table.
+                        PreQueryCommands = new List<string>()
+                        {
+                            $"CREATE TEMP TABLE [{tempTable}] (INTEGER_COLUMN INTEGER, TEXT_COLUMN TEXT, BLOB_COLUMN BLOB, REAL_COLUMN REAL, NULL_COLUMN NULL);",
+                            $"INSERT INTO [{tempTable}] (INTEGER_COLUMN, TEXT_COLUMN, BLOB_COLUMN, REAL_COLUMN, NULL_COLUMN) VALUES (42, 'Hello, SQLite', X'426C6F62', 3.14159, NULL);"
+                        },
+                        Query = $"SELECT INTEGER_COLUMN, TEXT_COLUMN, BLOB_COLUMN, REAL_COLUMN, NULL_COLUMN FROM [{tempTable}];",
+                        PostQueryCommands = new List<string>()
+                        {
+                            $"DROP TABLE [{tempTable}];"
+                        },
+                        ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                        {
+                          new ColumnNetTypeArrowTypeValue("INTEGER_COLUMN", typeof(long), typeof(Int64Type), 42L),
+                          new ColumnNetTypeArrowTypeValue("TEXT_COLUMN", typeof(string), typeof(StringType), "Hello, SQLite"),
+                          new ColumnNetTypeArrowTypeValue("BLOB_COLUMN", typeof(byte[]), typeof(BinaryType),  Encoding.UTF8.GetBytes("Blob")),
+                          new ColumnNetTypeArrowTypeValue("REAL_COLUMN", typeof(double), typeof(DoubleType), 3.14159d),
+                          new ColumnNetTypeArrowTypeValue("NULL_COLUMN", typeof(UnionType), typeof(UnionType), null),
+                        }
+                    });
             }
 
             // TODO: Dremio

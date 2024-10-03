@@ -111,7 +111,7 @@ namespace Apache.Arrow.Adbc.Tests
         public static string FormatMessage(string message, string? environmentName)
         {
             if (!string.IsNullOrEmpty(environmentName))
-                return $"{message} in the {environmentName} environment";
+                return $"{message} in the [{environmentName}] environment";
 
             return message;
         }

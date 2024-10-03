@@ -67,6 +67,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             this.TableTypes = new List<string>();
             this.SupportsWriteUpdate = false;
             this.SupportsCatalogs = false;
+            this.CaseSensitive = false;
         }
 
         /// <summary>
@@ -132,5 +133,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         [JsonPropertyName("tableTypes")]
         public List<string> TableTypes { get; set; }
+
+        [JsonPropertyName("caseSensitive")]
+        public bool CaseSensitive { get; set; }
     }
 }

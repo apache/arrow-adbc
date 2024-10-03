@@ -158,6 +158,13 @@ namespace Apache.Arrow.Adbc.Tests
 
             foreach (SampleData sample in sampleDataBuilder.Samples)
             {
+                foreach (string preQueryCommandText in sample.PreQueryCommands)
+                {
+                    using AdbcCommand preQueryCommand = adbcConnection.CreateCommand();
+                    preQueryCommand.CommandText = preQueryCommandText;
+                    preQueryCommand.ExecuteNonQuery();
+                }
+
                 using AdbcCommand dbCommand = adbcConnection.CreateCommand();
                 dbCommand.CommandText = sample.Query;
 
@@ -177,6 +184,13 @@ namespace Apache.Arrow.Adbc.Tests
 
                         AssertTypeAndValue(ctv, value, reader, column_schema, dataTable, sample.Query, environmentName);
                     }
+                }
+
+                foreach (string postQueryCommandText in sample.PostQueryCommands)
+                {
+                    using AdbcCommand preQueryCommand = adbcConnection.CreateCommand();
+                    preQueryCommand.CommandText = postQueryCommandText;
+                    preQueryCommand.ExecuteNonQuery();
                 }
             }
         }
