@@ -16,7 +16,7 @@
 # under the License.
 
 arrow-c-glib=15.0.2
-glib
+glib=2.80.5
 gobject-introspection
 meson
 postgresql
