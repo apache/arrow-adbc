@@ -75,6 +75,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal HiveServer2TlsOption TlsOptions { get; set; } = HiveServer2TlsOption.Empty;
 
+        protected internal int RequestTimeout { get; set; } = 30000;
+
         protected abstract Task<TTransport> CreateTransportAsync();
 
         protected abstract Task<TProtocol> CreateProtocolAsync(TTransport transport);
