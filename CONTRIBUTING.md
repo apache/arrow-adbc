@@ -31,8 +31,8 @@ https://github.com/apache/arrow-adbc/issues
 Some dependencies are required to build and test the various ADBC packages.
 
 For C/C++, you will most likely want a [Conda][conda] installation,
-with [Mambaforge][mambaforge] being the most convenient distribution.
-If you have Mambaforge installed, you can set up a development
+with [Miniforge][miniforge] being the most convenient distribution.
+If you have Miniforge installed, you can set up a development
 environment as follows:
 
 ```shell
@@ -52,7 +52,7 @@ CMake or other build tool appropriately.  However, we primarily
 develop and support Conda users.
 
 [conda]: https://docs.conda.io/en/latest/
-[mambaforge]: https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html
+[miniforge]: https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html
 
 ### Running Integration Tests
 
