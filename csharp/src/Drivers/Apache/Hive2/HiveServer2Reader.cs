@@ -70,11 +70,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            DataTypeConversion dataTypeConversion)
+            DataTypeConversion dataTypeConversion,
+            CancellationToken cancellationToken = default)
         {
             _statement = statement;
             Schema = schema;
             _dataTypeConversion = dataTypeConversion;
+            // Start the pre-fetch of the first batch
+            _fetchResultResponseTask = FetchNext(_statement, cancellationToken);
         }
 
         public Schema Schema { get; }
@@ -87,21 +90,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return null;
             }
 
-            // This is the initial case, before the first fetch
-            _fetchResultResponseTask ??= FetchNext(_statement, cancellationToken);
-
             // Await the fetch response
-            TFetchResultsResp response = await _fetchResultResponseTask;
+            TFetchResultsResp response = await (_fetchResultResponseTask ?? throw new InvalidOperationException("unexpected state - fetch result task should be set."));
 
             // Build the current batch
             RecordBatch result = CreateBatch(response, out int fetchedRows);
 
             if ((_statement.BatchSize > 0 && fetchedRows < _statement.BatchSize) || fetchedRows == 0)
+            {
                 // This is the last batch
                 _statement = null;
+                _fetchResultResponseTask = null;
+            }
             else
+            {
                 // Otherwise, start the pre-fetch of the next batch
                 _fetchResultResponseTask = FetchNext(_statement, cancellationToken);
+            }
 
             // Return the current batch.
             return result;
@@ -123,7 +128,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return new RecordBatch(Schema, columnData, length);
         }
 
-        private static Task<TFetchResultsResp> FetchNext(HiveServer2Statement statement, CancellationToken cancellationToken)
+        private static Task<TFetchResultsResp> FetchNext(HiveServer2Statement statement, CancellationToken cancellationToken = default)
         {
             var request = new TFetchResultsReq(statement.OperationHandle, TFetchOrientation.FETCH_NEXT, statement.BatchSize);
             return statement.Connection.Client.FetchResults(request, cancellationToken);

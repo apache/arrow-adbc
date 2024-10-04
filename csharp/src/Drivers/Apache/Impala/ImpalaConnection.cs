@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Ipc;
@@ -86,6 +87,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         internal override SchemaParser SchemaParser { get; } = new HiveServer2SchemaParser();
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: DataTypeConversion);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, CancellationToken cancellationToken = default) => new HiveServer2Reader(statement, schema, dataTypeConversion: DataTypeConversion, cancellationToken);
     }
 }
