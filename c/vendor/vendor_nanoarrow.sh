@@ -19,9 +19,9 @@
 # Download and extract the latest Nanoarrow.
 
 main() {
-    local -r repo_url="https://github.com/apache/arrow-nanoarrow"
+    local -r repo_url="https://github.com/paleolimbot/arrow-nanoarrow"
     # Check releases page: https://github.com/apache/arrow-nanoarrow/releases/
-    local -r commit_sha=c5fb10035c17b598e6fd688ad9eb7b874c7c631b
+    local -r commit_sha=ec7a2a1a43922ef4c5b025a22194d8f121507fb9
 
     echo "Fetching $commit_sha from $repo_url"
     SCRATCH=$(mktemp -d)
@@ -34,21 +34,13 @@ main() {
     mkdir -p nanoarrow
     tar --strip-components 1 -C "$SCRATCH" -xf "$tarball"
 
-    # Build the bundle using cmake. We could also use the dist/ files
-    # but this allows us to add the symbol namespace and ensures that the
-    # resulting bundle is perfectly synchronized with the commit we've pulled.
-    pushd "$SCRATCH"
-    mkdir build && cd build
-    # Do not use "adbc" in the namespace name since our scripts expose all
-    # such symbols
-    cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=Private
-    cmake --build .
-    cmake --install . --prefix=../dist-adbc
-    popd
+    # Build the bundle
+    python "$SCRATCH/ci/scripts/bundle.py" \
+        --symbol-namespace=Private \
+        --include-output-dir=nanoarrow \
+        --source-output-dir=nanoarrow \
+        --header-namespace=
 
-    cp "$SCRATCH/dist-adbc/nanoarrow.c" nanoarrow/
-    cp "$SCRATCH/dist-adbc/nanoarrow.h" nanoarrow/
-    cp "$SCRATCH/dist-adbc/nanoarrow.hpp" nanoarrow/
     mv CMakeLists.nanoarrow.tmp nanoarrow/CMakeLists.txt
 }
 
