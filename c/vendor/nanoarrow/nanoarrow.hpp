@@ -15,11 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cstring>
 #include <exception>
 #include <string>
 #include <vector>
 
-#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow.h"
 
 #ifndef NANOARROW_HPP_INCLUDED
 #define NANOARROW_HPP_INCLUDED
@@ -216,10 +217,16 @@ template <typename T>
 class Unique {
  public:
   /// \brief Construct an invalid instance of T holding no resources
-  Unique() { init_pointer(&data_); }
+  Unique() {
+    std::memset(&data_, 0, sizeof(data_));
+    init_pointer(&data_);
+  }
 
   /// \brief Move and take ownership of data
-  Unique(T* data) { move_pointer(data, &data_); }
+  Unique(T* data) {
+    std::memset(&data_, 0, sizeof(data_));
+    move_pointer(data, &data_);
+  }
 
   /// \brief Move and take ownership of data wrapped by rhs
   Unique(Unique&& rhs) : Unique(rhs.get()) {}
