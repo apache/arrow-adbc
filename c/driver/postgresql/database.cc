@@ -71,6 +71,8 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
                                            struct AdbcError* error) {
   if (strcmp(key, "uri") == 0) {
     uri_ = value;
+  } else if (strcmp(key, ADBC_POSTGRESQL_OPTION_LOAD_ARRAY_TYPES) == 0) {
+    load_array_types_ = strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0;
   } else {
     SetError(error, "%s%s", "[libpq] Unknown database option ", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -162,8 +164,8 @@ SELECT
     typname,
     typreceive,
     typbasetype,
-    typarray,
-    typrelid
+    typrelid,
+    typarray
 FROM
     pg_catalog.pg_type
 WHERE
@@ -171,6 +173,28 @@ WHERE
 ORDER BY
     oid
 )";
+
+  const std::string kTypeQueryNoArrays = R"(
+SELECT
+    oid,
+    typname,
+    typreceive,
+    typbasetype,
+    typrelid
+FROM
+    pg_catalog.pg_type
+WHERE
+    (typreceive != 0 OR typname = 'aclitem') AND typtype != 'r'
+ORDER BY
+    oid
+)";
+
+  std::string type_query;
+  if (load_array_types_) {
+    type_query = kTypeQuery;
+  } else {
+    type_query = kTypeQueryNoArrays;
+  }
 
   // Create a new type resolver (this instance's type_resolver_ member
   // will be updated at the end if this succeeds).
@@ -192,7 +216,7 @@ ORDER BY
   // Attempt filling the resolver a few times to handle recursive definitions.
   int32_t max_attempts = 3;
   for (int32_t i = 0; i < max_attempts; i++) {
-    result = PQexec(conn, kTypeQuery.c_str());
+    result = PQexec(conn, type_query.c_str());
     ExecStatusType pq_status = PQresultStatus(result);
     if (pq_status == PGRES_TUPLES_OK) {
       InsertPgTypeResult(result, resolver);
@@ -256,6 +280,7 @@ static inline int32_t InsertPgAttributeResult(
 static inline int32_t InsertPgTypeResult(
     PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
   int num_rows = PQntuples(result);
+  int num_cols = PQnfields(result);
   PostgresTypeResolver::Item item;
   int32_t n_added = 0;
 
@@ -266,10 +291,16 @@ static inline int32_t InsertPgTypeResult(
     const char* typreceive = PQgetvalue(result, row, 2);
     const uint32_t typbasetype = static_cast<uint32_t>(
         std::strtol(PQgetvalue(result, row, 3), /*str_end=*/nullptr, /*base=*/10));
-    const uint32_t typarray = static_cast<uint32_t>(
-        std::strtol(PQgetvalue(result, row, 4), /*str_end=*/nullptr, /*base=*/10));
     const uint32_t typrelid = static_cast<uint32_t>(
-        std::strtol(PQgetvalue(result, row, 5), /*str_end=*/nullptr, /*base=*/10));
+        std::strtol(PQgetvalue(result, row, 4), /*str_end=*/nullptr, /*base=*/10));
+
+    uint32_t typarray;
+    if (num_cols == 6) {
+      typarray = static_cast<uint32_t>(
+          std::strtol(PQgetvalue(result, row, 5), /*str_end=*/nullptr, /*base=*/10));
+    } else {
+      typarray = 0;
+    }
 
     // Special case the aclitem because it shows up in a bunch of internal tables
     if (strcmp(typname, "aclitem") == 0) {
