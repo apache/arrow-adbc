@@ -3757,6 +3757,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
         }
       }
       break;
+      return NANOARROW_OK;
     default:
       return EINVAL;
   }
