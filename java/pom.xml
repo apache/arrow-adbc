@@ -29,7 +29,7 @@
 
   <properties>
     <dep.arrow.version>15.0.0</dep.arrow.version>
-    <dep.org.checkerframework.version>3.47.0</dep.org.checkerframework.version>
+    <dep.org.checkerframework.version>3.48.0</dep.org.checkerframework.version>
     <adbc.version>0.15.0-SNAPSHOT</adbc.version>
   </properties>
 
