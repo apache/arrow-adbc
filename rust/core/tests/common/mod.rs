@@ -227,7 +227,7 @@ pub fn test_connection_get_table_schema(connection: &mut ManagedConnection) {
 
     let mut statement = connection.new_statement().unwrap();
     statement
-        .set_sql_query(&format!("create table {TABLE_NAME}(a bigint, b bigint);"))
+        .set_sql_query(format!("create table {TABLE_NAME}(a bigint, b bigint);"))
         .unwrap();
     statement.execute_update().unwrap();
 

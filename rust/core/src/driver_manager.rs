@@ -23,10 +23,10 @@
 //!
 //! There are two ways that drivers can be used:
 //! 1. By linking (either statically or dynamically) the driver implementation
-//! at link-time and then using [ManagedDriver::load_static].
+//!    at link-time and then using [ManagedDriver::load_static].
 //! 2. By loading the driver implementation at run-time (with `dlopen/LoadLibrary`)
-//! using [ManagedDriver::load_dynamic_from_name] or
-//! [ManagedDriver::load_dynamic_from_filename].
+//!    using [ManagedDriver::load_dynamic_from_name] or
+//!    [ManagedDriver::load_dynamic_from_filename].
 //!
 //! Drivers are initialized using a function provided by the driver as a main
 //! entrypoint, canonically called `AdbcDriverInit`. Although many will use a
