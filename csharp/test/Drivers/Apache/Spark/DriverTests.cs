@@ -516,10 +516,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
-        [SkippableFact, Order(10)]
-        public void CanExecuteQuery()
+        [SkippableTheory, Order(10)]
+        [InlineData(0.1)]
+        [InlineData(0.25)]
+        [InlineData(1.0)]
+        [InlineData(2.0)]
+        [InlineData(null)]
+        public void CanExecuteQuery(double? batchSizeFactor)
         {
-            using AdbcConnection adbcConnection = NewConnection();
+            // Ensure all records can be retrieved, independent of the batch size.
+            SparkTestConfiguration testConfiguration = (SparkTestConfiguration)TestConfiguration.Clone();
+            long expectedResultCount = testConfiguration.ExpectedResultsCount;
+            long nonZeroExpectedResultCount = (expectedResultCount == 0 ? 1 : expectedResultCount);
+            testConfiguration.BatchSize = batchSizeFactor != null ? ((long)(nonZeroExpectedResultCount * batchSizeFactor)).ToString() : string.Empty;
+            OutputHelper?.WriteLine($"BatchSize: {testConfiguration.BatchSize}. ExpectedResultCount: {expectedResultCount}");
+
+            using AdbcConnection adbcConnection = NewConnection(testConfiguration);
 
             using AdbcStatement statement = adbcConnection.CreateStatement();
             statement.SqlQuery = TestConfiguration.Query;

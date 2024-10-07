@@ -16,6 +16,7 @@
 */
 
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Ipc;
@@ -29,7 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkDatabricksReader(statement, schema);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, CancellationToken cancellationToken = default) => new SparkDatabricksReader(statement, schema);
 
         internal override SchemaParser SchemaParser => new SparkDatabricksSchemaParser();
 
