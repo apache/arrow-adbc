@@ -22,7 +22,7 @@ make
 nodejs
 numpydoc
 pytest
-sphinx >=8
+sphinx>=8
 sphinx-autobuild
 sphinx-copybutton
 sphinx-design
