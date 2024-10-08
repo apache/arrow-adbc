@@ -82,7 +82,7 @@ Usage
 =====
 
 To connect to a database, supply the "uri" parameter when constructing
-the :cpp:class:`AdbcDatabase`.
+the :c:struct:`AdbcDatabase`.
 
 .. tab-set::
 
@@ -183,7 +183,7 @@ few optional authentication schemes:
 - An HTTP-style scheme mimicking the Arrow Flight SQL JDBC driver.
 
   Set the options ``username`` and ``password`` on the
-  :cpp:class:`AdbcDatabase`.  Alternatively, set the option
+  :c:struct:`AdbcDatabase`.  Alternatively, set the option
   ``adbc.flight.sql.authorization_header`` for full control.
 
   The client provides credentials sending an ``authorization`` from
@@ -272,8 +272,8 @@ Custom Call Headers
 -------------------
 
 Custom HTTP headers can be attached to requests via options that apply
-to :cpp:class:`AdbcDatabase`, :cpp:class:`AdbcConnection`, and
-:cpp:class:`AdbcStatement`.
+to :c:struct:`AdbcDatabase`, :c:struct:`AdbcConnection`, and
+:c:struct:`AdbcStatement`.
 
 ``adbc.flight.sql.rpc.call_header.<HEADER NAME>``
   Add the header ``<HEADER NAME>`` to outgoing requests with the given
@@ -301,7 +301,7 @@ All partitions are fetched in parallel.  A limited number of batches
 are queued per partition.  Data is returned to the client in the order
 of the partitions.
 
-Some behavior can be configured on the :cpp:class:`AdbcStatement`:
+Some behavior can be configured on the :c:struct:`AdbcStatement`:
 
 ``adbc.rpc.result_queue_size``
     The number of batches to queue per partition.  Defaults to 5.
@@ -313,19 +313,19 @@ Incremental Execution
 
 By setting :c:macro:`ADBC_STATEMENT_OPTION_INCREMENTAL`, you can use
 nonblocking execution with this driver.  This changes the behavior of
-:func:`AdbcStatementExecutePartitions` only.  When enabled, ExecutePartitions
-will return every time there are new partitions (in Flight SQL terms, when
-there are new FlightEndpoints) from the server, instead of blocking until the
-query is complete.
+:c:func:`AdbcStatementExecutePartitions` only.  When enabled,
+ExecutePartitions will return every time there are new partitions (in Flight
+SQL terms, when there are new FlightEndpoints) from the server, instead of
+blocking until the query is complete.
 
-Some behavior can be configured on the :cpp:class:`AdbcStatement`:
+Some behavior can be configured on the :c:struct:`AdbcStatement`:
 
 ``adbc.flight.sql.statement.exec.last_flight_info``
     Get the serialized bytes for the most recent ``FlightInfo`` returned by
     the service.  This is a low-level option intended for advanced usage.  It
     is most useful when incremental execution is enabled, for inspecting the
     latest server response without waiting for
-    :func:`AdbcStatementExecutePartitions` to return.
+    :c:func:`AdbcStatementExecutePartitions` to return.
 
     Python: :attr:`adbc_driver_flightsql.StatementOptions.LAST_FLIGHT_INFO`
 
@@ -333,7 +333,7 @@ Metadata
 --------
 
 The driver currently will not populate column constraint info (foreign
-keys, primary keys, etc.) in :cpp:func:`AdbcConnectionGetObjects`.
+keys, primary keys, etc.) in :c:func:`AdbcConnectionGetObjects`.
 Also, catalog filters are evaluated as simple string matches, not
 ``LIKE``-style patterns.
 
@@ -390,7 +390,7 @@ Timeouts
 --------
 
 By default, timeouts are not used for RPC calls.  They can be set via
-special options on :cpp:class:`AdbcConnection`.  In general, it is
+special options on :c:struct:`AdbcConnection`.  In general, it is
 best practice to set timeouts to avoid unexpectedly getting stuck.
 The options are as follows:
 
@@ -409,7 +409,7 @@ The options are as follows:
     calls.
 
     For example, this controls the timeout of the underlying Flight
-    calls that implement :func:`AdbcStatementExecuteQuery`.
+    calls that implement :c:func:`AdbcStatementExecuteQuery`.
 
     Python: :attr:`adbc_driver_flightsql.ConnectionOptions.TIMEOUT_QUERY`
 
@@ -422,7 +422,7 @@ The options are as follows:
 
     Python: :attr:`adbc_driver_flightsql.ConnectionOptions.TIMEOUT_UPDATE`
 
-There is also a timeout that is set on the :cpp:class:`AdbcDatabase`:
+There is also a timeout that is set on the :c:struct:`AdbcDatabase`:
 
 ``adbc.flight.sql.rpc.timeout_seconds.connect``
     A timeout (in floating-point seconds) for establishing a connection.  The
@@ -434,6 +434,6 @@ Transactions
 The driver supports transactions.  It will first check the server's
 SqlInfo to determine whether this is supported.  Otherwise,
 transaction-related ADBC APIs will return
-:c:type:`ADBC_STATUS_NOT_IMPLEMENTED`.
+:c:macro:`ADBC_STATUS_NOT_IMPLEMENTED`.
 
 .. _DBAPI 2.0: https://peps.python.org/pep-0249/

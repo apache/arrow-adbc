@@ -29,12 +29,17 @@ Low-Level API
 Constants & Enums
 -----------------
 
+.. For enums, we need to list members out explicitly _and_ add undoc-members
+   to get autodoc to list only the enum variants, not all the inherited crud
+
 .. autoclass:: adbc_driver_manager.AdbcStatusCode
-   :members:
+   :members: OK, UNKNOWN, NOT_IMPLEMENTED, NOT_FOUND, ALREADY_EXISTS,
+             INVALID_ARGUMENT, INVALID_STATE, INVALID_DATA, INTEGRITY,
+             INTERNAL, IO, CANCELLED, TIMEOUT, UNAUTHENTICATED, UNAUTHORIZED
    :undoc-members:
 
 .. autoclass:: adbc_driver_manager.GetObjectsDepth
-   :members:
+   :members: ALL, CATALOGS, DB_SCHEMAS, TABLES, COLUMNS
    :undoc-members:
 
 .. autoclass:: adbc_driver_manager.ConnectionOptions
@@ -133,6 +138,20 @@ Classes
 
 .. autoclass:: adbc_driver_manager.dbapi.Cursor
    :members:
+
+Internals
+~~~~~~~~~
+
+Do not use these directly.
+
+.. This is mostly to make autodoc happy since it tries to reference base
+   classes.
+
+.. autoclass:: adbc_driver_manager._lib._AdbcHandle
+.. autoclass:: adbc_driver_manager.dbapi._Closeable
+   :exclude-members: close
+.. autoclass:: adbc_driver_manager.dbapi._SharedDatabase
+   :exclude-members: clone, close
 
 Exceptions
 ==========

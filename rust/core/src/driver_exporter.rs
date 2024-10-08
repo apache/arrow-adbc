@@ -20,10 +20,10 @@ use std::ffi::{CStr, CString};
 use std::hash::Hash;
 use std::os::raw::{c_char, c_int, c_void};
 
-use arrow::array::StructArray;
-use arrow::datatypes::DataType;
-use arrow::ffi::{from_ffi, FFI_ArrowArray, FFI_ArrowSchema};
-use arrow::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
+use arrow_array::ffi::{from_ffi, FFI_ArrowArray, FFI_ArrowSchema};
+use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
+use arrow_array::StructArray;
+use arrow_schema::DataType;
 
 use crate::error::{Error, Result, Status};
 use crate::ffi::constants::ADBC_STATUS_OK;
@@ -168,15 +168,15 @@ impl<DriverType: Driver + Default + 'static> FFIDriver for DriverType {
 /// # Parameters
 ///
 /// - `$func_name` - Driver's initialization function name. The recommended name
-/// is `AdbcDriverInit`, or a name derived from the name of the driver's shared
-/// library as follows: remove the `lib` prefix (on Unix systems) and all file
-/// extensions, then `PascalCase` the driver name, append `Init`, and prepend
-/// `Adbc` (if not already there). For example:
+///   is `AdbcDriverInit`, or a name derived from the name of the driver's shared
+///   library as follows: remove the `lib` prefix (on Unix systems) and all file
+///   extensions, then `PascalCase` the driver name, append `Init`, and prepend
+///   `Adbc` (if not already there). For example:
 ///     - `libadbc_driver_sqlite.so.2.0.0` -> `AdbcDriverSqliteInit`
 ///     - `adbc_driver_sqlite.dll` -> `AdbcDriverSqliteInit`
 ///     - `proprietary_driver.dll` -> `AdbcProprietaryDriverInit`
 /// - `$driver_type` - Driver's type which must implement [Driver] and [Default].
-/// Currently, the Rust driver is exported as an ADBC 1.1.0 C driver.
+///   Currently, the Rust driver is exported as an ADBC 1.1.0 C driver.
 #[macro_export]
 macro_rules! export_driver {
     ($func_name:ident, $driver_type:ty) => {

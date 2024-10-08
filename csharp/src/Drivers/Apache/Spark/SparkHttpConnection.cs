@@ -121,7 +121,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TlsOptions = Hive2.TlsOptionsParser.Parse(tlsOptions);
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, CancellationToken cancellationToken = default) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion, cancellationToken);
 
         protected override Task<TTransport> CreateTransportAsync()
         {

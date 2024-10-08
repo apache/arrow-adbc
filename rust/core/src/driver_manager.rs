@@ -23,10 +23,10 @@
 //!
 //! There are two ways that drivers can be used:
 //! 1. By linking (either statically or dynamically) the driver implementation
-//! at link-time and then using [ManagedDriver::load_static].
+//!    at link-time and then using [ManagedDriver::load_static].
 //! 2. By loading the driver implementation at run-time (with `dlopen/LoadLibrary`)
-//! using [ManagedDriver::load_dynamic_from_name] or
-//! [ManagedDriver::load_dynamic_from_filename].
+//!    using [ManagedDriver::load_dynamic_from_name] or
+//!    [ManagedDriver::load_dynamic_from_filename].
 //!
 //! Drivers are initialized using a function provided by the driver as a main
 //! entrypoint, canonically called `AdbcDriverInit`. Although many will use a
@@ -110,9 +110,9 @@ use std::os::raw::{c_char, c_void};
 use std::ptr::{null, null_mut};
 use std::sync::{Arc, Mutex};
 
-use arrow::array::{Array, RecordBatch, RecordBatchReader, StructArray};
-use arrow::ffi::{to_ffi, FFI_ArrowSchema};
-use arrow::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
+use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
+use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
+use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
 
 use crate::{
     error::{Error, Status},
@@ -881,7 +881,7 @@ impl Connection for ManagedConnection {
         catalog: Option<&str>,
         db_schema: Option<&str>,
         table_name: &str,
-    ) -> Result<arrow::datatypes::Schema> {
+    ) -> Result<arrow_schema::Schema> {
         let catalog = catalog.map(CString::new).transpose()?;
         let db_schema = db_schema.map(CString::new).transpose()?;
         let table_name = CString::new(table_name)?;
@@ -1053,7 +1053,7 @@ impl Statement for ManagedStatement {
         Ok(reader)
     }
 
-    fn execute_schema(&mut self) -> Result<arrow::datatypes::Schema> {
+    fn execute_schema(&mut self) -> Result<arrow_schema::Schema> {
         let driver = &self.inner.connection.database.driver.driver.lock().unwrap();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1110,7 +1110,7 @@ impl Statement for ManagedStatement {
         Ok(result)
     }
 
-    fn get_parameter_schema(&self) -> Result<arrow::datatypes::Schema> {
+    fn get_parameter_schema(&self) -> Result<arrow_schema::Schema> {
         let driver = &self.inner.connection.database.driver.driver.lock().unwrap();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);

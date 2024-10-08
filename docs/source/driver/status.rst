@@ -88,14 +88,14 @@ Bulk Ingestion
     Does the driver support :ref:`bulk ingestion of data <specification-bulk-ingestion>` (creating or appending to a database table from an Arrow table)?
 
 Database Metadata
-    Does the driver support functions like :cpp:func:`AdbcConnectionGetObjects` that get metadata about the database catalog, etc.?
+    Does the driver support functions like :c:func:`AdbcConnectionGetObjects` that get metadata about the database catalog, etc.?
 
 Parameterized Queries
     Does the driver support binding query parameters?
 
 Partitioned Data
     Being able to read individual chunks of a (generally distributed)
-    result set (:cpp:func:`AdbcStatementExecutePartitions`).
+    result set (:c:func:`AdbcStatementExecutePartitions`).
 
 Prepared Statements
     Does the driver support binding query parameters?

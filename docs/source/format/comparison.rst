@@ -31,7 +31,7 @@ Comparison with Other APIs
      - ODBC
 
    * - Shared connection state
-     - :cpp:class:`AdbcDatabase`
+     - :c:struct:`AdbcDatabase`
      - ``DB``
      - —
      - —
@@ -39,7 +39,7 @@ Comparison with Other APIs
      - —
 
    * - Database connection
-     - :cpp:class:`AdbcConnection`
+     - :c:struct:`AdbcConnection`
      - ``Conn``
      - ``Connection``
      - ``FlightSqlClient``
@@ -47,7 +47,7 @@ Comparison with Other APIs
      - ``SQLHANDLE`` (connection)
 
    * - Query state
-     - :cpp:class:`AdbcStatement`
+     - :c:struct:`AdbcStatement`
      - —
      - ``Cursor``
      - —
@@ -55,7 +55,7 @@ Comparison with Other APIs
      - ``SQLHANDLE`` (statement)
 
    * - Prepared statement handle
-     - :cpp:class:`AdbcStatement`
+     - :c:struct:`AdbcStatement`
      - Stmt
      - ``Cursor``
      - ``PreparedStatement``

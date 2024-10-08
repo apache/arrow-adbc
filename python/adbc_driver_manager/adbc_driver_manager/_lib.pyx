@@ -431,6 +431,10 @@ cdef class ArrowArrayStreamHandle:
 
 
 class GetObjectsDepth(enum.IntEnum):
+    """
+    How much data to fetch for adbc_get_objects.
+    """
+
     ALL = ADBC_OBJECT_DEPTH_ALL
     CATALOGS = ADBC_OBJECT_DEPTH_CATALOGS
     DB_SCHEMAS = ADBC_OBJECT_DEPTH_DB_SCHEMAS

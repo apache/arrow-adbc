@@ -125,6 +125,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return adbc.OptionValueDisabled, nil
 	case OptionLogTracing:
 		return d.cfg.Tracing, nil
+	case OptionClientConfigFile:
+		return d.cfg.ClientConfigFile, nil
 	case OptionUseHighPrecision:
 		if d.useHighPrecision {
 			return adbc.OptionValueEnabled, nil
@@ -415,6 +417,8 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			}
 		case OptionLogTracing:
 			d.cfg.Tracing = v
+		case OptionClientConfigFile:
+			d.cfg.ClientConfigFile = v
 		case OptionUseHighPrecision:
 			switch v {
 			case adbc.OptionValueEnabled:

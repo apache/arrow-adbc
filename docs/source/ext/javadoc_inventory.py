@@ -21,51 +21,17 @@ from __future__ import annotations
 
 import argparse
 import json
-import typing
 import urllib.parse
 from pathlib import Path
 
 import sphinx.util.inventory
-
-# XXX: we're taking advantage of duck typing to do stupid things here.
-
-
-class FakeEnv(typing.NamedTuple):
-    project: str
-    version: str
-
-
-class FakeObject(typing.NamedTuple):
-    # Looks like this
-    # name domainname:typ prio uri dispname
-    name: str
-    # written as '-' if equal to name
-    dispname: str
-    # member, doc, etc
-    typ: str
-    # passed through builder.get_target_uri
-    docname: str
-    # not including the #
-    anchor: str
-    # written, but never used
-    prio: str
-
-
-class FakeDomain(typing.NamedTuple):
-    objects: list[FakeObject]
-
-    def get_objects(self):
-        return self.objects
-
-
-class FakeBuildEnvironment(typing.NamedTuple):
-    config: FakeEnv
-    domains: dict[str, FakeDomain]
-
-
-class FakeBuilder:
-    def get_target_uri(self, docname: str) -> str:
-        return docname
+from fake_inventory import (
+    FakeBuildEnvironment,
+    FakeBuilder,
+    FakeDomain,
+    FakeEnv,
+    FakeObject,
+)
 
 
 def extract_index(data: str, prelude: str) -> list:
