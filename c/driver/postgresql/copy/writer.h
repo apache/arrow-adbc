@@ -590,8 +590,9 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       *out = T::Create<T>(array_view);
       return NANOARROW_OK;
     }
+    case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_INT64:
-    case NANOARROW_TYPE_UINT32: {
+    case NANOARROW_TYPE_UINT64: {
       using T = PostgresCopyNetworkEndianFieldWriter<int64_t>;
       *out = T::Create<T>(array_view);
       return NANOARROW_OK;
