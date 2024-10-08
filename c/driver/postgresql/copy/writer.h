@@ -612,6 +612,7 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }
     }
+    case NANOARROW_TYPE_HALF_FLOAT:
     case NANOARROW_TYPE_FLOAT: {
       using T = PostgresCopyFloatFieldWriter;
       *out = T::Create<T>(array_view);
@@ -637,8 +638,12 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       return NANOARROW_OK;
     }
     case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_LARGE_BINARY:
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+    case NANOARROW_TYPE_BINARY_VIEW:
     case NANOARROW_TYPE_STRING:
-    case NANOARROW_TYPE_LARGE_STRING: {
+    case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_STRING_VIEW: {
       using T = PostgresCopyBinaryFieldWriter;
       *out = T::Create<T>(array_view);
       return NANOARROW_OK;
