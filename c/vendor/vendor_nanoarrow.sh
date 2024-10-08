@@ -19,7 +19,7 @@
 # Download and extract the latest Nanoarrow.
 
 main() {
-    local -r repo_url="https://github.com/paleolimbot/arrow-nanoarrow"
+    local -r repo_url="https://github.com/apache/arrow-nanoarrow"
     # Check releases page: https://github.com/apache/arrow-nanoarrow/releases/
     local -r commit_sha=33d2c8b973d8f8f424e02ac92ddeaace2a92f8dd
 
