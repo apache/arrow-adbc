@@ -19,9 +19,9 @@
 # Download and extract the latest Nanoarrow.
 
 main() {
-    local -r repo_url="https://github.com/paleolimbot/arrow-nanoarrow"
+    local -r repo_url="https://github.com/apache/arrow-nanoarrow"
     # Check releases page: https://github.com/apache/arrow-nanoarrow/releases/
-    local -r commit_sha=ec7a2a1a43922ef4c5b025a22194d8f121507fb9
+    local -r commit_sha=33d2c8b973d8f8f424e02ac92ddeaace2a92f8dd
 
     echo "Fetching $commit_sha from $repo_url"
     SCRATCH=$(mktemp -d)
