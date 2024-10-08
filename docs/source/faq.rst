@@ -56,8 +56,50 @@ more complex to use.  Additionally, ODBC uses caller-allocated buffers
 layouts that are not quite Arrow-compatible (requiring a data
 conversion anyways).
 
+Hence, we think just extending ODBC is insufficient to meet the goals of ADBC.
+ODBC will always be valuable for wider database support, and providing an
+Arrow-based API on top of ODBC is useful.  ADBC would allow
+implementing/optimizing this conversion in a common library, provide a simpler
+interface for consumers, and would provide an API that Arrow-native or
+otherwise columnar systems can implement to bypass this wrapper.
+
+.. dropdown:: Why ODBC/Arrow don't quite fit each other
+
+   ODBC provides support for bulk data with `block cursors`_, and Turbodbc_
+   demonstrates that a performant Arrow-based API can be built on top.
+   However, it is still an awkward fit for Arrow:
+
+   - Nulls (‘indicator’ values) are `represented as integers`_, requiring
+     conversion.
+   - `Result buffers are caller-allocated`_.  This can force unnecessarily
+     copying data. ADBC uses the C Data Interface instead, eliminating copies
+     when possible (e.g. if the driver uses Flight SQL).
+   - Some data types are represented differently, and require conversion.
+     `SQL_C_BINARY`_ can sidestep this for drivers and applications that
+     cooperate, but then applications would have to treat Arrow-based and
+     non-Arrow-based data sources differently.
+
+     - `Strings must be null-terminated`_, which would require a copy into an
+       Arrow array, or require that the application handle null terminated
+       strings in an array.
+     - It is implementation-defined whether strings may have embedded nulls,
+       but Arrow specifies UTF-8 strings for which 0x00 is a valid byte.
+     - Because buffers are caller-allocated, the driver and application must
+       cooperate to handle large strings; `the driver must truncate the
+       value`_, and the application can try to fetch the value again.
+     - ODBC uses length buffers rather than offsets, requiring another
+       conversion to/from Arrow string arrays.
+     - `Time intervals use different representations`_.
+
 .. _ResultSet: https://docs.oracle.com/javase/8/docs/api/java/sql/ResultSet.html
+.. _block cursors: https://docs.microsoft.com/en-us/sql/odbc/reference/develop-app/block-cursors?view=sql-server-ver15
 .. _"column-wise binding": https://learn.microsoft.com/en-us/sql/odbc/reference/develop-app/column-wise-binding?view=sql-server-ver16
+.. _represented as integers: https://docs.microsoft.com/en-us/sql/odbc/reference/develop-app/using-length-and-indicator-values?view=sql-server-ver15
+.. _Result buffers are caller-allocated: https://docs.microsoft.com/en-us/sql/odbc/reference/develop-app/allocating-and-freeing-buffers?view=sql-server-ver15
+.. _SQL_C_BINARY: https://docs.microsoft.com/en-us/sql/odbc/reference/appendixes/transferring-data-in-its-binary-form?view=sql-server-ver15
+.. _Strings must be null-terminated: https://docs.microsoft.com/en-us/sql/odbc/reference/develop-app/character-data-and-c-strings?view=sql-server-ver15
+.. _the driver must truncate the value: https://docs.microsoft.com/en-us/sql/odbc/reference/develop-app/data-length-buffer-length-and-truncation?view=sql-server-ver15
+.. _Time intervals use different representations: https://docs.microsoft.com/en-us/sql/odbc/reference/appendixes/c-interval-structure?view=sql-server-ver15
 
 How do ADBC and Arrow Flight SQL differ?
 ========================================
@@ -146,6 +188,31 @@ JDBC driver in a bespoke Arrow-based API.
 .. _arrow-jdbc: https://central.sonatype.com/artifact/org.apache.arrow/arrow-jdbc/11.0.0
 .. _Turbodbc: https://turbodbc.readthedocs.io/en/latest/
 
+How do all these APIs fit together?
+===================================
+
+.. figure:: AdbcQuadrants.mmd.svg
+   :width: 80%
+
+We can divide APIs based on two axes: Arrow-native vs row-oriented, and
+database-specific vs database-agnostic.
+
+Database-agnostic APIs are abstracted from the vendor, including ADBC,
+JDBC, ODBC, and to an extent Flight SQL.  (Flight SQL, as discussed above,
+still requires specific vendor support; the xDBCs don't.)
+
+Database-specific APIs are made by a vendor for their system, though other
+systems may end up re-implementing these APIs for compatibility (as is
+often done with the PostgreSQL wire protocol).
+
+Arrow-native APIs like ADBC, Flight SQL, and the BigQuery Storage API natively
+return Arrow data, or more generally columnar data.  This can give a
+performance advantage for applications dealing with large volumes of data.
+
+Row-oriented APIs like JDBC, ODBC, and the PostgreSQL wire protocol deal with
+a single row at a time.  This can be more convenient for some types of
+applications
+
 What is the ADBC driver manager?
 ================================
 
@@ -184,6 +251,7 @@ release, it may take some time for binary packages to be available.
 When/where is 1.0? Is this project ready?
 =========================================
 
-At this time, there is no formal date planned for a "1.0" release of the
-implementation.  :doc:`driver/status` has a rough overview of the status of
+Different parts of the project have different version numbers.  We consider
+certain implementations (like Go) to be "1.0"-ready, while others (like Java)
+are still pre-1.0.  :doc:`driver/status` has a rough overview of the status of
 individual driver implementations.

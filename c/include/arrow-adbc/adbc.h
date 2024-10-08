@@ -1972,7 +1972,7 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
 /// \since ADBC API revision 1.1.0
 ///
 /// \param[in] statement The statement to execute.
-/// \param[out] out The result schema.
+/// \param[out] schema The result schema.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 ///

@@ -66,6 +66,7 @@ main() {
     # Fix up lazy Intersphinx links (see docs_build.sh)
     # Assumes GNU sed
     sed -i "s|http://javadocs.home.arpa/|https://arrow.apache.org/adbc/${directory}/|g" $(grep -Rl javadocs.home.arpa "${site}/${directory}/")
+    sed -i "s|http://doxygen.home.arpa/|https://arrow.apache.org/adbc/${directory}/|g" $(grep -Rl doxygen.home.arpa "${site}/${directory}/")
     git -C "${site}" add --force "${directory}"
 
     # Copy the version script and regenerate the version list
