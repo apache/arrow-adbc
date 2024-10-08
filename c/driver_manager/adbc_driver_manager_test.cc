@@ -187,10 +187,18 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
       case NANOARROW_TYPE_UINT32:
       case NANOARROW_TYPE_UINT64:
         return NANOARROW_TYPE_INT64;
+      case NANOARROW_TYPE_HALF_FLOAT:
       case NANOARROW_TYPE_FLOAT:
-      case NANOARROW_TYPE_DOUBLE:
         return NANOARROW_TYPE_DOUBLE;
       case NANOARROW_TYPE_LARGE_STRING:
+      case NANOARROW_TYPE_STRING_VIEW:
+        return NANOARROW_TYPE_STRING;
+      case NANOARROW_TYPE_LARGE_BINARY:
+      case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+      case NANOARROW_TYPE_BINARY_VIEW:
+        return NANOARROW_TYPE_BINARY;
+      case NANOARROW_TYPE_DATE32:
+      case NANOARROW_TYPE_TIMESTAMP:
         return NANOARROW_TYPE_STRING;
       default:
         return ingest_type;
@@ -267,8 +275,6 @@ class SqliteStatementTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
   void TestSqlIngestUInt64() { GTEST_SKIP() << "Cannot ingest UINT64 (out of range)"; }
-  void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
-  void TestSqlIngestDate32() { GTEST_SKIP() << "Cannot ingest DATE (not implemented)"; }
   void TestSqlIngestTimestamp() {
     GTEST_SKIP() << "Cannot ingest TIMESTAMP (not implemented)";
   }

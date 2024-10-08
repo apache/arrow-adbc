@@ -116,11 +116,24 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
   ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const override {
     switch (ingest_type) {
       case NANOARROW_TYPE_INT8:
+      case NANOARROW_TYPE_UINT8:
         return NANOARROW_TYPE_INT16;
+      case NANOARROW_TYPE_UINT16:
+        return NANOARROW_TYPE_INT32;
+      case NANOARROW_TYPE_UINT32:
+      case NANOARROW_TYPE_UINT64:
+        return NANOARROW_TYPE_INT64;
+      case NANOARROW_TYPE_HALF_FLOAT:
+        return NANOARROW_TYPE_FLOAT;
       case NANOARROW_TYPE_DURATION:
         return NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO;
       case NANOARROW_TYPE_LARGE_STRING:
+      case NANOARROW_TYPE_STRING_VIEW:
         return NANOARROW_TYPE_STRING;
+      case NANOARROW_TYPE_LARGE_BINARY:
+      case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+      case NANOARROW_TYPE_BINARY_VIEW:
+        return NANOARROW_TYPE_BINARY;
       case NANOARROW_TYPE_DECIMAL128:
       case NANOARROW_TYPE_DECIMAL256:
         return NANOARROW_TYPE_STRING;
@@ -885,11 +898,6 @@ class PostgresStatementTest : public ::testing::Test,
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
-
-  void TestSqlIngestUInt8() { GTEST_SKIP() << "Not implemented"; }
-  void TestSqlIngestUInt16() { GTEST_SKIP() << "Not implemented"; }
-  void TestSqlIngestUInt32() { GTEST_SKIP() << "Not implemented"; }
-  void TestSqlIngestUInt64() { GTEST_SKIP() << "Not implemented"; }
 
   void TestSqlPrepareErrorParamCountMismatch() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareGetParameterSchema() { GTEST_SKIP() << "Not yet implemented"; }
