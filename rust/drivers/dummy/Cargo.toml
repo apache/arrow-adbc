@@ -24,8 +24,13 @@ authors = { workspace = true }
 license = { workspace = true }
 
 [dependencies]
-arrow = { workspace = true }
-adbc_core = { workspace = true }
+adbc_core = { path = "../../core" }
+arrow-array.workspace = true
+arrow-buffer.workspace = true
+arrow-schema.workspace = true
+
+[dev-dependencies]
+arrow-select.workspace = true
 
 [lib]
 crate-type = ["lib", "cdylib"]
