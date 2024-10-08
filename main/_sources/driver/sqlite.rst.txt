@@ -73,7 +73,7 @@ Usage
 =====
 
 To connect to a database, supply the "uri" parameter when constructing
-the :cpp:class:`AdbcDatabase`.  This should be a filename or `URI
+the :c:struct:`AdbcDatabase`.  This should be a filename or `URI
 filename <https://www.sqlite.org/c3ref/open.html#urifilenamesinsqlite3open>`_.
 If omitted, it will default to an in-memory database, but one that is
 shared across all connections.
@@ -177,7 +177,7 @@ To load an extension, three things are necessary:
 3. Set the entrypoint
 
 These options can only be set after the connection is fully initialized with
-:cpp:func:`AdbcConnectionInit`.
+:c:func:`AdbcConnectionInit`.
 
 Options
 ~~~~~~~
