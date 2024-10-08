@@ -126,7 +126,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 : throw new ArgumentOutOfRangeException(SparkParameters.RequestTimeoutMilliseconds, requestTimeoutMs, $"must be a value between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, CancellationToken cancellationToken = default) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion, cancellationToken);
 
         protected override Task<TTransport> CreateTransportAsync()
         {

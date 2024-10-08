@@ -81,7 +81,7 @@ Usage
 =====
 
 To connect to a database, supply the "uri" parameter when constructing
-the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
+the :c:struct:`AdbcDatabase`.  This should be a `connection URI
 <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_.
 
 .. tab-set::

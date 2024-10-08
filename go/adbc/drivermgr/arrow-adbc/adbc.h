@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-/// \file adbc.h ADBC: Arrow Database connectivity
+/// \file arrow-adbc/adbc.h ADBC: Arrow Database connectivity
 ///
 /// An Arrow-based interface between applications and database
 /// drivers.  ADBC aims to provide a vendor-independent API for SQL
@@ -1972,7 +1972,7 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
 /// \since ADBC API revision 1.1.0
 ///
 /// \param[in] statement The statement to execute.
-/// \param[out] out The result schema.
+/// \param[out] schema The result schema.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 ///

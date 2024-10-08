@@ -94,13 +94,12 @@ Then they can be used via CMake, e.g.:
 Usage
 =====
 
-To create a database, use the :cpp:class:`AdbcDatabase` API as usual,
-but during initialization, provide two additional parameters in
-addition to the driver-specific connection parameters: ``driver`` and
-(optionally) ``entrypoint``.  ``driver`` must be the name of a library
-to load, or the path to a library to load. ``entrypoint``, if
-provided, should be the name of the symbol that serves as the ADBC
-entrypoint (see :cpp:type:`AdbcDriverInitFunc`).
+To create a database, use the :c:struct:`AdbcDatabase` API as usual, but
+during initialization, provide two additional parameters in addition to the
+driver-specific connection parameters: ``driver`` and (optionally)
+``entrypoint``.  ``driver`` must be the name of a library to load, or the path
+to a library to load. ``entrypoint``, if provided, should be the name of the
+symbol that serves as the ADBC entrypoint (see :c:type:`AdbcDriverInitFunc`).
 
 .. code-block:: c
 
@@ -120,5 +119,5 @@ entrypoint (see :cpp:type:`AdbcDriverInitFunc`).
 API Reference
 =============
 
-The driver manager includes a few additional functions beyond the ADBC
-API.  See the API reference: :doc:`./api/adbc_driver_manager`.
+The driver manager includes a few additional functions beyond the ADBC API.
+See the API reference: :external+cpp_adbc:doc:`adbc_driver_manager.h`.

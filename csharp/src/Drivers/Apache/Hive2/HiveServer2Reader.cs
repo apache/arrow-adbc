@@ -64,29 +64,56 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 { ArrowTypeId.Timestamp, ConvertToTimestamp },
             };
 
+        // Look-ahead task.
+        Task<TFetchResultsResp>? _fetchResultResponseTask = default;
 
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            DataTypeConversion dataTypeConversion)
+            DataTypeConversion dataTypeConversion,
+            CancellationToken cancellationToken = default)
         {
             _statement = statement;
             Schema = schema;
             _dataTypeConversion = dataTypeConversion;
+            // Start the pre-fetch of the first batch
+            _fetchResultResponseTask = FetchNext(_statement, cancellationToken);
         }
 
         public Schema Schema { get; }
 
         public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
+            // All records have been exhausted
             if (_statement == null)
             {
                 return null;
             }
 
-            var request = new TFetchResultsReq(_statement.OperationHandle, TFetchOrientation.FETCH_NEXT, _statement.BatchSize);
-            TFetchResultsResp response = await _statement.Connection.Client.FetchResults(request, cancellationToken);
+            // Await the fetch response
+            TFetchResultsResp response = await (_fetchResultResponseTask ?? throw new InvalidOperationException("unexpected state - fetch result task should be set."));
 
+            // Build the current batch
+            RecordBatch result = CreateBatch(response, out int fetchedRows);
+
+            if ((_statement.BatchSize > 0 && fetchedRows < _statement.BatchSize) || fetchedRows == 0)
+            {
+                // This is the last batch
+                _statement = null;
+                _fetchResultResponseTask = null;
+            }
+            else
+            {
+                // Otherwise, start the pre-fetch of the next batch
+                _fetchResultResponseTask = FetchNext(_statement, cancellationToken);
+            }
+
+            // Return the current batch.
+            return result;
+        }
+
+        private RecordBatch CreateBatch(TFetchResultsResp response, out int length)
+        {
             int columnCount = response.Results.Columns.Count;
             IList<IArrowArray> columnData = [];
             bool shouldConvertScalar = _dataTypeConversion.HasFlag(DataTypeConversion.Scalar);
@@ -97,18 +124,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 columnData.Add(columnArray);
             }
 
-            int length = columnCount > 0 ? GetArray(response.Results.Columns[0]).Length : 0;
-            var result = new RecordBatch(
-                Schema,
-                columnData,
-                length);
+            length = columnCount > 0 ? GetArray(response.Results.Columns[0]).Length : 0;
+            return new RecordBatch(Schema, columnData, length);
+        }
 
-            if (!response.HasMoreRows)
-            {
-                _statement = null;
-            }
-
-            return result;
+        private static Task<TFetchResultsResp> FetchNext(HiveServer2Statement statement, CancellationToken cancellationToken = default)
+        {
+            var request = new TFetchResultsReq(statement.OperationHandle, TFetchOrientation.FETCH_NEXT, statement.BatchSize);
+            return statement.Connection.Client.FetchResults(request, cancellationToken);
         }
 
         public void Dispose()
