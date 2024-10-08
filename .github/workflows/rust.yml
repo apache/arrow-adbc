@@ -78,6 +78,7 @@ jobs:
         shell: bash -l {0}
         run: |
           cd
+          mkdir -p ${{ github.workspace }}/build
           tar xvf ~/local.tgz -C ${{ github.workspace }}/build
       - name: Set dynamic linker path
         if: matrix.os == 'ubuntu-latest'
