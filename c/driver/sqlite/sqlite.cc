@@ -218,10 +218,6 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
     std::string query =
         "SELECT DISTINCT name FROM pragma_database_list() WHERE name LIKE ?";
 
-    this->table_filter = table_filter;
-    this->column_filter = column_filter;
-    this->table_types = table_types;
-
     UNWRAP_STATUS(SqliteQuery::Scan(
         conn, query,
         [&](sqlite3_stmt* stmt) {
@@ -245,14 +241,17 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
     return status::Ok();
   }
 
-  Status LoadCatalogs() override { return status::Ok(); };
+  Status LoadCatalogs(std::optional<std::string_view> catalog_filter) override {
+    return status::Ok();
+  };
 
   Result<std::optional<std::string_view>> NextCatalog() override {
     if (next_catalog >= catalogs.size()) return std::nullopt;
     return catalogs[next_catalog++];
   }
 
-  Status LoadSchemas(std::string_view catalog) override {
+  Status LoadSchemas(std::string_view catalog,
+                     std::optional<std::string_view> schema_filter) override {
     next_schema = 0;
     return status::Ok();
   };
@@ -262,7 +261,9 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
     return schemas[next_schema++];
   }
 
-  Status LoadTables(std::string_view catalog, std::string_view schema) override {
+  Status LoadTables(std::string_view catalog, std::string_view schema,
+                    std::optional<std::string_view> table_filter,
+                    const std::vector<std::string_view>& table_types) override {
     next_table = 0;
     tables.clear();
     if (!schema.empty()) return status::Ok();
@@ -305,7 +306,8 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
   }
 
   Status LoadColumns(std::string_view catalog, std::string_view schema,
-                     std::string_view table) override {
+                     std::string_view table,
+                     std::optional<std::string_view> column_filter) override {
     // XXX: pragma_table_info doesn't appear to work with bind parameters
     // XXX: because we're saving the SqliteQuery, we also need to save the string builder
     columns_query.Reset();
@@ -482,9 +484,6 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
   };
 
   sqlite3* conn = nullptr;
-  std::optional<std::string_view> table_filter;
-  std::optional<std::string_view> column_filter;
-  std::vector<std::string_view> table_types;
   std::vector<std::string> catalogs;
   std::vector<std::string> schemas;
   std::vector<std::pair<std::string, std::string>> tables;

@@ -18,9 +18,12 @@
 #pragma once
 
 #include <cassert>
+#include <charconv>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -30,6 +33,7 @@
 #include "copy/reader.h"
 #include "driver/framework/status.h"
 
+using adbc::driver::Result;
 using adbc::driver::Status;
 
 namespace adbcpq {
@@ -49,6 +53,33 @@ struct PqRecord {
     return result;
   }
 
+  Result<int64_t> ParseInteger() const {
+    const char* last = data + len;
+    int64_t value = 0;
+    auto result = std::from_chars<int64_t>(data, last, value, 10);
+    if (result.ec == std::errc() && result.ptr == last) {
+      return value;
+    } else {
+      return Status::Internal("Can't parse '", data, "' as integer");
+    }
+  }
+
+  Result<std::vector<std::string>> ParseTextArray() {
+    std::string text_array(data, len);
+    text_array.erase(0, 1);
+    text_array.erase(text_array.size() - 1);
+
+    std::vector<std::string> elements;
+    std::stringstream ss(std::move(text_array));
+    std::string tmp;
+
+    while (getline(ss, tmp, ',')) {
+      elements.push_back(std::move(tmp));
+    }
+
+    return elements;
+  }
+
   std::string_view value() { return std::string_view(data, len); }
 };
 
@@ -56,12 +87,11 @@ struct PqRecord {
 // row of a PGresult
 class PqResultRow {
  public:
-  PqResultRow(PGresult* result, int row_num) : result_(result), row_num_(row_num) {
-    ncols_ = PQnfields(result);
-  }
+  PqResultRow() : result_(nullptr), row_num_(-1) {}
+  PqResultRow(PGresult* result, int row_num) : result_(result), row_num_(row_num) {}
 
-  PqRecord operator[](const int& col_num) {
-    assert(col_num < ncols_);
+  PqRecord operator[](const int& col_num) const {
+    assert(col_num < PQnfields(result_));
     const char* data = PQgetvalue(result_, row_num_, col_num);
     const int len = PQgetlength(result_, row_num_, col_num);
     const bool is_null = PQgetisnull(result_, row_num_, col_num);
@@ -69,10 +99,13 @@ class PqResultRow {
     return PqRecord{data, len, is_null};
   }
 
+  bool IsValid() { return result_ && row_num_ >= 0 && row_num_ < PQntuples(result_); }
+
+  PqResultRow Next() { return PqResultRow(result_, row_num_ + 1); }
+
  private:
   PGresult* result_ = nullptr;
   int row_num_;
-  int ncols_;
 };
 
 // Helper to manager the lifecycle of a PQResult. The query argument
@@ -135,6 +168,7 @@ class PqResultHelper {
     return PQfname(result_, column_number);
   }
   Oid FieldType(int column_number) const { return PQftype(result_, column_number); }
+  PqResultRow Row(int i) { return PqResultRow(result_, i); }
 
   class iterator {
     const PqResultHelper& outer_;
@@ -143,6 +177,7 @@ class PqResultHelper {
    public:
     explicit iterator(const PqResultHelper& outer, int curr_row = 0)
         : outer_(outer), curr_row_(curr_row) {}
+    iterator end() const { return outer_.end(); }
     iterator& operator++() {
       curr_row_++;
       return *this;
@@ -164,8 +199,8 @@ class PqResultHelper {
     using reference = const std::vector<PqResultRow>&;
   };
 
-  iterator begin() { return iterator(*this); }
-  iterator end() { return iterator(*this, NumRows()); }
+  iterator begin() const { return iterator(*this); }
+  iterator end() const { return iterator(*this, NumRows()); }
 
  private:
   PGresult* result_ = nullptr;
