@@ -57,4 +57,4 @@ User documentation can be found at https://arrow.apache.org/adbc
 
 ## Development and Contributing
 
-For detailed instructions on how to build the various ADBC libraries, see CONTRIBUTING.md.
+For detailed instructions on how to build the various ADBC libraries, see [CONTRIBUTING.md](CONTRIBUTING.md).
