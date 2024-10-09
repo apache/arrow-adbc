@@ -28,8 +28,7 @@ static SEXP init_func_xptr = 0;
 SEXP adbcbigquery_c_bigquery(void) { return init_func_xptr; }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"adbcbigquery_c_bigquery", (DL_FUNC)&adbcbigquery_c_bigquery, 0},
-    {NULL, NULL, 0}};
+    {"adbcbigquery_c_bigquery", (DL_FUNC)&adbcbigquery_c_bigquery, 0}, {NULL, NULL, 0}};
 
 void R_init_adbcbigquery(DllInfo* dll) {
   R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
