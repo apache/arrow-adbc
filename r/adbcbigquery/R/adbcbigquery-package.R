@@ -29,12 +29,8 @@ NULL
 #' @inheritParams adbcdrivermanager::adbc_database_init
 #' @inheritParams adbcdrivermanager::adbc_connection_init
 #' @inheritParams adbcdrivermanager::adbc_statement_init
-#' @param uri A URI to a database path (e.g.,
-#'   `user[:password]@account/database[?param1=value1]`)
-#' @param adbc.connection.autocommit Use FALSE to disable the default
-#'   autocommit behaviour.
-#' @param adbc.ingest.target_table The name of the target table for a bulk insert.
-#' @param adbc.ingest.mode Whether to create (the default) or append.
+#' @param token A token obtained from [bigrquery::bq_token()] or
+#'   [gargle::token_fetch()]. This is the easiest way to authenticate.
 #' @param ... Extra key/value options passed to the driver.
 #'
 #' @return An [adbcdrivermanager::adbc_driver()]
@@ -53,8 +49,13 @@ adbcbigquery <- function() {
 #' @rdname adbcbigquery
 #' @importFrom adbcdrivermanager adbc_database_init
 #' @export
-adbc_database_init.adbcbigquery_driver_bigquery <- function(driver, ..., uri = NULL) {
-  options <- list(..., uri = uri)
+adbc_database_init.adbcbigquery_driver_bigquery <- function(driver, ..., token = NULL) {
+  if (!is.null(token)) {
+    options <- list(options_from_token(token), ...)
+  } else {
+    options <- list(...)
+  }
+
   adbcdrivermanager::adbc_database_init_default(
     driver,
     options,
@@ -65,9 +66,9 @@ adbc_database_init.adbcbigquery_driver_bigquery <- function(driver, ..., uri = N
 #' @rdname adbcbigquery
 #' @importFrom adbcdrivermanager adbc_connection_init
 #' @export
-adbc_connection_init.adbcbigquery_database <- function(database, ...,
-                                                       adbc.connection.autocommit = NULL) {
-  options <- list(..., adbc.connection.autocommit = adbc.connection.autocommit)
+adbc_connection_init.adbcbigquery_database <- function(database, ...) {
+  options <- list(...)
+
   adbcdrivermanager::adbc_connection_init_default(
     database,
     options,
@@ -78,18 +79,44 @@ adbc_connection_init.adbcbigquery_database <- function(database, ...,
 #' @rdname adbcbigquery
 #' @importFrom adbcdrivermanager adbc_statement_init
 #' @export
-adbc_statement_init.adbcbigquery_connection <- function(connection, ...,
-                                                        adbc.ingest.target_table = NULL,
-                                                        adbc.ingest.mode = NULL) {
-  options <- list(
-    ...,
-    adbc.ingest.target_table = adbc.ingest.target_table,
-    adbc.ingest.mode = adbc.ingest.mode
-  )
+adbc_statement_init.adbcbigquery_connection <- function(connection, ...) {
+  options <- list(...)
 
   adbcdrivermanager::adbc_statement_init_default(
     connection,
     options,
     subclass = "adbcbigquery_statement"
+  )
+}
+
+# Converts a bigrquery::bq_token() or garge::token_fetch() into the options
+# required by the ADBC driver.
+options_from_token <- function(tok) {
+  if (inherits(tok, "request")) {
+    tok <- tok$auth_token
+  }
+
+  if (!inherits(tok, "Token2.0")) {
+    stop(
+      sprintf(
+        "ADBC BigQuery database options from token failed (expected Token2.0, got %s)",
+        paste(class(tok), sep = " / ")
+      )
+    )
+  }
+
+  # Because adbcdrivermanager:::key_value_options() is not exposed, we create the
+  # options ourselves such that set_options() can automatically expand them.
+  structure(
+    c(
+      "adbc.bigquery.sql.auth_type" = "adbc.bigquery.sql.auth_type.user_authentication",
+      "adbc.bigquery.sql.auth.client_id" = tok$client$id,
+      "adbc.bigquery.sql.auth.client_secret" = tok$client$secret,
+      "adbc.bigquery.sql.auth.refresh_token" = tok$credentials$refresh_token
+      # Ideally we would also pass on tok$credentials$access_token; however,
+      # the underlying Go driver does not yet implement the ability to pass this
+      # information directly (i.e., it will always refresh on connect)
+    ),
+    class = "adbc_options"
   )
 }

@@ -42,15 +42,6 @@ You can install the development version of adbcbigquery from
 pak::pak("apache/arrow-adbc/r/adbcbigquery")
 ```
 
-ADBC drivers for R use a relatively new feature of pkgbuild to enable
-installation from GitHub via pak. Depending on when you installed pak,
-you may need to update its internal version of pkgbuild.
-
-``` r
-install.packages("pkgbuild", pak:::private_lib_dir())
-pak::cache_clean()
-```
-
 ## Example
 
 This is a basic example which shows you how to solve a common problem.
@@ -58,40 +49,34 @@ This is a basic example which shows you how to solve a common problem.
 ``` r
 library(adbcdrivermanager)
 
-# Use the driver manager to connect to a database. This example URI is
-# grpc://localhost:8080 and uses a Go Bigquery/SQLite server docker image
-uri <- Sys.getenv("ADBC_BIGQUERY_TEST_URI")
-db <- adbc_database_init(adbcbigquery::adbcbigquery(), uri = uri)
+# Use bigrquery to authenticate
+bigrquery::bq_auth(email = Sys.getenv("ADBC_BIGQUERY_TEST_USER_EMAIL"))
+
+# Use the driver manager to connect to a database
+db <- adbc_database_init(
+  adbcbigquery::adbcbigquery(),
+  token = bigrquery::bq_token(),
+  "adbc.bigquery.sql.project_id" = Sys.getenv("ADBC_BIGQUERY_TEST_PROJECT_ID")
+)
 con <- adbc_connection_init(db)
 
-# Write a table
-con |>
-  execute_adbc("CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER)") |>
-  execute_adbc(
-    "INSERT INTO crossfit values
-      ('Push Ups', 3),
-      ('Pull Ups', 5),
-      ('Push Jerk', 7),
-      ('Bar Muscle Up', 10);"
-  )
-
-# Query it
-con |>
-  read_adbc("SELECT * from crossfit") |>
+con |> 
+  read_adbc(
+    "SELECT zipcode, latitude, longitude 
+      FROM `bigquery-public-data.utility_us.zipcode_area` LIMIT 10"
+  ) |> 
   tibble::as_tibble()
-#> # A tibble: 4 × 2
-#>   exercise      difficulty_level
-#>   <chr>                    <dbl>
-#> 1 Push Ups                     3
-#> 2 Pull Ups                     5
-#> 3 Push Jerk                    7
-#> 4 Bar Muscle Up               10
-```
-
-``` r
-# Clean up
-con |>
-  execute_adbc("DROP TABLE crossfit")
-adbc_connection_release(con)
-adbc_database_release(db)
+#> # A tibble: 10 × 3
+#>    zipcode latitude longitude
+#>    <chr>      <dbl>     <dbl>
+#>  1 96950       15.2     146. 
+#>  2 96952       15.0     146. 
+#>  3 96951       14.2     145. 
+#>  4 96910       13.5     145. 
+#>  5 96929       13.6     145. 
+#>  6 96921       13.5     145. 
+#>  7 96913       13.5     145. 
+#>  8 96932       13.5     145. 
+#>  9 50012       42.0     -93.6
+#> 10 52352       42.3     -91.8
 ```
