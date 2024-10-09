@@ -1,0 +1,17 @@
+^adbcbigquery\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^bootstrap\.R$
+^README\.Rmd$
+^src/Makevars$
+^\.vscode$
+^src/go/tmp$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^cran-comments\.md$
+^src/\.go-cache$
+^src/\.go-path$
+^configure\.win$
+^\.cache$
+^compile_commands\.json$
