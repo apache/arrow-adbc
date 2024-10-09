@@ -120,10 +120,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
             Properties.TryGetValue(SparkParameters.TLSOptions, out string? tlsOptions);
             TlsOptions = TlsOptionsParser.Parse(tlsOptions);
-            Properties.TryGetValue(SparkParameters.RequestTimeoutMilliseconds, out string? requestTimeoutMs);
-            RequestTimeout = int.TryParse(requestTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int requestTimeoutMsValue) && requestTimeoutMsValue > 0
-                ? requestTimeoutMsValue
-                : throw new ArgumentOutOfRangeException(SparkParameters.RequestTimeoutMilliseconds, requestTimeoutMs, $"must be a value between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
+            Properties.TryGetValue(SparkParameters.HttpRequestTimeoutMilliseconds, out string? requestTimeoutMs);
+            if (requestTimeoutMs != null)
+            {
+                HttpRequestTimeout = int.TryParse(requestTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int requestTimeoutMsValue) && requestTimeoutMsValue > 0
+                    ? requestTimeoutMsValue
+                    : throw new ArgumentOutOfRangeException(SparkParameters.HttpRequestTimeoutMilliseconds, requestTimeoutMs, $"must be a value between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
+            }
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, CancellationToken cancellationToken = default) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion, cancellationToken);
@@ -161,7 +164,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TConfiguration config = new();
             ThriftHttpTransport transport = new(httpClient, config)
             {
-                ConnectTimeout = RequestTimeout,
+                ConnectTimeout = HttpRequestTimeout,
             };
             return Task.FromResult<TTransport>(transport);
         }
