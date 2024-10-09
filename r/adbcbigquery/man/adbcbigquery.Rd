@@ -5,7 +5,7 @@
 \alias{adbc_database_init.adbcbigquery_driver_bigquery}
 \alias{adbc_connection_init.adbcbigquery_database}
 \alias{adbc_statement_init.adbcbigquery_connection}
-\title{ADBC Bigquery Driver}
+\title{ADBC BigQuery Driver}
 \usage{
 adbcbigquery()
 
@@ -31,7 +31,7 @@ adbcbigquery()
 An \code{\link[adbcdrivermanager:adbc_driver_void]{adbcdrivermanager::adbc_driver()}}
 }
 \description{
-ADBC Bigquery Driver
+ADBC BigQuery Driver
 }
 \examples{
 adbcbigquery()

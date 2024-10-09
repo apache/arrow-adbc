@@ -1,5 +1,5 @@
 Package: adbcbigquery
-Title: 'Arrow' Database Connectivity ('ADBC') 'Bigquery' Driver
+Title: 'Arrow' Database Connectivity ('ADBC') 'BigQuery' Driver
 Version: 0.14.0.9000
 Authors@R: c(
       person("Dewey", "Dunnington", , "dewey@dunnington.ca", role = c("aut", "cre"),
@@ -8,7 +8,7 @@ Authors@R: c(
       person("Apache Software Foundation", email = "dev@arrow.apache.org", role = c("cph"))
     )
 Description: Provides a developer-facing interface to the 'Arrow' Database
-  Connectivity ('ADBC') 'Bigquery' driver  for the purposes of building high-level
+  Connectivity ('ADBC') 'BigQuery' driver  for the purposes of building high-level
   database interfaces for users. 'ADBC' <https://arrow.apache.org/adbc/> is
   an API standard for database access libraries that uses 'Arrow' for result
   sets and query parameters.

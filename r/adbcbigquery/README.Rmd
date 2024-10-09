@@ -36,7 +36,7 @@ knitr::opts_chunk$set(
 <!-- badges: end -->
 
 The goal of adbcbigquery is to provide a low-level developer-facing interface
-to the Arrow Database Connectivity (ADBC) Bigquery driver.
+to the Arrow Database Connectivity (ADBC) BigQuery driver.
 
 ## Installation
 
@@ -71,10 +71,10 @@ db <- adbc_database_init(
 )
 con <- adbc_connection_init(db)
 
-con |> 
+con |>
   read_adbc(
-    "SELECT zipcode, latitude, longitude 
+    "SELECT zipcode, latitude, longitude
       FROM `bigquery-public-data.utility_us.zipcode_area` LIMIT 10"
-  ) |> 
+  ) |>
   tibble::as_tibble()
 ```

@@ -3,9 +3,9 @@
 \docType{package}
 \name{adbcbigquery-package}
 \alias{adbcbigquery-package}
-\title{adbcbigquery: 'Arrow' Database Connectivity ('ADBC') 'Bigquery' Driver}
+\title{adbcbigquery: 'Arrow' Database Connectivity ('ADBC') 'BigQuery' Driver}
 \description{
-Provides a developer-facing interface to the 'Arrow' Database Connectivity ('ADBC') 'Bigquery' driver for the purposes of building high-level database interfaces for users. 'ADBC' \url{https://arrow.apache.org/adbc/} is an API standard for database access libraries that uses 'Arrow' for result sets and query parameters.
+Provides a developer-facing interface to the 'Arrow' Database Connectivity ('ADBC') 'BigQuery' driver for the purposes of building high-level database interfaces for users. 'ADBC' \url{https://arrow.apache.org/adbc/} is an API standard for database access libraries that uses 'Arrow' for result sets and query parameters.
 }
 \seealso{
 Useful links:

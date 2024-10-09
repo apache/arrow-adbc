@@ -24,7 +24,7 @@
 ## usethis namespace: end
 NULL
 
-#' ADBC Bigquery Driver
+#' ADBC BigQuery Driver
 #'
 #' @inheritParams adbcdrivermanager::adbc_database_init
 #' @inheritParams adbcdrivermanager::adbc_connection_init

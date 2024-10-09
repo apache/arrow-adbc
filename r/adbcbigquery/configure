@@ -119,10 +119,10 @@ sed \
   src/Makevars.in > src/Makevars
 
 if [ -f "src/go/adbc/pkg/bigquery/driver.go" ]; then
-  echo "Found vendored ADBC Bigquery driver"
+  echo "Found vendored ADBC BigQuery driver"
   exit 0
 fi
 
-echo "Vendored ADBC Bigquery driver was not found."
+echo "Vendored ADBC BigQuery driver was not found."
 echo "This source package was probably built incorrectly and it's probably not your fault"
 exit 1

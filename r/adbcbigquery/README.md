@@ -23,7 +23,7 @@
 <!-- badges: end -->
 
 The goal of adbcbigquery is to provide a low-level developer-facing
-interface to the Arrow Database Connectivity (ADBC) Bigquery driver.
+interface to the Arrow Database Connectivity (ADBC) BigQuery driver.
 
 ## Installation
 
@@ -60,23 +60,23 @@ db <- adbc_database_init(
 )
 con <- adbc_connection_init(db)
 
-con |> 
+con |>
   read_adbc(
-    "SELECT zipcode, latitude, longitude 
+    "SELECT zipcode, latitude, longitude
       FROM `bigquery-public-data.utility_us.zipcode_area` LIMIT 10"
-  ) |> 
+  ) |>
   tibble::as_tibble()
 #> # A tibble: 10 × 3
 #>    zipcode latitude longitude
 #>    <chr>      <dbl>     <dbl>
-#>  1 96950       15.2     146. 
-#>  2 96952       15.0     146. 
-#>  3 96951       14.2     145. 
-#>  4 96910       13.5     145. 
-#>  5 96929       13.6     145. 
-#>  6 96921       13.5     145. 
-#>  7 96913       13.5     145. 
-#>  8 96932       13.5     145. 
+#>  1 96950       15.2     146.
+#>  2 96952       15.0     146.
+#>  3 96951       14.2     145.
+#>  4 96910       13.5     145.
+#>  5 96929       13.6     145.
+#>  6 96921       13.5     145.
+#>  7 96913       13.5     145.
+#>  8 96932       13.5     145.
 #>  9 50012       42.0     -93.6
 #> 10 52352       42.3     -91.8
 ```
