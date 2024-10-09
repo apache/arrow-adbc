@@ -49,9 +49,6 @@ This is a basic example which shows you how to solve a common problem.
 ``` r
 library(adbcdrivermanager)
 
-# Use bigrquery to authenticate
-bigrquery::bq_auth(email = Sys.getenv("ADBC_BIGQUERY_TEST_USER_EMAIL"))
-
 # Use the driver manager to connect to a database
 db <- adbc_database_init(
   adbcbigquery::adbcbigquery(),
@@ -69,14 +66,14 @@ con |>
 #> # A tibble: 10 × 3
 #>    zipcode latitude longitude
 #>    <chr>      <dbl>     <dbl>
-#>  1 96950       15.2     146.
-#>  2 96952       15.0     146.
-#>  3 96951       14.2     145.
-#>  4 96910       13.5     145.
-#>  5 96929       13.6     145.
-#>  6 96921       13.5     145.
-#>  7 96913       13.5     145.
-#>  8 96932       13.5     145.
+#>  1 96950       15.2     146. 
+#>  2 96952       15.0     146. 
+#>  3 96951       14.2     145. 
+#>  4 96910       13.5     145. 
+#>  5 96929       13.6     145. 
+#>  6 96921       13.5     145. 
+#>  7 96913       13.5     145. 
+#>  8 96932       13.5     145. 
 #>  9 50012       42.0     -93.6
 #> 10 52352       42.3     -91.8
 ```

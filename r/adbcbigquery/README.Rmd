@@ -60,9 +60,6 @@ This is a basic example which shows you how to solve a common problem.
 ```{r example}
 library(adbcdrivermanager)
 
-# Use bigrquery to authenticate
-bigrquery::bq_auth(email = Sys.getenv("ADBC_BIGQUERY_TEST_USER_EMAIL"))
-
 # Use the driver manager to connect to a database
 db <- adbc_database_init(
   adbcbigquery::adbcbigquery(),
