@@ -20,12 +20,21 @@ test_that("adbcbigquery() works", {
 })
 
 test_that("default options can open a database and execute a query", {
-  test_db_uri <- Sys.getenv("ADBC_BIGQUERY_TEST_URI", "")
-  skip_if(identical(test_db_uri, ""))
+  test_credentials_file <- Sys.getenv("ADBC_BIGQUERY_TEST_CREDENTIALS_FILE", "")
+  skip_if(identical(test_credentials_file, ""))
+
+  client <- gargle::gargle_oauth_client_from_json(test_credentials_file)
+  token <- gargle::token_fetch(
+    scopes = c(
+      "https://www.googleapis.com/auth/bigquery"
+    ),
+    client = client
+  )
 
   db <- adbcdrivermanager::adbc_database_init(
     adbcbigquery(),
-    uri = test_db_uri
+    "adbc.bigquery.sql.project_id" = Sys.getenv("ADBC_BIGQUERY_TEST_PROJECT_ID"),
+    token = token
   )
   expect_s3_class(db, "adbcbigquery_database")
 
@@ -34,57 +43,15 @@ test_that("default options can open a database and execute a query", {
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
   expect_s3_class(stmt, "adbcbigquery_statement")
-
-  adbcdrivermanager::adbc_statement_set_sql_query(
-    stmt,
-    "CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER)"
-  )
-  adbcdrivermanager::adbc_statement_execute_query(stmt)
   adbcdrivermanager::adbc_statement_release(stmt)
 
-  # If we get this far, remove the table and disconnect when the test is done
-  on.exit({
-    stmt <- adbcdrivermanager::adbc_statement_init(con)
-    adbcdrivermanager::adbc_statement_set_sql_query(
-      stmt,
-      "DROP TABLE IF EXISTS crossfit;"
-    )
-    adbcdrivermanager::adbc_statement_execute_query(stmt)
-    adbcdrivermanager::adbc_statement_release(stmt)
-
-    adbcdrivermanager::adbc_connection_release(con)
-    adbcdrivermanager::adbc_database_release(db)
-  })
-
-  stmt <- adbcdrivermanager::adbc_statement_init(con)
-  adbcdrivermanager::adbc_statement_set_sql_query(
-    stmt,
-    "INSERT INTO crossfit values
-      ('Push Ups', 3),
-      ('Pull Ups', 5),
-      ('Push Jerk', 7),
-      ('Bar Muscle Up', 10);"
-  )
-  adbcdrivermanager::adbc_statement_execute_query(stmt)
-  adbcdrivermanager::adbc_statement_release(stmt)
-
-  stmt <- adbcdrivermanager::adbc_statement_init(con)
-  adbcdrivermanager::adbc_statement_set_sql_query(
-    stmt,
-    "SELECT * from crossfit"
-  )
-
-  stream <- nanoarrow::nanoarrow_allocate_array_stream()
-  adbcdrivermanager::adbc_statement_execute_query(stmt, stream)
-
-  expect_identical(
-    as.data.frame(stream),
-    data.frame(
-      exercise = c("Push Ups", "Pull Ups", "Push Jerk", "Bar Muscle Up"),
-      difficulty_level = c(3, 5, 7, 10),
-      stringsAsFactors = FALSE
+  result <- as.data.frame(
+    adbcdrivermanager::read_adbc(
+      con,
+      "SELECT zipcode, latitude, longitude
+        FROM `bigquery-public-data.utility_us.zipcode_area` LIMIT 10"
     )
   )
-
-  adbcdrivermanager::adbc_statement_release(stmt)
+  expect_identical(names(result), c("zipcode", "latitude", "longitude"))
+  expect_identical(nrow(result), 10L)
 })
