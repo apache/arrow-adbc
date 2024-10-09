@@ -44,12 +44,10 @@
 //!
 //! ```rust
 //! # use std::sync::Arc;
-//! # use arrow::{
-//! #     array::{Array, StringArray, Int64Array, Float64Array},
-//! #     record_batch::{RecordBatch, RecordBatchReader},
-//! #     datatypes::{Field, Schema, DataType},
-//! #     compute::concat_batches,
-//! # };
+//! # use arrow_array::{Array, StringArray, Int64Array, Float64Array};
+//! # use arrow_array::{RecordBatch, RecordBatchReader};
+//! # use arrow_schema::{Field, Schema, DataType};
+//! # use arrow_select::concat::concat_batches;
 //! # use adbc_core::{
 //! #     driver_manager::ManagedDriver,
 //! #     options::{AdbcVersion, OptionDatabase, OptionStatement},
