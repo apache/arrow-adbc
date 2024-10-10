@@ -240,19 +240,11 @@ impl ManagedDriver {
         check_status(status, error)?;
         Ok(driver)
     }
-}
 
-impl Driver for ManagedDriver {
-    type DatabaseType = ManagedDatabase;
-
-    fn new_database(&mut self) -> Result<Self::DatabaseType> {
-        self.new_database_with_opts(None)
-    }
-
-    fn new_database_with_opts(
-        &mut self,
-        opts: impl IntoIterator<Item = (<Self::DatabaseType as Optionable>::Option, OptionValue)>,
-    ) -> Result<Self::DatabaseType> {
+    /// Returns a new database using the loaded driver.
+    ///
+    /// This uses `&mut self` to prevent a deadlock.
+    fn database_new(&mut self) -> Result<ffi::FFI_AdbcDatabase> {
         let driver = &self.inner.driver.lock().unwrap();
         let mut database = ffi::FFI_AdbcDatabase::default();
 
@@ -262,10 +254,17 @@ impl Driver for ManagedDriver {
         let status = unsafe { method(&mut database, &mut error) };
         check_status(status, error)?;
 
-        // DatabaseSetOption
-        for (key, value) in opts {
-            set_option_database(driver, &mut database, self.inner.version, key, value)?;
-        }
+        Ok(database)
+    }
+
+    /// Initialize the given database using the loaded driver.
+    ///
+    /// This uses `&mut self` to prevent a deadlock.
+    fn database_init(
+        &mut self,
+        mut database: ffi::FFI_AdbcDatabase,
+    ) -> Result<ffi::FFI_AdbcDatabase> {
+        let driver = &self.inner.driver.lock().unwrap();
 
         // DatabaseInit
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -273,6 +272,40 @@ impl Driver for ManagedDriver {
         let status = unsafe { method(&mut database, &mut error) };
         check_status(status, error)?;
 
+        Ok(database)
+    }
+}
+
+impl Driver for ManagedDriver {
+    type DatabaseType = ManagedDatabase;
+
+    fn new_database(&mut self) -> Result<Self::DatabaseType> {
+        // Construct a new database.
+        let database = self.database_new()?;
+        // Initialize the database.
+        let database = self.database_init(database)?;
+        let inner = Arc::new(ManagedDatabaseInner {
+            database: Mutex::new(database),
+            driver: self.inner.clone(),
+        });
+        Ok(Self::DatabaseType { inner })
+    }
+
+    fn new_database_with_opts(
+        &mut self,
+        opts: impl IntoIterator<Item = (<Self::DatabaseType as Optionable>::Option, OptionValue)>,
+    ) -> Result<Self::DatabaseType> {
+        // Construct a new database.
+        let mut database = self.database_new()?;
+        // Set the options.
+        {
+            let driver = &self.inner.driver.lock().unwrap();
+            for (key, value) in opts {
+                set_option_database(driver, &mut database, self.inner.version, key, value)?;
+            }
+        }
+        // Initialize the database.
+        let database = self.database_init(database)?;
         let inner = Arc::new(ManagedDatabaseInner {
             database: Mutex::new(database),
             driver: self.inner.clone(),
@@ -425,6 +458,41 @@ impl ManagedDatabase {
     fn driver_version(&self) -> AdbcVersion {
         self.inner.driver.version
     }
+
+    /// Returns a new connection using the loaded driver.
+    ///
+    /// This uses `&mut self` to prevent a deadlock.
+    fn connection_new(&mut self) -> Result<ffi::FFI_AdbcConnection> {
+        let driver = &self.inner.driver.driver.lock().unwrap();
+        let mut connection = ffi::FFI_AdbcConnection::default();
+
+        // ConnectionNew
+        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let method = driver_method!(driver, ConnectionNew);
+        let status = unsafe { method(&mut connection, &mut error) };
+        check_status(status, error)?;
+
+        Ok(connection)
+    }
+
+    /// Initialize the given connection using the loaded driver.
+    ///
+    /// This uses `&mut self` to prevent a deadlock.
+    fn connection_init(
+        &mut self,
+        mut connection: ffi::FFI_AdbcConnection,
+    ) -> Result<ffi::FFI_AdbcConnection> {
+        let driver = &self.inner.driver.driver.lock().unwrap();
+        let mut database = self.inner.database.lock().unwrap();
+
+        // ConnectionInit
+        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let method = driver_method!(driver, ConnectionInit);
+        let status = unsafe { method(&mut connection, &mut *database, &mut error) };
+        check_status(status, error)?;
+
+        Ok(connection)
+    }
 }
 
 impl Optionable for ManagedDatabase {
@@ -497,35 +565,38 @@ impl Database for ManagedDatabase {
     type ConnectionType = ManagedConnection;
 
     fn new_connection(&mut self) -> Result<Self::ConnectionType> {
-        self.new_connection_with_opts(None)
+        // Construct a new connection.
+        let connection = self.connection_new()?;
+        // Initialize the connection.
+        let connection = self.connection_init(connection)?;
+        let inner = ManagedConnectionInner {
+            connection: Mutex::new(connection),
+            database: self.inner.clone(),
+        };
+        Ok(Self::ConnectionType {
+            inner: Arc::new(inner),
+        })
     }
 
     fn new_connection_with_opts(
         &mut self,
         opts: impl IntoIterator<Item = (<Self::ConnectionType as Optionable>::Option, OptionValue)>,
     ) -> Result<Self::ConnectionType> {
-        let driver = &self.inner.driver.driver.lock().unwrap();
-        let mut database = self.inner.database.lock().unwrap();
-        let mut connection = ffi::FFI_AdbcConnection::default();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
-        let method = driver_method!(driver, ConnectionNew);
-        let status = unsafe { method(&mut connection, &mut error) };
-        check_status(status, error)?;
-
-        for (key, value) in opts {
-            set_option_connection(driver, &mut connection, self.driver_version(), key, value)?;
+        // Construct a new connection.
+        let mut connection = self.connection_new()?;
+        // Set the options.
+        {
+            let driver = &self.inner.driver.driver.lock().unwrap();
+            for (key, value) in opts {
+                set_option_connection(driver, &mut connection, self.driver_version(), key, value)?;
+            }
         }
-
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
-        let method = driver_method!(driver, ConnectionInit);
-        let status = unsafe { method(&mut connection, database.deref_mut(), &mut error) };
-        check_status(status, error)?;
-
+        // Initialize the connection.
+        let connection = self.connection_init(connection)?;
         let inner = ManagedConnectionInner {
             connection: Mutex::new(connection),
             database: self.inner.clone(),
         };
-
         Ok(Self::ConnectionType {
             inner: Arc::new(inner),
         })
