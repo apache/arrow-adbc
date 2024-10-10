@@ -166,7 +166,16 @@ void IsAdbcStatusCode::DescribeNegationTo(std::ostream* os) const {
   } while (false);
 
 static int MakeSchemaColumnImpl(struct ArrowSchema* column, const SchemaField& field) {
-  CHECK_ERRNO(ArrowSchemaSetType(column, field.type));
+  switch (field.type) {
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      CHECK_ERRNO(ArrowSchemaSetTypeFixedSize(column, field.type, field.fixed_size));
+      break;
+    default:
+      CHECK_ERRNO(ArrowSchemaSetType(column, field.type));
+      break;
+  }
+
   CHECK_ERRNO(ArrowSchemaSetName(column, field.name.c_str()));
 
   if (!field.nullable) {
@@ -181,6 +190,7 @@ static int MakeSchemaColumnImpl(struct ArrowSchema* column, const SchemaField& f
     // SetType for a list will allocate and initialize children
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_LARGE_LIST:
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
     case NANOARROW_TYPE_MAP: {
       size_t i = 0;
       for (const SchemaField& child : field.children) {

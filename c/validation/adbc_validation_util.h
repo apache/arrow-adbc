@@ -256,6 +256,7 @@ struct GetObjectsReader {
 struct SchemaField {
   std::string name;
   ArrowType type = NANOARROW_TYPE_UNINITIALIZED;
+  int32_t fixed_size = 0;
   bool nullable = true;
   std::vector<SchemaField> children;
 
@@ -269,6 +270,13 @@ struct SchemaField {
                             std::vector<SchemaField> children) {
     SchemaField out(name, type);
     out.children = std::move(children);
+    return out;
+  }
+
+  static SchemaField FixedSize(std::string name, ArrowType type, int32_t fixed_size,
+                               std::vector<SchemaField> children = {}) {
+    SchemaField out = Nested(name, type, std::move(children));
+    out.fixed_size = fixed_size;
     return out;
   }
 };

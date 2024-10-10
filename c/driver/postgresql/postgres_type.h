@@ -558,17 +558,21 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
       return resolver.Find(resolver.GetOID(PostgresTypeId::kInt4), out, error);
     case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT64:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kInt8), out, error);
+    case NANOARROW_TYPE_HALF_FLOAT:
     case NANOARROW_TYPE_FLOAT:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kFloat4), out, error);
     case NANOARROW_TYPE_DOUBLE:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kFloat8), out, error);
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_STRING_VIEW:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kText), out, error);
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_LARGE_BINARY:
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+    case NANOARROW_TYPE_BINARY_VIEW:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kBytea), out, error);
     case NANOARROW_TYPE_DATE32:
     case NANOARROW_TYPE_DATE64:
