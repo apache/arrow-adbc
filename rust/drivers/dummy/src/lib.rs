@@ -183,16 +183,14 @@ impl Driver for DummyDriver {
     type DatabaseType = DummyDatabase;
 
     fn new_database(&mut self) -> Result<Self::DatabaseType> {
-        self.new_database_with_opts(None)
+        Ok(Self::DatabaseType::default())
     }
 
     fn new_database_with_opts(
         &mut self,
         opts: impl IntoIterator<Item = (<Self::DatabaseType as Optionable>::Option, OptionValue)>,
     ) -> Result<Self::DatabaseType> {
-        let mut database = Self::DatabaseType {
-            options: HashMap::new(),
-        };
+        let mut database = Self::DatabaseType::default();
         for (key, value) in opts {
             database.set_option(key, value)?;
         }
@@ -200,6 +198,7 @@ impl Driver for DummyDriver {
     }
 }
 
+#[derive(Default)]
 pub struct DummyDatabase {
     options: HashMap<OptionDatabase, OptionValue>,
 }
@@ -232,16 +231,14 @@ impl Database for DummyDatabase {
     type ConnectionType = DummyConnection;
 
     fn new_connection(&mut self) -> Result<Self::ConnectionType> {
-        self.new_connection_with_opts(None)
+        Ok(Self::ConnectionType::default())
     }
 
     fn new_connection_with_opts(
         &mut self,
         opts: impl IntoIterator<Item = (<Self::ConnectionType as Optionable>::Option, OptionValue)>,
     ) -> Result<Self::ConnectionType> {
-        let mut connection = Self::ConnectionType {
-            options: HashMap::new(),
-        };
+        let mut connection = Self::ConnectionType::default();
         for (key, value) in opts {
             connection.set_option(key, value)?;
         }
@@ -249,6 +246,7 @@ impl Database for DummyDatabase {
     }
 }
 
+#[derive(Default)]
 pub struct DummyConnection {
     options: HashMap<OptionConnection, OptionValue>,
 }
@@ -281,9 +279,7 @@ impl Connection for DummyConnection {
     type StatementType = DummyStatement;
 
     fn new_statement(&mut self) -> Result<Self::StatementType> {
-        Ok(Self::StatementType {
-            options: HashMap::new(),
-        })
+        Ok(Self::StatementType::default())
     }
 
     // This method is used to test that errors round-trip correctly.
@@ -798,6 +794,7 @@ impl Connection for DummyConnection {
     }
 }
 
+#[derive(Default)]
 pub struct DummyStatement {
     options: HashMap<OptionStatement, OptionValue>,
 }
