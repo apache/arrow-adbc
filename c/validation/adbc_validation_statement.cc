@@ -269,7 +269,8 @@ void StatementTest::TestSqlIngestLargeString() {
 
 void StatementTest::TestSqlIngestStringView() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
-      NANOARROW_TYPE_STRING_VIEW, {std::nullopt, "", "", "1234", "例"}, false));
+      NANOARROW_TYPE_STRING_VIEW, {std::nullopt, "", "", "longer than 12 bytes", "例"},
+      false));
 }
 
 void StatementTest::TestSqlIngestBinary() {
@@ -294,7 +295,11 @@ void StatementTest::TestSqlIngestLargeBinary() {
       false));
 }
 
-void StatementTest::TestSqlIngestFixedSizeBinary() { ASSERT_TRUE(true); }
+void StatementTest::TestSqlIngestFixedSizeBinary() {
+  SchemaField field = SchemaField::FixedSize("col", NANOARROW_TYPE_FIXED_SIZE_BINARY, 4);
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
+      field, {std::nullopt, "abcd", "efgh", "ijkl", "mnop"}, false));
+}
 
 void StatementTest::TestSqlIngestBinaryView() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<std::byte>>(
