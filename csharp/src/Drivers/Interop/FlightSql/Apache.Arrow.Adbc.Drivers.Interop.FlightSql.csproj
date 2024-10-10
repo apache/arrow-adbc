@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net472;net6.0</TargetFrameworks>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+    <IsPackagingPipeline Condition="'$(IsPackagingPipeline)' == ''">
+      false
+    </IsPackagingPipeline>
+  </PropertyGroup>
+
+  <!-- use Build-FlightSqlDriver.ps1 to build the dll -->
+  <Target Name="PreBuild_Win" BeforeTargets="DispatchToInnerBuilds" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <Exec Command="powershell -ExecutionPolicy Unrestricted -File $(ProjectDir)Build-FlightSqlDriver.ps1" />
+  </Target>
+
+   <!-- use copyFlightSqlDriver.sh to move all the platform binaries when used in the pipeline -->
+  <Target Name="PreBuild_Linux" BeforeTargets="DispatchToInnerBuilds" Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <Exec Command="bash $(ProjectDir)copyFlightSqlDriver.sh" />
+  </Target>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <Content Include="readme.md">
+      <Pack>true</Pack>
+      <PackagePath>/</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="libadbc_driver_flightsql.dll" Condition="'$(IsPackagingPipeline)' == 'true'">
+      <Pack>true</Pack>
+      <PackagePath>runtimes/win-x64/native</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- What runs in the pipeline. Assumes the Go builds have happened. -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <Content Include="readme.md">
+      <Pack>true</Pack>
+      <PackagePath>/</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+
+    <!-- Windows/DLLs -->
+    <Content Include="libadbc_driver_flightsql.dll" Condition="'$(IsPackagingPipeline)' == 'true'">
+      <Pack>true</Pack>
+      <PackagePath>runtimes/win-x64/native</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+
+    <!-- Linux/so -->
+    <Content Include="libadbc_driver_flightsql.so" Condition="'$(IsPackagingPipeline)' == 'true'">
+      <Pack>true</Pack>
+      <PackagePath>runtimes/linux-x64/native</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+
+    <!-- Mac/dylib -->
+    <Content Include="libadbc_driver_flightsql.dylib" Condition="'$(IsPackagingPipeline)' == 'true'">
+      <Pack>true</Pack>
+      <PackagePath>runtimes/osx-x64/native</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
+  </ItemGroup>
+</Project>
