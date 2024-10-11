@@ -29,6 +29,7 @@ from fake_inventory import (
     FakeBuildEnvironment,
     FakeBuilder,
     FakeDomain,
+    FakeDomainsContainer,
     FakeEnv,
     FakeObject,
 )
@@ -68,7 +69,7 @@ def make_fake_domains(root: Path, base_url: str) -> dict[str, FakeDomain]:
         data.extend(extract_index(f.read(), "packageSearchIndex = "))
 
     domains = {
-        "std": FakeDomain(objects=[]),
+        "std": FakeDomain("std", objects=[]),
     }
 
     for item in data:
@@ -124,7 +125,9 @@ def main():
 
     domains = make_fake_domains(args.path, args.url)
     config = FakeEnv(project=args.project, version=args.version)
-    env = FakeBuildEnvironment(config=config, domains=domains)
+    env = FakeBuildEnvironment(
+        config=config, domains=FakeDomainsContainer.from_dict(domains)
+    )
 
     output = args.path / "objects.inv"
     sphinx.util.inventory.InventoryFile.dump(
