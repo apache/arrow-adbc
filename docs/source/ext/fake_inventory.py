@@ -48,15 +48,27 @@ class FakeObject(typing.NamedTuple):
 
 
 class FakeDomain(typing.NamedTuple):
+    name: str
     objects: list[FakeObject]
 
     def get_objects(self):
         return self.objects
 
 
+class FakeDomainsContainer(typing.NamedTuple):
+    domains: list[FakeDomain]
+
+    def sorted(self):
+        return self.domains
+
+    @classmethod
+    def from_dict(self, domains: dict[str, FakeDomain]) -> FakeDomainsContainer:
+        return FakeDomainsContainer(domains=domains.values())
+
+
 class FakeBuildEnvironment(typing.NamedTuple):
     config: FakeEnv
-    domains: dict[str, FakeDomain]
+    domains: FakeDomainsContainer
 
 
 class FakeBuilder:
