@@ -377,7 +377,7 @@ public class JdbcStatement implements AdbcStatement {
     } catch (RuntimeException e) {
       throw e;
     } catch (Exception e) {
-      throw AdbcException.io(e.getMessage()).withCause(e);
+      throw AdbcException.io(e);
     }
   }
 

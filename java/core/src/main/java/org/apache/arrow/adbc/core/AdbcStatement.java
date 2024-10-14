@@ -208,9 +208,9 @@ public interface AdbcStatement extends AdbcCloseable, AdbcOptions {
     @Override
     public void close() throws AdbcException {
       try {
-      reader.close();
+        reader.close();
       } catch (IOException e) {
-        throw AdbcException.io(e.getMessage()).withCause(e);
+        throw AdbcException.io(e);
       }
     }
   }

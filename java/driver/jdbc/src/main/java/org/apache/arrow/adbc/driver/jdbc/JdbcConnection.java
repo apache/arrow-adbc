@@ -514,7 +514,7 @@ public class JdbcConnection implements AdbcConnection {
     } catch (RuntimeException e) {
       throw e;
     } catch (Exception e) {
-      throw AdbcException.io(e.getMessage()).withCause(e);
+      throw AdbcException.io(e);
     }
   }
 

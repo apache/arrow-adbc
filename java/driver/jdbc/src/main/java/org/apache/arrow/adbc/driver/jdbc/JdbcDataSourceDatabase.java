@@ -82,7 +82,7 @@ public final class JdbcDataSourceDatabase implements AdbcDatabase {
       try {
         connection.close();
       } catch (SQLException e) {
-        throw AdbcException.io(e.getMessage()).withCause(e);
+        throw AdbcException.io(e);
       }
     }
     connection = null;
