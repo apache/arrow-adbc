@@ -349,14 +349,17 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 
 	bufferSize := len(catalogs)
 	addCatalogCh := make(chan GetObjectsInfo, bufferSize)
-	for _, cat := range catalogs {
-		addCatalogCh <- GetObjectsInfo{CatalogName: Nullable(cat)}
-	}
-
-	close(addCatalogCh)
+	errCh := make(chan error, 1)
+	go func() {
+		defer close(addCatalogCh)
+		for _, cat := range catalogs {
+			addCatalogCh <- GetObjectsInfo{CatalogName: Nullable(cat)}
+		}
+	}()
 
 	if depth == adbc.ObjectDepthCatalogs {
-		return BuildGetObjectsRecordReader(cnxn.Base().Alloc, addCatalogCh)
+		close(errCh)
+		return BuildGetObjectsRecordReader(cnxn.Base().Alloc, addCatalogCh, errCh)
 	}
 
 	g, ctxG := errgroup.WithContext(ctx)
@@ -386,7 +389,7 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 	g.Go(func() error { defer close(addDbSchemasCh); return gSchemas.Wait() })
 
 	if depth == adbc.ObjectDepthDBSchemas {
-		rdr, err := BuildGetObjectsRecordReader(cnxn.Base().Alloc, addDbSchemasCh)
+		rdr, err := BuildGetObjectsRecordReader(cnxn.Base().Alloc, addDbSchemasCh, errCh)
 		return rdr, errors.Join(err, g.Wait())
 	}
 
@@ -432,7 +435,7 @@ func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, 
 
 	g.Go(func() error { defer close(addTablesCh); return gTables.Wait() })
 
-	rdr, err := BuildGetObjectsRecordReader(cnxn.Base().Alloc, addTablesCh)
+	rdr, err := BuildGetObjectsRecordReader(cnxn.Base().Alloc, addTablesCh, errCh)
 	return rdr, errors.Join(err, g.Wait())
 }
 
@@ -659,17 +662,26 @@ func (g *GetObjectsInfo) Scan(src any) error {
 // BuildGetObjectsRecordReader constructs a RecordReader for the GetObjects ADBC method.
 // It accepts a channel of GetObjectsInfo to allow concurrent retrieval of metadata and
 // serialization to Arrow record.
-func BuildGetObjectsRecordReader(mem memory.Allocator, in chan GetObjectsInfo) (array.RecordReader, error) {
+func BuildGetObjectsRecordReader(mem memory.Allocator, in <-chan GetObjectsInfo, errCh <-chan error) (array.RecordReader, error) {
 	bldr := array.NewRecordBuilder(mem, adbc.GetObjectsSchema)
 	defer bldr.Release()
 
-	for catalog := range in {
-		b, err := json.Marshal(catalog)
-		if err != nil {
-			return nil, err
-		}
+CATALOGLOOP:
+	for {
+		select {
+		case catalog, ok := <-in:
+			if !ok {
+				break CATALOGLOOP
+			}
+			b, err := json.Marshal(catalog)
+			if err != nil {
+				return nil, err
+			}
 
-		if err := json.Unmarshal(b, bldr); err != nil {
+			if err := json.Unmarshal(b, bldr); err != nil {
+				return nil, err
+			}
+		case err := <-errCh:
 			return nil, err
 		}
 	}
