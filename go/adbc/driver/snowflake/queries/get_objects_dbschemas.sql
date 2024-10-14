@@ -16,17 +16,17 @@
 -- under the License.
 
 WITH db_schemas AS (
-    SELECT 
+    SELECT
         "database_name" as "catalog_name",
         "name" as "schema_name"
     FROM table(RESULT_SCAN(:SHOW_SCHEMA_QUERY_ID))
     WHERE "database_name" ILIKE :CATALOG
 ), db_info AS (
-    SELECT "name" AS "database_name" 
+    SELECT "name" AS "database_name"
     FROM table(RESULT_SCAN(:SHOW_DB_QUERY_ID))
     WHERE "name" ILIKE :CATALOG
 )
-SELECT 
+SELECT
     {
         'catalog_name': "database_name",
         'catalog_db_schemas': ARRAY_AGG({
@@ -34,9 +34,9 @@ SELECT
             'db_schema_tables': null
         })
     } get_objects
-FROM 
-    db_info 
-LEFT JOIN db_schemas 
+FROM
+    db_info
+LEFT JOIN db_schemas
 ON "database_name" = "catalog_name"
 WHERE "database_name" ILIKE :CATALOG
 GROUP BY "database_name";
