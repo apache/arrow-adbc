@@ -76,7 +76,7 @@ public final class FlightSqlDatabase implements AdbcDatabase {
   }
 
   @Override
-  public void close() throws Exception {}
+  public void close() throws AdbcException {}
 
   @Override
   public String toString() {
