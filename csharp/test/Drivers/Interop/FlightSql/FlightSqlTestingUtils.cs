@@ -25,13 +25,10 @@ using Apache.Arrow.Adbc.Drivers.Interop.FlightSql;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 {
-
     class FlightSqlTestingUtils
     {
         internal const string FLIGHTSQL_TEST_CONFIG_VARIABLE = "FLIGHTSQL_TEST_CONFIG_FILE";
         internal const string FLIGHTSQL_TEST_ENV_NAME = "FLIGHTSQL_TEST_ENV_NAMES";
-
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
         public static FlightSqlTestConfiguration LoadFlightSqlTestConfiguration(string? environmentVariable = null)
         {
@@ -256,6 +253,4 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             return queries;
         }
     }
-
-
 }

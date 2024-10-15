@@ -90,7 +90,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                           new ColumnNetTypeArrowTypeValue("List_JSON", typeof(string), typeof(StringType),"[true,false,null]"),
                           new ColumnNetTypeArrowTypeValue("Map_JSON", typeof(string), typeof(StringType), "{\"key\":\"value\"}"),
                         }
-                    });
+                    }
+                );
             }
 
             if (environmentType == FlightSqlTestEnvironmentType.SQLite)
@@ -121,7 +122,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                           new ColumnNetTypeArrowTypeValue("REAL_COLUMN", typeof(double), typeof(DoubleType), 3.14159d),
                           new ColumnNetTypeArrowTypeValue("NULL_COLUMN", typeof(UnionType), typeof(UnionType), null),
                         }
-                    });
+                    }
+                );
             }
 
             // TODO: Dremio

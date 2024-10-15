@@ -17,9 +17,4 @@
       <ProjectReference Include="..\..\..\..\src\Drivers\Interop\FlightSql\Apache.Arrow.Adbc.Drivers.Interop.FlightSql.csproj" />
       <ProjectReference Include="..\..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
     </ItemGroup>
-    <ItemGroup>
-     <None Update="Resources\FlightSqlData.sql">
-       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-     </None>
-   </ItemGroup>
  </Project>
