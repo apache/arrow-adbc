@@ -66,12 +66,15 @@ static const std::string kSchemaQueryAll =
     "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
     "nspname !~ '^pg_' AND nspname <> 'information_schema'";
 
-// catalog_name is not a parameter here because it will always be the currently
-// connected database.
+// catalog_name is not a parameter here or on any other queries
+// because it will always be the currently connected database.
+
 // Parameterized on schema_name
 static const std::string kSchemaQuery = kSchemaQueryAll + " AND nspname = $1";
 
 // Parameterized on schema_name, relkind
+// Note that when binding relkind as a string it must look like {"r", "v", ...}
+// (i.e., double quotes). Binding a binary list<string> element also works.
 static const std::string kTablesQueryAll =
     "SELECT c.relname, CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' "
     "WHEN 'm' THEN 'materialized view' WHEN 't' THEN 'TOAST table' "
@@ -223,7 +226,7 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
 
   Status LoadSchemas(std::string_view catalog,
                      std::optional<std::string_view> schema_filter) override {
-    // PostgreSQL can only list schemas for the current database
+    // PostgreSQL can only list for the current database
     if (catalog != current_database_) {
       return Status::Ok();
     }
@@ -260,7 +263,7 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
           table_types_bind << ", ";
         }
 
-        table_types_bind << "'" << item.second << "'";
+        table_types_bind << "\"" << item.second << "\"";
         table_types_bind_len++;
       }
     } else {
@@ -274,7 +277,7 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
           table_types_bind << ", ";
         }
 
-        table_types_bind << "'" << maybe_item->second << "'";
+        table_types_bind << "\"" << maybe_item->second << "\"";
         table_types_bind_len++;
       }
     }
@@ -348,27 +351,31 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
     out.name = next_constraint_[0].data;
     out.type = next_constraint_[1].data;
 
+    UNWRAP_RESULT(constraint_fcolumn_names_, next_constraint_[2].ParseTextArray());
+    std::vector<std::string_view> fcolumn_names_view;
+    for (const std::string& item : constraint_fcolumn_names_) {
+      fcolumn_names_view.push_back(item);
+    }
+    out.column_names = std::move(fcolumn_names_view);
+
     if (out.type == "FOREIGN KEY") {
       assert(!next_constraint_[3].is_null);
       assert(!next_constraint_[3].is_null);
       assert(!next_constraint_[4].is_null);
-      assert(!next_constraint_[5].is_null);  // TODO: Unused?
+      assert(!next_constraint_[5].is_null);
 
-      // Because Constraint fields are all views
-      UNWRAP_RESULT(auto constraint_fcolumn_names_, next_constraint_[2].ParseTextArray());
-      std::vector<std::string_view> fcolumn_names_view;
-      for (const std::string& item : constraint_fcolumn_names_) {
-        fcolumn_names_view.push_back(item);
+      out.usage = std::vector<ConstraintUsage>();
+      UNWRAP_RESULT(constraint_fkey_names_, next_constraint_[5].ParseTextArray());
+
+      for (const auto& item : constraint_fkey_names_) {
+        ConstraintUsage usage;
+        usage.catalog = current_database_;
+        usage.schema = next_constraint_[3].data;
+        usage.table = next_constraint_[4].data;
+        usage.column = item;
+
+        out.usage->push_back(usage);
       }
-      out.column_names = std::move(fcolumn_names_view);
-
-      out.column_names = fcolumn_names_view;
-
-      ConstraintUsage usage;
-      usage.schema = next_constraint_[3].data;
-      usage.table = next_constraint_[4].data;
-      // TODO: column name?
-      out.usage = {usage};
     }
 
     return out;
@@ -395,6 +402,7 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
   PqResultRow next_constraint_;
 
   std::vector<std::string> constraint_fcolumn_names_;
+  std::vector<std::string> constraint_fkey_names_;
 };
 
 // A notice processor that does nothing with notices. In the future we can log
