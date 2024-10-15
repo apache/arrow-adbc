@@ -16,7 +16,7 @@
 
 ### copies the Snowflake binaries for all platforms to be packaged for NuGet
 
-echo "Copying the Snowflake ADBC Go drivers"
+echo "Copying the FlightSQL ADBC Go driver"
 echo "IsPackagingPipeline=$IsPackagingPipeline"
 
 if [[ -z "${IsPackagingPipeline}" ]]; then
