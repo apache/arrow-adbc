@@ -59,17 +59,19 @@ static const std::unordered_map<std::string, std::string> kPgTableTypes = {
 
 static const std::string kCatalogQueryAll = "SELECT datname FROM pg_catalog.pg_database";
 
-// catalog_name
+// Parameterized on catalog_name
 static const std::string kCatalogQuery = kCatalogQueryAll + " WHERE datname = $1";
 
 static const std::string kSchemaQueryAll =
     "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
     "nspname !~ '^pg_' AND nspname <> 'information_schema'";
 
-// schema_name
+// catalog_name is not a parameter here because it will always be the currently
+// connected database.
+// Parameterized on schema_name
 static const std::string kSchemaQuery = kSchemaQueryAll + " AND nspname = $1";
 
-// schema_name, relkind
+// Parameterized on schema_name, relkind
 static const std::string kTablesQueryAll =
     "SELECT c.relname, CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' "
     "WHEN 'm' THEN 'materialized view' WHEN 't' THEN 'TOAST table' "
@@ -80,10 +82,10 @@ static const std::string kTablesQueryAll =
     "AND pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = $1 AND c.relkind = "
     "ANY($2)";
 
-// schema_name, relkind, table_name
+// Parameterized on schema_name, relkind, table_name
 static const std::string kTablesQuery = kTablesQueryAll + " AND c.relname LIKE $3";
 
-// schema_name, table_name
+// Parameterized on schema_name, table_name
 static const std::string kColumnsQueryAll =
     "SELECT attr.attname, attr.attnum, "
     "pg_catalog.col_description(cls.oid, attr.attnum) "
@@ -93,10 +95,10 @@ static const std::string kColumnsQueryAll =
     "WHERE attr.attnum > 0 AND NOT attr.attisdropped "
     "AND nsp.nspname LIKE $1 AND cls.relname LIKE $2";
 
-// schema_name, table_name, column_name
+// Parameterized on schema_name, table_name, column_name
 static const std::string kColumnsQuery = kColumnsQueryAll + " AND attr.attname LIKE $3";
 
-// schema_name, table_name
+// Parameterized on schema_name, table_name
 static const std::string kConstraintsQueryAll =
     "WITH fk_unnest AS ( "
     "    SELECT "
@@ -170,14 +172,15 @@ static const std::string kConstraintsQueryAll =
     "    conname, contype, colnames, NULL, NULL, NULL "
     "FROM other_constraints";
 
-// schema_name, table_name, column_name
+// Parameterized on schema_name, table_name, column_name
 static const std::string kConstraintsQuery =
     kConstraintsQueryAll + " WHERE conname LIKE $3";
 
 class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
  public:
   explicit PostgresGetObjectsHelper(PGconn* conn)
-      : all_catalogs_(conn, kCatalogQueryAll),
+      : current_database_(PQdb(conn)),
+        all_catalogs_(conn, kCatalogQueryAll),
         some_catalogs_(conn, kCatalogQuery),
         all_schemas_(conn, kSchemaQueryAll),
         some_schemas_(conn, kSchemaQuery),
@@ -220,6 +223,11 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
 
   Status LoadSchemas(std::string_view catalog,
                      std::optional<std::string_view> schema_filter) override {
+    // PostgreSQL can only list schemas for the current database
+    if (catalog != current_database_) {
+      return Status::Ok();
+    }
+
     if (schema_filter.has_value()) {
       UNWRAP_STATUS(some_schemas_.Execute({std::string(*schema_filter)}));
       next_schema_ = some_schemas_.Row(-1);
@@ -367,6 +375,8 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
   }
 
  private:
+  std::string current_database_;
+
   PqResultHelper all_catalogs_;
   PqResultHelper some_catalogs_;
   PqResultHelper all_schemas_;
@@ -1066,6 +1076,7 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     return ADBC_STATUS_OK;
   } else if (std::strcmp(key, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
     // PostgreSQL doesn't accept a parameter here
+    // TODO: We probably need to quote identifier to avoid SQL injection?
     PqResultHelper result_helper{conn_, std::string("SET search_path TO ") + value};
     RAISE_STATUS(error, result_helper.Execute());
     return ADBC_STATUS_OK;
