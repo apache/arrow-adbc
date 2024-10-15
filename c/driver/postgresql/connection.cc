@@ -57,25 +57,18 @@ static const std::unordered_map<std::string, std::string> kPgTableTypes = {
     {"table", "r"},       {"view", "v"},          {"materialized_view", "m"},
     {"toast_table", "t"}, {"foreign_table", "f"}, {"partitioned_table", "p"}};
 
-static const std::string kCatalogQueryAll = "SELECT datname FROM pg_catalog.pg_database";
-
-// Parameterized on catalog_name
-static const std::string kCatalogQuery = kCatalogQueryAll + " WHERE datname = $1";
-
-static const std::string kSchemaQueryAll =
-    "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
-    "nspname !~ '^pg_' AND nspname <> 'information_schema'";
+static const char* kCatalogQueryAll = "SELECT datname FROM pg_catalog.pg_database";
 
 // catalog_name is not a parameter here or on any other queries
 // because it will always be the currently connected database.
-
-// Parameterized on schema_name
-static const std::string kSchemaQuery = kSchemaQueryAll + " AND nspname = $1";
+static const char* kSchemaQueryAll =
+    "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
+    "nspname !~ '^pg_' AND nspname <> 'information_schema'";
 
 // Parameterized on schema_name, relkind
 // Note that when binding relkind as a string it must look like {"r", "v", ...}
 // (i.e., double quotes). Binding a binary list<string> element also works.
-static const std::string kTablesQueryAll =
+static const char* kTablesQueryAll =
     "SELECT c.relname, CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' "
     "WHEN 'm' THEN 'materialized view' WHEN 't' THEN 'TOAST table' "
     "WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table' END "
@@ -85,11 +78,8 @@ static const std::string kTablesQueryAll =
     "AND pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = $1 AND c.relkind = "
     "ANY($2)";
 
-// Parameterized on schema_name, relkind, table_name
-static const std::string kTablesQuery = kTablesQueryAll + " AND c.relname LIKE $3";
-
 // Parameterized on schema_name, table_name
-static const std::string kColumnsQueryAll =
+static const char* kColumnsQueryAll =
     "SELECT attr.attname, attr.attnum, "
     "pg_catalog.col_description(cls.oid, attr.attnum) "
     "FROM pg_catalog.pg_attribute AS attr "
@@ -98,11 +88,8 @@ static const std::string kColumnsQueryAll =
     "WHERE attr.attnum > 0 AND NOT attr.attisdropped "
     "AND nsp.nspname LIKE $1 AND cls.relname LIKE $2";
 
-// Parameterized on schema_name, table_name, column_name
-static const std::string kColumnsQuery = kColumnsQueryAll + " AND attr.attname LIKE $3";
-
 // Parameterized on schema_name, table_name
-static const std::string kConstraintsQueryAll =
+static const char* kConstraintsQueryAll =
     "WITH fk_unnest AS ( "
     "    SELECT "
     "        con.conname, "
@@ -175,24 +162,20 @@ static const std::string kConstraintsQueryAll =
     "    conname, contype, colnames, NULL, NULL, NULL "
     "FROM other_constraints";
 
-// Parameterized on schema_name, table_name, column_name
-static const std::string kConstraintsQuery =
-    kConstraintsQueryAll + " WHERE conname LIKE $3";
-
 class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
  public:
   explicit PostgresGetObjectsHelper(PGconn* conn)
       : current_database_(PQdb(conn)),
         all_catalogs_(conn, kCatalogQueryAll),
-        some_catalogs_(conn, kCatalogQuery),
+        some_catalogs_(conn, CatalogQuery()),
         all_schemas_(conn, kSchemaQueryAll),
-        some_schemas_(conn, kSchemaQuery),
+        some_schemas_(conn, SchemaQuery()),
         all_tables_(conn, kTablesQueryAll),
-        some_tables_(conn, kTablesQuery),
+        some_tables_(conn, TablesQuery()),
         all_columns_(conn, kColumnsQueryAll),
-        some_columns_(conn, kColumnsQuery),
+        some_columns_(conn, ColumnsQuery()),
         all_constraints_(conn, kConstraintsQueryAll),
-        some_constraints_(conn, kConstraintsQuery) {}
+        some_constraints_(conn, ConstraintsQuery()) {}
 
   Status Load(adbc::driver::GetObjectsDepth depth,
               std::optional<std::string_view> catalog_filter,
@@ -384,6 +367,7 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
  private:
   std::string current_database_;
 
+  // Ready-to-Execute() queries
   PqResultHelper all_catalogs_;
   PqResultHelper some_catalogs_;
   PqResultHelper all_schemas_;
@@ -395,14 +379,48 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
   PqResultHelper all_constraints_;
   PqResultHelper some_constraints_;
 
+  // Iterator state for the catalogs/schema/table/column queries
   PqResultRow next_catalog_;
   PqResultRow next_schema_;
   PqResultRow next_table_;
   PqResultRow next_column_;
   PqResultRow next_constraint_;
 
+  // Owning variants required because the framework versions of these
+  // are all based on string_view and the result helper can only parse arrays
+  // into std::vector<std::string>.
   std::vector<std::string> constraint_fcolumn_names_;
   std::vector<std::string> constraint_fkey_names_;
+
+  // Queries that are slightly modified versions of the generic queries that allow
+  // the filter for that level to be passed through as a parameter. Defined here
+  // because global strings should be const char* according to cpplint and using
+  // the + operator to concatenate them is the most concise way to construct them.
+
+  // Parameterized on catalog_name
+  static std::string CatalogQuery() {
+    return std::string(kCatalogQueryAll) + " WHERE datname = $1";
+  }
+
+  // Parameterized on schema_name
+  static std::string SchemaQuery() {
+    return std::string(kSchemaQueryAll) + " AND nspname = $1";
+  }
+
+  // Parameterized on schema_name, relkind, table_name
+  static std::string TablesQuery() {
+    return std::string(kTablesQueryAll) + " AND c.relname LIKE $3";
+  }
+
+  // Parameterized on schema_name, table_name, column_name
+  static std::string ColumnsQuery() {
+    return std::string(kColumnsQueryAll) + " AND attr.attname LIKE $3";
+  }
+
+  // Parameterized on schema_name, table_name, column_name
+  static std::string ConstraintsQuery() {
+    return std::string(kConstraintsQueryAll) + " WHERE conname LIKE $3";
+  }
 };
 
 // A notice processor that does nothing with notices. In the future we can log
