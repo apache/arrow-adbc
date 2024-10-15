@@ -44,8 +44,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
         public ClientTests(ITestOutputHelper outputHelper)
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
-            _testConfiguration = FlightSqlTestingUtils.LoadFlightSqlTestConfiguration(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
+            Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_INTEROP_TEST_CONFIG_VARIABLE));
+            _testConfiguration = FlightSqlTestingUtils.LoadFlightSqlTestConfiguration(FlightSqlTestingUtils.FLIGHTSQL_INTEROP_TEST_CONFIG_VARIABLE);
             _environments = FlightSqlTestingUtils.GetTestEnvironments(_testConfiguration);
             _outputHelper = outputHelper;
         }

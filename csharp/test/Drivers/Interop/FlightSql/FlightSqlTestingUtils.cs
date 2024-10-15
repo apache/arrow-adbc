@@ -27,13 +27,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 {
     class FlightSqlTestingUtils
     {
-        internal const string FLIGHTSQL_TEST_CONFIG_VARIABLE = "FLIGHTSQL_TEST_CONFIG_FILE";
+        internal const string FLIGHTSQL_INTEROP_TEST_CONFIG_VARIABLE = "FLIGHTSQL_INTEROP_TEST_CONFIG_FILE";
         internal const string FLIGHTSQL_TEST_ENV_NAME = "FLIGHTSQL_TEST_ENV_NAMES";
 
         public static FlightSqlTestConfiguration LoadFlightSqlTestConfiguration(string? environmentVariable = null)
         {
             if(string.IsNullOrEmpty(environmentVariable))
-                environmentVariable = FLIGHTSQL_TEST_CONFIG_VARIABLE;
+                environmentVariable = FLIGHTSQL_INTEROP_TEST_CONFIG_VARIABLE;
 
             FlightSqlTestConfiguration? testConfiguration = null;
 
