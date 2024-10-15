@@ -56,7 +56,7 @@ struct PqRecord {
   Result<int64_t> ParseInteger() const {
     const char* last = data + len;
     int64_t value = 0;
-    auto result = std::from_chars<int64_t>(data, last, value, 10);
+    auto result = std::from_chars(data, last, value, 10);
     if (result.ec == std::errc() && result.ptr == last) {
       return value;
     } else {
