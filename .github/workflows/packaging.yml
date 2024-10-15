@@ -517,7 +517,6 @@ jobs:
 
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-only-tar-bz2: false
           use-mamba: true
@@ -1036,7 +1035,6 @@ jobs:
           path: conda-packages
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-only-tar-bz2: false
           use-mamba: true

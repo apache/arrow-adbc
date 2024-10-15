@@ -89,7 +89,6 @@ jobs:
         # The Unix script will set up conda itself
         if: matrix.os == 'windows-latest'
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-mamba: true
       - name: Work around ASAN issue (GH-1617)
