@@ -121,6 +121,7 @@ class SqliteFlightSqlQuirks : public adbc_validation::DriverQuirks {
   bool supports_get_objects() const override { return true; }
   bool supports_partitioned_data() const override { return true; }
   bool supports_dynamic_parameter_binding() const override { return true; }
+  std::string catalog() const { return "main"; }
 };
 
 class SqliteFlightSqlTest : public ::testing::Test, public adbc_validation::DatabaseTest {
