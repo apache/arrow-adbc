@@ -314,22 +314,22 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	// just as done by the snowflake JDBC driver. In those cases we don't need to propagate
 	// the current session database/schema.
 	if depth == adbc.ObjectDepthColumns || depth == adbc.ObjectDepthAll {
-		// the connection that is used is not the same connection context where the database may have been set
-		// if the caller called SetCurrentCatalog() so need to ensure the database context is appropriate
-		if !isNilOrEmpty(catalog) {
-			_, e := conn.ExecContext(context.Background(), fmt.Sprintf("USE DATABASE %s;", quoteTblName(*catalog)), nil)
-			if e != nil {
-				return nil, errToAdbcErr(adbc.StatusIO, e)
-			}
+		dbname, err := c.GetCurrentCatalog()
+		if err != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, err)
 		}
 
-		// the connection that is used is not the same connection context where the schema may have been set
-		// if the caller called SetCurrentDbSchema() so need to ensure the schema context is appropriate
-		if !isNilOrEmpty(dbSchema) {
-			_, e2 := conn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA %s;", quoteTblName(*dbSchema)), nil)
-			if e2 != nil {
-				return nil, errToAdbcErr(adbc.StatusIO, e2)
-			}
+		schemaname, err := c.GetCurrentDbSchema()
+		if err != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, err)
+		}
+
+		// the connection that is used is not the same connection context where the database may have been set
+		// if the caller called SetCurrentCatalog() so need to ensure the database context is appropriate
+		multiCtx, _ := gosnowflake.WithMultiStatement(ctx, 2)
+		_, err = conn.ExecContext(multiCtx, fmt.Sprintf("USE DATABASE %s; USE SCHEMA %s;", quoteTblName(dbname), quoteTblName(schemaname)))
+		if err != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, err)
 		}
 	}
 
