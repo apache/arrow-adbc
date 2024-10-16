@@ -99,7 +99,7 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
     adbc_validation::Handle<struct AdbcStatement> statement;
     CHECK_OK(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string create = "CREATE TABLE \"";
+    std::string create = "CREATE OR REPLACE TABLE \"";
     create += name;
     create += "\" (int64s INT, strings TEXT)";
     CHECK_OK(AdbcStatementSetSqlQuery(&statement.value, create.c_str(), error));
