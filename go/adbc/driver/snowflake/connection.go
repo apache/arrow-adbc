@@ -213,12 +213,12 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 			catalog, dbSchema, tableName, &showSchemaQueryID)
 		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
 			catalog, dbSchema, tableName, &terseDbQueryID)
-		objType := "objects"
+		objType := objObjects
 		if len(tableType) == 1 {
 			if strings.EqualFold("VIEW", tableType[0]) {
-				objType = "views"
+				objType = objViews
 			} else if strings.EqualFold("TABLE", tableType[0]) {
-				objType = "tables"
+				objType = objTables
 			}
 		}
 		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objType,
@@ -270,12 +270,12 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objSchemas,
 			catalog, dbSchema, tableName, &showSchemaQueryID)
 
-		objType := "objects"
+		objType := objObjects
 		if len(tableType) == 1 {
 			if strings.EqualFold("VIEW", tableType[0]) {
-				objType = "views"
+				objType = objViews
 			} else if strings.EqualFold("TABLE", tableType[0]) {
-				objType = "tables"
+				objType = objTables
 			}
 		}
 		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objType,
