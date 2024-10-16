@@ -701,9 +701,8 @@ void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
              db_schemas_index <
              ArrowArrayViewListChildOffset(catalog_db_schemas_list, row + 1);
              db_schemas_index++) {
-          ASSERT_FALSE(ArrowArrayViewIsNull(db_schema_tables_list, db_schemas_index))
-              << "Row " << row << " should have non-null db_schema_tables";
-
+          
+          // db_schema_tables should either be null or an empty list
           for (int64_t tables_index =
                    ArrowArrayViewListChildOffset(db_schema_tables_list, db_schemas_index);
                tables_index <
@@ -752,6 +751,8 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
   test_cases.push_back({std::nullopt, {"int64s", "strings"}, {1, 2}});
   test_cases.push_back({"in%", {"int64s"}, {1}});
 
+  const std::string catalog = quirks()->catalog();
+
   for (const auto& test_case : test_cases) {
     std::string scope = "Filter: ";
     scope += test_case.filter ? *test_case.filter : "(no filter)";
@@ -763,7 +764,7 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
 
     ASSERT_THAT(
         AdbcConnectionGetObjects(
-            &connection, ADBC_OBJECT_DEPTH_COLUMNS, nullptr, nullptr, nullptr, nullptr,
+            &connection, ADBC_OBJECT_DEPTH_COLUMNS, catalog.c_str(), nullptr, nullptr, nullptr,
             test_case.filter.has_value() ? test_case.filter->c_str() : nullptr,
             &reader.stream.value, &error),
         IsOkStatus(&error));

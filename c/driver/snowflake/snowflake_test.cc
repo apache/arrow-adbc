@@ -131,7 +131,9 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
         return NANOARROW_TYPE_DOUBLE;
       case NANOARROW_TYPE_STRING:
       case NANOARROW_TYPE_LARGE_STRING:
-        return NANOARROW_TYPE_STRING;
+      case NANOARROW_TYPE_LIST:
+      case NANOARROW_TYPE_LARGE_LIST:
+        return NANOARROW_TYPE_STRING;        
       default:
         return ingest_type;
     }
@@ -150,6 +152,7 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
   bool supports_error_on_incompatible_schema() const override { return false; }
   bool ddl_implicit_commit_txn() const override { return true; }
   std::string db_schema() const override { return schema_; }
+  std::string catalog() const override { return "ADBC_TESTING"; }
 
   const char* uri_;
   bool skip_{false};

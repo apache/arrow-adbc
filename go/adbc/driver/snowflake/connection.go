@@ -26,6 +26,7 @@ import (
 	"io"
 	"io/fs"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -110,6 +111,41 @@ func getQueryID(ctx context.Context, query string, driverConn any) (string, erro
 	return rows.(gosnowflake.SnowflakeRows).GetQueryID(), rows.Close()
 }
 
+const (
+	objSchemas   = "SCHEMAS"
+	objDatabases = "DATABASES"
+)
+
+func goGetQueryID(ctx context.Context, conn *sql.Conn, grp *errgroup.Group, objType string, catalog, dbSchema *string, outQueryID *string) {
+	grp.Go(func() error {
+		return conn.Raw(func(driverConn any) (err error) {
+			query := "SHOW TERSE /* ADBC:getObjects */ " + objType
+			switch objType {
+			case objDatabases:
+				if catalog != nil && len(*catalog) > 0 && *catalog != "%" && *catalog != ".*" {
+					query += " LIKE '" + escapeSingleQuoteForLike(*catalog) + "'"
+				}
+				query += " IN ACCOUNT"
+			case objSchemas:
+				if dbSchema != nil && len(*dbSchema) > 0 && *dbSchema != "%" && *dbSchema != ".*" {
+					query += " LIKE '" + escapeSingleQuoteForLike(*dbSchema) + "'"
+				}
+
+				if catalog == nil || isWildcardStr(*catalog) {
+					query += " IN ACCOUNT"
+				} else {
+					query += " IN DATABASE " + quoteTblName(*catalog)
+				}
+			default:
+				return fmt.Errorf("unimplemented object type")
+			}
+
+			*outQueryID, err = getQueryID(ctx, query, driverConn)
+			return
+		})
+	})
+}
+
 func isWildcardStr(ident string) bool {
 	return strings.ContainsAny(ident, "_%")
 }
@@ -126,73 +162,84 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	}
 	defer conn.Close()
 
+	var hasViews, hasTables bool
+	for _, t := range tableType {
+		if strings.EqualFold("VIEW", t) {
+			hasViews = true
+		} else if strings.EqualFold("TABLE", t) {
+			hasTables = true
+		}
+	}
+
+	if len(tableType) > 0 && depth >= adbc.ObjectDepthTables && !hasViews && !hasTables {
+		depth = adbc.ObjectDepthDBSchemas
+	}
 	gQueryIDs, gQueryIDsCtx := errgroup.WithContext(ctx)
 
 	queryFile := queryTemplateGetObjectsAll
 	switch depth {
 	case adbc.ObjectDepthCatalogs:
 		queryFile = queryTemplateGetObjectsTerseCatalogs
-		gQueryIDs.Go(func() error {
-			return conn.Raw(func(driverConn any) (err error) {
-				query := "SHOW TERSE /* ADBC:getObjectsCatalogs */ DATABASES"
-				if catalog != nil && len(*catalog) > 0 && *catalog != "%" && *catalog != ".*" {
-					query += " LIKE '" + escapeSingleQuoteForLike(*catalog) + "'"
-				}
-				query += " IN ACCOUNT"
-
-				terseDbQueryID, err = getQueryID(gQueryIDsCtx, query, driverConn)
-				return
-			})
-		})
+		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
+			catalog, dbSchema, &terseDbQueryID)
 	case adbc.ObjectDepthDBSchemas:
 		queryFile = queryTemplateGetObjectsDbSchemas
+		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objSchemas,
+			catalog, dbSchema, &showSchemaQueryID)
+		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
+			catalog, dbSchema, &terseDbQueryID)
+	case adbc.ObjectDepthTables:
+		queryFile = queryTemplateGetObjectsTables
+		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objSchemas,
+			catalog, dbSchema, &showSchemaQueryID)
+		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
+			catalog, dbSchema, &terseDbQueryID)
 		gQueryIDs.Go(func() error {
 			return conn.Raw(func(driverConn any) (err error) {
-				query := "SHOW TERSE /* ADBC:getObjectsDBSchemas */ SCHEMAS"
-				if dbSchema != nil && len(*dbSchema) > 0 && *dbSchema != "%" && *dbSchema != ".*" {
-					query += " LIKE '" + escapeSingleQuoteForLike(*dbSchema) + "'"
+				objType := "objects"
+				if len(tableType) == 1 {
+					if strings.EqualFold("VIEW", tableType[0]) {
+						objType = "views"
+					} else if strings.EqualFold("TABLE", tableType[0]) {
+						objType = "tables"
+					}
+				}
+
+				query := "SHOW TERSE /* ADBC:getObjectsTables */ " + objType
+				if tableName != nil && len(*tableName) > 0 && *tableName != "%" && *tableName != ".*" {
+					query += " LIKE '" + escapeSingleQuoteForLike(*tableName) + "'"
 				}
 				if catalog == nil || isWildcardStr(*catalog) {
 					query += " IN ACCOUNT"
 				} else {
-					query += " IN DATABASE \"" + quoteTblName(*catalog) + "\""
+					escapedCatalog := quoteTblName(*catalog)
+					if dbSchema == nil || isWildcardStr(*dbSchema) {
+						query += " IN DATABASE " + escapedCatalog
+					} else {
+						query += " IN SCHEMA " + escapedCatalog + "." + quoteTblName(*dbSchema)
+					}
 				}
 
-				showSchemaQueryID, err = getQueryID(gQueryIDsCtx, query, driverConn)
+				tableQueryID, err = getQueryID(gQueryIDsCtx, query, driverConn)
 				return
 			})
 		})
-
-		gQueryIDs.Go(func() error {
-			return conn.Raw(func(driverConn any) (err error) {
-				query := "SHOW TERSE /* ADBC:getObjectsDBSchemas */ DATABASES"
-				if catalog != nil && len(*catalog) > 0 && *catalog != "%" && *catalog != ".*" {
-					query += " LIKE '" + escapeSingleQuoteForLike(*catalog) + "'"
-				}
-				query += " IN ACCOUNT"
-
-				terseDbQueryID, err = getQueryID(gQueryIDsCtx, query, driverConn)
-				return
-			})
-		})
-	case adbc.ObjectDepthTables:
-		queryFile = queryTemplateGetObjectsTables
-		fallthrough
+		// fallthrough
 	default:
 		var suffix string
-		if catalog == nil {
+		if catalog == nil || isWildcardStr(*catalog) {
 			suffix = " IN ACCOUNT"
 		} else {
 			escapedCatalog := quoteTblName(*catalog)
 			if dbSchema == nil || isWildcardStr(*dbSchema) {
-				suffix = " IN DATABASE \"" + escapedCatalog + "\""
+				suffix = " IN DATABASE " + escapedCatalog
 			} else {
 				escapedSchema := quoteTblName(*dbSchema)
 				if tableName == nil || isWildcardStr(*tableName) {
-					suffix = " IN SCHEMA \"" + escapedCatalog + "\".\"" + escapedSchema + "\""
+					suffix = " IN SCHEMA " + escapedCatalog + "." + escapedSchema
 				} else {
 					escapedTable := quoteTblName(*tableName)
-					suffix = " IN TABLE \"" + escapedCatalog + "\".\"" + escapedSchema + "\".\"" + escapedTable + "\""
+					suffix = " IN TABLE " + escapedCatalog + "." + escapedSchema + "." + escapedTable
 				}
 			}
 		}
@@ -220,35 +267,10 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 			})
 		})
 
-		gQueryIDs.Go(func() error {
-			return conn.Raw(func(driverConn any) (err error) {
-				query := "SHOW TERSE /* ADBC:getObjectsDBSchemas */ SCHEMAS"
-				if dbSchema != nil && len(*dbSchema) > 0 && *dbSchema != "%" && *dbSchema != ".*" {
-					query += " LIKE '" + escapeSingleQuoteForLike(*dbSchema) + "'"
-				}
-				if catalog == nil || isWildcardStr(*catalog) {
-					query += " IN ACCOUNT"
-				} else {
-					query += " IN DATABASE \"" + quoteTblName(*catalog) + "\""
-				}
-
-				showSchemaQueryID, err = getQueryID(gQueryIDsCtx, query, driverConn)
-				return
-			})
-		})
-
-		gQueryIDs.Go(func() error {
-			return conn.Raw(func(driverConn any) (err error) {
-				query := "SHOW TERSE /* ADBC:getObjectsDBSchemas */ DATABASES"
-				if catalog != nil && len(*catalog) > 0 && *catalog != "%" && *catalog != ".*" {
-					query += " LIKE '" + escapeSingleQuoteForLike(*catalog) + "'"
-				}
-				query += " IN ACCOUNT"
-
-				terseDbQueryID, err = getQueryID(gQueryIDsCtx, query, driverConn)
-				return
-			})
-		})
+		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
+			catalog, dbSchema, &terseDbQueryID)
+		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objSchemas,
+			catalog, dbSchema, &showSchemaQueryID)
 
 		gQueryIDs.Go(func() error {
 			return conn.Raw(func(driverConn any) (err error) {
@@ -270,9 +292,9 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 				} else {
 					escapedCatalog := quoteTblName(*catalog)
 					if dbSchema == nil || isWildcardStr(*dbSchema) {
-						query += " IN DATABASE \"" + escapedCatalog + "\""
+						query += " IN DATABASE " + escapedCatalog
 					} else {
-						query += " IN SCHEMA \"" + escapedCatalog + "\".\"" + quoteTblName(*dbSchema) + "\""
+						query += " IN SCHEMA " + escapedCatalog + "." + quoteTblName(*dbSchema)
 					}
 				}
 
@@ -340,7 +362,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	}
 	defer rows.Close()
 
-	catalogCh := make(chan driverbase.GetObjectsInfo, 5)
+	catalogCh := make(chan driverbase.GetObjectsInfo, runtime.NumCPU())
 	errCh := make(chan error)
 
 	go func() {

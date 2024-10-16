@@ -29,10 +29,10 @@ WITH db_schemas AS (
 SELECT
     {
         'catalog_name': "database_name",
-        'catalog_db_schemas': ARRAY_AGG({
+        'catalog_db_schemas': ARRAY_AGG(NULLIF({
             'db_schema_name': "schema_name",
             'db_schema_tables': null
-        })
+        }, {}))
     } get_objects
 FROM
     db_info

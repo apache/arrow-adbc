@@ -624,20 +624,20 @@ type ColumnInfo struct {
 type TableInfo struct {
 	TableName        string           `json:"table_name"`
 	TableType        string           `json:"table_type"`
-	TableColumns     []ColumnInfo     `json:"table_columns,omitempty"`
-	TableConstraints []ConstraintInfo `json:"table_constraints,omitempty"`
+	TableColumns     []ColumnInfo     `json:"table_columns"`
+	TableConstraints []ConstraintInfo `json:"table_constraints"`
 }
 
 // DBSchemaInfo is a structured representation of adbc.DBSchemaSchema
 type DBSchemaInfo struct {
 	DbSchemaName   *string     `json:"db_schema_name,omitempty"`
-	DbSchemaTables []TableInfo `json:"db_schema_tables,omitempty"`
+	DbSchemaTables []TableInfo `json:"db_schema_tables"`
 }
 
 // GetObjectsInfo is a structured representation of adbc.GetObjectsSchema
 type GetObjectsInfo struct {
 	CatalogName      *string        `json:"catalog_name,omitempty"`
-	CatalogDbSchemas []DBSchemaInfo `json:"catalog_db_schemas,omitempty"`
+	CatalogDbSchemas []DBSchemaInfo `json:"catalog_db_schemas"`
 }
 
 // Scan implements sql.Scanner.
@@ -688,6 +688,7 @@ CATALOGLOOP:
 
 	rec := bldr.NewRecord()
 	defer rec.Release()
+
 	return array.NewRecordReader(adbc.GetObjectsSchema, []arrow.Record{rec})
 }
 

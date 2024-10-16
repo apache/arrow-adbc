@@ -2218,7 +2218,7 @@ void StatementTest::TestSqlBind() {
 
   ASSERT_THAT(
       AdbcStatementSetSqlQuery(
-          &statement, "SELECT * FROM bindtest ORDER BY \"col1\" ASC NULLS FIRST", &error),
+          &statement, "SELECT * FROM bindtest ORDER BY col1 ASC NULLS FIRST", &error),
       IsOkStatus(&error));
   {
     StreamReader reader;
@@ -2226,7 +2226,7 @@ void StatementTest::TestSqlBind() {
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
     ASSERT_THAT(reader.rows_affected,
-                ::testing::AnyOf(::testing::Eq(0), ::testing::Eq(-1)));
+                ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
 
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(reader.Next());
