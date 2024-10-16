@@ -372,10 +372,6 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	return driverbase.BuildGetObjectsRecordReader(c.Alloc, catalogCh, errCh)
 }
 
-func isNilOrEmpty(str *string) bool {
-	return str == nil || *str == ""
-}
-
 // PrepareDriverInfo implements driverbase.DriverInfoPreparer.
 func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
 	if err := c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoVendorSql, true); err != nil {
