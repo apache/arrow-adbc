@@ -44,18 +44,13 @@ add_library(adbc_driver_framework ../../../../c/driver/framework/utility.cc
 target_include_directories(adbc_driver_framework PRIVATE ../../../../c
                                                          ../../../../c/include)
 target_link_libraries(adbc_driver_framework PRIVATE nanoarrow::nanoarrow)
+set_target_properties(adbc_driver_framework PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-# TODO: Do we want any symbol visiblity presets here to ensure that the only one exposed
-# is the init function?
 add_library(driver_example SHARED driver_example.cc)
 target_include_directories(driver_example PRIVATE ../../../../c ../../../../c/include)
 target_link_libraries(driver_example PRIVATE adbc_driver_framework
                                              nanoarrow::nanoarrow_ipc)
 
-# TODO: Do we want to have this as part of the example? We could make the validation library
-# available but I am not sure it is ready to promise that kind of stability (e.g., C++
-# helpers to manage database/connection/statement lifecycle might make it much nicer
-# to write tests).
 if(ADBC_DRIVER_EXAMPLE_BUILD_TESTS)
   fetchcontent_declare(googletest
                        URL https://github.com/google/googletest/archive/refs/tags/v1.15.1.tar.gz
