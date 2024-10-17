@@ -1105,8 +1105,11 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     return ADBC_STATUS_OK;
   } else if (std::strcmp(key, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
     // PostgreSQL doesn't accept a parameter here
-    // TODO: We probably need to quote identifier to avoid SQL injection?
-    PqResultHelper result_helper{conn_, std::string("SET search_path TO ") + value};
+    char* value_esc = PQescapeIdentifier(conn_, value, strlen(value));
+    std::string query = std::string("SET search_path TO ") + value_esc;
+    PQfreemem(value_esc);
+
+    PqResultHelper result_helper{conn_, query};
     RAISE_STATUS(error, result_helper.Execute());
     return ADBC_STATUS_OK;
   }
