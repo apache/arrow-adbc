@@ -134,6 +134,10 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
       case NANOARROW_TYPE_LIST:
       case NANOARROW_TYPE_LARGE_LIST:
         return NANOARROW_TYPE_STRING;
+      case NANOARROW_TYPE_BINARY:
+      case NANOARROW_TYPE_LARGE_BINARY:
+      case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+        return NANOARROW_TYPE_BINARY;
       default:
         return ingest_type;
     }
