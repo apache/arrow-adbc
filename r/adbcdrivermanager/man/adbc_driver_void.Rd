@@ -4,6 +4,8 @@
 \alias{adbc_driver_void}
 \alias{adbc_driver}
 \alias{adbc_driver_load_raw}
+\alias{adbc_driver_resolve}
+\alias{adbc_driver_load}
 \title{Create ADBC drivers}
 \usage{
 adbc_driver_void()
@@ -11,6 +13,10 @@ adbc_driver_void()
 adbc_driver(x, entrypoint = NULL, ..., subclass = character())
 
 adbc_driver_load_raw(x, entrypoint, version, driver, error)
+
+adbc_driver_resolve(x, entrypoint)
+
+adbc_driver_load(x, entrypoint, version, driver, error)
 }
 \arguments{
 \item{x, entrypoint}{An ADBC driver may be defined either as an init function

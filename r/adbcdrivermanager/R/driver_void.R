@@ -93,6 +93,38 @@ adbc_driver_load_raw <- function(x, entrypoint, version, driver, error) {
   }
 }
 
+#' @rdname adbc_driver_void
+#' @export
+adbc_driver_resolve <- function(x, entrypoint = NULL) {
+  if (!is.character(x)) {
+    return(adbc_driver(x))
+  }
+
+  if (isTRUE(grepl("duckdb", x)) && identical(entrypoint, "duckdb_adbc_init")) {
+    pkg <- "duckdb"
+    fun <- "duckdb_adbc"
+    asNamespace(pkg)[[fun]]()
+  } else if (isTRUE(startsWith(x, "adbc_driver_")) && is.null(entrypoint)) {
+    # adbc_driver_sqlite to adbcsqlite
+    pkg <- gsub("^adbc_driver_", "adbc", x)
+    fun <- pkg
+    asNamespace(pkg)[[fun]]()
+  } else {
+    adbc_driver(x, entrypoint)
+  }
+}
+
+#' @rdname adbc_driver_void
+#' @export
+adbc_driver_load <- function(x, entrypoint, version, driver, error) {
+  driver <- adbc_driver_resolve(x, entrypoint)
+  if (!is.null(driver$driver_init_func)) {
+    adbc_driver_load_raw(driver$driver_init_func, NULL, version, driver, error)
+  } else {
+    adbc_driver_load_raw(driver$name, driver$entrypoint, NULL, version, driver, error)
+  }
+}
+
 internal_driver_env <- new.env(parent = emptyenv())
 
 #' @export
