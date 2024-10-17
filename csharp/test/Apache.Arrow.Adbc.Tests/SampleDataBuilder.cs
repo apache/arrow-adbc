@@ -48,6 +48,17 @@ namespace Apache.Arrow.Adbc.Tests
         public string Query { get; set; } = string.Empty;
 
         /// <summary>
+        /// A set of commands to run before the query.
+        /// </summary>
+        public List<string> PreQueryCommands { get; set; } = new List<string>();
+
+        /// <summary>
+        /// A set of commands to run after the query.
+        /// </summary>
+        public List<string> PostQueryCommands { get; set; } = new List<string>();
+
+
+        /// <summary>
         /// The expected values.
         /// </summary>
         public List<ColumnNetTypeArrowTypeValue> ExpectedValues { get; set; }
