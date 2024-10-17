@@ -373,13 +373,18 @@ class StatementTest {
   void TestSqlIngestUInt64();
 
   // Floats
+  void TestSqlIngestFloat16();
   void TestSqlIngestFloat32();
   void TestSqlIngestFloat64();
 
   // Strings
   void TestSqlIngestString();
   void TestSqlIngestLargeString();
+  void TestSqlIngestStringView();
   void TestSqlIngestBinary();
+  void TestSqlIngestLargeBinary();
+  void TestSqlIngestFixedSizeBinary();
+  void TestSqlIngestBinaryView();
 
   // Temporal
   void TestSqlIngestDuration();
@@ -494,11 +499,16 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestUInt16) { TestSqlIngestUInt16(); }                           \
   TEST_F(FIXTURE, SqlIngestUInt32) { TestSqlIngestUInt32(); }                           \
   TEST_F(FIXTURE, SqlIngestUInt64) { TestSqlIngestUInt64(); }                           \
+  TEST_F(FIXTURE, SqlIngestFloat16) { TestSqlIngestFloat16(); }                         \
   TEST_F(FIXTURE, SqlIngestFloat32) { TestSqlIngestFloat32(); }                         \
   TEST_F(FIXTURE, SqlIngestFloat64) { TestSqlIngestFloat64(); }                         \
   TEST_F(FIXTURE, SqlIngestString) { TestSqlIngestString(); }                           \
   TEST_F(FIXTURE, SqlIngestLargeString) { TestSqlIngestLargeString(); }                 \
+  TEST_F(FIXTURE, SqlIngestStringView) { TestSqlIngestStringView(); }                   \
   TEST_F(FIXTURE, SqlIngestBinary) { TestSqlIngestBinary(); }                           \
+  TEST_F(FIXTURE, SqlIngestLargeBinary) { TestSqlIngestLargeBinary(); }                 \
+  TEST_F(FIXTURE, SqlIngestFixedSizeBinary) { TestSqlIngestFixedSizeBinary(); }         \
+  TEST_F(FIXTURE, SqlIngestBinaryView) { TestSqlIngestBinaryView(); }                   \
   TEST_F(FIXTURE, SqlIngestDuration) { TestSqlIngestDuration(); }                       \
   TEST_F(FIXTURE, SqlIngestDate32) { TestSqlIngestDate32(); }                           \
   TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \

@@ -245,6 +245,10 @@ void StatementTest::TestSqlIngestInt64() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<int64_t>(NANOARROW_TYPE_INT64));
 }
 
+void StatementTest::TestSqlIngestFloat16() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<float>(NANOARROW_TYPE_HALF_FLOAT));
+}
+
 void StatementTest::TestSqlIngestFloat32() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<float>(NANOARROW_TYPE_FLOAT));
 }
@@ -263,9 +267,43 @@ void StatementTest::TestSqlIngestLargeString() {
       NANOARROW_TYPE_LARGE_STRING, {std::nullopt, "", "", "1234", "例"}, false));
 }
 
+void StatementTest::TestSqlIngestStringView() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
+      NANOARROW_TYPE_STRING_VIEW, {std::nullopt, "", "", "longer than 12 bytes", "例"},
+      false));
+}
+
 void StatementTest::TestSqlIngestBinary() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<std::byte>>(
       NANOARROW_TYPE_BINARY,
+      {std::nullopt, std::vector<std::byte>{},
+       std::vector<std::byte>{std::byte{0x00}, std::byte{0x01}},
+       std::vector<std::byte>{std::byte{0x01}, std::byte{0x02}, std::byte{0x03},
+                              std::byte{0x04}},
+       std::vector<std::byte>{std::byte{0xfe}, std::byte{0xff}}},
+      false));
+}
+
+void StatementTest::TestSqlIngestLargeBinary() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<std::byte>>(
+      NANOARROW_TYPE_LARGE_BINARY,
+      {std::nullopt, std::vector<std::byte>{},
+       std::vector<std::byte>{std::byte{0x00}, std::byte{0x01}},
+       std::vector<std::byte>{std::byte{0x01}, std::byte{0x02}, std::byte{0x03},
+                              std::byte{0x04}},
+       std::vector<std::byte>{std::byte{0xfe}, std::byte{0xff}}},
+      false));
+}
+
+void StatementTest::TestSqlIngestFixedSizeBinary() {
+  SchemaField field = SchemaField::FixedSize("col", NANOARROW_TYPE_FIXED_SIZE_BINARY, 4);
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
+      field, {std::nullopt, "abcd", "efgh", "ijkl", "mnop"}, false));
+}
+
+void StatementTest::TestSqlIngestBinaryView() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<std::byte>>(
+      NANOARROW_TYPE_LARGE_BINARY,
       {std::nullopt, std::vector<std::byte>{},
        std::vector<std::byte>{std::byte{0x00}, std::byte{0x01}},
        std::vector<std::byte>{std::byte{0x01}, std::byte{0x02}, std::byte{0x03},
