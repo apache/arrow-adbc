@@ -111,7 +111,6 @@ class Status {
   }
 
   static Status FromAdbc(AdbcStatusCode code, AdbcError& error) {
-    // not really meant to be used, just something we have for now while porting
     if (code == ADBC_STATUS_OK) {
       if (error.release) {
         error.release(&error);
