@@ -15,7 +15,9 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
@@ -23,14 +25,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
     {
         readonly IReadOnlyDictionary<string, string> properties;
 
-        internal ImpalaDatabase(IReadOnlyDictionary<string, string> properties)
+        public ImpalaDatabase(IReadOnlyDictionary<string, string> properties)
         {
             this.properties = properties;
         }
 
-        public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? properties)
+        public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
-            ImpalaConnection connection = new ImpalaConnection(this.properties);
+            IReadOnlyDictionary<string, string> mergedProperties = options == null
+                ? properties
+                : options
+                    .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            ImpalaConnection connection = ImpalaConnectionFactory.NewConnection(mergedProperties);
             connection.OpenAsync().Wait();
             return connection;
         }

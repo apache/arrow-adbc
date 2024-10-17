@@ -15,42 +15,36 @@
 * limitations under the License.
 */
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
-    internal enum SparkAuthType
+    internal enum ImpalaServerType
     {
         Invalid = 0,
-        None,
-        UsernameOnly,
-        Basic,
-        Token,
+        Http,
+        Standard,
         Empty = int.MaxValue,
     }
 
-    internal static class SparkAuthTypeParser
+    internal static class ServerTypeParser
     {
-        internal static bool TryParse(string? authType, out SparkAuthType authTypeValue)
+        internal const string SupportedList = ImpalaServerTypeConstants.Http + ", " + ImpalaServerTypeConstants.Standard;
+
+        internal static bool TryParse(string? serverType, out ImpalaServerType serverTypeValue)
         {
-            switch (authType?.Trim().ToLowerInvariant())
+            switch (serverType?.Trim().ToLowerInvariant())
             {
                 case null:
                 case "":
-                    authTypeValue = SparkAuthType.Empty;
+                    serverTypeValue = ImpalaServerType.Empty;
                     return true;
-                case SparkAuthTypeConstants.None:
-                    authTypeValue = SparkAuthType.None;
+                case ImpalaServerTypeConstants.Http:
+                    serverTypeValue = ImpalaServerType.Http;
                     return true;
-                case SparkAuthTypeConstants.UsernameOnly:
-                    authTypeValue = SparkAuthType.UsernameOnly;
-                    return true;
-                case SparkAuthTypeConstants.Basic:
-                    authTypeValue = SparkAuthType.Basic;
-                    return true;
-                case SparkAuthTypeConstants.Token:
-                    authTypeValue = SparkAuthType.Token;
+                case ImpalaServerTypeConstants.Standard:
+                    serverTypeValue = ImpalaServerType.Standard;
                     return true;
                 default:
-                    authTypeValue = SparkAuthType.Invalid;
+                    serverTypeValue = ImpalaServerType.Invalid;
                     return false;
             }
         }
