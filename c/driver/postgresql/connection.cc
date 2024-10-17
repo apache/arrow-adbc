@@ -74,8 +74,7 @@ static const char* kTablesQueryAll =
     "WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table' END "
     "AS reltype FROM pg_catalog.pg_class c "
     "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
-    "WHERE c.relkind IN ('r','v','m','t','f','p') "
-    "AND pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = $1 AND c.relkind = "
+    "WHERE pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = $1 AND c.relkind = "
     "ANY($2)";
 
 // Parameterized on schema_name, table_name
@@ -101,8 +100,8 @@ static const char* kConstraintsQueryAll =
     "    FROM pg_catalog.pg_constraint AS con "
     "    INNER JOIN pg_catalog.pg_class AS cls ON cls.oid = conrelid "
     "    INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
-    "    WHERE con.contype = 'f' AND nsp.nspname LIKE $1 "
-    "    AND cls.relname LIKE $2 "
+    "    WHERE con.contype = 'f' AND nsp.nspname = $1 "
+    "    AND cls.relname = $2 "
     "), "
     "fk_names AS ( "
     "    SELECT "
@@ -150,8 +149,8 @@ static const char* kConstraintsQueryAll =
     "    INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace  "
     "    INNER JOIN pg_catalog.pg_attribute AS attr ON attr.attnum = conkeys  "
     "    AND cls.oid = attr.attrelid  "
-    "    WHERE con.contype IN ('c', 'u', 'p') AND nsp.nspname LIKE $1 "
-    "    AND cls.relname LIKE $2 "
+    "    WHERE con.contype IN ('c', 'u', 'p') AND nsp.nspname = $1 "
+    "    AND cls.relname = $2 "
     "    GROUP BY conname, contype "
     ") "
     "SELECT "
@@ -236,43 +235,14 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
   Status LoadTables(std::string_view catalog, std::string_view schema,
                     std::optional<std::string_view> table_filter,
                     const std::vector<std::string_view>& table_types) override {
-    std::stringstream table_types_bind;
-    table_types_bind << "{";
-    int table_types_bind_len = 0;
-
-    if (table_types.empty()) {
-      for (const auto& item : kPgTableTypes) {
-        if (table_types_bind_len > 0) {
-          table_types_bind << ", ";
-        }
-
-        table_types_bind << "\"" << item.second << "\"";
-        table_types_bind_len++;
-      }
-    } else {
-      for (auto type : table_types) {
-        const auto maybe_item = kPgTableTypes.find(std::string(type));
-        if (maybe_item == kPgTableTypes.end()) {
-          continue;
-        }
-
-        if (table_types_bind_len > 0) {
-          table_types_bind << ", ";
-        }
-
-        table_types_bind << "\"" << maybe_item->second << "\"";
-        table_types_bind_len++;
-      }
-    }
-
-    table_types_bind << "}";
+    std::string table_types_bind = TableTypesArrayLiteral(table_types);
 
     if (table_filter.has_value()) {
       UNWRAP_STATUS(some_tables_.Execute(
-          {std::string(schema), table_types_bind.str(), std::string(*table_filter)}));
+          {std::string(schema), table_types_bind, std::string(*table_filter)}));
       next_table_ = some_tables_.Row(-1);
     } else {
-      UNWRAP_STATUS(all_tables_.Execute({std::string(schema), table_types_bind.str()}));
+      UNWRAP_STATUS(all_tables_.Execute({std::string(schema), table_types_bind}));
       next_table_ = all_tables_.Row(-1);
     }
 
@@ -420,6 +390,40 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
   // Parameterized on schema_name, table_name, column_name
   static std::string ConstraintsQuery() {
     return std::string(kConstraintsQueryAll) + " WHERE conname LIKE $3";
+  }
+
+  std::string TableTypesArrayLiteral(const std::vector<std::string_view>& table_types) {
+    std::stringstream table_types_bind;
+    table_types_bind << "{";
+    int table_types_bind_len = 0;
+
+    if (table_types.empty()) {
+      for (const auto& item : kPgTableTypes) {
+        if (table_types_bind_len > 0) {
+          table_types_bind << ", ";
+        }
+
+        table_types_bind << "\"" << item.second << "\"";
+        table_types_bind_len++;
+      }
+    } else {
+      for (auto type : table_types) {
+        const auto maybe_item = kPgTableTypes.find(std::string(type));
+        if (maybe_item == kPgTableTypes.end()) {
+          continue;
+        }
+
+        if (table_types_bind_len > 0) {
+          table_types_bind << ", ";
+        }
+
+        table_types_bind << "\"" << maybe_item->second << "\"";
+        table_types_bind_len++;
+      }
+    }
+
+    table_types_bind << "}";
+    return table_types_bind.str();
   }
 };
 
