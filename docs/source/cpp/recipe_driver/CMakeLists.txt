@@ -38,7 +38,7 @@ fetchcontent_makeavailable(nanoarrow)
 
 # TODO: We could allow this to be installed + linked to as a target; however,
 # fetchcontent is a little nicer for this kind of thing (statically linked
-# pinned version of something that doesn't rely on a system libraray).
+# pinned version of something that doesn't rely on a system library).
 add_library(adbc_driver_framework ../../../../c/driver/framework/utility.cc
                                   ../../../../c/driver/framework/objects.cc)
 target_include_directories(adbc_driver_framework PRIVATE ../../../../c
