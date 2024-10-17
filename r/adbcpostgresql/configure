@@ -53,8 +53,8 @@ elif [ ! -z "$HAS_PKG_CONFIG" ]; then
   PKG_LIBS="`pkg-config libpq --libs` $PKG_LIBS"
 elif [ ! -z "$HAS_PG_CONFIG" ]; then
   echo "Using pg_config to locate libpq headers/libs"
-  PKG_CPPFLAGS="-I`pg_config --includedir` $PKG_CPPFLAGS"
-  PKG_LIBS="-L`pg_config --libdir` -lpq $PKG_LIBS"
+  PKG_CPPFLAGS="-I`pg_config --includedir` `pg_config --cppflags` $PKG_CPPFLAGS"
+  PKG_LIBS="-L`pg_config --libdir` -lpq `pg_config --ldflags` `pg_config --libs` $PKG_LIBS"
 else
   echo "INCLUDE_DIR/LIB_DIR, pkg-config, and pg_config not found; trying PKG_LIBS=-lpq"
   PKG_LIBS="-lpq"
