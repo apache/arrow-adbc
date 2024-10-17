@@ -20,7 +20,6 @@
 #include <cassert>
 #include <cinttypes>
 #include <cmath>
-#include <cstddef>
 #include <cstring>
 #include <memory>
 #include <optional>
