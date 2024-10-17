@@ -155,6 +155,9 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
   bool supports_dynamic_parameter_binding() const override { return true; }
   bool supports_error_on_incompatible_schema() const override { return false; }
   bool ddl_implicit_commit_txn() const override { return true; }
+  bool supports_ingest_view_types() const override { return false; }
+  bool supports_ingest_float16() const override { return false; }
+
   std::string db_schema() const override { return schema_; }
   std::string catalog() const override { return "ADBC_TESTING"; }
 

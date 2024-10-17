@@ -321,9 +321,9 @@ func toSnowflakeType(dt arrow.DataType) string {
 	case arrow.DECIMAL, arrow.DECIMAL256:
 		dec := dt.(arrow.DecimalType)
 		return fmt.Sprintf("NUMERIC(%d,%d)", dec.GetPrecision(), dec.GetScale())
-	case arrow.STRING, arrow.LARGE_STRING:
+	case arrow.STRING, arrow.LARGE_STRING, arrow.STRING_VIEW:
 		return "text"
-	case arrow.BINARY, arrow.LARGE_BINARY:
+	case arrow.BINARY, arrow.LARGE_BINARY, arrow.BINARY_VIEW:
 		return "binary"
 	case arrow.FIXED_SIZE_BINARY:
 		fsb := dt.(*arrow.FixedSizeBinaryType)
