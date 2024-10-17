@@ -101,8 +101,9 @@
 ///   some_call())`` as shorthand for
 ///
 ///   .. code-block:: cpp
+///
 ///      some_type value;
-///      Result<some_type> maybe_value = some_call();``,
+///      Result<some_type> maybe_value = some_call();
 ///      if (!maybe_value.status().ok()) {
 ///        return maybe_value.status();
 ///      } else {
@@ -127,8 +128,6 @@ namespace {
 /// handle to a database that potentially caches some shared state among
 /// connections, but which still allows multiple connections to execute
 /// against the database concurrently.
-///
-/// .. note::
 ///
 /// .. _CRTP: https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern
 

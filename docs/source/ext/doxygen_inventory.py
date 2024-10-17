@@ -84,6 +84,10 @@ def scrape_links(item_id_to_url, root):
                     domain = "c"
                     name = memberdef.find("qualifiedname").text
                     typ = "member"
+                elif member_kind == "enum":
+                    domain = "c"
+                    name = memberdef.find("name").text
+                    typ = "enum"
                 else:
                     raise NotImplementedError(
                         f"<memberdef kind=\"{memberdef.attrib['kind']}\"> not supported"

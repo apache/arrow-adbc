@@ -63,6 +63,10 @@ main() {
     if [[ "${BUILD_DRIVER_SNOWFLAKE}" -gt 0 ]]; then
         install_pkg "${source_dir}" "${install_dir}" adbcsnowflake
     fi
+
+    if [[ "${BUILD_DRIVER_BIGQUERY}" -gt 0 ]]; then
+        install_pkg "${source_dir}" "${install_dir}" adbcbigquery
+    fi
 }
 
 main "$@"
