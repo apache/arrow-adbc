@@ -249,7 +249,7 @@ void StatementTest::TestSqlIngestFloat16() {
   if (!quirks()->supports_ingest_float16()) {
     GTEST_SKIP();
   }
-  
+
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<float>(NANOARROW_TYPE_HALF_FLOAT));
 }
 
