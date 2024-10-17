@@ -238,6 +238,12 @@ class DriverQuirks {
   /// column matching.
   virtual bool supports_error_on_incompatible_schema() const { return true; }
 
+  /// \brief Whether ingestion supports StringView/BinaryView types
+  virtual bool supports_ingest_view_types() const { return true; }
+
+  /// \brief Whether ingestion supports Float16
+  virtual bool supports_ingest_float16() const { return true; }
+
   /// \brief Default catalog to use for tests
   virtual std::string catalog() const { return ""; }
 

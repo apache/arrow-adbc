@@ -246,6 +246,10 @@ void StatementTest::TestSqlIngestInt64() {
 }
 
 void StatementTest::TestSqlIngestFloat16() {
+  if (!quirks()->supports_ingest_float16()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<float>(NANOARROW_TYPE_HALF_FLOAT));
 }
 
@@ -268,6 +272,10 @@ void StatementTest::TestSqlIngestLargeString() {
 }
 
 void StatementTest::TestSqlIngestStringView() {
+  if (!quirks()->supports_ingest_view_types()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
       NANOARROW_TYPE_STRING_VIEW, {std::nullopt, "", "", "longer than 12 bytes", "例"},
       false));
@@ -302,6 +310,10 @@ void StatementTest::TestSqlIngestFixedSizeBinary() {
 }
 
 void StatementTest::TestSqlIngestBinaryView() {
+  if (!quirks()->supports_ingest_view_types()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<std::byte>>(
       NANOARROW_TYPE_LARGE_BINARY,
       {std::nullopt, std::vector<std::byte>{},
@@ -2218,7 +2230,7 @@ void StatementTest::TestSqlBind() {
 
   ASSERT_THAT(
       AdbcStatementSetSqlQuery(
-          &statement, "SELECT * FROM bindtest ORDER BY \"col1\" ASC NULLS FIRST", &error),
+          &statement, "SELECT * FROM bindtest ORDER BY col1 ASC NULLS FIRST", &error),
       IsOkStatus(&error));
   {
     StreamReader reader;
@@ -2226,7 +2238,7 @@ void StatementTest::TestSqlBind() {
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
     ASSERT_THAT(reader.rows_affected,
-                ::testing::AnyOf(::testing::Eq(0), ::testing::Eq(-1)));
+                ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
 
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(reader.Next());

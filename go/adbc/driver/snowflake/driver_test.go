@@ -1215,15 +1215,15 @@ func (suite *SnowflakeTests) TestSqlIngestMapType() {
 	[
 		{
 			"col_int64": 1,
-			"col_map": "{\n  \"key_value\": [\n    {\n      \"key\": \"key1\",\n      \"value\": 1\n    }\n  ]\n}"
+			"col_map": "{\n  \"key1\": 1\n}"
 		},
 		{
 			"col_int64": 2,
-			"col_map": "{\n  \"key_value\": [\n    {\n      \"key\": \"key2\",\n      \"value\": 2\n    }\n  ]\n}"
+			"col_map": "{\n  \"key2\": 2\n}"
 		},
 		{
 			"col_int64": 3,
-			"col_map": "{\n  \"key_value\": [\n    {\n      \"key\": \"key3\",\n      \"value\": 3\n    }\n  ]\n}"
+			"col_map": "{\n  \"key3\": 3\n}"
 		}
 	]
 	`)))
@@ -2161,6 +2161,9 @@ func (suite *SnowflakeTests) TestGetSetClientConfigFile() {
 
 func (suite *SnowflakeTests) TestGetObjectsWithNilCatalog() {
 	// this test demonstrates calling GetObjects with the catalog depth and a nil catalog
-	_, err := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthCatalogs, nil, nil, nil, nil, nil)
+	rdr, err := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthCatalogs, nil, nil, nil, nil, nil)
 	suite.NoError(err)
+	// test suite validates memory allocator so we need to make sure we call
+	// release on the result reader
+	rdr.Release()
 }

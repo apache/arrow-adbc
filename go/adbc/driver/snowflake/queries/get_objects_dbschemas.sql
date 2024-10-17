@@ -17,22 +17,26 @@
 
 WITH db_schemas AS (
     SELECT
-        catalog_name,
-        schema_name,
-    FROM information_schema.schemata
-    WHERE catalog_name ILIKE :CATALOG AND schema_name ILIKE :DB_SCHEMA
+        "database_name" as "catalog_name",
+        "name" as "schema_name"
+    FROM table(RESULT_SCAN(:SHOW_SCHEMA_QUERY_ID))
+    WHERE "database_name" ILIKE :CATALOG
+), db_info AS (
+    SELECT "name" AS "database_name"
+    FROM table(RESULT_SCAN(:SHOW_DB_QUERY_ID))
+    WHERE "name" ILIKE :CATALOG
 )
 SELECT
     {
-        'catalog_name': database_name,
-        'catalog_db_schemas': ARRAY_AGG({
-            'db_schema_name': schema_name,
+        'catalog_name': "database_name",
+        'catalog_db_schemas': ARRAY_AGG(NULLIF({
+            'db_schema_name': "schema_name",
             'db_schema_tables': null
-        })
+        }, {}))
     } get_objects
 FROM
-    information_schema.databases
+    db_info
 LEFT JOIN db_schemas
-ON database_name = catalog_name
-WHERE database_name ILIKE :CATALOG
-GROUP BY database_name;
+ON "database_name" = "catalog_name"
+WHERE "database_name" ILIKE :CATALOG
+GROUP BY "database_name";

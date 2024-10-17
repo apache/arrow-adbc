@@ -86,12 +86,12 @@ constraints AS (
         table_catalog,
         table_schema,
         table_name,
-        ARRAY_AGG({
+        ARRAY_AGG(NULLIF({
             'constraint_name': constraint_name,
             'constraint_type': constraint_type,
             'constraint_column_names': constraint_column_names,
             'constraint_column_usage': constraint_column_usage
-        }) table_constraints,
+        }, {})) table_constraints,
     FROM (
         SELECT * FROM pk_constraints
         UNION ALL
@@ -105,12 +105,12 @@ tables AS (
 SELECT
     table_catalog catalog_name,
     table_schema schema_name,
-    ARRAY_AGG({
+    ARRAY_AGG(NULLIF({
         'table_name': table_name,
         'table_type': table_type,
-        'table_columns': table_columns,
-        'table_constraints': table_constraints
-    }) db_schema_tables
+        'table_columns': COALESCE(table_columns, []),
+        'table_constraints': COALESCE(table_constraints, [])
+    }, {})) db_schema_tables
 FROM information_schema.tables
 LEFT JOIN columns
 USING (table_catalog, table_schema, table_name)
@@ -123,7 +123,7 @@ db_schemas AS (
     SELECT
         catalog_name,
         schema_name,
-        db_schema_tables,
+        COALESCE(db_schema_tables, []) db_schema_tables,
     FROM information_schema.schemata
     LEFT JOIN tables
     USING (catalog_name, schema_name)
@@ -132,10 +132,10 @@ db_schemas AS (
 SELECT
     {
         'catalog_name': database_name,
-        'catalog_db_schemas': ARRAY_AGG({
+        'catalog_db_schemas': ARRAY_AGG(NULLIF({
             'db_schema_name': schema_name,
             'db_schema_tables': db_schema_tables
-        })
+        }, {}))
     } get_objects
 FROM
     information_schema.databases
