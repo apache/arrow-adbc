@@ -701,7 +701,9 @@ void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
              db_schemas_index <
              ArrowArrayViewListChildOffset(catalog_db_schemas_list, row + 1);
              db_schemas_index++) {
-          // db_schema_tables should either be null or an empty list
+          ASSERT_FALSE(ArrowArrayViewIsNull(db_schema_tables_list, db_schemas_index))
+              << "Row " << row << " should have non-null db_schema_tables";
+
           for (int64_t tables_index =
                    ArrowArrayViewListChildOffset(db_schema_tables_list, db_schemas_index);
                tables_index <
@@ -742,6 +744,7 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
 
   struct TestCase {
     std::optional<std::string> filter;
+    // the pair is column name & ordinal position of the column
     std::vector<std::pair<std::string, int32_t>> columns;
   };
 
@@ -846,11 +849,9 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
     } while (reader.array->release);
 
     ASSERT_TRUE(found_expected_table) << "Did (not) find table in metadata";
-    // metadata columns do not guarantee the order they are returned in, we can
-    // avoid the test being flakey by sorting the column names we found
-    std::sort(columns.begin(), columns.end(),
-              [](const auto& a, const auto& b) -> bool { return a.first < b.first; });
-    ASSERT_EQ(test_case.columns, columns);
+    // metadata columns do not guarantee the order they are returned in, just
+    // validate all the elements are there.
+    ASSERT_THAT(columns, testing::UnorderedElementsAreArray(test_case.columns));
   }
 }
 

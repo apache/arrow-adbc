@@ -190,11 +190,17 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		}
 	}
 
+	// force empty result from SHOW TABLES if tableType list is not empty
+	// and does not contain TABLE or VIEW in the list.
+	// we need this because we should have non-null db_schema_tables when
+	// depth is Tables, Columns or All.
+	var badTableType = "tabletypedoesnotexist"
 	if len(tableType) > 0 && depth >= adbc.ObjectDepthTables && !hasViews && !hasTables {
-		depth = adbc.ObjectDepthDBSchemas
+		tableName = &badTableType
+		tableType = []string{"TABLE"}
 	}
-	gQueryIDs, gQueryIDsCtx := errgroup.WithContext(ctx)
 
+	gQueryIDs, gQueryIDsCtx := errgroup.WithContext(ctx)
 	queryFile := queryTemplateGetObjectsAll
 	switch depth {
 	case adbc.ObjectDepthCatalogs:
@@ -213,6 +219,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 			catalog, dbSchema, tableName, &showSchemaQueryID)
 		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
 			catalog, dbSchema, tableName, &terseDbQueryID)
+
 		objType := objObjects
 		if len(tableType) == 1 {
 			if strings.EqualFold("VIEW", tableType[0]) {
@@ -221,6 +228,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 				objType = objTables
 			}
 		}
+
 		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objType,
 			catalog, dbSchema, tableName, &tableQueryID)
 	default:
