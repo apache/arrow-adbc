@@ -3,11 +3,14 @@
 \name{adbc_driver_void}
 \alias{adbc_driver_void}
 \alias{adbc_driver}
+\alias{adbc_driver_load_raw}
 \title{Create ADBC drivers}
 \usage{
 adbc_driver_void()
 
 adbc_driver(x, entrypoint = NULL, ..., subclass = character())
+
+adbc_driver_load_raw(x, entrypoint, version, driver, error)
 }
 \arguments{
 \item{x, entrypoint}{An ADBC driver may be defined either as an init function
@@ -20,9 +23,18 @@ object.}
 
 \item{subclass}{An optional subclass for finer-grained control of
 behaviour at the R level.}
+
+\item{version}{The version number corresponding to the \code{driver} supplied}
+
+\item{driver}{An external pointer to an \code{AdbcDriver}}
+
+\item{error}{An external pointer to an \code{AdbcError} or NULL}
 }
 \value{
-An object of class 'adbc_driver'
+\itemize{
+\item \code{adbc_driver()}, \code{adbc_driver_void()}: An object of class 'adbc_driver'
+\item \code{adbc_driver_load_raw()}: An integer status code.
+}
 }
 \description{
 Creates the R object representation of an ADBC driver, which consists of a

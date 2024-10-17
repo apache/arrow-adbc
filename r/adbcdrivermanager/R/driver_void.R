@@ -29,8 +29,13 @@
 #'   object.
 #' @param subclass An optional subclass for finer-grained control of
 #'   behaviour at the R level.
+#' @param driver An external pointer to an `AdbcDriver`
+#' @param version The version number corresponding to the `driver` supplied
+#' @param error An external pointer to an `AdbcError` or NULL
 #'
-#' @return An object of class 'adbc_driver'
+#' @return
+#' - `adbc_driver()`, `adbc_driver_void()`: An object of class 'adbc_driver'
+#' - `adbc_driver_load_raw()`: An integer status code.
 #' @export
 #'
 #' @examples
@@ -50,15 +55,25 @@ adbc_driver_void <- function() {
 #' @rdname adbc_driver_void
 #' @export
 adbc_driver <- function(x, entrypoint = NULL, ..., subclass = character()) {
+  error <- adbc_allocate_error()
+  driver_alloc <- .Call(RAdbcAllocateDriver)
+  driver <- driver_alloc$driver
+  version <- driver_alloc$version
+
+  # Attempt to load the driver to ensure it works
+  status <- adbc_driver_load_raw(x, entrypoint, version, driver, error)
+  stop_for_error(status, error)
+
+  # Keep track of the version/mechanism used to successfully load a driver
+  driver$version <- version
   if (inherits(x, "adbc_driver_init_func")) {
-    driver <- .Call(RAdbcLoadDriverFromInitFunc, x)
     driver$driver_init_func <- x
   } else {
-    driver <- .Call(RAdbcLoadDriver, x, entrypoint)
     driver$name <- x
     driver$entrypoint <- entrypoint
   }
 
+  # Add extra properties
   args <- list(...)
   for (i in seq_along(args)) {
     driver[[names(args)[i]]] <- args[[i]]
@@ -66,6 +81,16 @@ adbc_driver <- function(x, entrypoint = NULL, ..., subclass = character()) {
 
   class(driver) <- c(subclass, class(driver))
   driver
+}
+
+#' @rdname adbc_driver_void
+#' @export
+adbc_driver_load_raw <- function(x, entrypoint, version, driver, error) {
+  if (inherits(x, "adbc_driver_init_func")) {
+    .Call(RAdbcLoadDriverFromInitFunc, x, version, driver, error)
+  } else {
+    .Call(RAdbcLoadDriver, x, entrypoint, version, driver, error)
+  }
 }
 
 internal_driver_env <- new.env(parent = emptyenv())
