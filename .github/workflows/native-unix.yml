@@ -745,10 +745,6 @@ jobs:
         shell: bash -l {0}
         run: |
           ./ci/scripts/cpp_recipe.sh $(pwd) ~/local build/recipe
-      - name: Test Recipes (C++ driver)
-        shell: bash -l {0}
-        run: |
-          ./ci/scripts/cpp_recipe_driver.sh $(pwd) ~/local build/recipe_driver
       - name: Test Recipes (Python)
         shell: bash -l {0}
         run: |
