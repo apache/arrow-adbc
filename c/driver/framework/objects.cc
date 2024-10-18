@@ -284,7 +284,7 @@ struct GetObjectsBuilder {
   }
 
   Status AppendCatalogs() {
-    UNWRAP_STATUS(helper->LoadCatalogs());
+    UNWRAP_STATUS(helper->LoadCatalogs(catalog_filter));
     while (true) {
       UNWRAP_RESULT(auto maybe_catalog, helper->NextCatalog());
       if (!maybe_catalog.has_value()) break;
@@ -302,7 +302,7 @@ struct GetObjectsBuilder {
   }
 
   Status AppendSchemas(std::string_view catalog) {
-    UNWRAP_STATUS(helper->LoadSchemas(catalog));
+    UNWRAP_STATUS(helper->LoadSchemas(catalog, schema_filter));
     while (true) {
       UNWRAP_RESULT(auto maybe_schema, helper->NextSchema());
       if (!maybe_schema.has_value()) break;
@@ -323,7 +323,7 @@ struct GetObjectsBuilder {
   }
 
   Status AppendTables(std::string_view catalog, std::string_view schema) {
-    UNWRAP_STATUS(helper->LoadTables(catalog, schema));
+    UNWRAP_STATUS(helper->LoadTables(catalog, schema, table_filter, table_types));
     while (true) {
       UNWRAP_RESULT(auto maybe_table, helper->NextTable());
       if (!maybe_table.has_value()) break;
@@ -348,7 +348,7 @@ struct GetObjectsBuilder {
 
   Status AppendColumns(std::string_view catalog, std::string_view schema,
                        std::string_view table) {
-    UNWRAP_STATUS(helper->LoadColumns(catalog, schema, table));
+    UNWRAP_STATUS(helper->LoadColumns(catalog, schema, table, column_filter));
     while (true) {
       UNWRAP_RESULT(auto maybe_column, helper->NextColumn());
       if (!maybe_column.has_value()) break;
