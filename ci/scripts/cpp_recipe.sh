@@ -41,7 +41,8 @@ test_recipe() {
           ${ADBC_CMAKE_ARGS} \
           -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
           -DCMAKE_INSTALL_LIBDIR=lib \
-          -DCMAKE_PREFIX_PATH="${install_dir}"
+          -DCMAKE_PREFIX_PATH="${install_dir}" \
+          -DADBC_DRIVER_EXAMPLE_BUILD_TESTS=ON
     set +x
 
     cmake --build . -j
