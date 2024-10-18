@@ -35,6 +35,7 @@ fetchcontent_declare(nanoarrow
                      GIT_TAG main
                      GIT_SHALLOW TRUE)
 fetchcontent_makeavailable(nanoarrow)
+set_target_properties(nanoarrow_ipc PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # TODO: We could allow this to be installed + linked to as a target; however,
 # fetchcontent is a little nicer for this kind of thing (statically linked
