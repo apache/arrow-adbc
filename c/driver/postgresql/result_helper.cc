@@ -28,7 +28,8 @@ namespace adbcpq {
 
 PqResultHelper::~PqResultHelper() { ClearResult(); }
 
-Status PqResultHelper::PrepareInternal(int n_params, const Oid* param_oids) {
+Status PqResultHelper::PrepareInternal(int n_params,
+                                       const Oid* param_oids) const noexcept {
   // TODO: make stmtName a unique identifier?
   PGresult* result =
       PQprepare(conn_, /*stmtName=*/"", query_.c_str(), n_params, param_oids);
@@ -43,13 +44,13 @@ Status PqResultHelper::PrepareInternal(int n_params, const Oid* param_oids) {
   return Status::Ok();
 }
 
-Status PqResultHelper::Prepare() { return PrepareInternal(0, nullptr); }
+Status PqResultHelper::Prepare() const noexcept { return PrepareInternal(0, nullptr); }
 
-Status PqResultHelper::Prepare(const std::vector<Oid>& param_oids) {
+Status PqResultHelper::Prepare(const std::vector<Oid>& param_oids) const noexcept {
   return PrepareInternal(param_oids.size(), param_oids.data());
 }
 
-Status PqResultHelper::DescribePrepared() {
+Status PqResultHelper::DescribePrepared() noexcept {
   ClearResult();
   result_ = PQdescribePrepared(conn_, /*stmtName=*/"");
   if (PQresultStatus(result_) != PGRES_COMMAND_OK) {
@@ -64,7 +65,7 @@ Status PqResultHelper::DescribePrepared() {
 }
 
 Status PqResultHelper::Execute(const std::vector<std::string>& params,
-                               PostgresType* param_types) {
+                               PostgresType* param_types) noexcept {
   if (params.size() == 0 && param_types == nullptr && output_format_ == Format::kText) {
     ClearResult();
     result_ = PQexec(conn_, query_.c_str());
@@ -104,7 +105,7 @@ Status PqResultHelper::Execute(const std::vector<std::string>& params,
   return Status::Ok();
 }
 
-Status PqResultHelper::ExecuteCopy() {
+Status PqResultHelper::ExecuteCopy() noexcept {
   // Remove trailing semicolon(s) from the query before feeding it into COPY
   while (!query_.empty() && query_.back() == ';') {
     query_.pop_back();
@@ -130,7 +131,7 @@ Status PqResultHelper::ExecuteCopy() {
 }
 
 Status PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_resolver,
-                                         PostgresType* param_types) {
+                                         PostgresType* param_types) noexcept {
   struct ArrowError na_error;
   ArrowErrorInit(&na_error);
 
@@ -156,7 +157,7 @@ Status PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_resolver,
 }
 
 Status PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_resolver,
-                                          PostgresType* result_types) {
+                                          PostgresType* result_types) noexcept {
   struct ArrowError na_error;
   ArrowErrorInit(&na_error);
 
@@ -181,13 +182,13 @@ Status PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_resolver,
   return Status::Ok();
 }
 
-PGresult* PqResultHelper::ReleaseResult() {
+PGresult* PqResultHelper::ReleaseResult() noexcept {
   PGresult* out = result_;
   result_ = nullptr;
   return out;
 }
 
-int64_t PqResultHelper::AffectedRows() {
+int64_t PqResultHelper::AffectedRows() const noexcept {
   if (result_ == nullptr) {
     return -1;
   }
