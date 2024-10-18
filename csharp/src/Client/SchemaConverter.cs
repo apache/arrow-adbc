@@ -19,6 +19,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlTypes;
+using Apache.Arrow.Scalars;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Client
@@ -189,6 +190,17 @@ namespace Apache.Arrow.Adbc.Client
 
                 case ArrowTypeId.Null:
                     return typeof(DBNull);
+
+                case ArrowTypeId.Interval:
+                    switch (((IntervalType)f.DataType).Unit) {
+                        case IntervalUnit.MonthDayNanosecond:
+                            return typeof(MonthDayNanosecondInterval);
+                        case IntervalUnit.DayTime:
+                            return typeof(DayTimeInterval);
+                        case IntervalUnit.YearMonth:
+                            return typeof(YearMonthInterval);
+                    }
+                    goto default;
 
                 default:
                     return f.DataType.GetType();

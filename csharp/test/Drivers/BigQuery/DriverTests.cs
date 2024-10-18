@@ -121,7 +121,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, catalogName, schemaName);
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
 
             List<AdbcColumn>? columns = catalogs
                 .Select(s => s.DbSchemas)
