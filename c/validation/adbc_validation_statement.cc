@@ -179,14 +179,6 @@ void StatementTest::TestSqlIngestType(SchemaField field,
 }
 
 template <typename CType>
-void StatementTest::TestSqlIngestType(ArrowType type,
-                                      const std::vector<std::optional<CType>>& values,
-                                      bool dictionary_encode) {
-  SchemaField field("col", type);
-  TestSqlIngestType<CType>(field, values, dictionary_encode);
-}
-
-template <typename CType>
 void StatementTest::TestSqlIngestNumericType(ArrowType type) {
   std::vector<std::optional<CType>> values = {
       std::nullopt,

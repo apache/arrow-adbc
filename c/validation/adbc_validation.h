@@ -491,6 +491,14 @@ class StatementTest {
                                             const char* timezone);
 };
 
+template <typename CType>
+void StatementTest::TestSqlIngestType(ArrowType type,
+                                      const std::vector<std::optional<CType>>& values,
+                                      bool dictionary_encode) {
+  SchemaField field("col", type);
+  TestSqlIngestType<CType>(field, values, dictionary_encode);
+}
+
 #define ADBCV_TEST_STATEMENT(FIXTURE)                                                   \
   static_assert(std::is_base_of<adbc_validation::StatementTest, FIXTURE>::value,        \
                 ADBCV_STRINGIFY(FIXTURE) " must inherit from StatementTest");           \
