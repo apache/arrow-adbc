@@ -30,12 +30,12 @@ set(CMAKE_CXX_STANDARD 17)
 # access to both nanoarrow and the IPC reader using a single fetchcontent.
 set(NANOARROW_IPC ON)
 set(NANOARROW_NAMESPACE "DriverExamplePrivate")
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 fetchcontent_declare(nanoarrow
                      GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
                      GIT_TAG main
                      GIT_SHALLOW TRUE)
 fetchcontent_makeavailable(nanoarrow)
-set_target_properties(nanoarrow_ipc PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # TODO: We could allow this to be installed + linked to as a target; however,
 # fetchcontent is a little nicer for this kind of thing (statically linked
@@ -45,7 +45,6 @@ add_library(adbc_driver_framework ../../../../c/driver/framework/utility.cc
 target_include_directories(adbc_driver_framework PRIVATE ../../../../c
                                                          ../../../../c/include)
 target_link_libraries(adbc_driver_framework PRIVATE nanoarrow::nanoarrow)
-set_target_properties(adbc_driver_framework PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 add_library(driver_example SHARED driver_example.cc)
 target_include_directories(driver_example PRIVATE ../../../../c ../../../../c/include)
