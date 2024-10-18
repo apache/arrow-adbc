@@ -63,7 +63,7 @@ if(ADBC_DRIVER_EXAMPLE_BUILD_TESTS)
   add_executable(driver_example_test driver_example_test.cc)
   target_link_libraries(driver_example_test
                         PRIVATE gtest_main driver_example
-                                AdbcDriverManager::adbc_driver_manager_static)
+                                AdbcDriverManager::adbc_driver_manager_shared)
 
   include(GoogleTest)
   gtest_discover_tests(driver_example_test)
