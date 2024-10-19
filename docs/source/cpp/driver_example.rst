@@ -21,3 +21,6 @@ Driver Example
 
 .. recipe:: recipe_driver/driver_example.cc
    :language: cpp
+
+.. recipe:: recipe_driver/driver_example_test.cc
+   :language: cpp

@@ -54,7 +54,7 @@
 ///
 ///    mkdir build
 ///    cd build
-///    cmake ../docs/source/cpp/recipe_driver
+///    cmake ../docs/source/cpp/recipe_driver -DADBC_DRIVER_EXAMPLE_BUILD_TESTS=ON
 ///    cmake --build .
 ///    ctest
 ///

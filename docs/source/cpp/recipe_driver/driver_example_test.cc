@@ -15,10 +15,26 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// RECIPE STARTS HERE
+
+/// Low-level testing
+/// =================
+///
+/// After we've written a sketch of the driver, the next step is to
+/// ensure that it can be loaded by the driver manager and that the
+/// database, connection, and statement instances can be initialized and
+/// released.
+///
+/// First, we'll include the driver manager and googletest_.
+///
+/// .. _googletest: https://github.com/google/googletest
+
 #include "driver_example.h"
 
 #include "arrow-adbc/adbc_driver_manager.h"
 #include "gtest/gtest.h"
+
+// Next we'll declare a test case for the basic lifecycle:
 
 TEST(DriverExample, TestLifecycle) {
   struct AdbcError error = ADBC_ERROR_INIT;
@@ -28,7 +44,7 @@ TEST(DriverExample, TestLifecycle) {
   AdbcDriverManagerDatabaseSetInitFunc(&database, &AdbcDriverExampleInit, &error);
   ASSERT_EQ(AdbcDatabaseSetOption(&database, "uri", "file://foofy", &error),
             ADBC_STATUS_OK);
-  ASSERT_EQ(AdbcDatabaseInit(&database, &error), ADBC_STATUS_OK) << error.message;
+  ASSERT_EQ(AdbcDatabaseInit(&database, &error), ADBC_STATUS_OK);
 
   struct AdbcConnection connection;
   ASSERT_EQ(AdbcConnectionNew(&connection, &error), ADBC_STATUS_OK);
@@ -45,3 +61,7 @@ TEST(DriverExample, TestLifecycle) {
     error.release(&error);
   }
 }
+
+/// Drivers that live in the apache/arrow-adbc repository can use the built-in
+/// validation library that implements a generic test suite against a fully-featured
+/// SQL database and provides utilities to test a range of inputs and outputs.
