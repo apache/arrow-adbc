@@ -28,10 +28,10 @@ interface to the Arrow Database Connectivity (ADBC) BigQuery driver.
 ## Installation
 
 You can install the released version of adbcbigquery from
-[CRAN](https://cran.r-project.org/) with:
+[R-multiverse](https://community.r-multiverse.org/) with:
 
 ``` r
-install.packages("adbcbigquery")
+install.packages("adbcbigquery", repos = "https://community.r-multiverse.org")
 ```
 
 You can install the development version of adbcbigquery from
