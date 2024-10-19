@@ -17,9 +17,6 @@
 
 // RECIPE STARTS HERE
 
-/// Low-level testing
-/// =================
-///
 /// After we've written a sketch of the driver, the next step is to
 /// ensure that it can be loaded by the driver manager and that the
 /// database, connection, and statement instances can be initialized and
