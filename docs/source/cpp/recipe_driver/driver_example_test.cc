@@ -31,7 +31,7 @@
 #include "arrow-adbc/adbc_driver_manager.h"
 #include "gtest/gtest.h"
 
-// Next we'll declare a test case for the basic lifecycle:
+/// Next we'll declare a test case for the basic lifecycle:
 
 TEST(DriverExample, TestLifecycle) {
   struct AdbcError error = ADBC_ERROR_INIT;

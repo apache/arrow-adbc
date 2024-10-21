@@ -289,7 +289,7 @@ class DriverExampleStatement : public adbc::driver::Statement<DriverExampleState
 }  // namespace
 
 /// Finally, we create the driver initializer function, which is what the driver
-/// manager needs to provide implementations for the ``Adbc**()` functions that
+/// manager needs to provide implementations for the ``Adbc**()`` functions that
 /// comprise the ADBC C API. The name of this function matters: this file will
 /// be built into a shared library named ``libdriver_example.(so|dll|dylib)``,
 /// so the driver manager will look for the symbol ``AdbcDriverExampleInit()``
