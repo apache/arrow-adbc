@@ -26,6 +26,8 @@
 from pathlib import Path
 
 from adbc_driver_manager import dbapi
+
+
 #: Next, we'll define a ``connect()`` function that wraps ``dbapi.connect()``
 #: with the location of the shared library we built using ``cmake`` in the previous
 #: section. For the purposes of our tutorial, this will be in the CMake ``build/``
@@ -44,11 +46,14 @@ def connect(uri: str):
             )
 
     raise RuntimeError("Can't find driver shared object")
+
+
 #: Next, we can give our driver a go! The two pieces we implemented in the driver
 #: were the "bulk ingest" feature and "select all from", so let's see if it works!
 if __name__ == "__main__":
-    import pyarrow
     import os
+
+    import pyarrow
 
     with connect(uri=Path(__file__).parent.as_uri()) as con:
         data = pyarrow.table({"col": [1, 2, 3]})
