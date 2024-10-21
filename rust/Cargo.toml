@@ -34,6 +34,7 @@ categories = ["database"]
 
 [workspace.dependencies]
 adbc_core = { path = "./core" }
+arrow = { version = "53.1.0", default-features = false }
 arrow-array = { version = "53.1.0", default-features = false, features = [
     "ffi",
 ] }
