@@ -107,7 +107,6 @@ class Status {
 
     std::memcpy(adbc_error->sqlstate, impl_->sql_state, sizeof(impl_->sql_state));
     adbc_error->release = &CRelease;
-    adbc_error->private_driver = nullptr;
     return impl_->code;
   }
 
