@@ -4,5 +4,6 @@
   <ApacheArrowAdbcClientVersion>$(Version)</ApacheArrowAdbcClientVersion>
   <ApacheArrowAdbcDriversBigQueryVersion>$(Version)</ApacheArrowAdbcDriversBigQueryVersion>
   <ApacheArrowAdbcDriversInteropSnowflakeVersion>$(Version)</ApacheArrowAdbcDriversInteropSnowflakeVersion>
+  <ApacheArrowAdbcDriversInteropFlightSqlVersion>$(Version)</ApacheArrowAdbcDriversInteropFlightSqlVersion>
  </PropertyGroup>
 </Project>
