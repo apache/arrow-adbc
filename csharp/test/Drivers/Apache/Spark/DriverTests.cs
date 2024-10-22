@@ -114,7 +114,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             for (int i = 0; i < queries.Length; i++)
             {
                 string query = queries[i];
-                AdbcStatement statement = adbcConnection.CreateStatement();
+                using AdbcStatement statement = adbcConnection.CreateStatement();
                 statement.SqlQuery = query;
 
                 UpdateResult updateResult = statement.ExecuteUpdate();
