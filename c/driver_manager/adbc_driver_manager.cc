@@ -105,9 +105,8 @@ void SetError(struct AdbcError* error, struct AdbcError* src_error) {
 }
 
 struct OwnedError {
-  struct AdbcError error {
-    ADBC_ERROR_INIT
-  };
+  struct AdbcError error = ADBC_ERROR_INIT;
+
   ~OwnedError() {
     if (error.release) {
       error.release(&error);
