@@ -21,7 +21,7 @@ use arrow_array::RecordBatch;
 use datafusion::prelude::*;
 
 use adbc_core::options::AdbcVersion;
-use arrow::compute::concat_batches;
+use arrow_select::concat::concat_batches;
 use datafusion_substrait::logical_plan::producer::to_substrait_plan;
 use datafusion_substrait::substrait::proto::Plan;
 use prost::Message;

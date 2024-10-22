@@ -25,7 +25,7 @@ use std::vec::IntoIter;
 use std::{collections::HashMap, fmt::Debug};
 use tokio::runtime::Runtime;
 
-use arrow::array::{
+use arrow_array::builder::{
     BooleanBuilder, Int32Builder, Int64Builder, ListBuilder, MapBuilder, MapFieldNames,
     StringBuilder, UInt32Builder,
 };

@@ -25,7 +25,7 @@
 use adbc_core::driver_manager::ManagedDriver;
 use adbc_core::options::AdbcVersion;
 use adbc_core::{Connection, Database, Driver, Statement};
-use arrow::util::pretty::print_batches;
+use arrow_cast::pretty::print_batches;
 use arrow_array::RecordBatch;
 
 fn main() {

@@ -25,7 +25,6 @@ license = { workspace = true }
 
 [dependencies]
 adbc_core = { path = "../../core" }
-arrow.workspace = true
 arrow-array.workspace = true
 arrow-buffer.workspace = true
 arrow-schema.workspace = true
@@ -33,6 +32,10 @@ datafusion = "42.0.0"
 datafusion-substrait = "42.0.0"
 tokio = { version = "1.0", features = ["rt-multi-thread"] }
 prost = "0.13.3"
+
+[dev-dependencies]
+arrow-select.workspace = true
+arrow-cast.workspace = true
 
 [lib]
 crate-type = ["lib", "cdylib"]
