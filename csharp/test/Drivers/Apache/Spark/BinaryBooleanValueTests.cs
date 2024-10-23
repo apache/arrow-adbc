@@ -98,6 +98,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("CAST(NULL AS CHAR(10))")]
         [InlineData("CAST(NULL AS BOOLEAN)")]
         [InlineData("CAST(NULL AS BINARY)")]
+        [InlineData("CAST(NULL AS MAP<STRING, INT>)")]
+        [InlineData("CAST(NULL AS STRUCT<NAME: STRING>)")]
+        [InlineData("CAST(NULL AS ARRAY<INT>)")]
         public async Task TestNullData(string projectionClause)
         {
             string selectStatement = $"SELECT {projectionClause};";
