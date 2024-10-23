@@ -35,7 +35,6 @@ prost = "0.13.3"
 
 [dev-dependencies]
 arrow-select.workspace = true
-arrow-cast.workspace = true
 
 [lib]
 crate-type = ["lib", "cdylib"]

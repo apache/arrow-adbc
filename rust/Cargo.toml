@@ -40,4 +40,3 @@ arrow-array = { version = "53.1.0", default-features = false, features = [
 arrow-buffer = { version = "53.1.0", default-features = false }
 arrow-schema = { version = "53.1.0", default-features = false }
 arrow-select = { version = "53.1.0", default-features = false }
-arrow-cast = { version = "53.1.0", default-features = false }
