@@ -204,9 +204,11 @@ class BaseConnection : public BaseObject {
   BaseConnection() = default;
   BaseConnection(const BaseConnection& rhs) = delete;
   ~BaseConnection() {
-    AdbcStatusCode code = WRAP_CALL0(ConnectionRelease);
-    if (code != ADBC_STATUS_OK) {
-      context()->OnUnreleasableConnection(database_, &connection_, &error_);
+    if (driver_ && connection_.private_data) {
+      AdbcStatusCode code = WRAP_CALL0(ConnectionRelease);
+      if (code != ADBC_STATUS_OK) {
+        context()->OnUnreleasableConnection(database_, &connection_, &error_);
+      }
     }
   }
 
@@ -437,22 +439,25 @@ using StatementStream = Stream<std::shared_ptr<internal::BaseStatement>>;
 
 class Statement {
  public:
+  Statement& operator=(const Statement&) = delete;
   Statement(const Statement& rhs) = delete;
   Statement(const Statement&& rhs) : base_(std::move(rhs.base_)) {}
-  Statement& operator=(Statement&& rhs) {
+  Statement& operator=(const Statement&& rhs) {
     base_ = std::move(rhs.base_);
     return *this;
   }
 
   ~Statement() {
-    if (base_) {
+    if (base_ && base_->GetSharedDriver()) {
       base_->GetSharedDriver()->context()->OnDeleteHandleWithoutClose(base_);
     }
   }
 
   Status Release() {
     UNWRAP_STATUS(CheckValid());
-    return base_->Release();
+    UNWRAP_STATUS(base_->Release());
+    base_.reset();
+    return Status::Ok();
   }
 
   Status SetSqlQuery(const std::string& query) {
@@ -471,7 +476,7 @@ class Statement {
   std::shared_ptr<internal::BaseStatement> base_;
 
   friend class Connection;
-  Statement(std::shared_ptr<internal::BaseStatement> base) : base_(base) {}
+  Statement(std::shared_ptr<internal::BaseStatement> base) : base_(std::move(base)) {}
 
   Status CheckValid() {
     if (!base_) {
@@ -484,29 +489,32 @@ class Statement {
 
 class Connection {
  public:
+  Connection& operator=(const Connection&) = delete;
   Connection(const Connection& rhs) = delete;
   Connection(const Connection&& rhs) : base_(std::move(rhs.base_)) {}
-  Connection& operator=(Connection&& rhs) {
+  Connection& operator=(const Connection&& rhs) {
     base_ = std::move(rhs.base_);
     return *this;
   }
 
   ~Connection() {
-    if (base_) {
+    if (base_ && base_->GetSharedDriver()) {
       base_->GetSharedDriver()->context()->OnDeleteHandleWithoutClose(base_);
     }
   }
 
   Status Release() {
     UNWRAP_STATUS(CheckValid());
-    return base_->Release();
+    UNWRAP_STATUS(base_->Release());
+    base_.reset();
+    return Status::Ok();
   }
 
   Result<Statement> NewStatement() {
     UNWRAP_STATUS(CheckValid());
     auto child = std::make_shared<internal::BaseStatement>();
     UNWRAP_STATUS(child->New(base_));
-    return Statement(child);
+    return Statement(std::move(child));
   }
 
   Status Cancel() {
@@ -525,7 +533,7 @@ class Connection {
   std::shared_ptr<internal::BaseConnection> base_;
 
   friend class Database;
-  Connection(std::shared_ptr<internal::BaseConnection> base) : base_(base) {}
+  Connection(std::shared_ptr<internal::BaseConnection> base) : base_(std::move(base)) {}
 
   Status CheckValid() {
     if (!base_) {
@@ -538,15 +546,16 @@ class Connection {
 
 class Database {
  public:
+  Database& operator=(const Database&) = delete;
   Database(const Database& rhs) = delete;
   Database(const Database&& rhs) : base_(std::move(rhs.base_)) {}
-  Database& operator=(Database&& rhs) {
+  Database& operator=(const Database&& rhs) {
     base_ = std::move(rhs.base_);
     return *this;
   }
 
   ~Database() {
-    if (base_) {
+    if (base_ && base_->GetSharedDriver()) {
       base_->GetSharedDriver()->context()->OnDeleteHandleWithoutClose(base_);
     }
   }
@@ -564,14 +573,14 @@ class Database {
     auto child = std::make_shared<internal::BaseConnection>();
     UNWRAP_STATUS(child->New(base_));
     UNWRAP_STATUS(child->Init());
-    return Connection(child);
+    return Connection(std::move(child));
   }
 
  private:
   std::shared_ptr<internal::BaseDatabase> base_;
 
   friend class Driver;
-  Database(std::shared_ptr<internal::BaseDatabase> base) : base_(base) {}
+  Database(std::shared_ptr<internal::BaseDatabase> base) : base_(std::move(base)) {}
 
   Status CheckValid() {
     if (!base_) {
@@ -602,7 +611,7 @@ class Driver {
     auto child = std::make_shared<internal::BaseDatabase>();
     UNWRAP_STATUS(child->New(base_));
     UNWRAP_STATUS(child->Init());
-    return Database(child);
+    return Database(std::move(child));
   }
 
  private:
