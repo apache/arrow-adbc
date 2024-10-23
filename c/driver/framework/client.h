@@ -19,6 +19,9 @@
 
 #include <cerrno>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <arrow-adbc/adbc.h>
 
@@ -478,7 +481,8 @@ class Statement {
   std::shared_ptr<internal::BaseStatement> base_;
 
   friend class Connection;
-  Statement(std::shared_ptr<internal::BaseStatement> base) : base_(std::move(base)) {}
+  explicit Statement(std::shared_ptr<internal::BaseStatement> base)
+      : base_(std::move(base)) {}
 
   Status CheckValid() {
     if (!base_) {
@@ -535,7 +539,8 @@ class Connection {
   std::shared_ptr<internal::BaseConnection> base_;
 
   friend class Database;
-  Connection(std::shared_ptr<internal::BaseConnection> base) : base_(std::move(base)) {}
+  explicit Connection(std::shared_ptr<internal::BaseConnection> base)
+      : base_(std::move(base)) {}
 
   Status CheckValid() {
     if (!base_) {
@@ -582,7 +587,8 @@ class Database {
   std::shared_ptr<internal::BaseDatabase> base_;
 
   friend class Driver;
-  Database(std::shared_ptr<internal::BaseDatabase> base) : base_(std::move(base)) {}
+  explicit Database(std::shared_ptr<internal::BaseDatabase> base)
+      : base_(std::move(base)) {}
 
   Status CheckValid() {
     if (!base_) {
