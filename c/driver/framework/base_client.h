@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <iostream>
 #include <memory>
 
 #include <arrow-adbc/adbc.h>
@@ -26,36 +25,34 @@
 
 namespace adbc::client {
 
+namespace internal {
 class BaseDriver;
 class BaseDatabase;
 class BaseConnection;
 class BaseStatement;
+}  // namespace internal
 
 using adbc::driver::Result;
 using adbc::driver::Status;
-
-using SharedDriver = std::shared_ptr<BaseDriver>;
-using SharedDatabase = std::shared_ptr<BaseDatabase>;
-using SharedConnection = std::shared_ptr<BaseConnection>;
-using SharedStatement = std::shared_ptr<BaseStatement>;
 
 class Context {
  public:
   enum class LogLevel { kInfo, kWarn };
 
-  virtual void OnUnreleasableStatement(SharedConnection connection,
-                                       AdbcStatement* statement, const AdbcError* error) {
+  virtual void OnUnreleasableStatement(
+      std::shared_ptr<internal::BaseConnection> connection, AdbcStatement* statement,
+      const AdbcError* error) {
     Log(LogLevel::kWarn, "leaking unreleasable statement");
   }
 
-  virtual void OnUnreleasableConnection(SharedDatabase database,
+  virtual void OnUnreleasableConnection(std::shared_ptr<internal::BaseDatabase> database,
                                         AdbcConnection* connection,
                                         const AdbcError* error) {
     Log(LogLevel::kWarn, "leaking unreleasable connection");
   }
 
-  virtual void OnUnreleaseableDatabase(SharedDriver driver, AdbcDatabase* database,
-                                       const AdbcError* error) {
+  virtual void OnUnreleaseableDatabase(std::shared_ptr<internal::BaseDriver> driver,
+                                       AdbcDatabase* database, const AdbcError* error) {
     Log(LogLevel::kWarn, "leaking unreleasable database");
   }
 
@@ -68,11 +65,12 @@ class Context {
   static std::shared_ptr<Context> Default() { return std::make_unique<Context>(); }
 };
 
-using SharedContext = std::shared_ptr<Context>;
+namespace internal {
 
 class BaseDriver {
  public:
-  BaseDriver(SharedContext context = std::make_unique<Context>()) : context_(context) {}
+  BaseDriver(std::shared_ptr<Context> context = std::make_unique<Context>())
+      : context_(context) {}
   Status Init(AdbcDriverInitFunc init_func) {
     return Status::FromAdbc(init_func(ADBC_VERSION_1_1_0, &driver_, &error_), error_);
   }
@@ -82,20 +80,20 @@ class BaseDriver {
   Context* context() { return context_.get(); }
 
  private:
-  SharedContext context_;
+  std::shared_ptr<Context> context_;
   AdbcDriver driver_{};
   AdbcError error_{ADBC_ERROR_INIT};
 };
 
 class BaseObject {
  public:
-  const SharedDriver& GetSharedDriver() { return driver_; }
+  const std::shared_ptr<BaseDriver>& GetSharedDriver() { return driver_; }
 
  protected:
-  SharedDriver driver_;
+  std::shared_ptr<BaseDriver> driver_;
   AdbcError error_{ADBC_ERROR_INIT};
 
-  void NewBase(SharedDriver driver) { driver_ = driver; }
+  void NewBase(std::shared_ptr<BaseDriver> driver) { driver_ = driver; }
   void ReleaseBase() { driver_.reset(); }
   AdbcDriver* driver() { return driver_->driver(); }
   Context* context() { return driver_->context(); }
@@ -117,7 +115,7 @@ class BaseDatabase : public BaseObject {
 
   AdbcDatabase* database() { return &database_; }
 
-  Status New(SharedDriver parent) {
+  Status New(std::shared_ptr<BaseDriver> parent) {
     NewBase(std::move(parent));
     AdbcStatusCode code = WRAP_CALL0(DatabaseNew);
     return Status::FromAdbc(code, error_);
@@ -168,7 +166,7 @@ class BaseConnection : public BaseObject {
 
   AdbcConnection* connection() { return &connection_; }
 
-  Status New(SharedDatabase database) {
+  Status New(std::shared_ptr<BaseDatabase> database) {
     NewBase(database->GetSharedDriver());
     AdbcStatusCode code = WRAP_CALL0(ConnectionNew);
     return Status::FromAdbc(code, error_);
@@ -191,7 +189,7 @@ class BaseConnection : public BaseObject {
     return Status::FromAdbc(code, error_);
   }
 
-  Status Cancel(const std::string& query) {
+  Status Cancel() {
     UNWRAP_STATUS(CheckValid());
     AdbcStatusCode code = WRAP_CALL0(ConnectionCancel);
     return Status::FromAdbc(code, error_);
@@ -204,7 +202,7 @@ class BaseConnection : public BaseObject {
   }
 
  private:
-  SharedDatabase database_;
+  std::shared_ptr<BaseDatabase> database_;
   AdbcConnection connection_{};
 
   Status CheckValid() {
@@ -233,7 +231,7 @@ class BaseStatement : BaseObject {
     }
   }
 
-  Status New(SharedConnection connection) {
+  Status New(std::shared_ptr<BaseConnection> connection) {
     NewBase(connection->GetSharedDriver());
     AdbcStatusCode code =
         driver()->StatementNew(connection->connection(), &statement_, &error_);
@@ -251,21 +249,20 @@ class BaseStatement : BaseObject {
     return Status::FromAdbc(code, error_);
   }
 
-  Status SetSqlQuery(const std::string& query) {
+  Status SetSqlQuery(const char* query) {
     UNWRAP_STATUS(CheckValid());
-    AdbcStatusCode code = WRAP_CALL(StatementSetSqlQuery, query.c_str());
+    AdbcStatusCode code = WRAP_CALL(StatementSetSqlQuery, query);
     return Status::FromAdbc(code, error_);
   }
 
-  Result<int64_t> ExecuteQuery(ArrowArrayStream* stream) {
+  Status ExecuteQuery(ArrowArrayStream* stream, int64_t* affected_rows) {
     UNWRAP_STATUS(CheckValid());
-    int64_t affected_rows = -1;
-    AdbcStatusCode code = WRAP_CALL(StatementExecuteQuery, stream, &affected_rows);
+    AdbcStatusCode code = WRAP_CALL(StatementExecuteQuery, stream, affected_rows);
     return Status::FromAdbc(code, error_);
   }
 
  private:
-  SharedConnection connection_;
+  std::shared_ptr<BaseConnection> connection_;
   AdbcStatement statement_{};
 
   Status CheckValid() {
@@ -279,5 +276,150 @@ class BaseStatement : BaseObject {
 
 #undef WRAP_CALL
 #undef WRAP_CALL0
+
+}  // namespace internal
+
+template <typename Parent>
+class Stream {
+ public:
+  explicit Stream(Parent parent) : parent_(parent) {}
+  Stream(Stream&& rhs) : Stream(rhs.get()) {
+    parent_ = std::move(rhs.parent_);
+    std::memcpy(&stream_, &rhs.stream_, sizeof(ArrowArrayStream));
+    std::memset(rhs.stream_, 0, sizeof(ArrowArrayStream));
+    rows_affected_ = rhs.rows_affected_;
+  }
+
+  Stream& operator=(Stream&& rhs) {
+    parent_ = std::move(rhs.parent_);
+    std::memcpy(&stream_, &rhs.stream_, sizeof(ArrowArrayStream));
+    std::memset(rhs.stream_, 0, sizeof(ArrowArrayStream));
+    rows_affected_ = rhs.rows_affected_;
+    return *this;
+  }
+
+  Stream(const Stream& rhs) = delete;
+
+  ArrowArrayStream* stream() { return &stream_; }
+
+  int64_t* mutable_rows_affected() { return &rows_affected_; }
+
+  ~Stream() {
+    if (stream_.release) {
+      stream_.release(&stream_);
+    }
+  }
+
+  void Export(ArrowArrayStream* out) {
+    Stream* instance = new Stream();
+    instance->parent_ = std::move(parent_);
+    std::memcpy(&instance->stream_, &stream_, sizeof(ArrowArrayStream));
+    std::memset(stream_, 0, sizeof(ArrowArrayStream));
+    instance->rows_affected_ = rows_affected_;
+
+    out->get_schema = &CGetSchema;
+    out->get_next = &CGetNext;
+    out->get_last_error = &CGetLastError;
+    out->release = &CRelease;
+    out->private_data = instance;
+  }
+
+ private:
+  Parent parent_;
+  ArrowArrayStream stream_{};
+  int64_t rows_affected_{-1};
+
+  static int CGetSchema(ArrowArrayStream* stream, ArrowSchema* schema) {
+    return reinterpret_cast<Stream*>(stream->private_data)->GetSchema(schema);
+  }
+
+  static int CGetNext(ArrowArrayStream* stream, ArrowArray* array) {
+    return reinterpret_cast<Stream*>(stream->private_data)->GetNext(array);
+  }
+
+  static const char* CGetLastError(ArrowArrayStream* stream) {
+    return reinterpret_cast<Stream*>(stream->private_data)->GetLastError();
+  }
+
+  static void CRelease(ArrowArrayStream* stream) {
+    delete reinterpret_cast<Stream*>(stream->private_data);
+    stream->release = nullptr;
+    stream->private_data = nullptr;
+  }
+};
+
+using ConnectionStream = Stream<std::shared_ptr<internal::BaseConnection>>;
+using StatementStream = Stream<std::shared_ptr<internal::BaseStatement>>;
+
+class Statement {
+ public:
+  Statement(std::shared_ptr<internal::BaseStatement> base) : base_(base) {}
+
+  Status SetSqlQuery(const std::string& query) {
+    return base_->SetSqlQuery(query.c_str());
+  }
+
+  Result<StatementStream> ExecuteQuery() {
+    StatementStream out(base_);
+    UNWRAP_STATUS(base_->ExecuteQuery(out.stream(), out.mutable_rows_affected()));
+    return out;
+  }
+
+ private:
+  std::shared_ptr<internal::BaseStatement> base_;
+};
+
+class Connection {
+ public:
+  Connection(std::shared_ptr<internal::BaseConnection> base) : base_(base) {}
+
+  Result<Statement> NewStatement() {
+    auto child = std::make_shared<internal::BaseStatement>();
+    UNWRAP_STATUS(child->New(base_));
+    return Statement(child);
+  }
+
+  Status Cancel() { return base_->Cancel(); }
+
+  Result<ConnectionStream> GetInfo(const std::vector<uint32_t>& info_codes = {}) {
+    ConnectionStream out(base_);
+    UNWRAP_STATUS(base_->GetInfo(info_codes.data(), info_codes.size(), out.stream()));
+    return out;
+  }
+
+ private:
+  std::shared_ptr<internal::BaseConnection> base_;
+};
+
+class Database {
+ public:
+  Database(std::shared_ptr<internal::BaseDatabase> base) : base_(base) {}
+
+  Result<Connection> NewConnection() {
+    auto child = std::make_shared<internal::BaseConnection>();
+    UNWRAP_STATUS(child->New(base_));
+    UNWRAP_STATUS(child->Init());
+    return Connection(child);
+  }
+
+ private:
+  std::shared_ptr<internal::BaseDatabase> base_;
+};
+
+class Driver {
+  Driver() : base_(std::make_shared<internal::BaseDriver>()) {}
+
+  Status Init(AdbcDriverInitFunc init_func) { return base_->Init(init_func); }
+
+  Result<Database> NewDatabase() {
+    auto child = std::make_shared<internal::BaseDatabase>();
+    UNWRAP_STATUS(child->New(base_));
+    UNWRAP_STATUS(child->Init());
+    return Database(child);
+  }
+
+ private:
+  std::shared_ptr<internal::BaseDriver> base_;
+};
 
 }  // namespace adbc::client
