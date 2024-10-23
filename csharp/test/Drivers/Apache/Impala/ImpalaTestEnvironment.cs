@@ -73,5 +73,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 
         public override string GetInsertStatement(string tableName, string columnName, string? value) =>
             string.Format("INSERT INTO {0} ({1}) SELECT {2};", tableName, columnName, value ?? "NULL");
+        public override SampleDataBuilder GetSampleDataBuilder() => throw new NotImplementedException();
     }
 }
