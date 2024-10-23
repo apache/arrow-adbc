@@ -309,6 +309,6 @@ TEST(TestDriverBase, TestVoidDriverMethodsClient) {
 
   ASSERT_EQ(statement.Release().code(), ADBC_STATUS_OK);
   ASSERT_EQ(connection.Release().code(), ADBC_STATUS_OK);
-  ASSERT_EQ(statement.Release().code(), ADBC_STATUS_OK);
+  ASSERT_EQ(database.Release().code(), ADBC_STATUS_OK);
   ASSERT_EQ(driver.Unload().code(), ADBC_STATUS_OK);
 }

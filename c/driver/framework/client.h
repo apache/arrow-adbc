@@ -344,6 +344,10 @@ template <typename Parent>
 class Stream {
  public:
   explicit Stream(Parent parent) : parent_(parent) {}
+
+  Stream& operator=(const Stream& rhs) = delete;
+  Stream(const Stream& rhs) = delete;
+
   Stream(Stream&& rhs) : Stream(std::move(rhs.parent_)) {
     std::memcpy(&stream_, &rhs.stream_, sizeof(ArrowArrayStream));
     std::memset(&rhs.stream_, 0, sizeof(ArrowArrayStream));
@@ -357,8 +361,6 @@ class Stream {
     rows_affected_ = rhs.rows_affected_;
     return *this;
   }
-
-  Stream(const Stream& rhs) = delete;
 
   ArrowArrayStream* stream() { return &stream_; }
 
@@ -441,8 +443,8 @@ class Statement {
  public:
   Statement& operator=(const Statement&) = delete;
   Statement(const Statement& rhs) = delete;
-  Statement(const Statement&& rhs) : base_(std::move(rhs.base_)) {}
-  Statement& operator=(const Statement&& rhs) {
+  Statement(Statement&& rhs) : base_(std::move(rhs.base_)) {}
+  Statement& operator=(Statement&& rhs) {
     base_ = std::move(rhs.base_);
     return *this;
   }
@@ -491,8 +493,8 @@ class Connection {
  public:
   Connection& operator=(const Connection&) = delete;
   Connection(const Connection& rhs) = delete;
-  Connection(const Connection&& rhs) : base_(std::move(rhs.base_)) {}
-  Connection& operator=(const Connection&& rhs) {
+  Connection(Connection&& rhs) : base_(std::move(rhs.base_)) {}
+  Connection& operator=(Connection&& rhs) {
     base_ = std::move(rhs.base_);
     return *this;
   }
@@ -548,8 +550,8 @@ class Database {
  public:
   Database& operator=(const Database&) = delete;
   Database(const Database& rhs) = delete;
-  Database(const Database&& rhs) : base_(std::move(rhs.base_)) {}
-  Database& operator=(const Database&& rhs) {
+  Database(Database&& rhs) : base_(std::move(rhs.base_)) {}
+  Database& operator=(Database&& rhs) {
     base_ = std::move(rhs.base_);
     return *this;
   }
@@ -597,7 +599,7 @@ class Driver {
       : base_(std::make_shared<internal::BaseDriver>(std::move(context))) {}
 
   Driver(const Driver& rhs) = delete;
-  Driver(const Driver&& rhs) : base_(std::move(rhs.base_)) {}
+  Driver(Driver&& rhs) : base_(std::move(rhs.base_)) {}
   Driver& operator=(Driver&& rhs) {
     base_ = std::move(rhs.base_);
     return *this;
