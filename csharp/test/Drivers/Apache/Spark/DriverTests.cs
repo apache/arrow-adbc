@@ -630,6 +630,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             OutputHelper?.WriteLine(exception.Message);
         }
 
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results using the asynchronous methods.
+        /// </summary>
+        [SkippableFact, Order(15)]
+        public async Task CanExecuteQueryAsyncEmptyResult()
+        {
+            using AdbcConnection adbcConnection = NewConnection();
+            using AdbcStatement statement = adbcConnection.CreateStatement();
+
+            statement.SqlQuery = $"SELECT * from {TestConfiguration.Metadata.Table} WHERE FALSE";
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+
+            await Tests.DriverTests.CanExecuteQueryAsync(queryResult, 0);
+        }
+
         public static IEnumerable<object[]> CatalogNamePatternData()
         {
             string? catalogName = new DriverTests(null).TestConfiguration?.Metadata?.Catalog;
