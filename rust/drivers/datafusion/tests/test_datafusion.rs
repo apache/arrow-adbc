@@ -51,7 +51,7 @@ fn get_objects(connection: &ManagedConnection) -> RecordBatch {
 
     let batches: Vec<RecordBatch> = objects.unwrap().map(|b| b.unwrap()).collect();
 
-    let schema = batches.get(0).unwrap().schema();
+    let schema = batches.first().unwrap().schema();
 
     concat_batches(&schema, &batches).unwrap()
 }
@@ -68,7 +68,7 @@ fn execute_sql_query(connection: &mut ManagedConnection, query: &str) -> RecordB
 
     let batches: Vec<RecordBatch> = statement.execute().unwrap().map(|b| b.unwrap()).collect();
 
-    let schema = batches.get(0).unwrap().schema();
+    let schema = batches.first().unwrap().schema();
 
     concat_batches(&schema, &batches).unwrap()
 }
@@ -80,7 +80,7 @@ fn execute_substrait(connection: &mut ManagedConnection, plan: Plan) -> RecordBa
 
     let batches: Vec<RecordBatch> = statement.execute().unwrap().map(|b| b.unwrap()).collect();
 
-    let schema = batches.get(0).unwrap().schema();
+    let schema = batches.first().unwrap().schema();
 
     concat_batches(&schema, &batches).unwrap()
 }

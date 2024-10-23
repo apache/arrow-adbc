@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#![allow(refining_impl_trait)]
+
 use datafusion::datasource::TableType;
 use datafusion::prelude::*;
 use datafusion_substrait::logical_plan::consumer::from_substrait_plan;
@@ -94,7 +96,7 @@ impl Iterator for DataFusionReader {
     type Item = std::result::Result<RecordBatch, ArrowError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.batches.next().map(|b| Ok(b))
+        self.batches.next().map(Ok)
     }
 }
 
@@ -144,26 +146,26 @@ impl Optionable for DataFusionDatabase {
 
     fn set_option(
         &mut self,
-        key: Self::Option,
-        value: adbc_core::options::OptionValue,
+        _key: Self::Option,
+        _value: adbc_core::options::OptionValue,
     ) -> adbc_core::error::Result<()> {
-        self.options.insert(key, value);
+        self.options.insert(_key, _value);
         Ok(())
     }
 
-    fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
+    fn get_option_string(&self, _key: Self::Option) -> adbc_core::error::Result<String> {
         todo!()
     }
 
-    fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
+    fn get_option_bytes(&self, _key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
         todo!()
     }
 
-    fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
+    fn get_option_int(&self, _key: Self::Option) -> adbc_core::error::Result<i64> {
         todo!()
     }
 
-    fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
+    fn get_option_double(&self, _key: Self::Option) -> adbc_core::error::Result<f64> {
         todo!()
     }
 }
@@ -187,7 +189,7 @@ impl Database for DataFusionDatabase {
 
     fn new_connection_with_opts(
         &mut self,
-        opts: impl IntoIterator<
+        _opts: impl IntoIterator<
             Item = (
                 adbc_core::options::OptionConnection,
                 adbc_core::options::OptionValue,
@@ -218,25 +220,25 @@ impl Optionable for DataFusionConnection {
 
     fn set_option(
         &mut self,
-        key: Self::Option,
-        value: adbc_core::options::OptionValue,
+        _key: Self::Option,
+        _value: adbc_core::options::OptionValue,
     ) -> adbc_core::error::Result<()> {
         todo!()
     }
 
-    fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
+    fn get_option_string(&self, _key: Self::Option) -> adbc_core::error::Result<String> {
         todo!()
     }
 
-    fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
+    fn get_option_bytes(&self, _key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
         todo!()
     }
 
-    fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
+    fn get_option_int(&self, _key: Self::Option) -> adbc_core::error::Result<i64> {
         todo!()
     }
 
-    fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
+    fn get_option_double(&self, _key: Self::Option) -> adbc_core::error::Result<f64> {
         todo!()
     }
 }
@@ -370,7 +372,7 @@ impl GetObjectsBuilder {
         self.catalog_names.append(&mut catalogs);
 
         self.catalog_names.iter().for_each(|cat| {
-            let catalog_provider = ctx.catalog(&cat).unwrap();
+            let catalog_provider = ctx.catalog(cat).unwrap();
             let schema_names = catalog_provider.schema_names();
             self.catalog_db_schema_names
                 .append(&mut schema_names.clone());
@@ -379,7 +381,7 @@ impl GetObjectsBuilder {
                 .push(self.catalog_db_schema_offsets.last().unwrap() + schema_names.len() as i32);
 
             schema_names.iter().for_each(|schema| {
-                let schema_provider = catalog_provider.schema(&schema).unwrap();
+                let schema_provider = catalog_provider.schema(schema).unwrap();
                 let table_names = schema_provider.table_names();
                 self.table_names.append(&mut table_names.clone());
                 self.table_offsets
@@ -387,7 +389,7 @@ impl GetObjectsBuilder {
 
                 table_names.iter().for_each(|t| {
                     runtime.block_on(async {
-                        let table_provider = schema_provider.table(&t).await.unwrap().unwrap();
+                        let table_provider = schema_provider.table(t).await.unwrap().unwrap();
                         let table_type = match table_provider.table_type() {
                             TableType::Base => "Base",
                             TableType::View => "View",
@@ -649,12 +651,12 @@ impl Connection for DataFusionConnection {
     fn get_objects(
         &self,
         depth: adbc_core::options::ObjectDepth,
-        catalog: Option<&str>,
-        db_schema: Option<&str>,
-        table_name: Option<&str>,
-        table_type: Option<Vec<&str>>,
-        column_name: Option<&str>,
-    ) -> adbc_core::error::Result<SingleBatchReader> {
+        _catalog: Option<&str>,
+        _db_schema: Option<&str>,
+        _table_name: Option<&str>,
+        _table_type: Option<Vec<&str>>,
+        _column_name: Option<&str>,
+    ) -> Result<impl RecordBatchReader + Send> {
         let batch = GetObjectsBuilder::new().build(&self.runtime, &self.ctx, &depth)?;
         let reader = SingleBatchReader::new(batch);
         Ok(reader)
@@ -662,28 +664,28 @@ impl Connection for DataFusionConnection {
 
     fn get_table_schema(
         &self,
-        catalog: Option<&str>,
-        db_schema: Option<&str>,
-        table_name: &str,
+        _catalog: Option<&str>,
+        _db_schema: Option<&str>,
+        _table_name: &str,
     ) -> adbc_core::error::Result<arrow_schema::Schema> {
         todo!()
     }
 
-    fn get_table_types(&self) -> adbc_core::error::Result<SingleBatchReader> {
+    fn get_table_types(&self) -> Result<SingleBatchReader> {
         todo!()
     }
 
-    fn get_statistic_names(&self) -> adbc_core::error::Result<SingleBatchReader> {
+    fn get_statistic_names(&self) -> Result<SingleBatchReader> {
         todo!()
     }
 
     fn get_statistics(
         &self,
-        catalog: Option<&str>,
-        db_schema: Option<&str>,
-        table_name: Option<&str>,
-        approximate: bool,
-    ) -> adbc_core::error::Result<SingleBatchReader> {
+        _catalog: Option<&str>,
+        _db_schema: Option<&str>,
+        _table_name: Option<&str>,
+        _approximate: bool,
+    ) -> Result<SingleBatchReader> {
         todo!()
     }
 
@@ -695,10 +697,7 @@ impl Connection for DataFusionConnection {
         todo!()
     }
 
-    fn read_partition(
-        &self,
-        partition: impl AsRef<[u8]>,
-    ) -> adbc_core::error::Result<SingleBatchReader> {
+    fn read_partition(&self, _partition: impl AsRef<[u8]>) -> Result<SingleBatchReader> {
         todo!()
     }
 }
@@ -715,37 +714,37 @@ impl Optionable for DataFusionStatement {
 
     fn set_option(
         &mut self,
-        key: Self::Option,
-        value: adbc_core::options::OptionValue,
+        _key: Self::Option,
+        _value: adbc_core::options::OptionValue,
     ) -> adbc_core::error::Result<()> {
         todo!()
     }
 
-    fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
+    fn get_option_string(&self, _key: Self::Option) -> adbc_core::error::Result<String> {
         todo!()
     }
 
-    fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
+    fn get_option_bytes(&self, _key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
         todo!()
     }
 
-    fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
+    fn get_option_int(&self, _key: Self::Option) -> adbc_core::error::Result<i64> {
         todo!()
     }
 
-    fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
+    fn get_option_double(&self, _key: Self::Option) -> adbc_core::error::Result<f64> {
         todo!()
     }
 }
 
 impl Statement for DataFusionStatement {
-    fn bind(&mut self, batch: arrow_array::RecordBatch) -> adbc_core::error::Result<()> {
+    fn bind(&mut self, _batch: arrow_array::RecordBatch) -> adbc_core::error::Result<()> {
         todo!()
     }
 
     fn bind_stream(
         &mut self,
-        reader: Box<dyn arrow_array::RecordBatchReader + Send>,
+        _reader: Box<dyn arrow_array::RecordBatchReader + Send>,
     ) -> adbc_core::error::Result<()> {
         todo!()
     }
