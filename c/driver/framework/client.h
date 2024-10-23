@@ -40,6 +40,8 @@ class Context {
  public:
   enum class LogLevel { kInfo, kWarn };
 
+  virtual ~Context() = default;
+
   virtual void OnUnreleasableStatement(
       std::shared_ptr<internal::BaseConnection> connection, AdbcStatement* statement,
       const AdbcError* error) {
@@ -125,6 +127,7 @@ class BaseDriver {
 
 class BaseObject {
  public:
+  BaseObject() = default;
   const std::shared_ptr<BaseDriver>& GetSharedDriver() { return driver_; }
 
  protected:
@@ -142,6 +145,7 @@ class BaseObject {
 
 class BaseDatabase : public BaseObject {
  public:
+  BaseDatabase() = default;
   BaseDatabase(const BaseDatabase& rhs) = delete;
   ~BaseDatabase() {
     if (driver_ && database_.private_data) {
@@ -167,6 +171,7 @@ class BaseDatabase : public BaseObject {
   }
 
   Status Release() {
+    UNWRAP_STATUS(CheckValid());
     AdbcStatusCode code = WRAP_CALL0(DatabaseRelease);
     if (code == ADBC_STATUS_OK) {
       ReleaseBase();
@@ -196,6 +201,7 @@ class BaseDatabase : public BaseObject {
 
 class BaseConnection : public BaseObject {
  public:
+  BaseConnection() = default;
   BaseConnection(const BaseConnection& rhs) = delete;
   ~BaseConnection() {
     AdbcStatusCode code = WRAP_CALL0(ConnectionRelease);
@@ -207,8 +213,13 @@ class BaseConnection : public BaseObject {
   AdbcConnection* connection() { return &connection_; }
 
   Status New(std::shared_ptr<BaseDatabase> database) {
+    UNWRAP_STATUS(database->CheckValid());
     NewBase(database->GetSharedDriver());
     AdbcStatusCode code = WRAP_CALL0(ConnectionNew);
+    if (code == ADBC_STATUS_OK) {
+      database_ = database;
+    }
+
     return Status::FromAdbc(code, error_);
   }
 
@@ -219,6 +230,7 @@ class BaseConnection : public BaseObject {
   }
 
   Status Release() {
+    UNWRAP_STATUS(CheckValid());
     AdbcStatusCode code = WRAP_CALL0(ConnectionRelease);
     if (code == ADBC_STATUS_OK) {
       ReleaseBase();
@@ -262,6 +274,7 @@ class BaseConnection : public BaseObject {
 
 class BaseStatement : public BaseObject {
  public:
+  BaseStatement() = default;
   BaseStatement(const BaseStatement& rhs) = delete;
   ~BaseStatement() {
     if (driver_ && statement_.private_data) {
@@ -276,10 +289,15 @@ class BaseStatement : public BaseObject {
     NewBase(connection->GetSharedDriver());
     AdbcStatusCode code =
         driver()->StatementNew(connection->connection(), &statement_, &error_);
+    if (code == ADBC_STATUS_OK) {
+      connection_ = connection;
+    }
+
     return Status::FromAdbc(code, error_);
   }
 
   Status Release() {
+    UNWRAP_STATUS(CheckValid());
     AdbcStatusCode code = WRAP_CALL0(StatementRelease);
     if (code == ADBC_STATUS_OK) {
       ReleaseBase();
@@ -324,17 +342,16 @@ template <typename Parent>
 class Stream {
  public:
   explicit Stream(Parent parent) : parent_(parent) {}
-  Stream(Stream&& rhs) : Stream(rhs.get()) {
-    parent_ = std::move(rhs.parent_);
+  Stream(Stream&& rhs) : Stream(std::move(rhs.parent_)) {
     std::memcpy(&stream_, &rhs.stream_, sizeof(ArrowArrayStream));
-    std::memset(rhs.stream_, 0, sizeof(ArrowArrayStream));
+    std::memset(&rhs.stream_, 0, sizeof(ArrowArrayStream));
     rows_affected_ = rhs.rows_affected_;
   }
 
   Stream& operator=(Stream&& rhs) {
     parent_ = std::move(rhs.parent_);
     std::memcpy(&stream_, &rhs.stream_, sizeof(ArrowArrayStream));
-    std::memset(rhs.stream_, 0, sizeof(ArrowArrayStream));
+    std::memset(&rhs.stream_, 0, sizeof(ArrowArrayStream));
     rows_affected_ = rhs.rows_affected_;
     return *this;
   }
@@ -357,7 +374,7 @@ class Stream {
     Stream* instance = new Stream();
     instance->parent_ = std::move(parent_);
     std::memcpy(&instance->stream_, &stream_, sizeof(ArrowArrayStream));
-    std::memset(stream_, 0, sizeof(ArrowArrayStream));
+    std::memset(&stream_, 0, sizeof(ArrowArrayStream));
     instance->rows_affected_ = rows_affected_;
 
     out->get_schema = &CGetSchema;
@@ -427,15 +444,24 @@ class Statement {
     return *this;
   }
 
-  ~Statement() { base_->GetSharedDriver()->context()->OnDeleteHandleWithoutClose(base_); }
+  ~Statement() {
+    if (base_) {
+      base_->GetSharedDriver()->context()->OnDeleteHandleWithoutClose(base_);
+    }
+  }
 
-  Status Release() { return base_->Release(); }
+  Status Release() {
+    UNWRAP_STATUS(CheckValid());
+    return base_->Release();
+  }
 
   Status SetSqlQuery(const std::string& query) {
+    UNWRAP_STATUS(CheckValid());
     return base_->SetSqlQuery(query.c_str());
   }
 
   Result<StatementStream> ExecuteQuery() {
+    UNWRAP_STATUS(CheckValid());
     StatementStream out(base_);
     UNWRAP_STATUS(base_->ExecuteQuery(out.stream(), out.mutable_rows_affected()));
     return out;
@@ -446,6 +472,14 @@ class Statement {
 
   friend class Connection;
   Statement(std::shared_ptr<internal::BaseStatement> base) : base_(base) {}
+
+  Status CheckValid() {
+    if (!base_) {
+      return Status::InvalidState("Statement handle has been released");
+    } else {
+      return Status::Ok();
+    }
+  }
 };
 
 class Connection {
@@ -458,20 +492,30 @@ class Connection {
   }
 
   ~Connection() {
-    base_->GetSharedDriver()->context()->OnDeleteHandleWithoutClose(base_);
+    if (base_) {
+      base_->GetSharedDriver()->context()->OnDeleteHandleWithoutClose(base_);
+    }
   }
 
-  Status Release() { return base_->Release(); }
+  Status Release() {
+    UNWRAP_STATUS(CheckValid());
+    return base_->Release();
+  }
 
   Result<Statement> NewStatement() {
+    UNWRAP_STATUS(CheckValid());
     auto child = std::make_shared<internal::BaseStatement>();
     UNWRAP_STATUS(child->New(base_));
     return Statement(child);
   }
 
-  Status Cancel() { return base_->Cancel(); }
+  Status Cancel() {
+    UNWRAP_STATUS(CheckValid());
+    return base_->Cancel();
+  }
 
   Result<ConnectionStream> GetInfo(const std::vector<uint32_t>& info_codes = {}) {
+    UNWRAP_STATUS(CheckValid());
     ConnectionStream out(base_);
     UNWRAP_STATUS(base_->GetInfo(info_codes.data(), info_codes.size(), out.stream()));
     return out;
@@ -482,6 +526,14 @@ class Connection {
 
   friend class Database;
   Connection(std::shared_ptr<internal::BaseConnection> base) : base_(base) {}
+
+  Status CheckValid() {
+    if (!base_) {
+      return Status::InvalidState("Connection handle has been released");
+    } else {
+      return Status::Ok();
+    }
+  }
 };
 
 class Database {
@@ -493,11 +545,22 @@ class Database {
     return *this;
   }
 
-  ~Database() { base_->GetSharedDriver()->context()->OnDeleteHandleWithoutClose(base_); }
+  ~Database() {
+    if (base_) {
+      base_->GetSharedDriver()->context()->OnDeleteHandleWithoutClose(base_);
+    }
+  }
 
-  Status Release() { return base_->Release(); }
+  Status Release() {
+    UNWRAP_STATUS(CheckValid());
+    UNWRAP_STATUS(base_->Release());
+    base_.reset();
+    return Status::Ok();
+  }
 
   Result<Connection> NewConnection() {
+    UNWRAP_STATUS(CheckValid());
+
     auto child = std::make_shared<internal::BaseConnection>();
     UNWRAP_STATUS(child->New(base_));
     UNWRAP_STATUS(child->Init());
@@ -509,11 +572,20 @@ class Database {
 
   friend class Driver;
   Database(std::shared_ptr<internal::BaseDatabase> base) : base_(base) {}
+
+  Status CheckValid() {
+    if (!base_) {
+      return Status::InvalidState("Database handle has been released");
+    } else {
+      return Status::Ok();
+    }
+  }
 };
 
 class Driver {
+ public:
   explicit Driver(std::shared_ptr<Context> context = Context::Default())
-      : base_(std::make_shared<internal::BaseDriver>()) {}
+      : base_(std::make_shared<internal::BaseDriver>(std::move(context))) {}
 
   Driver(const Driver& rhs) = delete;
   Driver(const Driver&& rhs) : base_(std::move(rhs.base_)) {}

@@ -63,11 +63,19 @@ class Status {
   /// \brief Check if this is an error or not.
   bool ok() const { return impl_ == nullptr; }
 
-  const char* message() {
+  const char* message() const {
     if (!impl_) {
       return "";
     } else {
       return impl_->message.c_str();
+    }
+  }
+
+  AdbcStatusCode code() const {
+    if (ok()) {
+      return ADBC_STATUS_OK;
+    } else {
+      return impl_->code;
     }
   }
 
