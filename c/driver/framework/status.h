@@ -63,6 +63,14 @@ class Status {
   /// \brief Check if this is an error or not.
   bool ok() const { return impl_ == nullptr; }
 
+  const char* message() {
+    if (!impl_) {
+      return "";
+    } else {
+      return impl_->message.c_str();
+    }
+  }
+
   /// \brief Add another error detail.
   void AddDetail(std::string key, std::string value) {
     assert(impl_ != nullptr);
