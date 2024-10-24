@@ -63,7 +63,7 @@ struct PqRecord {
     }
   }
 
-  Result<std::vector<std::string>> ParseTextArray() {
+  Result<std::vector<std::string>> ParseTextArray() const {
     std::string text_array(data, len);
     text_array.erase(0, 1);
     text_array.erase(text_array.size() - 1);
@@ -89,7 +89,7 @@ class PqResultRow {
   PqResultRow() : result_(nullptr), row_num_(-1) {}
   PqResultRow(PGresult* result, int row_num) : result_(result), row_num_(row_num) {}
 
-  PqRecord operator[](const int& col_num) const {
+  PqRecord operator[](int col_num) const {
     assert(col_num < PQnfields(result_));
     const char* data = PQgetvalue(result_, row_num_, col_num);
     const int len = PQgetlength(result_, row_num_, col_num);
@@ -98,9 +98,11 @@ class PqResultRow {
     return PqRecord{data, len, is_null};
   }
 
-  bool IsValid() { return result_ && row_num_ >= 0 && row_num_ < PQntuples(result_); }
+  bool IsValid() const {
+    return result_ && row_num_ >= 0 && row_num_ < PQntuples(result_);
+  }
 
-  PqResultRow Next() { return PqResultRow(result_, row_num_ + 1); }
+  PqResultRow Next() const { return PqResultRow(result_, row_num_ + 1); }
 
  private:
   PGresult* result_ = nullptr;
@@ -132,8 +134,8 @@ class PqResultHelper {
   void set_param_format(Format format) { param_format_ = format; }
   void set_output_format(Format format) { output_format_ = format; }
 
-  Status Prepare();
-  Status Prepare(const std::vector<Oid>& param_oids);
+  Status Prepare() const;
+  Status Prepare(const std::vector<Oid>& param_oids) const;
   Status DescribePrepared();
   Status Execute(const std::vector<std::string>& params = {},
                  PostgresType* param_types = nullptr);
@@ -143,7 +145,7 @@ class PqResultHelper {
   Status ResolveOutputTypes(PostgresTypeResolver& type_resolver,
                             PostgresType* result_types);
 
-  bool HasResult() { return result_ != nullptr; }
+  bool HasResult() const { return result_ != nullptr; }
 
   void SetResult(PGresult* result) {
     ClearResult();
@@ -157,7 +159,7 @@ class PqResultHelper {
     result_ = nullptr;
   }
 
-  int64_t AffectedRows();
+  int64_t AffectedRows() const;
 
   int NumRows() const { return PQntuples(result_); }
 
@@ -167,7 +169,7 @@ class PqResultHelper {
     return PQfname(result_, column_number);
   }
   Oid FieldType(int column_number) const { return PQftype(result_, column_number); }
-  PqResultRow Row(int i) { return PqResultRow(result_, i); }
+  PqResultRow Row(int i) const { return PqResultRow(result_, i); }
 
   class iterator {
     const PqResultHelper& outer_;
@@ -189,7 +191,7 @@ class PqResultHelper {
       return outer_.result_ == other.outer_.result_ && curr_row_ == other.curr_row_;
     }
     bool operator!=(iterator other) const { return !(*this == other); }
-    PqResultRow operator*() { return PqResultRow(outer_.result_, curr_row_); }
+    PqResultRow operator*() const { return PqResultRow(outer_.result_, curr_row_); }
     using iterator_category = std::forward_iterator_tag;
     using difference_type = std::ptrdiff_t;
     using value_type = std::vector<PqResultRow>;
@@ -197,8 +199,8 @@ class PqResultHelper {
     using reference = const std::vector<PqResultRow>&;
   };
 
-  iterator begin() { return iterator(*this); }
-  iterator end() { return iterator(*this, NumRows()); }
+  iterator begin() const { return iterator(*this); }
+  iterator end() const { return iterator(*this, NumRows()); }
 
  private:
   PGresult* result_ = nullptr;
@@ -207,7 +209,7 @@ class PqResultHelper {
   Format param_format_ = Format::kText;
   Format output_format_ = Format::kText;
 
-  Status PrepareInternal(int n_params, const Oid* param_oids);
+  Status PrepareInternal(int n_params, const Oid* param_oids) const;
 };
 
 }  // namespace adbcpq

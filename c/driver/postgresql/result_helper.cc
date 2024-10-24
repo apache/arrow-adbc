@@ -28,7 +28,7 @@ namespace adbcpq {
 
 PqResultHelper::~PqResultHelper() { ClearResult(); }
 
-Status PqResultHelper::PrepareInternal(int n_params, const Oid* param_oids) {
+Status PqResultHelper::PrepareInternal(int n_params, const Oid* param_oids) const {
   // TODO: make stmtName a unique identifier?
   PGresult* result =
       PQprepare(conn_, /*stmtName=*/"", query_.c_str(), n_params, param_oids);
@@ -43,9 +43,9 @@ Status PqResultHelper::PrepareInternal(int n_params, const Oid* param_oids) {
   return Status::Ok();
 }
 
-Status PqResultHelper::Prepare() { return PrepareInternal(0, nullptr); }
+Status PqResultHelper::Prepare() const { return PrepareInternal(0, nullptr); }
 
-Status PqResultHelper::Prepare(const std::vector<Oid>& param_oids) {
+Status PqResultHelper::Prepare(const std::vector<Oid>& param_oids) const {
   return PrepareInternal(param_oids.size(), param_oids.data());
 }
 
@@ -187,7 +187,7 @@ PGresult* PqResultHelper::ReleaseResult() {
   return out;
 }
 
-int64_t PqResultHelper::AffectedRows() {
+int64_t PqResultHelper::AffectedRows() const {
   if (result_ == nullptr) {
     return -1;
   }
