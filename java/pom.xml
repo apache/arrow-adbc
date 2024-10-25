@@ -320,6 +320,7 @@
               <compilerArgs combine.children="append">
                 <arg>-XDcompilePolicy=simple</arg>
                 <arg>-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.uber</arg>
+                <arg>--should-stop=ifError=FLOW</arg>
                 <!-- javac only reports the first 100 errors or warnings -->
                 <arg>-Xmaxerrs</arg>
                 <arg>10000</arg>
