@@ -72,8 +72,6 @@ jobs:
           rustup default stable
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
