@@ -76,8 +76,8 @@ jobs:
       - name: Install Protoc
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt update
-          sudo apt install -y protobuf-compiler
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
