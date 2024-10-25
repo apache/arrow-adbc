@@ -2,7 +2,7 @@ pandoc: '3.5'
 pkgdown: 2.1.1
 pkgdown_sha: ~
 articles: {}
-last_built: 2024-10-25T05:43Z
+last_built: 2024-10-25T18:06Z
 urls:
   reference: https://arrow.apache.org/adbc/current/r/adbcflightsql/reference
   article: https://arrow.apache.org/adbc/current/r/adbcflightsql/articles
