@@ -71,13 +71,23 @@ jobs:
           rustup toolchain install stable --no-self-update
           rustup default stable
       - name: Install Protoc
-        if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
-        run: brew install protobuf
-      - name: Install Protoc
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+          curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-linux-x86_64.zip
+          unzip protoc-28.3-linux-x86_64.zip -d $GITHUB_WORKSPACE/bin
+          echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
+      - name: Install Protoc
+        if: matrix.os == 'macos-13'
+        run: |
+          curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-x86_64.zip
+          unzip protoc-28.3-osx-x86_64.zip -d $GITHUB_WORKSPACE/bin
+          echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
+      - name: Install Protoc
+        if: matrix.os == 'macos-latest'
+        run: |
+          curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-aarch_64.zip
+          unzip protoc-28.3-osx-aarch_64.zip -d $GITHUB_WORKSPACE/bin
+          echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}
