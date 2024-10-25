@@ -320,6 +320,7 @@
               <compilerArgs combine.children="append">
                 <arg>-XDcompilePolicy=simple</arg>
                 <arg>-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.uber</arg>
+                <arg>--should-stop=ifError=FLOW</arg>
                 <!-- javac only reports the first 100 errors or warnings -->
                 <arg>-Xmaxerrs</arg>
                 <arg>10000</arg>
@@ -337,7 +338,7 @@
                 <path>
                   <groupId>com.google.errorprone</groupId>
                   <artifactId>error_prone_core</artifactId>
-                  <version>2.33.0</version>
+                  <version>2.34.0</version>
                 </path>
                 <path>
                   <groupId>com.uber.nullaway</groupId>
