@@ -129,7 +129,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, CancellationToken cancellationToken = default) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion, cancellationToken);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         protected override Task<TTransport> CreateTransportAsync()
         {

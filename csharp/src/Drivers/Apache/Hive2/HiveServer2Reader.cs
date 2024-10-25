@@ -67,8 +67,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            DataTypeConversion dataTypeConversion,
-            CancellationToken cancellationToken = default)
+            DataTypeConversion dataTypeConversion)
         {
             _statement = statement;
             Schema = schema;
@@ -88,22 +87,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // Await the fetch response
             TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
 
-            // Build the current batch
-            RecordBatch result = CreateBatch(response, out int fetchedRows);
-
-            if ((_statement.BatchSize > 0 && fetchedRows < _statement.BatchSize) || fetchedRows == 0)
+            int columnCount = GetColumnCount(response);
+            int rowCount = GetRowCount(response, columnCount);
+            if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
             {
                 // This is the last batch
                 _statement = null;
             }
 
-            // Return the current batch.
-            return result;
+            // Build the current batch, if any data exists
+            return rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
         }
 
-        private RecordBatch CreateBatch(TFetchResultsResp response, out int length)
+        private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)
         {
-            int columnCount = response.Results.Columns.Count;
             IList<IArrowArray> columnData = [];
             bool shouldConvertScalar = _dataTypeConversion.HasFlag(DataTypeConversion.Scalar);
             for (int i = 0; i < columnCount; i++)
@@ -113,9 +110,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 columnData.Add(columnArray);
             }
 
-            length = columnCount > 0 ? GetArray(response.Results.Columns[0]).Length : 0;
-            return new RecordBatch(Schema, columnData, length);
+            return new RecordBatch(Schema, columnData, rowCount);
         }
+
+        private static int GetColumnCount(TFetchResultsResp response) =>
+            response.Results.Columns.Count;
+
+        private static int GetRowCount(TFetchResultsResp response, int columnCount) =>
+            columnCount > 0 ? GetArray(response.Results.Columns[0]).Length : 0;
 
         private static async Task<TFetchResultsResp> FetchNext(HiveServer2Statement statement, CancellationToken cancellationToken = default)
         {

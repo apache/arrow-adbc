@@ -31,7 +31,7 @@ using ColumnTypeId = Apache.Arrow.Adbc.Drivers.Apache.Spark.SparkConnection.Colu
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
     /// <summary>
-    /// Class for testing the Snowflake ADBC driver connection tests.
+    /// Class for testing the Spark ADBC driver connection tests.
     /// </summary>
     /// <remarks>
     /// Tests are ordered to ensure data is created for the other
@@ -628,6 +628,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             AdbcDatabase database = driver.Open(parameters);
             AggregateException exception = Assert.ThrowsAny<AggregateException>(() => database.Connect(parameters));
             OutputHelper?.WriteLine(exception.Message);
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results using the asynchronous methods.
+        /// </summary>
+        [SkippableFact, Order(15)]
+        public async Task CanExecuteQueryAsyncEmptyResult()
+        {
+            using AdbcConnection adbcConnection = NewConnection();
+            using AdbcStatement statement = adbcConnection.CreateStatement();
+
+            statement.SqlQuery = $"SELECT * from {TestConfiguration.Metadata.Table} WHERE FALSE";
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+
+            await Tests.DriverTests.CanExecuteQueryAsync(queryResult, 0);
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()
