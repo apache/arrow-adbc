@@ -25,7 +25,7 @@ using Xunit.Abstractions;
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
     /// <summary>
-    /// Class for testing the ADBC Client using the BigQuery ADBC driver.
+    /// Class for testing the ADBC Client using the Spark ADBC driver.
     /// </summary>
     /// <remarks>
     /// Tests are ordered to ensure data is created for the other
@@ -71,7 +71,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                         affectedRows,  // UPDATE
                         affectedRows,  // DELETE
                     ];
-
 
                 Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, TestConfiguration, queries, expectedResults);
             }
@@ -148,7 +147,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 Assert.True(tables.Rows.Count > 0, $"No tables were found in the schema '{schema}'");
             }
         }
-
 
         [SkippableFact]
         public void VerifySchemaTables()

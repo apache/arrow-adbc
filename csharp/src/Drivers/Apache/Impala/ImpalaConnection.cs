@@ -87,6 +87,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         internal override SchemaParser SchemaParser { get; } = new HiveServer2SchemaParser();
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, CancellationToken cancellationToken = default) => new HiveServer2Reader(statement, schema, dataTypeConversion: DataTypeConversion, cancellationToken);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: DataTypeConversion);
     }
 }

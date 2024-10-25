@@ -31,7 +31,7 @@ using ColumnTypeId = Apache.Arrow.Adbc.Drivers.Apache.Spark.SparkConnection.Colu
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
     /// <summary>
-    /// Class for testing the Snowflake ADBC driver connection tests.
+    /// Class for testing the Spark ADBC driver connection tests.
     /// </summary>
     /// <remarks>
     /// Tests are ordered to ensure data is created for the other

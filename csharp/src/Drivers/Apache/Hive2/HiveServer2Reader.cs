@@ -67,8 +67,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            DataTypeConversion dataTypeConversion,
-            CancellationToken _ = default)
+            DataTypeConversion dataTypeConversion)
         {
             _statement = statement;
             Schema = schema;
@@ -89,7 +88,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
 
             int columnCount = GetColumnCount(response);
-            int rowCount = GetRowCount(response, columnCount); ;
+            int rowCount = GetRowCount(response, columnCount);
             if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
             {
                 // This is the last batch
