@@ -862,7 +862,7 @@ impl Optionable for DataFusionStatement {
 
 impl Statement for DataFusionStatement {
     fn bind(&mut self, batch: arrow_array::RecordBatch) -> adbc_core::error::Result<()> {
-        self.bound_record_batch = RefCell::new(Some(batch));
+        self.bound_record_batch.replace(Some(batch));
         Ok(())
     }
 
