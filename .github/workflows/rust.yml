@@ -71,22 +71,16 @@ jobs:
           rustup toolchain install stable --no-self-update
           rustup default stable
       - name: Install Protoc
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: |
-          curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-linux-x86_64.zip
-          unzip protoc-28.3-linux-x86_64.zip -d $HOME/.local
+          curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-linux-$(uname -m).zip" -o protoc.zip
+          unzip protoc.zip -d $HOME/.local
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install Protoc
-        if: matrix.os == 'macos-13'
+        if: runner.os == 'macOS'
         run: |
-          curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-x86_64.zip
-          unzip protoc-28.3-osx-x86_64.zip -d $HOME/.local
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Install Protoc
-        if: matrix.os == 'macos-latest'
-        run: |
-          curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-aarch_64.zip
-          unzip protoc-28.3-osx-aarch_64.zip -d $HOME/.local
+          curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-$(uname -m).zip" -o protoc.zip
+          unzip "protoc.zip" -d $HOME/.local
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - uses: actions/download-artifact@v4
         with:
