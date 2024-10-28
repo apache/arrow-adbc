@@ -26,15 +26,13 @@ include(FetchContent)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# TODO: This currently depends on about-to-be-released nanoarrow, which allows
-# access to both nanoarrow and the IPC reader using a single fetchcontent.
 set(NANOARROW_IPC ON)
 set(NANOARROW_NAMESPACE "DriverExamplePrivate")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 fetchcontent_declare(nanoarrow
-                     GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
-                     GIT_TAG main
-                     GIT_SHALLOW TRUE)
+                     URL "https://www.apache.org/dyn/closer.lua?action=download&filename=arrow/apache-arrow-nanoarrow-0.6.0/apache-arrow-nanoarrow-0.6.0.tar.gz"
+                     URL_HASH SHA256=e4a02ac51002ad1875bf09317e70adb959005fad52b240ff59f73b970fa485d1
+)
 fetchcontent_makeavailable(nanoarrow)
 
 # TODO: We could allow this to be installed + linked to as a target; however,
