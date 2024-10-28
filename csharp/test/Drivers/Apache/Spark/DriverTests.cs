@@ -511,7 +511,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public void CanExecuteQuery()
         {
             long count = 0;
-            long target = 80;
+            long target = 10;
             Queue<String> log = new Queue<string>();
             string FileName = $@"c:\temp\hmsmeta\{DateTime.Now.ToString("yyyyMMdd_HHmm")}__{target}.log";
 
