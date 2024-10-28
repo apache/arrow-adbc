@@ -16,9 +16,7 @@
 */
 
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -43,16 +41,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 CanUseMultipleCatalogs = true,
             };
             return req;
-        }
-
-        protected override void ValidateOptions()
-        {
-            Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
-            // Note: In Databricks, scalar types are provided implicitly.
-            DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
-
-            Properties.TryGetValue(SparkParameters.TLSOptions, out string? tlsOptions);
-            TlsOptions = TlsOptionsParser.Parse(tlsOptions);
         }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>

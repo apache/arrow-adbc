@@ -92,7 +92,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             List<int> expectedResults = TestEnvironment.ServerType != SparkServerType.Databricks
                 ?
                 [
-                    -1, // DROP   TABLE
                     -1, // CREATE TABLE
                     1,  // INSERT
                     1,  // INSERT
@@ -102,7 +101,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 ]
                 :
                 [
-                    -1, // DROP   TABLE
                     -1, // CREATE TABLE
                     1,  // INSERT
                     1,  // INSERT

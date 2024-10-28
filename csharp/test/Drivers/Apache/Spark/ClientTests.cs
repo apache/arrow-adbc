@@ -42,7 +42,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// <summary>
         /// Validates if the client execute updates.
         /// </summary>
-        [SkippableFact, Order(1)]
+        [SkippableFact(Skip = "csharp: integration tests (ClientTests/DriverTests) can cause concurrency issues creating/updating table. https://github.com/apache/arrow-adbc/issues/2280"), Order(1)]
         public void CanClientExecuteUpdate()
         {
             using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
@@ -54,7 +54,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
                 List<int> expectedResults = TestEnvironment.ServerType != SparkServerType.Databricks
                     ? [
-                        -1, // DROP   TABLE
                         -1, // CREATE TABLE
                         affectedRows,  // INSERT
                         affectedRows,  // INSERT
@@ -63,7 +62,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                         //1,  // DELETE
                     ]
                     : [
-                        -1, // DROP   TABLE
                         -1, // CREATE TABLE
                         affectedRows,  // INSERT
                         affectedRows,  // INSERT
