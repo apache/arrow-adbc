@@ -103,8 +103,19 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             string table = $"projects/{results.TableReference.ProjectId}/datasets/{results.TableReference.DatasetId}/tables/{results.TableReference.TableId}";
 
+            int maxStreamCount = 1;
+            if (this.Options?.TryGetValue(BigQueryParameters.CreateReadSessionMaxStreamCount, out string? maxStreamCountString) == true)
+            {
+                if (int.TryParse(maxStreamCountString, out int count))
+                {
+                    if (count >= 0)
+                    {
+                        maxStreamCount = count;
+                    }
+                }
+            }
             ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
-            ReadSession rrs = readClient.CreateReadSession("projects/" + results.TableReference.ProjectId, rs, 1);
+            ReadSession rrs = readClient.CreateReadSession("projects/" + results.TableReference.ProjectId, rs, maxStreamCount);
 
             long totalRows = results.TotalRows == null ? -1L : (long)results.TotalRows.Value;
             IArrowArrayStream stream = new MultiArrowReader(TranslateSchema(results.Schema), rrs.Streams.Select(s => ReadChunk(readClient, s.Name)));

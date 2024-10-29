@@ -1002,7 +1002,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryParameters.UseLegacySQL,
                 BigQueryParameters.LargeDecimalsAsString,
                 BigQueryParameters.LargeResultsDestinationTable,
-                BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes
+                BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes,
+                BigQueryParameters.CreateReadSessionMaxStreamCount
             };
 
             foreach (string key in statementOptions)

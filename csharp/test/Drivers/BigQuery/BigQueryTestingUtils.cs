@@ -91,6 +91,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 parameters.Add(BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes, testConfiguration.TimeoutMinutes.Value.ToString());
             }
 
+            if (testConfiguration.MaxStreamCount.HasValue)
+            {
+                parameters.Add(BigQueryParameters.CreateReadSessionMaxStreamCount, testConfiguration.MaxStreamCount.Value.ToString());
+            }
+
             return parameters;
         }
 
