@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// <summary>
         /// Validates if the client execute updates.
         /// </summary>
-        [SkippableFact(), Order(1)]
+        [SkippableFact, Order(1)]
         public void CanClientExecuteUpdate()
         {
             using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
