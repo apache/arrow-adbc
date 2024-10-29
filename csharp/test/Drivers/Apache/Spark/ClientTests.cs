@@ -30,8 +30,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// <remarks>
     /// Tests are ordered to ensure data is created for the other
     /// queries to run.
+    /// <para>Note: This test create/replaces the table identified in the configuration (metadata/table).
+    /// It uses the test collection "TableCreateTestCollection" to ensure it does not run
+    /// as the same time as any other tests that may create/udate the same table.</para>
     /// </remarks>
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
+    [Collection("TableCreateTestCollection")]
     public class ClientTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
         public ClientTests(ITestOutputHelper? outputHelper) : base(outputHelper, new SparkTestEnvironment.Factory())
@@ -42,7 +46,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// <summary>
         /// Validates if the client execute updates.
         /// </summary>
-        [SkippableFact(Skip = "csharp: integration tests (ClientTests/DriverTests) can cause concurrency issues creating/updating table. https://github.com/apache/arrow-adbc/issues/2280"), Order(1)]
+        [SkippableFact(), Order(1)]
         public void CanClientExecuteUpdate()
         {
             using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
