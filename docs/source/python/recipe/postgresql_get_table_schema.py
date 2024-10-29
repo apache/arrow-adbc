@@ -56,14 +56,16 @@ assert conn.adbc_get_table_schema("example") == pyarrow.schema(
 #:
 #: Note that the NUMERIC column is read as a string, because PostgreSQL
 #: decimals do not map onto Arrow decimals.
-assert conn.adbc_get_table_schema(
+table_schema = conn.adbc_get_table_schema(
     "example",
     db_schema_filter="other_schema",
-) == pyarrow.schema(
+)
+expected = pyarrow.schema(
     [
         ("strings", "string"),
         ("values", "string"),
     ]
 )
+assert table_schema == expected, f"Unexpected table schema {table_schema}"
 
 conn.close()
