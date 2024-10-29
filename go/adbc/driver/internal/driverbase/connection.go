@@ -583,8 +583,8 @@ func RequiredList[T any](vals []T) requiredList[T] {
 
 type requiredList[T any] []T
 
-func (n requiredList[T]) UnmarshalJSON(data []byte) error {
-	v := (*[]T)(&n)
+func (n *requiredList[T]) UnmarshalJSON(data []byte) error {
+	v := (*[]T)(n)
 	return json.Unmarshal(data, v)
 }
 
