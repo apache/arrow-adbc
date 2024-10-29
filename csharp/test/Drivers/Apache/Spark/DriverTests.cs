@@ -36,8 +36,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// <remarks>
     /// Tests are ordered to ensure data is created for the other
     /// queries to run.
+    /// <para>Note: This test creates/replaces the table identified in the configuration (metadata/table).
+    /// It uses the test collection "TableCreateTestCollection" to ensure it does not run
+    /// as the same time as any other tests that may create/update the same table.</para>
     /// </remarks>
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
+    [Collection("TableCreateTestCollection")]
     public class DriverTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
         /// <summary>
@@ -92,7 +96,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             List<int> expectedResults = TestEnvironment.ServerType != SparkServerType.Databricks
                 ?
                 [
-                    -1, // DROP   TABLE
                     -1, // CREATE TABLE
                     1,  // INSERT
                     1,  // INSERT
@@ -102,7 +105,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 ]
                 :
                 [
-                    -1, // DROP   TABLE
                     -1, // CREATE TABLE
                     1,  // INSERT
                     1,  // INSERT
