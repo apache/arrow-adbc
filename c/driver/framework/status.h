@@ -147,6 +147,7 @@ class Status {
 #undef STATUS_CTOR
 
  private:
+  /// \brief Private Status implementation details
   struct Impl {
     // invariant: code is never OK
     AdbcStatusCode code;
