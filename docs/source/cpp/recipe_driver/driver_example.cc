@@ -91,13 +91,13 @@
 ///   statmenent. They can be strings, opaque binary, doubles, or integers.
 ///   The ``Option`` class abstracts the details of how to get, set, and parse
 ///   these values.
-/// * :cpp:class:`adbc::driver::status::Status`: The ``Status`` is the ADBC driver
+/// * :cpp:class:`adbc::driver::Status`: The ``Status`` is the ADBC driver
 /// framework's error handling
 ///   mechanism: functions with no return value that can fail return a ``Status``.
 ///   You can use ``UNWRAP_STATUS(some_call())`` as shorthand for
 ///   ``Status status = some_call(); if (!status.ok()) return status;`` to
 ///   succinctly propagate errors.
-/// * :cpp:class:`adbc::driver::status::Result`: The ``Result<T>`` is used as a return
+/// * :cpp:class:`adbc::driver::Result`: The ``Result<T>`` is used as a return
 /// value for functions that
 ///   on success return a value of type ``T`` and on failure communicate their
 ///   error using a ``Status``. You can use ``UNWRAP_RESULT(some_type value,

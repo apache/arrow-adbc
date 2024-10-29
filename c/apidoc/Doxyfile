@@ -891,7 +891,7 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = ../../c/include/arrow-adbc/adbc.h ../../README.md ../../c/include/arrow-adbc/adbc_driver_manager.h ../../c/driver/framework/utility.h ../../c/driver/framework/objects.h ../../c/driver/framework/status.h
+INPUT                  = ../../c/include/arrow-adbc/adbc.h ../../README.md ../../c/include/arrow-adbc/adbc_driver_manager.h ../../c/driver/framework/
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
@@ -920,12 +920,7 @@ INPUT_ENCODING         = UTF-8
 # comment), *.py, *.pyw, *.f90, *.f95, *.f03, *.f08, *.f18, *.f, *.for, *.vhd,
 # *.vhdl, *.ucf, *.qsf and *.ice.
 
-FILE_PATTERNS          = *.c \
-                         *.cc \
-                         *.cxx \
-                         *.cpp \
-                         *.c++ \
-                         *.java \
+FILE_PATTERNS          = *.java \
                          *.ii \
                          *.ixx \
                          *.ipp \
