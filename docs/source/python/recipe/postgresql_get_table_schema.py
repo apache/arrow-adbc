@@ -35,7 +35,7 @@ with conn.cursor() as cur:
 
     cur.execute("CREATE SCHEMA IF NOT EXISTS other_schema")
     cur.execute("DROP TABLE IF EXISTS other_schema.example")
-    cur.execute("CREATE TABLE other_schema.example (strings TEXT, values NUMERIC)")
+    cur.execute("CREATE TABLE other_schema.example (strings TEXT, values INT)")
 
 conn.commit()
 
@@ -56,16 +56,14 @@ assert conn.adbc_get_table_schema("example") == pyarrow.schema(
 #:
 #: Note that the NUMERIC column is read as a string, because PostgreSQL
 #: decimals do not map onto Arrow decimals.
-table_schema = conn.adbc_get_table_schema(
+assert conn.adbc_get_table_schema(
     "example",
     db_schema_filter="other_schema",
-)
-expected = pyarrow.schema(
+) == pyarrow.schema(
     [
         ("strings", "string"),
-        ("values", "string"),
+        ("values", "int32"),
     ]
 )
-assert table_schema == expected, f"Unexpected table schema {table_schema}"
 
 conn.close()
