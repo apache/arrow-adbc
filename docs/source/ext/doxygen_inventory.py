@@ -55,16 +55,19 @@ def scrape_links(item_id_to_url, root):
         if kind == "dir":
             # Ignore, this is generated for a directory
             continue
-        elif kind in ("file", "group", "struct"):
+        elif kind in ("class", "file", "group", "struct"):
+            outer_domain = "c"
             if kind == "file":
                 name = compounddef.find("compoundname").text
                 file_id = compounddef.attrib["id"]
                 yield ("std", name, "doc", "", f"{file_id}.html")
-            elif kind == "struct":
+            elif kind in {"class", "struct"}:
                 name = compounddef.find("compoundname").text
                 anchor = compounddef.attrib["id"]
                 url = item_id_to_url[anchor]
-                yield ("c", name, "struct", anchor, url)
+                if kind == "class" or "::" in name:
+                    outer_domain = "cpp"
+                yield (outer_domain, name, kind, anchor, url)
 
             for memberdef in compounddef.findall(".//memberdef"):
                 member_kind = memberdef.attrib.get("kind")
@@ -73,21 +76,27 @@ def scrape_links(item_id_to_url, root):
                     name = memberdef.find("name").text
                     typ = "macro"
                 elif member_kind == "function":
-                    domain = "c"
-                    name = memberdef.find("name").text
+                    domain = outer_domain
+                    qualified = memberdef.find("qualifiedname")
+                    if qualified is not None:
+                        name = qualified.text
+                    else:
+                        name = memberdef.find("name").text
                     typ = "function"
                 elif member_kind == "typedef":
                     domain = "c"
                     name = memberdef.find("name").text
                     typ = "type"
                 elif member_kind == "variable":
-                    domain = "c"
+                    domain = outer_domain
                     name = memberdef.find("qualifiedname").text
                     typ = "member"
                 elif member_kind == "enum":
                     domain = "c"
                     name = memberdef.find("name").text
                     typ = "enum"
+                elif member_kind == "friend":
+                    continue
                 else:
                     raise NotImplementedError(
                         f"<memberdef kind=\"{memberdef.attrib['kind']}\"> not supported"
@@ -124,6 +133,7 @@ def make_fake_domains(
     item_id_to_url = {}
     html_name = re.compile(r'name="([^\"]+)"')
     for index in html_root.rglob("*.html"):
+        item_id_to_url[index.stem] = str(index.relative_to(html_root))
         with index.open() as source:
             matches = html_name.findall(source.read())
             for m in matches:
