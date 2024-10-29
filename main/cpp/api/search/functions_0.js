@@ -58,5 +58,9 @@ var searchData=
   ['adbcstatementsetoptionint_55',['AdbcStatementSetOptionInt',['../group__adbc-statement.html#ga49a6099ebeeae7dc9dd10ede64b66bd0',1,'adbc.h']]],
   ['adbcstatementsetsqlquery_56',['AdbcStatementSetSqlQuery',['../group__adbc-statement-sql.html#ga40254bb2c39711f5d2772cb78f349e4a',1,'adbc.h']]],
   ['adbcstatementsetsubstraitplan_57',['AdbcStatementSetSubstraitPlan',['../group__adbc-statement-substrait.html#gad364441ba9ff3c37fda26a0e4b33721a',1,'adbc.h']]],
-  ['adbcstatuscodemessage_58',['AdbcStatusCodeMessage',['../adbc__driver__manager_8h.html#a466f295eadd40ec5887d2d57bc85c144',1,'adbc_driver_manager.h']]]
+  ['adbcstatuscodemessage_58',['AdbcStatusCodeMessage',['../adbc__driver__manager_8h.html#a466f295eadd40ec5887d2d57bc85c144',1,'adbc_driver_manager.h']]],
+  ['adddetail_59',['AddDetail',['../classadbc_1_1driver_1_1Status.html#a8a0548e67a03ea29392035e34aabb5d3',1,'adbc::driver::Status']]],
+  ['asbool_60',['AsBool',['../classadbc_1_1driver_1_1Option.html#a9f8c5740a365d53a3bd91c977b3d73cc',1,'adbc::driver::Option']]],
+  ['asint_61',['AsInt',['../classadbc_1_1driver_1_1Option.html#a9ef80d14714949d66fdd5814ee30fec3',1,'adbc::driver::Option']]],
+  ['asstring_62',['AsString',['../classadbc_1_1driver_1_1Option.html#a3e6e04522f4bf5ee8cad915007c47120',1,'adbc::driver::Option']]]
 ];

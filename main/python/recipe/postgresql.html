@@ -281,6 +281,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../cpp/driver_example.html">Driver Example</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/api/index.html">C/C++ API Reference</a></li>
 </ul>
 </li>
@@ -838,7 +839,7 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 <span class="linenos">35</span>
 <span class="linenos">36</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE SCHEMA IF NOT EXISTS other_schema&quot;</span><span class="p">)</span>
 <span class="linenos">37</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS other_schema.example&quot;</span><span class="p">)</span>
-<span class="linenos">38</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE other_schema.example (strings TEXT, values NUMERIC)&quot;</span><span class="p">)</span>
+<span class="linenos">38</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE other_schema.example (strings TEXT, values INT)&quot;</span><span class="p">)</span>
 <span class="linenos">39</span>
 <span class="linenos">40</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 </pre></div>
@@ -868,7 +869,7 @@ decimals do not map onto Arrow decimals.</p>
 <span class="linenos">62</span><span class="p">)</span> <span class="o">==</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span>
 <span class="linenos">63</span>    <span class="p">[</span>
 <span class="linenos">64</span>        <span class="p">(</span><span class="s2">&quot;strings&quot;</span><span class="p">,</span> <span class="s2">&quot;string&quot;</span><span class="p">),</span>
-<span class="linenos">65</span>        <span class="p">(</span><span class="s2">&quot;values&quot;</span><span class="p">,</span> <span class="s2">&quot;string&quot;</span><span class="p">),</span>
+<span class="linenos">65</span>        <span class="p">(</span><span class="s2">&quot;values&quot;</span><span class="p">,</span> <span class="s2">&quot;int32&quot;</span><span class="p">),</span>
 <span class="linenos">66</span>    <span class="p">]</span>
 <span class="linenos">67</span><span class="p">)</span>
 <span class="linenos">68</span>

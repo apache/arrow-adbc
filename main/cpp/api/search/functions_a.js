@@ -1,0 +1,6 @@
+var searchData=
+[
+  ['release_0',['Release',['../classadbc_1_1driver_1_1ObjectBase.html#a8bf7d9d3459c2c38b5958336f6c43d40',1,'adbc::driver::ObjectBase::Release()'],['../classadbc_1_1driver_1_1BaseDatabase.html#a67981c300e4f2c824a6859a8493a9576',1,'adbc::driver::BaseDatabase::Release()'],['../classadbc_1_1driver_1_1BaseConnection.html#adf1c6f73597f2158b18c1c5e1f08b2e3',1,'adbc::driver::BaseConnection::Release()'],['../classadbc_1_1driver_1_1BaseStatement.html#a14a6cfbb0505e0632c738c1692628ecb',1,'adbc::driver::BaseStatement::Release()'],['../classadbc_1_1driver_1_1Connection.html#a841fcb90c21825b7c757eb51787abec1',1,'adbc::driver::Connection::Release()'],['../classadbc_1_1driver_1_1Statement.html#a162de593e81c7de560068e087266f676',1,'adbc::driver::Statement::Release()']]],
+  ['releaseimpl_1',['ReleaseImpl',['../classadbc_1_1driver_1_1BaseDatabase.html#aec1fad7baffb1626e695370c7e47378d',1,'adbc::driver::BaseDatabase::ReleaseImpl()'],['../classadbc_1_1driver_1_1Database.html#a1dacc6bfefd9c75911c8f00584dac413',1,'adbc::driver::Database::ReleaseImpl()']]],
+  ['result_2',['Result',['../classadbc_1_1driver_1_1Result.html#ad36e9454aa44773cc883825684824c62',1,'adbc::driver::Result::Result(Status s)'],['../classadbc_1_1driver_1_1Result.html#ab17d6b558135508ca9232b3da2f8fc9f',1,'adbc::driver::Result::Result(U &amp;&amp;t)']]]
+];

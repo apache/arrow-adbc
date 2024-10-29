@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['num_5fpartitions_0',['num_partitions',['../group__adbc-statement-partition.html#aea0dd8e9260d09927b717966e0f38a91',1,'AdbcPartitions']]]
+  ['key_0',['key',['../group__adbc-error-handling.html#a4284ecf3d541a476771e0d03e0148ecb',1,'AdbcErrorDetail']]]
 ];

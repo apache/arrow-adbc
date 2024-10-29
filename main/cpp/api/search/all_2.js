@@ -156,7 +156,12 @@ var searchData=
   ['adbcstatementsetsubstraitplan_153',['AdbcStatementSetSubstraitPlan',['../group__adbc-statement-substrait.html#gad364441ba9ff3c37fda26a0e4b33721a',1,'adbc.h']]],
   ['adbcstatuscode_154',['AdbcStatusCode',['../group__adbc-error-handling.html#ga6af034a7846314de57fe1b14f8ad2754',1,'adbc.h']]],
   ['adbcstatuscodemessage_155',['AdbcStatusCodeMessage',['../adbc__driver__manager_8h.html#a466f295eadd40ec5887d2d57bc85c144',1,'adbc_driver_manager.h']]],
-  ['and_20contributing_156',['Development and Contributing',['../index.html#autotoc_md4',1,'']]],
-  ['api_20revision_201_201_200_157',['.1.0 ADBC API Revision 1.1.0',['../group__adbc-1.html',1,'']]],
-  ['arrow_20database_20connectivity_158',['ADBC: Arrow Database Connectivity',['../index.html#autotoc_md0',1,'']]]
+  ['adddetail_156',['AddDetail',['../classadbc_1_1driver_1_1Status.html#a8a0548e67a03ea29392035e34aabb5d3',1,'adbc::driver::Status']]],
+  ['and_20contributing_157',['Development and Contributing',['../index.html#autotoc_md4',1,'']]],
+  ['api_20revision_201_201_200_158',['.1.0 ADBC API Revision 1.1.0',['../group__adbc-1.html',1,'']]],
+  ['arrow_20database_20connectivity_159',['ADBC: Arrow Database Connectivity',['../index.html#autotoc_md0',1,'']]],
+  ['asbool_160',['AsBool',['../classadbc_1_1driver_1_1Option.html#a9f8c5740a365d53a3bd91c977b3d73cc',1,'adbc::driver::Option']]],
+  ['asint_161',['AsInt',['../classadbc_1_1driver_1_1Option.html#a9ef80d14714949d66fdd5814ee30fec3',1,'adbc::driver::Option']]],
+  ['asstring_162',['AsString',['../classadbc_1_1driver_1_1Option.html#a3e6e04522f4bf5ee8cad915007c47120',1,'adbc::driver::Option']]],
+  ['autocommitstate_163',['AutocommitState',['../classadbc_1_1driver_1_1BaseConnection.html#a6d655ad9673558af780f8859654a856f',1,'adbc::driver::BaseConnection::AutocommitState'],['../classadbc_1_1driver_1_1Connection.html#af7abfa3e61b17e61ad14b70bd57a98cf',1,'adbc::driver::Connection::AutocommitState']]]
 ];

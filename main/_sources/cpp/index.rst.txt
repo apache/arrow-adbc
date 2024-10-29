@@ -25,4 +25,5 @@ C and C++
    quickstart
    driver_manager
    concurrency
+   driver_example
    api/index
