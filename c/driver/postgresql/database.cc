@@ -17,6 +17,7 @@
 
 #include "database.h"
 
+#include <array>
 #include <charconv>
 #include <cinttypes>
 #include <cstring>

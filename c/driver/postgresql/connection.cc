@@ -17,6 +17,7 @@
 
 #include "connection.h"
 
+#include <array>
 #include <cassert>
 #include <cinttypes>
 #include <cmath>
