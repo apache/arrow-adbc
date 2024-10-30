@@ -494,6 +494,7 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
           infos.push_back({info_codes[i], version_string});
 
         } else {
+          // Gives a version in the form 140000 instead of 14.0.0
           const char* stmt = "SHOW server_version_num";
           auto result_helper = PqResultHelper{conn_, std::string(stmt)};
           RAISE_STATUS(error, result_helper.Execute());
