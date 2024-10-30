@@ -216,6 +216,20 @@ static Status InsertPgAttributeResult(
 static Status InsertPgTypeResult(const PqResultHelper& result,
                                  const std::shared_ptr<PostgresTypeResolver>& resolver);
 
+static std::string BuildPgTypeQuery(bool has_typarray) {
+  std::string maybe_typarray_col;
+  std::string maybe_array_recv_filter;
+  if (has_typarray) {
+    maybe_typarray_col = ", typarray";
+    maybe_array_recv_filter = "AND typreceive::TEXT != 'array_recv'";
+  }
+
+  return std::string() + "SELECT oid, typname, typreceive, typbasetype, typrelid" +
+         maybe_typarray_col + " FROM pg_catalog.pg_type " +
+         " WHERE (typreceive != 0 OR typname = 'aclitem') AND typtype != 'r' " +
+         maybe_array_recv_filter;
+}
+
 AdbcStatusCode PostgresDatabase::RebuildTypeResolver(PGconn* conn,
                                                      struct AdbcError* error) {
   // We need a few queries to build the resolver. The current strategy might
@@ -237,43 +251,8 @@ ORDER BY
   // recursive definitions (e.g., record types with array column). This currently won't
   // handle range types because those rows don't have child OID information. Arrays types
   // are inserted after a successful insert of the element type.
-  const std::string kTypeQuery = R"(
-SELECT
-    oid,
-    typname,
-    typreceive,
-    typbasetype,
-    typrelid,
-    typarray
-FROM
-    pg_catalog.pg_type
-WHERE
-    (typreceive != 0 OR typname = 'aclitem') AND typtype != 'r' AND typreceive::TEXT != 'array_recv'
-ORDER BY
-    oid
-)";
-
-  const std::string kTypeQueryNoArrays = R"(
-SELECT
-    oid,
-    typname,
-    typreceive,
-    typbasetype,
-    typrelid
-FROM
-    pg_catalog.pg_type
-WHERE
-    (typreceive != 0 OR typname = 'aclitem') AND typtype != 'r'
-ORDER BY
-    oid
-)";
-
-  std::string type_query;
-  if (redshift_server_version_[0] == 0) {
-    type_query = kTypeQuery;
-  } else {
-    type_query = kTypeQueryNoArrays;
-  }
+  std::string type_query =
+      BuildPgTypeQuery(/*has_typarray*/ redshift_server_version_[0] == 0);
 
   // Create a new type resolver (this instance's type_resolver_ member
   // will be updated at the end if this succeeds).
