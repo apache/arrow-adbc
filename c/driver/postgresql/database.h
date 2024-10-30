@@ -60,12 +60,17 @@ class PostgresDatabase {
     return type_resolver_;
   }
 
-  AdbcStatusCode RebuildTypeResolver(struct AdbcError* error);
+  AdbcStatusCode InitVersions(PGconn* conn, struct AdbcError* error);
+  AdbcStatusCode RebuildTypeResolver(PGconn* conn, struct AdbcError* error);
+  std::array<int, 3> PostgreSQLVersion() { return postgres_server_version_; }
+  std::array<int, 3> RedshiftVersion() { return redshift_server_version_; }
 
  private:
   int32_t open_connections_;
   std::string uri_;
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
+  std::array<int, 3> postgres_server_version_{};
+  std::array<int, 3> redshift_server_version_{};
   bool load_array_types_{true};
 };
 }  // namespace adbcpq

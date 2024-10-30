@@ -17,6 +17,7 @@
 
 #include "database.h"
 
+#include <charconv>
 #include <cinttypes>
 #include <cstring>
 #include <memory>
@@ -28,6 +29,7 @@
 #include <nanoarrow/nanoarrow.h>
 
 #include "driver/common/utils.h"
+#include "result_helper.h"
 
 namespace adbcpq {
 
@@ -54,8 +56,19 @@ AdbcStatusCode PostgresDatabase::GetOptionDouble(const char* option, double* val
 }
 
 AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
-  // Connect to validate the parameters.
-  return RebuildTypeResolver(error);
+  // Connect to initialize the version information and build the type table
+  PGconn* conn = nullptr;
+  RAISE_ADBC(Connect(&conn, error));
+
+  AdbcStatusCode code = InitVersions(conn, error);
+  if (code != ADBC_STATUS_OK) {
+    RAISE_ADBC(Disconnect(&conn, nullptr));
+    return code;
+  }
+
+  code = RebuildTypeResolver(conn, error);
+  RAISE_ADBC(Disconnect(&conn, nullptr));
+  return code;
 }
 
 AdbcStatusCode PostgresDatabase::Release(struct AdbcError* error) {
@@ -125,6 +138,78 @@ AdbcStatusCode PostgresDatabase::Disconnect(PGconn** conn, struct AdbcError* err
   return ADBC_STATUS_OK;
 }
 
+namespace {
+
+// Parse an individual version in the form of "xxx.xxx.xxx".
+// If the version components aren't numeric, they will be zero.
+std::array<int, 3> ParseVersion(std::string_view version) {
+  std::array<int, 3> out{};
+  size_t component = 0;
+  size_t component_begin = 0;
+  size_t component_end = 0;
+
+  // While there are remaining version components and we haven't reached the end of the
+  // string
+  while (component_begin < version.size() && component < out.size()) {
+    // Find the next character that marks a version component separation or the end of the
+    // string
+    while (component_end < version.size() && version[component_end] != '.' &&
+           version[component_end] != '-') {
+      component_end++;
+    }
+
+    // Try to parse the component as an integer (assigning zero if this fails)
+    int value = 0;
+    std::from_chars(version.data() + component_begin, version.data() + component_end,
+                    value);
+    out[component] = value;
+
+    // Move on to the next component
+    component_begin = component_end + 1;
+    component_end = component_begin;
+    component++;
+  }
+
+  return out;
+}
+
+// Parse the PostgreSQL version() string that looks like:
+// PostgreSQL 8.0.2 on i686-pc-linux-gnu, compiled by GCC gcc (GCC) 3.4.2 20041017 (Red
+// Hat 3.4.2-6.fc3), Redshift 1.0.77467
+std::array<int, 3> ParsePrefixedVersion(std::string_view version_info,
+                                        std::string_view prefix) {
+  size_t pos = version_info.find(prefix);
+  if (pos == version_info.npos) {
+    return {0, 0, 0};
+  }
+
+  // Skip the prefix and any leading whitespace
+  pos += prefix.size();
+  while (pos < version_info.size() && version_info[pos] == ' ') {
+    ++pos;
+  }
+
+  return ParseVersion(version_info.substr(pos));
+}
+
+}  // namespace
+
+AdbcStatusCode PostgresDatabase::InitVersions(PGconn* conn, struct AdbcError* error) {
+  PqResultHelper helper(conn, "SELECT version();");
+  RAISE_STATUS(error, helper.Execute());
+  if (helper.NumRows() != 1 || helper.NumColumns() != 1) {
+    SetError(error, "Expected 1 row and 1 column for SELECT version(); but got %d/%d",
+             helper.NumRows(), helper.NumColumns());
+    return ADBC_STATUS_INTERNAL;
+  }
+
+  std::string_view version_info = helper.Row(0)[0].value();
+  postgres_server_version_ = ParsePrefixedVersion(version_info, "PostgreSQL");
+  redshift_server_version_ = ParsePrefixedVersion(version_info, "Redshift");
+
+  return ADBC_STATUS_OK;
+}
+
 // Helpers for building the type resolver from queries
 static inline int32_t InsertPgAttributeResult(
     PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
@@ -132,8 +217,8 @@ static inline int32_t InsertPgAttributeResult(
 static inline int32_t InsertPgTypeResult(
     PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
 
-AdbcStatusCode PostgresDatabase::RebuildTypeResolver(struct AdbcError* error) {
-  PGconn* conn = nullptr;
+AdbcStatusCode PostgresDatabase::RebuildTypeResolver(PGconn* conn,
+                                                     struct AdbcError* error) {
   AdbcStatusCode final_status = Connect(&conn, error);
   if (final_status != ADBC_STATUS_OK) {
     return final_status;

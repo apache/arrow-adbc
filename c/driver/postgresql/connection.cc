@@ -478,19 +478,34 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
   for (size_t i = 0; i < info_codes_length; i++) {
     switch (info_codes[i]) {
       case ADBC_INFO_VENDOR_NAME:
-        infos.push_back({info_codes[i], "PostgreSQL"});
+        if (RedshiftVersion()[0] > 0) {
+          infos.push_back({info_codes[i], "Redshift"});
+        } else {
+          infos.push_back({info_codes[i], "PostgreSQL"});
+        }
+
         break;
       case ADBC_INFO_VENDOR_VERSION: {
-        const char* stmt = "SHOW server_version_num";
-        auto result_helper = PqResultHelper{conn_, std::string(stmt)};
-        RAISE_STATUS(error, result_helper.Execute());
-        auto it = result_helper.begin();
-        if (it == result_helper.end()) {
-          SetError(error, "[libpq] PostgreSQL returned no rows for '%s'", stmt);
-          return ADBC_STATUS_INTERNAL;
+        if (RedshiftVersion()[0] > 0) {
+          std::array<int, 3> version = RedshiftVersion();
+          std::string version_string = std::to_string(version[0]) + "." +
+                                       std::to_string(version[1]) + "." +
+                                       std::to_string(version[2]);
+          infos.push_back({info_codes[i], version_string});
+
+        } else {
+          const char* stmt = "SHOW server_version_num";
+          auto result_helper = PqResultHelper{conn_, std::string(stmt)};
+          RAISE_STATUS(error, result_helper.Execute());
+          auto it = result_helper.begin();
+          if (it == result_helper.end()) {
+            SetError(error, "[libpq] PostgreSQL returned no rows for '%s'", stmt);
+            return ADBC_STATUS_INTERNAL;
+          }
+          const char* server_version_num = (*it)[0].data;
+          infos.push_back({info_codes[i], server_version_num});
         }
-        const char* server_version_num = (*it)[0].data;
-        infos.push_back({info_codes[i], server_version_num});
+
         break;
       }
       case ADBC_INFO_DRIVER_NAME:
@@ -1134,6 +1149,14 @@ AdbcStatusCode PostgresConnection::SetOptionInt(const char* key, int64_t value,
                                                 struct AdbcError* error) {
   SetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+std::array<int, 3> PostgresConnection::PostgreSQLVersion() {
+  return database_->PostgreSQLVersion();
+}
+
+std::array<int, 3> PostgresConnection::RedshiftVersion() {
+  return database_->RedshiftVersion();
 }
 
 }  // namespace adbcpq

@@ -73,6 +73,8 @@ class PostgresConnection {
     return type_resolver_;
   }
   bool autocommit() const { return autocommit_; }
+  std::array<int, 3> PostgreSQLVersion();
+  std::array<int, 3> RedshiftVersion();
 
  private:
   std::shared_ptr<PostgresDatabase> database_;
