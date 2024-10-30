@@ -279,7 +279,7 @@ static Status InsertPgAttributeResult(
     const PqResultHelper& result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
   int num_rows = result.NumRows();
   std::vector<std::pair<std::string, uint32_t>> columns;
-  uint32_t current_type_oid = 0;
+  int64_t current_type_oid = 0;
 
   if (result.NumColumns() != 3) {
     return Status::Internal(
@@ -303,7 +303,7 @@ static Status InsertPgAttributeResult(
   }
 
   if (!columns.empty()) {
-    resolver->InsertClass(current_type_oid, columns);
+    resolver->InsertClass(static_cast<uint32_t>(current_type_oid), columns);
   }
 
   return Status::Ok();
@@ -341,11 +341,11 @@ static Status InsertPgTypeResult(const PqResultHelper& result,
       typreceive = "aclitem_recv";
     }
 
-    type_item.oid = oid;
+    type_item.oid = static_cast<uint32_t>(oid);
     type_item.typname = typname;
     type_item.typreceive = typreceive;
-    type_item.class_oid = typrelid;
-    type_item.base_oid = typbasetype;
+    type_item.class_oid = static_cast<uint32_t>(typrelid);
+    type_item.base_oid = static_cast<uint32_t>(typbasetype);
 
     int result = resolver->Insert(type_item, nullptr);
 
@@ -355,7 +355,7 @@ static Status InsertPgTypeResult(const PqResultHelper& result,
       type_item.oid = typarray;
       type_item.typname = array_typname.c_str();
       type_item.typreceive = "array_recv";
-      type_item.child_oid = oid;
+      type_item.child_oid = static_cast<uint32_t>(oid);
 
       resolver->Insert(type_item, nullptr);
     }
