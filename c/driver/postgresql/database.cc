@@ -210,25 +210,13 @@ AdbcStatusCode PostgresDatabase::InitVersions(PGconn* conn, struct AdbcError* er
 }
 
 // Helpers for building the type resolver from queries
+static std::string BuildPgTypeQuery(bool has_typarray);
+
 static Status InsertPgAttributeResult(
     const PqResultHelper& result, const std::shared_ptr<PostgresTypeResolver>& resolver);
 
 static Status InsertPgTypeResult(const PqResultHelper& result,
                                  const std::shared_ptr<PostgresTypeResolver>& resolver);
-
-static std::string BuildPgTypeQuery(bool has_typarray) {
-  std::string maybe_typarray_col;
-  std::string maybe_array_recv_filter;
-  if (has_typarray) {
-    maybe_typarray_col = ", typarray";
-    maybe_array_recv_filter = "AND typreceive::TEXT != 'array_recv'";
-  }
-
-  return std::string() + "SELECT oid, typname, typreceive, typbasetype, typrelid" +
-         maybe_typarray_col + " FROM pg_catalog.pg_type " +
-         " WHERE (typreceive != 0 OR typname = 'aclitem') AND typtype != 'r' " +
-         maybe_array_recv_filter;
-}
 
 AdbcStatusCode PostgresDatabase::RebuildTypeResolver(PGconn* conn,
                                                      struct AdbcError* error) {
@@ -273,6 +261,20 @@ ORDER BY
 
   type_resolver_ = std::move(resolver);
   return ADBC_STATUS_OK;
+}
+
+static std::string BuildPgTypeQuery(bool has_typarray) {
+  std::string maybe_typarray_col;
+  std::string maybe_array_recv_filter;
+  if (has_typarray) {
+    maybe_typarray_col = ", typarray";
+    maybe_array_recv_filter = "AND typreceive::TEXT != 'array_recv'";
+  }
+
+  return std::string() + "SELECT oid, typname, typreceive, typbasetype, typrelid" +
+         maybe_typarray_col + " FROM pg_catalog.pg_type " +
+         " WHERE (typreceive != 0 OR typname = 'aclitem') AND typtype != 'r' " +
+         maybe_array_recv_filter;
 }
 
 static Status InsertPgAttributeResult(
