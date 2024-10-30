@@ -23,7 +23,7 @@
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>18</version>
+    <version>33</version>
   </parent>
 
   <groupId>org.apache.arrow.adbc</groupId>
@@ -96,9 +96,13 @@
   </distributionManagement>
 
   <properties>
-    <dep.arrow.version>15.0.0</dep.arrow.version>
+    <dep.arrow.version>18.0.0</dep.arrow.version>
     <dep.org.checkerframework.version>3.48.2</dep.org.checkerframework.version>
-    <adbc.version>0.15.0-SNAPSHOT</adbc.version>
+    <!-- org.apache:apache overrides -->
+    <minimalJavaBuildVersion>11</minimalJavaBuildVersion>
+    <maven.compiler.target>11</maven.compiler.target>
+    <surefire.version>3.5.1</surefire.version>
+    <version.maven-javadoc-plugin>3.11.1</version.maven-javadoc-plugin>
   </properties>
 
   <dependencyManagement>
@@ -116,32 +120,32 @@
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-core</artifactId>
-        <version>${adbc.version}</version>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-driver-flight-sql</artifactId>
-        <version>${adbc.version}</version>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-driver-jdbc</artifactId>
-        <version>${adbc.version}</version>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-driver-validation</artifactId>
-        <version>${adbc.version}</version>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-driver-manager</artifactId>
-        <version>${adbc.version}</version>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-sql</artifactId>
-        <version>${adbc.version}</version>
+        <version>${project.version}</version>
       </dependency>
 
       <!-- Linting and static analysis -->
@@ -171,11 +175,6 @@
     <pluginManagement>
       <plugins>
         <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.5.2</version>
-        </plugin>
-        <plugin>
           <groupId>com.diffplug.spotless</groupId>
           <artifactId>spotless-maven-plugin</artifactId>
           <version>2.43.0</version>
@@ -186,11 +185,9 @@
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.13.0</version>
+        <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
+          <argLine>--add-opens=java.base/java.nio=ALL-UNNAMED</argLine>
         </configuration>
       </plugin>
 
@@ -236,11 +233,9 @@
   <reporting>
     <plugins>
       <plugin>
-        <!-- Will only work with JDK 17 (JDK 21 is broken and JDK 8 emits the
-             wrong stylesheet) -->
+        <!-- Will only work with JDK 17 (JDK 21 is broken) -->
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.11.1</version>
         <configuration>
           <!-- Ignore missing @return, @throws -->
           <doclint>all,-missing</doclint>
@@ -248,9 +243,7 @@
             <link>https://arrow.apache.org/docs/java/reference/</link>
           </links>
           <!-- Stop it from trying to document the tests -->
-          <release>8</release>
           <show>public</show>
-          <source>1.8</source>
         </configuration>
         <reportSets>
           <reportSet>
@@ -273,50 +266,13 @@
 
   <profiles>
     <profile>
-      <id>jdk8</id>
-      <activation>
-        <jdk>8</jdk>
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-surefire-plugin</artifactId>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-    <profile>
-      <id>jdk9+</id>
-      <activation>
-        <jdk>[9,]</jdk>
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <configuration>
-              <argLine>--add-opens=java.base/java.nio=ALL-UNNAMED</argLine>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-    <profile>
       <id>errorprone</id>
       <build>
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-compiler-plugin</artifactId>
-            <version>3.13.0</version>
             <configuration>
-              <source>1.8</source>
-              <target>1.8</target>
-              <encoding>UTF-8</encoding>
               <compilerArgs combine.children="append">
                 <arg>-XDcompilePolicy=simple</arg>
                 <arg>-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.uber</arg>

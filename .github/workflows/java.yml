@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['8', '11', '17', '21', '22']
+        java: ['11', '17', '21', '22']
     steps:
       - uses: actions/checkout@v4
         with:
