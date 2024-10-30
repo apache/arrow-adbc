@@ -111,7 +111,11 @@ enum class PostgresTypeId {
   kXid8,
   kXid,
   kXml,
-  kUserDefined
+  kUserDefined,
+  // This is not an actual type, but there are cases where all we have is an Oid
+  // that was not inserted into the type resolver. We can't use "unknown" or "opaque"
+  // or "void" because those names show up in actual pg_type tables.
+  kUnnamed
 };
 
 // Returns the receive function name as defined in the typrecieve column
@@ -138,6 +142,11 @@ class PostgresType {
   explicit PostgresType(PostgresTypeId type_id) : oid_(0), type_id_(type_id) {}
 
   PostgresType() : PostgresType(PostgresTypeId::kUninitialized) {}
+
+  static PostgresType Unnamed(uint32_t oid) {
+    return PostgresType(PostgresTypeId::kUnnamed)
+        .WithPgTypeInfo(oid, "unnamed<oid:" + std::to_string(oid) + ">");
+  }
 
   void AppendChild(const std::string& field_name, const PostgresType& type) {
     PostgresType child(type);
@@ -398,7 +407,18 @@ class PostgresTypeResolver {
       return EINVAL;
     }
 
-    *type_out = (*result).second;
+    *type_out = result->second;
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode FindWithDefault(uint32_t oid, PostgresType* type_out) {
+    auto result = mapping_.find(oid);
+    if (result == mapping_.end()) {
+      *type_out = PostgresType::Unnamed(oid);
+    } else {
+      *type_out = result->second;
+    }
+
     return NANOARROW_OK;
   }
 

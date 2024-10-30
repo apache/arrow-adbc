@@ -1001,7 +1001,6 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(uschema.get(), result_helper.NumRows()),
            error);
 
-  ArrowError na_error;
   int row_counter = 0;
   for (auto row : result_helper) {
     const char* colname = row[0].data;
@@ -1009,9 +1008,9 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
         static_cast<uint32_t>(std::strtol(row[1].data, /*str_end=*/nullptr, /*base=*/10));
 
     PostgresType pg_type;
-    if (type_resolver_->Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      SetError(error, "%s%d%s%s%s%" PRIu32, "Column #", row_counter + 1, " (\"", colname,
-               "\") has unknown type code ", pg_oid);
+    if (type_resolver_->FindWithDefault(pg_oid, &pg_type) != NANOARROW_OK) {
+      SetError(error, "%s%d%s%s%s%" PRIu32, "Error resolving type code for column #",
+               row_counter + 1, " (\"", colname, "\")  with oid ", pg_oid);
       final_status = ADBC_STATUS_NOT_IMPLEMENTED;
       break;
     }

@@ -337,6 +337,11 @@ TEST(PostgresTypeTest, PostgresTypeResolver) {
   EXPECT_EQ(resolver.Find(123, &type, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error), "Postgres type with oid 123 not found");
 
+  EXPECT_EQ(resolver.FindWithDefault(123, &type), NANOARROW_OK);
+  EXPECT_EQ(type.oid(), 123);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::kUnnamed);
+  EXPECT_EQ(type.typname(), "unnamed<oid:123>");
+
   // Check error for Array with unknown child
   item.oid = 123;
   item.typname = "some_array";
