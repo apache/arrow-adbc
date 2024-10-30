@@ -152,9 +152,9 @@ std::array<int, 3> ParseVersion(std::string_view version) {
   while (component_begin < version.size() && component < out.size()) {
     // Find the next character that marks a version component separation or the end of the
     // string
-    while (component_end < version.size() && version[component_end] != '.' &&
-           version[component_end] != '-') {
-      component_end++;
+    component_end = version.find_first_of(".-", component_begin);
+    if (component_end == version.npos) {
+      component_end = version.size();
     }
 
     // Try to parse the component as an integer (assigning zero if this fails)
@@ -183,9 +183,9 @@ std::array<int, 3> ParsePrefixedVersion(std::string_view version_info,
   }
 
   // Skip the prefix and any leading whitespace
-  pos += prefix.size();
-  while (pos < version_info.size() && version_info[pos] == ' ') {
-    ++pos;
+  pos = version_info.find_first_not_of(' ', pos + prefix.size());
+  if (pos == version_info.npos) {
+    return {0, 0, 0};
   }
 
   return ParseVersion(version_info.substr(pos));
