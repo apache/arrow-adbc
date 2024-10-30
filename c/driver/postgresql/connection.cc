@@ -480,7 +480,7 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
     switch (info_codes[i]) {
       case ADBC_INFO_VENDOR_NAME:
         if (RedshiftVersion()[0] > 0) {
-          infos.push_back({info_codes[i], "Redshift"});
+          infos.emplace_back(info_codes[i], "Redshift");
         } else {
           infos.push_back({info_codes[i], "PostgreSQL"});
         }
