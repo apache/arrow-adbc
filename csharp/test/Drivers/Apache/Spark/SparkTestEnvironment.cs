@@ -139,6 +139,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public override SampleDataBuilder GetSampleDataBuilder()
         {
             SampleDataBuilder sampleDataBuilder = new();
+            Type floatNetType = ServerType == SparkServerType.Databricks ? typeof(float) : typeof(double);
+            Type floatArrowType = ServerType == SparkServerType.Databricks ? typeof(FloatType) : typeof(DoubleType);
+            object floatValue;
+            if (ServerType == SparkServerType.Databricks)
+                floatValue = 1f;
+            else
+                floatValue = 1d;
 
             // standard values
             sampleDataBuilder.Samples.Add(
@@ -147,7 +154,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                     Query = "SELECT " +
                             "CAST(1 as BIGINT) as id, " +
                             "CAST(2 as INTEGER) as int, " +
-                            "CAST(1.23 as FLOAT) as number_float, " +
+                            "CAST(1 as FLOAT) as number_float, " +
                             "CAST(4.56 as DOUBLE) as number_double, " +
                             "4.56BD as decimal, " +
                             "9.9999999999999999999999999999999999999BD as big_decimal, " +
@@ -164,7 +171,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                     [
                         new("id", typeof(long), typeof(Int64Type), 1L),
                         new("int", typeof(int), typeof(Int32Type), 2),
-                        new("number_float", typeof(double), typeof(DoubleType), 1.23d),
+                        new("number_float", floatNetType, floatArrowType, floatValue),
                         new("number_double", typeof(double), typeof(DoubleType), 4.56d),
                         new("decimal", typeof(SqlDecimal), typeof(Decimal128Type), SqlDecimal.Parse("4.56")),
                         new("big_decimal", typeof(SqlDecimal), typeof(Decimal128Type), SqlDecimal.Parse("9.9999999999999999999999999999999999999")),
@@ -200,13 +207,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                             "MAP(CAST('EMPTY' as STRING), CAST(NULL as INTEGER)) as map_null, " +
                             "ARRAY(NULL,NULL,NULL) as numbers_null, " +
                             "STRUCT(CAST(NULL as STRING), CAST(NULL as INTEGER)) as person_null",
-                            //"CAST(NULL as STRUCT<field: STRING>) as struct, " +
-                            //"STRUCT(CAST(NULL as STRING) as name, CAST(NULL as BIGINT) as age) as person",
                     ExpectedValues =
                     [
                         new("id", typeof(long), typeof(Int64Type), null),
                         new("int", typeof(int), typeof(Int32Type), null),
-                        new("number_float", typeof(double), typeof(DoubleType), null),
+                        new("number_float", floatNetType, floatArrowType, null),
                         new("number_double", typeof(double), typeof(DoubleType), null),
                         new("decimal", typeof(SqlDecimal), typeof(Decimal128Type), null),
                         new("is_active", typeof(bool), typeof(BooleanType), null),
