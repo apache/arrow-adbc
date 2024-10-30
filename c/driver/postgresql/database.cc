@@ -213,13 +213,11 @@ AdbcStatusCode PostgresDatabase::InitVersions(PGconn* conn, struct AdbcError* er
 static Status InsertPgAttributeResult(
     const PqResultHelper& result, const std::shared_ptr<PostgresTypeResolver>& resolver);
 
-static inline int32_t InsertPgTypeResult(
-    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
+static Status InsertPgTypeResult(const PqResultHelper& result,
+                                 const std::shared_ptr<PostgresTypeResolver>& resolver);
 
 AdbcStatusCode PostgresDatabase::RebuildTypeResolver(PGconn* conn,
                                                      struct AdbcError* error) {
-  AdbcStatusCode final_status = ADBC_STATUS_OK;
-
   // We need a few queries to build the resolver. The current strategy might
   // fail for some recursive definitions (e.g., arrays of records of arrays).
   // First, one on the pg_attribute table to resolve column names/oids for
@@ -281,46 +279,21 @@ ORDER BY
   // will be updated at the end if this succeeds).
   auto resolver = std::make_shared<PostgresTypeResolver>();
 
-  PqResultHelper helper(conn, kColumnsQuery.c_str());
-  RAISE_STATUS(error, helper.Execute());
-  RAISE_STATUS(error, InsertPgAttributeResult(helper, resolver));
-
   // Insert record type definitions (this includes table schemas)
-  PGresult* result = PQexec(conn, kColumnsQuery.c_str());
-  ExecStatusType pq_status = PQresultStatus(result);
-  if (pq_status == PGRES_TUPLES_OK) {
-  } else {
-    SetError(error, "%s%s",
-             "[libpq] Failed to build type mapping table: ", PQerrorMessage(conn));
-    final_status = ADBC_STATUS_IO;
-  }
-
-  PQclear(result);
+  PqResultHelper columns(conn, kColumnsQuery.c_str());
+  RAISE_STATUS(error, columns.Execute());
+  RAISE_STATUS(error, InsertPgAttributeResult(columns, resolver));
 
   // Attempt filling the resolver a few times to handle recursive definitions.
   int32_t max_attempts = 3;
+  PqResultHelper types(conn, type_query);
   for (int32_t i = 0; i < max_attempts; i++) {
-    result = PQexec(conn, type_query.c_str());
-    ExecStatusType pq_status = PQresultStatus(result);
-    if (pq_status == PGRES_TUPLES_OK) {
-      InsertPgTypeResult(result, resolver);
-    } else {
-      SetError(error, "%s%s",
-               "[libpq] Failed to build type mapping table: ", PQerrorMessage(conn));
-      final_status = ADBC_STATUS_IO;
-    }
-
-    PQclear(result);
-    if (final_status != ADBC_STATUS_OK) {
-      break;
-    }
+    RAISE_STATUS(error, types.Execute());
+    RAISE_STATUS(error, InsertPgTypeResult(types, resolver));
   }
 
-  if (final_status == ADBC_STATUS_OK) {
-    type_resolver_ = std::move(resolver);
-  }
-
-  return final_status;
+  type_resolver_ = std::move(resolver);
+  return ADBC_STATUS_OK;
 }
 
 static Status InsertPgAttributeResult(
@@ -328,6 +301,12 @@ static Status InsertPgAttributeResult(
   int num_rows = result.NumRows();
   std::vector<std::pair<std::string, uint32_t>> columns;
   uint32_t current_type_oid = 0;
+
+  if (result.NumColumns() != 3) {
+    return Status::Internal(
+        "Expected 3 columns from type resolver pg_attribute query but got ",
+        result.NumColumns());
+  }
 
   for (int row = 0; row < num_rows; row++) {
     PqResultRow item = result.Row(row);
@@ -351,27 +330,29 @@ static Status InsertPgAttributeResult(
   return Status::Ok();
 }
 
-static inline int32_t InsertPgTypeResult(
-    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
-  int num_rows = PQntuples(result);
-  int num_cols = PQnfields(result);
-  PostgresTypeResolver::Item item;
-  int32_t n_added = 0;
+static Status InsertPgTypeResult(const PqResultHelper& result,
+                                 const std::shared_ptr<PostgresTypeResolver>& resolver) {
+  if (result.NumColumns() != 5 && result.NumColumns() != 6) {
+    return Status::Internal(
+        "Expected 5 or 6 columns from type resolver pg_type query but got ",
+        result.NumColumns());
+  }
+
+  int num_rows = result.NumRows();
+  int num_cols = result.NumColumns();
+  PostgresTypeResolver::Item type_item;
 
   for (int row = 0; row < num_rows; row++) {
-    const uint32_t oid = static_cast<uint32_t>(
-        std::strtol(PQgetvalue(result, row, 0), /*str_end=*/nullptr, /*base=*/10));
-    const char* typname = PQgetvalue(result, row, 1);
-    const char* typreceive = PQgetvalue(result, row, 2);
-    const uint32_t typbasetype = static_cast<uint32_t>(
-        std::strtol(PQgetvalue(result, row, 3), /*str_end=*/nullptr, /*base=*/10));
-    const uint32_t typrelid = static_cast<uint32_t>(
-        std::strtol(PQgetvalue(result, row, 4), /*str_end=*/nullptr, /*base=*/10));
+    PqResultRow item = result.Row(row);
+    UNWRAP_RESULT(int64_t oid, item[0].ParseInteger());
+    const char* typname = item[1].data;
+    const char* typreceive = item[2].data;
+    UNWRAP_RESULT(int64_t typbasetype, item[3].ParseInteger());
+    UNWRAP_RESULT(int64_t typrelid, item[4].ParseInteger());
 
-    uint32_t typarray;
+    int64_t typarray;
     if (num_cols == 6) {
-      typarray = static_cast<uint32_t>(
-          std::strtol(PQgetvalue(result, row, 5), /*str_end=*/nullptr, /*base=*/10));
+      UNWRAP_RESULT(typarray, item[5].ParseInteger());
     } else {
       typarray = 0;
     }
@@ -381,27 +362,27 @@ static inline int32_t InsertPgTypeResult(
       typreceive = "aclitem_recv";
     }
 
-    item.oid = oid;
-    item.typname = typname;
-    item.typreceive = typreceive;
-    item.class_oid = typrelid;
-    item.base_oid = typbasetype;
+    type_item.oid = oid;
+    type_item.typname = typname;
+    type_item.typreceive = typreceive;
+    type_item.class_oid = typrelid;
+    type_item.base_oid = typbasetype;
 
-    int result = resolver->Insert(item, nullptr);
+    int result = resolver->Insert(type_item, nullptr);
 
     // If there's an array type and the insert succeeded, add that now too
     if (result == NANOARROW_OK && typarray != 0) {
       std::string array_typname = "_" + std::string(typname);
-      item.oid = typarray;
-      item.typname = array_typname.c_str();
-      item.typreceive = "array_recv";
-      item.child_oid = oid;
+      type_item.oid = typarray;
+      type_item.typname = array_typname.c_str();
+      type_item.typreceive = "array_recv";
+      type_item.child_oid = oid;
 
-      resolver->Insert(item, nullptr);
+      resolver->Insert(type_item, nullptr);
     }
   }
 
-  return n_added;
+  return Status::Ok();
 }
 
 }  // namespace adbcpq
