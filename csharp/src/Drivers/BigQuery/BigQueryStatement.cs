@@ -104,7 +104,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string table = $"projects/{results.TableReference.ProjectId}/datasets/{results.TableReference.DatasetId}/tables/{results.TableReference.TableId}";
 
             int maxStreamCount = 1;
-            if (this.Options?.TryGetValue(BigQueryParameters.CreateReadSessionMaxStreamCount, out string? maxStreamCountString) == true)
+            if (this.Options?.TryGetValue(BigQueryParameters.MaxFetchConcurrency, out string? maxStreamCountString) == true)
             {
                 if (int.TryParse(maxStreamCountString, out int count))
                 {

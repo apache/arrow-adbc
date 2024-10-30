@@ -1003,7 +1003,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryParameters.LargeDecimalsAsString,
                 BigQueryParameters.LargeResultsDestinationTable,
                 BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes,
-                BigQueryParameters.CreateReadSessionMaxStreamCount
+                BigQueryParameters.MaxFetchConcurrency
             };
 
             foreach (string key in statementOptions)

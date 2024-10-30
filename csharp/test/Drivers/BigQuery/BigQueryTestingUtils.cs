@@ -93,7 +93,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             if (testConfiguration.MaxStreamCount.HasValue)
             {
-                parameters.Add(BigQueryParameters.CreateReadSessionMaxStreamCount, testConfiguration.MaxStreamCount.Value.ToString());
+                parameters.Add(BigQueryParameters.MaxFetchConcurrency, testConfiguration.MaxStreamCount.Value.ToString());
             }
 
             return parameters;
