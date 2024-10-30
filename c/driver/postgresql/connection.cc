@@ -492,7 +492,7 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
           std::string version_string = std::to_string(version[0]) + "." +
                                        std::to_string(version[1]) + "." +
                                        std::to_string(version[2]);
-          infos.push_back({info_codes[i], version_string});
+          infos.emplace_back(info_codes[i], std::move(version_string));
 
         } else {
           // Gives a version in the form 140000 instead of 14.0.0
