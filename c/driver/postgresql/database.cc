@@ -299,7 +299,7 @@ static Status InsertPgAttributeResult(
       current_type_oid = type_oid;
     }
 
-    columns.push_back({std::string(col_name), col_oid});
+    columns.push_back({std::string(col_name), static_cast<uint32_t>(col_oid)});
   }
 
   if (!columns.empty()) {
