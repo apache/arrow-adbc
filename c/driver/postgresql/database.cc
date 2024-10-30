@@ -61,15 +61,15 @@ AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
   PGconn* conn = nullptr;
   RAISE_ADBC(Connect(&conn, error));
 
-  AdbcStatusCode code = InitVersions(conn, error);
-  if (code != ADBC_STATUS_OK) {
+  Status status = InitVersions(conn);
+  if (!status.ok()) {
     RAISE_ADBC(Disconnect(&conn, nullptr));
-    return code;
+    return status.ToAdbc(error);
   }
 
-  code = RebuildTypeResolver(conn, error);
+  status = RebuildTypeResolver(conn);
   RAISE_ADBC(Disconnect(&conn, nullptr));
-  return code;
+  return status.ToAdbc(error);
 }
 
 AdbcStatusCode PostgresDatabase::Release(struct AdbcError* error) {
@@ -193,20 +193,19 @@ std::array<int, 3> ParsePrefixedVersion(std::string_view version_info,
 
 }  // namespace
 
-AdbcStatusCode PostgresDatabase::InitVersions(PGconn* conn, struct AdbcError* error) {
+Status PostgresDatabase::InitVersions(PGconn* conn) {
   PqResultHelper helper(conn, "SELECT version();");
-  RAISE_STATUS(error, helper.Execute());
+  UNWRAP_STATUS(helper.Execute());
   if (helper.NumRows() != 1 || helper.NumColumns() != 1) {
-    SetError(error, "Expected 1 row and 1 column for SELECT version(); but got %d/%d",
-             helper.NumRows(), helper.NumColumns());
-    return ADBC_STATUS_INTERNAL;
+    return Status::Internal("Expected 1 row and 1 column for SELECT version(); but got ",
+                            helper.NumRows(), "/", helper.NumColumns());
   }
 
   std::string_view version_info = helper.Row(0)[0].value();
   postgres_server_version_ = ParsePrefixedVersion(version_info, "PostgreSQL");
   redshift_server_version_ = ParsePrefixedVersion(version_info, "Redshift");
 
-  return ADBC_STATUS_OK;
+  return Status::Ok();
 }
 
 // Helpers for building the type resolver from queries
@@ -218,8 +217,7 @@ static Status InsertPgAttributeResult(
 static Status InsertPgTypeResult(const PqResultHelper& result,
                                  const std::shared_ptr<PostgresTypeResolver>& resolver);
 
-AdbcStatusCode PostgresDatabase::RebuildTypeResolver(PGconn* conn,
-                                                     struct AdbcError* error) {
+Status PostgresDatabase::RebuildTypeResolver(PGconn* conn) {
   // We need a few queries to build the resolver. The current strategy might
   // fail for some recursive definitions (e.g., arrays of records of arrays).
   // First, one on the pg_attribute table to resolve column names/oids for
@@ -248,19 +246,19 @@ ORDER BY
 
   // Insert record type definitions (this includes table schemas)
   PqResultHelper columns(conn, kColumnsQuery.c_str());
-  RAISE_STATUS(error, columns.Execute());
-  RAISE_STATUS(error, InsertPgAttributeResult(columns, resolver));
+  UNWRAP_STATUS(columns.Execute());
+  UNWRAP_STATUS(InsertPgAttributeResult(columns, resolver));
 
   // Attempt filling the resolver a few times to handle recursive definitions.
   int32_t max_attempts = 3;
   PqResultHelper types(conn, type_query);
   for (int32_t i = 0; i < max_attempts; i++) {
-    RAISE_STATUS(error, types.Execute());
-    RAISE_STATUS(error, InsertPgTypeResult(types, resolver));
+    UNWRAP_STATUS(types.Execute());
+    UNWRAP_STATUS(InsertPgTypeResult(types, resolver));
   }
 
   type_resolver_ = std::move(resolver);
-  return ADBC_STATUS_OK;
+  return Status::Ok();
 }
 
 static std::string BuildPgTypeQuery(bool has_typarray) {

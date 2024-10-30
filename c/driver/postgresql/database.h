@@ -25,9 +25,12 @@
 #include <arrow-adbc/adbc.h>
 #include <libpq-fe.h>
 
+#include "driver/framework/status.h"
 #include "postgres_type.h"
 
 namespace adbcpq {
+using adbc::driver::Status;
+
 class PostgresDatabase {
  public:
   PostgresDatabase();
@@ -59,8 +62,8 @@ class PostgresDatabase {
     return type_resolver_;
   }
 
-  AdbcStatusCode InitVersions(PGconn* conn, struct AdbcError* error);
-  AdbcStatusCode RebuildTypeResolver(PGconn* conn, struct AdbcError* error);
+  Status InitVersions(PGconn* conn);
+  Status RebuildTypeResolver(PGconn* conn);
   std::array<int, 3> PostgreSQLVersion() { return postgres_server_version_; }
   std::array<int, 3> RedshiftVersion() { return redshift_server_version_; }
 
