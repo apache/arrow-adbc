@@ -3,11 +3,12 @@
     "clientId": "",
     "clientSecret": "",
     "refreshToken": "",
+    "maxStreamCount": 1,
     "metadata": {
         "catalog": "",
         "schema": "",
         "table": "",
-        "expectedColumnCount":  0
+        "expectedColumnCount": 0
     },
     "query": "",
     "expectedResults": 0
