@@ -167,7 +167,7 @@ class PqResultHelper {
     return PQfname(result_, column_number);
   }
   Oid FieldType(int column_number) const { return PQftype(result_, column_number); }
-  PqResultRow Row(int i) { return PqResultRow(result_, i); }
+  PqResultRow Row(int i) const { return PqResultRow(result_, i); }
 
   class iterator {
     const PqResultHelper& outer_;

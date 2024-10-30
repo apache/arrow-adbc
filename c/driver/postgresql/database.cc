@@ -210,8 +210,8 @@ AdbcStatusCode PostgresDatabase::InitVersions(PGconn* conn, struct AdbcError* er
 }
 
 // Helpers for building the type resolver from queries
-static inline int32_t InsertPgAttributeResult(
-    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
+static Status InsertPgAttributeResult(
+    const PqResultHelper& result, const std::shared_ptr<PostgresTypeResolver>& resolver);
 
 static inline int32_t InsertPgTypeResult(
     PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
@@ -281,11 +281,14 @@ ORDER BY
   // will be updated at the end if this succeeds).
   auto resolver = std::make_shared<PostgresTypeResolver>();
 
+  PqResultHelper helper(conn, kColumnsQuery.c_str());
+  RAISE_STATUS(error, helper.Execute());
+  RAISE_STATUS(error, InsertPgAttributeResult(helper, resolver));
+
   // Insert record type definitions (this includes table schemas)
   PGresult* result = PQexec(conn, kColumnsQuery.c_str());
   ExecStatusType pq_status = PQresultStatus(result);
   if (pq_status == PGRES_TUPLES_OK) {
-    InsertPgAttributeResult(result, resolver);
   } else {
     SetError(error, "%s%s",
              "[libpq] Failed to build type mapping table: ", PQerrorMessage(conn));
@@ -320,36 +323,32 @@ ORDER BY
   return final_status;
 }
 
-static inline int32_t InsertPgAttributeResult(
-    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
-  int num_rows = PQntuples(result);
+static Status InsertPgAttributeResult(
+    const PqResultHelper& result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
+  int num_rows = result.NumRows();
   std::vector<std::pair<std::string, uint32_t>> columns;
   uint32_t current_type_oid = 0;
-  int32_t n_added = 0;
 
   for (int row = 0; row < num_rows; row++) {
-    const uint32_t type_oid = static_cast<uint32_t>(
-        std::strtol(PQgetvalue(result, row, 0), /*str_end=*/nullptr, /*base=*/10));
-    const char* col_name = PQgetvalue(result, row, 1);
-    const uint32_t col_oid = static_cast<uint32_t>(
-        std::strtol(PQgetvalue(result, row, 2), /*str_end=*/nullptr, /*base=*/10));
+    PqResultRow item = result.Row(row);
+    UNWRAP_RESULT(int64_t type_oid, item[0].ParseInteger());
+    std::string_view col_name = item[1].value();
+    UNWRAP_RESULT(int64_t col_oid, item[2].ParseInteger());
 
     if (type_oid != current_type_oid && !columns.empty()) {
       resolver->InsertClass(current_type_oid, columns);
       columns.clear();
       current_type_oid = type_oid;
-      n_added++;
     }
 
-    columns.push_back({col_name, col_oid});
+    columns.push_back({std::string(col_name), col_oid});
   }
 
   if (!columns.empty()) {
     resolver->InsertClass(current_type_oid, columns);
-    n_added++;
   }
 
-  return n_added;
+  return Status::Ok();
 }
 
 static inline int32_t InsertPgTypeResult(
