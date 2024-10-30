@@ -204,7 +204,8 @@ class PostgresType {
   // do not have a corresponding Arrow type are returned as Binary with field
   // metadata ADBC:posgresql:typname. These types can be represented as their
   // binary COPY representation in the output.
-  ArrowErrorCode SetSchema(ArrowSchema* schema) const {
+  ArrowErrorCode SetSchema(ArrowSchema* schema,
+                           const std::string& vendor_name = "PostgreSQL") const {
     switch (type_id_) {
       // ---- Primitive types --------------------
       case PostgresTypeId::kBool:
@@ -235,7 +236,7 @@ class PostgresType {
       // ---- Numeric/Decimal-------------------
       case PostgresTypeId::kNumeric:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
-        NANOARROW_RETURN_NOT_OK(AddPostgresTypeMetadata(schema));
+        NANOARROW_RETURN_NOT_OK(AddPostgresTypeMetadata(schema, vendor_name));
 
         break;
 
@@ -290,13 +291,14 @@ class PostgresType {
       case PostgresTypeId::kRecord:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
         for (int64_t i = 0; i < n_children(); i++) {
-          NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
+          NANOARROW_RETURN_NOT_OK(
+              children_[i].SetSchema(schema->children[i], vendor_name));
         }
         break;
 
       case PostgresTypeId::kArray:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
-        NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
+        NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0], vendor_name));
         break;
 
       case PostgresTypeId::kUserDefined:
@@ -305,7 +307,7 @@ class PostgresType {
         // can still return the bytes postgres gives us and attach the type name as
         // metadata
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
-        NANOARROW_RETURN_NOT_OK(AddPostgresTypeMetadata(schema));
+        NANOARROW_RETURN_NOT_OK(AddPostgresTypeMetadata(schema, vendor_name));
         break;
     }
 
@@ -329,7 +331,8 @@ class PostgresType {
   static constexpr const char* kOpaqueExtensionName = "arrow.opaque";
   static constexpr const char* kExtensionMetadata = "ARROW:extension:metadata";
 
-  ArrowErrorCode AddPostgresTypeMetadata(ArrowSchema* schema) const {
+  ArrowErrorCode AddPostgresTypeMetadata(ArrowSchema* schema,
+                                         const std::string& vendor_name) const {
     // the typname_ may not always be set: an instance of this class can be
     // created with just the type id. That's why there is this here fallback to
     // resolve the type name of built-in types.
@@ -346,7 +349,7 @@ class PostgresType {
     // Add the Opaque extension type metadata
     std::string metadata = R"({"type_name": ")";
     metadata += typname;
-    metadata += R"(", "vendor_name": "PostgreSQL"})";
+    metadata += R"(", "vendor_name": ")" + vendor_name + R"("})";
     NANOARROW_RETURN_NOT_OK(
         ArrowMetadataBuilderAppend(buffer.get(), ArrowCharView(kExtensionName),
                                    ArrowCharView(kOpaqueExtensionName)));

@@ -58,6 +58,10 @@ class PqResultArrayReader {
     bind_stream_->SetBind(stream);
   }
 
+  void SetVendorName(std::string_view vendor_name) {
+    vendor_name_ = std::string(vendor_name);
+  }
+
   int GetSchema(struct ArrowSchema* out);
   int GetNext(struct ArrowArray* out);
   const char* GetLastError();
@@ -74,6 +78,7 @@ class PqResultArrayReader {
   std::vector<std::unique_ptr<PostgresCopyFieldReader>> field_readers_;
   nanoarrow::UniqueSchema schema_;
   bool autocommit_;
+  std::string vendor_name_;
   struct AdbcError error_;
   struct ArrowError na_error_;
 

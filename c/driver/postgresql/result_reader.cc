@@ -177,7 +177,7 @@ Status PqResultArrayReader::Initialize(int64_t* rows_affected) {
     UNWRAP_NANOARROW(na_error_, Internal,
                      type_resolver_->Find(helper_.FieldType(i), &child_type, &na_error_));
 
-    UNWRAP_ERRNO(Internal, child_type.SetSchema(schema_->children[i]));
+    UNWRAP_ERRNO(Internal, child_type.SetSchema(schema_->children[i], vendor_name_));
     UNWRAP_ERRNO(Internal,
                  ArrowSchemaSetName(schema_->children[i], helper_.FieldName(i)));
 

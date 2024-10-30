@@ -64,8 +64,20 @@ class PostgresDatabase {
 
   Status InitVersions(PGconn* conn);
   Status RebuildTypeResolver(PGconn* conn);
-  std::array<int, 3> PostgreSQLVersion() { return postgres_server_version_; }
-  std::array<int, 3> RedshiftVersion() { return redshift_server_version_; }
+  std::string_view VendorName() {
+    if (redshift_server_version_[0] != 0) {
+      return "Redshift";
+    } else {
+      return "PostgreSQL";
+    }
+  }
+  const std::array<int, 3>& VendorVersion() {
+    if (redshift_server_version_[0] != 0) {
+      return redshift_server_version_;
+    } else {
+      return postgres_server_version_;
+    }
+  }
 
  private:
   int32_t open_connections_;

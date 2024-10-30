@@ -459,6 +459,7 @@ AdbcStatusCode PostgresStatement::ExecuteBind(struct ArrowArrayStream* stream,
   PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
   reader.SetAutocommit(connection_->autocommit());
   reader.SetBind(&bind_);
+  reader.SetVendorName(connection_->VendorName());
   RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
   return ADBC_STATUS_OK;
 }
@@ -487,6 +488,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   // execute using the PqResultArrayReader.
   if (!stream || !UseCopy()) {
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
+    reader.SetVendorName(connection_->VendorName());
     RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
     return ADBC_STATUS_OK;
   }
@@ -505,6 +507,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   if (root_type.n_children() == 0) {
     // Could/should move the helper into the reader instead of repreparing
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
+    reader.SetVendorName(connection_->VendorName());
     RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
     return ADBC_STATUS_OK;
   }
@@ -512,8 +515,10 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   struct ArrowError na_error;
   reader_.copy_reader_ = std::make_unique<PostgresCopyStreamReader>();
   CHECK_NA(INTERNAL, reader_.copy_reader_->Init(root_type), error);
-  CHECK_NA_DETAIL(INTERNAL, reader_.copy_reader_->InferOutputSchema(&na_error), &na_error,
-                  error);
+  CHECK_NA_DETAIL(INTERNAL,
+                  reader_.copy_reader_->InferOutputSchema(
+                      std::string(connection_->VendorName()), &na_error),
+                  &na_error, error);
 
   CHECK_NA_DETAIL(INTERNAL, reader_.copy_reader_->InitFieldReaders(&na_error), &na_error,
                   error);
@@ -574,7 +579,9 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
 
   nanoarrow::UniqueSchema tmp;
   ArrowSchemaInit(tmp.get());
-  CHECK_NA(INTERNAL, output_type.SetSchema(tmp.get()), error);
+  CHECK_NA(INTERNAL,
+           output_type.SetSchema(tmp.get(), std::string(connection_->VendorName())),
+           error);
 
   tmp.move(schema);
   return ADBC_STATUS_OK;
@@ -840,7 +847,7 @@ void PostgresStatement::ClearResult() {
 
 int PostgresStatement::UseCopy() {
   if (use_copy_ == -1) {
-    return connection_->RedshiftVersion()[0] == 0;
+    return connection_->VendorName() != "Redshift";
   } else {
     return use_copy_;
   }

@@ -479,20 +479,15 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
   for (size_t i = 0; i < info_codes_length; i++) {
     switch (info_codes[i]) {
       case ADBC_INFO_VENDOR_NAME:
-        if (RedshiftVersion()[0] > 0) {
-          infos.emplace_back(info_codes[i], "Redshift");
-        } else {
-          infos.push_back({info_codes[i], "PostgreSQL"});
-        }
-
+        infos.push_back({info_codes[i], std::string(VendorName())});
         break;
       case ADBC_INFO_VENDOR_VERSION: {
-        if (RedshiftVersion()[0] > 0) {
-          std::array<int, 3> version = RedshiftVersion();
+        if (VendorName() == "Redshift") {
+          const std::array<int, 3>& version = VendorVersion();
           std::string version_string = std::to_string(version[0]) + "." +
                                        std::to_string(version[1]) + "." +
                                        std::to_string(version[2]);
-          infos.emplace_back(info_codes[i], std::move(version_string));
+          infos.push_back({info_codes[i], std::move(version_string)});
 
         } else {
           // Gives a version in the form 140000 instead of 14.0.0
@@ -1021,7 +1016,8 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
       break;
     }
     CHECK_NA(INTERNAL,
-             pg_type.WithFieldName(colname).SetSchema(uschema->children[row_counter]),
+             pg_type.WithFieldName(colname).SetSchema(uschema->children[row_counter],
+                                                      std::string(VendorName())),
              error);
     row_counter++;
   }
@@ -1153,12 +1149,10 @@ AdbcStatusCode PostgresConnection::SetOptionInt(const char* key, int64_t value,
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
-std::array<int, 3> PostgresConnection::PostgreSQLVersion() {
-  return database_->PostgreSQLVersion();
-}
+std::string_view PostgresConnection::VendorName() { return database_->VendorName(); }
 
-std::array<int, 3> PostgresConnection::RedshiftVersion() {
-  return database_->RedshiftVersion();
+const std::array<int, 3>& PostgresConnection::VendorVersion() {
+  return database_->VendorVersion();
 }
 
 }  // namespace adbcpq
