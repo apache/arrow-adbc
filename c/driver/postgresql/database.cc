@@ -84,8 +84,6 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
                                            struct AdbcError* error) {
   if (strcmp(key, "uri") == 0) {
     uri_ = value;
-  } else if (strcmp(key, ADBC_POSTGRESQL_OPTION_LOAD_ARRAY_TYPES) == 0) {
-    load_array_types_ = strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0;
   } else {
     SetError(error, "%s%s", "[libpq] Unknown database option ", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -219,10 +217,7 @@ static inline int32_t InsertPgTypeResult(
 
 AdbcStatusCode PostgresDatabase::RebuildTypeResolver(PGconn* conn,
                                                      struct AdbcError* error) {
-  AdbcStatusCode final_status = Connect(&conn, error);
-  if (final_status != ADBC_STATUS_OK) {
-    return final_status;
-  }
+  AdbcStatusCode final_status = ADBC_STATUS_OK;
 
   // We need a few queries to build the resolver. The current strategy might
   // fail for some recursive definitions (e.g., arrays of records of arrays).
@@ -275,7 +270,7 @@ ORDER BY
 )";
 
   std::string type_query;
-  if (load_array_types_) {
+  if (redshift_server_version_[0] == 0) {
     type_query = kTypeQuery;
   } else {
     type_query = kTypeQueryNoArrays;
@@ -315,12 +310,6 @@ ORDER BY
     if (final_status != ADBC_STATUS_OK) {
       break;
     }
-  }
-
-  // Disconnect since PostgreSQL connections can be heavy.
-  {
-    AdbcStatusCode status = Disconnect(&conn, error);
-    if (status != ADBC_STATUS_OK) final_status = status;
   }
 
   if (final_status == ADBC_STATUS_OK) {

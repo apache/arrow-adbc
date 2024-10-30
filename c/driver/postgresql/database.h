@@ -26,8 +26,6 @@
 
 #include "postgres_type.h"
 
-#define ADBC_POSTGRESQL_OPTION_LOAD_ARRAY_TYPES "adbc.postgresql.load_array_types"
-
 namespace adbcpq {
 class PostgresDatabase {
  public:
@@ -71,7 +69,6 @@ class PostgresDatabase {
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   std::array<int, 3> postgres_server_version_{};
   std::array<int, 3> redshift_server_version_{};
-  bool load_array_types_{true};
 };
 }  // namespace adbcpq
 
