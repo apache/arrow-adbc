@@ -19,6 +19,7 @@ package driverbase_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -30,6 +31,7 @@ import (
 	"github.com/apache/arrow/go/v18/arrow"
 	"github.com/apache/arrow/go/v18/arrow/array"
 	"github.com/apache/arrow/go/v18/arrow/memory"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -707,4 +709,14 @@ func tableFromRecordReader(rdr array.RecordReader) arrow.Table {
 		recs = append(recs, rec)
 	}
 	return array.NewTableFromRecords(rdr.Schema(), recs)
+}
+
+func TestRequiredList(t *testing.T) {
+	v := driverbase.RequiredList([]string{"a", "b", "c"})
+	result, err := json.Marshal(v)
+	require.NoError(t, err)
+	assert.JSONEq(t, `["a", "b", "c"]`, string(result))
+
+	require.NoError(t, json.Unmarshal([]byte(`["d", "e", "f"]`), &v))
+	assert.Equal(t, driverbase.RequiredList([]string{"d", "e", "f"}), v)
 }
