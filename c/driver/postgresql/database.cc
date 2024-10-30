@@ -271,7 +271,7 @@ static std::string BuildPgTypeQuery(bool has_typarray) {
 
   return std::string() + "SELECT oid, typname, typreceive, typbasetype, typrelid" +
          maybe_typarray_col + " FROM pg_catalog.pg_type " +
-         " WHERE (typreceive != 0 OR typname = 'aclitem') AND typtype != 'r' " +
+         " WHERE (typreceive != 0 OR typsend != 0) AND typtype != 'r' " +
          maybe_array_recv_filter;
 }
 
