@@ -339,7 +339,7 @@ TEST(PostgresTypeTest, PostgresTypeResolver) {
 
   EXPECT_EQ(resolver.FindWithDefault(123, &type), NANOARROW_OK);
   EXPECT_EQ(type.oid(), 123);
-  EXPECT_EQ(type.type_id(), PostgresTypeId::kUnnamed);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::kUnnamedArrowOpaque);
   EXPECT_EQ(type.typname(), "unnamed<oid:123>");
 
   // Check error for Array with unknown child

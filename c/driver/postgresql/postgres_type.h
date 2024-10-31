@@ -115,7 +115,7 @@ enum class PostgresTypeId {
   // This is not an actual type, but there are cases where all we have is an Oid
   // that was not inserted into the type resolver. We can't use "unknown" or "opaque"
   // or "void" because those names show up in actual pg_type tables.
-  kUnnamed
+  kUnnamedArrowOpaque
 };
 
 // Returns the receive function name as defined in the typrecieve column
@@ -144,7 +144,7 @@ class PostgresType {
   PostgresType() : PostgresType(PostgresTypeId::kUninitialized) {}
 
   static PostgresType Unnamed(uint32_t oid) {
-    return PostgresType(PostgresTypeId::kUnnamed)
+    return PostgresType(PostgresTypeId::kUnnamedArrowOpaque)
         .WithPgTypeInfo(oid, "unnamed<oid:" + std::to_string(oid) + ">");
   }
 
