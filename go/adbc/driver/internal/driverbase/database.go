@@ -22,7 +22,7 @@ import (
 	"log/slog"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v18/arrow/memory"
+	"github.com/apache/arrow-go/v18/arrow/memory"
 )
 
 const (
