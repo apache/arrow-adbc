@@ -84,7 +84,7 @@ The following table depicts how the Spark ADBC driver converts a Spark type to a
 | DATE*                | *String*   | *string* | Date32 | DateTime |
 | DECIMAL*             | *String*   | *string* | Decimal128 | SqlDecimal |
 | DOUBLE               | Double     | double | | |
-| FLOAT                | *Double*   | *double* | | |
+| FLOAT                | *Double*   | *double* | Float | float |
 | INT                  | Int32      | int | | |
 | INTERVAL_DAY_TIME+   | String     | string | | |
 | INTERVAL_YEAR_MONTH+ | String     | string | | |
