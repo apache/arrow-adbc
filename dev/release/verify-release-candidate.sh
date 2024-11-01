@@ -382,7 +382,7 @@ install_rust() {
 install_conda() {
   # Setup short-lived miniconda for Python and integration tests
   show_info "Ensuring that Conda is installed..."
-  local prefix=$ARROW_TMPDIR/mambaforge
+  local prefix=$ARROW_TMPDIR/miniforge
 
   # Setup miniconda only if the directory doesn't exist yet
   if [ "${CONDA_ALREADY_INSTALLED:-0}" -eq 0 ]; then
@@ -390,7 +390,7 @@ install_conda() {
       show_info "Installing miniconda at ${prefix}..."
       local arch=$(uname -m)
       local platform=$(uname)
-      local url="https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-${platform}-${arch}.sh"
+      local url="https://github.com/conda-forge/miniforge/releases/latest/download/miniforge3-${platform}-${arch}.sh"
       curl -sL -o miniconda.sh $url
       bash miniconda.sh -b -p $prefix
       rm -f miniconda.sh
@@ -513,10 +513,11 @@ test_cpp() {
 
   # Build and test C++
   maybe_setup_go
+  # XXX: pin Python for now since various other packages haven't caught up
   maybe_setup_conda \
     --file ci/conda_env_cpp.txt \
     compilers \
-    go=1.21 || exit 1
+    go=1.22 python=3.12 || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     export CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
@@ -560,7 +561,8 @@ test_python() {
 
   # Build and test Python
   maybe_setup_virtualenv cython duckdb pandas protobuf pyarrow pytest setuptools_scm setuptools importlib_resources || exit 1
-  maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_python.txt" || exit 1
+  # XXX: pin Python for now since various other packages haven't caught up
+  maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_python.txt" python=3.12 || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
@@ -669,7 +671,7 @@ test_go() {
   # apache/arrow-adbc#517: `go build` calls git. Don't assume system
   # has git; even if it's there, go_build.sh sets DYLD_LIBRARY_PATH
   # which can interfere with system git.
-  maybe_setup_conda compilers git go=1.21 || exit 1
+  maybe_setup_conda compilers git go=1.22 || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     # The CMake setup forces RPATH to be the Conda prefix

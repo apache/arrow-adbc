@@ -31,13 +31,17 @@ using ColumnTypeId = Apache.Arrow.Adbc.Drivers.Apache.Spark.SparkConnection.Colu
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
     /// <summary>
-    /// Class for testing the Snowflake ADBC driver connection tests.
+    /// Class for testing the Spark ADBC driver connection tests.
     /// </summary>
     /// <remarks>
     /// Tests are ordered to ensure data is created for the other
     /// queries to run.
+    /// <para>Note: This test creates/replaces the table identified in the configuration (metadata/table).
+    /// It uses the test collection "TableCreateTestCollection" to ensure it does not run
+    /// as the same time as any other tests that may create/update the same table.</para>
     /// </remarks>
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
+    [Collection("TableCreateTestCollection")]
     public class DriverTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
         /// <summary>
@@ -92,7 +96,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             List<int> expectedResults = TestEnvironment.ServerType != SparkServerType.Databricks
                 ?
                 [
-                    -1, // DROP   TABLE
                     -1, // CREATE TABLE
                     1,  // INSERT
                     1,  // INSERT
@@ -102,7 +105,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 ]
                 :
                 [
-                    -1, // DROP   TABLE
                     -1, // CREATE TABLE
                     1,  // INSERT
                     1,  // INSERT
@@ -114,7 +116,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             for (int i = 0; i < queries.Length; i++)
             {
                 string query = queries[i];
-                AdbcStatement statement = adbcConnection.CreateStatement();
+                using AdbcStatement statement = adbcConnection.CreateStatement();
                 statement.SqlQuery = query;
 
                 UpdateResult updateResult = statement.ExecuteUpdate();
@@ -516,10 +518,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
-        [SkippableFact, Order(10)]
-        public void CanExecuteQuery()
+        [SkippableTheory, Order(10)]
+        [InlineData(0.1)]
+        [InlineData(0.25)]
+        [InlineData(1.0)]
+        [InlineData(2.0)]
+        [InlineData(null)]
+        public void CanExecuteQuery(double? batchSizeFactor)
         {
-            using AdbcConnection adbcConnection = NewConnection();
+            // Ensure all records can be retrieved, independent of the batch size.
+            SparkTestConfiguration testConfiguration = (SparkTestConfiguration)TestConfiguration.Clone();
+            long expectedResultCount = testConfiguration.ExpectedResultsCount;
+            long nonZeroExpectedResultCount = (expectedResultCount == 0 ? 1 : expectedResultCount);
+            testConfiguration.BatchSize = batchSizeFactor != null ? ((long)(nonZeroExpectedResultCount * batchSizeFactor)).ToString() : string.Empty;
+            OutputHelper?.WriteLine($"BatchSize: {testConfiguration.BatchSize}. ExpectedResultCount: {expectedResultCount}");
+
+            using AdbcConnection adbcConnection = NewConnection(testConfiguration);
 
             using AdbcStatement statement = adbcConnection.CreateStatement();
             statement.SqlQuery = TestConfiguration.Query;
@@ -616,6 +630,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             AdbcDatabase database = driver.Open(parameters);
             AggregateException exception = Assert.ThrowsAny<AggregateException>(() => database.Connect(parameters));
             OutputHelper?.WriteLine(exception.Message);
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results using the asynchronous methods.
+        /// </summary>
+        [SkippableFact, Order(15)]
+        public async Task CanExecuteQueryAsyncEmptyResult()
+        {
+            using AdbcConnection adbcConnection = NewConnection();
+            using AdbcStatement statement = adbcConnection.CreateStatement();
+
+            statement.SqlQuery = $"SELECT * from {TestConfiguration.Metadata.Table} WHERE FALSE";
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+
+            await Tests.DriverTests.CanExecuteQueryAsync(queryResult, 0);
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()

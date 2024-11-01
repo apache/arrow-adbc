@@ -59,7 +59,7 @@ To manually create a connection: first, create a :py:class:`AdbcDatabase`,
 passing ``driver`` and (optionally) ``entrypoint``.  ``driver`` must be the
 name of a library to load, or the path to a library to load.  ``entrypoint``,
 if provided, should be the name of the symbol that serves as the ADBC
-entrypoint (see :cpp:type:`AdbcDriverInitFunc`).  Then, create a
+entrypoint (see :c:type:`AdbcDriverInitFunc`).  Then, create a
 :py:class:`AdbcConnection`.
 
 .. code-block:: python

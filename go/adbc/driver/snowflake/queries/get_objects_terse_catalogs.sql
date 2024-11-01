@@ -15,11 +15,10 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
+-- SHOW TERSE DATABASES would run before this
 SELECT
     {
-        'catalog_name': database_name,
-        'catalog_db_schemas': null
+    'catalog_name': "name",
+    'catalog_db_schemas': null
     } get_objects
-FROM
-    information_schema.databases
-WHERE database_name ILIKE :CATALOG;
+FROM TABLE(RESULT_SCAN(:SHOW_DB_QUERY_ID))

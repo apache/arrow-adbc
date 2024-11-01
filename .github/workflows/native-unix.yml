@@ -94,7 +94,6 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-only-tar-bz2: false
           use-mamba: true
@@ -178,7 +177,6 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-only-tar-bz2: false
           use-mamba: true
@@ -296,7 +294,6 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-only-tar-bz2: false
           use-mamba: true
@@ -346,7 +343,6 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-only-tar-bz2: false
           use-mamba: true
@@ -479,7 +475,6 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-only-tar-bz2: false
           use-mamba: true
@@ -572,7 +567,6 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-only-tar-bz2: false
           use-mamba: true
@@ -677,7 +671,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest"]
-        python: ["3.11"]
+        python: ["3.12"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -695,7 +689,6 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-only-tar-bz2: false
           use-mamba: true

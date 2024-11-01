@@ -20,14 +20,13 @@ use std::sync::Arc;
 use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
 use adbc_core::options::Statistics;
-use arrow::array::{
+use arrow_array::{
     Array, ArrayRef, BinaryArray, BooleanArray, Float64Array, Int16Array, Int32Array, Int64Array,
-    ListArray, MapArray, StringArray, StructArray, UInt32Array, UInt64Array, UnionArray,
+    ListArray, MapArray, RecordBatch, RecordBatchReader, StringArray, StructArray, UInt32Array,
+    UInt64Array, UnionArray,
 };
-use arrow::buffer::{Buffer, OffsetBuffer, ScalarBuffer};
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-use arrow::error::ArrowError;
-use arrow::record_batch::{RecordBatch, RecordBatchReader};
+use arrow_buffer::{OffsetBuffer, ScalarBuffer};
+use arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef, UnionFields};
 
 use adbc_core::{
     error::{Error, Result, Status},
@@ -184,16 +183,14 @@ impl Driver for DummyDriver {
     type DatabaseType = DummyDatabase;
 
     fn new_database(&mut self) -> Result<Self::DatabaseType> {
-        self.new_database_with_opts(None)
+        Ok(Self::DatabaseType::default())
     }
 
     fn new_database_with_opts(
         &mut self,
         opts: impl IntoIterator<Item = (<Self::DatabaseType as Optionable>::Option, OptionValue)>,
     ) -> Result<Self::DatabaseType> {
-        let mut database = Self::DatabaseType {
-            options: HashMap::new(),
-        };
+        let mut database = Self::DatabaseType::default();
         for (key, value) in opts {
             database.set_option(key, value)?;
         }
@@ -201,6 +198,7 @@ impl Driver for DummyDriver {
     }
 }
 
+#[derive(Default)]
 pub struct DummyDatabase {
     options: HashMap<OptionDatabase, OptionValue>,
 }
@@ -233,16 +231,14 @@ impl Database for DummyDatabase {
     type ConnectionType = DummyConnection;
 
     fn new_connection(&mut self) -> Result<Self::ConnectionType> {
-        self.new_connection_with_opts(None)
+        Ok(Self::ConnectionType::default())
     }
 
     fn new_connection_with_opts(
         &mut self,
         opts: impl IntoIterator<Item = (<Self::ConnectionType as Optionable>::Option, OptionValue)>,
     ) -> Result<Self::ConnectionType> {
-        let mut connection = Self::ConnectionType {
-            options: HashMap::new(),
-        };
+        let mut connection = Self::ConnectionType::default();
         for (key, value) in opts {
             connection.set_option(key, value)?;
         }
@@ -250,6 +246,7 @@ impl Database for DummyDatabase {
     }
 }
 
+#[derive(Default)]
 pub struct DummyConnection {
     options: HashMap<OptionConnection, OptionValue>,
 }
@@ -282,9 +279,7 @@ impl Connection for DummyConnection {
     type StatementType = DummyStatement;
 
     fn new_statement(&mut self) -> Result<Self::StatementType> {
-        Ok(Self::StatementType {
-            options: HashMap::new(),
-        })
+        Ok(Self::StatementType::default())
     }
 
     // This method is used to test that errors round-trip correctly.
@@ -354,46 +349,42 @@ impl Connection for DummyConnection {
             Into::<u32>::into(&InfoCode::DriverArrowVersion),
         ]);
 
-        let type_id_buffer = Buffer::from_slice_ref([0_i8, 1, 2, 3, 4, 5]);
-        let value_offsets_buffer = Buffer::from_slice_ref([0_i32, 0, 0, 0, 0, 0]);
+        let type_id_buffer = [0_i8, 1, 2, 3, 4, 5]
+            .into_iter()
+            .collect::<ScalarBuffer<i8>>();
+        let value_offsets_buffer = [0_i32, 0, 0, 0, 0, 0]
+            .into_iter()
+            .collect::<ScalarBuffer<i32>>();
 
         let value_array = UnionArray::try_new(
-            &[0, 1, 2, 3, 4, 5],
-            type_id_buffer,
-            Some(value_offsets_buffer),
-            vec![
-                (
+            UnionFields::new(
+                [0, 1, 2, 3, 4, 5],
+                [
                     Field::new("string_value", string_value_array.data_type().clone(), true),
-                    Arc::new(string_value_array),
-                ),
-                (
                     Field::new("bool_value", bool_value_array.data_type().clone(), true),
-                    Arc::new(bool_value_array),
-                ),
-                (
                     Field::new("int64_value", int64_value_array.data_type().clone(), true),
-                    Arc::new(int64_value_array),
-                ),
-                (
                     Field::new(
                         "int32_bitmask",
                         int32_bitmask_array.data_type().clone(),
                         true,
                     ),
-                    Arc::new(int32_bitmask_array),
-                ),
-                (
                     Field::new("string_list", string_list_array.data_type().clone(), true),
-                    Arc::new(string_list_array),
-                ),
-                (
                     Field::new(
                         "int32_to_int32_list_map",
                         int32_to_int32_list_map_array.data_type().clone(),
                         true,
                     ),
-                    Arc::new(int32_to_int32_list_map_array),
-                ),
+                ],
+            ),
+            type_id_buffer,
+            Some(value_offsets_buffer),
+            vec![
+                Arc::new(string_value_array),
+                Arc::new(bool_value_array),
+                Arc::new(int64_value_array),
+                Arc::new(int32_bitmask_array),
+                Arc::new(string_list_array),
+                Arc::new(int32_to_int32_list_map_array),
             ],
         )?;
 
@@ -654,29 +645,25 @@ impl Connection for DummyConnection {
         let statistic_value_uint64_array = UInt64Array::from(vec![42]);
         let statistic_value_float64_array = Float64Array::from(Vec::<f64>::new());
         let statistic_value_binary_array = BinaryArray::from(Vec::<&[u8]>::new());
-        let type_id_buffer = Buffer::from_slice_ref([1_i8]);
-        let value_offsets_buffer = Buffer::from_slice_ref([0_i32]);
+        let type_id_buffer = [1_i8].into_iter().collect::<ScalarBuffer<i8>>();
+        let value_offsets_buffer = [0_i32].into_iter().collect::<ScalarBuffer<i32>>();
         let statistic_value_array = UnionArray::try_new(
-            &[0, 1, 2, 3],
+            UnionFields::new(
+                [0, 1, 2, 3],
+                [
+                    Field::new("int64", DataType::Int64, true),
+                    Field::new("uint64", DataType::UInt64, true),
+                    Field::new("float64", DataType::Float64, true),
+                    Field::new("binary", DataType::Binary, true),
+                ],
+            ),
             type_id_buffer,
             Some(value_offsets_buffer),
             vec![
-                (
-                    Field::new("int64", DataType::Int64, true),
-                    Arc::new(statistic_value_int64_array),
-                ),
-                (
-                    Field::new("uint64", DataType::UInt64, true),
-                    Arc::new(statistic_value_uint64_array),
-                ),
-                (
-                    Field::new("float64", DataType::Float64, true),
-                    Arc::new(statistic_value_float64_array),
-                ),
-                (
-                    Field::new("binary", DataType::Binary, true),
-                    Arc::new(statistic_value_binary_array),
-                ),
+                Arc::new(statistic_value_int64_array),
+                Arc::new(statistic_value_uint64_array),
+                Arc::new(statistic_value_float64_array),
+                Arc::new(statistic_value_binary_array),
             ],
         )?;
 
@@ -775,7 +762,7 @@ impl Connection for DummyConnection {
         catalog: Option<&str>,
         db_schema: Option<&str>,
         table_name: &str,
-    ) -> Result<arrow::datatypes::Schema> {
+    ) -> Result<arrow_schema::Schema> {
         let catalog = catalog.unwrap_or("default");
         let db_schema = db_schema.unwrap_or("default");
 
@@ -807,6 +794,7 @@ impl Connection for DummyConnection {
     }
 }
 
+#[derive(Default)]
 pub struct DummyStatement {
     options: HashMap<OptionStatement, OptionValue>,
 }

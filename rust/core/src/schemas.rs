@@ -19,7 +19,7 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef, UnionFields, UnionMode};
+use arrow_schema::{DataType, Field, Schema, SchemaRef, UnionFields, UnionMode};
 use once_cell::sync::Lazy;
 
 /// Schema of the data returned by [get_table_types][crate::Connection::get_table_types].

@@ -31,8 +31,15 @@ main() {
 
     pushd "$source_dir/docs"
     # The project name/version don't really matter here.
+    python "$source_dir/docs/source/ext/doxygen_inventory.py" \
+           "ADBC C" \
+           "version" \
+           --html-path "$source_dir/c/apidoc/html" \
+           --xml-path "$source_dir/c/apidoc/xml" \
+           "cpp/api" \
+           "$source_dir/c/apidoc"
     python "$source_dir/docs/source/ext/javadoc_inventory.py" \
-           "ADBC" \
+           "ADBC Java" \
            "version" \
            "$source_dir/java/target/site/apidocs" \
            "java/api"
@@ -40,8 +47,11 @@ main() {
     # We need to determine the base URL without knowing it...
     # Inject a dummy URL here, and fix it up in website_build.sh
     export ADBC_INTERSPHINX_MAPPING_java_adbc="http://javadocs.home.arpa/;$source_dir/java/target/site/apidocs/objects.inv"
+    export ADBC_INTERSPHINX_MAPPING_cpp_adbc="http://doxygen.home.arpa/;$source_dir/c/apidoc/objects.inv"
 
-    make html
+    sphinx-build --builder html --nitpicky --fail-on-warning --keep-going source build/html
+    rm -rf "$source_dir/docs/build/html/cpp/api"
+    cp -r "$source_dir/c/apidoc/html" "$source_dir/docs/build/html/cpp/api"
     rm -rf "$source_dir/docs/build/html/java/api"
     cp -r "$source_dir/java/target/site/apidocs" "$source_dir/docs/build/html/java/api"
     make doctest

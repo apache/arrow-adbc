@@ -1,14 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Licensed to the Apache Software Foundation (ASF) under one or more contributor
-  license agreements. See the NOTICE file distributed with this work for additional
-  information regarding copyright ownership. The ASF licenses this file to
-  You under the Apache License, Version 2.0 (the "License"); you may not use
-  this file except in compliance with the License. You may obtain a copy of
-  the License at http://www.apache.org/licenses/LICENSE-2.0 Unless required
-  by applicable law or agreed to in writing, software distributed under the
-  License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
-  OF ANY KIND, either express or implied. See the License for the specific
-  language governing permissions and limitations under the License. -->
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
@@ -26,18 +34,6 @@
   <name>Apache Arrow ADBC Java Root POM</name>
   <description>Apache Arrow is open source, in-memory columnar data structures and low-overhead messaging</description>
   <url>https://arrow.apache.org/</url>
-
-  <properties>
-    <dep.arrow.version>15.0.0</dep.arrow.version>
-    <dep.org.checkerframework.version>3.47.0</dep.org.checkerframework.version>
-    <adbc.version>0.15.0-SNAPSHOT</adbc.version>
-  </properties>
-
-  <scm>
-    <connection>scm:git:https://github.com/apache/arrow-adbc.git</connection>
-    <developerConnection>scm:git:https://github.com/apache/arrow-adbc.git</developerConnection>
-    <url>https://github.com/apache/arrow-adbc</url>
-  </scm>
 
   <mailingLists>
     <mailingList>
@@ -62,6 +58,30 @@
     </mailingList>
   </mailingLists>
 
+  <modules>
+    <module>core</module>
+    <module>driver/flight-sql</module>
+    <module>driver/flight-sql-validation</module>
+    <module>driver/jdbc</module>
+    <module>driver/jdbc-validation-derby</module>
+    <module>driver/jdbc-validation-mssqlserver</module>
+    <module>driver/jdbc-validation-postgresql</module>
+    <module>driver/validation</module>
+    <module>driver-manager</module>
+    <module>sql</module>
+  </modules>
+
+  <scm>
+    <connection>scm:git:https://github.com/apache/arrow-adbc.git</connection>
+    <developerConnection>scm:git:https://github.com/apache/arrow-adbc.git</developerConnection>
+    <url>https://github.com/apache/arrow-adbc</url>
+  </scm>
+
+  <issueManagement>
+    <system>Jira</system>
+    <url>https://issues.apache.org/jira/browse/arrow</url>
+  </issueManagement>
+
   <distributionManagement>
     <repository>
       <id>fury</id>
@@ -75,23 +95,11 @@
     </snapshotRepository>
   </distributionManagement>
 
-  <issueManagement>
-    <system>Jira</system>
-    <url>https://issues.apache.org/jira/browse/arrow</url>
-  </issueManagement>
-
-  <modules>
-    <module>core</module>
-    <module>driver/flight-sql</module>
-    <module>driver/flight-sql-validation</module>
-    <module>driver/jdbc</module>
-    <module>driver/jdbc-validation-derby</module>
-    <module>driver/jdbc-validation-mssqlserver</module>
-    <module>driver/jdbc-validation-postgresql</module>
-    <module>driver/validation</module>
-    <module>driver-manager</module>
-    <module>sql</module>
-  </modules>
+  <properties>
+    <dep.arrow.version>15.0.0</dep.arrow.version>
+    <dep.org.checkerframework.version>3.48.1</dep.org.checkerframework.version>
+    <adbc.version>0.15.0-SNAPSHOT</adbc.version>
+  </properties>
 
   <dependencyManagement>
     <dependencies>
@@ -152,9 +160,9 @@
       <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
-        <version>5.11.0</version>
-        <scope>import</scope>
+        <version>5.11.3</version>
         <type>pom</type>
+        <scope>import</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -165,7 +173,12 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.5.0</version>
+          <version>3.5.1</version>
+        </plugin>
+        <plugin>
+          <groupId>com.diffplug.spotless</groupId>
+          <artifactId>spotless-maven-plugin</artifactId>
+          <version>2.43.0</version>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -184,15 +197,6 @@
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>rat-checks</id>
-            <phase>validate</phase>
-            <goals>
-              <goal>check</goal>
-            </goals>
-          </execution>
-        </executions>
         <configuration>
           <excludeSubProjects>false</excludeSubProjects>
           <excludes>
@@ -201,6 +205,29 @@
             <exclude>**/target/**</exclude>
             <exclude>.mvn/jvm.config</exclude>
           </excludes>
+        </configuration>
+        <executions>
+          <execution>
+            <id>rat-checks</id>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <phase>validate</phase>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <configuration>
+          <pom>
+            <licenseHeader>
+              <file>${maven.multiModuleProjectDirectory}/dev/license/asf-xml.license</file>
+              <delimiter>(&lt;configuration|&lt;project)</delimiter>
+            </licenseHeader>
+            <sortPom></sortPom>
+          </pom>
         </configuration>
       </plugin>
     </plugins>
@@ -213,25 +240,25 @@
              wrong stylesheet) -->
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.10.0</version>
+        <version>3.10.1</version>
         <configuration>
           <!-- Ignore missing @return, @throws -->
           <doclint>all,-missing</doclint>
           <links>
             <link>https://arrow.apache.org/docs/java/reference/</link>
           </links>
-	  <!-- Stop it from trying to document the tests -->
+          <!-- Stop it from trying to document the tests -->
           <release>8</release>
-	  <show>public</show>
+          <show>public</show>
           <source>1.8</source>
         </configuration>
         <reportSets>
           <reportSet>
             <id>aggregate</id>
-            <inherited>false</inherited>
             <reports>
               <report>aggregate</report>
             </reports>
+            <inherited>false</inherited>
           </reportSet>
           <reportSet>
             <id>default</id>
@@ -271,9 +298,7 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
             <configuration>
-              <argLine>
-                --add-opens=java.base/java.nio=ALL-UNNAMED
-              </argLine>
+              <argLine>--add-opens=java.base/java.nio=ALL-UNNAMED</argLine>
             </configuration>
           </plugin>
         </plugins>
@@ -295,27 +320,30 @@
               <compilerArgs combine.children="append">
                 <arg>-XDcompilePolicy=simple</arg>
                 <arg>-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.uber</arg>
-
-                <arg>-Xmaxerrs</arg> <!-- javac only reports the first 100 errors or warnings -->
+                <arg>--should-stop=ifError=FLOW</arg>
+                <!-- javac only reports the first 100 errors or warnings -->
+                <arg>-Xmaxerrs</arg>
                 <arg>10000</arg>
                 <arg>-Xmaxwarns</arg>
                 <arg>10000</arg>
-                <arg>-AskipDefs=.*Test</arg> <!-- Skip analysis for Testing classes -->
-                <arg>-AatfDoNotCache</arg> <!-- not cache results -->
-		<arg>-AprintVerboseGenerics</arg>
-		<arg>-AprintAllQualifiers</arg>
-		<arg>-Astubs=.checker-framework/:stubs</arg>
+                <!-- Skip analysis for Testing classes -->
+                <arg>-AskipDefs=.*Test</arg>
+                <!-- not cache results -->
+                <arg>-AatfDoNotCache</arg>
+                <arg>-AprintVerboseGenerics</arg>
+                <arg>-AprintAllQualifiers</arg>
+                <arg>-Astubs=.checker-framework/:stubs</arg>
               </compilerArgs>
               <annotationProcessorPaths combine.children="append">
                 <path>
                   <groupId>com.google.errorprone</groupId>
                   <artifactId>error_prone_core</artifactId>
-                  <version>2.32.0</version>
+                  <version>2.35.1</version>
                 </path>
                 <path>
                   <groupId>com.uber.nullaway</groupId>
                   <artifactId>nullaway</artifactId>
-                  <version>0.11.3</version>
+                  <version>0.12.1</version>
                 </path>
                 <path>
                   <groupId>org.checkerframework</groupId>

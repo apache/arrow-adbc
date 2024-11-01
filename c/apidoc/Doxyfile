@@ -500,7 +500,7 @@ EXTRACT_ALL            = NO
 # be included in the documentation.
 # The default value is: NO.
 
-EXTRACT_PRIVATE        = NO
+EXTRACT_PRIVATE        = YES
 
 # If the EXTRACT_PRIV_VIRTUAL tag is set to YES, documented private virtual
 # methods of a class will be included in the documentation.
@@ -891,7 +891,7 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = ../../c/include/arrow-adbc/adbc.h ../../README.md ../../c/include/arrow-adbc/adbc_driver_manager.h
+INPUT                  = ../../c/include/arrow-adbc/adbc.h ../../README.md ../../c/include/arrow-adbc/adbc_driver_manager.h ../../c/driver/framework/
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
@@ -920,12 +920,7 @@ INPUT_ENCODING         = UTF-8
 # comment), *.py, *.pyw, *.f90, *.f95, *.f03, *.f08, *.f18, *.f, *.for, *.vhd,
 # *.vhdl, *.ucf, *.qsf and *.ice.
 
-FILE_PATTERNS          = *.c \
-                         *.cc \
-                         *.cxx \
-                         *.cpp \
-                         *.c++ \
-                         *.java \
+FILE_PATTERNS          = *.java \
                          *.ii \
                          *.ixx \
                          *.ipp \
@@ -1007,7 +1002,7 @@ EXCLUDE_PATTERNS       =
 # Note that the wildcards are matched against the file with absolute path, so to
 # exclude all test directories use the pattern */test/*
 
-EXCLUDE_SYMBOLS        =
+EXCLUDE_SYMBOLS        = ADBC ADBC_DRIVER_MANAGER_H
 
 # The EXAMPLE_PATH tag can be used to specify one or more files or directories
 # that contain example code fragments that are included (see the \include

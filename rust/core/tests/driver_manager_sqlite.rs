@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use arrow::datatypes::{Field, Schema};
+use arrow_schema::{Field, Schema};
 
 use adbc_core::driver_manager::{ManagedDatabase, ManagedDriver};
 use adbc_core::options::{AdbcVersion, OptionConnection, OptionDatabase};

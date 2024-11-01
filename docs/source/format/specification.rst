@@ -21,7 +21,7 @@ ADBC API Standard
 
 This document summarizes the general featureset.
 
-- For C/C++ details, see :doc:`adbc.h <../../cpp/api/adbc>`.
+- For C/C++ details, see :external+cpp_adbc:doc:`adbc.h`.
 - For Go details, see the `source <https://github.com/apache/arrow-adbc/blob/main/go/adbc/adbc.go>`__.
 - For Java details, see the `source
   <https://github.com/apache/arrow-adbc/tree/main/java/core>`__, particularly
@@ -34,7 +34,7 @@ Databases hold state shared by multiple connections.  Generally, this
 means common configuration and caches.  For in-memory databases, it
 provides a place to hold ownership of the in-memory database.
 
-- C/C++: :cpp:class:`AdbcDatabase`
+- C/C++: :c:struct:`AdbcDatabase`
 - Go: ``Driver``
 - Java: :jtype:`org.apache.arrow.adbc.core.AdbcDatabase`
 
@@ -43,7 +43,7 @@ Connections
 
 A connection is a single, logical connection to a database.
 
-- C/C++: :cpp:class:`AdbcConnection`
+- C/C++: :c:struct:`AdbcConnection`
 - Go: ``Connection``
 - Java: :jtype:`org.apache.arrow.adbc.core.AdbcConnection`
 
@@ -87,7 +87,7 @@ one-off queries and prepared statements.  They can be reused, though
 doing so will invalidate prior result sets from that statement.  (See
 :doc:`../../cpp/concurrency`.)
 
-- C/C++: :cpp:class:`AdbcStatement`
+- C/C++: :c:struct:`AdbcStatement`
 - Go: ``Statement``
 - Java: ``org.apache.arrow.adbc.core.AdbcStatement``
 
@@ -125,7 +125,7 @@ RPC/Flight SQL.)  Clients may take advantage of this to distribute
 computations on a result set across multiple threads, processes, or
 machines.
 
-- C/C++: :cpp:func:`AdbcStatementExecutePartitions`
+- C/C++: :c:func:`AdbcStatementExecutePartitions`
 - Go: ``Statement.ExecutePartitions``
 - Java: ``org.apache.arrow.adbc.core.AdbcStatement#executePartitioned()``
 
@@ -188,7 +188,7 @@ Error Handling
 
 The error handling strategy varies by language.
 
-In C, most methods take a :cpp:class:`AdbcError`.  In Go, most methods return
+In C, most methods take a :c:struct:`AdbcError`.  In Go, most methods return
 an error that can be cast to an ``AdbcError``.  In Java, most methods raise an
 ``AdbcException``.
 
@@ -210,9 +210,9 @@ Drivers can expose additional rich error metadata.  This can be used to return
 structured error information.  For example, a driver could use something like
 the `Googleapis ErrorDetails`_.
 
-In C, Go and Java, :cpp:class:`AdbcError`, ``AdbcError``, and
+In C, Go and Java, :c:struct:`AdbcError`, ``AdbcError``, and
 ``AdbcException`` respectively expose a list of additional metadata.  For C,
-see the documentation of :cpp:class:`AdbcError` to learn how the struct was
+see the documentation of :c:struct:`AdbcError` to learn how the struct was
 expanded while preserving ABI.
 
 .. _Googleapis ErrorDetails: https://github.com/googleapis/googleapis/blob/master/google/rpc/error_details.proto

@@ -54,6 +54,9 @@ https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/G
 **adbc.bigquery.get_query_results_options.timeout**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the timeout (in minutes) for the GetQueryResultsOptions value. If not set, defaults to 5 minutes.
 
+**adbc.bigquery.max_fetch_concurrency**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the [maxStreamCount](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.Storage.V1/latest/Google.Cloud.BigQuery.Storage.V1.BigQueryReadClient#Google_Cloud_BigQuery_Storage_V1_BigQueryReadClient_CreateReadSession_System_String_Google_Cloud_BigQuery_Storage_V1_ReadSession_System_Int32_Google_Api_Gax_Grpc_CallSettings_) for the CreateReadSession method. If not set, defaults to 1.
+
 **adbc.bigquery.include_constraints_getobjects**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Some callers do not need the constraint details when they get the table information and can improve the speed of obtaining the results. Setting this value to `"false"` will not include the constraint details. The default value is `"true"`.
 

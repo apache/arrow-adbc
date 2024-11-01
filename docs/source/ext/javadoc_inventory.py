@@ -21,51 +21,18 @@ from __future__ import annotations
 
 import argparse
 import json
-import typing
 import urllib.parse
 from pathlib import Path
 
 import sphinx.util.inventory
-
-# XXX: we're taking advantage of duck typing to do stupid things here.
-
-
-class FakeEnv(typing.NamedTuple):
-    project: str
-    version: str
-
-
-class FakeObject(typing.NamedTuple):
-    # Looks like this
-    # name domainname:typ prio uri dispname
-    name: str
-    # written as '-' if equal to name
-    dispname: str
-    # member, doc, etc
-    typ: str
-    # passed through builder.get_target_uri
-    docname: str
-    # not including the #
-    anchor: str
-    # written, but never used
-    prio: str
-
-
-class FakeDomain(typing.NamedTuple):
-    objects: list[FakeObject]
-
-    def get_objects(self):
-        return self.objects
-
-
-class FakeBuildEnvironment(typing.NamedTuple):
-    config: FakeEnv
-    domains: dict[str, FakeDomain]
-
-
-class FakeBuilder:
-    def get_target_uri(self, docname: str) -> str:
-        return docname
+from fake_inventory import (
+    FakeBuildEnvironment,
+    FakeBuilder,
+    FakeDomain,
+    FakeDomainsContainer,
+    FakeEnv,
+    FakeObject,
+)
 
 
 def extract_index(data: str, prelude: str) -> list:
@@ -102,7 +69,7 @@ def make_fake_domains(root: Path, base_url: str) -> dict[str, FakeDomain]:
         data.extend(extract_index(f.read(), "packageSearchIndex = "))
 
     domains = {
-        "std": FakeDomain(objects=[]),
+        "std": FakeDomain("std", objects=[]),
     }
 
     for item in data:
@@ -158,7 +125,9 @@ def main():
 
     domains = make_fake_domains(args.path, args.url)
     config = FakeEnv(project=args.project, version=args.version)
-    env = FakeBuildEnvironment(config=config, domains=domains)
+    env = FakeBuildEnvironment(
+        config=config, domains=FakeDomainsContainer.from_dict(domains)
+    )
 
     output = args.path / "objects.inv"
     sphinx.util.inventory.InventoryFile.dump(

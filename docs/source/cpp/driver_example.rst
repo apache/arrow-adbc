@@ -15,8 +15,35 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-==========
-``adbc.h``
-==========
+==============
+Driver Example
+==============
 
-.. doxygenfile:: adbc.h
+.. recipe:: recipe_driver/driver_example.cc
+   :language: cpp
+
+Low-level testing
+=================
+
+.. recipe:: recipe_driver/driver_example_test.cc
+   :language: cpp
+
+High-level testing
+==================
+
+.. recipe:: recipe_driver/driver_example.py
+
+High-level tests can also be written in R using the ``adbcdrivermanager``
+package.
+
+.. code-block:: r
+
+   library(adbcdrivermanager)
+
+   drv <- adbc_driver("build/libdriver_example.dylib")
+   db <- adbc_database_init(drv, uri = paste0("file://", getwd()))
+   con <- adbc_connection_init(db)
+
+   data.frame(col = 1:3) |> write_adbc(con, "example.arrows")
+   con |> read_adbc("SELECT * FROM example.arrows") |> as.data.frame()
+   unlink("example.arrows")

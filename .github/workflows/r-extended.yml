@@ -44,7 +44,7 @@ jobs:
       matrix:
         rversion: [oldrel, release, devel]
         os: [macOS, windows, ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake, adbcbigquery]
       fail-fast: false
 
     uses: ./.github/workflows/r-check.yml
@@ -61,7 +61,7 @@ jobs:
       matrix:
         rversion: ["3.6", "4.0", "4.1"]
         os: [ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake, adbcbigquery]
       fail-fast: false
 
     uses: ./.github/workflows/r-check.yml

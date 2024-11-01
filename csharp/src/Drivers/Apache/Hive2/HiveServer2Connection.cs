@@ -66,6 +66,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             _client = new TCLIService.Client(protocol);
             TOpenSessionReq request = CreateSessionRequest();
             TOpenSessionResp? session = await Client.OpenSession(request);
+
+            // Some responses don't raise an exception. Explicitly check the status.
+            if (session == null)
+            {
+                throw new HiveServer2Exception("unable to open session. unknown error.");
+            }
+            else if (session.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(session.Status.ErrorMessage)
+                    .SetNativeError(session.Status.ErrorCode)
+                    .SetSqlState(session.Status.SqlState);
+            }
+
             SessionHandle = session.SessionHandle;
         }
 
@@ -74,6 +87,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected internal DataTypeConversion DataTypeConversion { get; set; } = DataTypeConversion.None;
 
         protected internal HiveServer2TlsOption TlsOptions { get; set; } = HiveServer2TlsOption.Empty;
+
+        protected internal int HttpRequestTimeout { get; set; } = 30000;
 
         protected abstract Task<TTransport> CreateTransportAsync();
 

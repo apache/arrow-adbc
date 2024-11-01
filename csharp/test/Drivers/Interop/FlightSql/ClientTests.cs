@@ -130,7 +130,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             {
                 using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(environment, _testConfiguration))
                 {
-                    Tests.ClientTests.CanClientGetSchema(adbcConnection, environment, environment.Name);
+                    Tests.ClientTests.CanClientGetSchema(adbcConnection, environment, environmentName: environment.Name);
                 }
             }
         }
@@ -146,7 +146,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             {
                 using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(environment, _testConfiguration))
                 {
-                    Tests.ClientTests.CanClientExecuteQuery(adbcConnection, environment, additionalCommandOptionsSetter: null, environment.Name);
+                    Tests.ClientTests.CanClientExecuteQuery(adbcConnection, environment, additionalCommandOptionsSetter: null, environmentName: environment.Name);
                 }
             }
         }

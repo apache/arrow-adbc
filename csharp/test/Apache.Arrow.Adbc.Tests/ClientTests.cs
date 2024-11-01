@@ -74,9 +74,13 @@ namespace Apache.Arrow.Adbc.Tests
         /// </summary>
         /// <param name="adbcConnection">The <see cref="Adbc.Client.AdbcConnection"/> to use.</param>
         /// <param name="testConfiguration">The <see cref="TestConfiguration"/> to use</param>
+        /// <param name="customQuery">The custom query to use instead of query from <see cref="TestConfiguration.Query" /></param>"/>
+        /// <param name="expectedColumnCount">The custom column count to use instead of query from <see cref="TestMetadata.ExpectedColumnCount" /></param>
         public static void CanClientGetSchema(
             Adbc.Client.AdbcConnection adbcConnection,
             TestConfiguration testConfiguration,
+            string? customQuery = default,
+            int? expectedColumnCount = default,
             string? environmentName = null)
         {
             if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
@@ -84,13 +88,13 @@ namespace Apache.Arrow.Adbc.Tests
 
             adbcConnection.Open();
 
-            using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+            using AdbcCommand adbcCommand = new AdbcCommand(customQuery ?? testConfiguration.Query, adbcConnection);
             using AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.SchemaOnly);
 
             DataTable? table = reader.GetSchemaTable();
 
             // there is one row per field
-            Assert.True(testConfiguration.Metadata.ExpectedColumnCount==table?.Rows.Count, Utils.FormatMessage("ExpectedColumnCount is not equal", environmentName));
+            Assert.Equal(expectedColumnCount ?? testConfiguration.Metadata.ExpectedColumnCount, table?.Rows.Count);
         }
 
         /// <summary>
@@ -104,6 +108,8 @@ namespace Apache.Arrow.Adbc.Tests
             Adbc.Client.AdbcConnection adbcConnection,
             TestConfiguration testConfiguration,
             Action<AdbcCommand>? additionalCommandOptionsSetter = null,
+            string? customQuery = default,
+            int? expectedResultsCount = default,
             string? environmentName = null)
         {
             if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
@@ -113,7 +119,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             adbcConnection.Open();
 
-            using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+            using AdbcCommand adbcCommand = new AdbcCommand(customQuery ?? testConfiguration.Query, adbcConnection);
             additionalCommandOptionsSetter?.Invoke(adbcCommand);
             using AdbcDataReader reader = adbcCommand.ExecuteReader();
 
@@ -137,7 +143,7 @@ namespace Apache.Arrow.Adbc.Tests
             }
             finally { reader.Close(); }
 
-            Assert.True(testConfiguration.ExpectedResultsCount==count, Utils.FormatMessage("ExpectedResultsCount is not equal to actual results", environmentName));
+            Assert.Equal(expectedResultsCount ?? testConfiguration.ExpectedResultsCount, count);
         }
 
         /// <summary>

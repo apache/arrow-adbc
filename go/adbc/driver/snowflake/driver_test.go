@@ -25,6 +25,7 @@ import (
 	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"math"
@@ -35,14 +36,16 @@ import (
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v18/arrow"
-	"github.com/apache/arrow/go/v18/arrow/array"
-	"github.com/apache/arrow/go/v18/arrow/decimal128"
-	"github.com/apache/arrow/go/v18/arrow/memory"
+	"github.com/apache/arrow-go/v18/arrow"
+	"github.com/apache/arrow-go/v18/arrow/array"
+	"github.com/apache/arrow-go/v18/arrow/decimal128"
+	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/google/uuid"
 	"github.com/snowflakedb/gosnowflake"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -1215,15 +1218,15 @@ func (suite *SnowflakeTests) TestSqlIngestMapType() {
 	[
 		{
 			"col_int64": 1,
-			"col_map": "{\n  \"key_value\": [\n    {\n      \"key\": \"key1\",\n      \"value\": 1\n    }\n  ]\n}"
+			"col_map": "{\n  \"key1\": 1\n}"
 		},
 		{
 			"col_int64": 2,
-			"col_map": "{\n  \"key_value\": [\n    {\n      \"key\": \"key2\",\n      \"value\": 2\n    }\n  ]\n}"
+			"col_map": "{\n  \"key2\": 2\n}"
 		},
 		{
 			"col_int64": 3,
-			"col_map": "{\n  \"key_value\": [\n    {\n      \"key\": \"key3\",\n      \"value\": 3\n    }\n  ]\n}"
+			"col_map": "{\n  \"key3\": 3\n}"
 		}
 	]
 	`)))
@@ -2157,4 +2160,95 @@ func (suite *SnowflakeTests) TestGetSetClientConfigFile() {
 	result, err := getSetDB.GetOption(driver.OptionClientConfigFile)
 	suite.NoError(err)
 	suite.True(file == result)
+}
+
+func (suite *SnowflakeTests) TestGetObjectsWithNilCatalog() {
+	// this test demonstrates calling GetObjects with the catalog depth and a nil catalog
+	rdr, err := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthCatalogs, nil, nil, nil, nil, nil)
+	suite.NoError(err)
+	// test suite validates memory allocator so we need to make sure we call
+	// release on the result reader
+	rdr.Release()
+}
+
+func TestJSONUnmarshal(t *testing.T) {
+	jsonData := `{
+  "catalog_db_schemas": [
+    {
+      "db_schema_name": "PUBLIC",
+      "db_schema_tables": [
+        {
+          "table_columns": [
+            {
+              "column_name": "PRODUCT_ID",
+              "ordinal_position": 1,
+              "xdbc_char_octet_length": 16777216,
+              "xdbc_column_size": 16777216,
+              "xdbc_is_nullable": "NO",
+              "xdbc_nullable": 0,
+              "xdbc_type_name": "TEXT"
+            },
+            {
+              "column_name": "PRODUCT_NAME",
+              "ordinal_position": 2,
+              "xdbc_char_octet_length": 16777216,
+              "xdbc_column_size": 16777216,
+              "xdbc_is_nullable": "YES",
+              "xdbc_nullable": 1,
+              "xdbc_type_name": "TEXT"
+            },
+            {
+              "column_name": "ORDER_ID",
+              "ordinal_position": 3,
+              "xdbc_char_octet_length": 16777216,
+              "xdbc_column_size": 16777216,
+              "xdbc_is_nullable": "YES",
+              "xdbc_nullable": 1,
+              "xdbc_type_name": "TEXT"
+            }
+          ],
+          "table_constraints": [
+            {
+              "constraint_column_names": [
+                "PRODUCT_ID"
+              ],
+              "constraint_column_usage": [],
+              "constraint_name": "SYS_CONSTRAINT_386a9022-ad6e-47ed-94b6-f48501938f5f",
+              "constraint_type": "PRIMARY KEY"
+            },
+            {
+              "constraint_column_names": [
+                "ORDER_ID"
+              ],
+              "constraint_column_usage": [
+                {
+                  "fk_catalog": "DEMODB",
+                  "fk_column_name": "ORDER_ID",
+                  "fk_db_schema": "PUBLIC",
+                  "fk_table": "ORDERS2"
+                }
+              ],
+              "constraint_name": "SYS_CONSTRAINT_cfb3b763-4a97-4c0b-8356-a493c03b7e66",
+              "constraint_type": "FOREIGN KEY"
+            }
+          ],
+          "table_name": "PRODUCT2",
+          "table_type": "BASE TABLE"
+        }
+      ]
+    }
+  ],
+  "catalog_name": "DEMODB"
+}`
+
+	var getObjectsCatalog driverbase.GetObjectsInfo
+	require.NoError(t, json.Unmarshal([]byte(jsonData), &getObjectsCatalog))
+
+	for _, sch := range getObjectsCatalog.CatalogDbSchemas {
+		for _, tab := range sch.DbSchemaTables {
+			for _, con := range tab.TableConstraints {
+				assert.NotEmpty(t, con.ConstraintColumnNames)
+			}
+		}
+	}
 }
