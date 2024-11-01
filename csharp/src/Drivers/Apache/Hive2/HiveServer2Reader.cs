@@ -63,6 +63,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 { ArrowTypeId.Decimal128, ConvertToDecimal128 },
                 { ArrowTypeId.Timestamp, ConvertToTimestamp },
             };
+        private static readonly IReadOnlyDictionary<ArrowTypeId, Func<DoubleArray, IArrowType, IArrowArray>> s_arrowDoubleConverters =
+            new Dictionary<ArrowTypeId, Func<DoubleArray, IArrowType, IArrowArray>>()
+            {
+                { ArrowTypeId.Float, ConvertToFloat },
+            };
 
         public HiveServer2Reader(
             HiveServer2Statement statement,
@@ -147,6 +152,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 Func<StringArray, IArrowType, IArrowArray> converter = s_arrowStringConverters[expectedArrowType.TypeId];
                 return converter(stringArray, expectedArrowType);
             }
+            else if (expectedArrowType != null && arrowArray is DoubleArray doubleArray && s_arrowDoubleConverters.ContainsKey(expectedArrowType.TypeId))
+            {
+                // Perform a conversion from double to another (float) type.
+                Func<DoubleArray, IArrowType, IArrowArray> converter = s_arrowDoubleConverters[expectedArrowType.TypeId];
+                return converter(doubleArray, expectedArrowType);
+            }
             return arrowArray;
         }
 
@@ -173,6 +184,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     throw new FormatException($"unable to convert value '{array.GetString(i)}' to DateTime");
                 }
+            }
+
+            return resultArray.Build();
+        }
+
+        internal static FloatArray ConvertToFloat(DoubleArray array, IArrowType _)
+        {
+            var resultArray = new FloatArray.Builder();
+            int length = array.Length;
+            for (int i = 0; i < length; i++)
+            {
+                resultArray.Append((float?)array.GetValue(i));
             }
 
             return resultArray.Build();

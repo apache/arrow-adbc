@@ -14,7 +14,7 @@
  -- See the License for the specific language governing permissions and
  -- limitations under the License.
 
-CREATE OR REPLACE TABLE IF NOT EXISTS {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
+CREATE TABLE IF NOT EXISTS {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
   id LONG,
   byte BYTE,
   short SHORT,

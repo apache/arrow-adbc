@@ -263,7 +263,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             await InsertSingleValueAsync(table.TableName, columnName, valueString);
             object doubleValue = (double)value;
             // Spark over HTTP returns float as double whereas Spark on Databricks returns float.
-            object floatValue = TestEnvironment.ServerType != SparkServerType.Databricks ? doubleValue : value;
+            object floatValue = TestEnvironment.ServerType == SparkServerType.Databricks || TestEnvironment.DataTypeConversion.HasFlag(DataTypeConversion.Scalar) ? value : doubleValue;
             await base.SelectAndValidateValuesAsync(table.TableName, columnName, floatValue, 1);
             string whereClause = GetWhereClause(columnName, value);
             if (SupportsDelete) await DeleteFromTableAsync(table.TableName, whereClause, 1);

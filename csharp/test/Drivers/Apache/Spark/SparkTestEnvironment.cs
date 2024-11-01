@@ -123,6 +123,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         internal SparkServerType ServerType => ((SparkConnection)Connection).ServerType;
 
+        internal DataTypeConversion DataTypeConversion => ((SparkConnection)Connection).DataTypeConversion;
+
         public override string VendorVersion => ((HiveServer2Connection)Connection).VendorVersion;
 
         public override bool SupportsDelete => ServerType == SparkServerType.Databricks;
@@ -139,10 +141,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public override SampleDataBuilder GetSampleDataBuilder()
         {
             SampleDataBuilder sampleDataBuilder = new();
-            Type floatNetType = ServerType == SparkServerType.Databricks ? typeof(float) : typeof(double);
-            Type floatArrowType = ServerType == SparkServerType.Databricks ? typeof(FloatType) : typeof(DoubleType);
+            bool dataTypeIsFloat = ServerType == SparkServerType.Databricks || DataTypeConversion.HasFlag(DataTypeConversion.Scalar);
+            Type floatNetType = dataTypeIsFloat ? typeof(float) : typeof(double);
+            Type floatArrowType = dataTypeIsFloat ? typeof(FloatType) : typeof(DoubleType);
             object floatValue;
-            if (ServerType == SparkServerType.Databricks)
+            if (dataTypeIsFloat)
                 floatValue = 1f;
             else
                 floatValue = 1d;
