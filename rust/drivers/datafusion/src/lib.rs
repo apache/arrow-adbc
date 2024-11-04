@@ -24,7 +24,6 @@ use datafusion::prelude::*;
 use datafusion_substrait::logical_plan::consumer::from_substrait_plan;
 use datafusion_substrait::substrait::proto::Plan;
 use prost::Message;
-use std::cell::RefCell;
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::vec::IntoIter;
@@ -237,17 +236,14 @@ impl Optionable for DataFusionConnection {
 
     fn set_option(
         &mut self,
-        _key: Self::Option,
-        _value: adbc_core::options::OptionValue,
+        key: Self::Option,
+        value: adbc_core::options::OptionValue,
     ) -> adbc_core::error::Result<()> {
-        match _key.as_ref() {
-            constants::ADBC_CONNECTION_OPTION_CURRENT_CATALOG => match _value {
+        match key.as_ref() {
+            constants::ADBC_CONNECTION_OPTION_CURRENT_CATALOG => match value {
                 OptionValue::String(value) => {
                     self.runtime.block_on(async {
-                        let query = format!(
-                            "SET datafusion.catalog.default_catalog = {}",
-                            value.as_str()
-                        );
+                        let query = format!("SET datafusion.catalog.default_catalog = {value}");
                         self.ctx.sql(query.as_str()).await.unwrap();
                     });
                     Ok(())
@@ -257,11 +253,10 @@ impl Optionable for DataFusionConnection {
                     Status::InvalidArguments,
                 )),
             },
-            constants::ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA => match _value {
+            constants::ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA => match value {
                 OptionValue::String(value) => {
                     self.runtime.block_on(async {
-                        let query =
-                            format!("SET datafusion.catalog.default_schema = {}", value.as_str());
+                        let query = format!("SET datafusion.catalog.default_schema = {value}");
                         self.ctx.sql(query.as_str()).await.unwrap();
                     });
                     Ok(())
@@ -272,7 +267,7 @@ impl Optionable for DataFusionConnection {
                 )),
             },
             _ => Err(Error::with_message_and_status(
-                format!("Unrecognized option: {_key:?}"),
+                format!("Unrecognized option: {key:?}"),
                 Status::NotFound,
             )),
         }
@@ -702,7 +697,7 @@ impl Connection for DataFusionConnection {
             ctx: self.ctx.clone(),
             sql_query: None,
             substrait_plan: None,
-            bound_record_batch: RefCell::new(None),
+            bound_record_batch: None,
             ingest_target_table: None,
         })
     }
@@ -789,7 +784,7 @@ pub struct DataFusionStatement {
     ctx: Arc<SessionContext>,
     sql_query: Option<String>,
     substrait_plan: Option<Plan>,
-    bound_record_batch: RefCell<Option<RecordBatch>>,
+    bound_record_batch: Option<RecordBatch>,
     ingest_target_table: Option<String>,
 }
 
@@ -862,7 +857,7 @@ impl Optionable for DataFusionStatement {
 
 impl Statement for DataFusionStatement {
     fn bind(&mut self, batch: arrow_array::RecordBatch) -> adbc_core::error::Result<()> {
-        self.bound_record_batch.replace(Some(batch));
+        self.bound_record_batch.replace(batch);
         Ok(())
     }
 
@@ -900,9 +895,9 @@ impl Statement for DataFusionStatement {
                     .await
                     .unwrap();
             });
-        } else if self.bound_record_batch.get_mut().is_some() {
+        } else if self.bound_record_batch.is_some() {
             self.runtime.block_on(async {
-                let batch: RecordBatch = self.bound_record_batch.replace(None).unwrap();
+                let batch: RecordBatch = self.bound_record_batch.take().unwrap();
 
                 let table = match self.ingest_target_table.clone() {
                     Some(table) => table,
