@@ -895,10 +895,8 @@ impl Statement for DataFusionStatement {
                     .await
                     .unwrap();
             });
-        } else if self.bound_record_batch.is_some() {
+        } else if let Some(batch) = self.bound_record_batch.take() {
             self.runtime.block_on(async {
-                let batch: RecordBatch = self.bound_record_batch.take().unwrap();
-
                 let table = match self.ingest_target_table.clone() {
                     Some(table) => table,
                     None => todo!(),
