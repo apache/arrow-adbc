@@ -821,7 +821,7 @@ impl Optionable for DataFusionStatement {
                 match target_table {
                     Some(table) => Ok(table),
                     None => Err(Error::with_message_and_status(
-                        format!("{} has not been set", key.as_ref()),
+                        format!("{key:?} has not been set"),
                         Status::NotFound,
                     )),
                 }
