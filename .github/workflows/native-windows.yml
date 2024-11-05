@@ -82,7 +82,7 @@ jobs:
       - name: Install Dependencies
         shell: bash -l {0}
         run: |
-          mamba install -c conda-forge --file ci/conda_env_cpp.txt
+          mamba install -c conda-forge --file ci\/conda_env_cpp.txt
           # Force bundled gtest
           mamba uninstall gtest
 
