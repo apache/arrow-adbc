@@ -80,9 +80,9 @@ jobs:
           miniforge-version: latest
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
+        shell: pwsh
         run: |
-          mamba install -c conda-forge --file "ci/conda_env_cpp.txt"
+          mamba install -c conda-forge --file ci\conda_env_cpp.txt
           # Force bundled gtest
           mamba uninstall gtest
 
