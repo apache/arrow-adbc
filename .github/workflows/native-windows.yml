@@ -82,6 +82,9 @@ jobs:
       - name: Install Dependencies
         shell: bash -l {0}
         run: |
+          echo mamba install -c conda-forge \
+            --file ci/conda_env_cpp.txt
+
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
           # Force bundled gtest
@@ -282,11 +285,6 @@ jobs:
       - name: Install Dependencies
         shell: bash -l {0}
         run: |
-          echo mamba install -c conda-forge \
-            python=${{ matrix.python }} \
-            --file ci/conda_env_cpp.txt \
-            --file ci/conda_env_python.txt
-
           mamba install -c conda-forge \
             python=${{ matrix.python }} \
             --file ci/conda_env_cpp.txt \
