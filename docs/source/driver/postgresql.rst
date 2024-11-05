@@ -35,6 +35,13 @@ overall approach.
           Performance/optimization and support for complex types and
           different ADBC features is still ongoing.
 
+.. note:: AWS Redshift supports a very old version of the PostgreSQL
+          wire protocol and has a basic level of support in the ADBC
+          PostgreSQL driver. Because Redshift does not support reading or
+          writing COPY in PostgreSQL binary format, the optimizations that
+          accellerate non-Redshift queries are not enabled when connecting
+          to a Redshift database. This functionality is experimental.
+
 Installation
 ============
 
