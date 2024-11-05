@@ -83,7 +83,7 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
-            --file ci/conda_env_cpp.txt
+            --file ci\conda_env_cpp.txt
           # Force bundled gtest
           mamba uninstall gtest
 
@@ -140,7 +140,7 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
-            --file ci/conda_env_cpp.txt
+            --file ci\conda_env_cpp.txt
           # Force bundled gtest
           mamba uninstall gtest
 
@@ -216,7 +216,7 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
-            --file ci/conda_env_cpp.txt
+            --file ci\conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
           go-version: "${{ env.GO_VERSION }}"
@@ -284,8 +284,8 @@ jobs:
         run: |
           mamba install -c conda-forge \
             python=${{ matrix.python }} \
-            --file ci/conda_env_cpp.txt \
-            --file ci/conda_env_python.txt
+            --file ci\conda_env_cpp.txt \
+            --file ci\conda_env_python.txt
 
       - uses: actions/download-artifact@v4
         with:
