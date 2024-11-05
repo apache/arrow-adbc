@@ -174,10 +174,10 @@ Status PqResultArrayReader::Initialize(int64_t* rows_affected) {
 
   for (int i = 0; i < helper_.NumColumns(); i++) {
     PostgresType child_type;
-    UNWRAP_NANOARROW(na_error_, Internal,
-                     type_resolver_->Find(helper_.FieldType(i), &child_type, &na_error_));
+    UNWRAP_ERRNO(Internal,
+                 type_resolver_->FindWithDefault(helper_.FieldType(i), &child_type));
 
-    UNWRAP_ERRNO(Internal, child_type.SetSchema(schema_->children[i]));
+    UNWRAP_ERRNO(Internal, child_type.SetSchema(schema_->children[i], vendor_name_));
     UNWRAP_ERRNO(Internal,
                  ArrowSchemaSetName(schema_->children[i], helper_.FieldName(i)));
 
