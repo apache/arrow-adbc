@@ -38,7 +38,7 @@ import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
-import org.apache.arrow.driver.jdbc.FlightServerTestRule;
+import org.apache.arrow.driver.jdbc.FlightServerTestExtension;
 import org.apache.arrow.driver.jdbc.utils.MockFlightSqlProducer;
 import org.apache.arrow.flight.FlightProducer;
 import org.apache.arrow.flight.sql.FlightSqlProducer;
@@ -58,19 +58,19 @@ import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.arrow.vector.util.Text;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 /** Test functions for returning database catalog information. */
 public class GetObjectsTests {
   private static final BufferAllocator allocator = new RootAllocator(Long.MAX_VALUE);
   private static final MockFlightSqlProducer FLIGHT_SQL_PRODUCER = new MockFlightSqlProducer();
 
-  @ClassRule
-  public static final FlightServerTestRule FLIGHT_SERVER_TEST_RULE =
-      FlightServerTestRule.createStandardTestRule(FLIGHT_SQL_PRODUCER);
+  @RegisterExtension
+  public static FlightServerTestExtension FLIGHT_SERVER_TEST_EXTENSION =
+      FlightServerTestExtension.createStandardTestExtension(FLIGHT_SQL_PRODUCER);
 
   private static final int BASE_ROW_COUNT = 10;
   private static AdbcConnection connection;
@@ -82,13 +82,14 @@ public class GetObjectsTests {
     ALL_COLUMNS
   }
 
-  @BeforeClass
+  @BeforeAll
   public static void setUpBeforeClass() throws AdbcException {
-    String uri = String.format("grpc+tcp://%s:%d", "localhost", FLIGHT_SERVER_TEST_RULE.getPort());
+    String uri =
+        String.format("grpc+tcp://%s:%d", "localhost", FLIGHT_SERVER_TEST_EXTENSION.getPort());
     Map<String, Object> params = new HashMap<>();
     params.put(AdbcDriver.PARAM_URI.getKey(), uri);
-    params.put(AdbcDriver.PARAM_USERNAME.getKey(), FlightServerTestRule.DEFAULT_USER);
-    params.put(AdbcDriver.PARAM_PASSWORD.getKey(), FlightServerTestRule.DEFAULT_PASSWORD);
+    params.put(AdbcDriver.PARAM_USERNAME.getKey(), FlightServerTestExtension.DEFAULT_USER);
+    params.put(AdbcDriver.PARAM_PASSWORD.getKey(), FlightServerTestExtension.DEFAULT_PASSWORD);
     params.put(FlightSqlConnectionProperties.WITH_COOKIE_MIDDLEWARE.getKey(), true);
     AdbcDatabase db =
         AdbcDriverManager.getInstance()
@@ -291,7 +292,7 @@ public class GetObjectsTests {
         commandGetTablesWithSchema, commandGetTablesWithSchemaResultProducer);
   }
 
-  @AfterClass
+  @AfterAll
   public static void tearDown() throws Exception {
     AutoCloseables.close(connection, FLIGHT_SQL_PRODUCER, allocator);
   }

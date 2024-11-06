@@ -21,7 +21,7 @@
 # Requirements
 # - Ruby >= 2.3
 # - Maven >= 3.3.9
-# - JDK >=7
+# - JDK >= 11
 # - gcc >= 4.8
 # - Go >= 1.21
 # - Docker
