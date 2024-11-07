@@ -699,3 +699,63 @@
 - **ci**: update website_build.sh for new versioning scheme (#1972)
 - **dev/release**: update C# <VersionSuffix> tag (#1973)
 - **c/vendor/nanoarrow**: Fix -Wreorder warning (#1966)
+
+## ADBC Libraries 15 (2024-11-08)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.3.0
+- C#: 0.15.0
+- Java: 0.15.0
+- R: 0.15.0
+- Rust: 0.15.0
+
+### Feat
+
+- **c/driver/postgresql**: Enable basic connect/query workflow for Redshift (#2219)
+- **rust/drivers/datafusion**: add support for bulk ingest (#2279)
+- **csharp/src/Drivers/Apache**: convert Double to Float for Apache Spark on scalar conversion (#2296)
+- **go/adbc/driver/snowflake**: update to the latest 1.12.0 gosnowflake driver (#2298)
+- **csharp/src/Drivers/BigQuery**: support max stream count setting when creating read session (#2289)
+- **rust/drivers**: adbc driver for datafusion (#2267)
+- **go/adbc/driver/snowflake**: improve GetObjects performance and semantics (#2254)
+- **c**: Implement ingestion and testing for float16, string_view, and binary_view (#2234)
+- **r**: Add R BigQuery driver wrapper (#2235)
+- **csharp/src/Drivers/Apache/Spark**: add request_timeout_ms option to allow longer HTTP request length (#2218)
+- **go/adbc/driver/snowflake**: add support for a client config file (#2197)
+- **csharp/src/Client**: Additional parameter support for DbCommand (#2195)
+- **csharp/src/Drivers/Apache/Spark**: add option to ignore TLS/SSL certificate exceptions (#2188)
+- **csharp/src/Drivers/Apache/Spark**: Perform scalar data type conversion for Spark over HTTP (#2152)
+- **csharp/src/Drivers/Apache/Spark**: Azure HDInsight Spark Documentation (#2164)
+- **c/driver/postgresql**: Implement ingestion of list types for PostgreSQL (#2153)
+- **csharp/src/Drivers/Apache/Spark**: poc - Support for Apache Spark over HTTP (non-Arrow) (#2018)
+- **c/driver/postgresql**: add `arrow.opaque` type metadata (#2122)
+
+### Fix
+
+- **csharp/src/Drivers/Apache**: fix float data type handling for tests on Databricks Spark (#2283)
+- **go/adbc/driver/internal/driverbase**: proper unmarshalling for ConstraintColumnNames (#2285)
+- **csharp/src/Drivers/Apache**: fix to workaround concurrency issue (#2282)
+- **csharp/src/Drivers/Apache**: correctly handle empty response and add Client tests (#2275)
+- **csharp/src/Drivers/Apache**: remove interleaved async look-ahead code (#2273)
+- **c/driver_manager**: More robust error reporting for errors that occur before AdbcDatabaseInit() (#2266)
+- **rust**: implement database/connection constructors without options (#2242)
+- **csharp/src/Drivers**: update System.Text.Json to version 8.0.5 because of known vulnerability (#2238)
+- **csharp/src/Drivers/Apache/Spark**: correct batch handling for the HiveServer2Reader (#2215)
+- **go/adbc/driver/snowflake**: call GetObjects with null catalog at catalog depth (#2194)
+- **csharp/src/Drivers/Apache/Spark**: correct BatchSize implementation for base reader (#2199)
+- **csharp/src/Drivers/Apache/Spark**: correct precision/scale handling with zeros in fractional portion (#2198)
+- **csharp/src/Drivers/BigQuery**: Fixed GBQ driver issue when results.TableReference is null (#2165)
+- **go/adbc/driver/snowflake**: fix setting database and schema context after initial connection (#2169)
+- **csharp/src/Drivers/Interop/Snowflake**: add test to demonstrate DEFAULT_ROLE behavior (#2151)
+- **c/driver/postgresql**: Improve error reporting for queries that error before the COPY header is sent (#2134)
+
+### Refactor
+
+- **c/driver/postgresql**: cleanups for result_helper signatures (#2261)
+- **c/driver/postgresql**: Use GetObjectsHelper from framework to build objects (#2189)
+- **csharp/src/Drivers/Apache/Spark**: use UTF8 string for data conversion, instead of .NET String (#2192)
+- **c/driver/postgresql**: Use Status for error handling in BindStream (#2187)
+- **c/driver/postgresql**: Use Status instead of AdbcStatusCode/AdbcError in result helper (#2178)
+- **c/driver**: Use non-objects framework components in Postgres driver (#2166)
+- **c/driver/postgresql**: Use copy writer in BindStream for parameter binding (#2157)
