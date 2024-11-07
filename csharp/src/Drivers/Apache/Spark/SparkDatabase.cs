@@ -17,30 +17,42 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     public class SparkDatabase : AdbcDatabase
     {
         readonly IReadOnlyDictionary<string, string> properties;
+        readonly ActivitySource? _activitySource;
 
-        public SparkDatabase(IReadOnlyDictionary<string, string> properties)
+        public SparkDatabase(IReadOnlyDictionary<string, string> properties, ActivitySource? activitySource = default)
         {
             this.properties = properties;
+            _activitySource = activitySource;
         }
 
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
+            using Activity? activity = StartActivity(nameof(Connect));
+
             // connection options takes precedence over database properties for the same option
             IReadOnlyDictionary<string, string> mergedProperties = options == null
                 ? properties
                 : options
                     .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            SparkConnection connection = SparkConnectionFactory.NewConnection(mergedProperties); // new SparkConnection(mergedProperties);
+            SparkConnection connection = SparkConnectionFactory.NewConnection(mergedProperties, _activitySource);
+
+            activity?.AddEvent(new ActivityEvent("connecting"));
             connection.OpenAsync().Wait();
+            activity?.AddEvent(new ActivityEvent("connected"));
+
             return connection;
         }
+
+        private Activity? StartActivity(string methodName) => _activitySource?.StartActivity(typeof(SparkDatabase).FullName + "." + methodName);
     }
 }

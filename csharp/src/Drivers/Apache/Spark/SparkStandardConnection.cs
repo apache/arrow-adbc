@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -27,7 +28,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkStandardConnection : SparkHttpConnection
     {
-        public SparkStandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public SparkStandardConnection(IReadOnlyDictionary<string, string> properties, ActivitySource? activitySource) : base(properties, activitySource)
         {
         }
 

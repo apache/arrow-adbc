@@ -40,7 +40,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
 
-        public SparkHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public SparkHttpConnection(IReadOnlyDictionary<string, string> properties, ActivitySource? activitySource) : base(properties, activitySource)
         {
         }
 

@@ -16,6 +16,7 @@
 */
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
@@ -26,7 +27,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkDatabricksConnection : SparkHttpConnection
     {
-        public SparkDatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public SparkDatabricksConnection(IReadOnlyDictionary<string, string> properties, ActivitySource? activitySource) : base(properties, activitySource)
         {
         }
 

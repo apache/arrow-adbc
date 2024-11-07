@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -35,10 +36,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
+        private readonly ActivitySource? _activitySource;
 
-        internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
+        internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties, ActivitySource? activitySource)
         {
             Properties = properties;
+            _activitySource = activitySource;
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
             // will retry until it successfully returns a value without an exception.
@@ -58,14 +61,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal IReadOnlyDictionary<string, string> Properties { get; }
 
+        protected ActivitySource? ActivitySource { get => _activitySource; }
+
         internal async Task OpenAsync()
         {
+            using var activity = StartActivity(nameof(OpenAsync));
             TTransport transport = await CreateTransportAsync();
             TProtocol protocol = await CreateProtocolAsync(transport);
             _transport = protocol.Transport;
             _client = new TCLIService.Client(protocol);
             TOpenSessionReq request = CreateSessionRequest();
+            activity?.AddEvent(new ActivityEvent("start open session"));
             TOpenSessionResp? session = await Client.OpenSession(request);
+            activity?.AddEvent(new ActivityEvent("end open session"));
 
             // Some responses don't raise an exception. Explicitly check the status.
             if (session == null)
@@ -160,5 +168,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
             return response;
         }
+
+        private Activity? StartActivity(string methodName) => ActivitySource?.StartActivity(typeof(HiveServer2Connection).FullName + "." + methodName);
     }
 }

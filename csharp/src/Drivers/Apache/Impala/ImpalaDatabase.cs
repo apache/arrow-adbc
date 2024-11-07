@@ -16,21 +16,24 @@
 */
 
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     public class ImpalaDatabase : AdbcDatabase
     {
         readonly IReadOnlyDictionary<string, string> properties;
+        private readonly ActivitySource? _activitySource;
 
-        internal ImpalaDatabase(IReadOnlyDictionary<string, string> properties)
+        internal ImpalaDatabase(IReadOnlyDictionary<string, string> properties, ActivitySource? activitySource = default)
         {
             this.properties = properties;
+            _activitySource = activitySource;
         }
 
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? properties)
         {
-            ImpalaConnection connection = new ImpalaConnection(this.properties);
+            ImpalaConnection connection = new ImpalaConnection(this.properties, _activitySource);
             connection.OpenAsync().Wait();
             return connection;
         }
