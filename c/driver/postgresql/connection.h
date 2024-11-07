@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -73,6 +74,8 @@ class PostgresConnection {
     return type_resolver_;
   }
   bool autocommit() const { return autocommit_; }
+  std::string_view VendorName();
+  const std::array<int, 3>& VendorVersion();
 
  private:
   std::shared_ptr<PostgresDatabase> database_;

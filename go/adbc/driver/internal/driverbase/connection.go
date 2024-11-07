@@ -27,9 +27,9 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
-	"github.com/apache/arrow/go/v18/arrow"
-	"github.com/apache/arrow/go/v18/arrow/array"
-	"github.com/apache/arrow/go/v18/arrow/memory"
+	"github.com/apache/arrow-go/v18/arrow"
+	"github.com/apache/arrow-go/v18/arrow/array"
+	"github.com/apache/arrow-go/v18/arrow/memory"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -583,9 +583,9 @@ func RequiredList[T any](vals []T) requiredList[T] {
 
 type requiredList[T any] []T
 
-func (n requiredList[T]) UnmarshalJSON(data []byte) error {
-	v := []T(n)
-	return json.Unmarshal(data, &v)
+func (n *requiredList[T]) UnmarshalJSON(data []byte) error {
+	v := (*[]T)(n)
+	return json.Unmarshal(data, v)
 }
 
 func (n requiredList[T]) MarshalJSON() ([]byte, error) {

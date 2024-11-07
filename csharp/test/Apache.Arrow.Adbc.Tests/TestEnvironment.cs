@@ -53,6 +53,8 @@ namespace Apache.Arrow.Adbc.Tests
 
         public abstract AdbcDriver CreateNewDriver();
 
+        public abstract SampleDataBuilder GetSampleDataBuilder();
+
         public abstract Dictionary<string, string> GetDriverParameters(TConfig testConfiguration);
 
         public virtual string GetCreateTemporaryTableStatement(string tableName, string columns)

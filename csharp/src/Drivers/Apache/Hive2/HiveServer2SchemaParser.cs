@@ -31,8 +31,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TTypeId.BIGINT_TYPE => Int64Type.Default,
                 TTypeId.BINARY_TYPE => BinaryType.Default,
                 TTypeId.BOOLEAN_TYPE => BooleanType.Default,
-                TTypeId.DOUBLE_TYPE
-                or TTypeId.FLOAT_TYPE => DoubleType.Default,
+                TTypeId.DOUBLE_TYPE => DoubleType.Default,
+                TTypeId.FLOAT_TYPE => convertScalar ? FloatType.Default : DoubleType.Default,
                 TTypeId.INT_TYPE => Int32Type.Default,
                 TTypeId.SMALLINT_TYPE => Int16Type.Default,
                 TTypeId.TINYINT_TYPE => Int8Type.Default,

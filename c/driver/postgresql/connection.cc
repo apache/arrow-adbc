@@ -17,13 +17,16 @@
 
 #include "connection.h"
 
+#include <array>
 #include <cassert>
 #include <cinttypes>
 #include <cmath>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -38,6 +41,9 @@
 #include "error.h"
 #include "result_helper.h"
 
+using adbc::driver::Result;
+using adbc::driver::Status;
+
 namespace adbcpq {
 namespace {
 
@@ -51,551 +57,391 @@ static const std::unordered_map<std::string, std::string> kPgTableTypes = {
     {"table", "r"},       {"view", "v"},          {"materialized_view", "m"},
     {"toast_table", "t"}, {"foreign_table", "f"}, {"partitioned_table", "p"}};
 
-class PqGetObjectsHelper {
+static const char* kCatalogQueryAll = "SELECT datname FROM pg_catalog.pg_database";
+
+// catalog_name is not a parameter here or on any other queries
+// because it will always be the currently connected database.
+static const char* kSchemaQueryAll =
+    "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
+    "nspname !~ '^pg_' AND nspname <> 'information_schema'";
+
+// Parameterized on schema_name, relkind
+// Note that when binding relkind as a string it must look like {"r", "v", ...}
+// (i.e., double quotes). Binding a binary list<string> element also works.
+static const char* kTablesQueryAll =
+    "SELECT c.relname, CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' "
+    "WHEN 'm' THEN 'materialized view' WHEN 't' THEN 'TOAST table' "
+    "WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table' END "
+    "AS reltype FROM pg_catalog.pg_class c "
+    "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+    "WHERE pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = $1 AND c.relkind = "
+    "ANY($2)";
+
+// Parameterized on schema_name, table_name
+static const char* kColumnsQueryAll =
+    "SELECT attr.attname, attr.attnum, "
+    "pg_catalog.col_description(cls.oid, attr.attnum) "
+    "FROM pg_catalog.pg_attribute AS attr "
+    "INNER JOIN pg_catalog.pg_class AS cls ON attr.attrelid = cls.oid "
+    "INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
+    "WHERE attr.attnum > 0 AND NOT attr.attisdropped "
+    "AND nsp.nspname LIKE $1 AND cls.relname LIKE $2";
+
+// Parameterized on schema_name, table_name
+static const char* kConstraintsQueryAll =
+    "WITH fk_unnest AS ( "
+    "    SELECT "
+    "        con.conname, "
+    "        'FOREIGN KEY' AS contype, "
+    "        conrelid, "
+    "        UNNEST(con.conkey) AS conkey, "
+    "        confrelid, "
+    "        UNNEST(con.confkey) AS confkey "
+    "    FROM pg_catalog.pg_constraint AS con "
+    "    INNER JOIN pg_catalog.pg_class AS cls ON cls.oid = conrelid "
+    "    INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
+    "    WHERE con.contype = 'f' AND nsp.nspname = $1 "
+    "    AND cls.relname = $2 "
+    "), "
+    "fk_names AS ( "
+    "    SELECT "
+    "        fk_unnest.conname, "
+    "        fk_unnest.contype, "
+    "        fk_unnest.conkey, "
+    "        fk_unnest.confkey, "
+    "        attr.attname, "
+    "        fnsp.nspname AS fschema, "
+    "        fcls.relname AS ftable, "
+    "        fattr.attname AS fattname "
+    "    FROM fk_unnest "
+    "    INNER JOIN pg_catalog.pg_class AS cls ON cls.oid = fk_unnest.conrelid "
+    "    INNER JOIN pg_catalog.pg_class AS fcls ON fcls.oid = fk_unnest.confrelid "
+    "    INNER JOIN pg_catalog.pg_namespace AS fnsp ON fnsp.oid = fcls.relnamespace"
+    "    INNER JOIN pg_catalog.pg_attribute AS attr ON attr.attnum = "
+    "fk_unnest.conkey "
+    "        AND attr.attrelid = fk_unnest.conrelid "
+    "    LEFT JOIN pg_catalog.pg_attribute AS fattr ON fattr.attnum =  "
+    "fk_unnest.confkey "
+    "        AND fattr.attrelid = fk_unnest.confrelid "
+    "), "
+    "fkeys AS ( "
+    "    SELECT "
+    "        conname, "
+    "        contype, "
+    "        ARRAY_AGG(attname ORDER BY conkey) AS colnames, "
+    "        fschema, "
+    "        ftable, "
+    "        ARRAY_AGG(fattname ORDER BY confkey) AS fcolnames "
+    "    FROM fk_names "
+    "    GROUP BY "
+    "        conname, "
+    "        contype, "
+    "        fschema, "
+    "        ftable "
+    "), "
+    "other_constraints AS ( "
+    "    SELECT con.conname, CASE con.contype WHEN 'c' THEN 'CHECK' WHEN 'u' THEN  "
+    "    'UNIQUE' WHEN 'p' THEN 'PRIMARY KEY' END AS contype, "
+    "    ARRAY_AGG(attr.attname) AS colnames "
+    "    FROM pg_catalog.pg_constraint AS con  "
+    "    CROSS JOIN UNNEST(conkey) AS conkeys  "
+    "    INNER JOIN pg_catalog.pg_class AS cls ON cls.oid = con.conrelid  "
+    "    INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace  "
+    "    INNER JOIN pg_catalog.pg_attribute AS attr ON attr.attnum = conkeys  "
+    "    AND cls.oid = attr.attrelid  "
+    "    WHERE con.contype IN ('c', 'u', 'p') AND nsp.nspname = $1 "
+    "    AND cls.relname = $2 "
+    "    GROUP BY conname, contype "
+    ") "
+    "SELECT "
+    "    conname, contype, colnames, fschema, ftable, fcolnames "
+    "FROM fkeys "
+    "UNION ALL "
+    "SELECT "
+    "    conname, contype, colnames, NULL, NULL, NULL "
+    "FROM other_constraints";
+
+class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
  public:
-  PqGetObjectsHelper(PGconn* conn, int depth, const char* catalog, const char* db_schema,
-                     const char* table_name, const char** table_types,
-                     const char* column_name, struct ArrowSchema* schema,
-                     struct ArrowArray* array, struct AdbcError* error)
-      : conn_(conn),
-        depth_(depth),
-        catalog_(catalog),
-        db_schema_(db_schema),
-        table_name_(table_name),
-        table_types_(table_types),
-        column_name_(column_name),
-        schema_(schema),
-        array_(array),
-        error_(error) {
-    na_error_ = {0};
+  explicit PostgresGetObjectsHelper(PGconn* conn)
+      : current_database_(PQdb(conn)),
+        all_catalogs_(conn, kCatalogQueryAll),
+        some_catalogs_(conn, CatalogQuery()),
+        all_schemas_(conn, kSchemaQueryAll),
+        some_schemas_(conn, SchemaQuery()),
+        all_tables_(conn, kTablesQueryAll),
+        some_tables_(conn, TablesQuery()),
+        all_columns_(conn, kColumnsQueryAll),
+        some_columns_(conn, ColumnsQuery()),
+        all_constraints_(conn, kConstraintsQueryAll),
+        some_constraints_(conn, ConstraintsQuery()) {}
+
+  // Allow Redshift to execute this query without constraints
+  // TODO(paleolimbot): Investigate to see if we can simplify the constraits query so that
+  // it works on both!
+  void SetEnableConstraints(bool enable_constraints) {
+    enable_constraints_ = enable_constraints;
   }
 
-  AdbcStatusCode GetObjects() {
-    RAISE_ADBC(InitArrowArray());
+  Status Load(adbc::driver::GetObjectsDepth depth,
+              std::optional<std::string_view> catalog_filter,
+              std::optional<std::string_view> schema_filter,
+              std::optional<std::string_view> table_filter,
+              std::optional<std::string_view> column_filter,
+              const std::vector<std::string_view>& table_types) override {
+    return Status::Ok();
+  }
 
-    catalog_name_col_ = array_->children[0];
-    catalog_db_schemas_col_ = array_->children[1];
-    catalog_db_schemas_items_ = catalog_db_schemas_col_->children[0];
-    db_schema_name_col_ = catalog_db_schemas_items_->children[0];
-    db_schema_tables_col_ = catalog_db_schemas_items_->children[1];
-    schema_table_items_ = db_schema_tables_col_->children[0];
-    table_name_col_ = schema_table_items_->children[0];
-    table_type_col_ = schema_table_items_->children[1];
+  Status LoadCatalogs(std::optional<std::string_view> catalog_filter) override {
+    if (catalog_filter.has_value()) {
+      UNWRAP_STATUS(some_catalogs_.Execute({std::string(*catalog_filter)}));
+      next_catalog_ = some_catalogs_.Row(-1);
+    } else {
+      UNWRAP_STATUS(all_catalogs_.Execute());
+      next_catalog_ = all_catalogs_.Row(-1);
+    }
 
-    table_columns_col_ = schema_table_items_->children[2];
-    table_columns_items_ = table_columns_col_->children[0];
-    column_name_col_ = table_columns_items_->children[0];
-    column_position_col_ = table_columns_items_->children[1];
-    column_remarks_col_ = table_columns_items_->children[2];
+    return Status::Ok();
+  };
 
-    table_constraints_col_ = schema_table_items_->children[3];
-    table_constraints_items_ = table_constraints_col_->children[0];
-    constraint_name_col_ = table_constraints_items_->children[0];
-    constraint_type_col_ = table_constraints_items_->children[1];
+  Result<std::optional<std::string_view>> NextCatalog() override {
+    next_catalog_ = next_catalog_.Next();
+    if (!next_catalog_.IsValid()) {
+      return std::nullopt;
+    }
 
-    constraint_column_names_col_ = table_constraints_items_->children[2];
-    constraint_column_name_col_ = constraint_column_names_col_->children[0];
+    return next_catalog_[0].value();
+  }
 
-    constraint_column_usages_col_ = table_constraints_items_->children[3];
-    constraint_column_usage_items_ = constraint_column_usages_col_->children[0];
-    fk_catalog_col_ = constraint_column_usage_items_->children[0];
-    fk_db_schema_col_ = constraint_column_usage_items_->children[1];
-    fk_table_col_ = constraint_column_usage_items_->children[2];
-    fk_column_name_col_ = constraint_column_usage_items_->children[3];
+  Status LoadSchemas(std::string_view catalog,
+                     std::optional<std::string_view> schema_filter) override {
+    // PostgreSQL can only list for the current database
+    if (catalog != current_database_) {
+      return Status::Ok();
+    }
 
-    RAISE_ADBC(AppendCatalogs());
-    RAISE_ADBC(FinishArrowArray());
-    return ADBC_STATUS_OK;
+    if (schema_filter.has_value()) {
+      UNWRAP_STATUS(some_schemas_.Execute({std::string(*schema_filter)}));
+      next_schema_ = some_schemas_.Row(-1);
+    } else {
+      UNWRAP_STATUS(all_schemas_.Execute());
+      next_schema_ = all_schemas_.Row(-1);
+    }
+    return Status::Ok();
+  };
+
+  Result<std::optional<std::string_view>> NextSchema() override {
+    next_schema_ = next_schema_.Next();
+    if (!next_schema_.IsValid()) {
+      return std::nullopt;
+    }
+
+    return next_schema_[0].value();
+  }
+
+  Status LoadTables(std::string_view catalog, std::string_view schema,
+                    std::optional<std::string_view> table_filter,
+                    const std::vector<std::string_view>& table_types) override {
+    std::string table_types_bind = TableTypesArrayLiteral(table_types);
+
+    if (table_filter.has_value()) {
+      UNWRAP_STATUS(some_tables_.Execute(
+          {std::string(schema), table_types_bind, std::string(*table_filter)}));
+      next_table_ = some_tables_.Row(-1);
+    } else {
+      UNWRAP_STATUS(all_tables_.Execute({std::string(schema), table_types_bind}));
+      next_table_ = all_tables_.Row(-1);
+    }
+
+    return Status::Ok();
+  };
+
+  Result<std::optional<Table>> NextTable() override {
+    next_table_ = next_table_.Next();
+    if (!next_table_.IsValid()) {
+      return std::nullopt;
+    }
+
+    return Table{next_table_[0].value(), next_table_[1].value()};
+  }
+
+  Status LoadColumns(std::string_view catalog, std::string_view schema,
+                     std::string_view table,
+                     std::optional<std::string_view> column_filter) override {
+    if (column_filter.has_value()) {
+      UNWRAP_STATUS(some_columns_.Execute(
+          {std::string(schema), std::string(table), std::string(*column_filter)}));
+      next_column_ = some_columns_.Row(-1);
+    } else {
+      UNWRAP_STATUS(all_columns_.Execute({std::string(schema), std::string(table)}));
+      next_column_ = all_columns_.Row(-1);
+    }
+
+    if (enable_constraints_) {
+      if (column_filter.has_value()) {
+        UNWRAP_STATUS(some_constraints_.Execute(
+            {std::string(schema), std::string(table), std::string(*column_filter)}))
+        next_constraint_ = some_constraints_.Row(-1);
+      } else {
+        UNWRAP_STATUS(
+            all_constraints_.Execute({std::string(schema), std::string(table)}));
+        next_constraint_ = all_constraints_.Row(-1);
+      }
+    }
+
+    return Status::Ok();
+  };
+
+  Result<std::optional<Column>> NextColumn() override {
+    next_column_ = next_column_.Next();
+    if (!next_column_.IsValid()) {
+      return std::nullopt;
+    }
+
+    Column col;
+    col.column_name = next_column_[0].value();
+    UNWRAP_RESULT(col.ordinal_position, next_column_[1].ParseInteger());
+    if (!next_column_[2].is_null) {
+      col.remarks = next_column_[2].value();
+    }
+
+    return col;
+  }
+
+  Result<std::optional<Constraint>> NextConstraint() override {
+    next_constraint_ = next_constraint_.Next();
+    if (!next_constraint_.IsValid()) {
+      return std::nullopt;
+    }
+
+    Constraint out;
+    out.name = next_constraint_[0].data;
+    out.type = next_constraint_[1].data;
+
+    UNWRAP_RESULT(constraint_fcolumn_names_, next_constraint_[2].ParseTextArray());
+    std::vector<std::string_view> fcolumn_names_view;
+    for (const std::string& item : constraint_fcolumn_names_) {
+      fcolumn_names_view.push_back(item);
+    }
+    out.column_names = std::move(fcolumn_names_view);
+
+    if (out.type == "FOREIGN KEY") {
+      assert(!next_constraint_[3].is_null);
+      assert(!next_constraint_[3].is_null);
+      assert(!next_constraint_[4].is_null);
+      assert(!next_constraint_[5].is_null);
+
+      out.usage = std::vector<ConstraintUsage>();
+      UNWRAP_RESULT(constraint_fkey_names_, next_constraint_[5].ParseTextArray());
+
+      for (const auto& item : constraint_fkey_names_) {
+        ConstraintUsage usage;
+        usage.catalog = current_database_;
+        usage.schema = next_constraint_[3].data;
+        usage.table = next_constraint_[4].data;
+        usage.column = item;
+
+        out.usage->push_back(usage);
+      }
+    }
+
+    return out;
   }
 
  private:
-  AdbcStatusCode InitArrowArray() {
-    RAISE_ADBC(adbc::driver::MakeGetObjectsSchema(schema_).ToAdbc(error_));
+  std::string current_database_;
 
-    CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(array_, schema_, &na_error_),
-                    &na_error_, error_);
+  // Ready-to-Execute() queries
+  PqResultHelper all_catalogs_;
+  PqResultHelper some_catalogs_;
+  PqResultHelper all_schemas_;
+  PqResultHelper some_schemas_;
+  PqResultHelper all_tables_;
+  PqResultHelper some_tables_;
+  PqResultHelper all_columns_;
+  PqResultHelper some_columns_;
+  PqResultHelper all_constraints_;
+  PqResultHelper some_constraints_;
 
-    CHECK_NA(INTERNAL, ArrowArrayStartAppending(array_), error_);
-    return ADBC_STATUS_OK;
+  // On Redshift, the constraints query fails
+  bool enable_constraints_{true};
+
+  // Iterator state for the catalogs/schema/table/column queries
+  PqResultRow next_catalog_;
+  PqResultRow next_schema_;
+  PqResultRow next_table_;
+  PqResultRow next_column_;
+  PqResultRow next_constraint_;
+
+  // Owning variants required because the framework versions of these
+  // are all based on string_view and the result helper can only parse arrays
+  // into std::vector<std::string>.
+  std::vector<std::string> constraint_fcolumn_names_;
+  std::vector<std::string> constraint_fkey_names_;
+
+  // Queries that are slightly modified versions of the generic queries that allow
+  // the filter for that level to be passed through as a parameter. Defined here
+  // because global strings should be const char* according to cpplint and using
+  // the + operator to concatenate them is the most concise way to construct them.
+
+  // Parameterized on catalog_name
+  static std::string CatalogQuery() {
+    return std::string(kCatalogQueryAll) + " WHERE datname = $1";
   }
 
-  AdbcStatusCode AppendSchemas(std::string db_name) {
-    // postgres only allows you to list schemas for the currently connected db
-    if (!strcmp(db_name.c_str(), PQdb(conn_))) {
-      struct StringBuilder query;
-      std::memset(&query, 0, sizeof(query));
-      if (StringBuilderInit(&query, /*initial_size*/ 256)) {
-        return ADBC_STATUS_INTERNAL;
-      }
+  // Parameterized on schema_name
+  static std::string SchemaQuery() {
+    return std::string(kSchemaQueryAll) + " AND nspname = $1";
+  }
 
-      const char* stmt =
-          "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
-          "nspname !~ '^pg_' AND nspname <> 'information_schema'";
+  // Parameterized on schema_name, relkind, table_name
+  static std::string TablesQuery() {
+    return std::string(kTablesQueryAll) + " AND c.relname LIKE $3";
+  }
 
-      if (StringBuilderAppend(&query, "%s", stmt)) {
-        StringBuilderReset(&query);
-        return ADBC_STATUS_INTERNAL;
-      }
+  // Parameterized on schema_name, table_name, column_name
+  static std::string ColumnsQuery() {
+    return std::string(kColumnsQueryAll) + " AND attr.attname LIKE $3";
+  }
 
-      std::vector<std::string> params;
-      if (db_schema_ != NULL) {
-        if (StringBuilderAppend(&query, "%s", " AND nspname = $1")) {
-          StringBuilderReset(&query);
-          return ADBC_STATUS_INTERNAL;
+  // Parameterized on schema_name, table_name, column_name
+  static std::string ConstraintsQuery() {
+    return std::string(kConstraintsQueryAll) + " WHERE conname LIKE $3";
+  }
+
+  std::string TableTypesArrayLiteral(const std::vector<std::string_view>& table_types) {
+    std::stringstream table_types_bind;
+    table_types_bind << "{";
+    int table_types_bind_len = 0;
+
+    if (table_types.empty()) {
+      for (const auto& item : kPgTableTypes) {
+        if (table_types_bind_len > 0) {
+          table_types_bind << ", ";
         }
-        params.push_back(db_schema_);
+
+        table_types_bind << "\"" << item.second << "\"";
+        table_types_bind_len++;
       }
-
-      auto result_helper = PqResultHelper{conn_, std::string(query.buffer)};
-      StringBuilderReset(&query);
-
-      RAISE_STATUS(error_, result_helper.Execute(params));
-
-      for (PqResultRow row : result_helper) {
-        const char* schema_name = row[0].data;
-        CHECK_NA(INTERNAL,
-                 ArrowArrayAppendString(db_schema_name_col_, ArrowCharView(schema_name)),
-                 error_);
-        if (depth_ == ADBC_OBJECT_DEPTH_DB_SCHEMAS) {
-          CHECK_NA(INTERNAL, ArrowArrayAppendNull(db_schema_tables_col_, 1), error_);
-        } else {
-          RAISE_ADBC(AppendTables(std::string(schema_name)));
+    } else {
+      for (auto type : table_types) {
+        const auto maybe_item = kPgTableTypes.find(std::string(type));
+        if (maybe_item == kPgTableTypes.end()) {
+          continue;
         }
-        CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_items_), error_);
-      }
-    }
 
-    CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_col_), error_);
-    return ADBC_STATUS_OK;
-  }
-
-  AdbcStatusCode AppendCatalogs() {
-    struct StringBuilder query;
-    std::memset(&query, 0, sizeof(query));
-    if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
-
-    if (StringBuilderAppend(&query, "%s", "SELECT datname FROM pg_catalog.pg_database")) {
-      return ADBC_STATUS_INTERNAL;
-    }
-
-    std::vector<std::string> params;
-    if (catalog_ != NULL) {
-      if (StringBuilderAppend(&query, "%s", " WHERE datname = $1")) {
-        StringBuilderReset(&query);
-        return ADBC_STATUS_INTERNAL;
-      }
-      params.push_back(catalog_);
-    }
-
-    PqResultHelper result_helper = PqResultHelper{conn_, std::string(query.buffer)};
-    StringBuilderReset(&query);
-
-    RAISE_STATUS(error_, result_helper.Execute(params));
-
-    for (PqResultRow row : result_helper) {
-      const char* db_name = row[0].data;
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(catalog_name_col_, ArrowCharView(db_name)), error_);
-      if (depth_ == ADBC_OBJECT_DEPTH_CATALOGS) {
-        CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col_, 1), error_);
-      } else {
-        RAISE_ADBC(AppendSchemas(std::string(db_name)));
-      }
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(array_), error_);
-    }
-
-    return ADBC_STATUS_OK;
-  }
-
-  AdbcStatusCode AppendTables(std::string schema_name) {
-    struct StringBuilder query;
-    std::memset(&query, 0, sizeof(query));
-    if (StringBuilderInit(&query, /*initial_size*/ 512)) {
-      return ADBC_STATUS_INTERNAL;
-    }
-
-    std::vector<std::string> params = {schema_name};
-    const char* stmt =
-        "SELECT c.relname, CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' "
-        "WHEN 'm' THEN 'materialized view' WHEN 't' THEN 'TOAST table' "
-        "WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table' END "
-        "AS reltype FROM pg_catalog.pg_class c "
-        "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
-        "WHERE c.relkind IN ('r','v','m','t','f','p') "
-        "AND pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = $1";
-
-    if (StringBuilderAppend(&query, "%s", stmt)) {
-      StringBuilderReset(&query);
-      return ADBC_STATUS_INTERNAL;
-    }
-
-    if (table_name_ != nullptr) {
-      if (StringBuilderAppend(&query, "%s", " AND c.relname LIKE $2")) {
-        StringBuilderReset(&query);
-        return ADBC_STATUS_INTERNAL;
-      }
-
-      params.push_back(std::string(table_name_));
-    }
-
-    if (table_types_ != nullptr) {
-      std::vector<std::string> table_type_filter;
-      const char** table_types = table_types_;
-      while (*table_types != NULL) {
-        auto table_type_str = std::string(*table_types);
-        auto search = kPgTableTypes.find(table_type_str);
-        if (search != kPgTableTypes.end()) {
-          table_type_filter.push_back(search->second);
+        if (table_types_bind_len > 0) {
+          table_types_bind << ", ";
         }
-        table_types++;
-      }
 
-      if (!table_type_filter.empty()) {
-        std::ostringstream oss;
-        bool first = true;
-        oss << "(";
-        for (const auto& str : table_type_filter) {
-          if (!first) {
-            oss << ", ";
-          }
-          oss << "'" << str << "'";
-          first = false;
-        }
-        oss << ")";
-
-        if (StringBuilderAppend(&query, "%s%s", " AND c.relkind IN ",
-                                oss.str().c_str())) {
-          StringBuilderReset(&query);
-          return ADBC_STATUS_INTERNAL;
-        }
-      } else {
-        // no matching table type means no records should come back
-        if (StringBuilderAppend(&query, "%s", " AND false")) {
-          StringBuilderReset(&query);
-          return ADBC_STATUS_INTERNAL;
-        }
+        table_types_bind << "\"" << maybe_item->second << "\"";
+        table_types_bind_len++;
       }
     }
 
-    auto result_helper = PqResultHelper{conn_, query.buffer};
-    StringBuilderReset(&query);
-
-    RAISE_STATUS(error_, result_helper.Execute(params));
-    for (PqResultRow row : result_helper) {
-      const char* table_name = row[0].data;
-      const char* table_type = row[1].data;
-
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(table_name_col_, ArrowCharView(table_name)),
-               error_);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(table_type_col_, ArrowCharView(table_type)),
-               error_);
-      if (depth_ == ADBC_OBJECT_DEPTH_TABLES) {
-        CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_columns_col_, 1), error_);
-        CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_constraints_col_, 1), error_);
-      } else {
-        auto table_name_s = std::string(table_name);
-        RAISE_ADBC(AppendColumns(schema_name, table_name_s));
-        RAISE_ADBC(AppendConstraints(schema_name, table_name_s));
-      }
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(schema_table_items_), error_);
-    }
-
-    CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_tables_col_), error_);
-    return ADBC_STATUS_OK;
+    table_types_bind << "}";
+    return table_types_bind.str();
   }
-
-  AdbcStatusCode AppendColumns(std::string schema_name, std::string table_name) {
-    struct StringBuilder query;
-    std::memset(&query, 0, sizeof(query));
-    if (StringBuilderInit(&query, /*initial_size*/ 512)) {
-      return ADBC_STATUS_INTERNAL;
-    }
-
-    std::vector<std::string> params = {schema_name, table_name};
-    const char* stmt =
-        "SELECT attr.attname, attr.attnum, "
-        "pg_catalog.col_description(cls.oid, attr.attnum) "
-        "FROM pg_catalog.pg_attribute AS attr "
-        "INNER JOIN pg_catalog.pg_class AS cls ON attr.attrelid = cls.oid "
-        "INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
-        "WHERE attr.attnum > 0 AND NOT attr.attisdropped "
-        "AND nsp.nspname LIKE $1 AND cls.relname LIKE $2";
-
-    if (StringBuilderAppend(&query, "%s", stmt)) {
-      StringBuilderReset(&query);
-      return ADBC_STATUS_INTERNAL;
-    }
-
-    if (column_name_ != NULL) {
-      if (StringBuilderAppend(&query, "%s", " AND attr.attname LIKE $3")) {
-        StringBuilderReset(&query);
-        return ADBC_STATUS_INTERNAL;
-      }
-
-      params.push_back(std::string(column_name_));
-    }
-
-    auto result_helper = PqResultHelper{conn_, query.buffer};
-    StringBuilderReset(&query);
-
-    RAISE_STATUS(error_, result_helper.Execute(params));
-
-    for (PqResultRow row : result_helper) {
-      const char* column_name = row[0].data;
-      const char* position = row[1].data;
-
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(column_name_col_, ArrowCharView(column_name)),
-               error_);
-      int ival = atol(position);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendInt(column_position_col_, static_cast<int64_t>(ival)),
-               error_);
-      if (row[2].is_null) {
-        CHECK_NA(INTERNAL, ArrowArrayAppendNull(column_remarks_col_, 1), error_);
-      } else {
-        const char* remarks = row[2].data;
-        CHECK_NA(INTERNAL,
-                 ArrowArrayAppendString(column_remarks_col_, ArrowCharView(remarks)),
-                 error_);
-      }
-
-      // no xdbc_ values for now
-      for (auto i = 3; i < 19; i++) {
-        CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_columns_items_->children[i], 1),
-                 error_);
-      }
-
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_columns_items_), error_);
-    }
-
-    CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_columns_col_), error_);
-    return ADBC_STATUS_OK;
-  }
-
-  // libpq PQexecParams can use either text or binary transfers
-  // For now we are using text transfer internally, so arrays are sent
-  // back like {element1, element2} within a const char*
-  std::vector<std::string> PqTextArrayToVector(std::string text_array) {
-    text_array.erase(0, 1);
-    text_array.erase(text_array.size() - 1);
-
-    std::vector<std::string> elements;
-    std::stringstream ss(std::move(text_array));
-    std::string tmp;
-
-    while (getline(ss, tmp, ',')) {
-      elements.push_back(std::move(tmp));
-    }
-
-    return elements;
-  }
-
-  AdbcStatusCode AppendConstraints(std::string schema_name, std::string table_name) {
-    struct StringBuilder query;
-    std::memset(&query, 0, sizeof(query));
-    if (StringBuilderInit(&query, /*initial_size*/ 4096)) {
-      return ADBC_STATUS_INTERNAL;
-    }
-
-    std::vector<std::string> params = {schema_name, table_name};
-    const char* stmt =
-        "WITH fk_unnest AS ( "
-        "    SELECT "
-        "        con.conname, "
-        "        'FOREIGN KEY' AS contype, "
-        "        conrelid, "
-        "        UNNEST(con.conkey) AS conkey, "
-        "        confrelid, "
-        "        UNNEST(con.confkey) AS confkey "
-        "    FROM pg_catalog.pg_constraint AS con "
-        "    INNER JOIN pg_catalog.pg_class AS cls ON cls.oid = conrelid "
-        "    INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
-        "    WHERE con.contype = 'f' AND nsp.nspname LIKE $1 "
-        "    AND cls.relname LIKE $2 "
-        "), "
-        "fk_names AS ( "
-        "    SELECT "
-        "        fk_unnest.conname, "
-        "        fk_unnest.contype, "
-        "        fk_unnest.conkey, "
-        "        fk_unnest.confkey, "
-        "        attr.attname, "
-        "        fnsp.nspname AS fschema, "
-        "        fcls.relname AS ftable, "
-        "        fattr.attname AS fattname "
-        "    FROM fk_unnest "
-        "    INNER JOIN pg_catalog.pg_class AS cls ON cls.oid = fk_unnest.conrelid "
-        "    INNER JOIN pg_catalog.pg_class AS fcls ON fcls.oid = fk_unnest.confrelid "
-        "    INNER JOIN pg_catalog.pg_namespace AS fnsp ON fnsp.oid = fcls.relnamespace"
-        "    INNER JOIN pg_catalog.pg_attribute AS attr ON attr.attnum = "
-        "fk_unnest.conkey "
-        "        AND attr.attrelid = fk_unnest.conrelid "
-        "    LEFT JOIN pg_catalog.pg_attribute AS fattr ON fattr.attnum =  "
-        "fk_unnest.confkey "
-        "        AND fattr.attrelid = fk_unnest.confrelid "
-        "), "
-        "fkeys AS ( "
-        "    SELECT "
-        "        conname, "
-        "        contype, "
-        "        ARRAY_AGG(attname ORDER BY conkey) AS colnames, "
-        "        fschema, "
-        "        ftable, "
-        "        ARRAY_AGG(fattname ORDER BY confkey) AS fcolnames "
-        "    FROM fk_names "
-        "    GROUP BY "
-        "        conname, "
-        "        contype, "
-        "        fschema, "
-        "        ftable "
-        "), "
-        "other_constraints AS ( "
-        "    SELECT con.conname, CASE con.contype WHEN 'c' THEN 'CHECK' WHEN 'u' THEN  "
-        "    'UNIQUE' WHEN 'p' THEN 'PRIMARY KEY' END AS contype, "
-        "    ARRAY_AGG(attr.attname) AS colnames "
-        "    FROM pg_catalog.pg_constraint AS con  "
-        "    CROSS JOIN UNNEST(conkey) AS conkeys  "
-        "    INNER JOIN pg_catalog.pg_class AS cls ON cls.oid = con.conrelid  "
-        "    INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace  "
-        "    INNER JOIN pg_catalog.pg_attribute AS attr ON attr.attnum = conkeys  "
-        "    AND cls.oid = attr.attrelid  "
-        "    WHERE con.contype IN ('c', 'u', 'p') AND nsp.nspname LIKE $1 "
-        "    AND cls.relname LIKE $2 "
-        "    GROUP BY conname, contype "
-        ") "
-        "SELECT "
-        "    conname, contype, colnames, fschema, ftable, fcolnames "
-        "FROM fkeys "
-        "UNION ALL "
-        "SELECT "
-        "    conname, contype, colnames, NULL, NULL, NULL "
-        "FROM other_constraints";
-
-    if (StringBuilderAppend(&query, "%s", stmt)) {
-      StringBuilderReset(&query);
-      return ADBC_STATUS_INTERNAL;
-    }
-
-    if (column_name_ != NULL) {
-      if (StringBuilderAppend(&query, "%s", " WHERE conname LIKE $3")) {
-        StringBuilderReset(&query);
-        return ADBC_STATUS_INTERNAL;
-      }
-
-      params.push_back(std::string(column_name_));
-    }
-
-    auto result_helper = PqResultHelper{conn_, query.buffer};
-    StringBuilderReset(&query);
-
-    RAISE_STATUS(error_, result_helper.Execute(params));
-
-    for (PqResultRow row : result_helper) {
-      const char* constraint_name = row[0].data;
-      const char* constraint_type = row[1].data;
-
-      CHECK_NA(
-          INTERNAL,
-          ArrowArrayAppendString(constraint_name_col_, ArrowCharView(constraint_name)),
-          error_);
-
-      CHECK_NA(
-          INTERNAL,
-          ArrowArrayAppendString(constraint_type_col_, ArrowCharView(constraint_type)),
-          error_);
-
-      auto constraint_column_names = PqTextArrayToVector(std::string(row[2].data));
-      for (const auto& constraint_column_name : constraint_column_names) {
-        CHECK_NA(INTERNAL,
-                 ArrowArrayAppendString(constraint_column_name_col_,
-                                        ArrowCharView(constraint_column_name.c_str())),
-                 error_);
-      }
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col_), error_);
-
-      if (!strcmp(constraint_type, "FOREIGN KEY")) {
-        assert(!row[3].is_null);
-        assert(!row[4].is_null);
-        assert(!row[5].is_null);
-
-        const char* constraint_ftable_schema = row[3].data;
-        const char* constraint_ftable_name = row[4].data;
-        auto constraint_fcolumn_names = PqTextArrayToVector(std::string(row[5].data));
-        for (const auto& constraint_fcolumn_name : constraint_fcolumn_names) {
-          CHECK_NA(INTERNAL,
-                   ArrowArrayAppendString(fk_catalog_col_, ArrowCharView(PQdb(conn_))),
-                   error_);
-          CHECK_NA(INTERNAL,
-                   ArrowArrayAppendString(fk_db_schema_col_,
-                                          ArrowCharView(constraint_ftable_schema)),
-                   error_);
-          CHECK_NA(INTERNAL,
-                   ArrowArrayAppendString(fk_table_col_,
-                                          ArrowCharView(constraint_ftable_name)),
-                   error_);
-          CHECK_NA(INTERNAL,
-                   ArrowArrayAppendString(fk_column_name_col_,
-                                          ArrowCharView(constraint_fcolumn_name.c_str())),
-                   error_);
-
-          CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usage_items_),
-                   error_);
-        }
-      }
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usages_col_), error_);
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_constraints_items_), error_);
-    }
-
-    CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_constraints_col_), error_);
-    return ADBC_STATUS_OK;
-  }
-
-  AdbcStatusCode FinishArrowArray() {
-    CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array_, &na_error_),
-                    &na_error_, error_);
-
-    return ADBC_STATUS_OK;
-  }
-
-  PGconn* conn_ = nullptr;
-  int depth_;
-  const char* catalog_ = nullptr;
-  const char* db_schema_ = nullptr;
-  const char* table_name_ = nullptr;
-  const char** table_types_ = nullptr;
-  const char* column_name_ = nullptr;
-  struct ArrowSchema* schema_ = nullptr;
-  struct ArrowArray* array_ = nullptr;
-  struct AdbcError* error_ = nullptr;
-  struct ArrowError na_error_;
-  struct ArrowArray* catalog_name_col_ = nullptr;
-  struct ArrowArray* catalog_db_schemas_col_ = nullptr;
-  struct ArrowArray* catalog_db_schemas_items_ = nullptr;
-  struct ArrowArray* db_schema_name_col_ = nullptr;
-  struct ArrowArray* db_schema_tables_col_ = nullptr;
-  struct ArrowArray* schema_table_items_ = nullptr;
-  struct ArrowArray* table_name_col_ = nullptr;
-  struct ArrowArray* table_type_col_ = nullptr;
-  struct ArrowArray* table_columns_col_ = nullptr;
-  struct ArrowArray* table_columns_items_ = nullptr;
-  struct ArrowArray* column_name_col_ = nullptr;
-  struct ArrowArray* column_position_col_ = nullptr;
-  struct ArrowArray* column_remarks_col_ = nullptr;
-  struct ArrowArray* table_constraints_col_ = nullptr;
-  struct ArrowArray* table_constraints_items_ = nullptr;
-  struct ArrowArray* constraint_name_col_ = nullptr;
-  struct ArrowArray* constraint_type_col_ = nullptr;
-  struct ArrowArray* constraint_column_names_col_ = nullptr;
-  struct ArrowArray* constraint_column_name_col_ = nullptr;
-  struct ArrowArray* constraint_column_usages_col_ = nullptr;
-  struct ArrowArray* constraint_column_usage_items_ = nullptr;
-  struct ArrowArray* fk_catalog_col_ = nullptr;
-  struct ArrowArray* fk_db_schema_col_ = nullptr;
-  struct ArrowArray* fk_table_col_ = nullptr;
-  struct ArrowArray* fk_column_name_col_ = nullptr;
 };
 
 // A notice processor that does nothing with notices. In the future we can log
@@ -650,19 +496,30 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
   for (size_t i = 0; i < info_codes_length; i++) {
     switch (info_codes[i]) {
       case ADBC_INFO_VENDOR_NAME:
-        infos.push_back({info_codes[i], "PostgreSQL"});
+        infos.push_back({info_codes[i], std::string(VendorName())});
         break;
       case ADBC_INFO_VENDOR_VERSION: {
-        const char* stmt = "SHOW server_version_num";
-        auto result_helper = PqResultHelper{conn_, std::string(stmt)};
-        RAISE_STATUS(error, result_helper.Execute());
-        auto it = result_helper.begin();
-        if (it == result_helper.end()) {
-          SetError(error, "[libpq] PostgreSQL returned no rows for '%s'", stmt);
-          return ADBC_STATUS_INTERNAL;
+        if (VendorName() == "Redshift") {
+          const std::array<int, 3>& version = VendorVersion();
+          std::string version_string = std::to_string(version[0]) + "." +
+                                       std::to_string(version[1]) + "." +
+                                       std::to_string(version[2]);
+          infos.push_back({info_codes[i], std::move(version_string)});
+
+        } else {
+          // Gives a version in the form 140000 instead of 14.0.0
+          const char* stmt = "SHOW server_version_num";
+          auto result_helper = PqResultHelper{conn_, std::string(stmt)};
+          RAISE_STATUS(error, result_helper.Execute());
+          auto it = result_helper.begin();
+          if (it == result_helper.end()) {
+            SetError(error, "[libpq] PostgreSQL returned no rows for '%s'", stmt);
+            return ADBC_STATUS_INTERNAL;
+          }
+          const char* server_version_num = (*it)[0].data;
+          infos.push_back({info_codes[i], server_version_num});
         }
-        const char* server_version_num = (*it)[0].data;
-        infos.push_back({info_codes[i], server_version_num});
+
         break;
       }
       case ADBC_INFO_DRIVER_NAME:
@@ -689,26 +546,54 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode PostgresConnection::GetObjects(
-    struct AdbcConnection* connection, int depth, const char* catalog,
-    const char* db_schema, const char* table_name, const char** table_types,
+    struct AdbcConnection* connection, int c_depth, const char* catalog,
+    const char* db_schema, const char* table_name, const char** table_type,
     const char* column_name, struct ArrowArrayStream* out, struct AdbcError* error) {
-  struct ArrowSchema schema;
-  std::memset(&schema, 0, sizeof(schema));
-  struct ArrowArray array;
-  std::memset(&array, 0, sizeof(array));
+  PostgresGetObjectsHelper helper(conn_);
+  helper.SetEnableConstraints(VendorName() != "Redshift");
 
-  PqGetObjectsHelper helper =
-      PqGetObjectsHelper(conn_, depth, catalog, db_schema, table_name, table_types,
-                         column_name, &schema, &array, error);
-  AdbcStatusCode status = helper.GetObjects();
-
-  if (status != ADBC_STATUS_OK) {
-    if (schema.release) schema.release(&schema);
-    if (array.release) array.release(&array);
-    return status;
+  const auto catalog_filter =
+      catalog ? std::make_optional(std::string_view(catalog)) : std::nullopt;
+  const auto schema_filter =
+      db_schema ? std::make_optional(std::string_view(db_schema)) : std::nullopt;
+  const auto table_filter =
+      table_name ? std::make_optional(std::string_view(table_name)) : std::nullopt;
+  const auto column_filter =
+      column_name ? std::make_optional(std::string_view(column_name)) : std::nullopt;
+  std::vector<std::string_view> table_type_filter;
+  while (table_type && *table_type) {
+    if (*table_type) {
+      table_type_filter.push_back(std::string_view(*table_type));
+    }
+    table_type++;
   }
 
-  adbc::driver::MakeArrayStream(&schema, &array, out);
+  using adbc::driver::GetObjectsDepth;
+
+  GetObjectsDepth depth = GetObjectsDepth::kColumns;
+  switch (c_depth) {
+    case ADBC_OBJECT_DEPTH_CATALOGS:
+      depth = GetObjectsDepth::kCatalogs;
+      break;
+    case ADBC_OBJECT_DEPTH_COLUMNS:
+      depth = GetObjectsDepth::kColumns;
+      break;
+    case ADBC_OBJECT_DEPTH_DB_SCHEMAS:
+      depth = GetObjectsDepth::kSchemas;
+      break;
+    case ADBC_OBJECT_DEPTH_TABLES:
+      depth = GetObjectsDepth::kTables;
+      break;
+    default:
+      return Status::InvalidArgument("[libpq] GetObjects: invalid depth ", c_depth)
+          .ToAdbc(error);
+  }
+
+  auto status = BuildGetObjects(&helper, depth, catalog_filter, schema_filter,
+                                table_filter, column_filter, table_type_filter, out);
+  RAISE_STATUS(error, helper.Close());
+  RAISE_STATUS(error, status);
+
   return ADBC_STATUS_OK;
 }
 
@@ -718,11 +603,12 @@ AdbcStatusCode PostgresConnection::GetOption(const char* option, char* value,
   if (std::strcmp(option, ADBC_CONNECTION_OPTION_CURRENT_CATALOG) == 0) {
     output = PQdb(conn_);
   } else if (std::strcmp(option, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
-    PqResultHelper result_helper{conn_, "SELECT CURRENT_SCHEMA"};
+    PqResultHelper result_helper{conn_, "SELECT CURRENT_SCHEMA()"};
     RAISE_STATUS(error, result_helper.Execute());
     auto it = result_helper.begin();
     if (it == result_helper.end()) {
-      SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
+      SetError(error,
+               "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA()'");
       return ADBC_STATUS_INTERNAL;
     }
     output = (*it)[0].data;
@@ -1134,7 +1020,6 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(uschema.get(), result_helper.NumRows()),
            error);
 
-  ArrowError na_error;
   int row_counter = 0;
   for (auto row : result_helper) {
     const char* colname = row[0].data;
@@ -1142,14 +1027,15 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
         static_cast<uint32_t>(std::strtol(row[1].data, /*str_end=*/nullptr, /*base=*/10));
 
     PostgresType pg_type;
-    if (type_resolver_->Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      SetError(error, "%s%d%s%s%s%" PRIu32, "Column #", row_counter + 1, " (\"", colname,
-               "\") has unknown type code ", pg_oid);
+    if (type_resolver_->FindWithDefault(pg_oid, &pg_type) != NANOARROW_OK) {
+      SetError(error, "%s%d%s%s%s%" PRIu32, "Error resolving type code for column #",
+               row_counter + 1, " (\"", colname, "\")  with oid ", pg_oid);
       final_status = ADBC_STATUS_NOT_IMPLEMENTED;
       break;
     }
     CHECK_NA(INTERNAL,
-             pg_type.WithFieldName(colname).SetSchema(uschema->children[row_counter]),
+             pg_type.WithFieldName(colname).SetSchema(uschema->children[row_counter],
+                                                      std::string(VendorName())),
              error);
     row_counter++;
   }
@@ -1250,7 +1136,11 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     return ADBC_STATUS_OK;
   } else if (std::strcmp(key, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
     // PostgreSQL doesn't accept a parameter here
-    PqResultHelper result_helper{conn_, std::string("SET search_path TO ") + value};
+    char* value_esc = PQescapeIdentifier(conn_, value, strlen(value));
+    std::string query = std::string("SET search_path TO ") + value_esc;
+    PQfreemem(value_esc);
+
+    PqResultHelper result_helper{conn_, query};
     RAISE_STATUS(error, result_helper.Execute());
     return ADBC_STATUS_OK;
   }
@@ -1275,6 +1165,12 @@ AdbcStatusCode PostgresConnection::SetOptionInt(const char* key, int64_t value,
                                                 struct AdbcError* error) {
   SetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+std::string_view PostgresConnection::VendorName() { return database_->VendorName(); }
+
+const std::array<int, 3>& PostgresConnection::VendorVersion() {
+  return database_->VendorVersion();
 }
 
 }  // namespace adbcpq

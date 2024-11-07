@@ -108,26 +108,30 @@ struct GetObjectsHelper {
     return status::NotImplemented("GetObjects");
   }
 
-  virtual Status LoadCatalogs() {
+  virtual Status LoadCatalogs(std::optional<std::string_view> catalog_filter) {
     return status::NotImplemented("GetObjects at depth = catalog");
   };
 
   virtual Result<std::optional<std::string_view>> NextCatalog() { return std::nullopt; }
 
-  virtual Status LoadSchemas(std::string_view catalog) {
+  virtual Status LoadSchemas(std::string_view catalog,
+                             std::optional<std::string_view> schema_filter) {
     return status::NotImplemented("GetObjects at depth = schema");
   };
 
   virtual Result<std::optional<std::string_view>> NextSchema() { return std::nullopt; }
 
-  virtual Status LoadTables(std::string_view catalog, std::string_view schema) {
+  virtual Status LoadTables(std::string_view catalog, std::string_view schema,
+                            std::optional<std::string_view> table_filter,
+                            const std::vector<std::string_view>& table_types) {
     return status::NotImplemented("GetObjects at depth = table");
   };
 
   virtual Result<std::optional<Table>> NextTable() { return std::nullopt; }
 
   virtual Status LoadColumns(std::string_view catalog, std::string_view schema,
-                             std::string_view table) {
+                             std::string_view table,
+                             std::optional<std::string_view> column_filter) {
     return status::NotImplemented("GetObjects at depth = column");
   };
 

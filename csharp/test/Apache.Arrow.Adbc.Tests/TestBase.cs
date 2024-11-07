@@ -184,6 +184,11 @@ namespace Apache.Arrow.Adbc.Tests
             return queries;
         }
 
+        protected SampleDataBuilder GetSampleDataBuilder()
+        {
+            return TestEnvironment.GetSampleDataBuilder();
+        }
+
         /// <summary>
         /// Gets a the Spark ADBC driver with settings from the <see cref="SparkTestConfiguration"/>.
         /// </summary>
