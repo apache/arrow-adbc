@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {

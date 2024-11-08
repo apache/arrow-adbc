@@ -113,20 +113,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        internal static void TraceException(Exception exception, Activity? activity, bool escaped = true)
-        {
-            // https://opentelemetry.io/docs/specs/otel/trace/exceptions/
-            activity?.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection(
-                [
-                    // TODO: Determine if "exception.escaped" is being set correctly.
-                    // https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/
-                    new("exception.escaped", escaped),
-                    new("exception.message", exception.Message),
-                    new("exception.stacktrace", exception.StackTrace),
-                    new("exception.type", exception.GetType().Name),
-                ])));
-        }
-
         internal TSessionHandle? SessionHandle { get; private set; }
 
         protected internal DataTypeConversion DataTypeConversion { get; set; } = DataTypeConversion.None;
@@ -232,6 +218,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 SampleUsingParentId = (ref ActivityCreationOptions<string> options) => ActivitySamplingResult.AllDataAndRecorded,
             });
             ActivitySource.AddActivityListener(listener);
+        }
+
+        internal static void TraceException(Exception exception, Activity? activity, bool escaped = true)
+        {
+            // https://opentelemetry.io/docs/specs/otel/trace/exceptions/
+            activity?.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection(
+                [
+                    // TODO: Determine if "exception.escaped" is being set correctly.
+                    // https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/
+                    new("exception.escaped", escaped),
+                    new("exception.message", exception.Message),
+                    new("exception.stacktrace", exception.StackTrace),
+                    new("exception.type", exception.GetType().Name),
+                ])));
         }
 
         private void OnActivityStarted(Activity activity)
