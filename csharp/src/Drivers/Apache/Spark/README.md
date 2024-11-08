@@ -39,9 +39,9 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `adbc.spark.tls_options` | Comma-separated list of TLS/SSL options. Each option indicates the TLS/SSL option when connecting to a Spark server. <br><br>Allowed values: `allow_self_signed`, `allow_hostname_mismatch`. <br><br>Option `allow_self_signed` allows certificate errors due to an unknown certificate authority, typically when using a self-signed certificate. Option `allow_hostname_mismatch` allow certificate errors due to a mismatch of the hostname. (e.g., when connecting through an SSH tunnel). Example `adbc.spark.tls_options=allow_self_signed` | |
 | `adbc.spark.http_request_timeout_ms` | Sets the timeout (in milliseconds) when making requests to the Spark server (type: `http`). Set the value higher than the default if you notice errors due to network timeouts. | `30000` |
 | `adbc.spark.connect_timeout_ms` | Sets the timeout (in milliseconds) to open a new session. Values can be -1 (infinite) or greater than zero. | `30000` |
-| `adbc.statement.batch_size` | Sets the maximum number of rows to retrieve in a single batch request. Values can be -1 (infinite) or greater than zero. | `50000` |
+| `adbc.statement.batch_size` | Sets the maximum number of rows to retrieve in a single batch request. | `50000` |
 | `adbc.statement.polltime_milliseconds` | If polling is necessary to get a result, this option sets the length of time (in milliseconds) to wait between polls. | `500` |
-| `adbc.statement.query_timeout_s` | Sets the maximum time (in seconds) for a query to complete. | `60` |
+| `adbc.statement.query_timeout_s` | Sets the maximum time (in seconds) for a query to complete. Values can be -1 (infinite) or greater than zero. | `60` |
 
 ## Spark Types
 
