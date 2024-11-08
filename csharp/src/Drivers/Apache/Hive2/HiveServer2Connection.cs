@@ -44,26 +44,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private static readonly string s_activitySourceName = Assembly.GetExecutingAssembly().GetName().Name!;
         private static readonly string s_assemblyVersion = GetProductVersion();
         private static readonly ConcurrentDictionary<string, ActivityListener> s_listeners = new();
-        private readonly ActivityListener? _listener;
         private readonly ConcurrentQueue<Activity> _activityQueue = new();
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
             Properties = properties;
             // TODO: Only create a source/listener when tracing is requested
-            // Key of listeners collection should be ouput file location
             if (true)
             {
-                // TODO: Determine the best handling of listener lifetimes.
-                _listener = s_listeners.GetOrAdd(s_activitySourceName, (_) => new()
-                {
-                    ShouldListenTo = (source) => source.Name == s_activitySourceName,
-                    Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllDataAndRecorded,
-                    ActivityStarted = OnActivityStarted,
-                    ActivityStopped = OnActivityStopped,
-                    SampleUsingParentId = (ref ActivityCreationOptions<string> options) => ActivitySamplingResult.AllDataAndRecorded,
-                });
-                ActivitySource.AddActivityListener(_listener);
+                EnsureListener();
                 ActivitySource = new(s_activitySourceName, s_assemblyVersion);
             }
 
@@ -228,6 +217,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TGetResultSetMetadataReq request = new(operationHandle);
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
             return response;
+        }
+
+        private void EnsureListener()
+        {
+            // TODO: Determine the best handling of listener lifetimes.
+            // Key of listeners collection should be ouput file location
+            ActivityListener listener = s_listeners.GetOrAdd(s_activitySourceName, (_) => new()
+            {
+                ShouldListenTo = (source) => source.Name == s_activitySourceName,
+                Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllDataAndRecorded,
+                ActivityStarted = OnActivityStarted,
+                ActivityStopped = OnActivityStopped,
+                SampleUsingParentId = (ref ActivityCreationOptions<string> options) => ActivitySamplingResult.AllDataAndRecorded,
+            });
+            ActivitySource.AddActivityListener(listener);
         }
 
         private void OnActivityStarted(Activity activity)
