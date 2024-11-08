@@ -40,7 +40,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
 
-        public SparkHttpConnection(IReadOnlyDictionary<string, string> properties, ActivitySource? activitySource) : base(properties, activitySource)
+        public SparkHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }
 
@@ -229,13 +229,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client);
+            GetResultSetMetadataAsync(response.OperationHandle, Client, activitySource: ActivitySource);
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client);
+            GetResultSetMetadataAsync(response.OperationHandle, Client, activitySource: ActivitySource);
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client);
+            GetResultSetMetadataAsync(response.OperationHandle, Client, activitySource: ActivitySource);
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client);
+            GetResultSetMetadataAsync(response.OperationHandle, Client, activitySource: ActivitySource);
         protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response) =>
             FetchResultsAsync(response.OperationHandle);
         protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response) =>
@@ -249,7 +249,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
         {
-            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault);
+            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, ActivitySource);
             TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
             if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {

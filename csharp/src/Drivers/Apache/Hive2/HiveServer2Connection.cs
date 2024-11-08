@@ -16,8 +16,11 @@
 */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -36,12 +39,31 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
-        private readonly ActivitySource? _activitySource;
+        private static readonly string s_activitySourceName = typeof(HiveServer2Connection).Assembly.GetName().Name!;
+        private static readonly string s_assemblyVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).ProductVersion ?? "1.0.0";
+        private static readonly ConcurrentDictionary<string, ActivityListener> s_listeners = new();
+        private readonly ActivityListener? _listener;
+        private readonly ConcurrentQueue<Activity> _activityQueue = new();
 
-        internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties, ActivitySource? activitySource)
+        internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
             Properties = properties;
-            _activitySource = activitySource;
+            // TODO: Only create a source/listener when tracing is requested
+            // Key of listeners collection should be ouput file location
+            if (true)
+            {
+                _listener = s_listeners.GetOrAdd(s_activitySourceName, (_) => new()
+                {
+                    ShouldListenTo = (source) => source.Name == s_activitySourceName,
+                    Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllDataAndRecorded,
+                    ActivityStarted = OnActivityStarted,
+                    ActivityStopped = OnActivityStopped,
+                    SampleUsingParentId = (ref ActivityCreationOptions<string> options) => ActivitySamplingResult.AllDataAndRecorded,
+                });
+                ActivitySource.AddActivityListener(_listener);
+                ActivitySource = new(s_activitySourceName, s_assemblyVersion);
+            }
+
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
             // will retry until it successfully returns a value without an exception.
@@ -61,7 +83,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal IReadOnlyDictionary<string, string> Properties { get; }
 
-        protected ActivitySource? ActivitySource { get => _activitySource; }
+        protected ActivitySource? ActivitySource { get; }
 
         internal async Task OpenAsync()
         {
@@ -71,6 +93,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             _transport = protocol.Transport;
             _client = new TCLIService.Client(protocol);
             TOpenSessionReq request = CreateSessionRequest();
+
             activity?.AddEvent(new ActivityEvent("start open session"));
             TOpenSessionResp? session = await Client.OpenSession(request);
             activity?.AddEvent(new ActivityEvent("end open session"));
@@ -88,6 +111,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             SessionHandle = session.SessionHandle;
+        }
+
+        private static void TraceException<T>(Task<T> task, Activity? activity) where T : class
+        {
+            activity?.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection(
+                [
+                    new("message", task.Exception?.InnerException?.Message),
+                    new("source", task.Exception?.InnerException?.Source),
+                    new("stackTrace", task.Exception?.InnerException?.StackTrace),
+                ])));
         }
 
         internal TSessionHandle? SessionHandle { get; private set; }
@@ -118,19 +151,28 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             throw new NotImplementedException();
         }
 
-        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds)
+        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, ActivitySource? activitySource)
         {
+            using Activity? activity = StartActivity(activitySource, nameof(PollForResponseAsync));
             TGetOperationStatusResp? statusResponse = null;
             do
             {
                 if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds); }
                 TGetOperationStatusReq request = new(operationHandle);
+                activity?.AddEvent(new ActivityEvent("calling GetOperationStatus"));
                 statusResponse = await client.GetOperationStatus(request);
+                activity?
+                    .AddEvent(
+                        new ActivityEvent(
+                            "completed call GetOperationStatus",
+                            tags: new ActivityTagsCollection([new("statusResponse.OperationState", statusResponse.OperationState)])));
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
+            activity?.AddEvent(new ActivityEvent("completed"));
         }
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
+            using var activity = StartActivity(nameof(GetInfoTypeStringValue));
             TGetInfoReq req = new()
             {
                 SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
@@ -160,15 +202,56 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 _transport = null;
                 _client = null;
             }
+            _listener?.Dispose();
+            ActivitySource?.Dispose();
         }
 
-        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
+        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default, ActivitySource? activitySource = null)
         {
             TGetResultSetMetadataReq request = new(operationHandle);
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
             return response;
         }
 
-        private Activity? StartActivity(string methodName) => ActivitySource?.StartActivity(typeof(HiveServer2Connection).FullName + "." + methodName);
+        private void OnActivityStarted(Activity activity)
+        {
+            _activityQueue.Enqueue(activity);
+            // Intentionally avoid await.
+            DequeueAndWrite("started")
+                .ContinueWith(t => Console.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
+        }
+
+        private void OnActivityStopped(Activity activity)
+        {
+            _activityQueue.Enqueue(activity);
+            // Intentionally avoid await.
+            DequeueAndWrite("stopped")
+                .ContinueWith(t => Console.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
+        }
+
+        private Task DequeueAndWrite(string state)
+        {
+            if (_activityQueue.TryDequeue(out Activity? activity))
+            {
+                if (activity != null)
+                {
+                    try
+                    {
+                        string json = JsonSerializer.Serialize(new { State = state, Activity = activity });
+                        Console.WriteLine(json);
+                    }
+                    catch (NotSupportedException ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private Activity? StartActivity(string methodName) => StartActivity(ActivitySource, methodName);
+
+        private static Activity? StartActivity(ActivitySource? activitySource, string methodName) => activitySource?.StartActivity(typeof(HiveServer2Connection).FullName + "." + methodName, parentId: "");
     }
 }

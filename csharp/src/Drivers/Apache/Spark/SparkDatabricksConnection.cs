@@ -26,7 +26,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkDatabricksConnection : SparkHttpConnection
     {
-        public SparkDatabricksConnection(IReadOnlyDictionary<string, string> properties, ActivitySource? activitySource) : base(properties, activitySource)
+        public SparkDatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }
 

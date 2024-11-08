@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -25,9 +26,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal abstract class HiveServer2Statement : AdbcStatement
     {
-        protected HiveServer2Statement(HiveServer2Connection connection)
+        private ActivitySource? ActivitySource { get; }
+
+        protected HiveServer2Statement(HiveServer2Connection connection, ActivitySource? activitySource)
         {
             Connection = connection;
+            ActivitySource = activitySource;
         }
 
         protected virtual void SetStatementProperties(TExecuteStatementReq statement)
@@ -41,7 +45,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
             await ExecuteStatementAsync();
-            await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds);
+            await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, ActivitySource);
             Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client);
 
             // TODO: Ensure this is set dynamically based on server capabilities
@@ -50,7 +54,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
-            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
+            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken, activitySource: ActivitySource);
             return Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
         }
 

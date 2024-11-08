@@ -16,6 +16,7 @@
 */
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -23,8 +24,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkStatement : HiveServer2Statement
     {
-        internal SparkStatement(SparkConnection connection)
-            : base(connection)
+        internal SparkStatement(SparkConnection connection, ActivitySource? activitySource)
+            : base(connection, activitySource)
         {
             foreach (KeyValuePair<string, string> kvp in connection.Properties)
             {

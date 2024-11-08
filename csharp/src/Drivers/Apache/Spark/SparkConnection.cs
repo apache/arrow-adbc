@@ -250,8 +250,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TIMESTAMP_WITH_TIMEZONE = 2014,
         }
 
-        internal SparkConnection(IReadOnlyDictionary<string, string> properties, ActivitySource? activitySource)
-            : base(properties, activitySource)
+        internal SparkConnection(IReadOnlyDictionary<string, string> properties)
+            : base(properties)
         {
             ValidateProperties();
             _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
@@ -268,7 +268,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override AdbcStatement CreateStatement()
         {
-            return new SparkStatement(this);
+            return new SparkStatement(this, ActivitySource);
         }
 
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)

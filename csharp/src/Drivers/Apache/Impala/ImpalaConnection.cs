@@ -36,8 +36,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         private const int DefaultSocketTransportPort = 21050;
         private const int DefaultHttpTransportPort = 28000;
 
-        internal ImpalaConnection(IReadOnlyDictionary<string, string> properties, ActivitySource? activitySource)
-            : base(properties, activitySource)
+        internal ImpalaConnection(IReadOnlyDictionary<string, string> properties)
+            : base(properties)
         {
         }
 

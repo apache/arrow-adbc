@@ -23,7 +23,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
     internal class ImpalaStatement : HiveServer2Statement
     {
         internal ImpalaStatement(ImpalaConnection connection)
-            : base(connection)
+            : base(connection, null)
         {
         }
 

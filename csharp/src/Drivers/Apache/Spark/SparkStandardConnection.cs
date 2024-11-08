@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkStandardConnection : SparkHttpConnection
     {
-        public SparkStandardConnection(IReadOnlyDictionary<string, string> properties, ActivitySource? activitySource) : base(properties, activitySource)
+        public SparkStandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }
 
