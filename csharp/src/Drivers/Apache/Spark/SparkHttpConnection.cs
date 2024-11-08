@@ -127,6 +127,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     ? requestTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(SparkParameters.HttpRequestTimeoutMilliseconds, requestTimeoutMs, $"must be a value between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
+            Properties.TryGetValue(SparkParameters.ConnectTimeoutMilliseconds, out string? connectTimeoutMs);
+            if (connectTimeoutMs != null)
+            {
+                ConnectTimeout = int.TryParse(connectTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int connectTimeoutMsValue) && (connectTimeoutMsValue > 0 || connectTimeoutMsValue == -1)
+                    ? connectTimeoutMsValue
+                    : throw new ArgumentOutOfRangeException(SparkParameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of -1 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
+            }
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);

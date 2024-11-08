@@ -107,6 +107,37 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         /// <summary>
+        /// Validates if the SetOption handle valid/invalid data correctly for the QueryTimeout option.
+        /// </summary>
+        [SkippableTheory]
+        [InlineData("zero", true)]
+        [InlineData("-2147483648", true)]
+        [InlineData("2147483648", true)]
+        [InlineData("0", true)]
+        [InlineData("-1")]
+        [InlineData("1")]
+        [InlineData("2147483647")]
+        public void CanSetOptionQueryTimeout(string value, bool throws = false)
+        {
+            var testConfiguration = TestConfiguration.Clone() as SparkTestConfiguration;
+            testConfiguration!.QueryTimeoutSeconds = value;
+            if (throws)
+            {
+                Assert.Throws<ArgumentOutOfRangeException>(() => NewConnection(testConfiguration).CreateStatement());
+            }
+
+            AdbcStatement statement = NewConnection().CreateStatement();
+            if (throws)
+            {
+                Assert.Throws<ArgumentOutOfRangeException>(() => statement.SetOption(SparkStatement.Options.QueryTimeoutSeconds, value));
+            }
+            else
+            {
+                statement.SetOption(SparkStatement.Options.QueryTimeoutSeconds, value);
+            }
+        }
+
+        /// <summary>
         /// Validates if the driver can execute update statements.
         /// </summary>
         [SkippableFact, Order(1)]

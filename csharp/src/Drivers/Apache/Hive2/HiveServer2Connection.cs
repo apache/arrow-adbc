@@ -30,6 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
+        internal const int QueryTimeoutDefault = 60;
 
         private TTransport? _transport;
         private TCLIService.Client? _client;
@@ -89,6 +90,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected internal HiveServer2TlsOption TlsOptions { get; set; } = HiveServer2TlsOption.Empty;
 
         protected internal int HttpRequestTimeout { get; set; } = 30000;
+
+        protected internal int ConnectTimeout { get; set; } = 30000;
 
         protected abstract Task<TTransport> CreateTransportAsync();
 

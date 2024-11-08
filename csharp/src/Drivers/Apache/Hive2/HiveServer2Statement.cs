@@ -104,6 +104,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 case Options.BatchSize:
                     UpdateBatchSizeIfValid(key, value);
                     break;
+                case Options.QueryTimeoutSeconds:
+                    UpdateQueryTimeoutIfValid(key, value);
+                    break;
                 default:
                     throw AdbcException.NotImplemented($"Option '{key}' is not implemented.");
             }
@@ -127,6 +130,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
 
+        protected internal int QueryTimeoutSeconds { get; private set; } = HiveServer2Connection.QueryTimeoutDefault;
+
         public HiveServer2Connection Connection { get; private set; }
 
         public TOperationHandle? OperationHandle { get; private set; }
@@ -139,15 +144,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // Options common to all HiveServer2Statement-derived drivers go here
             public const string PollTimeMilliseconds = "adbc.statement.polltime_milliseconds";
             public const string BatchSize = "adbc.statement.batch_size";
+            public const string QueryTimeoutSeconds = "adbc.statement.query_timeout_s";
         }
 
         private void UpdatePollTimeIfValid(string key, string value) => PollTimeMilliseconds = !string.IsNullOrEmpty(key) && int.TryParse(value, result: out int pollTimeMilliseconds) && pollTimeMilliseconds >= 0
             ? pollTimeMilliseconds
-            : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than or equal to -1.");
+            : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than or equal to 0.");
 
         private void UpdateBatchSizeIfValid(string key, string value) => BatchSize = !string.IsNullOrEmpty(value) && long.TryParse(value, out long batchSize) && batchSize > 0
             ? batchSize
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
+
+        private void UpdateQueryTimeoutIfValid(string key, string value) => QueryTimeoutSeconds = !string.IsNullOrEmpty(value) && int.TryParse(value, out int queryTimeout) && (queryTimeout > 0 || queryTimeout == -1)
+            ? queryTimeout
+            : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value of -1 (infinite) or greater than zero.");
 
         public override void Dispose()
         {

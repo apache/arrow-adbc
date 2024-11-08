@@ -32,6 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     case Options.BatchSize:
                     case Options.PollTimeMilliseconds:
+                    case Options.QueryTimeoutSeconds:
                         {
                             SetOption(kvp.Key, kvp.Value);
                             break;

@@ -117,6 +117,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             {
                 parameters.Add(SparkParameters.HttpRequestTimeoutMilliseconds, testConfiguration.HttpRequestTimeoutMilliseconds!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.ConnectTimeoutMilliseconds))
+            {
+                parameters.Add(SparkParameters.ConnectTimeoutMilliseconds, testConfiguration.ConnectTimeoutMilliseconds!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.QueryTimeoutSeconds))
+            {
+                parameters.Add(HiveServer2Statement.Options.QueryTimeoutSeconds, testConfiguration.QueryTimeoutSeconds!);
+            }
 
             return parameters;
         }

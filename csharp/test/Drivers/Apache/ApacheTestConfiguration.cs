@@ -54,5 +54,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
         [JsonPropertyName("http_request_timeout_ms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string HttpRequestTimeoutMilliseconds { get; set; } = string.Empty;
 
+        [JsonPropertyName("connect_timeout_ms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string ConnectTimeoutMilliseconds { get; set; } = string.Empty;
+
+        [JsonPropertyName("query_timeout_s"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string QueryTimeoutSeconds { get; set; } = string.Empty;
+
     }
 }
