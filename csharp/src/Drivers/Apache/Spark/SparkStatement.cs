@@ -24,8 +24,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkStatement : HiveServer2Statement
     {
-        internal SparkStatement(SparkConnection connection, ActivitySource? activitySource)
-            : base(connection, activitySource)
+        internal SparkStatement(SparkConnection connection)
+            : base(connection)
         {
             foreach (KeyValuePair<string, string> kvp in connection.Properties)
             {

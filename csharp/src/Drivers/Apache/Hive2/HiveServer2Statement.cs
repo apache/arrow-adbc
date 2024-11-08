@@ -26,12 +26,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal abstract class HiveServer2Statement : AdbcStatement
     {
-        private ActivitySource? ActivitySource { get; }
-
-        protected HiveServer2Statement(HiveServer2Connection connection, ActivitySource? activitySource)
+        protected HiveServer2Statement(HiveServer2Connection connection)
         {
             Connection = connection;
-            ActivitySource = activitySource;
         }
 
         protected virtual void SetStatementProperties(TExecuteStatementReq statement)
@@ -44,17 +41,27 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
-            await ExecuteStatementAsync();
-            await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, ActivitySource);
-            Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client);
+            using var activity = StartActivity(nameof(ExecuteQueryAsync));
+            try
+            {
+                await ExecuteStatementAsync();
+                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, ActivitySource);
+                Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client);
 
-            // TODO: Ensure this is set dynamically based on server capabilities
-            return new QueryResult(-1, Connection.NewReader(this, schema));
+                // TODO: Ensure this is set dynamically based on server capabilities
+                return new QueryResult(-1, Connection.NewReader(this, schema));
+            }
+            catch (Exception ex)
+            {
+                HiveServer2Connection.TraceException(ex, activity);
+                throw;
+            }
         }
 
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
-            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken, activitySource: ActivitySource);
+            using var activity = StartActivity(nameof(GetResultSetSchemaAsync));
+            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, ActivitySource, cancellationToken);
             return Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
         }
 
@@ -62,40 +69,49 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             const string NumberOfAffectedRowsColumnName = "num_affected_rows";
 
-            QueryResult queryResult = await ExecuteQueryAsync();
-            if (queryResult.Stream == null)
+            using var activity = StartActivity(nameof(ExecuteUpdateAsync));
+            try
             {
-                throw new AdbcException("no data found");
-            }
-
-            using IArrowArrayStream stream = queryResult.Stream;
-
-            // Check if the affected rows columns are returned in the result.
-            Field affectedRowsField = stream.Schema.GetFieldByName(NumberOfAffectedRowsColumnName);
-            if (affectedRowsField != null && affectedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
-            {
-                throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
-            }
-
-            // The default is -1.
-            if (affectedRowsField == null) return new UpdateResult(-1);
-
-            long? affectedRows = null;
-            while (true)
-            {
-                using RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync();
-                if (nextBatch == null) { break; }
-                Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(NumberOfAffectedRowsColumnName);
-                // Note: should only have one item, but iterate for completeness
-                for (int i = 0; i < numOfModifiedArray.Length; i++)
+                QueryResult queryResult = await ExecuteQueryAsync();
+                if (queryResult.Stream == null)
                 {
-                    // Note: handle the case where the affected rows are zero (0).
-                    affectedRows = (affectedRows ?? 0) + numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
+                    throw new AdbcException("no data found");
                 }
-            }
 
-            // If no altered rows, i.e. DDC statements, then -1 is the default.
-            return new UpdateResult(affectedRows ?? -1);
+                using IArrowArrayStream stream = queryResult.Stream;
+
+                // Check if the affected rows columns are returned in the result.
+                Field affectedRowsField = stream.Schema.GetFieldByName(NumberOfAffectedRowsColumnName);
+                if (affectedRowsField != null && affectedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
+                {
+                    throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
+                }
+
+                // The default is -1.
+                if (affectedRowsField == null) return new UpdateResult(-1);
+
+                long? affectedRows = null;
+                while (true)
+                {
+                    using RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync();
+                    if (nextBatch == null) { break; }
+                    Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(NumberOfAffectedRowsColumnName);
+                    // Note: should only have one item, but iterate for completeness
+                    for (int i = 0; i < numOfModifiedArray.Length; i++)
+                    {
+                        // Note: handle the case where the affected rows are zero (0).
+                        affectedRows = (affectedRows ?? 0) + numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
+                    }
+                }
+
+                // If no altered rows, i.e. DDC statements, then -1 is the default.
+                return new UpdateResult(affectedRows ?? -1);
+            }
+            catch (Exception ex)
+            {
+                HiveServer2Connection.TraceException(ex, activity);
+                throw;
+            }
         }
 
         public override void SetOption(string key, string value)
@@ -115,6 +131,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task ExecuteStatementAsync()
         {
+            using var activity = StartActivity(nameof(ExecuteStatementAsync));
             TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery);
             SetStatementProperties(executeRequest);
             TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest);
@@ -135,6 +152,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public TOperationHandle? OperationHandle { get; private set; }
 
+        private ActivitySource? ActivitySource { get => Connection.ActivitySource; }
+
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
         /// </summary>
@@ -152,6 +171,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private void UpdateBatchSizeIfValid(string key, string value) => BatchSize = !string.IsNullOrEmpty(value) && long.TryParse(value, out long batchSize) && batchSize > 0
             ? batchSize
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
+
+        protected virtual Activity? StartActivity(string methodName) => HiveServer2Connection.StartActivity(ActivitySource, typeof(HiveServer2Statement), methodName);
 
         public override void Dispose()
         {

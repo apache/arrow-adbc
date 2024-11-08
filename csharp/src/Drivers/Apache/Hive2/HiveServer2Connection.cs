@@ -86,51 +86,56 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal IReadOnlyDictionary<string, string> Properties { get; }
 
-        protected ActivitySource? ActivitySource { get; }
+        protected internal ActivitySource? ActivitySource { get; }
 
         internal async Task OpenAsync()
         {
             using var activity = StartActivity(nameof(OpenAsync));
-            TTransport transport = await CreateTransportAsync();
-            TProtocol protocol = await CreateProtocolAsync(transport);
-            _transport = protocol.Transport;
-            _client = new TCLIService.Client(protocol);
-            TOpenSessionReq request = CreateSessionRequest();
-
-            activity?.AddEvent(new ActivityEvent("start open session"));
-            TOpenSessionResp? session = await Client.OpenSession(request);
-            activity?.AddEvent(new ActivityEvent("end open session"));
-
-            // Some responses don't raise an exception. Explicitly check the status.
-            if (session == null)
+            try
             {
-                throw new HiveServer2Exception("unable to open session. unknown error.");
-            }
-            else if (session.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-            {
-                throw new HiveServer2Exception(session.Status.ErrorMessage)
-                    .SetNativeError(session.Status.ErrorCode)
-                    .SetSqlState(session.Status.SqlState);
-            }
+                TTransport transport = await CreateTransportAsync();
+                TProtocol protocol = await CreateProtocolAsync(transport);
+                _transport = protocol.Transport;
+                _client = new TCLIService.Client(protocol);
+                TOpenSessionReq request = CreateSessionRequest();
 
-            SessionHandle = session.SessionHandle;
+                activity?.AddEvent(new ActivityEvent("start open session"));
+                TOpenSessionResp? session = await Client.OpenSession(request);
+                activity?.AddEvent(new ActivityEvent("end open session"));
+
+                // Some responses don't raise an exception. Explicitly check the status.
+                if (session == null)
+                {
+                    throw new HiveServer2Exception("unable to open session. unknown error.");
+                }
+                else if (session.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+                {
+                    throw new HiveServer2Exception(session.Status.ErrorMessage)
+                        .SetNativeError(session.Status.ErrorCode)
+                        .SetSqlState(session.Status.SqlState);
+                }
+
+                SessionHandle = session.SessionHandle;
+            }
+            catch (Exception ex)
+            {
+                TraceException(ex, activity);
+                throw;
+            }
         }
 
-        private static void TraceTaskException<T>(Task<T> task, Activity? activity) where T : class
+        internal static void TraceException(Exception exception, Activity? activity, bool escaped = true)
         {
-            if (task.IsFaulted)
-            {
-                // https://opentelemetry.io/docs/specs/otel/trace/exceptions/
-                activity?.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection(
-                    [
-                        // TODO: Determine if "exception.escaped" is being set correctly.
-                        // https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/
-                        new("exception.escaped", true),
-                        new("exception.message", task.Exception?.InnerException?.Message),
-                        new("exception.stacktrace", task.Exception?.InnerException?.StackTrace),
-                        new("exception.type", task.Exception?.InnerException?.GetType().Name),
-                    ])));
-            }
+            // https://opentelemetry.io/docs/specs/otel/trace/exceptions/
+            activity?.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection(
+                [
+                    // TODO: Determine if "exception.escaped" is being set correctly.
+                    // https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/
+                    new("exception.escaped", escaped),
+                    new("exception.message", exception.Message),
+                    new("exception.stacktrace", exception.StackTrace),
+                    new("exception.type", exception.GetType().Name),
+                ])));
         }
 
         internal TSessionHandle? SessionHandle { get; private set; }
@@ -217,8 +222,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             ActivitySource?.Dispose();
         }
 
-        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default, ActivitySource? activitySource = null)
+        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, ActivitySource? activitySource = null, CancellationToken cancellationToken = default)
         {
+            using var activity = StartActivity(activitySource, nameof(GetResultSetMetadataAsync));
             TGetResultSetMetadataReq request = new(operationHandle);
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
             return response;
@@ -240,6 +246,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 .ContinueWith(t => Console.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
         }
 
+        // TODO: Encapsulate this separately
         private Task DequeueAndWrite(string state)
         {
             if (_activityQueue.TryDequeue(out Activity? activity))
@@ -261,9 +268,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return Task.CompletedTask;
         }
 
-        private Activity? StartActivity(string methodName) => StartActivity(ActivitySource, methodName);
+        protected virtual Activity? StartActivity(string methodName) => StartActivity(ActivitySource, methodName);
 
-        private static Activity? StartActivity(ActivitySource? activitySource, string methodName) => activitySource?.StartActivity(typeof(HiveServer2Connection).FullName + "." + methodName);
+        private static Activity? StartActivity(ActivitySource? activitySource, string methodName) => StartActivity(activitySource, typeof(HiveServer2Connection), methodName);
+
+        internal static Activity? StartActivity(ActivitySource? activitySource, Type type, string methodName) => activitySource?.StartActivity(type.FullName + "." + methodName);
 
 
         protected internal static string GetProductVersion()
