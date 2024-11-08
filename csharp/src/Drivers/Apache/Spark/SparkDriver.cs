@@ -15,11 +15,7 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Reflection;
-using System.Text.Json;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {

@@ -17,9 +17,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
@@ -41,9 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             SparkConnection connection = SparkConnectionFactory.NewConnection(mergedProperties);
-
             connection.OpenAsync().Wait();
-
             return connection;
         }
     }

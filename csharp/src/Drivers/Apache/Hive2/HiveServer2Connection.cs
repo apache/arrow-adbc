@@ -252,6 +252,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private Activity? StartActivity(string methodName) => StartActivity(ActivitySource, methodName);
 
-        private static Activity? StartActivity(ActivitySource? activitySource, string methodName) => activitySource?.StartActivity(typeof(HiveServer2Connection).FullName + "." + methodName, parentId: "");
+        private static Activity? StartActivity(ActivitySource? activitySource, string methodName) => activitySource?.StartActivity(typeof(HiveServer2Connection).FullName + "." + methodName);
     }
 }
