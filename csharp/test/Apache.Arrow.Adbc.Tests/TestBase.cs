@@ -39,8 +39,6 @@ namespace Apache.Arrow.Adbc.Tests
     {
         private bool _disposedValue;
         private readonly Lazy<TConfig> _testConfiguration;
-        private readonly Lazy<AdbcDriver> _driver;
-        private readonly Lazy<AdbcDatabase> _database;
         private readonly Lazy<AdbcConnection> _connection;
         private readonly Lazy<AdbcStatement> _statement;
         private readonly TestEnvironment<TConfig>.Factory<TEnv> _testEnvFactory;
@@ -56,9 +54,7 @@ namespace Apache.Arrow.Adbc.Tests
             _testEnvFactory = testEnvFactory;
             _testEnvironment = new Lazy<TEnv>(() => _testEnvFactory.Create(() => Connection));
             _testConfiguration = new Lazy<TConfig>(() => Utils.LoadTestConfiguration<TConfig>(TestConfigVariable));
-            _driver = new Lazy<AdbcDriver>(() => NewDriver);
-            _database = new Lazy<AdbcDatabase>(() => Driver.Open(GetDriverParameters(TestConfiguration)));
-            _connection = new Lazy<AdbcConnection>(() => Database.Connect(new Dictionary<string, string>()));
+            _connection = new Lazy<AdbcConnection>(() => NewConnection());
             _statement = new Lazy<AdbcStatement>(() => Connection.CreateStatement());
         }
 
@@ -129,16 +125,6 @@ namespace Apache.Arrow.Adbc.Tests
         protected virtual Dictionary<string, string> GetDriverParameters(TConfig testConfiguration) => TestEnvironment.GetDriverParameters(testConfiguration);
 
         /// <summary>
-        /// Gets a single ADBC Driver for the object.
-        /// </summary>
-        protected AdbcDriver Driver => _driver.Value;
-
-        /// <summary>
-        /// Gets a single ADBC Database for the object.
-        /// </summary>
-        protected AdbcDatabase Database => _database.Value;
-
-        /// <summary>
         /// Gets a single ADBC Connection for the object.
         /// </summary>
         protected AdbcConnection Connection => _connection.Value;
@@ -197,18 +183,8 @@ namespace Apache.Arrow.Adbc.Tests
         /// <returns></returns>
         protected AdbcConnection NewConnection(TConfig? testConfiguration = null, IReadOnlyDictionary<string, string>? connectionOptions = null)
         {
-            return NewConnection(out _, out _, testConfiguration, connectionOptions);
-        }
-
-        protected AdbcConnection NewConnection(
-            out AdbcDriver driver,
-            out AdbcDatabase database,
-            TConfig? testConfiguration = null,
-            IReadOnlyDictionary<string, string>? connectionOptions = null)
-        {
             Dictionary<string, string> parameters = GetDriverParameters(testConfiguration ?? TestConfiguration);
-            driver = NewDriver;
-            database = driver.Open(parameters);
+            AdbcDatabase database = NewDriver.Open(parameters);
             return database.Connect(connectionOptions ?? new Dictionary<string, string>());
         }
 
@@ -628,14 +604,6 @@ namespace Apache.Arrow.Adbc.Tests
                     if (_connection.IsValueCreated)
                     {
                         _connection.Value.Dispose();
-                    }
-                    if (_database.IsValueCreated)
-                    {
-                        _database.Value.Dispose();
-                    }
-                    if (_driver.IsValueCreated)
-                    {
-                        _driver.Value.Dispose();
                     }
                 }
 
