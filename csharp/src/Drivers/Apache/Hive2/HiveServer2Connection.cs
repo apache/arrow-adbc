@@ -19,21 +19,11 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Reflection;
-using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
-using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Ipc;
-using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
@@ -126,14 +116,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             SessionHandle = session.SessionHandle;
         }
 
-        private static void TraceException<T>(Task<T> task, Activity? activity) where T : class
+        private static void TraceTaskException<T>(Task<T> task, Activity? activity) where T : class
         {
-            activity?.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection(
-                [
-                    new("message", task.Exception?.InnerException?.Message),
-                    new("source", task.Exception?.InnerException?.Source),
-                    new("stackTrace", task.Exception?.InnerException?.StackTrace),
-                ])));
+            if (task.IsFaulted)
+            {
+                // https://opentelemetry.io/docs/specs/otel/trace/exceptions/
+                activity?.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection(
+                    [
+                        // TODO: Determine if "exception.escaped" is being set correctly.
+                        // https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/
+                        new("exception.escaped", true),
+                        new("exception.message", task.Exception?.InnerException?.Message),
+                        new("exception.stacktrace", task.Exception?.InnerException?.StackTrace),
+                        new("exception.type", task.Exception?.InnerException?.GetType().Name),
+                    ])));
+            }
         }
 
         internal TSessionHandle? SessionHandle { get; private set; }
