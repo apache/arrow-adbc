@@ -19,11 +19,21 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
+using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Ipc;
+using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
@@ -34,13 +44,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
+        internal const string ProductVersionDefault = "1.0.0";
 
         private TTransport? _transport;
         private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
-        private static readonly string s_activitySourceName = typeof(HiveServer2Connection).Assembly.GetName().Name!;
-        private static readonly string s_assemblyVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).ProductVersion ?? "1.0.0";
+
+        private static readonly string s_activitySourceName = Assembly.GetExecutingAssembly().GetName().Name!;
+        private static readonly string s_assemblyVersion = GetProductVersion();
         private static readonly ConcurrentDictionary<string, ActivityListener> s_listeners = new();
         private readonly ActivityListener? _listener;
         private readonly ConcurrentQueue<Activity> _activityQueue = new();
@@ -52,6 +64,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // Key of listeners collection should be ouput file location
             if (true)
             {
+                // TODO: Determine the best handling of listener lifetimes.
                 _listener = s_listeners.GetOrAdd(s_activitySourceName, (_) => new()
                 {
                     ShouldListenTo = (source) => source.Name == s_activitySourceName,
@@ -202,7 +215,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 _transport = null;
                 _client = null;
             }
-            _listener?.Dispose();
+            // TODO: Determine best approach to lifetime of ActivityListener
+            //_listener?.Dispose();
             ActivitySource?.Dispose();
         }
 
@@ -253,5 +267,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private Activity? StartActivity(string methodName) => StartActivity(ActivitySource, methodName);
 
         private static Activity? StartActivity(ActivitySource? activitySource, string methodName) => activitySource?.StartActivity(typeof(HiveServer2Connection).FullName + "." + methodName);
+
+
+        protected internal static string GetProductVersion()
+        {
+            FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+            return fileVersionInfo.ProductVersion ?? ProductVersionDefault;
+        }
     }
 }
