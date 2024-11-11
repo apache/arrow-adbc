@@ -123,14 +123,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(SparkParameters.HttpRequestTimeoutMilliseconds, out string? requestTimeoutMs);
             if (requestTimeoutMs != null)
             {
-                HttpRequestTimeout = int.TryParse(requestTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int requestTimeoutMsValue) && requestTimeoutMsValue > 0
+                HttpRequestTimeoutMilliseconds = int.TryParse(requestTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int requestTimeoutMsValue) && requestTimeoutMsValue > 0
                     ? requestTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(SparkParameters.HttpRequestTimeoutMilliseconds, requestTimeoutMs, $"must be a value between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
             Properties.TryGetValue(SparkParameters.ConnectTimeoutMilliseconds, out string? connectTimeoutMs);
             if (connectTimeoutMs != null)
             {
-                ConnectTimeout = int.TryParse(connectTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int connectTimeoutMsValue) && (connectTimeoutMsValue > 0 || connectTimeoutMsValue == -1)
+                ConnectTimeoutMilliseconds = int.TryParse(connectTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int connectTimeoutMsValue) && (connectTimeoutMsValue > 0 || connectTimeoutMsValue == -1)
                     ? connectTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(SparkParameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of -1 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
@@ -171,7 +171,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TConfiguration config = new();
             ThriftHttpTransport transport = new(httpClient, config)
             {
-                ConnectTimeout = HttpRequestTimeout,
+                ConnectTimeout = HttpRequestTimeoutMilliseconds,
             };
             return Task.FromResult<TTransport>(transport);
         }

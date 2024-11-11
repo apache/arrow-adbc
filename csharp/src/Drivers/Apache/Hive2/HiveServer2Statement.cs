@@ -130,7 +130,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
 
-        protected internal int QueryTimeoutSeconds { get; private set; } = HiveServer2Connection.QueryTimeoutDefault;
+        protected internal int QueryTimeoutSeconds { get; private set; } = HiveServer2Connection.QueryTimeoutSecondsDefault;
 
         public HiveServer2Connection Connection { get; private set; }
 
@@ -142,9 +142,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public class Options
         {
             // Options common to all HiveServer2Statement-derived drivers go here
-            public const string PollTimeMilliseconds = "adbc.statement.polltime_milliseconds";
-            public const string BatchSize = "adbc.statement.batch_size";
-            public const string QueryTimeoutSeconds = "adbc.statement.query_timeout_s";
+            public const string PollTimeMilliseconds = "adbc.apache.statement.polltime_ms";
+            public const string BatchSize = "adbc.apache.statement.batch_size";
+            public const string QueryTimeoutSeconds = "adbc.apache.statement.query_timeout_s";
         }
 
         private void UpdatePollTimeIfValid(string key, string value) => PollTimeMilliseconds = !string.IsNullOrEmpty(key) && int.TryParse(value, result: out int pollTimeMilliseconds) && pollTimeMilliseconds >= 0

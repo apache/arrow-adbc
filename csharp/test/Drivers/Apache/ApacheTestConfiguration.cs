@@ -48,7 +48,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
         [JsonPropertyName("batch_size"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string BatchSize { get; set; } = string.Empty;
 
-        [JsonPropertyName("polltime_milliseconds"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        [JsonPropertyName("polltime_ms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string PollTimeMilliseconds { get; set; } = string.Empty;
 
         [JsonPropertyName("http_request_timeout_ms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
