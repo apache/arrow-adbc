@@ -17,8 +17,8 @@
 
 module github.com/apache/arrow-adbc/go/adbc
 
-go 1.22.0
-// TODO(https://github.com/apache/arrow-adbc/issues/2021): unpin go
+go 1.22.7
+
 toolchain go1.22.9
 
 require (
