@@ -18,9 +18,8 @@
 module github.com/apache/arrow-adbc/go/adbc
 
 go 1.22.0
-
 // TODO(https://github.com/apache/arrow-adbc/issues/2021): unpin go
-toolchain go1.22.4
+toolchain go1.22.9
 
 require (
 	cloud.google.com/go/bigquery v1.64.0
@@ -36,7 +35,7 @@ require (
 	golang.org/x/sync v0.9.0
 	golang.org/x/tools v0.27.0
 	google.golang.org/api v0.204.0
-	google.golang.org/grpc v1.67.1
+	google.golang.org/grpc v1.68.0
 	google.golang.org/protobuf v1.35.1
 )
 
