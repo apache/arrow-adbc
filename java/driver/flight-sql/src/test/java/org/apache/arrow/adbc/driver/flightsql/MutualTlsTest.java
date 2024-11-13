@@ -30,21 +30,21 @@ import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
-import org.apache.arrow.driver.jdbc.FlightServerTestRule;
+import org.apache.arrow.driver.jdbc.FlightServerTestExtension;
 import org.apache.arrow.driver.jdbc.authentication.UserPasswordAuthentication;
 import org.apache.arrow.driver.jdbc.utils.FlightSqlTestCertificates;
 import org.apache.arrow.driver.jdbc.utils.MockFlightSqlProducer;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 public class MutualTlsTest {
 
-  @ClassRule public static final FlightServerTestRule FLIGHT_SERVER_TEST_RULE;
+  @RegisterExtension public static FlightServerTestExtension FLIGHT_SERVER_TEST_EXTENSION;
 
   private static final String USER_1 = "user1";
   private static final String PASS_1 = "pass1";
@@ -67,8 +67,8 @@ public class MutualTlsTest {
     UserPasswordAuthentication authentication =
         new UserPasswordAuthentication.Builder().user(USER_1, PASS_1).build();
 
-    FLIGHT_SERVER_TEST_RULE =
-        new FlightServerTestRule.Builder()
+    FLIGHT_SERVER_TEST_EXTENSION =
+        new FlightServerTestExtension.Builder()
             .authentication(authentication)
             .useEncryption(certKey.cert, certKey.key)
             .useMTlsClientVerification(FlightSqlTestCertificates.exampleCACert())
@@ -79,7 +79,7 @@ public class MutualTlsTest {
   private BufferAllocator allocator;
   private Map<String, Object> params;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     allocator = new RootAllocator(Long.MAX_VALUE);
     params = new HashMap<>();
@@ -87,7 +87,7 @@ public class MutualTlsTest {
     params.put(AdbcDriver.PARAM_PASSWORD.getKey(), PASS_1);
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
     AutoCloseables.close(allocator);
   }
@@ -147,6 +147,6 @@ public class MutualTlsTest {
     String protocol = String.format("grpc%s", withTls ? "+tls" : "+tcp");
     return String.format(
         "%s://%s:%d",
-        protocol, FLIGHT_SERVER_TEST_RULE.getHost(), FLIGHT_SERVER_TEST_RULE.getPort());
+        protocol, FLIGHT_SERVER_TEST_EXTENSION.getHost(), FLIGHT_SERVER_TEST_EXTENSION.getPort());
   }
 }

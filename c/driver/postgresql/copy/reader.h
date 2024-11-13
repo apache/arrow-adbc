@@ -972,10 +972,11 @@ class PostgresCopyStreamReader {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode InferOutputSchema(ArrowError* error) {
+  ArrowErrorCode InferOutputSchema(const std::string& vendor_name, ArrowError* error) {
     schema_.reset();
     ArrowSchemaInit(schema_.get());
-    NANOARROW_RETURN_NOT_OK(root_reader_.InputType().SetSchema(schema_.get()));
+    NANOARROW_RETURN_NOT_OK(
+        root_reader_.InputType().SetSchema(schema_.get(), vendor_name));
     return NANOARROW_OK;
   }
 

@@ -243,7 +243,7 @@ jobs:
             docs.tgz
 
   java:
-    name: "Java 1.8"
+    name: "Java 11"
     runs-on: ubuntu-latest
     needs:
       - source
@@ -609,6 +609,7 @@ jobs:
           name: python-${{ matrix.arch }}-manylinux${{ matrix.manylinux_version }}
           retention-days: 7
           path: |
+            adbc/python/adbc_driver_bigquery/repaired_wheels/*.whl
             adbc/python/adbc_driver_flightsql/repaired_wheels/*.whl
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
@@ -746,6 +747,7 @@ jobs:
           name: python-${{ matrix.arch }}-macos
           retention-days: 7
           path: |
+            adbc/python/adbc_driver_bigquery/repaired_wheels/*.whl
             adbc/python/adbc_driver_flightsql/repaired_wheels/*.whl
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
@@ -801,7 +803,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.9", "3.10", "3.11", "3.12"]
+        python_version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     env:
       PYTHON_VERSION: "${{ matrix.python_version }}"
       # Where to install vcpkg
@@ -884,6 +886,7 @@ jobs:
           name: python${{ matrix.python_version }}-windows
           retention-days: 7
           path: |
+            adbc/python/adbc_driver_bigquery/repaired_wheels/*.whl
             adbc/python/adbc_driver_flightsql/repaired_wheels/*.whl
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
@@ -943,6 +946,7 @@ jobs:
           name: python-sdist
           retention-days: 7
           path: |
+            adbc/python/adbc_driver_bigquery/dist/*.tar.gz
             adbc/python/adbc_driver_flightsql/dist/*.tar.gz
             adbc/python/adbc_driver_manager/dist/*.tar.gz
             adbc/python/adbc_driver_postgresql/dist/*.tar.gz

@@ -17,6 +17,7 @@
 
 #include "connection.h"
 
+#include <array>
 #include <cassert>
 #include <cinttypes>
 #include <cmath>
@@ -175,6 +176,13 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
         all_constraints_(conn, kConstraintsQueryAll),
         some_constraints_(conn, ConstraintsQuery()) {}
 
+  // Allow Redshift to execute this query without constraints
+  // TODO(paleolimbot): Investigate to see if we can simplify the constraits query so that
+  // it works on both!
+  void SetEnableConstraints(bool enable_constraints) {
+    enable_constraints_ = enable_constraints;
+  }
+
   Status Load(adbc::driver::GetObjectsDepth depth,
               std::optional<std::string_view> catalog_filter,
               std::optional<std::string_view> schema_filter,
@@ -262,16 +270,23 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
                      std::optional<std::string_view> column_filter) override {
     if (column_filter.has_value()) {
       UNWRAP_STATUS(some_columns_.Execute(
-          {std::string(schema), std::string(table), std::string(*column_filter)}))
-      UNWRAP_STATUS(some_constraints_.Execute(
-          {std::string(schema), std::string(table), std::string(*column_filter)}))
+          {std::string(schema), std::string(table), std::string(*column_filter)}));
       next_column_ = some_columns_.Row(-1);
-      next_constraint_ = some_constraints_.Row(-1);
     } else {
-      UNWRAP_STATUS(all_columns_.Execute({std::string(schema), std::string(table)}))
-      UNWRAP_STATUS(all_constraints_.Execute({std::string(schema), std::string(table)}))
+      UNWRAP_STATUS(all_columns_.Execute({std::string(schema), std::string(table)}));
       next_column_ = all_columns_.Row(-1);
-      next_constraint_ = all_constraints_.Row(-1);
+    }
+
+    if (enable_constraints_) {
+      if (column_filter.has_value()) {
+        UNWRAP_STATUS(some_constraints_.Execute(
+            {std::string(schema), std::string(table), std::string(*column_filter)}))
+        next_constraint_ = some_constraints_.Row(-1);
+      } else {
+        UNWRAP_STATUS(
+            all_constraints_.Execute({std::string(schema), std::string(table)}));
+        next_constraint_ = all_constraints_.Row(-1);
+      }
     }
 
     return Status::Ok();
@@ -347,6 +362,9 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
   PqResultHelper some_columns_;
   PqResultHelper all_constraints_;
   PqResultHelper some_constraints_;
+
+  // On Redshift, the constraints query fails
+  bool enable_constraints_{true};
 
   // Iterator state for the catalogs/schema/table/column queries
   PqResultRow next_catalog_;
@@ -478,19 +496,30 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
   for (size_t i = 0; i < info_codes_length; i++) {
     switch (info_codes[i]) {
       case ADBC_INFO_VENDOR_NAME:
-        infos.push_back({info_codes[i], "PostgreSQL"});
+        infos.push_back({info_codes[i], std::string(VendorName())});
         break;
       case ADBC_INFO_VENDOR_VERSION: {
-        const char* stmt = "SHOW server_version_num";
-        auto result_helper = PqResultHelper{conn_, std::string(stmt)};
-        RAISE_STATUS(error, result_helper.Execute());
-        auto it = result_helper.begin();
-        if (it == result_helper.end()) {
-          SetError(error, "[libpq] PostgreSQL returned no rows for '%s'", stmt);
-          return ADBC_STATUS_INTERNAL;
+        if (VendorName() == "Redshift") {
+          const std::array<int, 3>& version = VendorVersion();
+          std::string version_string = std::to_string(version[0]) + "." +
+                                       std::to_string(version[1]) + "." +
+                                       std::to_string(version[2]);
+          infos.push_back({info_codes[i], std::move(version_string)});
+
+        } else {
+          // Gives a version in the form 140000 instead of 14.0.0
+          const char* stmt = "SHOW server_version_num";
+          auto result_helper = PqResultHelper{conn_, std::string(stmt)};
+          RAISE_STATUS(error, result_helper.Execute());
+          auto it = result_helper.begin();
+          if (it == result_helper.end()) {
+            SetError(error, "[libpq] PostgreSQL returned no rows for '%s'", stmt);
+            return ADBC_STATUS_INTERNAL;
+          }
+          const char* server_version_num = (*it)[0].data;
+          infos.push_back({info_codes[i], server_version_num});
         }
-        const char* server_version_num = (*it)[0].data;
-        infos.push_back({info_codes[i], server_version_num});
+
         break;
       }
       case ADBC_INFO_DRIVER_NAME:
@@ -520,7 +549,8 @@ AdbcStatusCode PostgresConnection::GetObjects(
     struct AdbcConnection* connection, int c_depth, const char* catalog,
     const char* db_schema, const char* table_name, const char** table_type,
     const char* column_name, struct ArrowArrayStream* out, struct AdbcError* error) {
-  PostgresGetObjectsHelper new_helper(conn_);
+  PostgresGetObjectsHelper helper(conn_);
+  helper.SetEnableConstraints(VendorName() != "Redshift");
 
   const auto catalog_filter =
       catalog ? std::make_optional(std::string_view(catalog)) : std::nullopt;
@@ -559,9 +589,9 @@ AdbcStatusCode PostgresConnection::GetObjects(
           .ToAdbc(error);
   }
 
-  auto status = BuildGetObjects(&new_helper, depth, catalog_filter, schema_filter,
+  auto status = BuildGetObjects(&helper, depth, catalog_filter, schema_filter,
                                 table_filter, column_filter, table_type_filter, out);
-  RAISE_STATUS(error, new_helper.Close());
+  RAISE_STATUS(error, helper.Close());
   RAISE_STATUS(error, status);
 
   return ADBC_STATUS_OK;
@@ -573,11 +603,12 @@ AdbcStatusCode PostgresConnection::GetOption(const char* option, char* value,
   if (std::strcmp(option, ADBC_CONNECTION_OPTION_CURRENT_CATALOG) == 0) {
     output = PQdb(conn_);
   } else if (std::strcmp(option, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
-    PqResultHelper result_helper{conn_, "SELECT CURRENT_SCHEMA"};
+    PqResultHelper result_helper{conn_, "SELECT CURRENT_SCHEMA()"};
     RAISE_STATUS(error, result_helper.Execute());
     auto it = result_helper.begin();
     if (it == result_helper.end()) {
-      SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
+      SetError(error,
+               "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA()'");
       return ADBC_STATUS_INTERNAL;
     }
     output = (*it)[0].data;
@@ -989,7 +1020,6 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(uschema.get(), result_helper.NumRows()),
            error);
 
-  ArrowError na_error;
   int row_counter = 0;
   for (auto row : result_helper) {
     const char* colname = row[0].data;
@@ -997,14 +1027,15 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
         static_cast<uint32_t>(std::strtol(row[1].data, /*str_end=*/nullptr, /*base=*/10));
 
     PostgresType pg_type;
-    if (type_resolver_->Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      SetError(error, "%s%d%s%s%s%" PRIu32, "Column #", row_counter + 1, " (\"", colname,
-               "\") has unknown type code ", pg_oid);
+    if (type_resolver_->FindWithDefault(pg_oid, &pg_type) != NANOARROW_OK) {
+      SetError(error, "%s%d%s%s%s%" PRIu32, "Error resolving type code for column #",
+               row_counter + 1, " (\"", colname, "\")  with oid ", pg_oid);
       final_status = ADBC_STATUS_NOT_IMPLEMENTED;
       break;
     }
     CHECK_NA(INTERNAL,
-             pg_type.WithFieldName(colname).SetSchema(uschema->children[row_counter]),
+             pg_type.WithFieldName(colname).SetSchema(uschema->children[row_counter],
+                                                      std::string(VendorName())),
              error);
     row_counter++;
   }
@@ -1134,6 +1165,12 @@ AdbcStatusCode PostgresConnection::SetOptionInt(const char* key, int64_t value,
                                                 struct AdbcError* error) {
   SetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+std::string_view PostgresConnection::VendorName() { return database_->VendorName(); }
+
+const std::array<int, 3>& PostgresConnection::VendorVersion() {
+  return database_->VendorVersion();
 }
 
 }  // namespace adbcpq
