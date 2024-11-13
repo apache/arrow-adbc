@@ -66,13 +66,13 @@ limitations under the License.
 {% endcomment %}
 -->
 
-The Apache Arrow team is pleased to announce the ${RELEASE} release of
-the Apache Arrow ADBC libraries. This covers includes [**${RESOLVED_ISSUES}
+The Apache Arrow team is pleased to announce the version ${RELEASE} release of
+the Apache Arrow ADBC libraries. This release includes [**${RESOLVED_ISSUES}
 resolved issues**][1] from [**${contributors} distinct contributors**][2].
 
-This is a release of the **libraries**, which are at version
-${RELEASE}.  The **API specification** is versioned separately and is
-at version ${spec_version}.
+This is a release of the **libraries**, which are at version ${RELEASE}.  The
+[**API specification**][specification] is versioned separately and is at
+version ${spec_version}.
 
 The subcomponents are versioned independently:
 
@@ -112,6 +112,7 @@ or the [Arrow mailing lists][5].
 [3]: https://github.com/apache/arrow-adbc/blob/apache-arrow-adbc-${RELEASE}/CHANGELOG.md
 [4]: https://github.com/apache/arrow-adbc/issues
 [5]: {% link community.md %}
+[specification]: https://arrow.apache.org/adbc/${RELEASE}/format/specification.html
 EOF
 
 }
