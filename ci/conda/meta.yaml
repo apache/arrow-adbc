@@ -17,7 +17,6 @@
 
 package:
   name: arrow-adbc-split
-  # TODO: this needs to get bumped by the release process
   version: 1.4.0
 
 source:
