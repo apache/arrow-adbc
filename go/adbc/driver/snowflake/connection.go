@@ -40,8 +40,8 @@ import (
 )
 
 const (
-	defaultStatementQueueSize  = 200
-	defaultPrefetchConcurrency = 10
+	defaultStatementQueueSize  = 100
+	defaultPrefetchConcurrency = 5
 
 	queryTemplateGetObjectsAll           = "get_objects_all.sql"
 	queryTemplateGetObjectsDbSchemas     = "get_objects_dbschemas.sql"
