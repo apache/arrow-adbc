@@ -39,15 +39,18 @@ namespace Apache.Arrow.Adbc.Tracing
         private readonly ConcurrentQueue<Activity> _activityQueue = new();
         private readonly IReadOnlyDictionary<string, string>? _options;
         private DirectoryInfo? _traceDirectory;
+        private readonly string _baseName;
 
-        internal TracingConnectionImpl(IReadOnlyDictionary<string, string>? options = default)
+        internal TracingConnectionImpl(string baseName, IReadOnlyDictionary<string, string>? options = default)
         {
+            _baseName = baseName;
             _options = options ?? new Dictionary<string, string>();
             EnsureTracing();
         }
 
-        internal TracingConnectionImpl(bool isTracingEnabled, string traceLocation, int traceMaxFileSizeKb, int traceMaxFiles)
+        internal TracingConnectionImpl(string baseName, bool isTracingEnabled, string traceLocation, int traceMaxFileSizeKb, int traceMaxFiles)
         {
+            _baseName = baseName;
             var options = new Dictionary<string, string>();
             options[TracingOptions.Connection.Trace] = isTracingEnabled.ToString();
             options[TracingOptions.Connection.TraceLocation] = traceLocation;
@@ -58,6 +61,8 @@ namespace Apache.Arrow.Adbc.Tracing
         }
 
         public ActivitySource? ActivitySource { get; private set; }
+
+        public string TracingBaseName => _baseName;
 
         internal static string GetProductVersion()
         {
@@ -141,10 +146,8 @@ namespace Apache.Arrow.Adbc.Tracing
 
         public Activity? StartActivity(string methodName)
         {
-            return StartActivity(ActivitySource, TracingBaseName, methodName);
+            return StartActivity(ActivitySource, _baseName, methodName);
         }
-
-        public string TracingBaseName => throw new NotImplementedException();
 
         internal static Activity? StartActivity(ActivitySource? activitySource, string baseName, string methodName) =>
             activitySource?.StartActivity(baseName + "." + methodName);

@@ -30,12 +30,12 @@ namespace Apache.Arrow.Adbc.Tracing
 
         protected TracingConnection11(IReadOnlyDictionary<string, string>? properties)
         {
-            TracingConnectionImpl = new TracingConnectionImpl(properties);
+            TracingConnectionImpl = new TracingConnectionImpl(TracingBaseName, properties);
         }
 
         protected TracingConnection11(bool isTracingEnabled, string traceLocation, int traceMaxFileSizeKb, int traceMaxFiles)
         {
-            TracingConnectionImpl = new TracingConnectionImpl(isTracingEnabled, traceLocation, traceMaxFileSizeKb, traceMaxFiles);
+            TracingConnectionImpl = new TracingConnectionImpl(TracingBaseName, isTracingEnabled, traceLocation, traceMaxFileSizeKb, traceMaxFiles);
         }
 
         private TracingConnectionImpl TracingConnectionImpl { get; }
