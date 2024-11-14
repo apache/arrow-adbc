@@ -30,13 +30,10 @@ on:
         required: false
         type: string
         default: ""
-  pull_request:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/verify.yml'
-      - 'dev/release/verify-release-candidate.sh'
-      - 'dev/release/verify-release-candidate.ps1'
+
+# Don't automatically run on pull requests.  While we're only using a
+# read-only token below, let's play it safe since we are running code out of
+# the given branch.
 
 permissions:
   contents: read
@@ -70,6 +67,8 @@ jobs:
           TEST_BINARIES: "1"
           USE_CONDA: "1"
           VERBOSE: "1"
+          # Make this available to download_rc_binaries.py
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
 
@@ -89,7 +88,6 @@ jobs:
         # The Unix script will set up conda itself
         if: matrix.os == 'windows-latest'
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-mamba: true
       - name: Work around ASAN issue (GH-1617)
@@ -107,6 +105,9 @@ jobs:
           USE_CONDA: "1"
           VERBOSE: "1"
         run: |
+          # Rust uses a lot of disk space, free up some space
+          # https://github.com/actions/runner-images/issues/2840
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
       - name: Verify
         if: matrix.os == 'windows-latest'

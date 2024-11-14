@@ -40,6 +40,13 @@ to the Arrow Database Connectivity (ADBC) Snowflake driver.
 
 ## Installation
 
+You can install the released version of adbcsnowflake from
+[R-multiverse](https://community.r-multiverse.org/) with:
+
+``` r
+install.packages("adbcsnowflake", repos = "https://community.r-multiverse.org")
+```
+
 You can install the development version of adbcsnowflake from [GitHub](https://github.com/) with:
 
 ``` r

@@ -46,7 +46,7 @@ services:
   ############################ Documentation ###################################
 
   docs:
-    image: condaforge/mambaforge:latest
+    image: condaforge/miniforge3:latest
     volumes:
       - .:/adbc:delegated
     environment:

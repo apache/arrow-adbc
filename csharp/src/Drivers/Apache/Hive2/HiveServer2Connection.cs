@@ -88,6 +88,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal HiveServer2TlsOption TlsOptions { get; set; } = HiveServer2TlsOption.Empty;
 
+        protected internal int HttpRequestTimeout { get; set; } = 30000;
+
         protected abstract Task<TTransport> CreateTransportAsync();
 
         protected abstract Task<TProtocol> CreateProtocolAsync(TTransport transport);
@@ -96,7 +98,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal abstract SchemaParser SchemaParser { get; }
 
-        internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema, CancellationToken cancellationToken = default) where T : HiveServer2Statement;
+        internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {

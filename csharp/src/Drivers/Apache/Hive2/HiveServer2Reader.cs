@@ -63,21 +63,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 { ArrowTypeId.Decimal128, ConvertToDecimal128 },
                 { ArrowTypeId.Timestamp, ConvertToTimestamp },
             };
-
-        // Look-ahead task.
-        Task<TFetchResultsResp>? _fetchResultResponseTask = default;
+        private static readonly IReadOnlyDictionary<ArrowTypeId, Func<DoubleArray, IArrowType, IArrowArray>> s_arrowDoubleConverters =
+            new Dictionary<ArrowTypeId, Func<DoubleArray, IArrowType, IArrowArray>>()
+            {
+                { ArrowTypeId.Float, ConvertToFloat },
+            };
 
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            DataTypeConversion dataTypeConversion,
-            CancellationToken cancellationToken = default)
+            DataTypeConversion dataTypeConversion)
         {
             _statement = statement;
             Schema = schema;
             _dataTypeConversion = dataTypeConversion;
-            // Start the pre-fetch of the first batch
-            _fetchResultResponseTask = FetchNext(_statement, cancellationToken);
         }
 
         public Schema Schema { get; }
@@ -91,30 +90,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             // Await the fetch response
-            TFetchResultsResp response = await (_fetchResultResponseTask ?? throw new InvalidOperationException("unexpected state - fetch result task should be set."));
+            TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
 
-            // Build the current batch
-            RecordBatch result = CreateBatch(response, out int fetchedRows);
-
-            if ((_statement.BatchSize > 0 && fetchedRows < _statement.BatchSize) || fetchedRows == 0)
+            int columnCount = GetColumnCount(response);
+            int rowCount = GetRowCount(response, columnCount);
+            if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
             {
                 // This is the last batch
                 _statement = null;
-                _fetchResultResponseTask = null;
-            }
-            else
-            {
-                // Otherwise, start the pre-fetch of the next batch
-                _fetchResultResponseTask = FetchNext(_statement, cancellationToken);
             }
 
-            // Return the current batch.
-            return result;
+            // Build the current batch, if any data exists
+            return rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
         }
 
-        private RecordBatch CreateBatch(TFetchResultsResp response, out int length)
+        private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)
         {
-            int columnCount = response.Results.Columns.Count;
             IList<IArrowArray> columnData = [];
             bool shouldConvertScalar = _dataTypeConversion.HasFlag(DataTypeConversion.Scalar);
             for (int i = 0; i < columnCount; i++)
@@ -124,14 +115,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 columnData.Add(columnArray);
             }
 
-            length = columnCount > 0 ? GetArray(response.Results.Columns[0]).Length : 0;
-            return new RecordBatch(Schema, columnData, length);
+            return new RecordBatch(Schema, columnData, rowCount);
         }
 
-        private static Task<TFetchResultsResp> FetchNext(HiveServer2Statement statement, CancellationToken cancellationToken = default)
+        private static int GetColumnCount(TFetchResultsResp response) =>
+            response.Results.Columns.Count;
+
+        private static int GetRowCount(TFetchResultsResp response, int columnCount) =>
+            columnCount > 0 ? GetArray(response.Results.Columns[0]).Length : 0;
+
+        private static async Task<TFetchResultsResp> FetchNext(HiveServer2Statement statement, CancellationToken cancellationToken = default)
         {
             var request = new TFetchResultsReq(statement.OperationHandle, TFetchOrientation.FETCH_NEXT, statement.BatchSize);
-            return statement.Connection.Client.FetchResults(request, cancellationToken);
+            return await statement.Connection.Client.FetchResults(request, cancellationToken);
         }
 
         public void Dispose()
@@ -156,14 +152,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 Func<StringArray, IArrowType, IArrowArray> converter = s_arrowStringConverters[expectedArrowType.TypeId];
                 return converter(stringArray, expectedArrowType);
             }
+            else if (expectedArrowType != null && arrowArray is DoubleArray doubleArray && s_arrowDoubleConverters.ContainsKey(expectedArrowType.TypeId))
+            {
+                // Perform a conversion from double to another (float) type.
+                Func<DoubleArray, IArrowType, IArrowArray> converter = s_arrowDoubleConverters[expectedArrowType.TypeId];
+                return converter(doubleArray, expectedArrowType);
+            }
             return arrowArray;
         }
 
         internal static Date32Array ConvertToDate32(StringArray array, IArrowType _)
         {
             const DateTimeStyles DateTimeStyles = DateTimeStyles.AllowWhiteSpaces;
-            var resultArray = new Date32Array.Builder();
             int length = array.Length;
+            var resultArray = new Date32Array
+                .Builder()
+                .Reserve(length);
             for (int i = 0; i < length; i++)
             {
                 // Work with UTF8 string.
@@ -182,6 +186,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     throw new FormatException($"unable to convert value '{array.GetString(i)}' to DateTime");
                 }
+            }
+
+            return resultArray.Build();
+        }
+
+        internal static FloatArray ConvertToFloat(DoubleArray array, IArrowType _)
+        {
+            int length = array.Length;
+            var resultArray = new FloatArray
+                .Builder()
+                .Reserve(length);
+            for (int i = 0; i < length; i++)
+            {
+                resultArray.Append((float?)array.GetValue(i));
             }
 
             return resultArray.Build();
@@ -213,12 +231,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private static Decimal128Array ConvertToDecimal128(StringArray array, IArrowType schemaType)
         {
+            int length = array.Length;
             // Using the schema type to get the precision and scale.
             Decimal128Type decimalType = (Decimal128Type)schemaType;
-            var resultArray = new Decimal128Array.Builder(decimalType);
+            var resultArray = new Decimal128Array
+                .Builder(decimalType)
+                .Reserve(length);
             Span<byte> buffer = stackalloc byte[decimalType.ByteWidth];
 
-            int length = array.Length;
             for (int i = 0; i < length; i++)
             {
                 // Work with UTF8 string.
@@ -244,9 +264,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal static TimestampArray ConvertToTimestamp(StringArray array, IArrowType _)
         {
             const DateTimeStyles DateTimeStyles = DateTimeStyles.AssumeUniversal | DateTimeStyles.AllowWhiteSpaces;
-            // Match the precision of the server
-            var resultArrayBuilder = new TimestampArray.Builder(TimeUnit.Microsecond);
             int length = array.Length;
+            // Match the precision of the server
+            var resultArrayBuilder = new TimestampArray
+                .Builder(TimeUnit.Microsecond)
+                .Reserve(length);
             for (int i = 0; i < length; i++)
             {
                 // Work with UTF8 string.

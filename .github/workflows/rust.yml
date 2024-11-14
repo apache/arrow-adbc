@@ -79,6 +79,18 @@ jobs:
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
+      - name: Install Protoc
+        if: runner.os == 'Linux'
+        run: |
+          curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-linux-$(uname -m).zip" -o protoc.zip
+          unzip protoc.zip -d $HOME/.local
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install Protoc
+        if: runner.os == 'macOS'
+        run: |
+          curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-universal_binary.zip" -o protoc.zip
+          unzip "protoc.zip" -d $HOME/.local
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - uses: actions/download-artifact@v4
         with:
           name: driver-manager-${{ matrix.os }}

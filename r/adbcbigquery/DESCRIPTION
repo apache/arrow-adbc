@@ -1,0 +1,28 @@
+Package: adbcbigquery
+Title: 'Arrow' Database Connectivity ('ADBC') 'BigQuery' Driver
+Version: 0.15.0.9000
+Authors@R: c(
+      person("Dewey", "Dunnington", , "dewey@dunnington.ca", role = c("aut", "cre"),
+             comment = c(ORCID = "0000-0002-9415-4582")),
+      person("Apache Arrow", email = "dev@arrow.apache.org", role = c("aut", "cph")),
+      person("Apache Software Foundation", email = "dev@arrow.apache.org", role = c("cph"))
+    )
+Description: Provides a developer-facing interface to the 'Arrow' Database
+  Connectivity ('ADBC') 'BigQuery' driver  for the purposes of building high-level
+  database interfaces for users. 'ADBC' <https://arrow.apache.org/adbc/> is
+  an API standard for database access libraries that uses 'Arrow' for result
+  sets and query parameters.
+License: Apache License (>= 2)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Suggests:
+    gargle,
+    nanoarrow,
+    testthat (>= 3.0.0)
+SystemRequirements: GNU make, Go (>= 1.21)
+Config/testthat/edition: 3
+Config/build/bootstrap: TRUE
+URL: https://arrow.apache.org/adbc/current/r/adbcbigquery/, https://github.com/apache/arrow-adbc
+BugReports: https://github.com/apache/arrow-adbc/issues
+Imports: adbcdrivermanager

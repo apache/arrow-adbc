@@ -138,7 +138,6 @@ jobs:
         # The Unix script will set up conda itself
         if: matrix.os == 'windows-latest'
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-mamba: true
 
@@ -159,6 +158,9 @@ jobs:
           VERBOSE: "1"
           VERIFICATION_MOCK_DIST_DIR: ${{ github.workspace }}
         run: |
+          # Rust uses a lot of disk space, free up some space
+          # https://github.com/actions/runner-images/issues/2840
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           ./arrow-adbc/dev/release/verify-release-candidate.sh $VERSION 0
 
       - name: Verify

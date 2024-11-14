@@ -459,6 +459,7 @@ AdbcStatusCode PostgresStatement::ExecuteBind(struct ArrowArrayStream* stream,
   PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
   reader.SetAutocommit(connection_->autocommit());
   reader.SetBind(&bind_);
+  reader.SetVendorName(connection_->VendorName());
   RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
   return ADBC_STATUS_OK;
 }
@@ -485,8 +486,9 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
 
   // If we have been requested to avoid COPY or there is no output requested,
   // execute using the PqResultArrayReader.
-  if (!stream || !use_copy_) {
+  if (!stream || !UseCopy()) {
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
+    reader.SetVendorName(connection_->VendorName());
     RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
     return ADBC_STATUS_OK;
   }
@@ -505,6 +507,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   if (root_type.n_children() == 0) {
     // Could/should move the helper into the reader instead of repreparing
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
+    reader.SetVendorName(connection_->VendorName());
     RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
     return ADBC_STATUS_OK;
   }
@@ -512,8 +515,10 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   struct ArrowError na_error;
   reader_.copy_reader_ = std::make_unique<PostgresCopyStreamReader>();
   CHECK_NA(INTERNAL, reader_.copy_reader_->Init(root_type), error);
-  CHECK_NA_DETAIL(INTERNAL, reader_.copy_reader_->InferOutputSchema(&na_error), &na_error,
-                  error);
+  CHECK_NA_DETAIL(INTERNAL,
+                  reader_.copy_reader_->InferOutputSchema(
+                      std::string(connection_->VendorName()), &na_error),
+                  &na_error, error);
 
   CHECK_NA_DETAIL(INTERNAL, reader_.copy_reader_->InitFieldReaders(&na_error), &na_error,
                   error);
@@ -574,7 +579,9 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
 
   nanoarrow::UniqueSchema tmp;
   ArrowSchemaInit(tmp.get());
-  CHECK_NA(INTERNAL, output_type.SetSchema(tmp.get()), error);
+  CHECK_NA(INTERNAL,
+           output_type.SetSchema(tmp.get(), std::string(connection_->VendorName())),
+           error);
 
   tmp.move(schema);
   return ADBC_STATUS_OK;
@@ -597,11 +604,12 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   // This is a little unfortunate; we need another DB roundtrip
   std::string current_schema;
   {
-    PqResultHelper result_helper{connection_->conn(), "SELECT CURRENT_SCHEMA"};
+    PqResultHelper result_helper{connection_->conn(), "SELECT CURRENT_SCHEMA()"};
     RAISE_STATUS(error, result_helper.Execute());
     auto it = result_helper.begin();
     if (it == result_helper.end()) {
-      SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
+      SetError(error,
+               "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA()'");
       return ADBC_STATUS_INTERNAL;
     }
     current_schema = (*it)[0].data;
@@ -666,7 +674,7 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     result = std::to_string(reader_.batch_size_hint_bytes_);
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_USE_COPY) == 0) {
-    if (use_copy_) {
+    if (UseCopy()) {
       result = "true";
     } else {
       result = "false";
@@ -836,6 +844,14 @@ AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
 void PostgresStatement::ClearResult() {
   // TODO: we may want to synchronize here for safety
   reader_.Release();
+}
+
+int PostgresStatement::UseCopy() {
+  if (use_copy_ == -1) {
+    return connection_->VendorName() != "Redshift";
+  } else {
+    return use_copy_;
+  }
 }
 
 }  // namespace adbcpq

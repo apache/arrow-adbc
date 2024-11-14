@@ -744,13 +744,15 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
 
   struct TestCase {
     std::optional<std::string> filter;
-    std::vector<std::string> column_names;
-    std::vector<int32_t> ordinal_positions;
+    // the pair is column name & ordinal position of the column
+    std::vector<std::pair<std::string, int32_t>> columns;
   };
 
   std::vector<TestCase> test_cases;
-  test_cases.push_back({std::nullopt, {"int64s", "strings"}, {1, 2}});
-  test_cases.push_back({"in%", {"int64s"}, {1}});
+  test_cases.push_back({std::nullopt, {{"int64s", 1}, {"strings", 2}}});
+  test_cases.push_back({"in%", {{"int64s", 1}}});
+
+  const std::string catalog = quirks()->catalog();
 
   for (const auto& test_case : test_cases) {
     std::string scope = "Filter: ";
@@ -758,13 +760,14 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
     SCOPED_TRACE(scope);
 
     StreamReader reader;
+    std::vector<std::pair<std::string, int32_t>> columns;
     std::vector<std::string> column_names;
     std::vector<int32_t> ordinal_positions;
 
     ASSERT_THAT(
         AdbcConnectionGetObjects(
-            &connection, ADBC_OBJECT_DEPTH_COLUMNS, nullptr, nullptr, nullptr, nullptr,
-            test_case.filter.has_value() ? test_case.filter->c_str() : nullptr,
+            &connection, ADBC_OBJECT_DEPTH_COLUMNS, catalog.c_str(), nullptr, nullptr,
+            nullptr, test_case.filter.has_value() ? test_case.filter->c_str() : nullptr,
             &reader.stream.value, &error),
         IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
@@ -834,10 +837,9 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
                 std::string temp(name.data, name.size_bytes);
                 std::transform(temp.begin(), temp.end(), temp.begin(),
                                [](unsigned char c) { return std::tolower(c); });
-                column_names.push_back(std::move(temp));
-                ordinal_positions.push_back(
-                    static_cast<int32_t>(ArrowArrayViewGetIntUnsafe(
-                        table_columns->children[1], columns_index)));
+                columns.emplace_back(std::move(temp),
+                                     static_cast<int32_t>(ArrowArrayViewGetIntUnsafe(
+                                         table_columns->children[1], columns_index)));
               }
             }
           }
@@ -847,8 +849,9 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
     } while (reader.array->release);
 
     ASSERT_TRUE(found_expected_table) << "Did (not) find table in metadata";
-    ASSERT_EQ(test_case.column_names, column_names);
-    ASSERT_EQ(test_case.ordinal_positions, ordinal_positions);
+    // metadata columns do not guarantee the order they are returned in, just
+    // validate all the elements are there.
+    ASSERT_THAT(columns, testing::UnorderedElementsAreArray(test_case.columns));
   }
 }
 

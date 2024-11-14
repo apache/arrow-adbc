@@ -35,7 +35,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/apache/arrow/go/v18/arrow"
+	"github.com/apache/arrow-go/v18/arrow"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"

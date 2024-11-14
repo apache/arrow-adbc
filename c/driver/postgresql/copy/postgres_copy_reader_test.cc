@@ -27,7 +27,7 @@ class PostgresCopyStreamTester {
  public:
   ArrowErrorCode Init(const PostgresType& root_type, ArrowError* error = nullptr) {
     NANOARROW_RETURN_NOT_OK(reader_.Init(root_type));
-    NANOARROW_RETURN_NOT_OK(reader_.InferOutputSchema(error));
+    NANOARROW_RETURN_NOT_OK(reader_.InferOutputSchema("PostgreSQL Tester", error));
     NANOARROW_RETURN_NOT_OK(reader_.InitFieldReaders(error));
     return NANOARROW_OK;
   }

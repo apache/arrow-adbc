@@ -1,0 +1,128 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+R_BIN="$R_HOME/bin/R"
+RSCRIPT_BIN="$R_HOME/bin/Rscript"
+
+# Set to non-false for CRAN releases, which require this approach to comply with
+# guidance regarding large dependency sources. When non-false, this script
+# will fail if the download fails or if checksum verification fails on
+# the downloaded file.
+DOWNLOAD_DEPENDENCY_ARCHIVE="false"
+
+# CRAN checks CPU time to enforce ~2 cores for building. Set GOMAXPROCS to 1
+# when building on CRAN to be safe.
+if [ ! "$DOWNLOAD_DEPENDENCY_ARCHIVE" = "false" ] && [ -z "$GOMAXPROCS" ]; then
+  echo "Using GOMAXPROCS=1 for go build"
+  echo "Set GOMAXPROCS to a higher value in ~/.Renviron for a faster build"
+  GOMAXPROCS=1
+elif [ ! -z "$GOMAXPROCS" ]; then
+  echo "Using GOMAXPROCS=$GOMAXPROCS for go build"
+fi
+
+# Run bootstrap.R. This will have already run if we are installing a source
+# package built with pkgbuild::build() with pkgbuild >1.4.0; however, we
+# run it again in case this is R CMD INSTALL on a directory or
+# devtools::load_all(). This will vendor files from elsewhere in the
+# ADBC repo into this package. If the file doesn't exist, we're installing
+# from a pre-built tarball.
+if [ -f bootstrap.R ]; then
+  echo "Running bootstrap.R..."
+  "$RSCRIPT_BIN" bootstrap.R
+fi
+
+# Find the go binary so that we can go build!
+# If we've downloaded a specific version of go to src/go/tmp, use that
+# one (helpful for testing different version of go locally)
+PREVIOUSLY_DOWNLOADED_GO="`pwd`/src/go/tmp/go/bin/go"
+if [ -z "$GO_BIN" ] && [ -f "$PREVIOUSLY_DOWNLOADED_GO" ]; then
+  GO_BIN="$PREVIOUSLY_DOWNLOADED_GO"
+fi
+
+# Check go on PATH
+if [ -z "$GO_BIN" ]; then
+  GO_BIN=`which go`
+fi
+
+# Try some default install locations that might not be on PATH
+DEFAULT_GO_WIN="C:/Program Files/Go/bin/go.exe"
+if [ -z "$GO_BIN" ] && [ -f "$DEFAULT_GO_WIN" ]; then
+  GO_BIN="$DEFAULT_GO_WIN"
+fi
+
+DEFAULT_GO_MACOS="/usr/local/go/bin/go"
+if [ -z "$GO_BIN" ] && [ -f "$DEFAULT_GO_MACOS" ]; then
+  GO_BIN="$DEFAULT_GO_MACOS"
+fi
+
+DEFAULT_GO_HOMEBREW_M1="/opt/homebrew/bin/go"
+if [ -z "$GO_BIN" ] && [ -f "$DEFAULT_GO_HOMEBREW_M1" ]; then
+  GO_BIN="$DEFAULT_GO_HOMEBREW_M1"
+fi
+
+if [ -z "$GO_BIN" ]; then
+  echo ""
+  echo "The Go compiler is required to install this package. You can install go"
+  echo "from your faviourite package manager or set the GO_BIN environment variable:"
+  echo "- apt-get install golang"
+  echo "- brew install golang"
+  echo "- dnf install golang"
+  echo "- apk add go"
+  echo "- pacman -S go"
+  echo "...or from the official installers available at https://go.dev/dl/"
+  exit 1
+fi
+
+echo "Trying 'go version' with GO_BIN at '$GO_BIN'"
+"$GO_BIN" version
+if [ $? -ne 0 ]; then
+  echo "go --version had a non-zero exit code"
+  exit 1
+fi
+
+# Get the CC and CXX compilers
+CC=`"$R_BIN" CMD config CC`
+CXX=`"$R_BIN" CMD config CXX`
+
+# Attempt to hide symbols where possible
+if "$R_BIN" CMD config CC | grep -e "gcc" >/dev/null ; then
+  SYMBOL_ARGS="-Wl,--version-script=go/symbols.map"
+fi
+
+# On OSX we need -framework Security because of some dependency somewhere
+if [ `uname` = "Darwin" ]; then
+  PKG_LIBS="-framework Security $PKG_LIBS"
+fi
+
+PKG_LIBS="$PKG_LIBS $SYMBOL_ARGS"
+
+sed \
+  -e "s|@gobin@|$GO_BIN|" \
+  -e "s|@libs@|$PKG_LIBS|" \
+  -e "s|@cc@|$CC|" \
+  -e "s|@cxx@|$CXX|" \
+  -e "s|@nproc@|$GOMAXPROCS|" \
+  src/Makevars.in > src/Makevars
+
+if [ -f "src/go/adbc/pkg/bigquery/driver.go" ]; then
+  echo "Found vendored ADBC BigQuery driver"
+  exit 0
+fi
+
+echo "Vendored ADBC BigQuery driver was not found."
+echo "This source package was probably built incorrectly and it's probably not your fault"
+exit 1

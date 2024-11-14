@@ -77,14 +77,13 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
+        shell: pwsh
         run: |
-          mamba install -c conda-forge \
-            --file ci/conda_env_cpp.txt
+          mamba install -c conda-forge `
+            --file ci\conda_env_cpp.txt
           # Force bundled gtest
           mamba uninstall gtest
 
@@ -135,14 +134,13 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
+        shell: pwsh
         run: |
-          mamba install -c conda-forge \
-            --file ci/conda_env_cpp.txt
+          mamba install -c conda-forge `
+            --file ci\conda_env_cpp.txt
           # Force bundled gtest
           mamba uninstall gtest
 
@@ -212,14 +210,13 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
+        shell: pwsh
         run: |
-          mamba install -c conda-forge \
-            --file ci/conda_env_cpp.txt
+          mamba install -c conda-forge `
+            --file ci\conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
           go-version: "${{ env.GO_VERSION }}"
@@ -280,16 +277,15 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
+        shell: pwsh
         run: |
-          mamba install -c conda-forge \
-            python=${{ matrix.python }} \
-            --file ci/conda_env_cpp.txt \
-            --file ci/conda_env_python.txt
+          mamba install -c conda-forge `
+            python=${{ matrix.python }} `
+            --file ci\conda_env_cpp.txt `
+            --file ci\conda_env_python.txt
 
       - uses: actions/download-artifact@v4
         with:

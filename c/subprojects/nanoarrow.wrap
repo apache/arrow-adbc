@@ -1,10 +1,8 @@
 [wrap-file]
-directory = arrow-nanoarrow-apache-arrow-nanoarrow-0.5.0
-source_url = https://github.com/apache/arrow-nanoarrow/archive/refs/tags/apache-arrow-nanoarrow-0.5.0.tar.gz
-source_filename = apache-arrow-nanoarrow-0.5.0.tar.gz
-source_hash = 0ceeaa1fb005dbc89c8c7d1b39f2dba07344e40aa9d885ee25fb55b4d57e331a
-source_fallback_url = https://github.com/mesonbuild/wrapdb/releases/download/nanoarrow_0.5.0-1/apache-arrow-nanoarrow-0.5.0.tar.gz
-wrapdb_version = 0.5.0-1
+directory = arrow-nanoarrow-33d2c8b973d8f8f424e02ac92ddeaace2a92f8dd
+source_url = https://github.com/apache/arrow-nanoarrow/archive/33d2c8b973d8f8f424e02ac92ddeaace2a92f8dd.tar.gz
+source_filename = arrow-nanoarrow-33d2c8b973d8f8f424e02ac92ddeaace2a92f8dd.tar.gz
+source_hash = be4d2a6f1467793fe1b02c6ecf12383ed9ecf29557531715a3b9e11578ab18e8
 
 [provide]
 nanoarrow = nanoarrow_dep

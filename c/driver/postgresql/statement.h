@@ -97,7 +97,7 @@ class PostgresStatement {
       : connection_(nullptr),
         query_(),
         prepared_(false),
-        use_copy_(true),
+        use_copy_(-1),
         reader_(nullptr) {
     std::memset(&bind_, 0, sizeof(bind_));
   }
@@ -161,7 +161,7 @@ class PostgresStatement {
   };
 
   // Options
-  bool use_copy_;
+  int use_copy_;
 
   struct {
     std::string db_schema;
@@ -171,5 +171,7 @@ class PostgresStatement {
   } ingest_;
 
   TupleReader reader_;
+
+  int UseCopy();
 };
 }  // namespace adbcpq

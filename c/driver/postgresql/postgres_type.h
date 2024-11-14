@@ -111,7 +111,11 @@ enum class PostgresTypeId {
   kXid8,
   kXid,
   kXml,
-  kUserDefined
+  kUserDefined,
+  // This is not an actual type, but there are cases where all we have is an Oid
+  // that was not inserted into the type resolver. We can't use "unknown" or "opaque"
+  // or "void" because those names show up in actual pg_type tables.
+  kUnnamedArrowOpaque
 };
 
 // Returns the receive function name as defined in the typrecieve column
@@ -138,6 +142,11 @@ class PostgresType {
   explicit PostgresType(PostgresTypeId type_id) : oid_(0), type_id_(type_id) {}
 
   PostgresType() : PostgresType(PostgresTypeId::kUninitialized) {}
+
+  static PostgresType Unnamed(uint32_t oid) {
+    return PostgresType(PostgresTypeId::kUnnamedArrowOpaque)
+        .WithPgTypeInfo(oid, "unnamed<oid:" + std::to_string(oid) + ">");
+  }
 
   void AppendChild(const std::string& field_name, const PostgresType& type) {
     PostgresType child(type);
@@ -204,7 +213,8 @@ class PostgresType {
   // do not have a corresponding Arrow type are returned as Binary with field
   // metadata ADBC:posgresql:typname. These types can be represented as their
   // binary COPY representation in the output.
-  ArrowErrorCode SetSchema(ArrowSchema* schema) const {
+  ArrowErrorCode SetSchema(ArrowSchema* schema,
+                           const std::string& vendor_name = "PostgreSQL") const {
     switch (type_id_) {
       // ---- Primitive types --------------------
       case PostgresTypeId::kBool:
@@ -235,7 +245,7 @@ class PostgresType {
       // ---- Numeric/Decimal-------------------
       case PostgresTypeId::kNumeric:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
-        NANOARROW_RETURN_NOT_OK(AddPostgresTypeMetadata(schema));
+        NANOARROW_RETURN_NOT_OK(AddPostgresTypeMetadata(schema, vendor_name));
 
         break;
 
@@ -290,13 +300,14 @@ class PostgresType {
       case PostgresTypeId::kRecord:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
         for (int64_t i = 0; i < n_children(); i++) {
-          NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
+          NANOARROW_RETURN_NOT_OK(
+              children_[i].SetSchema(schema->children[i], vendor_name));
         }
         break;
 
       case PostgresTypeId::kArray:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
-        NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
+        NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0], vendor_name));
         break;
 
       case PostgresTypeId::kUserDefined:
@@ -305,7 +316,7 @@ class PostgresType {
         // can still return the bytes postgres gives us and attach the type name as
         // metadata
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
-        NANOARROW_RETURN_NOT_OK(AddPostgresTypeMetadata(schema));
+        NANOARROW_RETURN_NOT_OK(AddPostgresTypeMetadata(schema, vendor_name));
         break;
     }
 
@@ -329,7 +340,8 @@ class PostgresType {
   static constexpr const char* kOpaqueExtensionName = "arrow.opaque";
   static constexpr const char* kExtensionMetadata = "ARROW:extension:metadata";
 
-  ArrowErrorCode AddPostgresTypeMetadata(ArrowSchema* schema) const {
+  ArrowErrorCode AddPostgresTypeMetadata(ArrowSchema* schema,
+                                         const std::string& vendor_name) const {
     // the typname_ may not always be set: an instance of this class can be
     // created with just the type id. That's why there is this here fallback to
     // resolve the type name of built-in types.
@@ -346,7 +358,7 @@ class PostgresType {
     // Add the Opaque extension type metadata
     std::string metadata = R"({"type_name": ")";
     metadata += typname;
-    metadata += R"(", "vendor_name": "PostgreSQL"})";
+    metadata += R"(", "vendor_name": ")" + vendor_name + R"("})";
     NANOARROW_RETURN_NOT_OK(
         ArrowMetadataBuilderAppend(buffer.get(), ArrowCharView(kExtensionName),
                                    ArrowCharView(kOpaqueExtensionName)));
@@ -395,7 +407,18 @@ class PostgresTypeResolver {
       return EINVAL;
     }
 
-    *type_out = (*result).second;
+    *type_out = result->second;
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode FindWithDefault(uint32_t oid, PostgresType* type_out) {
+    auto result = mapping_.find(oid);
+    if (result == mapping_.end()) {
+      *type_out = PostgresType::Unnamed(oid);
+    } else {
+      *type_out = result->second;
+    }
+
     return NANOARROW_OK;
   }
 
@@ -558,17 +581,21 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
       return resolver.Find(resolver.GetOID(PostgresTypeId::kInt4), out, error);
     case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT64:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kInt8), out, error);
+    case NANOARROW_TYPE_HALF_FLOAT:
     case NANOARROW_TYPE_FLOAT:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kFloat4), out, error);
     case NANOARROW_TYPE_DOUBLE:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kFloat8), out, error);
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_STRING_VIEW:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kText), out, error);
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_LARGE_BINARY:
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+    case NANOARROW_TYPE_BINARY_VIEW:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kBytea), out, error);
     case NANOARROW_TYPE_DATE32:
     case NANOARROW_TYPE_DATE64:

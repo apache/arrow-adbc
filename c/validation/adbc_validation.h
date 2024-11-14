@@ -238,6 +238,12 @@ class DriverQuirks {
   /// column matching.
   virtual bool supports_error_on_incompatible_schema() const { return true; }
 
+  /// \brief Whether ingestion supports StringView/BinaryView types
+  virtual bool supports_ingest_view_types() const { return true; }
+
+  /// \brief Whether ingestion supports Float16
+  virtual bool supports_ingest_float16() const { return true; }
+
   /// \brief Default catalog to use for tests
   virtual std::string catalog() const { return ""; }
 
@@ -373,13 +379,18 @@ class StatementTest {
   void TestSqlIngestUInt64();
 
   // Floats
+  void TestSqlIngestFloat16();
   void TestSqlIngestFloat32();
   void TestSqlIngestFloat64();
 
   // Strings
   void TestSqlIngestString();
   void TestSqlIngestLargeString();
+  void TestSqlIngestStringView();
   void TestSqlIngestBinary();
+  void TestSqlIngestLargeBinary();
+  void TestSqlIngestFixedSizeBinary();
+  void TestSqlIngestBinaryView();
 
   // Temporal
   void TestSqlIngestDuration();
@@ -480,6 +491,14 @@ class StatementTest {
                                             const char* timezone);
 };
 
+template <typename CType>
+void StatementTest::TestSqlIngestType(ArrowType type,
+                                      const std::vector<std::optional<CType>>& values,
+                                      bool dictionary_encode) {
+  SchemaField field("col", type);
+  TestSqlIngestType<CType>(field, values, dictionary_encode);
+}
+
 #define ADBCV_TEST_STATEMENT(FIXTURE)                                                   \
   static_assert(std::is_base_of<adbc_validation::StatementTest, FIXTURE>::value,        \
                 ADBCV_STRINGIFY(FIXTURE) " must inherit from StatementTest");           \
@@ -494,11 +513,16 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestUInt16) { TestSqlIngestUInt16(); }                           \
   TEST_F(FIXTURE, SqlIngestUInt32) { TestSqlIngestUInt32(); }                           \
   TEST_F(FIXTURE, SqlIngestUInt64) { TestSqlIngestUInt64(); }                           \
+  TEST_F(FIXTURE, SqlIngestFloat16) { TestSqlIngestFloat16(); }                         \
   TEST_F(FIXTURE, SqlIngestFloat32) { TestSqlIngestFloat32(); }                         \
   TEST_F(FIXTURE, SqlIngestFloat64) { TestSqlIngestFloat64(); }                         \
   TEST_F(FIXTURE, SqlIngestString) { TestSqlIngestString(); }                           \
   TEST_F(FIXTURE, SqlIngestLargeString) { TestSqlIngestLargeString(); }                 \
+  TEST_F(FIXTURE, SqlIngestStringView) { TestSqlIngestStringView(); }                   \
   TEST_F(FIXTURE, SqlIngestBinary) { TestSqlIngestBinary(); }                           \
+  TEST_F(FIXTURE, SqlIngestLargeBinary) { TestSqlIngestLargeBinary(); }                 \
+  TEST_F(FIXTURE, SqlIngestFixedSizeBinary) { TestSqlIngestFixedSizeBinary(); }         \
+  TEST_F(FIXTURE, SqlIngestBinaryView) { TestSqlIngestBinaryView(); }                   \
   TEST_F(FIXTURE, SqlIngestDuration) { TestSqlIngestDuration(); }                       \
   TEST_F(FIXTURE, SqlIngestDate32) { TestSqlIngestDate32(); }                           \
   TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \
