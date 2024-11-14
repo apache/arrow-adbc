@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Tracing
         ActivitySource? ActivitySource { get; }
 
         /// <summary>
-        /// Starts a new activity with a given name. 
+        /// Starts a new activity with a given name.
         /// </summary>
         /// <param name="methodName"></param>
         /// <returns>Returns a new <see cref="System.Diagnostics.Activity"/> instance if there is an active listener for the <see cref="ActivitySource"/>.
