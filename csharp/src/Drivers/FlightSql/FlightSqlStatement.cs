@@ -17,6 +17,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Flight;
 using Grpc.Core;
 
@@ -25,11 +26,14 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
     /// <summary>
     /// A Flight SQL implementation of <see cref="AdbcStatement"/>.
     /// </summary>
-    public class FlightSqlStatement : AdbcStatement
+    public class FlightSqlStatement : TracingStatement
     {
+        private static readonly string s_tracingBaseName = typeof(FlightSqlStatement).FullName!;
         private FlightSqlConnection _flightSqlConnection;
 
-        public FlightSqlStatement(FlightSqlConnection flightSqlConnection)
+        public override string TracingBaseName => s_tracingBaseName;
+
+        public FlightSqlStatement(FlightSqlConnection flightSqlConnection) : base(flightSqlConnection.ActivitySource)
         {
             _flightSqlConnection = flightSqlConnection;
         }

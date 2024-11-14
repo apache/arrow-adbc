@@ -23,6 +23,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using Apache.Arrow.Adbc.Extensions;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
 
@@ -399,7 +400,7 @@ namespace Apache.Arrow.Adbc.C
 
                         caller.Call(Driver.ConnectionInit, ref nativeConnection, ref _nativeDatabase);
 
-                        result = new ImportedAdbcConnection(_driver, nativeConnection);
+                        result = new ImportedAdbcConnection(_driver, nativeConnection, options);
                     }
                 }
                 finally
@@ -462,8 +463,9 @@ namespace Apache.Arrow.Adbc.C
         /// <summary>
         /// A native implementation of <see cref="AdbcConnection"/>
         /// </summary>
-        internal sealed class ImportedAdbcConnection : AdbcConnection
+        internal sealed class ImportedAdbcConnection : TracingConnection
         {
+            private static readonly string s_tracingBaseName = typeof(ImportedAdbcConnection).FullName!;
             private readonly ImportedAdbcDriver _driver;
             private CAdbcConnection _nativeConnection;
             private bool _disposed;
@@ -471,7 +473,7 @@ namespace Apache.Arrow.Adbc.C
             private IsolationLevel? _isolationLevel;
             private bool? _readOnly;
 
-            internal ImportedAdbcConnection(ImportedAdbcDriver driver, CAdbcConnection nativeConnection)
+            internal ImportedAdbcConnection(ImportedAdbcDriver driver, CAdbcConnection nativeConnection, IReadOnlyDictionary<string, string>? properties) : base(properties)
             {
                 _driver = driver.AddReference();
                 _nativeConnection = nativeConnection;
@@ -521,6 +523,8 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
+            public override string TracingBaseName => s_tracingBaseName;
+
             public unsafe override AdbcStatement CreateStatement()
             {
                 CAdbcStatement nativeStatement = new CAdbcStatement();
@@ -540,7 +544,7 @@ namespace Apache.Arrow.Adbc.C
                                 (connection, &nativeStatement, &caller._error));
                         }
 
-                        result = new ImportedAdbcStatement(_driver, nativeStatement);
+                        result = new ImportedAdbcStatement(_driver, nativeStatement, ActivitySource);
                     }
                 }
                 finally
@@ -713,7 +717,7 @@ namespace Apache.Arrow.Adbc.C
                 GC.SuppressFinalize(this);
             }
 
-            private unsafe void Dispose(bool disposing)
+            protected override unsafe void Dispose(bool disposing)
             {
                 if (!_disposed)
                 {
@@ -745,14 +749,15 @@ namespace Apache.Arrow.Adbc.C
         /// <summary>
         /// A native implementation of <see cref="AdbcStatement"/>
         /// </summary>
-        internal sealed class ImportedAdbcStatement : AdbcStatement
+        internal sealed class ImportedAdbcStatement : TracingStatement
         {
+            private static readonly string s_tracingBaseName = typeof(ImportedAdbcStatement).FullName!;
             private ImportedAdbcDriver _driver;
             private CAdbcStatement _nativeStatement;
             private byte[]? _substraitPlan;
             private bool _disposed;
 
-            internal ImportedAdbcStatement(ImportedAdbcDriver driver, CAdbcStatement nativeStatement)
+            internal ImportedAdbcStatement(ImportedAdbcDriver driver, CAdbcStatement nativeStatement, ActivitySource? activitySource) : base(activitySource)
             {
                 _driver = driver.AddReference();
                 _nativeStatement = nativeStatement;
@@ -803,6 +808,8 @@ namespace Apache.Arrow.Adbc.C
                     }
                 }
             }
+
+            public override string TracingBaseName => s_tracingBaseName;
 
             public unsafe override void Bind(RecordBatch batch, Schema schema)
             {

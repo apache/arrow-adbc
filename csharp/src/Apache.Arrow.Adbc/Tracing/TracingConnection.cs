@@ -1,0 +1,172 @@
+﻿/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+namespace Apache.Arrow.Adbc.Tracing
+{
+    public abstract class TracingConnection : AdbcConnection, ITracingObject
+    {
+        private bool _disposed = false;
+        internal const string ProductVersionDefault = "1.0.0";
+        private static readonly string s_activitySourceName = Assembly.GetExecutingAssembly().GetName().Name!;
+        private static readonly string s_assemblyVersion = GetProductVersion();
+        private static readonly ConcurrentDictionary<string, ActivityListener> s_listeners = new();
+        private readonly ConcurrentQueue<Activity> _activityQueue = new();
+        private readonly IReadOnlyDictionary<string, string>? _options;
+        private DirectoryInfo? _traceDirectory;
+        //private int _traceFileMaxSize = 1024;
+
+        protected TracingConnection(IReadOnlyDictionary<string, string>? options = default)
+        {
+            _options = options ?? new Dictionary<string, string>();
+            EnsureTracing();
+        }
+
+        protected TracingConnection(bool isTracingEnabled, string traceLocation, int traceMaxFileSizeKb, int traceMaxFiles)
+        {
+            var options = new Dictionary<string, string>();
+            options[TracingOptions.Connection.Trace] = isTracingEnabled.ToString();
+            options[TracingOptions.Connection.TraceLocation] = traceLocation;
+            options[TracingOptions.Connection.TraceFileMaxSizeKb] = traceMaxFileSizeKb.ToString();
+            options[TracingOptions.Connection.TraceFileMaxFiles] = traceMaxFiles.ToString();
+            _options = options;
+            EnsureTracing();
+        }
+
+        /// <summary>
+        /// Gets or set the 
+        /// </summary>
+        public ActivitySource? ActivitySource { get; private set; }
+
+        protected static string GetProductVersion()
+        {
+            FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+            return fileVersionInfo.ProductVersion ?? ProductVersionDefault;
+        }
+
+        private void EnsureTracing()
+        {
+            if (true || _options.TryGetValue(TracingOptions.Connection.Trace, out string? traceOption) && bool.TryParse(traceOption, out bool traceEnabled))
+            {
+
+                // TODO: Handle exceptions
+                if (_options?.TryGetValue(TracingOptions.Connection.TraceLocation, out string? traceLocation) != true || !Directory.Exists(traceLocation))
+                {
+                    string? traceLocationDefault = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                    _traceDirectory = new DirectoryInfo(traceLocationDefault);
+                }
+                else
+                {
+                    // TODO: If not exist, try to create
+                    _traceDirectory = new DirectoryInfo(traceLocation);
+                }
+                // TODO: Check if folder is writable
+
+
+                // TODO: Determine the best handling of listener lifetimes.
+                // Key of listeners collection should be ouput file location
+                ActivityListener listener = s_listeners.GetOrAdd(s_activitySourceName + "." + _traceDirectory.FullName, (_) => new()
+                {
+                    ShouldListenTo = (source) => source.Name == s_activitySourceName,
+                    Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllDataAndRecorded,
+                    ActivityStarted = OnActivityStarted,
+                    ActivityStopped = OnActivityStopped,
+                    SampleUsingParentId = (ref ActivityCreationOptions<string> options) => ActivitySamplingResult.AllDataAndRecorded,
+                });
+                // This is a singleton add, if the lister is the same.
+                ActivitySource.AddActivityListener(listener);
+                // THis is an new instance and needs to be disposed later
+                ActivitySource = new(s_activitySourceName, s_assemblyVersion);
+            }
+        }
+
+        private void OnActivityStarted(Activity activity)
+        {
+            _activityQueue.Enqueue(activity);
+            // Intentionally avoid await.
+            DequeueAndWrite("started")
+                .ContinueWith(t => Console.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
+        }
+
+        private void OnActivityStopped(Activity activity)
+        {
+            _activityQueue.Enqueue(activity);
+            // Intentionally avoid await.
+            DequeueAndWrite("stopped")
+                .ContinueWith(t => Console.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
+        }
+
+        // TODO: Encapsulate this separately
+        private Task DequeueAndWrite(string state)
+        {
+            if (_activityQueue.TryDequeue(out Activity? activity))
+            {
+                if (activity != null)
+                {
+                    try
+                    {
+                        string json = JsonSerializer.Serialize(new { State = state, Activity = activity });
+                        Console.WriteLine(json);
+                    }
+                    catch (NotSupportedException ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Activity? StartActivity(string methodName)
+        {
+            return StartActivity(ActivitySource, TracingBaseName, methodName);
+        }
+
+        public abstract string TracingBaseName { get; }
+
+        protected internal static Activity? StartActivity(ActivitySource? activitySource, string typeName, string methodName) =>
+            activitySource?.StartActivity(typeName + "." + methodName);
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    ActivitySource?.Dispose();
+                }
+                _disposed = true;
+            }
+        }
+
+        public override void Dispose()
+        {
+            Dispose(true);
+            base.Dispose();
+            GC.SuppressFinalize(this);
+        }
+    }
+}

@@ -16,13 +16,11 @@
 */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -30,31 +28,20 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal abstract class HiveServer2Connection : AdbcConnection
+    internal abstract class HiveServer2Connection : TracingConnection
     {
+        private static string s_typeName => typeof(HiveServer2Connection).FullName!;
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
-        internal const string ProductVersionDefault = "1.0.0";
 
         private TTransport? _transport;
         private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
 
-        private static readonly string s_activitySourceName = Assembly.GetExecutingAssembly().GetName().Name!;
-        private static readonly string s_assemblyVersion = GetProductVersion();
-        private static readonly ConcurrentDictionary<string, ActivityListener> s_listeners = new();
-        private readonly ConcurrentQueue<Activity> _activityQueue = new();
-
-        internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
+        internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
             Properties = properties;
-            // TODO: Only create a source/listener when tracing is requested
-            if (true)
-            {
-                EnsureListener();
-                ActivitySource = new(s_activitySourceName, s_assemblyVersion);
-            }
 
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
@@ -74,8 +61,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal string VendorName => _vendorName.Value;
 
         internal IReadOnlyDictionary<string, string> Properties { get; }
-
-        protected internal ActivitySource? ActivitySource { get; }
 
         internal async Task OpenAsync()
         {
@@ -192,9 +177,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 _transport = null;
                 _client = null;
             }
-            // TODO: Determine best approach to lifetime of ActivityListener
-            //_listener?.Dispose();
-            ActivitySource?.Dispose();
         }
 
         internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, ActivitySource? activitySource = null, CancellationToken cancellationToken = default)
@@ -203,21 +185,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TGetResultSetMetadataReq request = new(operationHandle);
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
             return response;
-        }
-
-        private void EnsureListener()
-        {
-            // TODO: Determine the best handling of listener lifetimes.
-            // Key of listeners collection should be ouput file location
-            ActivityListener listener = s_listeners.GetOrAdd(s_activitySourceName, (_) => new()
-            {
-                ShouldListenTo = (source) => source.Name == s_activitySourceName,
-                Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllDataAndRecorded,
-                ActivityStarted = OnActivityStarted,
-                ActivityStopped = OnActivityStopped,
-                SampleUsingParentId = (ref ActivityCreationOptions<string> options) => ActivitySamplingResult.AllDataAndRecorded,
-            });
-            ActivitySource.AddActivityListener(listener);
         }
 
         internal static void TraceException(Exception exception, Activity? activity, bool escaped = true)
@@ -234,55 +201,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 ])));
         }
 
-        private void OnActivityStarted(Activity activity)
-        {
-            _activityQueue.Enqueue(activity);
-            // Intentionally avoid await.
-            DequeueAndWrite("started")
-                .ContinueWith(t => Console.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
-        }
+        public override string TracingBaseName => s_typeName;
 
-        private void OnActivityStopped(Activity activity)
-        {
-            _activityQueue.Enqueue(activity);
-            // Intentionally avoid await.
-            DequeueAndWrite("stopped")
-                .ContinueWith(t => Console.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
-        }
-
-        // TODO: Encapsulate this separately
-        private Task DequeueAndWrite(string state)
-        {
-            if (_activityQueue.TryDequeue(out Activity? activity))
-            {
-                if (activity != null)
-                {
-                    try
-                    {
-                        string json = JsonSerializer.Serialize(new { State = state, Activity = activity });
-                        Console.WriteLine(json);
-                    }
-                    catch (NotSupportedException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
-                }
-            }
-
-            return Task.CompletedTask;
-        }
-
-        protected virtual Activity? StartActivity(string methodName) => StartActivity(ActivitySource, methodName);
-
-        private static Activity? StartActivity(ActivitySource? activitySource, string methodName) => StartActivity(activitySource, typeof(HiveServer2Connection), methodName);
-
-        internal static Activity? StartActivity(ActivitySource? activitySource, Type type, string methodName) => activitySource?.StartActivity(type.FullName + "." + methodName);
-
-
-        protected internal static string GetProductVersion()
-        {
-            FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
-            return fileVersionInfo.ProductVersion ?? ProductVersionDefault;
-        }
+        private static Activity? StartActivity(ActivitySource? activity, string methodName) =>
+            StartActivity(activity, s_typeName, methodName);
     }
 }

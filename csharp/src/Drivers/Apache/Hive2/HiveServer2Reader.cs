@@ -19,17 +19,19 @@ using System;
 using System.Buffers.Text;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
+using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Ipc;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class HiveServer2Reader : IArrowArrayStream
+    internal class HiveServer2Reader : TracingArrowArrayStream
     {
+        private static readonly string s_typeName = typeof(HiveServer2Reader).FullName!;
         private const byte AsciiZero = (byte)'0';
         private const int AsciiDigitMaxIndex = '9' - AsciiZero;
         private const byte AsciiDash = (byte)'-';
@@ -72,17 +74,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            DataTypeConversion dataTypeConversion)
+            DataTypeConversion dataTypeConversion) : base(statement.Connection.ActivitySource)
         {
             _statement = statement;
             Schema = schema;
             _dataTypeConversion = dataTypeConversion;
         }
 
-        public Schema Schema { get; }
+        public override Schema Schema { get; }
 
-        public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        public override string TracingBaseName => s_typeName;
+
+        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
+            using Activity? activity = StartActivity(nameof(ReadNextRecordBatchAsync));
             // All records have been exhausted
             if (_statement == null)
             {
@@ -130,7 +135,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return await statement.Connection.Client.FetchResults(request, cancellationToken);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
         }
 

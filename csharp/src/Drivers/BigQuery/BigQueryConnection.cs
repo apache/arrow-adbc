@@ -24,6 +24,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Apache.Arrow.Adbc.Extensions;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Google.Api.Gax;
@@ -36,8 +37,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// BigQuery-specific implementation of <see cref="AdbcConnection"/>
     /// </summary>
-    public class BigQueryConnection : AdbcConnection
+    public class BigQueryConnection : TracingConnection
     {
+        private static readonly string s_tracingBaseName = typeof(BigQueryConnection).FullName!;
         readonly IReadOnlyDictionary<string, string> properties;
         BigQueryClient? client;
         GoogleCredential? credential;
@@ -54,7 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             AdbcInfoCode.VendorName
         };
 
-        public BigQueryConnection(IReadOnlyDictionary<string, string> properties)
+        public BigQueryConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
             this.properties = properties;
 
@@ -988,7 +990,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 this.client = Open();
             }
 
-            BigQueryStatement statement = new BigQueryStatement(this.client, this.credential);
+            BigQueryStatement statement = new BigQueryStatement(this.client, this.credential, ActivitySource);
             statement.Options = ParseOptions();
             return statement;
         }
@@ -1024,6 +1026,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         }
 
         private static Regex sanitizedInputRegex = new Regex("^[a-zA-Z0-9_-]+");
+
+        public override string TracingBaseName => s_tracingBaseName;
 
         private string Sanitize(string? input)
         {

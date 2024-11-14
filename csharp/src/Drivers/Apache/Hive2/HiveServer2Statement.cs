@@ -16,17 +16,19 @@
 */
 
 using System;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal abstract class HiveServer2Statement : AdbcStatement
+    internal abstract class HiveServer2Statement : TracingStatement
     {
-        protected HiveServer2Statement(HiveServer2Connection connection)
+        private static readonly string s_tracingBaseName = typeof(HiveServer2Statement).FullName!;
+
+        protected HiveServer2Statement(HiveServer2Connection connection) : base(connection.ActivitySource)
         {
             Connection = connection;
         }
@@ -152,8 +154,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public TOperationHandle? OperationHandle { get; private set; }
 
-        private ActivitySource? ActivitySource { get => Connection.ActivitySource; }
-
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
         /// </summary>
@@ -172,7 +172,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             ? batchSize
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
 
-        protected virtual Activity? StartActivity(string methodName) => HiveServer2Connection.StartActivity(ActivitySource, typeof(HiveServer2Statement), methodName);
+        public override string TracingBaseName => s_tracingBaseName;
 
         public override void Dispose()
         {
