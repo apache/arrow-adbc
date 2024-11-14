@@ -20,7 +20,7 @@ using System.Diagnostics;
 namespace Apache.Arrow.Adbc.Tracing
 {
     /// <summary>
-    /// Provides an implementation of the <see cref="ITracingObject"/> interface.
+    /// Provides an abstract implementation of the <see cref="ITracingObject"/> interface.
     /// </summary>
     /// <param name="activitySource">The <see cref="System.Diagnostics.ActivitySource"/> to trace on.</param>
     public abstract class TracingObject(ActivitySource? activitySource) : ITracingObject

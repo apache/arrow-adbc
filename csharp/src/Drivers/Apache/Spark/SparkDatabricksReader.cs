@@ -17,16 +17,19 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
-    internal sealed class SparkDatabricksReader : IArrowArrayStream
+    internal sealed class SparkDatabricksReader : TracingArrowArrayStream
     {
+        private static readonly string s_tracingBaseName = typeof(SparkDatabricksReader).FullName!;
         HiveServer2Statement? statement;
         Schema schema;
         List<TSparkArrowBatch>? batches;
@@ -34,15 +37,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         IArrowReader? reader;
 
         public SparkDatabricksReader(HiveServer2Statement statement, Schema schema)
+            : base(statement.Connection.ActivitySource)
         {
             this.statement = statement;
             this.schema = schema;
         }
 
-        public Schema Schema { get { return schema; } }
+        public override string TracingBaseName => s_tracingBaseName;
 
-        public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        public override Schema Schema { get { return schema; } }
+
+        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
+            using Activity? activity = StartActivity(nameof(ReadNextRecordBatchAsync));
             while (true)
             {
                 if (this.reader != null)
@@ -80,7 +87,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
         }
     }
