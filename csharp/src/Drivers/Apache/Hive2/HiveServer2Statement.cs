@@ -55,7 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
             catch (Exception ex)
             {
-                HiveServer2Connection.TraceException(ex, activity);
+                TraceException(ex, activity);
                 throw;
             }
         }
@@ -111,7 +111,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
             catch (Exception ex)
             {
-                HiveServer2Connection.TraceException(ex, activity);
+                TraceException(ex, activity);
                 throw;
             }
         }

@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Diagnostics;
 
 namespace Apache.Arrow.Adbc.Tracing
@@ -42,5 +43,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Gets the base name of the tracing object. Typically this is the full name of the class that is tracing.
         /// </summary>
         string TracingBaseName { get; }
+
+        void TraceException(Exception exception, Activity? activity, bool escaped = true);
     }
 }

@@ -149,6 +149,23 @@ namespace Apache.Arrow.Adbc.Tracing
         internal static Activity? StartActivity(ActivitySource? activitySource, string baseName, string methodName) =>
             activitySource?.StartActivity(baseName + "." + methodName);
 
+        public void TraceException(Exception exception, Activity? activity, bool escaped = true) =>
+            TracingConnectionImpl.WriteTraceException(exception, activity, escaped);
+
+        internal static void WriteTraceException(Exception exception, Activity? activity, bool escaped = true)
+        {
+            // https://opentelemetry.io/docs/specs/otel/trace/exceptions/
+            activity?.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection(
+                [
+                    // TODO: Determine if "exception.escaped" is being set correctly.
+                    // https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/
+                    new("exception.escaped", escaped),
+                    new("exception.message", exception.Message),
+                    new("exception.stacktrace", exception.StackTrace),
+                    new("exception.type", exception.GetType().Name),
+                ])));
+        }
+
         internal void Dispose(bool disposing)
         {
             if (!_disposed)

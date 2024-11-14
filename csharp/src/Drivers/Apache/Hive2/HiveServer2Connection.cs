@@ -187,20 +187,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return response;
         }
 
-        internal static void TraceException(Exception exception, Activity? activity, bool escaped = true)
-        {
-            // https://opentelemetry.io/docs/specs/otel/trace/exceptions/
-            activity?.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection(
-                [
-                    // TODO: Determine if "exception.escaped" is being set correctly.
-                    // https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/
-                    new("exception.escaped", escaped),
-                    new("exception.message", exception.Message),
-                    new("exception.stacktrace", exception.StackTrace),
-                    new("exception.type", exception.GetType().Name),
-                ])));
-        }
-
         public override string TracingBaseName => s_typeName;
 
         private static Activity? StartActivity(ActivitySource? activity, string methodName) =>

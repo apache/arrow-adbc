@@ -18,7 +18,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
@@ -53,6 +52,9 @@ namespace Apache.Arrow.Adbc.Tracing
         public static string ProductVersionDefault => TracingConnectionImpl.ProductVersionDefault;
 
         public static string GetProductVersion() => TracingConnectionImpl.GetProductVersion();
+
+        public void TraceException(Exception exception, Activity? activity, bool escaped = true) =>
+            TracingConnectionImpl.TraceException(exception, activity, escaped);
 
         protected virtual void Dispose(bool disposing)
         {

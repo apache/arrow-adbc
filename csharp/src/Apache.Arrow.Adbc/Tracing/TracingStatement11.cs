@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using System;
 using System.Diagnostics;
 
 namespace Apache.Arrow.Adbc.Tracing
@@ -30,5 +31,8 @@ namespace Apache.Arrow.Adbc.Tracing
         public abstract string TracingBaseName { get; }
 
         public Activity? StartActivity(string methodName) => TracingConnection.StartActivity(ActivitySource, TracingBaseName, methodName);
+
+        public void TraceException(Exception exception, Activity? activity, bool escaped = true) =>
+            TracingConnectionImpl.WriteTraceException(exception, activity, escaped);
     }
 }
