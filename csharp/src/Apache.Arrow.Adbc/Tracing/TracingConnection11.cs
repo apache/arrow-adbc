@@ -15,26 +15,24 @@
  * limitations under the License.
  */
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
     /// <summary>
-    /// Provides an <see cref="AdbcConnection"> which can instrument tracing activity.
+    /// Provides an <see cref="AdbcConnection11"> which can instrument tracing activity.
     /// </summary>
-    public abstract class TracingConnection : AdbcConnection, ITracingObject
+    public abstract class TracingConnection11 : AdbcConnection11, ITracingObject
     {
         private bool _disposed;
 
-        protected TracingConnection(IReadOnlyDictionary<string, string>? properties)
+        protected TracingConnection11(IReadOnlyDictionary<string, string>? properties)
         {
             TracingConnectionImpl = new TracingConnectionImpl(properties);
         }
 
-        protected TracingConnection(bool isTracingEnabled, string traceLocation, int traceMaxFileSizeKb, int traceMaxFiles)
+        protected TracingConnection11(bool isTracingEnabled, string traceLocation, int traceMaxFileSizeKb, int traceMaxFiles)
         {
             TracingConnectionImpl = new TracingConnectionImpl(isTracingEnabled, traceLocation, traceMaxFileSizeKb, traceMaxFiles);
         }
@@ -54,7 +52,7 @@ namespace Apache.Arrow.Adbc.Tracing
 
         public static string GetProductVersion() => TracingConnectionImpl.GetProductVersion();
 
-        protected virtual void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
             if (!_disposed)
             {
@@ -64,13 +62,6 @@ namespace Apache.Arrow.Adbc.Tracing
                 }
                 _disposed = true;
             }
-        }
-
-        public override void Dispose()
-        {
-            Dispose(true);
-            base.Dispose();
-            GC.SuppressFinalize(this);
         }
     }
 }
