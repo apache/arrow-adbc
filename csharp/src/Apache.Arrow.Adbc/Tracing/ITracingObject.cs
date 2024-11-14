@@ -19,12 +19,28 @@ using System.Diagnostics;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
+    /// <summary>
+    /// Provides interface for a tracing object.
+    /// </summary>
     public interface ITracingObject
     {
+        /// <summary>
+        /// Gets the <see cref="System.Diagnostics.ActivitySource"/> for the current object. The value may be null if the containing object
+        /// did not set this property - typically because tracing was not enabled.
+        /// </summary>
         ActivitySource? ActivitySource { get; }
 
+        /// <summary>
+        /// Starts a new activity with a given name. 
+        /// </summary>
+        /// <param name="methodName"></param>
+        /// <returns>Returns a new <see cref="System.Diagnostics.Activity"/> instance if there is an active listener for the <see cref="ActivitySource"/>.
+        /// It returns <c>null</c>, otherwise.</returns>
         Activity? StartActivity(string methodName);
 
+        /// <summary>
+        /// Gets the base name of the tracing object. Typically this is the full name of the class that is tracing.
+        /// </summary>
         string TracingBaseName { get; }
     }
 }

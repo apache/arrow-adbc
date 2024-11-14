@@ -473,7 +473,8 @@ namespace Apache.Arrow.Adbc.C
             private IsolationLevel? _isolationLevel;
             private bool? _readOnly;
 
-            internal ImportedAdbcConnection(ImportedAdbcDriver driver, CAdbcConnection nativeConnection, IReadOnlyDictionary<string, string>? properties) : base(properties)
+            internal ImportedAdbcConnection(ImportedAdbcDriver driver, CAdbcConnection nativeConnection, IReadOnlyDictionary<string, string>? properties)
+                : base(properties)
             {
                 _driver = driver.AddReference();
                 _nativeConnection = nativeConnection;
@@ -757,7 +758,8 @@ namespace Apache.Arrow.Adbc.C
             private byte[]? _substraitPlan;
             private bool _disposed;
 
-            internal ImportedAdbcStatement(ImportedAdbcDriver driver, CAdbcStatement nativeStatement, ActivitySource? activitySource) : base(activitySource)
+            internal ImportedAdbcStatement(ImportedAdbcDriver driver, CAdbcStatement nativeStatement, ActivitySource? activitySource)
+                : base(activitySource)
             {
                 _driver = driver.AddReference();
                 _nativeStatement = nativeStatement;

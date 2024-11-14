@@ -61,16 +61,5 @@ namespace Apache.Arrow.Adbc.Tracing
             /// </summary>
             public const string ParentId = "adbc.tracing.statement.parent_id";
         }
-
-        public static string GetEnabled(bool value) => value ? Enabled : Disabled;
-        public static bool GetEnabled(string value)
-        {
-            return value switch
-            {
-                Enabled => true,
-                Disabled => false,
-                _ => throw new NotSupportedException("unknown enabled flag"),
-            };
-        }
     }
 }

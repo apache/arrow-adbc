@@ -26,6 +26,9 @@ using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
+    /// <summary>
+    /// Provides an <see cref="AdbcConnection"> which can instrument tracing activity.
+    /// </summary>
     public abstract class TracingConnection : AdbcConnection, ITracingObject
     {
         private bool _disposed = false;
@@ -36,7 +39,6 @@ namespace Apache.Arrow.Adbc.Tracing
         private readonly ConcurrentQueue<Activity> _activityQueue = new();
         private readonly IReadOnlyDictionary<string, string>? _options;
         private DirectoryInfo? _traceDirectory;
-        //private int _traceFileMaxSize = 1024;
 
         protected TracingConnection(IReadOnlyDictionary<string, string>? options = default)
         {
@@ -55,9 +57,6 @@ namespace Apache.Arrow.Adbc.Tracing
             EnsureTracing();
         }
 
-        /// <summary>
-        /// Gets or set the 
-        /// </summary>
         public ActivitySource? ActivitySource { get; private set; }
 
         protected static string GetProductVersion()

@@ -22,6 +22,10 @@ using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
+    /// <summary>
+    /// Provides tracing capability for objects that need to implement the <see cref="IArrowArrayStream"/> interface.
+    /// </summary>
+    /// <param name="activitySource"></param>
     public abstract class TracingArrowArrayStream(ActivitySource? activitySource) : TracingObject(activitySource), IArrowArrayStream
     {
         public abstract ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default);
