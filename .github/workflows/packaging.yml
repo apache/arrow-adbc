@@ -132,7 +132,7 @@ jobs:
           popd
 
       - name: Upload Go binaries
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           retention-days: 7
           path: |
@@ -167,7 +167,7 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           path: adbc/go/adbc/pkg
 
