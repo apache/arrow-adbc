@@ -176,6 +176,7 @@ jobs:
 
       - name: Copy Go binaries
         run: |
+          ls -R
           pushd adbc/go/adbc/pkg/
           cp *.dll ../
           cp *.so ../
