@@ -32,6 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public const string Type = "adbc.spark.type";
         public const string DataTypeConv = "adbc.spark.data_type_conv";
         public const string TLSOptions = "adbc.spark.tls_options";
+        // TODO: Remove support for HttpRequestTimeoutMilliseconds
         public const string HttpRequestTimeoutMilliseconds = "adbc.spark.http_request_timeout_ms";
         public const string ConnectTimeoutMilliseconds = "adbc.spark.connect_timeout_ms";
     }

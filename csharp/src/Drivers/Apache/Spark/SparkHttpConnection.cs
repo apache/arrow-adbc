@@ -120,6 +120,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
             Properties.TryGetValue(SparkParameters.TLSOptions, out string? tlsOptions);
             TlsOptions = TlsOptionsParser.Parse(tlsOptions);
+            // TODO: Remove support for HttpRequestTimeoutMilliseconds
             Properties.TryGetValue(SparkParameters.HttpRequestTimeoutMilliseconds, out string? requestTimeoutMs);
             if (requestTimeoutMs != null)
             {
@@ -171,6 +172,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TConfiguration config = new();
             ThriftHttpTransport transport = new(httpClient, config)
             {
+                // TODO: Remove support for HttpRequestTimeoutMilliseconds
                 ConnectTimeout = HttpRequestTimeoutMilliseconds,
             };
             return Task.FromResult<TTransport>(transport);

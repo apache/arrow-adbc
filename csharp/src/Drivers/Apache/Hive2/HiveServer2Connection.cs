@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
         internal const int QueryTimeoutSecondsDefault = 60;
-        private const int HttpRequestTimeoutMillisecondsDefault = 30000;
+        private const int HttpRequestTimeoutMillisecondsDefault = int.MaxValue;
         private const int ConnectTimeoutMillisecondDefault = 30000;
         private TTransport? _transport;
         private TCLIService.Client? _client;
@@ -62,12 +62,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
+            // TODO: Write integration test to confirm this will throw a cancellation exception
+            using CancellationTokenSource cts = new(TimeSpan.FromMilliseconds(ConnectTimeoutMilliseconds));
             TTransport transport = await CreateTransportAsync();
             TProtocol protocol = await CreateProtocolAsync(transport);
             _transport = protocol.Transport;
             _client = new TCLIService.Client(protocol);
             TOpenSessionReq request = CreateSessionRequest();
-            TOpenSessionResp? session = await Client.OpenSession(request);
+            TOpenSessionResp? session = await Client.OpenSession(request, cts.Token);
 
             // Some responses don't raise an exception. Explicitly check the status.
             if (session == null)

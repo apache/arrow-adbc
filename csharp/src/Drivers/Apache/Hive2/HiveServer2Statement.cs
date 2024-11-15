@@ -40,6 +40,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
+            // TODO: Add CTS here
             await ExecuteStatementAsync();
             await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds);
             Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client);
@@ -57,6 +58,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
             const string NumberOfAffectedRowsColumnName = "num_affected_rows";
+            // TODO: Add CTS here
 
             QueryResult queryResult = await ExecuteQueryAsync();
             if (queryResult.Stream == null)
