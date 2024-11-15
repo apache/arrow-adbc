@@ -23,10 +23,7 @@ source_dir=${1}/csharp
 
 pushd ${source_dir}
 
-if [ -z ${2-} ]; then
-    dotnet pack -c Release;
-else
-    dotnet pack -c Release --version-suffix ${2};
-fi
+shift
+dotnet pack -c Release "$@";
 
 popd
