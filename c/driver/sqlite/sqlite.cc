@@ -150,7 +150,7 @@ class SqliteQuery {
     return Close(rc);
   }
 
-  Status Close(int rc) {
+  Status Close(int last_rc) {
     if (stmt_) {
       int rc = sqlite3_finalize(stmt_);
       stmt_ = nullptr;
@@ -158,7 +158,7 @@ class SqliteQuery {
         return status::fmt::Internal("failed to execute: {}\nquery was: {}",
                                      sqlite3_errmsg(conn_), query_);
       }
-    } else if (rc != SQLITE_OK) {
+    } else if (last_rc != SQLITE_OK) {
       return status::fmt::Internal("failed to execute: {}\nquery was: {}",
                                    sqlite3_errmsg(conn_), query_);
     }
@@ -192,7 +192,7 @@ class SqliteQuery {
       UNWRAP_RESULT(bool has_row, q.Next());
       if (!has_row) break;
 
-      int rc = std::forward<RowFunc>(row_func)(q.stmt_);
+      rc = std::forward<RowFunc>(row_func)(q.stmt_);
       if (rc != SQLITE_OK) break;
     }
     return q.Close();

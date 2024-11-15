@@ -100,8 +100,8 @@ int PqResultArrayReader::GetNext(struct ArrowArray* out) {
         item.size_bytes = pg_item.len;
       }
 
-      NANOARROW_RETURN_NOT_OK(
-          field_readers_[i]->Read(&item, item.size_bytes, tmp->children[i], &na_error_));
+      NANOARROW_RETURN_NOT_OK(field_readers_[i]->Read(
+          &item, static_cast<int32_t>(item.size_bytes), tmp->children[i], &na_error_));
     }
   }
 
