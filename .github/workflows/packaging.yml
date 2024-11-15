@@ -175,7 +175,8 @@ jobs:
 
       - name: Copy Go binaries
         run: |
-          pushd adbc/go/adbc/pkg
+          ls -R adbc/go/pkg
+          pushd adbc/go/adbc/pkg/go-ubuntu-latest
           cp *.dll ../
           cp *.so ../
           cp *.dylib ../
