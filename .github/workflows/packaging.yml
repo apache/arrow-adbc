@@ -170,13 +170,13 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: go-ubuntu-latest
+          pattern: go-*
           path: adbc/go/adbc/pkg
+          merge-multiple: true
 
       - name: Copy Go binaries
         run: |
-          ls -R adbc/go/pkg
-          pushd adbc/go/adbc/pkg/go-ubuntu-latest
+          pushd adbc/go/adbc/pkg/
           cp *.dll ../
           cp *.so ../
           cp *.dylib ../
