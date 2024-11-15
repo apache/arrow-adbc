@@ -134,6 +134,7 @@ jobs:
       - name: Upload Go binaries
         uses: actions/upload-artifact@v4
         with:
+          name: go-${{ matrix.os }}
           retention-days: 7
           path: |
             adbc/go/adbc/pkg/libadbc_driver_flightsql.*
@@ -169,6 +170,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
+          name: go-ubuntu-latest
           path: adbc/go/adbc/pkg
 
       - name: Copy Go binaries
