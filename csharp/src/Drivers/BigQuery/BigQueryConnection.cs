@@ -20,12 +20,10 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
-using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Apache.Arrow.Adbc.Extensions;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Google.Api.Gax;
@@ -990,7 +988,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 this.client = Open();
             }
 
-            BigQueryStatement statement = new BigQueryStatement(this.client, this.credential, ActivitySource);
+            BigQueryStatement statement = new BigQueryStatement(this.client, this.credential);
             statement.Options = ParseOptions();
             return statement;
         }

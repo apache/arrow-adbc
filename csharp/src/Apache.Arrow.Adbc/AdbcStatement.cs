@@ -29,7 +29,7 @@ namespace Apache.Arrow.Adbc
     /// may be used multiple times and can be reconfigured (e.g. they can
     /// be reused to execute multiple different queries).
     /// </summary>
-    public abstract class AdbcStatement : TracingBase, IDisposable
+    public abstract class AdbcStatement : TracingBase
     {
         public AdbcStatement()
         {

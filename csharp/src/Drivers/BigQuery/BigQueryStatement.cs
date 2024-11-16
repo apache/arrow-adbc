@@ -19,13 +19,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Google.Api.Gax;
@@ -46,7 +44,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         readonly BigQueryClient client;
         readonly GoogleCredential credential;
 
-        public BigQueryStatement(BigQueryClient client, GoogleCredential credential, ActivitySource? activitySource)
+        public BigQueryStatement(BigQueryClient client, GoogleCredential credential)
         {
             this.client = client;
             this.credential = credential;

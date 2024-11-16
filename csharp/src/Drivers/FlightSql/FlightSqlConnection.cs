@@ -17,8 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Flight.Client;
 using Apache.Arrow.Ipc;
 using Grpc.Core;

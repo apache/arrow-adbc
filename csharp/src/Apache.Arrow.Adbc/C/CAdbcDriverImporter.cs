@@ -19,12 +19,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using Apache.Arrow.Adbc.Extensions;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
 
@@ -401,7 +399,7 @@ namespace Apache.Arrow.Adbc.C
 
                         caller.Call(Driver.ConnectionInit, ref nativeConnection, ref _nativeDatabase);
 
-                        result = new ImportedAdbcConnection(_driver, nativeConnection, options);
+                        result = new ImportedAdbcConnection(_driver, nativeConnection);
                     }
                 }
                 finally
@@ -473,7 +471,7 @@ namespace Apache.Arrow.Adbc.C
             private IsolationLevel? _isolationLevel;
             private bool? _readOnly;
 
-            internal ImportedAdbcConnection(ImportedAdbcDriver driver, CAdbcConnection nativeConnection, IReadOnlyDictionary<string, string>? properties)
+            internal ImportedAdbcConnection(ImportedAdbcDriver driver, CAdbcConnection nativeConnection)
             {
                 _driver = driver.AddReference();
                 _nativeConnection = nativeConnection;
@@ -542,7 +540,7 @@ namespace Apache.Arrow.Adbc.C
                                 (connection, &nativeStatement, &caller._error));
                         }
 
-                        result = new ImportedAdbcStatement(_driver, nativeStatement, ActivitySource);
+                        result = new ImportedAdbcStatement(_driver, nativeStatement);
                     }
                 }
                 finally
@@ -754,7 +752,7 @@ namespace Apache.Arrow.Adbc.C
             private byte[]? _substraitPlan;
             private bool _disposed;
 
-            internal ImportedAdbcStatement(ImportedAdbcDriver driver, CAdbcStatement nativeStatement, ActivitySource? activitySource)
+            internal ImportedAdbcStatement(ImportedAdbcDriver driver, CAdbcStatement nativeStatement)
             {
                 _driver = driver.AddReference();
                 _nativeStatement = nativeStatement;

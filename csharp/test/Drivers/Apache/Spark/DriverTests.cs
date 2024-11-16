@@ -17,8 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -651,8 +649,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         /// <summary>
-        /// Validates if the driver can connect to a live server and
-        /// parse the results using the asynchronous methods.
+        /// Validates if the connection accept the trace option.
         /// </summary>
         [SkippableFact, Order(16)]
         public async Task CanEnableAndWriteTracing()

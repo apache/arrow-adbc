@@ -32,12 +32,6 @@ namespace Apache.Arrow.Adbc
         private bool _readOnly = false;
         private IsolationLevel _isolationLevel = IsolationLevel.Default;
 
-        protected AdbcConnection()
-        {
-            var type = GetType();
-            object[] attributes = GetType().GetCustomAttributes(true);
-        }
-
         /// <summary>
         /// Commit the pending transaction.
         /// </summary>

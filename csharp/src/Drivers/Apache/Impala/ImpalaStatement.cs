@@ -16,7 +16,6 @@
 */
 
 using System;
-using System.Reflection;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala

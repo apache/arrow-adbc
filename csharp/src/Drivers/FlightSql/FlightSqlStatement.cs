@@ -17,7 +17,6 @@
 
 using System;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Flight;
 using Grpc.Core;
 

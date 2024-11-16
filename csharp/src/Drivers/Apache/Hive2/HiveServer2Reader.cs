@@ -30,9 +30,8 @@ using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class HiveServer2Reader : TracingArrowArrayStream, IArrowArrayStream
+    internal class HiveServer2Reader : TracingArrowArrayStream
     {
-        private static readonly string s_typeName = typeof(HiveServer2Reader).FullName!;
         private const byte AsciiZero = (byte)'0';
         private const int AsciiDigitMaxIndex = '9' - AsciiZero;
         private const byte AsciiDash = (byte)'-';
