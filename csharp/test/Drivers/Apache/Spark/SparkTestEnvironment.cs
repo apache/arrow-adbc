@@ -21,6 +21,7 @@ using System.Data.SqlTypes;
 using System.Text;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
@@ -116,6 +117,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             if (!string.IsNullOrEmpty(testConfiguration.HttpRequestTimeoutMilliseconds))
             {
                 parameters.Add(SparkParameters.HttpRequestTimeoutMilliseconds, testConfiguration.HttpRequestTimeoutMilliseconds!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.Trace))
+            {
+                parameters.Add(TracingOptions.Connection.Trace, testConfiguration.Trace!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.TraceLocation))
+            {
+                parameters.Add(TracingOptions.Connection.TraceLocation, testConfiguration.TraceLocation!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.TraceFileMaxSizeKb))
+            {
+                parameters.Add(TracingOptions.Connection.TraceFileMaxSizeKb, testConfiguration.TraceFileMaxSizeKb!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.TraceFileMaxFiles))
+            {
+                parameters.Add(TracingOptions.Connection.TraceFileMaxFiles, testConfiguration.TraceFileMaxFiles!);
             }
 
             return parameters;

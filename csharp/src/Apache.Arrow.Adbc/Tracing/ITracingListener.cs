@@ -20,20 +20,8 @@ using System.Diagnostics;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
-    /// <summary>
-    /// Provides an implementatio of <see cref="AdbcStatement"/> which can instrument tracing activity.
-    /// </summary>
-    /// <param name="activitySource">The <see cref="System.Diagnostics.ActivitySource"/> to add trace activity on.</param>
-    public abstract class TracingStatement(ActivitySource? activitySource) : AdbcStatement, ITracingObject
+    public interface ITracingListener : IDisposable
     {
-        public ActivitySource? ActivitySource => activitySource;
-
-        public abstract string TracingBaseName { get; }
-
-        public Activity? StartActivity(string methodName) => TracingConnection.StartActivity(ActivitySource, TracingBaseName, methodName);
-
-        public  void TraceException(Exception exception, Activity? activity, bool escaped = true) =>
-            TracingConnectionImpl.WriteTraceException(exception, activity, escaped);
-
+        ActivityListener ActivityListener { get; }
     }
 }

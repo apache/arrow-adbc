@@ -16,6 +16,7 @@
 */
 
 using System.Collections.Generic;
+using System.Reflection;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 

@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -37,9 +38,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// BigQuery-specific implementation of <see cref="AdbcConnection"/>
     /// </summary>
-    public class BigQueryConnection : TracingConnection
+    public class BigQueryConnection : AdbcConnection
     {
-        private static readonly string s_tracingBaseName = typeof(BigQueryConnection).FullName!;
         readonly IReadOnlyDictionary<string, string> properties;
         BigQueryClient? client;
         GoogleCredential? credential;
@@ -56,7 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             AdbcInfoCode.VendorName
         };
 
-        public BigQueryConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public BigQueryConnection(IReadOnlyDictionary<string, string> properties)
         {
             this.properties = properties;
 
@@ -1026,8 +1026,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         }
 
         private static Regex sanitizedInputRegex = new Regex("^[a-zA-Z0-9_-]+");
-
-        public override string TracingBaseName => s_tracingBaseName;
 
         private string Sanitize(string? input)
         {

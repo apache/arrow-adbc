@@ -17,6 +17,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -89,7 +91,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [SkippableFact, Order(1)]
         public void CanExecuteUpdate()
         {
-            AdbcConnection adbcConnection = NewConnection();
+            using AdbcConnection adbcConnection = NewConnection();
 
             string[] queries = GetQueries();
 
@@ -131,7 +133,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [SkippableFact, Order(2)]
         public async Task CanGetInfo()
         {
-            AdbcConnection adbcConnection = NewConnection();
+            using AdbcConnection adbcConnection = NewConnection();
 
             // Test the supported info codes
             List<AdbcInfoCode> handledCodes = new List<AdbcInfoCode>()
@@ -467,7 +469,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [SkippableFact, Order(8)]
         public void CanGetTableSchema()
         {
-            AdbcConnection adbcConnection = NewConnection();
+            using AdbcConnection adbcConnection = NewConnection();
 
             string? catalogName = TestConfiguration.Metadata.Catalog;
             string? schemaName = TestConfiguration.Metadata.Schema;
@@ -486,7 +488,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [SkippableFact, Order(9)]
         public async Task CanGetTableTypes()
         {
-            AdbcConnection adbcConnection = NewConnection();
+            using AdbcConnection adbcConnection = NewConnection();
 
             using IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
 
@@ -640,6 +642,24 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public async Task CanExecuteQueryAsyncEmptyResult()
         {
             using AdbcConnection adbcConnection = NewConnection();
+            using AdbcStatement statement = adbcConnection.CreateStatement();
+
+            statement.SqlQuery = $"SELECT * from {TestConfiguration.Metadata.Table} WHERE FALSE";
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+
+            await Tests.DriverTests.CanExecuteQueryAsync(queryResult, 0);
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results using the asynchronous methods.
+        /// </summary>
+        [SkippableFact, Order(16)]
+        public async Task CanEnableAndWriteTracing()
+        {
+            var config = (SparkTestConfiguration)TestConfiguration.Clone();
+            config.Trace = "true";
+            using AdbcConnection adbcConnection = NewConnection(config);
             using AdbcStatement statement = adbcConnection.CreateStatement();
 
             statement.SqlQuery = $"SELECT * from {TestConfiguration.Metadata.Table} WHERE FALSE";

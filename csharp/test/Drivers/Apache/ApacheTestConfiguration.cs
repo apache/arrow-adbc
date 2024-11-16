@@ -54,5 +54,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
         [JsonPropertyName("http_request_timeout_ms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string HttpRequestTimeoutMilliseconds { get; set; } = string.Empty;
 
+        [JsonPropertyName("trace"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Trace { get; set; } = string.Empty;
+
+        [JsonPropertyName("trace_location"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string TraceLocation { get; set; } = string.Empty;
+
+        [JsonPropertyName("trace_max_size_kb"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string TraceFileMaxSizeKb { get; set; } = string.Empty;
+
+        [JsonPropertyName("trace_max_files"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string TraceFileMaxFiles { get; set; } = string.Empty;
+
     }
 }

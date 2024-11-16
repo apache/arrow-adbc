@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc
@@ -25,11 +26,17 @@ namespace Apache.Arrow.Adbc
     /// Provides methods for query execution, managing prepared statements,
     /// using transactions, and so on.
     /// </summary>
-    public abstract class AdbcConnection : IDisposable
+    public abstract class AdbcConnection : TracingBase
     {
         private bool _autoCommit = true;
         private bool _readOnly = false;
         private IsolationLevel _isolationLevel = IsolationLevel.Default;
+
+        protected AdbcConnection()
+        {
+            var type = GetType();
+            object[] attributes = GetType().GetCustomAttributes(true);
+        }
 
         /// <summary>
         /// Commit the pending transaction.
@@ -67,8 +74,10 @@ namespace Apache.Arrow.Adbc
             throw AdbcException.NotImplemented("Connection does not support BulkIngest");
         }
 
-        public virtual void Dispose()
+        public override void Dispose()
         {
+            base.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>

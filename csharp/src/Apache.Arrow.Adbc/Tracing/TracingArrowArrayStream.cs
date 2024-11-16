@@ -26,11 +26,9 @@ namespace Apache.Arrow.Adbc.Tracing
     /// Provides tracing capability for objects that need to implement the <see cref="IArrowArrayStream"/> interface.
     /// </summary>
     /// <param name="activitySource"></param>
-    public abstract class TracingArrowArrayStream(ActivitySource? activitySource) : TracingObject(activitySource), IArrowArrayStream
+    public abstract class TracingArrowArrayStream : TracingBase, IArrowArrayStream
     {
         public abstract ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default);
-
-        public abstract void Dispose();
 
         public abstract Schema Schema { get; }
     }

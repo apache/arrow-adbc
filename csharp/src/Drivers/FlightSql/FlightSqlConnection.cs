@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Flight.Client;
 using Apache.Arrow.Ipc;
@@ -28,9 +29,8 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
     /// <summary>
     /// A Flight SQL implementation of <see cref="AdbcConnection"/>.
     /// </summary>
-    public class FlightSqlConnection : TracingConnection
+    public class FlightSqlConnection : AdbcConnection
     {
-        private static readonly string s_tracingBaseName = typeof(FlightSqlConnection).FullName!;
         private FlightClient? _flightClientInternal = null;
         private readonly IReadOnlyDictionary<string, string>? _metadata;
 
@@ -41,7 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
 
         }
 
-        public FlightSqlConnection(IReadOnlyDictionary<string, string>? metadata) : base(metadata)
+        public FlightSqlConnection(IReadOnlyDictionary<string, string>? metadata)
         {
             _metadata = metadata;
         }
@@ -55,8 +55,6 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
         {
             get => GetMetaData();
         }
-
-        public override string TracingBaseName => s_tracingBaseName;
 
         private Metadata GetMetaData()
         {

@@ -24,11 +24,9 @@ using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal abstract class HiveServer2Statement : TracingStatement
+    internal abstract class HiveServer2Statement : AdbcStatement
     {
-        private static readonly string s_tracingBaseName = typeof(HiveServer2Statement).FullName!;
-
-        protected HiveServer2Statement(HiveServer2Connection connection) : base(connection.ActivitySource)
+        protected HiveServer2Statement(HiveServer2Connection connection)
         {
             Connection = connection;
         }
@@ -171,8 +169,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private void UpdateBatchSizeIfValid(string key, string value) => BatchSize = !string.IsNullOrEmpty(value) && long.TryParse(value, out long batchSize) && batchSize > 0
             ? batchSize
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
-
-        public override string TracingBaseName => s_tracingBaseName;
 
         public override void Dispose()
         {

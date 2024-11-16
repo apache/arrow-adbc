@@ -21,15 +21,13 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
-    internal sealed class SparkDatabricksReader : TracingArrowArrayStream
+    internal sealed class SparkDatabricksReader : IArrowArrayStream
     {
-        private static readonly string s_tracingBaseName = typeof(SparkDatabricksReader).FullName!;
         HiveServer2Statement? statement;
         Schema schema;
         List<TSparkArrowBatch>? batches;
@@ -37,58 +35,61 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         IArrowReader? reader;
 
         public SparkDatabricksReader(HiveServer2Statement statement, Schema schema)
-            : base(statement.Connection.ActivitySource)
         {
             this.statement = statement;
             this.schema = schema;
         }
 
-        public override string TracingBaseName => s_tracingBaseName;
+        public Schema Schema { get { return schema; } }
 
-        public override Schema Schema { get { return schema; } }
-
-        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            using Activity? activity = StartActivity(nameof(ReadNextRecordBatchAsync));
-            while (true)
+            //using Activity? activity = StartActivity(nameof(ReadNextRecordBatchAsync));
+            try
             {
-                if (this.reader != null)
+                while (true)
                 {
-                    RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
-                    if (next != null)
+                    if (this.reader != null)
                     {
-                        return next;
+                        RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+                        if (next != null)
+                        {
+                            return next;
+                        }
+                        this.reader = null;
                     }
-                    this.reader = null;
+
+                    if (this.batches != null && this.index < this.batches.Count)
+                    {
+                        this.reader = new ArrowStreamReader(new ChunkStream(this.schema, this.batches[this.index++].Batch));
+                        continue;
+                    }
+
+                    this.batches = null;
+                    this.index = 0;
+
+                    if (this.statement == null)
+                    {
+                        return null;
+                    }
+
+                    TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
+                    TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
+                    this.batches = response.Results.ArrowBatches;
+
+                    if (!response.HasMoreRows)
+                    {
+                        this.statement = null;
+                    }
                 }
-
-                if (this.batches != null && this.index < this.batches.Count)
-                {
-                    this.reader = new ArrowStreamReader(new ChunkStream(this.schema, this.batches[this.index++].Batch));
-                    continue;
-                }
-
-                this.batches = null;
-                this.index = 0;
-
-                if (this.statement == null)
-                {
-                    return null;
-                }
-
-                TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
-                TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
-                this.batches = response.Results.ArrowBatches;
-
-                if (!response.HasMoreRows)
-                {
-                    this.statement = null;
-                }
+            }
+            catch (Exception)
+            {
+                //TraceException(ex, activity);
+                throw;
             }
         }
 
-        public override void Dispose()
-        {
-        }
+        public void Dispose() { }
     }
 }

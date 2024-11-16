@@ -24,12 +24,13 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tracing;
+using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class HiveServer2Reader : TracingArrowArrayStream
+    internal class HiveServer2Reader : TracingArrowArrayStream, IArrowArrayStream
     {
         private static readonly string s_typeName = typeof(HiveServer2Reader).FullName!;
         private const byte AsciiZero = (byte)'0';
@@ -74,7 +75,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            DataTypeConversion dataTypeConversion) : base(statement.Connection.ActivitySource)
+            DataTypeConversion dataTypeConversion)
         {
             _statement = statement;
             Schema = schema;
@@ -82,8 +83,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         public override Schema Schema { get; }
-
-        public override string TracingBaseName => s_typeName;
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
@@ -137,6 +136,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override void Dispose()
         {
+            base.Dispose();
         }
 
         private static IArrowArray GetArray(TColumn column, IArrowType? expectedArrowType = default)

@@ -18,6 +18,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tracing;
@@ -28,9 +30,8 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal abstract class HiveServer2Connection : TracingConnection
+    internal abstract class HiveServer2Connection : AdbcConnection
     {
-        private static string s_typeName => typeof(HiveServer2Connection).FullName!;
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
 
@@ -38,8 +39,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
+        private TracingFileListener? _listener;
 
-        internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
             Properties = properties;
 
@@ -49,6 +51,39 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // https://learn.microsoft.com/en-us/dotnet/framework/performance/lazy-initialization#exceptions-in-lazy-objects
             _vendorVersion = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_VER), LazyThreadSafetyMode.PublicationOnly);
             _vendorName = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_NAME), LazyThreadSafetyMode.PublicationOnly);
+            EnsureTracing();
+
+        }
+
+        private void EnsureTracing()
+        {
+            if (Properties.TryGetValue(TracingOptions.Connection.Trace, out string? traceOption) == true && bool.TryParse(traceOption, out bool traceEnabled))
+            {
+                // TODO: Handle exceptions
+                DirectoryInfo tracingDirectory = EnsureTraceDirectory();
+                // TODO: Check if folder is writable
+                _listener = new TracingFileListener(ActivitySource?.Name ?? GetType().Assembly.GetName().FullName, tracingDirectory.FullName);
+                ActivitySource.AddActivityListener(_listener.ActivityListener);
+            }
+        }
+
+        private DirectoryInfo EnsureTraceDirectory()
+        {
+            DirectoryInfo traceDirectory;
+            if (Properties.TryGetValue(TracingOptions.Connection.TraceLocation, out string? traceLocation) != true)
+            {
+                string? traceLocationDefault = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Apache.Arrow.Adbc", "Tracing");
+                traceDirectory = new DirectoryInfo(traceLocationDefault);
+            }
+            else
+            {
+                traceDirectory = new DirectoryInfo(traceLocation!);
+            }
+            if (!Directory.Exists(traceDirectory.FullName))
+            {
+                Directory.CreateDirectory(traceDirectory.FullName);
+            }
+            return traceDirectory;
         }
 
         internal TCLIService.Client Client
@@ -128,7 +163,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, ActivitySource? activitySource)
         {
-            using Activity? activity = StartActivity(activitySource, nameof(PollForResponseAsync));
+            using Activity? activity = StartActivity(activitySource);
             TGetOperationStatusResp? statusResponse = null;
             do
             {
@@ -177,19 +212,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 _transport = null;
                 _client = null;
             }
+            _listener?.Dispose();
         }
 
         internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, ActivitySource? activitySource = null, CancellationToken cancellationToken = default)
         {
-            using var activity = StartActivity(activitySource, nameof(GetResultSetMetadataAsync));
+            using var activity = StartActivity(activitySource);
             TGetResultSetMetadataReq request = new(operationHandle);
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
             return response;
         }
-
-        public override string TracingBaseName => s_typeName;
-
-        private static Activity? StartActivity(ActivitySource? activity, string methodName) =>
-            StartActivity(activity, s_typeName, methodName);
     }
 }

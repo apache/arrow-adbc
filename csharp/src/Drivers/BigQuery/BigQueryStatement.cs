@@ -41,21 +41,18 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// BigQuery-specific implementation of <see cref="AdbcStatement"/>
     /// </summary>
-    public class BigQueryStatement : TracingStatement
+    public class BigQueryStatement : AdbcStatement
     {
-        private static readonly string s_tracingBaseName = typeof(BigQueryStatement).FullName!;
         readonly BigQueryClient client;
         readonly GoogleCredential credential;
 
-        public BigQueryStatement(BigQueryClient client, GoogleCredential credential, ActivitySource? activitySource) : base(activitySource)
+        public BigQueryStatement(BigQueryClient client, GoogleCredential credential, ActivitySource? activitySource)
         {
             this.client = client;
             this.credential = credential;
         }
 
         public IReadOnlyDictionary<string, string>? Options { get; set; }
-
-        public override string TracingBaseName => s_tracingBaseName;
 
         public override QueryResult ExecuteQuery()
         {
