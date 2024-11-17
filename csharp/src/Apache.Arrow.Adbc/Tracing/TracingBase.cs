@@ -26,7 +26,8 @@ using System.Runtime.CompilerServices;
 namespace Apache.Arrow.Adbc.Tracing
 {
     /// <summary>
-    /// Provides a base implementation for a tracing source. Drivers should 
+    /// Provides a base implementation for a tracing source. If drivers want to enable tracing,
+    /// they need to add a trace listener (e.g., <see cref="TracingFileListener"/>).
     /// </summary>
     public class TracingBase : IDisposable
     {
