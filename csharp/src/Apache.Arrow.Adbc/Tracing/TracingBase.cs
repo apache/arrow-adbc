@@ -86,6 +86,7 @@ namespace Apache.Arrow.Adbc.Tracing
             }
         }
 
+        /// <inheritdoc />
         public virtual void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
