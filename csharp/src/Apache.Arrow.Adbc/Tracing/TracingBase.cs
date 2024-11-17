@@ -80,7 +80,7 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 if (disposing)
                 {
-                    ActivitySource?.Dispose();
+                    ActivitySource.Dispose();
                 }
                 _disposedValue = true;
             }
