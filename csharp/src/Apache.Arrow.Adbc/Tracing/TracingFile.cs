@@ -43,8 +43,10 @@ namespace Apache.Arrow.Adbc.Tracing
             EnsureTraceDirectory();
         }
 
-        internal async Task WriteLine(string text)
+        internal async Task WriteLine(string text, CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested) return;
+
             if (_currentTraceFileInfo == null)
             {
                 string searchPattern = _fileBaseName + "-trace-*.log";
@@ -69,7 +71,7 @@ namespace Apache.Arrow.Adbc.Tracing
                 {
                     sw.WriteLine(text);
                 }
-            });
+            }, cancellationToken: cancellationToken);
         }
 
         internal static IOrderedEnumerable<FileInfo> GetTracingFiles(DirectoryInfo tracingDirectory, string searchPattern)
@@ -79,13 +81,13 @@ namespace Apache.Arrow.Adbc.Tracing
                 .OrderByDescending(f => f.LastWriteTimeUtc);
         }
 
-        private static async Task ActionWithRetry<T>(Action action, int maxRetries = 5) where T : Exception
+        internal static async Task ActionWithRetry<T>(Action action, int maxRetries = 5, CancellationToken cancellationToken = default) where T : Exception
         {
             int retryCount = 0;
             TimeSpan pauseTime = TimeSpan.FromMilliseconds(10);
             bool completed = false;
 
-            while (!completed && retryCount < maxRetries)
+            while (!cancellationToken.IsCancellationRequested && !completed && retryCount < maxRetries)
             {
                 try
                 {
@@ -100,7 +102,15 @@ namespace Apache.Arrow.Adbc.Tracing
                         // TODO: Handle if not complete after retries
                         throw;
                     }
-                    await Task.Delay(pauseTime);
+                    try
+                    {
+                        await Task.Delay(pauseTime, cancellationToken);
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        // Need to catch this exception or it will be propogated.
+                        break;
+                    }
                 }
             }
         }

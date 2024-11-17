@@ -199,9 +199,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return null;
             }
 
-            string activitySourceName = ActivitySource.Name;
             DirectoryInfo? tracingDirectory = GetTracingDirectory();
-            TracingFileListener listener = new(activitySourceName, tracingDirectory?.FullName);
+            TracingFileListener listener = new(ActivitySource.Name, tracingDirectory?.FullName);
             return listener;
         }
 

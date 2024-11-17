@@ -42,9 +42,9 @@ namespace Apache.Arrow.Adbc.Tracing
         private static CancellationTokenSource? s_cancellationTokenSource = null;
         private static Task? s_cleanupTask = null;
 
-        public TracingFileListener(string activitySourceName, string? traceFolderLocation = default)
+        public TracingFileListener(string? activitySourceName = default, string? traceFolderLocation = default)
         {
-            _activitySourceName = activitySourceName;
+            _activitySourceName = activitySourceName ?? GetType().Assembly.GetName().Name!;
             if (traceFolderLocation == null)
             {
                 string? traceLocationDefault = s_tracingLocationDefault;
@@ -54,20 +54,21 @@ namespace Apache.Arrow.Adbc.Tracing
             else
             {
                 _traceFolderLocation = traceFolderLocation;
-                if (!Directory.Exists(_traceFolderLocation))
-                {
-                    // TODO: Handle exceptions
-                    Directory.CreateDirectory(_traceFolderLocation);
-                }
+            }
+            if (!Directory.Exists(_traceFolderLocation))
+            {
+                // TODO: Handle exceptions
+                Directory.CreateDirectory(_traceFolderLocation);
             }
 
-            _tracingFile = new TracingFile(activitySourceName, _traceFolderLocation);
+            _tracingFile = new TracingFile(_activitySourceName, _traceFolderLocation);
             lock (s_lock)
             {
+                // TODO: Make this instanced by source and tracing folder! Not single instance
                 if (s_cancellationTokenSource == null)
                 {
                     s_cancellationTokenSource = new CancellationTokenSource();
-                    s_cleanupTask = CleanupTraceDirectory(new DirectoryInfo(_traceFolderLocation), activitySourceName, s_cancellationTokenSource.Token);
+                    s_cleanupTask = CleanupTraceDirectory(new DirectoryInfo(_traceFolderLocation), _activitySourceName, s_cancellationTokenSource.Token);
                 }
                 s_listenerCounts.AddOrUpdate(ListenerId, 1, (k, v) => v + 1);
                 ActivityListener = s_listeners.GetOrAdd(ListenerId, (_) => NewActivityListener());
@@ -107,24 +108,58 @@ namespace Apache.Arrow.Adbc.Tracing
                 .ContinueWith(t => Console.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
         }
 
-        private async Task DequeueAndWrite(string state)
+        private async Task DequeueAndWrite(string state, CancellationToken cancellationToken = default)
         {
-            if (_activityQueue.TryDequeue(out Activity? activity))
+            if (_activityQueue.TryDequeue(out Activity? activity) && activity != null)
             {
-                if (activity != null)
+                try
                 {
-                    try
-                    {
-                        string json = JsonSerializer.Serialize(new { State = state, Activity = activity });
-                        await _tracingFile.WriteLine(json);
-                    }
-                    catch (NotSupportedException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    string json = JsonSerializer.Serialize(new { State = state, Activity = activity });
+                    await _tracingFile.WriteLine(json, cancellationToken);
+                }
+                catch (NotSupportedException ex)
+                {
+                    // TODO: Handle excption thrown by JsonSerializer
+                    Console.WriteLine(ex.Message);
                 }
             }
 
+            return;
+        }
+
+        private static async Task CleanupTraceDirectory(DirectoryInfo traceDirectory, string fileBaseName, CancellationToken cancellationToken)
+        {
+            const int delayTimeSeconds = 5;
+            string searchPattern = fileBaseName + "-trace-*.log";
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (traceDirectory.Exists)
+                {
+                    FileInfo[] tracingFiles = [.. TracingFile.GetTracingFiles(traceDirectory, searchPattern)];
+                    if (tracingFiles != null && tracingFiles.Length > MaxFileCountDefault)
+                    {
+                        int filesToRemove = tracingFiles.Length - MaxFileCountDefault;
+                        for (int i = tracingFiles.Length - 1; i > MaxFileCountDefault; i--)
+                        {
+                            FileInfo? file = tracingFiles.ElementAtOrDefault(i);
+                            await TracingFile.ActionWithRetry<IOException>(() => file?.Delete(), cancellationToken: cancellationToken);
+                        }
+                    }
+                }
+                else
+                {
+                    // The folder may have temporarily been removed. Let's keep monitoring in case it returns.
+                }
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(delayTimeSeconds), cancellationToken);
+                }
+                catch (TaskCanceledException)
+                {
+                    // Need to catch this exception or it will be propogated.
+                    break;
+                }
+            }
             return;
         }
 
@@ -159,47 +194,6 @@ namespace Apache.Arrow.Adbc.Tracing
                 }
                 _disposedValue = true;
             }
-        }
-
-        private static async Task CleanupTraceDirectory(DirectoryInfo traceDirectory, string fileBaseName, CancellationToken cancellationToken)
-        {
-            string searchPattern = fileBaseName + "-trace-*.log";
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                if (traceDirectory.Exists)
-                {
-                    FileInfo[] tracingFiles = [.. TracingFile.GetTracingFiles(traceDirectory, searchPattern)];
-                    if (tracingFiles != null && tracingFiles.Length > MaxFileCountDefault)
-                    {
-                        int filesToRemove = tracingFiles.Length - MaxFileCountDefault;
-                        for (int i = tracingFiles.Length - 1; i > MaxFileCountDefault; i--)
-                        {
-                            FileInfo? file = tracingFiles.ElementAtOrDefault(i);
-                            if (file != null)
-                            {
-                                try
-                                {
-                                    file.Delete();
-                                }
-                                catch
-                                {
-                                    // Ignore error
-                                }
-                            }
-                        }
-                    }
-                }
-                try
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-                }
-                catch (TaskCanceledException)
-                {
-                    // Need to catch this exception or it will be propogated.
-                    break;
-                }
-            }
-            return;
         }
 
         public void Dispose()
