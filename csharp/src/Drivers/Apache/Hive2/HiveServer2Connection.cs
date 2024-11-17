@@ -66,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
-            using var activity = StartActivity(nameof(OpenAsync));
+            using var activity = StartActivity();
             try
             {
                 TTransport transport = await CreateTransportAsync();
@@ -149,7 +149,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
-            using var activity = StartActivity(nameof(GetInfoTypeStringValue));
+            using var activity = StartActivity();
             TGetInfoReq req = new()
             {
                 SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
@@ -199,10 +199,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return null;
             }
 
-            string activitySourceName = ActivitySource?.Name ?? GetType().Assembly.GetName().FullName;
+            string activitySourceName = ActivitySource.Name;
             DirectoryInfo? tracingDirectory = GetTracingDirectory();
             TracingFileListener listener = new(activitySourceName, tracingDirectory?.FullName);
-            ActivitySource.AddActivityListener(listener.ActivityListener);
             return listener;
         }
 

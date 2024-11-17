@@ -41,7 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
-            using var activity = StartActivity(nameof(ExecuteQueryAsync));
+            using var activity = StartActivity();
             try
             {
                 await ExecuteStatementAsync();
@@ -60,7 +60,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
-            using var activity = StartActivity(nameof(GetResultSetSchemaAsync));
+            using var activity = StartActivity();
             TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, ActivitySource, cancellationToken);
             return Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
         }
@@ -69,7 +69,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             const string NumberOfAffectedRowsColumnName = "num_affected_rows";
 
-            using var activity = StartActivity(nameof(ExecuteUpdateAsync));
+            using var activity = StartActivity();
             try
             {
                 QueryResult queryResult = await ExecuteQueryAsync();
@@ -131,7 +131,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task ExecuteStatementAsync()
         {
-            using var activity = StartActivity(nameof(ExecuteStatementAsync));
+            using var activity = StartActivity();
             TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery);
             SetStatementProperties(executeRequest);
             TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest);

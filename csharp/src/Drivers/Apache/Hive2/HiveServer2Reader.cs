@@ -85,7 +85,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            using Activity? activity = StartActivity(nameof(ReadNextRecordBatchAsync));
+            using Activity? activity = StartActivity();
             // All records have been exhausted
             if (_statement == null)
             {

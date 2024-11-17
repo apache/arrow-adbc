@@ -26,9 +26,8 @@ using System.Runtime.CompilerServices;
 namespace Apache.Arrow.Adbc.Tracing
 {
     /// <summary>
-    /// Provides an abstract implementation of the <see cref="ITracingObject"/> interface.
+    /// Provides a base implementation for a tracing source. Drivers should 
     /// </summary>
-    /// <param name="activitySource">The <see cref="System.Diagnostics.ActivitySource"/> to trace on.</param>
     public class TracingBase : IDisposable
     {
         internal const string ProductVersionDefault = "1.0.0";
@@ -39,27 +38,32 @@ namespace Apache.Arrow.Adbc.Tracing
         protected TracingBase()
         {
             _activitySourceName = GetType().Assembly.GetName().Name!;
-            // This is requiired to be disposed
+            // This is required to be disposed
             ActivitySource = new(_activitySourceName, s_assemblyVersion);
         }
 
-        protected ActivitySource? ActivitySource { get; private set; }
+        protected ActivitySource ActivitySource { get; }
 
-        protected Activity? StartActivity([CallerMemberName] string methodName = "")
+        /// <summary>
+        /// Creates and starts a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise.
+        /// </summary>
+        /// <param name="methodName">The name of the method for the activity</param>
+        /// <returns>Returns a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise</returns>
+        protected Activity? StartActivity([CallerMemberName] string methodName = "[unknown-method]")
         {
             StackTrace stackTrace = new();
             MethodBase? callingMethod = stackTrace.GetFrame(1)?.GetMethod();
-            string? tracingBaseName = callingMethod?.DeclaringType?.DeclaringType?.FullName ?? callingMethod?.DeclaringType?.FullName;
+            string tracingBaseName = callingMethod?.DeclaringType?.DeclaringType?.FullName ?? callingMethod?.DeclaringType?.FullName ?? "[unknown-class]";
             return StartActivity(ActivitySource, tracingBaseName, methodName);
         }
 
-        protected void TraceException(Exception exception, Activity? activity, bool escaped = true) =>
+        protected static void TraceException(Exception exception, Activity? activity, bool escaped = true) =>
             WriteTraceException(exception, activity, escaped);
 
-        protected internal static Activity? StartActivity(ActivitySource? activitySource, [CallerMemberName] string methodName = "")
+        protected internal static Activity? StartActivity(ActivitySource? activitySource, [CallerMemberName] string methodName = "[unknown-method]")
         {
             MethodBase? callingMethod = (new StackTrace()).GetFrame(1)?.GetMethod();
-            string? tracingBaseName = callingMethod?.DeclaringType?.DeclaringType?.FullName ?? callingMethod?.DeclaringType?.FullName;
+            string tracingBaseName = callingMethod?.DeclaringType?.DeclaringType?.FullName ?? callingMethod?.DeclaringType?.FullName ?? "[unknown-class]";
             return StartActivity(activitySource, tracingBaseName, methodName);
         }
 
@@ -102,9 +106,9 @@ namespace Apache.Arrow.Adbc.Tracing
                         ])));
         }
 
-        private static Activity? StartActivity(ActivitySource? activitySource, string? tracingBaseName, string? methodName)
+        private static Activity? StartActivity(ActivitySource? activitySource, string tracingBaseName, string methodName)
         {
-            return activitySource?.StartActivity(tracingBaseName ?? "[unknown-class]" + "." + methodName ?? "[unknown-method]");
+            return activitySource?.StartActivity(tracingBaseName + "." + methodName );
         }
     }
 }

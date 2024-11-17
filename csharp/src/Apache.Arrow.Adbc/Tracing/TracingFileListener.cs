@@ -66,11 +66,12 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 if (s_cancellationTokenSource == null)
                 {
-                    s_cancellationTokenSource= new CancellationTokenSource();
+                    s_cancellationTokenSource = new CancellationTokenSource();
                     s_cleanupTask = CleanupTraceDirectory(new DirectoryInfo(_traceFolderLocation), activitySourceName, s_cancellationTokenSource.Token);
                 }
                 s_listenerCounts.AddOrUpdate(ListenerId, 1, (k, v) => v + 1);
                 ActivityListener = s_listeners.GetOrAdd(ListenerId, (_) => NewActivityListener());
+                ActivitySource.AddActivityListener(ActivityListener);
             }
         }
 
@@ -188,7 +189,15 @@ namespace Apache.Arrow.Adbc.Tracing
                         }
                     }
                 }
-                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                }
+                catch (TaskCanceledException)
+                {
+                    // Need to catch this exception or it will be propogated.
+                    break;
+                }
             }
             return;
         }

@@ -95,10 +95,14 @@ namespace Apache.Arrow.Adbc.Tracing
                 catch (T)
                 {
                     retryCount++;
+                    if (retryCount >= maxRetries)
+                    {
+                        // TODO: Handle if not complete after retries
+                        throw;
+                    }
                     await Task.Delay(pauseTime);
                 }
             }
-            // TODO: Handle if not complete after retries
         }
 
         private string NewFileName()
