@@ -156,6 +156,8 @@ namespace Apache.Arrow.Adbc
 
         public override void Dispose()
         {
+            base.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>

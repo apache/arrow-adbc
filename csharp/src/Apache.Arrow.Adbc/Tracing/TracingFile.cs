@@ -18,7 +18,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Security.Authentication.ExtendedProtection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,40 +28,40 @@ namespace Apache.Arrow.Adbc.Tracing
         private const int MaxFileSize = 1024 * 1024;
         private static readonly string s_defaultTracePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Apache.Arrow.Adbc", "Tracing");
         private readonly string _fileBaseName;
-        private readonly DirectoryInfo _traceDirectory;
+        private readonly DirectoryInfo _tracingDirectory;
         private FileInfo? _currentTraceFileInfo;
-        private CancellationTokenSource _cancellationTokenSource = new();
         private bool _disposedValue;
 
-        public TracingFile(string fileBaseName) : this(fileBaseName, new DirectoryInfo(s_defaultTracePath)) { }
+        internal TracingFile(string fileBaseName) : this(fileBaseName, new DirectoryInfo(s_defaultTracePath)) { }
 
-        public TracingFile(string fileBaseName, string traceDirectoryPath) : this(fileBaseName, new DirectoryInfo(traceDirectoryPath)) { }
+        internal TracingFile(string fileBaseName, string traceDirectoryPath) : this(fileBaseName, new DirectoryInfo(traceDirectoryPath)) { }
 
-        public TracingFile(string fileBaseName, DirectoryInfo traceDirectory)
+        internal TracingFile(string fileBaseName, DirectoryInfo traceDirectory)
         {
             _fileBaseName = fileBaseName;
-            _traceDirectory = traceDirectory;
+            _tracingDirectory = traceDirectory;
             EnsureTraceDirectory();
         }
 
-        public async Task WriteLine(string text)
+        internal async Task WriteLine(string text)
         {
-            IOrderedEnumerable<FileInfo>? traceFileInfos;
             if (_currentTraceFileInfo == null)
             {
                 string searchPattern = _fileBaseName + "-trace-*.log";
-                traceFileInfos = _traceDirectory
-                    .EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly)
-                    .OrderByDescending(f => f.LastWriteTimeUtc);
-                FileInfo? mostRecentFile = traceFileInfos.FirstOrDefault();
+                IOrderedEnumerable<FileInfo>? traceFileInfos = GetTracingFiles(_tracingDirectory, searchPattern);
+                FileInfo? mostRecentFile = traceFileInfos?.FirstOrDefault();
+
+                // Use the latest file, if it is not maxxed-out, or start a new tracing file.
                 _currentTraceFileInfo = mostRecentFile != null && mostRecentFile.Length < MaxFileSize
                     ? mostRecentFile
                     : new FileInfo(NewFileName());
             }
             else if (_currentTraceFileInfo.Length >= MaxFileSize)
             {
+                // If tracing file is maxxed-out, start a new tracing file.
                 _currentTraceFileInfo = new FileInfo(NewFileName());
             }
+
             // Write out to the file and retry if IO errors occur.
             await ActionWithRetry<IOException>(() =>
             {
@@ -73,7 +72,14 @@ namespace Apache.Arrow.Adbc.Tracing
             });
         }
 
-        private static async Task ActionWithRetry<T>(Action action, int maxRetries = 3) where T : Exception
+        internal static IOrderedEnumerable<FileInfo> GetTracingFiles(DirectoryInfo tracingDirectory, string searchPattern)
+        {
+            return tracingDirectory
+                .EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly)
+                .OrderByDescending(f => f.LastWriteTimeUtc);
+        }
+
+        private static async Task ActionWithRetry<T>(Action action, int maxRetries = 5) where T : Exception
         {
             int retryCount = 0;
             TimeSpan pauseTime = TimeSpan.FromMilliseconds(10);
@@ -92,30 +98,22 @@ namespace Apache.Arrow.Adbc.Tracing
                     await Task.Delay(pauseTime);
                 }
             }
+            // TODO: Handle if not complete after retries
         }
 
         private string NewFileName()
         {
             string dateTimeSortable = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd-HH-mm-ss-fff");
-            return Path.Combine(_traceDirectory.FullName, $"{_fileBaseName}-trace-{dateTimeSortable}.log");
+            return Path.Combine(_tracingDirectory.FullName, $"{_fileBaseName}-trace-{dateTimeSortable}.log");
         }
 
         private void EnsureTraceDirectory()
         {
-            if (!Directory.Exists(_traceDirectory.FullName))
+            if (!Directory.Exists(_tracingDirectory.FullName))
             {
-                Directory.CreateDirectory(_traceDirectory.FullName);
+                Directory.CreateDirectory(_tracingDirectory.FullName);
             }
         }
-
-        //private static async Task CleanupTraceDirectory(FileInfo traceDirectory, TimeSpan CancellationToken cancellationToken)
-        //{
-        //    while (!cancellationToken.IsCancellationRequested)
-        //    {
-
-        //    }
-        //    return;
-        //}
 
         protected virtual void Dispose(bool disposing)
         {
@@ -123,23 +121,10 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 if (disposing)
                 {
-                    _cancellationTokenSource.Cancel();
-                    _cancellationTokenSource.Dispose();
-                    // TODO: dispose managed state (managed objects)
                 }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
                 _disposedValue = true;
             }
         }
-
-        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        // ~TracingFile()
-        // {
-        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        //     Dispose(disposing: false);
-        // }
 
         public void Dispose()
         {

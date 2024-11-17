@@ -43,6 +43,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
             Properties = properties;
+            _listener = MaybeAddTracingListener();
 
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
@@ -50,38 +51,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // https://learn.microsoft.com/en-us/dotnet/framework/performance/lazy-initialization#exceptions-in-lazy-objects
             _vendorVersion = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_VER), LazyThreadSafetyMode.PublicationOnly);
             _vendorName = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_NAME), LazyThreadSafetyMode.PublicationOnly);
-            EnsureTracing();
-        }
-
-        private void EnsureTracing()
-        {
-            if (Properties.TryGetValue(TracingOptions.Connection.Trace, out string? traceOption) == true && bool.TryParse(traceOption, out bool traceEnabled))
-            {
-                // TODO: Handle exceptions
-                DirectoryInfo tracingDirectory = EnsureTraceDirectory();
-                // TODO: Check if folder is writable
-                _listener = new TracingFileListener(ActivitySource?.Name ?? GetType().Assembly.GetName().FullName, tracingDirectory.FullName);
-                ActivitySource.AddActivityListener(_listener.ActivityListener);
-            }
-        }
-
-        private DirectoryInfo EnsureTraceDirectory()
-        {
-            DirectoryInfo traceDirectory;
-            if (Properties.TryGetValue(TracingOptions.Connection.TraceLocation, out string? traceLocation) != true)
-            {
-                string? traceLocationDefault = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Apache.Arrow.Adbc", "Tracing");
-                traceDirectory = new DirectoryInfo(traceLocationDefault);
-            }
-            else
-            {
-                traceDirectory = new DirectoryInfo(traceLocation!);
-            }
-            if (!Directory.Exists(traceDirectory.FullName))
-            {
-                Directory.CreateDirectory(traceDirectory.FullName);
-            }
-            return traceDirectory;
         }
 
         internal TCLIService.Client Client
@@ -219,6 +188,33 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TGetResultSetMetadataReq request = new(operationHandle);
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
             return response;
+        }
+
+        private TracingFileListener? MaybeAddTracingListener()
+        {
+            if (!Properties.TryGetValue(TracingOptions.Connection.Trace, out string? traceOption)
+                || !bool.TryParse(traceOption, out bool traceEnabled)
+                || !traceEnabled)
+            {
+                return null;
+            }
+
+            string activitySourceName = ActivitySource?.Name ?? GetType().Assembly.GetName().FullName;
+            DirectoryInfo? tracingDirectory = GetTracingDirectory();
+            TracingFileListener listener = new(activitySourceName, tracingDirectory?.FullName);
+            ActivitySource.AddActivityListener(listener.ActivityListener);
+            return listener;
+        }
+
+        private DirectoryInfo? GetTracingDirectory()
+        {
+            DirectoryInfo? traceDirectory = null;
+            if (Properties.TryGetValue(TracingOptions.Connection.TraceLocation, out string? traceLocation) == true)
+            {
+                traceDirectory = new DirectoryInfo(traceLocation!);
+                // TODO: Check if folder is writable
+            }
+            return traceDirectory;
         }
     }
 }

@@ -18,13 +18,18 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
     public class TracingFileListener : ITracingListener
     {
+        private const int MaxFileCountDefault = 999;
+
         private bool _disposedValue;
         private readonly string _activitySourceName;
         private readonly string _traceFolderLocation;
@@ -32,15 +37,38 @@ namespace Apache.Arrow.Adbc.Tracing
         private static readonly ConcurrentDictionary<string, int> s_listenerCounts = new();
         private readonly ConcurrentQueue<Activity> _activityQueue = new();
         private readonly TracingFile _tracingFile;
-        private readonly object _traceLock = new object();
+        private static readonly string s_tracingLocationDefault = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Apache.Arrow.Adbc", "Tracing");
+        private static readonly object s_lock = new();
+        private static CancellationTokenSource? s_cancellationTokenSource = null;
+        private static Task? s_cleanupTask = null;
 
-        public TracingFileListener(string activitySourceName, string traceFolderLocation)
+        public TracingFileListener(string activitySourceName, string? traceFolderLocation = default)
         {
             _activitySourceName = activitySourceName;
-            _traceFolderLocation = traceFolderLocation;
-            _tracingFile = new TracingFile(activitySourceName, traceFolderLocation);
-            lock (_traceLock)
+            if (traceFolderLocation == null)
             {
+                string? traceLocationDefault = s_tracingLocationDefault;
+                DirectoryInfo traceDirectory = new(traceLocationDefault);
+                _traceFolderLocation = traceDirectory.FullName;
+            }
+            else
+            {
+                _traceFolderLocation = traceFolderLocation;
+                if (!Directory.Exists(_traceFolderLocation))
+                {
+                    // TODO: Handle exceptions
+                    Directory.CreateDirectory(_traceFolderLocation);
+                }
+            }
+
+            _tracingFile = new TracingFile(activitySourceName, _traceFolderLocation);
+            lock (s_lock)
+            {
+                if (s_cancellationTokenSource == null)
+                {
+                    s_cancellationTokenSource= new CancellationTokenSource();
+                    s_cleanupTask = CleanupTraceDirectory(new DirectoryInfo(_traceFolderLocation), activitySourceName, s_cancellationTokenSource.Token);
+                }
                 s_listenerCounts.AddOrUpdate(ListenerId, 1, (k, v) => v + 1);
                 ActivityListener = s_listeners.GetOrAdd(ListenerId, (_) => NewActivityListener());
             }
@@ -105,7 +133,7 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 if (disposing)
                 {
-                    lock (_traceLock)
+                    lock (s_lock)
                     {
                         if (s_listenerCounts.TryGetValue(ListenerId, out int count))
                         {
@@ -115,15 +143,54 @@ namespace Apache.Arrow.Adbc.Tracing
                             }
                             else
                             {
-                                s_listenerCounts.TryRemove(ListenerId, out count);
+                                s_listenerCounts.TryRemove(ListenerId, out _);
                                 s_listeners.TryRemove(ListenerId, out ActivityListener? listener);
                                 listener?.Dispose();
+                                s_cancellationTokenSource?.Cancel();
+                                s_cancellationTokenSource?.Dispose();
+                                s_cancellationTokenSource = null;
+                                s_cleanupTask?.Wait();
+                                s_cleanupTask?.Dispose();
+                                s_cleanupTask = null;
                             }
                         }
                     }
                 }
                 _disposedValue = true;
             }
+        }
+
+        private static async Task CleanupTraceDirectory(DirectoryInfo traceDirectory, string fileBaseName, CancellationToken cancellationToken)
+        {
+            string searchPattern = fileBaseName + "-trace-*.log";
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (traceDirectory.Exists)
+                {
+                    FileInfo[] tracingFiles = [.. TracingFile.GetTracingFiles(traceDirectory, searchPattern)];
+                    if (tracingFiles != null && tracingFiles.Length > MaxFileCountDefault)
+                    {
+                        int filesToRemove = tracingFiles.Length - MaxFileCountDefault;
+                        for (int i = tracingFiles.Length - 1; i > MaxFileCountDefault; i--)
+                        {
+                            FileInfo? file = tracingFiles.ElementAtOrDefault(i);
+                            if (file != null)
+                            {
+                                try
+                                {
+                                    file.Delete();
+                                }
+                                catch
+                                {
+                                    // Ignore error
+                                }
+                            }
+                        }
+                    }
+                }
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+            }
+            return;
         }
 
         public void Dispose()
