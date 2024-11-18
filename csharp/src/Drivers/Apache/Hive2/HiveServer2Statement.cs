@@ -40,13 +40,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
-            // TODO: Add CTS here
-            await ExecuteStatementAsync();
-            await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds);
-            Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client);
+            try
+            {
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(QueryTimeoutSeconds));
+                await ExecuteStatementAsync(timeoutCts.Token);
+                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, timeoutCts.Token);
+                Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, timeoutCts.Token);
 
-            // TODO: Ensure this is set dynamically based on server capabilities
-            return new QueryResult(-1, Connection.NewReader(this, schema));
+                // TODO: Ensure this is set dynamically based on server capabilities
+                return new QueryResult(-1, Connection.NewReader(this, schema));
+            }
+            catch (OperationCanceledException ex)
+            { 
+                throw new TimeoutException("The query execution timed out.", ex);
+            }
         }
 
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
@@ -114,11 +121,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        protected async Task ExecuteStatementAsync()
+        protected async Task ExecuteStatementAsync(CancellationToken cancellationToken = default)
         {
             TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery);
             SetStatementProperties(executeRequest);
-            TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest);
+            TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
             if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)

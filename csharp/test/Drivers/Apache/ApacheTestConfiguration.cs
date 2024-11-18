@@ -51,9 +51,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
         [JsonPropertyName("polltime_ms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string PollTimeMilliseconds { get; set; } = string.Empty;
 
-        [JsonPropertyName("http_request_timeout_ms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string HttpRequestTimeoutMilliseconds { get; set; } = string.Empty;
-
         [JsonPropertyName("connect_timeout_ms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string ConnectTimeoutMilliseconds { get; set; } = string.Empty;
 

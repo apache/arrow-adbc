@@ -62,28 +62,42 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
-            // TODO: Write integration test to confirm this will throw a cancellation exception
-            using CancellationTokenSource cts = new(TimeSpan.FromMilliseconds(ConnectTimeoutMilliseconds));
-            TTransport transport = await CreateTransportAsync();
-            TProtocol protocol = await CreateProtocolAsync(transport);
-            _transport = protocol.Transport;
-            _client = new TCLIService.Client(protocol);
-            TOpenSessionReq request = CreateSessionRequest();
-            TOpenSessionResp? session = await Client.OpenSession(request, cts.Token);
-
-            // Some responses don't raise an exception. Explicitly check the status.
-            if (session == null)
+            try
             {
-                throw new HiveServer2Exception("unable to open session. unknown error.");
-            }
-            else if (session.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-            {
-                throw new HiveServer2Exception(session.Status.ErrorMessage)
-                    .SetNativeError(session.Status.ErrorCode)
-                    .SetSqlState(session.Status.SqlState);
-            }
+                TTransport transport = await CreateTransportAsync();
+                TProtocol protocol = await CreateProtocolAsync(transport);
+                _transport = protocol.Transport;
+                _client = new TCLIService.Client(protocol);
+                TOpenSessionReq request = CreateSessionRequest();
 
-            SessionHandle = session.SessionHandle;
+                // TODO: Write integration test to confirm this will throw a cancellation exception
+                // Create a cancellation token source with a ConnectTimeoutMilliseconds
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(ConnectTimeoutMilliseconds));
+                TOpenSessionResp? session = await Client.OpenSession(request, cts.Token);
+
+                // Explicitly check the session status
+                if (session == null)
+                {
+                    throw new HiveServer2Exception("Unable to open session. Unknown error.");
+                }
+                else if (session.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+                {
+                    throw new HiveServer2Exception(session.Status.ErrorMessage)
+                        .SetNativeError(session.Status.ErrorCode)
+                        .SetSqlState(session.Status.SqlState);
+                }
+
+                SessionHandle = session.SessionHandle;
+            }
+            catch (OperationCanceledException ex)
+            {
+                throw new TimeoutException("The operation timed out while attempting to open a session.", ex);
+            }
+            catch (Exception ex)
+            {
+                // Handle other exceptions if necessary
+                throw new HiveServer2Exception("An unexpected error occurred while opening the session.", ex);
+            }
         }
 
         internal TSessionHandle? SessionHandle { get; private set; }
@@ -116,14 +130,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             throw new NotImplementedException();
         }
 
-        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds)
+        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
         {
             TGetOperationStatusResp? statusResponse = null;
             do
             {
                 if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds); }
                 TGetOperationStatusReq request = new(operationHandle);
-                statusResponse = await client.GetOperationStatus(request);
+                statusResponse = await client.GetOperationStatus(request, cancellationToken);
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
         }
 
