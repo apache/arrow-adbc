@@ -20,11 +20,13 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Thrift.Protocol.Entities;
 using Thrift.Transport;
 using Xunit;
 using Xunit.Abstractions;
+using static Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.SparkConnectionTest;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
@@ -52,12 +54,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         [SkippableTheory]
-        [InlineData(-1, typeof(TimeoutException))]
-        [InlineData(10, typeof(TimeoutException))]
-        [InlineData(30000, null)]
-        [InlineData(null, null)]
-        [InlineData(-1, null)]
-        public void ConnectionTimeoutTest(int? connectTimeoutMilliseconds, Type? exceptionType)
+        [InlineData(1, typeof(TimeoutException), typeof(TTransportException))]
+        [InlineData(10, typeof(TimeoutException), typeof(TTransportException))]
+        [InlineData(30000, null, null)]
+        [InlineData(null, null, null)]
+        [InlineData(-1, null, null)]
+        public void ConnectionTimeoutTest(int? connectTimeoutMilliseconds, Type? exceptionType, Type? alternateExceptionType)
         {
             SparkTestConfiguration testConfiguration = (SparkTestConfiguration)TestConfiguration.Clone();
 
@@ -74,7 +76,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             {
                 if (exceptionType != null)
                 {
-                    Assert.IsType(exceptionType, aex.InnerException);
+                    if (alternateExceptionType != null && aex.InnerException?.GetType() != exceptionType)
+                    {
+                        if (aex.InnerException?.GetType() == typeof(HiveServer2Exception))
+                        {
+                            // a TTransportException is inside a HiveServer2Exception
+                            Assert.IsType(alternateExceptionType, aex.InnerException!.InnerException);
+                        }
+                    }
+                    else
+                    {
+                        Assert.IsType(exceptionType, aex.InnerException);
+                    }
                 }
                 else
                 {
