@@ -19,15 +19,19 @@ use adbc_core::{
     driver_manager::ManagedDatabase,
     error::Result,
     options::{OptionConnection, OptionDatabase, OptionValue},
-    Database, Optionable,
+    Optionable,
 };
 
-use crate::SnowflakeConnection;
+use crate::Connection;
+
+mod builder;
+pub use builder::*;
 
 /// Snowflake ADBC Database.
-pub struct SnowflakeDatabase(pub(crate) ManagedDatabase);
+#[derive(Clone)]
+pub struct Database(pub(crate) ManagedDatabase);
 
-impl Optionable for SnowflakeDatabase {
+impl Optionable for Database {
     type Option = OptionDatabase;
 
     fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
@@ -51,19 +55,17 @@ impl Optionable for SnowflakeDatabase {
     }
 }
 
-impl Database for SnowflakeDatabase {
-    type ConnectionType = SnowflakeConnection;
+impl adbc_core::Database for Database {
+    type ConnectionType = Connection;
 
     fn new_connection(&mut self) -> Result<Self::ConnectionType> {
-        self.0.new_connection().map(SnowflakeConnection)
+        self.0.new_connection().map(Connection)
     }
 
     fn new_connection_with_opts(
         &mut self,
         opts: impl IntoIterator<Item = (OptionConnection, OptionValue)>,
     ) -> Result<Self::ConnectionType> {
-        self.0
-            .new_connection_with_opts(opts)
-            .map(SnowflakeConnection)
+        self.0.new_connection_with_opts(opts).map(Connection)
     }
 }

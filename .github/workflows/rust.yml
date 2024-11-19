@@ -117,6 +117,9 @@ jobs:
         run: cargo clippy --workspace --all-targets --all-features -- -Dwarnings
       - name: Test
         run: cargo test --workspace --all-targets --all-features
+        env:
+          ADBC_SNOWFLAKE_TESTS: 1
+          ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
       - name: Doctests
         run: cargo test --workspace --doc --all-features
       - name: Check docs

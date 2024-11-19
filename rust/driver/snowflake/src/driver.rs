@@ -15,21 +15,43 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use std::ffi::{c_int, c_void};
+use std::{
+    ffi::{c_int, c_void},
+    fmt,
+};
 
 use adbc_core::{
     driver_manager::ManagedDriver,
     error::Result,
     ffi::{FFI_AdbcDriverInitFunc, FFI_AdbcError, FFI_AdbcStatusCode},
     options::{AdbcVersion, OptionDatabase, OptionValue},
-    Driver,
 };
 
-use crate::SnowflakeDatabase;
+use crate::Database;
+
+mod builder;
+pub use builder::*;
 
 /// Snowflake ADBC Driver.
-pub struct SnowflakeDriver(ManagedDriver);
+#[derive(Clone)]
+pub struct Driver(ManagedDriver);
 
+/// Panics when the drivers fails to load.
+impl Default for Driver {
+    fn default() -> Self {
+        Self::try_load().expect("driver init")
+    }
+}
+
+impl fmt::Debug for Driver {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SnowflakeDriver")
+            .field("version", &self.0.version())
+            .finish_non_exhaustive()
+    }
+}
+
+// TODO(mbrobbel): support different linking methods through crate features
 #[link(name = "snowflake", kind = "static")]
 extern "C" {
     #[link_name = "SnowflakeDriverInit"]
@@ -37,25 +59,58 @@ extern "C" {
         -> FFI_AdbcStatusCode;
 }
 
-impl SnowflakeDriver {
-    /// Returns a [`SnowflakeDriver`] using the provided [`AdbcVersion`].
-    pub fn try_new(version: AdbcVersion) -> Result<Self> {
+impl Driver {
+    /// Returns a [`Driver`].
+    ///
+    /// Defaults to the loading the latest [`AdbcVersion`]. To load the
+    /// [`Driver`] with a different version use [`Builder::with_adbc_version`],
+    /// or to load the configuration from environment variables use
+    /// [`Builder::from_env`].
+    ///
+    /// # Error
+    ///
+    /// Returns an error when the driver fails to load.
+    pub fn try_load() -> Result<Self> {
+        Self::try_new(Default::default())
+    }
+
+    fn try_new(version: AdbcVersion) -> Result<Self> {
         let driver_init: FFI_AdbcDriverInitFunc = init;
         ManagedDriver::load_static(&driver_init, version).map(Self)
     }
 }
 
-impl Driver for SnowflakeDriver {
-    type DatabaseType = SnowflakeDatabase;
+impl adbc_core::Driver for Driver {
+    type DatabaseType = Database;
 
     fn new_database(&mut self) -> Result<Self::DatabaseType> {
-        self.0.new_database().map(SnowflakeDatabase)
+        self.0.new_database().map(Database)
     }
 
     fn new_database_with_opts(
         &mut self,
         opts: impl IntoIterator<Item = (OptionDatabase, OptionValue)>,
     ) -> Result<Self::DatabaseType> {
-        self.0.new_database_with_opts(opts).map(SnowflakeDatabase)
+        self.0.new_database_with_opts(opts).map(Database)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn try_load(version: AdbcVersion) -> Result<()> {
+        Builder::default().with_adbc_version(version).try_load()?;
+        Ok(())
+    }
+
+    #[test]
+    fn load_v1_0_0() -> Result<()> {
+        try_load(AdbcVersion::V100)
+    }
+
+    #[test]
+    fn load_v1_1_0() -> Result<()> {
+        try_load(AdbcVersion::V110)
     }
 }

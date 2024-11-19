@@ -16,29 +16,33 @@
 // under the License.
 
 //! Snowflake ADBC driver, based on the Go driver.
+//!
+//! ## Crate features
+//!
+//! ### `env`
+//!
+//! Adds `from_env` methods to initialize builders from environment variables.
+//!
+//! ### `dotenv`: `env`
+//!
+//! Loads environment variables from `.env` files in `from_env` methods.
+//!
 
-mod driver;
-pub use driver::*;
+#![cfg_attr(docsrs, feature(doc_auto_cfg, doc_cfg))]
 
-mod database;
-pub use database::*;
+pub mod driver;
+pub use driver::Driver;
 
-mod connection;
-pub use connection::*;
+pub mod database;
+pub use database::Database;
 
-mod statement;
-pub use statement::*;
+pub mod connection;
+pub use connection::Connection;
 
-#[cfg(test)]
-mod tests {
-    use adbc_core::{error::Result, options::AdbcVersion};
+pub mod statement;
+pub use statement::Statement;
 
-    use super::*;
+pub mod builder;
 
-    #[test]
-    fn load_driver() -> Result<()> {
-        SnowflakeDriver::try_new(AdbcVersion::V100)?;
-        SnowflakeDriver::try_new(AdbcVersion::V110)?;
-        Ok(())
-    }
-}
+#[cfg(feature = "env")]
+pub(crate) mod duration;

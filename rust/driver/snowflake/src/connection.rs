@@ -21,17 +21,20 @@ use adbc_core::{
     driver_manager::ManagedConnection,
     error::Result,
     options::{InfoCode, OptionConnection, OptionValue},
-    Connection, Optionable,
+    Optionable,
 };
 use arrow_array::RecordBatchReader;
 use arrow_schema::Schema;
 
-use crate::SnowflakeStatement;
+use crate::Statement;
+
+mod builder;
+pub use builder::*;
 
 /// Snowflake ADBC Connection.
-pub struct SnowflakeConnection(pub(crate) ManagedConnection);
+pub struct Connection(pub(crate) ManagedConnection);
 
-impl Optionable for SnowflakeConnection {
+impl Optionable for Connection {
     type Option = OptionConnection;
 
     fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
@@ -55,11 +58,11 @@ impl Optionable for SnowflakeConnection {
     }
 }
 
-impl Connection for SnowflakeConnection {
-    type StatementType = SnowflakeStatement;
+impl adbc_core::Connection for Connection {
+    type StatementType = Statement;
 
     fn new_statement(&mut self) -> Result<Self::StatementType> {
-        self.0.new_statement().map(SnowflakeStatement)
+        self.0.new_statement().map(Statement)
     }
 
     fn cancel(&mut self) -> Result<()> {

@@ -53,5 +53,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("cargo:rustc-link-lib=framework=Security");
     }
 
+    // Rebuild when tests are enabled.
+    println!("cargo:rerun-if-env-changed=ADBC_SNOWFLAKE_TESTS");
+
     Ok(())
 }

@@ -19,15 +19,15 @@ use adbc_core::{
     driver_manager::ManagedStatement,
     error::Result,
     options::{OptionStatement, OptionValue},
-    Optionable, PartitionedResult, Statement,
+    Optionable, PartitionedResult,
 };
 use arrow_array::{RecordBatch, RecordBatchReader};
 use arrow_schema::Schema;
 
 /// Snowflake ADBC Statement.
-pub struct SnowflakeStatement(pub(crate) ManagedStatement);
+pub struct Statement(pub(crate) ManagedStatement);
 
-impl Optionable for SnowflakeStatement {
+impl Optionable for Statement {
     type Option = OptionStatement;
 
     fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
@@ -51,7 +51,7 @@ impl Optionable for SnowflakeStatement {
     }
 }
 
-impl Statement for SnowflakeStatement {
+impl adbc_core::Statement for Statement {
     fn bind(&mut self, batch: RecordBatch) -> Result<()> {
         self.0.bind(batch)
     }
