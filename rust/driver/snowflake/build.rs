@@ -15,9 +15,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use std::{env, error::Error, path::PathBuf, process::Command};
+use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
+/// Build and link the Go driver statically.
+#[cfg(feature = "bundled")]
+fn bundled() -> Result<(), Box<dyn Error>> {
+    use std::{env, path::PathBuf, process::Command};
+
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
     let go_dir = manifest_dir.ancestors().nth(3).unwrap().join("go");
     let go_pkg = go_dir.join("adbc/pkg/snowflake");
@@ -52,6 +56,35 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("cargo:rustc-link-lib=framework=CoreFoundation");
         println!("cargo:rustc-link-lib=framework=Security");
     }
+
+    Ok(())
+}
+
+/// Link the Go driver.
+#[cfg(feature = "linked")]
+fn linked() -> Result<(), Box<dyn Error>> {
+    // Rebuild when config var changes.
+    println!("cargo:rerun-if-env-changed=ADBC_SNOWFLAKE_GO_LIB_DIR");
+
+    // Add search path if requested.
+    if let Some(path) = option_env!("ADBC_SNOWFLAKE_GO_LIB_DIR") {
+        println!("cargo:rustc-link-search={path}");
+    }
+
+    // Link the driver.
+    println!("cargo:rustc-link-lib=adbc_driver_snowflake");
+
+    Ok(())
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    // Bundle the Go driver.
+    #[cfg(feature = "bundled")]
+    bundled()?;
+
+    // Link the Go driver.
+    #[cfg(feature = "linked")]
+    linked()?;
 
     // Rebuild when tests are enabled.
     println!("cargo:rerun-if-env-changed=ADBC_SNOWFLAKE_TESTS");

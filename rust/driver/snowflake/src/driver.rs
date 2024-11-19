@@ -15,15 +15,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use std::{
-    ffi::{c_int, c_void},
-    fmt,
-};
+#[cfg(any(feature = "bundled", feature = "linked"))]
+use std::ffi::{c_int, c_void};
+use std::{fmt, sync::LazyLock};
 
+#[cfg(any(feature = "bundled", feature = "linked"))]
+use adbc_core::ffi::{FFI_AdbcDriverInitFunc, FFI_AdbcError, FFI_AdbcStatusCode};
 use adbc_core::{
     driver_manager::ManagedDriver,
     error::Result,
-    ffi::{FFI_AdbcDriverInitFunc, FFI_AdbcError, FFI_AdbcStatusCode},
     options::{AdbcVersion, OptionDatabase, OptionValue},
 };
 
@@ -31,6 +31,14 @@ use crate::Database;
 
 mod builder;
 pub use builder::*;
+
+static DRIVER: LazyLock<Result<ManagedDriver>> = LazyLock::new(|| {
+    ManagedDriver::load_dynamic_from_name(
+        "adbc_driver_snowflake",
+        Some(b"SnowflakeDriverInit"),
+        Default::default(),
+    )
+});
 
 /// Snowflake ADBC Driver.
 #[derive(Clone)]
@@ -51,8 +59,7 @@ impl fmt::Debug for Driver {
     }
 }
 
-// TODO(mbrobbel): support different linking methods through crate features
-#[link(name = "snowflake", kind = "static")]
+#[cfg(any(feature = "bundled", feature = "linked"))]
 extern "C" {
     #[link_name = "SnowflakeDriverInit"]
     fn init(version: c_int, raw_driver: *mut c_void, err: *mut FFI_AdbcError)
@@ -75,8 +82,30 @@ impl Driver {
     }
 
     fn try_new(version: AdbcVersion) -> Result<Self> {
-        let driver_init: FFI_AdbcDriverInitFunc = init;
-        ManagedDriver::load_static(&driver_init, version).map(Self)
+        // Load the bundled or linked driver.
+        #[cfg(any(feature = "bundled", feature = "linked"))]
+        {
+            let driver_init: FFI_AdbcDriverInitFunc = init;
+            ManagedDriver::load_static(&driver_init, version).map(Self)
+        }
+        // Fallback: attempt to dynamically load the driver.
+        #[cfg(not(any(feature = "bundled", feature = "linked")))]
+        {
+            let _ = version;
+            Self::try_new_dynamic()
+        }
+    }
+
+    fn try_new_dynamic() -> Result<Self> {
+        DRIVER.clone().map(Self)
+    }
+
+    /// Returns a dynamically loaded [`Driver`].
+    ///
+    /// This attempts to load the `adbc_driver_snowflake` library using the
+    /// default `AdbcVersion`.
+    pub fn try_load_dynamic() -> Result<Self> {
+        Self::try_new_dynamic()
     }
 }
 
@@ -112,5 +141,12 @@ mod tests {
     #[test]
     fn load_v1_1_0() -> Result<()> {
         try_load(AdbcVersion::V110)
+    }
+
+    #[test]
+    fn dynamic() -> Result<()> {
+        let _a = Driver::try_load_dynamic()?;
+        let _b = Driver::try_load_dynamic()?;
+        Ok(())
     }
 }

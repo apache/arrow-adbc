@@ -24,7 +24,13 @@ authors.workspace = true
 license.workspace = true
 
 [features]
-default = ["env", "dotenv"]
+default = ["bundled", "env", "dotenv"]
+
+# Building/linking Go driver
+bundled = []
+linked = []
+
+# Configuration
 env = ["dep:regex"]
 dotenv = ["env", "dep:dotenvy"]
 

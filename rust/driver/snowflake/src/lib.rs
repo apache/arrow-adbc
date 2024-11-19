@@ -17,15 +17,30 @@
 
 //! Snowflake ADBC driver, based on the Go driver.
 //!
-//! ## Crate features
+//! # Features
 //!
-//! ### `env`
+//! ## Linking
+//!
+//! ### `bundled` (default)
+//!
+//! Builds the Go Snowflake driver from source and links it statically. This
+//! requires a Go compiler to be installed.
+//!
+//! ### `linked`
+//!
+//! Link the Go Snowflake driver at build time. Set `ADBC_SNOWFLAKE_GO_LIB_DIR`
+//! to add a search paths for the linker.
+//!
+//! ## Configuration
+//!
+//! ### `env` (default)
 //!
 //! Adds `from_env` methods to initialize builders from environment variables.
 //!
-//! ### `dotenv`: `env`
+//! ### `dotenv`: `env` (default)
 //!
 //! Loads environment variables from `.env` files in `from_env` methods.
+//!
 //!
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg, doc_cfg))]
