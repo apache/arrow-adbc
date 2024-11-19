@@ -182,7 +182,7 @@ mod tests {
         );
         assert_eq!(
             parse_duration("1h2m3s4ms5us6ns"),
-            Ok(Duration::from_secs(60 * 60 * 1)
+            Ok(Duration::from_secs(60 * 60)
                 + Duration::from_secs(60 * 2)
                 + Duration::from_secs(3)
                 + Duration::from_millis(4)
