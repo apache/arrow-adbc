@@ -23,7 +23,6 @@ using Apache.Arrow.Adbc.Tests.Xunit;
 using Thrift.Transport;
 using Xunit;
 using Xunit.Abstractions;
-using static Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.SparkConnectionTest;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
@@ -139,6 +138,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             }
         }
 
+        /// <summary>
+        /// Queries the backend with various timeouts.
+        /// </summary>
+        /// <param name="statementWithExceptions"></param>
         [SkippableTheory]
         [ClassData(typeof(StatementTimeoutTestData))]
         internal void StatementTimeoutTest(StatementWithExceptions statementWithExceptions)
@@ -188,6 +191,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
     }
 
+    /// <summary>
+    /// Data type used for metadata timeout tests.
+    /// </summary>
     internal class StatementWithExceptions
     {
         public StatementWithExceptions(int? queryTimeoutSeconds, string? query, Type? exceptionType)
@@ -208,11 +214,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public Type? ExceptionType { get; }
 
         /// <summary>
-        /// If null, uses the default TestConfiguration
+        /// If null, uses the default TestConfiguration.
         /// </summary>
         public string? Query { get; }
     }
 
+    /// <summary>
+    /// Collection of <see cref="StatementWithExceptions"/> for testing statement timeouts."/>
+    /// </summary>
     internal class StatementTimeoutTestData : TheoryData<StatementWithExceptions>
     {
         public StatementTimeoutTestData()

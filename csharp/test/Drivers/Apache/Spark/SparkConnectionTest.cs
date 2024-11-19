@@ -53,6 +53,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             OutputHelper?.WriteLine(exeption.Message);
         }
 
+        /// <summary>
+        /// Tests connection timeout to establish a session with the backend.
+        /// </summary>
+        /// <param name="connectTimeoutMilliseconds">The timeout (in ms)</param>
+        /// <param name="exceptionType">The exception type to expect (if any)</param>
+        /// <param name="alternateExceptionType">An alternate exception that may occur (if any)</param>
         [SkippableTheory]
         [InlineData(1, typeof(TimeoutException), typeof(TTransportException))]
         [InlineData(10, typeof(TimeoutException), typeof(TTransportException))]
@@ -82,6 +88,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                         {
                             // a TTransportException is inside a HiveServer2Exception
                             Assert.IsType(alternateExceptionType, aex.InnerException!.InnerException);
+                        }
+                        else
+                        {
+                            throw;
                         }
                     }
                     else
@@ -135,6 +145,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             }
         }
 
+        /// <summary>
+        /// Data type used for metadata timeout tests.
+        /// </summary>
         internal class MetadataWithExceptions
         {
             public MetadataWithExceptions(int? queryTimeoutSeconds, string actionName, Action<SparkTestConfiguration> action, Type? exceptionType, Type? alternateExceptionType)
@@ -225,6 +238,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 AddAction("getTableSchema", getTableSchema);
             }
 
+            /// <summary>
+            /// Adds the action with the default timeouts.
+            /// </summary>
+            /// <param name="name">The friendly name of the action.</param>
+            /// <param name="action">The action to perform.</param>
+            /// <param name="alternateExceptions">Optional list of alternate exceptions that are possible. Must have 5 items if present.</param>
             private void AddAction(string name, Action<SparkTestConfiguration> action, List<Type?>? alternateExceptions = null)
             {
                 List<Type?> expectedExceptions = new List<Type?>()
@@ -255,6 +274,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             private void AddAction(string name, Action<SparkTestConfiguration> action, List<Type?> expectedExceptions, List<Type?>? alternateExceptions)
             {
                 Assert.True(expectedExceptions.Count == 5);
+
+                if (alternateExceptions != null)
+                {
+                    Assert.True(alternateExceptions.Count == 5);
+                }
 
                 Add(new(-1, name, action, expectedExceptions[0], alternateExceptions?[0]));
                 Add(new(1, name, action, expectedExceptions[1], alternateExceptions?[1]));
