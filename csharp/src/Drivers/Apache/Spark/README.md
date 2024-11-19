@@ -42,6 +42,14 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `adbc.apache.statement.polltime_ms` | If polling is necessary to get a result, this option sets the length of time (in milliseconds) to wait between polls. | `500` |
 | `adbc.apache.statement.query_timeout_s` | Sets the maximum time (in seconds) for a query to complete. Values can be -1 (infinite) or greater than zero. | `60` |
 
+## Timeout Configuration
+
+Connect timeout to open a new session
+
+Query timeout for any subsequent calls to the server for requests
+
+Polling timeout - the time between polls, up to a Query timeout
+
 ## Spark Types
 
 The following table depicts how the Spark ADBC driver converts a Spark type to an Arrow type and a .NET type:

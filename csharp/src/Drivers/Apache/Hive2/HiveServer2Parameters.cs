@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-using System;
-
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     public static class DataTypeConversionOptions

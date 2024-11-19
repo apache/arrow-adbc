@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
         internal const int QueryTimeoutSecondsDefault = 60;
-        private const int HttpRequestTimeoutMillisecondsDefault = int.MaxValue;
+        //private const int HttpRequestTimeoutMillisecondsDefault = int.MaxValue;
         private const int ConnectTimeoutMillisecondDefault = 30000;
         private TTransport? _transport;
         private TCLIService.Client? _client;
@@ -47,6 +47,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // https://learn.microsoft.com/en-us/dotnet/framework/performance/lazy-initialization#exceptions-in-lazy-objects
             _vendorVersion = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_VER), LazyThreadSafetyMode.PublicationOnly);
             _vendorName = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_NAME), LazyThreadSafetyMode.PublicationOnly);
+
+            if (properties.TryGetValue(ApacheParameters.QueryTimeoutSeconds, out string? queryTimeoutSeconds))
+            {
+                UpdateQueryTimeoutIfValid(ApacheParameters.QueryTimeoutSeconds, queryTimeoutSeconds);
+            }
         }
 
         internal TCLIService.Client Client
@@ -57,6 +62,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal string VendorVersion => _vendorVersion.Value;
 
         internal string VendorName => _vendorName.Value;
+
+        protected internal int QueryTimeoutSeconds { get; private set; } = HiveServer2Connection.QueryTimeoutSecondsDefault;
 
         internal IReadOnlyDictionary<string, string> Properties { get; }
 
@@ -70,10 +77,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 _client = new TCLIService.Client(protocol);
                 TOpenSessionReq request = CreateSessionRequest();
 
-                // TODO: Write integration test to confirm this will throw a cancellation exception
-                // Create a cancellation token source with a ConnectTimeoutMilliseconds
-                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(ConnectTimeoutMilliseconds));
-                TOpenSessionResp? session = await Client.OpenSession(request, cts.Token);
+                CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(TimeSpan.FromMilliseconds(ConnectTimeoutMilliseconds));
+                TOpenSessionResp? session = await Client.OpenSession(request, timeoutToken);
 
                 // Explicitly check the session status
                 if (session == null)
@@ -106,7 +111,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal HiveServer2TlsOption TlsOptions { get; set; } = HiveServer2TlsOption.Empty;
 
-        protected internal int HttpRequestTimeoutMilliseconds { get; set; } = HttpRequestTimeoutMillisecondsDefault;
+        //protected internal int HttpRequestTimeoutMilliseconds { get; set; } = HttpRequestTimeoutMillisecondsDefault;
 
         protected internal int ConnectTimeoutMilliseconds { get; set; } = ConnectTimeoutMillisecondDefault;
 
@@ -129,6 +134,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             throw new NotImplementedException();
         }
+
+        private void UpdateQueryTimeoutIfValid(string key, string value) => QueryTimeoutSeconds = !string.IsNullOrEmpty(value) && int.TryParse(value, out int queryTimeout) && (queryTimeout > 0 || queryTimeout == -1)
+            ? queryTimeout
+            : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value of -1 (infinite) or greater than zero.");
 
         internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
         {

@@ -32,6 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected virtual void SetStatementProperties(TExecuteStatementReq statement)
         {
+            statement.QueryTimeout = QueryTimeoutSeconds;
         }
 
         public override QueryResult ExecuteQuery() => ExecuteQueryAsync().AsTask().Result;
@@ -42,10 +43,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             try
             {
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(QueryTimeoutSeconds));
-                await ExecuteStatementAsync(timeoutCts.Token);
-                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, timeoutCts.Token);
-                Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, timeoutCts.Token);
+                CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(TimeSpan.FromSeconds(QueryTimeoutSeconds));
+
+                // this could either:
+                // take QueryTimeoutSeconds * 3
+                // OR
+                // take QueryTimeoutSeconds (but this could be restricting)
+
+                await ExecuteStatementAsync(timeoutToken); // --> get QueryTimeout +
+                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, timeoutToken); // + poll, up to QueryTimeout
+                Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, timeoutToken); // + get the result, up to QueryTimeout
 
                 // TODO: Ensure this is set dynamically based on server capabilities
                 return new QueryResult(-1, Connection.NewReader(this, schema));
@@ -65,7 +72,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
             const string NumberOfAffectedRowsColumnName = "num_affected_rows";
-            // TODO: Add CTS here
+            // TODO: Add CTS here --> this is inside of ExecuteQueryAsync
 
             QueryResult queryResult = await ExecuteQueryAsync();
             if (queryResult.Stream == null)
@@ -107,13 +114,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             switch (key)
             {
-                case Options.PollTimeMilliseconds:
+                case ApacheParameters.PollTimeMilliseconds:
                     UpdatePollTimeIfValid(key, value);
                     break;
-                case Options.BatchSize:
+                case ApacheParameters.BatchSize:
                     UpdateBatchSizeIfValid(key, value);
                     break;
-                case Options.QueryTimeoutSeconds:
+                case ApacheParameters.QueryTimeoutSeconds:
                     UpdateQueryTimeoutIfValid(key, value);
                     break;
                 default:
@@ -139,22 +146,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
 
-        protected internal int QueryTimeoutSeconds { get; private set; } = HiveServer2Connection.QueryTimeoutSecondsDefault;
+        protected internal int QueryTimeoutSeconds { get; set; }
 
         public HiveServer2Connection Connection { get; private set; }
 
         public TOperationHandle? OperationHandle { get; private set; }
-
-        /// <summary>
-        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
-        /// </summary>
-        public class Options
-        {
-            // Options common to all HiveServer2Statement-derived drivers go here
-            public const string PollTimeMilliseconds = "adbc.apache.statement.polltime_ms";
-            public const string BatchSize = "adbc.apache.statement.batch_size";
-            public const string QueryTimeoutSeconds = "adbc.apache.statement.query_timeout_s";
-        }
 
         private void UpdatePollTimeIfValid(string key, string value) => PollTimeMilliseconds = !string.IsNullOrEmpty(key) && int.TryParse(value, result: out int pollTimeMilliseconds) && pollTimeMilliseconds >= 0
             ? pollTimeMilliseconds
@@ -167,6 +163,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private void UpdateQueryTimeoutIfValid(string key, string value) => QueryTimeoutSeconds = !string.IsNullOrEmpty(value) && int.TryParse(value, out int queryTimeout) && (queryTimeout > 0 || queryTimeout == -1)
             ? queryTimeout
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value of -1 (infinite) or greater than zero.");
+
 
         public override void Dispose()
         {

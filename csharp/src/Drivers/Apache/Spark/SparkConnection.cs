@@ -19,8 +19,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -268,7 +266,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override AdbcStatement CreateStatement()
         {
-            return new SparkStatement(this);
+            SparkStatement st = new SparkStatement(this);
+            st.QueryTimeoutSeconds = this.QueryTimeoutSeconds;
+            return st;
         }
 
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
@@ -420,7 +420,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
                 GetDirectResults = sparkGetDirectResults
             };
-            TGetTableTypesResp resp = Client.GetTableTypes(req).Result;
+
+            CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(TimeSpan.FromSeconds(QueryTimeoutSeconds));
+
+            TGetTableTypesResp resp = Client.GetTableTypes(req, timeoutToken).Result;
+
             if (resp.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new HiveServer2Exception(resp.Status.ErrorMessage)
@@ -486,7 +490,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
                 getCatalogsReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetCatalogsResp getCatalogsResp = Client.GetCatalogs(getCatalogsReq).Result;
+                CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(TimeSpan.FromSeconds(QueryTimeoutSeconds));
+
+                TGetCatalogsResp getCatalogsResp = Client.GetCatalogs(getCatalogsReq, timeoutToken).Result;
+
                 if (getCatalogsResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getCatalogsResp.Status.ErrorMessage);

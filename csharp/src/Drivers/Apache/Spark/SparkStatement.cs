@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // TODO: Ensure this is set dynamically depending on server capabilities.
             statement.EnforceResultPersistenceMode = false;
             statement.ResultPersistenceMode = 2;
-
+            statement.QueryTimeout = QueryTimeoutSeconds;
             statement.CanReadArrowResult = true;
             statement.CanDownloadResult = true;
             statement.ConfOverlay = SparkConnection.timestampConfig;
@@ -66,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
         /// </summary>
-        public new sealed class Options : HiveServer2Statement.Options
+        public sealed class Options : ApacheParameters
         {
             // options specific to Spark go here
         }

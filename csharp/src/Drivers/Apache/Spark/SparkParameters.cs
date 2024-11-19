@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-using static System.Net.WebRequestMethods;
-
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     /// <summary>

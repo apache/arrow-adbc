@@ -165,7 +165,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             ThriftHttpTransport transport = new(httpClient, config)
             {
                 // TODO: Remove support for HttpRequestTimeoutMilliseconds
-                ConnectTimeout = HttpRequestTimeoutMilliseconds,
+                //ConnectTimeout = HttpRequestTimeoutMilliseconds,
             };
             return Task.FromResult<TTransport>(transport);
         }
@@ -251,6 +251,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
         {
             await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault);
+
+            // davidcoe: Should we use a CancellationTokenSource here?
+            //timeoutCts?
+
             TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
             if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {

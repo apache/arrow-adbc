@@ -48,6 +48,35 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             OutputHelper?.WriteLine(exeption.Message);
         }
 
+        [SkippableTheory]
+        //[InlineData("0.01", false)] //--> ArgumentOutOfRangeException
+        [InlineData("1", false)]
+        [InlineData("10", false)]
+        [InlineData("30000", true)]
+        [InlineData(null, true)]
+        [InlineData("-1", true)]
+        public void ConnectionTimeoutTest(string? connectTimeoutMilliseconds, bool shouldSucceed)
+        {
+            SparkTestConfiguration testConfiguration = (SparkTestConfiguration)TestConfiguration.Clone();
+
+            if (!string.IsNullOrEmpty(connectTimeoutMilliseconds))
+                testConfiguration.ConnectTimeoutMilliseconds = connectTimeoutMilliseconds!;
+
+            OutputHelper?.WriteLine($"ConnectTimeoutMilliseconds: {testConfiguration.ConnectTimeoutMilliseconds}. ShouldSucceed: {shouldSucceed}");
+
+            try
+            {
+                NewConnection(testConfiguration);
+            }
+            catch(AggregateException aex)
+            {
+                if (!shouldSucceed)
+                {
+                    Assert.IsType<TimeoutException>(aex.InnerException);
+                }
+            }
+        }
+
         internal class ParametersWithExceptions
         {
             public ParametersWithExceptions(Dictionary<string, string> parameters, Type exceptionType)
