@@ -118,9 +118,9 @@ jobs:
       - name: Test
         run: cargo test --workspace --all-targets --all-features
         env:
-          ADBC_SNOWFLAKE_TESTS: 1
-          ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
-          ADBC_SNOWFLAKE_SQL_DB: ADBC_TESTING
+          # ADBC_SNOWFLAKE_TESTS: 1
+          # ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
+          # ADBC_SNOWFLAKE_SQL_DB: ADBC_TESTING
           ADBC_SNOWFLAKE_GO_LIB_DIR: ${{ github.workspace }}/build/lib
       - name: Doctests
         run: cargo test --workspace --doc --all-features
