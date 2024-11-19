@@ -267,8 +267,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public override AdbcStatement CreateStatement()
         {
             return new SparkStatement(this);
-            //st.QueryTimeoutSeconds = this.QueryTimeoutSeconds;
-            //return st;
         }
 
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
