@@ -202,7 +202,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 };
 
                 AddAction("getTableTypes", getTableTypes);
-                
+
                 Action<SparkTestConfiguration> getTableSchema = (testConfiguration) =>
                 {
                     AdbcConnection cn = sparkConnectionTest.NewConnection(testConfiguration);
@@ -232,7 +232,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             /// <param name="action">The action to perform.</param>
             /// <param name="expectedExceptions">The expected exceptions.</param>
             /// <remarks>
-            /// For List<Type?> the position is based on the behavior when: 
+            /// For List<Type?> the position is based on the behavior when:
             ///    [0] QueryTimeout = -1
             ///    [1] QueryTimeout = 1
             ///    [2] QueryTimeout = 10
