@@ -266,9 +266,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override AdbcStatement CreateStatement()
         {
-            SparkStatement st = new SparkStatement(this);
-            st.QueryTimeoutSeconds = this.QueryTimeoutSeconds;
-            return st;
+            return new SparkStatement(this);
+            //st.QueryTimeoutSeconds = this.QueryTimeoutSeconds;
+            //return st;
         }
 
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
@@ -421,7 +421,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 GetDirectResults = sparkGetDirectResults
             };
 
-            CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(TimeSpan.FromSeconds(QueryTimeoutSeconds));
+            CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
 
             TGetTableTypesResp resp = Client.GetTableTypes(req, timeoutToken).Result;
 
@@ -454,7 +454,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             getColumnsReq.TableName = tableName;
             getColumnsReq.GetDirectResults = sparkGetDirectResults;
 
-            var columnsResponse = Client.GetColumns(getColumnsReq).Result;
+            CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+
+            var columnsResponse = Client.GetColumns(getColumnsReq, timeoutToken).Result;
             if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new Exception(columnsResponse.Status.ErrorMessage);
@@ -485,12 +487,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Trace.TraceError($"getting objects with depth={depth.ToString()}, catalog = {catalogPattern}, dbschema = {dbSchemaPattern}, tablename = {tableNamePattern}");
 
             Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>>();
+            CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+
             if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
             {
                 TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
                 getCatalogsReq.GetDirectResults = sparkGetDirectResults;
-
-                CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(TimeSpan.FromSeconds(QueryTimeoutSeconds));
 
                 TGetCatalogsResp getCatalogsResp = Client.GetCatalogs(getCatalogsReq, timeoutToken).Result;
 
@@ -528,7 +530,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 getSchemasReq.SchemaName = dbSchemaPattern;
                 getSchemasReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetSchemasResp getSchemasResp = Client.GetSchemas(getSchemasReq).Result;
+                TGetSchemasResp getSchemasResp = Client.GetSchemas(getSchemasReq, timeoutToken).Result;
                 if (getSchemasResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getSchemasResp.Status.ErrorMessage);
@@ -558,7 +560,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 getTablesReq.TableName = tableNamePattern;
                 getTablesReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetTablesResp getTablesResp = Client.GetTables(getTablesReq).Result;
+                TGetTablesResp getTablesResp = Client.GetTables(getTablesReq, timeoutToken).Result;
                 if (getTablesResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getTablesResp.Status.ErrorMessage);
@@ -595,7 +597,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 if (!string.IsNullOrEmpty(columnNamePattern))
                     columnsReq.ColumnName = columnNamePattern;
 
-                var columnsResponse = Client.GetColumns(columnsReq).Result;
+                var columnsResponse = Client.GetColumns(columnsReq, timeoutToken).Result;
                 if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(columnsResponse.Status.ErrorMessage);

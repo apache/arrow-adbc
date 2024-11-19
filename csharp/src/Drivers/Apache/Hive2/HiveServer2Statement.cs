@@ -43,7 +43,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             try
             {
-                CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(TimeSpan.FromSeconds(QueryTimeoutSeconds));
+                CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
 
                 // this could either:
                 // take QueryTimeoutSeconds * 3
@@ -58,7 +58,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return new QueryResult(-1, Connection.NewReader(this, schema));
             }
             catch (OperationCanceledException ex)
-            { 
+            {
                 throw new TimeoutException("The query execution timed out.", ex);
             }
         }
@@ -121,7 +121,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     UpdateBatchSizeIfValid(key, value);
                     break;
                 case ApacheParameters.QueryTimeoutSeconds:
-                    UpdateQueryTimeoutIfValid(key, value);
+                    if (ApacheUtility.QueryTimeoutIsValid(key, value, out int queryTimeoutSeconds))
+                    {
+                        QueryTimeoutSeconds = queryTimeoutSeconds;
+                    }
                     break;
                 default:
                     throw AdbcException.NotImplemented($"Option '{key}' is not implemented.");
@@ -146,7 +149,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
 
-        protected internal int QueryTimeoutSeconds { get; set; }
+        protected internal int QueryTimeoutSeconds { get; set; } = ApacheUtility.QueryTimeoutSecondsDefault;
 
         public HiveServer2Connection Connection { get; private set; }
 
@@ -159,11 +162,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private void UpdateBatchSizeIfValid(string key, string value) => BatchSize = !string.IsNullOrEmpty(value) && long.TryParse(value, out long batchSize) && batchSize > 0
             ? batchSize
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
-
-        private void UpdateQueryTimeoutIfValid(string key, string value) => QueryTimeoutSeconds = !string.IsNullOrEmpty(value) && int.TryParse(value, out int queryTimeout) && (queryTimeout > 0 || queryTimeout == -1)
-            ? queryTimeout
-            : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value of -1 (infinite) or greater than zero.");
-
 
         public override void Dispose()
         {

@@ -44,11 +44,11 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 
 ## Timeout Configuration
 
-Connect timeout to open a new session
+Timeouts have a hierarchy to their behavior. As specified above, the `adbc.spark.connect_timeout_ms` is analogous to a ConnectTimeout and used to initially establish a new session with the server.
 
-Query timeout for any subsequent calls to the server for requests
+The `adbc.apache.statement.query_timeout_s` is analogous to a CommandTimeout for any subsequent calls to the server for requests, including metadata calls and executing queries.
 
-Polling timeout - the time between polls, up to a Query timeout
+The `adbc.apache.statement.polltime_ms` specifies the time between polls to the service, up to the limit specifed by `adbc.apache.statement.query_timeout_s`.
 
 ## Spark Types
 

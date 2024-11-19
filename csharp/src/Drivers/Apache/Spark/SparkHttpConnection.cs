@@ -252,9 +252,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault);
 
-            // davidcoe: Should we use a CancellationTokenSource here?
-            //timeoutCts?
-
             TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
             if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {

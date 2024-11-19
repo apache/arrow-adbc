@@ -20,8 +20,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Xunit;
+using Thrift.Transport;
 using Xunit;
 using Xunit.Abstractions;
+using static Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.SparkConnectionTest;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
@@ -137,6 +139,41 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             }
         }
 
+        [SkippableTheory]
+        [ClassData(typeof(StatementTimeoutTestData))]
+        internal void StatementTimeoutTest(StatementWithExceptions statementWithExceptions)
+        {
+            SparkTestConfiguration testConfiguration = (SparkTestConfiguration)TestConfiguration.Clone();
+
+            if (statementWithExceptions.QueryTimeoutSeconds.HasValue)
+                testConfiguration.QueryTimeoutSeconds = statementWithExceptions.QueryTimeoutSeconds.Value.ToString();
+
+            if (!string.IsNullOrEmpty(statementWithExceptions.Query))
+                testConfiguration.Query = statementWithExceptions.Query!;
+
+            OutputHelper?.WriteLine($"QueryTimeoutSeconds: {testConfiguration.QueryTimeoutSeconds}. ShouldSucceed: {statementWithExceptions.ExceptionType == null}. Query: [{testConfiguration.Query}]");
+
+            try
+            {
+                AdbcStatement st = NewConnection(testConfiguration).CreateStatement();
+                st.SqlQuery = testConfiguration.Query;
+                QueryResult qr = st.ExecuteQuery();
+
+                OutputHelper?.WriteLine($"QueryResultRowCount: {qr.RowCount}");
+            }
+            catch (AggregateException aex)
+            {
+                if (statementWithExceptions.ExceptionType != null)
+                {
+                    Assert.IsType(statementWithExceptions.ExceptionType, aex.InnerException);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
         /// <summary>
         /// Validates if the driver can execute update statements.
         /// </summary>
@@ -148,6 +185,48 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             Statement.SetOption(SparkStatement.Options.BatchSize, "10");
             using TemporaryTable temporaryTable = await NewTemporaryTableAsync(Statement, $"{columnName} INT");
             await ValidateInsertSelectDeleteSingleValueAsync(temporaryTable.TableName, columnName, 1);
+        }
+    }
+
+    internal class StatementWithExceptions
+    {
+        public StatementWithExceptions(int? queryTimeoutSeconds, string? query, Type? exceptionType)
+        {
+            QueryTimeoutSeconds = queryTimeoutSeconds;
+            Query = query;
+            ExceptionType = exceptionType;
+        }
+
+        /// <summary>
+        /// If null, uses the default timeout.
+        /// </summary>
+        public int? QueryTimeoutSeconds { get; }
+
+        /// <summary>
+        /// If null, expected to succeed.
+        /// </summary>
+        public Type? ExceptionType { get; }
+
+        /// <summary>
+        /// If null, uses the default TestConfiguration
+        /// </summary>
+        public string? Query { get; }
+    }
+
+    internal class StatementTimeoutTestData : TheoryData<StatementWithExceptions>
+    {
+        public StatementTimeoutTestData()
+        {
+            string longRunningQuery = "SELECT COUNT(*) AS total_count\nFROM (\n  SELECT t1.id AS id1, t2.id AS id2\n  FROM RANGE(1000000) t1\n  CROSS JOIN RANGE(10000) t2\n) subquery\nWHERE MOD(id1 + id2, 2) = 0";
+
+            Add(new(-1, null, null));
+            Add(new(null, null, null));
+            Add(new(1, null, typeof(TTransportException)));
+            Add(new(5, null, null));
+            Add(new(30, null, null));
+            Add(new(5, longRunningQuery, typeof(TTransportException)));
+            Add(new(null, longRunningQuery, typeof(TimeoutException)));
+            Add(new(-1, longRunningQuery, null));
         }
     }
 }

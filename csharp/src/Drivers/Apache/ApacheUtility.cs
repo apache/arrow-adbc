@@ -26,15 +26,56 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
 {
     internal class ApacheUtility
     {
-        public static CancellationToken GetCancellationToken(TimeSpan timeout)
+        internal const int QueryTimeoutSecondsDefault = 60;
+
+        public enum TimeUnit
         {
-            if (timeout == TimeSpan.Zero)
+            Seconds,
+            Milliseconds
+        }
+
+        public static CancellationToken GetCancellationToken(int timeout, TimeUnit timeUnit)
+        {
+            TimeSpan span;
+
+            if (timeout == -1 || timeout == int.MaxValue)
             {
-                return CancellationToken.None;
+                // the max TimeSpan for CancellationTokenSource is int.MaxValue in milliseconds (not TimeSpan.MaxValue)
+                // no matter what the unit is
+                span = TimeSpan.FromMilliseconds(int.MaxValue);
+            }
+            else
+            {
+                if (timeUnit == TimeUnit.Seconds)
+                {
+                    span = TimeSpan.FromSeconds(timeout);
+                }
+                else
+                {
+                    span = TimeSpan.FromMilliseconds(timeout);
+                }
             }
 
-            var cts = new CancellationTokenSource(timeout);
+            return GetCancellationToken(span);
+        }
+    
+        private static CancellationToken GetCancellationToken(TimeSpan timeSpan)
+        {
+            var cts = new CancellationTokenSource(timeSpan);
             return cts.Token;
+        }
+
+        public static bool QueryTimeoutIsValid(string key, string value, out int queryTimeoutSeconds)
+        {
+            if (!string.IsNullOrEmpty(value) && int.TryParse(value, out int queryTimeout) && (queryTimeout > 0 || queryTimeout == -1))
+            {
+                queryTimeoutSeconds = queryTimeout;
+                return true;
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value of -1 (infinite) or greater than zero.");
+            }
         }
     }
 }
