@@ -13,10 +13,11 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+[CmdletBinding(PositionalBinding=$false)]
 param (
     [string]$destination=$null,
-    [string]$versionSuffix=$null
+    [string]$versionSuffix=$null,
+    [switch]$noBuild
 )
 
 $csharpFolder = [IO.Path]::Combine($PSScriptRoot, "..", "..", "csharp") | Resolve-Path
@@ -34,6 +35,10 @@ if ($destination) {
 if ($versionSuffix) {
     Write-Host " * Version Suffix: $versionSuffix"
     $packArgs["-version-suffix"] = $versionSuffix
+}
+if ($noBuild) {
+    Write-Host " * Pack without building"
+    $packArgs["-no-build"] = $true
 }
 
 dotnet pack @packArgs

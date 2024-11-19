@@ -132,8 +132,9 @@ jobs:
           popd
 
       - name: Upload Go binaries
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
+          name: go-${{ matrix.os }}
           retention-days: 7
           path: |
             adbc/go/adbc/pkg/libadbc_driver_flightsql.*
@@ -167,13 +168,15 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
+          pattern: go-*
           path: adbc/go/adbc/pkg
+          merge-multiple: true
 
       - name: Copy Go binaries
         run: |
-          pushd adbc/go/adbc/pkg/artifact
+          pushd adbc/go/adbc/pkg/
           cp *.dll ../
           cp *.so ../
           cp *.dylib ../
