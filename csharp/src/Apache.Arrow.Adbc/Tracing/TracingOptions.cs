@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-using System;
-
 namespace Apache.Arrow.Adbc.Tracing
 {
     public static class TracingOptions

@@ -25,21 +25,22 @@ namespace Apache.Arrow.Adbc.Tracing
 {
     internal class TracingFile : IDisposable
     {
-        private const int MaxFileSize = 1024 * 1024;
         private static readonly string s_defaultTracePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Apache.Arrow.Adbc", "Tracing");
         private readonly string _fileBaseName;
         private readonly DirectoryInfo _tracingDirectory;
         private FileInfo? _currentTraceFileInfo;
         private bool _disposedValue;
+        private readonly long _maxFileSizeKb = FileExporter.MaxFileSizeKbDefault;
 
-        internal TracingFile(string fileBaseName) : this(fileBaseName, new DirectoryInfo(s_defaultTracePath)) { }
+        internal TracingFile(string fileBaseName, string? traceDirectoryPath = default, long maxFileSizeKb = FileExporter.MaxFileSizeKbDefault) :
+            this(fileBaseName, traceDirectoryPath == null ? new DirectoryInfo(s_defaultTracePath) : new DirectoryInfo(traceDirectoryPath), maxFileSizeKb)
+        { }
 
-        internal TracingFile(string fileBaseName, string traceDirectoryPath) : this(fileBaseName, new DirectoryInfo(traceDirectoryPath)) { }
-
-        internal TracingFile(string fileBaseName, DirectoryInfo traceDirectory)
+        internal TracingFile(string fileBaseName, DirectoryInfo traceDirectory, long maxFileSizeKb)
         {
             _fileBaseName = fileBaseName;
             _tracingDirectory = traceDirectory;
+            _maxFileSizeKb = maxFileSizeKb;
             EnsureTraceDirectory();
         }
 
@@ -54,11 +55,11 @@ namespace Apache.Arrow.Adbc.Tracing
                 FileInfo? mostRecentFile = traceFileInfos?.FirstOrDefault();
 
                 // Use the latest file, if it is not maxxed-out, or start a new tracing file.
-                _currentTraceFileInfo = mostRecentFile != null && mostRecentFile.Length < MaxFileSize
+                _currentTraceFileInfo = mostRecentFile != null && mostRecentFile.Length < _maxFileSizeKb * 1024
                     ? mostRecentFile
                     : new FileInfo(NewFileName());
             }
-            else if (_currentTraceFileInfo.Length >= MaxFileSize)
+            else if (_currentTraceFileInfo.Length >= _maxFileSizeKb * 1024)
             {
                 // If tracing file is maxxed-out, start a new tracing file.
                 _currentTraceFileInfo = new FileInfo(NewFileName());

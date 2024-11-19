@@ -15,13 +15,16 @@
  * limitations under the License.
  */
 
-using System;
-using System.Diagnostics;
-
 namespace Apache.Arrow.Adbc.Tracing
 {
-    public interface ITracingListener : IDisposable
+    public class FileExporterOptions
     {
-        ActivityListener ActivityListener { get; }
+        public string FileBaseName { get; set; } = FileExporter.ApacheArrowAdbcNamespace;
+
+        public string? TraceLocation { get; set; } = FileExporter.TracingLocationDefault;
+
+        public long MaxTraceFileSizeKb { get; set; } = FileExporter.MaxFileSizeKbDefault;
+
+        public int MaxTraceFiles { get; set; } = FileExporter.MaxTraceFilesDefault;
     }
 }

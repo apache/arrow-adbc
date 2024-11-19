@@ -24,6 +24,8 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 using Thrift.Protocol;
 using Thrift.Transport;
 
@@ -31,6 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal abstract class HiveServer2Connection : AdbcConnection
     {
+        private bool _disposed;
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
 
@@ -38,12 +41,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
-        private TracingFileListener? _listener;
+        private readonly TracerProvider? _tracerProvider;
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
             Properties = properties;
-            _listener = MaybeAddTracingListener();
+            _tracerProvider = MaybeAddTracingListener();
 
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
@@ -66,7 +69,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
-            using var activity = StartActivity();
+            using Activity? activity = StartActivity();
             try
             {
                 TTransport transport = await CreateTransportAsync();
@@ -149,7 +152,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
-            using var activity = StartActivity();
+            using Activity? activity = StartActivity();
             TGetInfoReq req = new()
             {
                 SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
@@ -167,30 +170,45 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return getInfoResp.InfoValue.StringValue;
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    if (_client != null)
+                    {
+                        TCloseSessionReq r6 = new(SessionHandle);
+                        _client.CloseSession(r6).Wait();
+
+                        _transport?.Close();
+                        _client.Dispose();
+                        _transport = null;
+                        _client = null;
+                    }
+                    _tracerProvider?.Dispose();
+                }
+                _disposed = true;
+            }
+            base.Dispose(disposing);
+        }
+
         public override void Dispose()
         {
-            if (_client != null)
-            {
-                TCloseSessionReq r6 = new TCloseSessionReq(SessionHandle);
-                _client.CloseSession(r6).Wait();
-
-                _transport?.Close();
-                _client.Dispose();
-                _transport = null;
-                _client = null;
-            }
-            _listener?.Dispose();
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
         internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, ActivitySource? activitySource = null, CancellationToken cancellationToken = default)
         {
-            using var activity = StartActivity(activitySource);
+            using Activity? activity = StartActivity(activitySource);
             TGetResultSetMetadataReq request = new(operationHandle);
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
             return response;
         }
 
-        private TracingFileListener? MaybeAddTracingListener()
+        private TracerProvider? MaybeAddTracingListener()
         {
             if (!Properties.TryGetValue(TracingOptions.Connection.Trace, out string? traceOption)
                 || !bool.TryParse(traceOption, out bool traceEnabled)
@@ -200,8 +218,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             DirectoryInfo? tracingDirectory = GetTracingDirectory();
-            TracingFileListener listener = new(ActivitySource.Name, tracingDirectory?.FullName);
-            return listener;
+            TracerProvider tracerProvider = Sdk.CreateTracerProviderBuilder()
+                .AddSource(ActivitySource.Name)
+                .AddFileExporter(ActivitySource.Name, tracingDirectory?.FullName)
+                .Build();
+            return tracerProvider;
         }
 
         private DirectoryInfo? GetTracingDirectory()

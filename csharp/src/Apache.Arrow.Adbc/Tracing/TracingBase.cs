@@ -32,17 +32,19 @@ namespace Apache.Arrow.Adbc.Tracing
     public class TracingBase : IDisposable
     {
         internal const string ProductVersionDefault = "1.0.0";
-        private readonly string _activitySourceName;
         private static readonly string s_assemblyVersion = GetProductVersion();
         private bool _disposedValue;
 
-        protected TracingBase()
+        protected TracingBase(string? activitySoureceName = default)
         {
-            _activitySourceName = GetType().Assembly.GetName().Name!;
+            activitySoureceName ??= GetType().Assembly.GetName().Name!;
             // This is required to be disposed
-            ActivitySource = new(_activitySourceName, s_assemblyVersion);
+            ActivitySource = new(activitySoureceName, s_assemblyVersion);
         }
 
+        /// <summary>
+        /// Gets the <see cref="ActivitySource"/>.
+        /// </summary>
         protected ActivitySource ActivitySource { get; }
 
         /// <summary>
