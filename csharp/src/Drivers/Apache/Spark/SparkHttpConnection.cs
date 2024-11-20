@@ -164,8 +164,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TConfiguration config = new();
             ThriftHttpTransport transport = new(httpClient, config)
             {
-                // TODO: Remove support for HttpRequestTimeoutMilliseconds
-                //ConnectTimeout = HttpRequestTimeoutMilliseconds,
+                ConnectTimeout = ApacheUtility.GetConnectionTimeout(ConnectTimeoutMilliseconds, QueryTimeoutSeconds)
             };
             return Task.FromResult<TTransport>(transport);
         }

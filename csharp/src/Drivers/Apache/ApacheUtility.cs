@@ -77,5 +77,26 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                 throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value of -1 (infinite) or greater than zero.");
             }
         }
+
+        /// <summary>
+        /// Gets the connection timeout.
+        /// </summary>
+        /// <param name="connectionTimeoutMilliseconds">The connection timeout (in milliseconds).</param>
+        /// <param name="queryTimeoutSeconds">The query timeout (in seconds)</param>
+        /// <returns>The max value. If the values are the same, adds 1 second.</returns>
+        public static int GetConnectionTimeout(int connectionTimeoutMilliseconds, int queryTimeoutSeconds)
+        {
+            int queryTimeoutMilliseconds = queryTimeoutSeconds * 1000;
+
+            if (queryTimeoutMilliseconds >= connectionTimeoutMilliseconds)
+            {
+                // add 1 second the the connection timeout to let the query return
+                return queryTimeoutMilliseconds + 1000;
+            }
+            else
+            {
+                return connectionTimeoutMilliseconds;
+            }
+        }
     }
 }
