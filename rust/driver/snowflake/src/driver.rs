@@ -144,6 +144,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        not(feature = "linked"),
+        ignore = "because the `linked` feature is not enabled"
+    )]
     fn dynamic() -> Result<()> {
         let _a = Driver::try_load_dynamic()?;
         let _b = Driver::try_load_dynamic()?;
