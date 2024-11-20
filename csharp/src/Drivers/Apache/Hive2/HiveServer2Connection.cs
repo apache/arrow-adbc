@@ -220,7 +220,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             DirectoryInfo? tracingDirectory = GetTracingDirectory();
             TracerProvider tracerProvider = Sdk.CreateTracerProviderBuilder()
                 .AddSource(ActivitySource.Name)
-                .AddFileExporter(ActivitySource.Name, tracingDirectory?.FullName)
+                .AddAdbcFileExporter(ActivitySource.Name, tracingDirectory?.FullName)
                 .Build();
             return tracerProvider;
         }

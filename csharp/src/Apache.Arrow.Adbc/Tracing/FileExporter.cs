@@ -22,41 +22,53 @@ using System.Threading.Tasks;
 using System.Threading;
 using OpenTelemetry;
 using System.Collections.Concurrent;
-using OpenTelemetry.Trace;
 using System.IO;
 using System.Linq;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using System.ComponentModel.Design;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
     internal class FileExporter : BaseExporter<Activity>
     {
-        private bool _disposed = false;
         internal const long MaxFileSizeKbDefault = 1024;
         internal const int MaxTraceFilesDefault = 999;
         internal const string ApacheArrowAdbcNamespace = "Apache.Arrow.Adbc";
         private const string TracesFolderName = "Traces";
-        private static readonly string s_tracingLocationDefault = TracingLocationDefault;
 
+        private static readonly string s_tracingLocationDefault = TracingLocationDefault;
+        private static readonly ConcurrentDictionary<string, Lazy<FileExporterInstance>> s_fileExporters = new();
+
+        private bool _disposed = false;
         private readonly ConcurrentQueue<Activity> _activityQueue = new();
         private readonly TracingFile _tracingFile;
         private readonly string _fileBaseName;
         private readonly string _tracesDirectoryFullName;
-
-        private static readonly ConcurrentDictionary<string, FileExporterInstance> s_listeners = new();
-        private static readonly object s_lock = new();
+        private readonly CancellationTokenSource _cancellationTokenSource;
 
         private static string GetListenerId(string sourceName, string traceFolderLocation) => $"{sourceName}{traceFolderLocation}";
 
         internal static bool TryCreate(out FileExporter? fileExporter, FileExporterOptions options)
         {
-            return TryCreate(out fileExporter, options.FileBaseName ?? ApacheArrowAdbcNamespace, options.TraceLocation, options.MaxTraceFileSizeKb, options.MaxTraceFiles);
+            return TryCreate(
+                out fileExporter,
+                options.FileBaseName ?? ApacheArrowAdbcNamespace,
+                options.TraceLocation,
+                options.MaxTraceFileSizeKb,
+                options.MaxTraceFiles);
         }
 
-        internal static bool TryCreate(out FileExporter? fileExporter, string fileBaseName = ApacheArrowAdbcNamespace, string? traceLocation = default, long maxTraceFileSizeKb = FileExporter.MaxFileSizeKbDefault, int maxTraceFiles = FileExporter.MaxTraceFilesDefault)
+        internal static bool TryCreate(
+            out FileExporter? fileExporter,
+            string fileBaseName = ApacheArrowAdbcNamespace,
+            string? traceLocation = default,
+            long maxTraceFileSizeKb = FileExporter.MaxFileSizeKbDefault,
+            int maxTraceFiles = FileExporter.MaxTraceFilesDefault)
         {
+            if (string.IsNullOrWhiteSpace(fileBaseName)) throw new ArgumentNullException(nameof(fileBaseName));
+            if (fileBaseName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) throw new ArgumentException("invalid file name", nameof(fileBaseName));
+            if (traceLocation != null && (string.IsNullOrWhiteSpace(traceLocation) || (traceLocation.IndexOfAny(Path.GetInvalidPathChars()) >= 0))) throw new ArgumentException("invalid folder name", nameof(traceLocation));
+            if (maxTraceFileSizeKb < 1) throw new ArgumentException("maxTraceFileSizeKb must be greater than zero", nameof(maxTraceFileSizeKb));
+            if (maxTraceFiles < 1) throw new ArgumentException("maxTraceFiles must be greater than zero", nameof(maxTraceFiles));
+
             DirectoryInfo tracesDirectory = new(traceLocation ?? s_tracingLocationDefault);
             string tracesDirectoryFullName = tracesDirectory.FullName;
             if (!Directory.Exists(tracesDirectoryFullName))
@@ -65,27 +77,46 @@ namespace Apache.Arrow.Adbc.Tracing
                 Directory.CreateDirectory(tracesDirectoryFullName);
             }
 
-            lock (s_lock)
+            // In case we don't need to create this object, we'll lazy load the object only if added to the collection.
+            var exporterInstance = new Lazy<FileExporterInstance>(() =>
             {
-                string listenerId = GetListenerId(fileBaseName, tracesDirectoryFullName);
-                if (!s_listeners.ContainsKey(listenerId))
-                {
-                    CancellationTokenSource cancellationTokenSource = new();
-                    FileExporterInstance instance = s_listeners.GetOrAdd(listenerId, (_) =>
-                        new FileExporterInstance(
-                            new FileExporter(fileBaseName, tracesDirectory, maxTraceFileSizeKb),
-                            CleanupTraceDirectory(tracesDirectory, fileBaseName, maxTraceFiles, cancellationTokenSource.Token),
-                            cancellationTokenSource
-                        ));
-                    fileExporter = instance.FileExporter;
-                    return true;
-                }
-                fileExporter = null;
-                return false;
+                CancellationTokenSource cancellationTokenSource = new();
+                return new FileExporterInstance(
+                    new FileExporter(fileBaseName, tracesDirectory, maxTraceFileSizeKb),
+                    CleanupTraceDirectory(tracesDirectory, fileBaseName, maxTraceFiles, cancellationTokenSource.Token),
+                    cancellationTokenSource);
+            });
+
+            // We only want one exporter listening on a source in a particular folder.
+            // If two or more exporters are running, it'll create duplicate trace entries.
+            // On Dispose, ensure to stop and remove the only instance, in case we need a new one later.
+            string listenerId = GetListenerId(fileBaseName, tracesDirectoryFullName);
+            bool isAdded = s_fileExporters.TryAdd(listenerId, exporterInstance);
+            if (isAdded)
+            {
+                // This instance was added so load the object now.
+                fileExporter = exporterInstance.Value.FileExporter;
+                return true;
             }
+
+            // There is already an exporter listening on the source/location
+            fileExporter = null;
+            return false;
         }
 
-        private static async Task CleanupTraceDirectory(DirectoryInfo traceDirectory, string fileBaseName, int maxTraceFiles, CancellationToken cancellationToken)
+        /// <summary>
+        /// Runs continuously to monitor the tracing folder to remove older trace files.
+        /// </summary>
+        /// <param name="traceDirectory">The tracing folder to monitor.</param>
+        /// <param name="fileBaseName">The name of the files in the tracing folder to monitor.</param>
+        /// <param name="maxTraceFiles">The maximun number of trace files allowed exist in the tracing folder.</param>
+        /// <param name="cancellationToken">The cancellation token used to stop/cancel this task.</param>
+        /// <returns></returns>
+        private static async Task CleanupTraceDirectory(
+            DirectoryInfo traceDirectory,
+            string fileBaseName,
+            int maxTraceFiles,
+            CancellationToken cancellationToken)
         {
             const int delayTimeSeconds = 5;
             string searchPattern = fileBaseName + "-trace-*.log";
@@ -111,7 +142,7 @@ namespace Apache.Arrow.Adbc.Tracing
                 {
                     await Task.Delay(TimeSpan.FromSeconds(delayTimeSeconds), cancellationToken);
                 }
-                catch (TaskCanceledException)
+                catch (OperationCanceledException)
                 {
                     // Need to catch this exception or it will be propogated.
                     break;
@@ -123,10 +154,10 @@ namespace Apache.Arrow.Adbc.Tracing
         private FileExporter(string fileBaseName, DirectoryInfo tracesDirectory, long maxTraceFileSizeKb)
         {
             string fullName = tracesDirectory.FullName;
-
             _fileBaseName = fileBaseName;
             _tracesDirectoryFullName = fullName;
             _tracingFile = new(fileBaseName, fullName, maxTraceFileSizeKb);
+            _cancellationTokenSource = new CancellationTokenSource();
         }
 
         public override ExportResult Export(in Batch<Activity> batch)
@@ -135,7 +166,7 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 _activityQueue.Enqueue(activity);
                 // Intentionally avoid await.
-                DequeueAndWrite()
+                DequeueAndWrite(_cancellationTokenSource.Token)
                     .ContinueWith(t => Console.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
             }
             return ExportResult.Success;
@@ -172,18 +203,24 @@ namespace Apache.Arrow.Adbc.Tracing
         {
             if (!_disposed)
             {
-                lock (s_lock)
+                if (disposing)
                 {
+                    // Remove and dispose of single instance of exporter
                     string listenerId = GetListenerId(_fileBaseName, _tracesDirectoryFullName);
-                    _ = s_listeners.TryRemove(listenerId, out FileExporterInstance? listener);
-                    listener?.Dispose();
+                    bool isRemoved = s_fileExporters.TryRemove(listenerId, out Lazy<FileExporterInstance>? listener);
+                    if (isRemoved && listener != null && listener.IsValueCreated)
+                    {
+                        listener?.Value.Dispose();
+                    }
+                    _cancellationTokenSource.Cancel();
+                    _cancellationTokenSource.Dispose();
                 }
                 _disposed = true;
             }
             base.Dispose(disposing);
         }
 
-        internal class FileExporterInstance(FileExporter fileExporter, Task folderCleanupTask, CancellationTokenSource cancellationTokenSource)
+        private class FileExporterInstance(FileExporter fileExporter, Task folderCleanupTask, CancellationTokenSource cancellationTokenSource)
             : IDisposable
         {
             private bool _disposedValue;

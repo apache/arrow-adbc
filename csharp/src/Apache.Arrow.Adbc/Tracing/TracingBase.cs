@@ -27,7 +27,7 @@ namespace Apache.Arrow.Adbc.Tracing
 {
     /// <summary>
     /// Provides a base implementation for a tracing source. If drivers want to enable tracing,
-    /// they need to add a trace listener (e.g., <see cref="TracingFileListener"/>).
+    /// they need to add a trace listener (e.g., <see cref="FileExporter"/>).
     /// </summary>
     public class TracingBase : IDisposable
     {
@@ -35,9 +35,19 @@ namespace Apache.Arrow.Adbc.Tracing
         private static readonly string s_assemblyVersion = GetProductVersion();
         private bool _disposedValue;
 
+        /// <summary>
+        /// Constructs a new <see cref="TracingBase"/> object. If <paramref name="activitySoureceName"/> is set, it provides the
+        /// activity source name, otherwise the current assembly name is used as the acctivity source name.
+        /// </summary>
+        /// <param name="activitySoureceName"></param>
         protected TracingBase(string? activitySoureceName = default)
         {
             activitySoureceName ??= GetType().Assembly.GetName().Name!;
+            if (string.IsNullOrWhiteSpace(activitySoureceName))
+            {
+                throw new ArgumentNullException(nameof(activitySoureceName));
+            }
+
             // This is required to be disposed
             ActivitySource = new(activitySoureceName, s_assemblyVersion);
         }
@@ -60,9 +70,26 @@ namespace Apache.Arrow.Adbc.Tracing
             return StartActivity(ActivitySource, tracingBaseName, methodName);
         }
 
+        /// <summary>
+        /// Writes the exception to the trace by adding an exception event to the current activity (span).
+        /// </summary>
+        /// <param name="exception">The exception to trace.</param>
+        /// <param name="activity">The current activity where the exception is caught.</param>
+        /// <param name="escaped">
+        /// An indicator that should be set to true if the exception event is recorded
+        /// at a point where it is known that the exception is escaping the scope of the span/activity.
+        /// For example, <c>escaped</c> should be <c>true</c> if the exception is caught and re-thrown.
+        /// However, <c>escaped</c> should be set to <c>false</c> if execution continues in the current scope.
+        /// </param>
         protected static void TraceException(Exception exception, Activity? activity, bool escaped = true) =>
             WriteTraceException(exception, activity, escaped);
 
+        /// <summary>
+        /// Creates and starts a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise.
+        /// </summary>
+        /// <param name="activitySource">The <see cref="ActivitySource"/> from which to start the activity.</param>
+        /// <param name="methodName">The name of the method for the activity</param>
+        /// <returns>Returns a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise</returns>
         protected internal static Activity? StartActivity(ActivitySource? activitySource, [CallerMemberName] string methodName = "[unknown-method]")
         {
             MethodBase? callingMethod = (new StackTrace()).GetFrame(1)?.GetMethod();
@@ -101,13 +128,12 @@ namespace Apache.Arrow.Adbc.Tracing
             // https://opentelemetry.io/docs/specs/otel/trace/exceptions/
             activity?.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection(
                 [
-                    // TODO: Determine if "exception.escaped" is being set correctly.
                     // https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/
                     new("exception.escaped", escaped),
-                            new("exception.message", exception.Message),
-                            new("exception.stacktrace", exception.StackTrace),
-                            new("exception.type", exception.GetType().Name),
-                        ])));
+                    new("exception.message", exception.Message),
+                    new("exception.stacktrace", exception.StackTrace),
+                    new("exception.type", exception.GetType().Name),
+                ])));
         }
 
         private static Activity? StartActivity(ActivitySource? activitySource, string tracingBaseName, string methodName)

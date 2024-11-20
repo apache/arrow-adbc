@@ -23,6 +23,10 @@ using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
+    /// <summary>
+    /// Provides access to writing trace files, limiting the
+    /// individual files size and ensuring unique file names.
+    /// </summary>
     internal class TracingFile : IDisposable
     {
         private static readonly string s_defaultTracePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Apache.Arrow.Adbc", "Tracing");
@@ -38,12 +42,20 @@ namespace Apache.Arrow.Adbc.Tracing
 
         internal TracingFile(string fileBaseName, DirectoryInfo traceDirectory, long maxFileSizeKb)
         {
+            if (string.IsNullOrWhiteSpace(fileBaseName)) throw new ArgumentNullException(nameof(fileBaseName));
             _fileBaseName = fileBaseName;
             _tracingDirectory = traceDirectory;
             _maxFileSizeKb = maxFileSizeKb;
             EnsureTraceDirectory();
         }
 
+        /// <summary>
+        /// Append text to a last modified trace file. If the last modified trace file exceeds the
+        /// individual file size limit, a new trace file is created.
+        /// </summary>
+        /// <param name="text">The text to write to the trace file.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
         internal async Task WriteLine(string text, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested) return;
@@ -107,7 +119,7 @@ namespace Apache.Arrow.Adbc.Tracing
                     {
                         await Task.Delay(pauseTime, cancellationToken);
                     }
-                    catch (TaskCanceledException)
+                    catch (OperationCanceledException)
                     {
                         // Need to catch this exception or it will be propogated.
                         break;
