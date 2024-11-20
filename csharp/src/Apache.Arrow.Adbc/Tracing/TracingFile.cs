@@ -29,7 +29,7 @@ namespace Apache.Arrow.Adbc.Tracing
     /// </summary>
     internal class TracingFile : IDisposable
     {
-        private static readonly string s_defaultTracePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Apache.Arrow.Adbc", "Tracing");
+        private static readonly string s_defaultTracePath = FileExporter.TracingLocationDefault;
         private readonly string _fileBaseName;
         private readonly DirectoryInfo _tracingDirectory;
         private FileInfo? _currentTraceFileInfo;

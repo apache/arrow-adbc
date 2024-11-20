@@ -194,7 +194,7 @@ namespace Apache.Arrow.Adbc.Tracing
         internal static string TracingLocationDefault =>
             new DirectoryInfo(
                 Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     ApacheArrowAdbcNamespace,
                     TracesFolderName)
                 ).FullName;
