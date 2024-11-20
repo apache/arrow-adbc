@@ -24,51 +24,61 @@
 //! when building these tests.
 //!
 //! These tests load the configuration from environment variables:
-//! - Driver: [`driver::Builder::from_env`]
-//! - Database: [`database::Builder::from_env`]
-//! - Connection: ...
+//! - Driver: [`adbc_snowflake::driver::Builder::from_env`]
+//! - Database: [`adbc_snowflake::database::Builder::from_env`]
+//! - Connection: [`adbc_snowflake::connection::Builder::from_env`]
 //! - Statement: ...
 //!
 //! These methods are available when the `env` crate feature is enabled.
 //!
 
-#[cfg(test)]
 #[cfg(feature = "env")]
 mod tests {
-    use adbc_core::{error::Result, options::AdbcVersion, Database as _};
-    use adbc_snowflake::{database, driver, Connection, Database, Driver};
+    use std::{collections::HashSet, ops::Deref, sync::LazyLock};
+
+    use adbc_core::{
+        error::{Error, Result},
+        options::AdbcVersion,
+        Connection as _, Statement as _,
+    };
+    use adbc_snowflake::{connection, database, driver, Connection, Database, Driver, Statement};
+    use arrow_array::{cast::AsArray, types::Decimal128Type};
 
     const ADBC_VERSION: AdbcVersion = AdbcVersion::V110;
 
-    fn with_driver(func: impl FnOnce(Driver) -> Result<()>) -> Result<()> {
+    static DRIVER: LazyLock<Result<Driver>> = LazyLock::new(|| {
         driver::Builder::from_env()
             .with_adbc_version(ADBC_VERSION)
             .try_load()
-            .and_then(func)
-    }
+    });
+
+    static DATABASE: LazyLock<Result<Database>> =
+        LazyLock::new(|| database::Builder::from_env().build(&mut DRIVER.deref().clone()?));
+
+    static CONNECTION: LazyLock<Result<Connection>> =
+        LazyLock::new(|| connection::Builder::from_env().build(&mut DATABASE.deref().clone()?));
 
     fn with_database(func: impl FnOnce(Database) -> Result<()>) -> Result<()> {
-        with_driver(|mut driver| {
-            database::Builder::from_env()
-                .build(&mut driver)
-                .and_then(func)
-        })
+        DATABASE.deref().clone().and_then(func)
     }
 
     fn with_connection(func: impl FnOnce(Connection) -> Result<()>) -> Result<()> {
-        with_database(|mut database| database.new_connection().and_then(func))
+        // This always clones the connection because connection methods require
+        // exclusive access (&mut Connection). The alternative would be an
+        // `Arc<Mutex<Connection>>` however any test failure is a panic and
+        // would trigger mutex poisoning.
+        //
+        // TODO(mbrobbel): maybe force interior mutability via the core traits?
+        CONNECTION.deref().clone().and_then(func)
+    }
+
+    fn with_empty_statement(func: impl FnOnce(Statement) -> Result<()>) -> Result<()> {
+        with_connection(|mut connection| connection.new_statement().and_then(func))
     }
 
     #[test_with::env(ADBC_SNOWFLAKE_TESTS)]
-    /// Test the configuration by constructing a connection.
-    fn connection() -> Result<()> {
-        with_connection(|_connection| Ok(()))?;
-        Ok(())
-    }
-
-    #[test_with::env(ADBC_SNOWFLAKE_TESTS)]
-    /// Check the returned info by the driver.
-    fn get_info() -> Result<()> {
+    /// Check the returned info by the driver using the database methods.
+    fn database_get_info() -> Result<()> {
         with_database(|mut database| {
             assert_eq!(database.vendor_name(), Ok("Snowflake".to_owned()));
             assert!(database
@@ -87,7 +97,76 @@ mod tests {
                 .is_ok_and(|version| version.starts_with("v")));
             assert_eq!(database.adbc_version(), Ok(ADBC_VERSION));
             Ok(())
-        })?;
-        Ok(())
+        })
+    }
+
+    #[test_with::env(ADBC_SNOWFLAKE_TESTS)]
+    /// Check execute of statement with `SELECT 21 + 21` query.
+    fn statement_execute() -> Result<()> {
+        with_empty_statement(|mut statement| {
+            statement.set_sql_query("SELECT 21 + 21")?;
+            let batch = statement
+                .execute()?
+                .next()
+                .expect("a record batch")
+                .map_err(Error::from)?;
+            assert_eq!(
+                batch.column(0).as_primitive::<Decimal128Type>().value(0),
+                42
+            );
+            Ok(())
+        })
+    }
+
+    #[test_with::env(ADBC_SNOWFLAKE_TESTS)]
+    /// Check execute schema of statement with `SHOW WAREHOUSES` query.
+    fn statement_execute_schema() -> Result<()> {
+        with_empty_statement(|mut statement| {
+            statement.set_sql_query("SHOW WAREHOUSES")?;
+            let schema = statement.execute_schema()?;
+            let field_names = schema
+                .fields()
+                .into_iter()
+                .map(|field| field.name().as_ref())
+                .collect::<HashSet<_>>();
+            let expected_field_names = [
+                "name",
+                "state",
+                "type",
+                "size",
+                "running",
+                "queued",
+                "is_default",
+                "is_current",
+                "auto_suspend",
+                "auto_resume",
+                "available",
+                "provisioning",
+                "quiescing",
+                "other",
+                "created_on",
+                "resumed_on",
+                "updated_on",
+                "owner",
+                "comment",
+                "resource_monitor",
+                "actives",
+                "pendings",
+                "failed",
+                "suspended",
+                "uuid",
+                "budget",
+                "owner_role_type",
+            ]
+            .into_iter()
+            .collect::<HashSet<_>>();
+            assert_eq!(
+                expected_field_names
+                    .difference(&field_names)
+                    .collect::<Vec<_>>(),
+                Vec::<&&str>::default()
+            );
+            Ok(())
+        })
     }
 }

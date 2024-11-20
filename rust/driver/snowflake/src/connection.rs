@@ -32,6 +32,7 @@ mod builder;
 pub use builder::*;
 
 /// Snowflake ADBC Connection.
+#[derive(Clone)]
 pub struct Connection(pub(crate) ManagedConnection);
 
 impl Optionable for Connection {
