@@ -149,7 +149,7 @@ impl FromStr for AdbcVersion {
 }
 
 /// Info codes for database/driver metadata.
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum InfoCode {
     /// The database vendor/product name (type: utf8).

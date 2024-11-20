@@ -15,11 +15,18 @@
 // specific language governing permissions and limitations
 // under the License.
 
+use std::{collections::HashSet, ffi::c_int, sync::Arc};
+
 use adbc_core::{
     driver_manager::ManagedDatabase,
-    error::Result,
-    options::{OptionConnection, OptionDatabase, OptionValue},
-    Optionable,
+    error::{Error, Result, Status},
+    options::{AdbcVersion, InfoCode, OptionConnection, OptionDatabase, OptionValue},
+    Connection as _, Database as _, Optionable,
+};
+use arrow_array::{
+    cast::AsArray,
+    types::{Int64Type, UInt32Type},
+    Array,
 };
 
 use crate::Connection;
@@ -30,6 +37,105 @@ pub use builder::*;
 /// Snowflake ADBC Database.
 #[derive(Clone)]
 pub struct Database(pub(crate) ManagedDatabase);
+
+impl Database {
+    fn get_info(&mut self, info_code: InfoCode) -> Result<Arc<dyn Array>> {
+        self.new_connection()?
+            .get_info(Some(HashSet::from_iter([info_code])))?
+            .next()
+            .ok_or(Error::with_message_and_status(
+                "failed to get info",
+                Status::Internal,
+            ))?
+            .map_err(Into::into)
+            .and_then(|record_batch| {
+                if InfoCode::try_from(record_batch.column(0).as_primitive::<UInt32Type>().value(0))?
+                    == info_code
+                {
+                    Ok(record_batch.column(1).as_union().value(0))
+                } else {
+                    Err(Error::with_message_and_status(
+                        "invalid get info reply",
+                        Status::Internal,
+                    ))
+                }
+            })
+    }
+
+    /// Returns the name of the vendor.
+    pub fn vendor_name(&mut self) -> Result<String> {
+        self.get_info(InfoCode::VendorName)
+            .map(|array| array.as_string::<i32>().value(0).to_owned())
+    }
+
+    /// Returns the version of the vendor.
+    pub fn vendor_version(&mut self) -> Result<String> {
+        self.get_info(InfoCode::VendorVersion)
+            .map(|array| array.as_string::<i32>().value(0).to_owned())
+    }
+
+    /// Returns the Arrow version of the vendor.
+    pub fn vendor_arrow_version(&mut self) -> Result<String> {
+        self.get_info(InfoCode::VendorArrowVersion)
+            .map(|array| array.as_string::<i32>().value(0).to_owned())
+    }
+
+    /// Returns true if SQL queries are supported.
+    pub fn vendor_sql(&mut self) -> Result<bool> {
+        self.get_info(InfoCode::VendorSql)
+            .map(|array| array.as_boolean().value(0))
+    }
+
+    /// Returns true if Substrait queries are supported.
+    pub fn vendor_substrait(&mut self) -> Result<bool> {
+        self.get_info(InfoCode::VendorSubstrait)
+            .map(|array| array.as_boolean().value(0))
+    }
+
+    /// Returns the name of the wrapped Go driver.
+    pub fn driver_name(&mut self) -> Result<String> {
+        self.get_info(InfoCode::DriverName)
+            .map(|array| array.as_string::<i32>().value(0).to_owned())
+    }
+
+    /// Returns the version of the wrapped Go driver.
+    pub fn driver_version(&mut self) -> Result<String> {
+        self.get_info(InfoCode::DriverVersion)
+            .map(|array| array.as_string::<i32>().value(0).to_owned())
+    }
+
+    /// Returns the Arrow version of the wrapped Go driver.
+    pub fn driver_arrow_version(&mut self) -> Result<String> {
+        self.get_info(InfoCode::DriverArrowVersion)
+            .map(|array| array.as_string::<i32>().value(0).to_owned())
+    }
+
+    /// Returns the [`AdbcVersion`] reported by the driver.
+    pub fn adbc_version(&mut self) -> Result<AdbcVersion> {
+        self.new_connection()?
+            .get_info(Some(HashSet::from_iter([InfoCode::DriverAdbcVersion])))?
+            .next()
+            .ok_or(Error::with_message_and_status(
+                "failed to get info",
+                Status::Internal,
+            ))?
+            .map_err(Into::into)
+            .and_then(|record_batch| {
+                assert_eq!(
+                    record_batch.column(0).as_primitive::<UInt32Type>().value(0),
+                    u32::from(&InfoCode::DriverAdbcVersion)
+                );
+                AdbcVersion::try_from(
+                    record_batch
+                        .column(1)
+                        .as_union()
+                        .value(0)
+                        .as_primitive::<Int64Type>()
+                        .value(0) as c_int,
+                )
+            })
+    }
+}
 
 impl Optionable for Database {
     type Option = OptionDatabase;

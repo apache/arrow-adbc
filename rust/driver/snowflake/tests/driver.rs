@@ -32,14 +32,19 @@
 //! These methods are available when the `env` crate feature is enabled.
 //!
 
+#[cfg(test)]
 #[cfg(feature = "env")]
-#[test_with::env(ADBC_SNOWFLAKE_TESTS)]
 mod tests {
-    use adbc_core::{error::Result, Database as _};
+    use adbc_core::{error::Result, options::AdbcVersion, Database as _};
     use adbc_snowflake::{database, driver, Connection, Database, Driver};
 
+    const ADBC_VERSION: AdbcVersion = AdbcVersion::V110;
+
     fn with_driver(func: impl FnOnce(Driver) -> Result<()>) -> Result<()> {
-        driver::Builder::from_env().try_load().and_then(func)
+        driver::Builder::from_env()
+            .with_adbc_version(ADBC_VERSION)
+            .try_load()
+            .and_then(func)
     }
 
     fn with_database(func: impl FnOnce(Database) -> Result<()>) -> Result<()> {
@@ -54,10 +59,35 @@ mod tests {
         with_database(|mut database| database.new_connection().and_then(func))
     }
 
-    #[test]
+    #[test_with::env(ADBC_SNOWFLAKE_TESTS)]
     /// Test the configuration by constructing a connection.
     fn connection() -> Result<()> {
         with_connection(|_connection| Ok(()))?;
+        Ok(())
+    }
+
+    #[test_with::env(ADBC_SNOWFLAKE_TESTS)]
+    /// Check the returned info by the driver.
+    fn get_info() -> Result<()> {
+        with_database(|mut database| {
+            assert_eq!(database.vendor_name(), Ok("Snowflake".to_owned()));
+            assert!(database
+                .vendor_version()
+                .is_ok_and(|version| version.starts_with("v")));
+            assert!(database.vendor_arrow_version().is_ok());
+            assert_eq!(database.vendor_sql(), Ok(true));
+            assert_eq!(database.vendor_substrait(), Ok(false));
+            assert_eq!(
+                database.driver_name(),
+                Ok("ADBC Snowflake Driver - Go".to_owned())
+            );
+            assert!(database.driver_version().is_ok());
+            assert!(database
+                .driver_arrow_version()
+                .is_ok_and(|version| version.starts_with("v")));
+            assert_eq!(database.adbc_version(), Ok(ADBC_VERSION));
+            Ok(())
+        })?;
         Ok(())
     }
 }
