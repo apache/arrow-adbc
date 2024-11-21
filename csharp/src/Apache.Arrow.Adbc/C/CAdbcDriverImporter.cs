@@ -336,7 +336,7 @@ namespace Apache.Arrow.Adbc.C
                 GC.SuppressFinalize(this);
             }
 
-            private void Dispose(bool disposing)
+            protected override void Dispose(bool disposing)
             {
                 if (!_disposed)
                 {
@@ -347,6 +347,7 @@ namespace Apache.Arrow.Adbc.C
                         base.Dispose();
                     }
                 }
+                base.Dispose(disposing);
             }
         }
 
@@ -430,7 +431,7 @@ namespace Apache.Arrow.Adbc.C
                 GC.SuppressFinalize(this);
             }
 
-            private unsafe void Dispose(bool disposing)
+            protected override unsafe void Dispose(bool disposing)
             {
                 if (!_disposed)
                 {
@@ -456,6 +457,7 @@ namespace Apache.Arrow.Adbc.C
                         base.Dispose();
                     }
                 }
+                base.Dispose(disposing);
             }
         }
 

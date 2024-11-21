@@ -63,11 +63,7 @@ namespace Apache.Arrow.Adbc.Tracing
             long maxTraceFileSizeKb = FileExporter.MaxFileSizeKbDefault,
             int maxTraceFiles = FileExporter.MaxTraceFilesDefault)
         {
-            if (string.IsNullOrWhiteSpace(fileBaseName)) throw new ArgumentNullException(nameof(fileBaseName));
-            if (fileBaseName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) throw new ArgumentException("invalid file name", nameof(fileBaseName));
-            if (traceLocation != null && (string.IsNullOrWhiteSpace(traceLocation) || (traceLocation.IndexOfAny(Path.GetInvalidPathChars()) >= 0))) throw new ArgumentException("invalid folder name", nameof(traceLocation));
-            if (maxTraceFileSizeKb < 1) throw new ArgumentException("maxTraceFileSizeKb must be greater than zero", nameof(maxTraceFileSizeKb));
-            if (maxTraceFiles < 1) throw new ArgumentException("maxTraceFiles must be greater than zero", nameof(maxTraceFiles));
+            ValidParameters(fileBaseName, traceLocation, maxTraceFileSizeKb, maxTraceFiles);
 
             DirectoryInfo tracesDirectory = new(traceLocation ?? s_tracingLocationDefault);
             string tracesDirectoryFullName = tracesDirectory.FullName;
@@ -104,6 +100,18 @@ namespace Apache.Arrow.Adbc.Tracing
             return false;
         }
 
+        internal static void ValidParameters(string fileBaseName, string? traceLocation, long maxTraceFileSizeKb, int maxTraceFiles)
+        {
+            if (string.IsNullOrWhiteSpace(fileBaseName)) throw new ArgumentNullException(nameof(fileBaseName));
+            if (fileBaseName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) throw new ArgumentException("Invalid or unsupported file name", nameof(fileBaseName));
+            if (traceLocation != null && (string.IsNullOrWhiteSpace(traceLocation)
+                    || (traceLocation.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+                    || (traceLocation.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)))
+                throw new ArgumentException("Invalid or unsupported folder name", nameof(traceLocation));
+            if (maxTraceFileSizeKb < 1) throw new ArgumentException("maxTraceFileSizeKb must be greater than zero", nameof(maxTraceFileSizeKb));
+            if (maxTraceFiles < 1) throw new ArgumentException("maxTraceFiles must be greater than zero.", nameof(maxTraceFiles));
+        }
+
         /// <summary>
         /// Runs continuously to monitor the tracing folder to remove older trace files.
         /// </summary>
@@ -127,7 +135,7 @@ namespace Apache.Arrow.Adbc.Tracing
                     FileInfo[] tracingFiles = [.. TracingFile.GetTracingFiles(traceDirectory, searchPattern)];
                     if (tracingFiles != null && tracingFiles.Length > maxTraceFiles)
                     {
-                        for (int i = tracingFiles.Length - 1; i > maxTraceFiles; i--)
+                        for (int i = tracingFiles.Length - 1; i >= maxTraceFiles; i--)
                         {
                             FileInfo? file = tracingFiles.ElementAtOrDefault(i);
                             await TracingFile.ActionWithRetry<IOException>(() => file?.Delete(), cancellationToken: cancellationToken);

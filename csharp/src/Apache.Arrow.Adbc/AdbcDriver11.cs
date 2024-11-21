@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-using System;
 using System.Collections.Generic;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc
 {
@@ -24,7 +24,7 @@ namespace Apache.Arrow.Adbc
     /// This provides a common interface for vendor-specific driver
     /// initialization routines.
     /// </summary>
-    public abstract class AdbcDriver11 : IDisposable
+    public abstract class AdbcDriver11 : TracingBase
     {
         ~AdbcDriver11() => Dispose(false);
 
@@ -39,16 +39,5 @@ namespace Apache.Arrow.Adbc
         /// <param name="parameters">Driver-specific parameters.</param>
         /// <returns>An object representing a reference to a specific database.</returns>
         public abstract AdbcDatabase11 Create(IReadOnlyDictionary<string, string> parameters);
-
-        /// <inheritdoc />
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-        }
     }
 }

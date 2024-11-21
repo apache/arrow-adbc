@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-using System;
 using System.Collections.Generic;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc
 {
@@ -24,7 +24,7 @@ namespace Apache.Arrow.Adbc
     /// This provides a common interface for vendor-specific driver
     /// initialization routines.
     /// </summary>
-    public abstract class AdbcDriver : IDisposable
+    public abstract class AdbcDriver : TracingBase
     {
         public virtual int DriverVersion => AdbcVersion.Version_1_0_0;
 
@@ -45,10 +45,6 @@ namespace Apache.Arrow.Adbc
         public virtual AdbcDatabase Open(IReadOnlyDictionary<string, object> parameters)
         {
             throw AdbcException.NotImplemented("Driver does not support non-string parameters");
-        }
-
-        public virtual void Dispose()
-        {
         }
     }
 }

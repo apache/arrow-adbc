@@ -20,7 +20,6 @@ using OpenTelemetry;
 using OpenTelemetry.Trace;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using System.IO;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
@@ -89,7 +88,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// The base file name (typically the tracing source name).
         /// Trace files will be created with the following name template: {fileBaseName}-trace-{dateTime}.log
         /// </param>
-        /// <param name="traceFolderLocation">
+        /// <param name="traceLocation">
         /// The full or partial path to a folder where the trace files will be written.
         /// If the folder doesn not exist, it will be created.
         /// </param>
@@ -103,17 +102,13 @@ namespace Apache.Arrow.Adbc.Tracing
         public static TracerProviderBuilder AddAdbcFileExporter(
             this TracerProviderBuilder builder,
             string fileBaseName,
-            string? traceFolderLocation = default,
+            string? traceLocation = default,
             long maxTraceFileSizeKb = FileExporter.MaxFileSizeKbDefault,
             int maxTraceFiles = FileExporter.MaxTraceFilesDefault)
         {
-            if (string.IsNullOrWhiteSpace(fileBaseName)) throw new ArgumentNullException(nameof(fileBaseName));
-            if (fileBaseName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) throw new ArgumentException("invalid file name", nameof(fileBaseName));
-            if (traceFolderLocation != null && (string.IsNullOrWhiteSpace(traceFolderLocation) || (traceFolderLocation.IndexOfAny(Path.GetInvalidPathChars()) >= 0))) throw new ArgumentException("invalid folder name", nameof(traceFolderLocation));
-            if (maxTraceFileSizeKb < 1) throw new ArgumentException("maxTraceFileSizeKb must be greater than zero", nameof(maxTraceFileSizeKb));
-            if (maxTraceFiles < 1) throw new ArgumentException("maxTraceFiles must be greater than zero", nameof(maxTraceFiles));
+            FileExporter.ValidParameters(fileBaseName, traceLocation, maxTraceFileSizeKb, maxTraceFiles);
 
-            if (FileExporter.TryCreate(out FileExporter? fileExporter, fileBaseName, traceFolderLocation, maxTraceFileSizeKb, maxTraceFiles))
+            if (FileExporter.TryCreate(out FileExporter? fileExporter, fileBaseName, traceLocation, maxTraceFileSizeKb, maxTraceFiles))
             {
                 // Only add a new processor if there isn't already one listening for the source/location.
                 return builder.AddProcessor(_ => new SimpleActivityExportProcessor(fileExporter!));

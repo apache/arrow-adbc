@@ -154,12 +154,6 @@ namespace Apache.Arrow.Adbc
             throw AdbcException.NotImplemented("Statement does not support setting options");
         }
 
-        public override void Dispose()
-        {
-            base.Dispose();
-            GC.SuppressFinalize(this);
-        }
-
         /// <summary>
         /// Gets a value from the Arrow array at the specified index,
         /// using the Field metadata for information.

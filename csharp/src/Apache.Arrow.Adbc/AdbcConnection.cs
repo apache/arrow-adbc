@@ -68,12 +68,6 @@ namespace Apache.Arrow.Adbc
             throw AdbcException.NotImplemented("Connection does not support BulkIngest");
         }
 
-        public override void Dispose()
-        {
-            base.Dispose();
-            GC.SuppressFinalize(this);
-        }
-
         /// <summary>
         /// Get metadata about the driver/database.
         /// </summary>
