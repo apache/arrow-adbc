@@ -121,7 +121,7 @@ namespace Apache.Arrow.Adbc.Tests
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);
                 FileInfo[] files = traceDirectory.GetFiles();
-                Assert.True(files.Length > 2);
+                Assert.True(files.Length > 2, $"actual # of trace files: {files.Length}");
                 Assert.True(files.All(f => f.Name.StartsWith(_activitySourceName)));
                 Assert.True(files.All(f => f.Length < (maxTraceFileSizeKb + 1) * kilobyte));
             }
@@ -156,8 +156,8 @@ namespace Apache.Arrow.Adbc.Tests
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);
                 FileInfo[] files = traceDirectory.GetFiles();
-                Assert.True(files.Length > 2);
-                Assert.True(files.Length <= maxTraceFiles, $"actual number of files: {files.Length}");
+                Assert.True(files.Length > 2, $"actual # of trace files: {files.Length}");
+                Assert.True(files.Length <= maxTraceFiles, $"actual # of files: {files.Length}");
             }
             finally
             {
@@ -218,7 +218,7 @@ namespace Apache.Arrow.Adbc.Tests
                     .Build());
         }
 
-        private void AddEvent(string eventName, string activityName = nameof(StartActivity))
+        private void AddEvent(string eventName, string activityName = nameof(AddEvent))
         {
             using Activity? activity = _activitySource.StartActivity(activityName);
             activity?.AddEvent(new ActivityEvent(eventName));
