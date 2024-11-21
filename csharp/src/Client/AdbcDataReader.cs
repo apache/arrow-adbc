@@ -367,7 +367,7 @@ namespace Apache.Arrow.Adbc.Client
             // if the OnGetValue event is set, call it
             object? result = OnGetValue?.Invoke(arrowArray, ordinal);
 
-            // if the value is null, try to get the value from AdbcStatement
+            // if the value is null, try to get the value from the ArrowArray
             result = result ?? arrowArray.ValueAt(this.currentRowInRecordBatch);
 
             return result;
