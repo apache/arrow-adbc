@@ -26,10 +26,19 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Client
 {
+    /// <summary>
+    /// Invoked when a value is read from an Arrow array.
+    /// </summary>
+    /// <param name="arrowArray">The Arrow array.</param>
+    /// <param name="index">The item index.</param>
+    /// <returns>The value at the index.</returns>
+    public delegate object GetValueEventHandler(IArrowArray arrowArray, int index);
+
     /// <summary>
     /// Represents a DbDataReader over Arrow record batches
     /// </summary>
@@ -43,6 +52,14 @@ namespace Apache.Arrow.Adbc.Client
         private readonly Schema schema;
         private bool isClosed;
         private int recordsAffected = -1;
+
+        /// <summary>
+        /// An event that is raised when a value is read from an Arrow array.
+        /// </summary>
+        /// <remarks>
+        /// Callers may opt to provide overrides for parsing values.
+        /// </remarks>
+        public event GetValueEventHandler? OnGetValue;
 
         internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior, bool closeConnection)
         {
@@ -341,14 +358,19 @@ namespace Apache.Arrow.Adbc.Client
         }
 
         /// <summary>
-        /// Gets the value from an IArrowArray at the current row index
+        /// Gets the value from an IArrowArray at the current row index.
         /// </summary>
         /// <param name="arrowArray"></param>
         /// <returns></returns>
         public object? GetValue(IArrowArray arrowArray, int ordinal)
         {
-            Field field = this.schema.GetFieldByIndex(ordinal);
-            return this.adbcCommand.AdbcStatement.GetValue(arrowArray, this.currentRowInRecordBatch);
+            // if the OnGetValue event is set, call it
+            object? result = OnGetValue?.Invoke(arrowArray, ordinal);
+
+            // if the value is null, try to get the value from AdbcStatement
+            result = result ?? arrowArray.ValueAt(this.currentRowInRecordBatch);
+
+            return result;
         }
 
         /// <summary>

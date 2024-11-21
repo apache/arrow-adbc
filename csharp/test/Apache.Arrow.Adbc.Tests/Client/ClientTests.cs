@@ -71,7 +71,6 @@ namespace Apache.Arrow.Adbc.Tests.Client
 
             Mock<AdbcStatement> mockStatement = new Mock<AdbcStatement>();
             mockStatement.Setup(x => x.ExecuteQuery()).Returns(queryResult); ;
-            mockStatement.Setup(x => x.GetValue(It.IsAny<IArrowArray>(), It.IsAny<int>())).Returns(sqlDecimal);
 
             Adbc.Client.AdbcConnection mockConnection = new Adbc.Client.AdbcConnection();
             mockConnection.DecimalBehavior = decimalBehavior;

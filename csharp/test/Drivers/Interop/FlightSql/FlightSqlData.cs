@@ -39,10 +39,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             FlightSqlTestEnvironmentType environmentType
         )
         {
-            SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
-
             if (environmentType == FlightSqlTestEnvironmentType.DuckDB)
             {
+                SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+
                 sampleDataBuilder.Samples.Add(
                     new SampleData()
                     {
@@ -92,11 +92,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                         }
                     }
                 );
-            }
 
-            if (environmentType == FlightSqlTestEnvironmentType.SQLite)
+                return sampleDataBuilder;
+            }
+            else if (environmentType == FlightSqlTestEnvironmentType.SQLite)
             {
                 string tempTable = Guid.NewGuid().ToString().Replace("-","");
+
+                SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+
                 sampleDataBuilder.Samples.Add(
                     new SampleData()
                     {
@@ -124,15 +128,63 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                         }
                     }
                 );
-            }
 
-            // TODO: Dremio
-            if (environmentType == FlightSqlTestEnvironmentType.Dremio)
+                return sampleDataBuilder;
+            }
+            else if (environmentType == FlightSqlTestEnvironmentType.Dremio)
             {
+                ListArray.Builder labuilder = new ListArray.Builder(Int32Type.Default);
+                Int32Array.Builder numbersBuilder = (Int32Array.Builder)labuilder.ValueBuilder;
+                labuilder.Append();
+                numbersBuilder.AppendRange(new List<int>() { 1, 2, 3 });
 
+                Int32Array numbersArray = numbersBuilder.Build();
+
+                SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+
+                sampleDataBuilder.Samples.Add(
+                    new SampleData()
+                    {
+                        Query = "SELECT " +
+                                "TRUE AS sample_boolean, " +
+                                "CAST(123 AS INTEGER) AS sample_integer, " +
+                                "CAST(1234567890 AS BIGINT) AS sample_bigint, " +
+                                "CAST(123.45 AS FLOAT) AS sample_float," +
+                                "CAST(12345.6789 AS DOUBLE) AS sample_double,  " +
+                                "CAST(12345.67 AS DECIMAL(10, 2)) AS sample_decimal, " +
+                                "'Sample Text' AS sample_varchar,  " +
+                                "DATE '2024-01-01' AS sample_date,  " +
+                                "TIME '12:34:56' AS sample_time,  " +
+                                "TIMESTAMP '2024-01-01 12:34:56' AS sample_timestamp,  " +
+                                "ARRAY[1, 2, 3] AS sample_array, " +
+                                "CONVERT_FROM('{\"name\":\"Gnarly\", \"age\":7, \"car\":null}', 'json') as sample_struct",
+                        ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                        {
+                            new ColumnNetTypeArrowTypeValue("sample_boolean", typeof(bool), typeof(BooleanType), true),
+                            new ColumnNetTypeArrowTypeValue("sample_integer", typeof(int), typeof(Int32Type), 123),
+                            new ColumnNetTypeArrowTypeValue("sample_bigint", typeof(Int64), typeof(Int64Type), 1234567890L),
+                            new ColumnNetTypeArrowTypeValue("sample_float", typeof(float), typeof(FloatType), 123.45f),
+                            new ColumnNetTypeArrowTypeValue("sample_double", typeof(double), typeof(DoubleType), 12345.6789d),
+                            new ColumnNetTypeArrowTypeValue("sample_decimal", typeof(SqlDecimal), typeof(Decimal128Type), new SqlDecimal(12345.67m)),
+                            new ColumnNetTypeArrowTypeValue("sample_varchar", typeof(string), typeof(StringType), "Sample Text"),
+                            new ColumnNetTypeArrowTypeValue("sample_date", typeof(DateTime), typeof(Date64Type), new DateTime(2024, 1, 1)),
+#if NET6_0_OR_GREATER
+                            new ColumnNetTypeArrowTypeValue("sample_time", typeof(TimeOnly), typeof(Time32Type), new TimeOnly(12, 34, 56)),
+#else
+                            new ColumnNetTypeArrowTypeValue("sample_time", typeof(TimeSpan), typeof(Time32Type), new TimeSpan(12, 34, 56)),
+#endif
+                            new ColumnNetTypeArrowTypeValue("sample_timestamp", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2024, 1, 1, 12, 34, 56), TimeSpan.Zero)),
+                            new ColumnNetTypeArrowTypeValue("sample_array", typeof(Int32Array), typeof(ListType), numbersArray),
+                            new ColumnNetTypeArrowTypeValue("sample_struct", typeof(string), typeof(StringType), "{\"name\":\"Gnarly\", \"age\":7, \"car\":null}"),
+                        }
+                    });
+
+                return sampleDataBuilder;
             }
-
-            return sampleDataBuilder;
+            else
+            {
+                throw new InvalidOperationException("Unknown environment type.");
+            }
         }
     }
 }
