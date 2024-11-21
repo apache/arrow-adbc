@@ -54,7 +54,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, timeoutToken); // + poll, up to QueryTimeout
                 Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, timeoutToken); // + get the result, up to QueryTimeout
 
-                // TODO: Ensure this is set dynamically based on server capabilities
                 return new QueryResult(-1, Connection.NewReader(this, schema));
             }
             catch (OperationCanceledException ex)
