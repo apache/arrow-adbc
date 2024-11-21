@@ -46,7 +46,7 @@ Status PqResultHelper::PrepareInternal(int n_params, const Oid* param_oids) cons
 Status PqResultHelper::Prepare() const { return PrepareInternal(0, nullptr); }
 
 Status PqResultHelper::Prepare(const std::vector<Oid>& param_oids) const {
-  return PrepareInternal(param_oids.size(), param_oids.data());
+  return PrepareInternal(static_cast<int>(param_oids.size()), param_oids.data());
 }
 
 Status PqResultHelper::DescribePrepared() {
@@ -90,8 +90,8 @@ Status PqResultHelper::Execute(const std::vector<std::string>& params,
     }
 
     ClearResult();
-    result_ = PQexecParams(conn_, query_.c_str(), param_values.size(), param_oids_ptr,
-                           param_values.data(), param_lengths.data(),
+    result_ = PQexecParams(conn_, query_.c_str(), static_cast<int>(param_values.size()),
+                           param_oids_ptr, param_values.data(), param_lengths.data(),
                            param_formats.data(), static_cast<int>(output_format_));
   }
 

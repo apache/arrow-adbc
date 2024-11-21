@@ -546,22 +546,23 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
   PqResultHelper helper(connection_->conn(), query_);
 
   if (bind_.release) {
-    nanoarrow::UniqueSchema schema;
+    nanoarrow::UniqueSchema param_schema;
     struct ArrowError na_error;
     ArrowErrorInit(&na_error);
-    CHECK_NA_DETAIL(INTERNAL, ArrowArrayStreamGetSchema(&bind_, schema.get(), &na_error),
+    CHECK_NA_DETAIL(INTERNAL,
+                    ArrowArrayStreamGetSchema(&bind_, param_schema.get(), &na_error),
                     &na_error, error);
 
-    if (std::string(schema->format) != "+s") {
+    if (std::string(param_schema->format) != "+s") {
       SetError(error, "%s", "[libpq] Bind parameters must have type STRUCT");
       return ADBC_STATUS_INVALID_STATE;
     }
 
-    std::vector<Oid> param_oids(schema->n_children);
-    for (int64_t i = 0; i < schema->n_children; i++) {
+    std::vector<Oid> param_oids(param_schema->n_children);
+    for (int64_t i = 0; i < param_schema->n_children; i++) {
       PostgresType pg_type;
       CHECK_NA_DETAIL(INTERNAL,
-                      PostgresType::FromSchema(*type_resolver_, schema->children[i],
+                      PostgresType::FromSchema(*type_resolver_, param_schema->children[i],
                                                &pg_type, &na_error),
                       &na_error, error);
       param_oids[i] = pg_type.oid();
