@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Client;
@@ -41,6 +42,56 @@ namespace Apache.Arrow.Adbc.Tests.Client
             object rdrValue = rdr.GetValue(0);
 
             Assert.True(rdrValue.GetType().Equals(expectedType));
+        }
+
+        /// <summary>
+        /// Demonstrates the OnGetValue method of an AdbcDataReader.
+        /// </summary>
+        /// <param name="treatIntegersAsStrings">True/False to treat integers as strings.</param>
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void TestOnGetValue(bool treatIntegersAsStrings)
+        {
+            AdbcDataReader rdr = GetMoqDataReaderForIntegers();
+
+            if (treatIntegersAsStrings)
+            {
+                rdr.OnGetValue += (o, e) =>
+                {
+                    if (o != null)
+                    {
+                        Int32Array? ints = o as Int32Array;
+
+                        if (ints != null)
+                        {
+                            int? value = ints.GetValue(e);
+
+                            if (value.HasValue)
+                                return value.Value.ToString();
+                            else
+                                return string.Empty;
+                        }
+                    }
+
+                    return string.Empty;
+                };
+            }
+
+            while (rdr.Read())
+            {
+                object? rdrValue = rdr.GetValue(0);
+
+                if (treatIntegersAsStrings)
+                {
+                    Assert.True(rdrValue.GetType().Equals(typeof(string)));
+                }
+                else
+                {
+                    if (rdrValue != DBNull.Value)
+                        Assert.True(rdrValue.GetType().Equals(typeof(int)));
+                }
+            }
         }
 
         private AdbcDataReader GetMoqDataReader(DecimalBehavior decimalBehavior, string value, int precision, int scale)
@@ -74,6 +125,41 @@ namespace Apache.Arrow.Adbc.Tests.Client
 
             Adbc.Client.AdbcConnection mockConnection = new Adbc.Client.AdbcConnection();
             mockConnection.DecimalBehavior = decimalBehavior;
+
+            AdbcCommand cmd = new AdbcCommand(mockStatement.Object, mockConnection);
+
+            AdbcDataReader reader = cmd.ExecuteReader();
+            return reader;
+        }
+
+        private AdbcDataReader GetMoqDataReaderForIntegers()
+        {
+            List<KeyValuePair<string, string>> metadata = new List<KeyValuePair<string, string>>();
+            List<Field> fields = new List<Field>();
+            fields.Add(new Field("TestIntegers", new Int32Type(), true, metadata));
+
+            Schema schema = new Schema(fields, metadata);
+            Int32Array.Builder numbersBuilder = new Int32Array.Builder();
+            numbersBuilder.AppendRange(new List<int>() { 1, 2, 3 });
+            numbersBuilder.AppendNull(); //null for #4
+            numbersBuilder.Append(5);
+
+            Int32Array numbersArray = numbersBuilder.Build();
+
+            List<IArrowArray> values = new List<IArrowArray>() { numbersArray };
+
+            List<RecordBatch> records = new List<RecordBatch>()
+            {
+                new RecordBatch(schema, values, numbersArray.Count())
+            };
+
+            MockArrayStream mockArrayStream = new MockArrayStream(schema, records);
+            QueryResult queryResult = new QueryResult(1, mockArrayStream);
+
+            Mock<AdbcStatement> mockStatement = new Mock<AdbcStatement>();
+            mockStatement.Setup(x => x.ExecuteQuery()).Returns(queryResult); ;
+
+            Adbc.Client.AdbcConnection mockConnection = new Adbc.Client.AdbcConnection();
 
             AdbcCommand cmd = new AdbcCommand(mockStatement.Object, mockConnection);
 

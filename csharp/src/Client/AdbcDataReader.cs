@@ -54,7 +54,7 @@ namespace Apache.Arrow.Adbc.Client
         private int recordsAffected = -1;
 
         /// <summary>
-        /// An event that is raised when a value is read from an Arrow array.
+        /// An event that is raised when a value is read from an IArrowArray.
         /// </summary>
         /// <remarks>
         /// Callers may opt to provide overrides for parsing values.
@@ -86,7 +86,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override object this[int ordinal] => GetValue(ordinal);
 
-        public override object this[string name] => GetValue(this.RecordBatch.Column(name), GetOrdinal(name)) ?? DBNull.Value;
+        public override object this[string name] => GetValue(this.RecordBatch.Column(name)) ?? DBNull.Value;
 
         public override int Depth => 0;
 
@@ -247,7 +247,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override object GetValue(int ordinal)
         {
-            object? value = GetValue(this.RecordBatch.Column(ordinal), ordinal);
+            object? value = GetValue(this.RecordBatch.Column(ordinal));
 
             if (value == null)
                 return DBNull.Value;
@@ -362,10 +362,10 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         /// <param name="arrowArray"></param>
         /// <returns></returns>
-        public object? GetValue(IArrowArray arrowArray, int ordinal)
+        private object? GetValue(IArrowArray arrowArray)
         {
             // if the OnGetValue event is set, call it
-            object? result = OnGetValue?.Invoke(arrowArray, ordinal);
+            object? result = OnGetValue?.Invoke(arrowArray, this.currentRowInRecordBatch);
 
             // if the value is null, try to get the value from the ArrowArray
             result = result ?? arrowArray.ValueAt(this.currentRowInRecordBatch);
