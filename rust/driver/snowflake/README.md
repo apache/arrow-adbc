@@ -30,13 +30,11 @@ driver, based on the
 
 ## Example
 
-```rust
-# #![doc(test(attr(test_with::env(ADBC_SNOWFLAKE_TESTS))))]
+```rust,no_run
 use adbc_core::{Connection, Statement};
 use adbc_snowflake::{connection, database, Driver};
 use arrow_array::{cast::AsArray, types::Decimal128Type};
 
-# #[cfg(feature = "env")]
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 // Load the driver
@@ -63,8 +61,6 @@ assert_eq!(
 );
 
 # Ok(()) }
-# #[cfg(not(feature = "env"))]
-# fn main() {}
 ```
 
 ## Crate features

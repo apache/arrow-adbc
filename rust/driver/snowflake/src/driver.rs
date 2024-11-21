@@ -142,7 +142,7 @@ impl Driver {
     ///
     /// # Example
     ///
-    /// ```rust,ignore
+    /// ```rust,no_run
     /// # use adbc_core::error::Result;
     /// # use adbc_snowflake::Driver;
     /// # fn main() -> Result<()> {
