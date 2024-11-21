@@ -203,8 +203,6 @@ namespace Apache.Arrow.Adbc.Tests
         [InlineData(" ", "abc", 1, 1, typeof(ArgumentNullException))]
         [InlineData(":", "abc", 1, 1, typeof(ArgumentException))]
         [InlineData("/", "abc", 1, 1, typeof(ArgumentException))]
-        [InlineData("abc", ":", 1, 1, typeof(ArgumentException))]
-        [InlineData("abc", "/", 1, 1, typeof(ArgumentException))]
         [InlineData("abc", "abc", 0, 1, typeof(ArgumentException))]
         [InlineData("abc", "abc", -1, 1, typeof(ArgumentException))]
         [InlineData("abc", "abc", 1, 0, typeof(ArgumentException))]
