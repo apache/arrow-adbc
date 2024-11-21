@@ -15,66 +15,25 @@
 * limitations under the License.
 */
 
-using System.IO;
-using System.Runtime.InteropServices;
-using Apache.Arrow.Adbc.C;
-
 namespace Apache.Arrow.Adbc.Drivers.Interop.FlightSql
 {
     /// <summary>
     /// Lightweight class for loading the Flight SQL Go driver to .NET.
     /// </summary>
-    public class FlightSqlDriverLoader
+    public class FlightSqlDriverLoader : AdbcDriverLoader
     {
+        public FlightSqlDriverLoader() : base("libadbc_driver_flightsql", "FlightSqlDriverInit")
+        {
+        }
+
         /// <summary>
-        /// Loads the Flight SQL Go driver from the current directory using the default name and entry point.
+        /// Loads the Snowflake Go driver from the current directory using the default name and entry point.
         /// </summary>
-        /// <returns>An <see cref="AdbcDriver"/> based on the Flight SQL Go driver.</returns>
+        /// <returns>An <see cref="AdbcDriver"/> based on the Snowflake Go driver.</returns>
         /// <exception cref="FileNotFoundException"></exception>
         public static AdbcDriver LoadDriver()
         {
-            string root = "runtimes";
-            string native = "native";
-            string fileName = $"libadbc_driver_flightsql";
-            string file;
-
-            // matches extensions in https://github.com/apache/arrow-adbc/blob/main/go/adbc/pkg/Makefile
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                file = Path.Combine(root, $"linux-{GetArchitecture()}", native, $"{fileName}.so");
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                file = Path.Combine(root, $"win-{GetArchitecture()}",   native, $"{fileName}.dll");
-            else
-                file = Path.Combine(root, $"osx-{GetArchitecture()}",   native, $"{fileName}.dylib");
-
-            if (File.Exists(file))
-            {
-                // get the full path because some .NET versions need it
-                file = Path.GetFullPath(file);
-            }
-            else
-            {
-                throw new FileNotFoundException($"Cound not find {file}");
-            }
-
-            return LoadDriver(file, "FlightSqlDriverInit");
-        }
-
-        private static string GetArchitecture()
-        {
-            return RuntimeInformation.OSArchitecture.ToString().ToLower();
-        }
-
-        /// <summary>
-        /// Loads the Flight SQL Go driver from the current directory using the default name and entry point.
-        /// </summary>
-        /// <param name="file">The file to load.</param>
-        /// <param name="entryPoint">The entry point of the file.</param>
-        /// <returns>An <see cref="AdbcDriver"/> based on the FlightSql Go driver.</returns>
-        public static AdbcDriver LoadDriver(string file, string entryPoint)
-        {
-            AdbcDriver flightSqlDriver = CAdbcDriverImporter.Load(file, entryPoint);
-
-            return flightSqlDriver;
+            return new FlightSqlDriverLoader().FindAndLoadDriver();
         }
     }
 }

@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Extensions
     public static class IArrowArrayExtensions
     {
         /// <summary>
-        /// Gets a value from the Arrow array at the specified index.
+        /// Helper extension to get a value from the <see cref="IArrowArray"/> at the specified index.
         /// </summary>
         /// <param name="arrowArray">
         /// The Arrow array.

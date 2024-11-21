@@ -39,34 +39,47 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             FlightSqlTestEnvironmentType environmentType
         )
         {
-            if (environmentType == FlightSqlTestEnvironmentType.DuckDB)
+            switch (environmentType)
             {
-                SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+                case FlightSqlTestEnvironmentType.DuckDB:
+                    return GetDuckDbSampleData();
+                case FlightSqlTestEnvironmentType.SQLite:
+                    return GetSQLiteSampleData();
+                case FlightSqlTestEnvironmentType.Dremio:
+                    return GetDremioSampleData();
+                default:
+                    throw new InvalidOperationException("Unknown environment type.");
+            }
+        }
 
-                sampleDataBuilder.Samples.Add(
-                    new SampleData()
+        private static SampleDataBuilder GetDuckDbSampleData()
+        {
+            SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+
+            sampleDataBuilder.Samples.Add(
+                new SampleData()
+                {
+                    Query = "SELECT " +
+                            "42 AS \"TinyInt\", " +
+                            "12345 AS \"SmallInt\", " +
+                            "987654321 AS \"Integer\", " +
+                            "1234567890123 AS \"BigInt\", " +
+                            "3.141592 AS \"Real\", " +
+                            "123.456789123456 AS \"Double\", " +
+                            "DECIMAL '12345.67' AS \"Decimal\",  " +
+                            "'DuckDB' AS \"Varchar\", " +
+                            "BLOB 'abc' AS \"Blob\", " +
+                            "TRUE AS \"Boolean\"," +
+                            "DATE '2024-09-10' AS \"Date\", " +
+                            "TIME '12:34:56' AS \"Time\", " +
+                            "TIMESTAMP '2024-09-10 12:34:56' AS \"Timestamp\", " +
+                            "INTERVAL '1 year' AS \"Interval\", " +
+                            "'[1, 2, 3]'::JSON AS \"JSON\", " +
+                            "'[{\"key\": \"value\"}]'::JSON AS \"JSON_Array\", " +
+                            "to_json([true, false, null]) AS \"List_JSON\", " + // need to convert List values to json
+                            "to_json(MAP {'key': 'value'}) AS \"Map_JSON\" ", // need to convert Map values to json
+                    ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
                     {
-                        Query = "SELECT " +
-                                "42 AS \"TinyInt\", " +
-                                "12345 AS \"SmallInt\", " +
-                                "987654321 AS \"Integer\", " +
-                                "1234567890123 AS \"BigInt\", " +
-                                "3.141592 AS \"Real\", " +
-                                "123.456789123456 AS \"Double\", " +
-                                "DECIMAL '12345.67' AS \"Decimal\",  " +
-                                "'DuckDB' AS \"Varchar\", " +
-                                "BLOB 'abc' AS \"Blob\", " +
-                                "TRUE AS \"Boolean\"," +
-                                "DATE '2024-09-10' AS \"Date\", " +
-                                "TIME '12:34:56' AS \"Time\", " +
-                                "TIMESTAMP '2024-09-10 12:34:56' AS \"Timestamp\", " +
-                                "INTERVAL '1 year' AS \"Interval\", " +
-                                "'[1, 2, 3]'::JSON AS \"JSON\", " +
-                                "'[{\"key\": \"value\"}]'::JSON AS \"JSON_Array\", " +
-                                "to_json([true, false, null]) AS \"List_JSON\", " + // need to convert List values to json
-                                "to_json(MAP {'key': 'value'}) AS \"Map_JSON\" ", // need to convert Map values to json
-                        ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
-                        {
                           new ColumnNetTypeArrowTypeValue("TinyInt", typeof(int), typeof(Int32Type), 42),
                           new ColumnNetTypeArrowTypeValue("SmallInt", typeof(int), typeof(Int32Type), 12345),
                           new ColumnNetTypeArrowTypeValue("Integer", typeof(int), typeof(Int32Type), 987654321),
@@ -89,77 +102,79 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                           new ColumnNetTypeArrowTypeValue("JSON_Array", typeof(string), typeof(StringType), "[{\"key\": \"value\"}]"),
                           new ColumnNetTypeArrowTypeValue("List_JSON", typeof(string), typeof(StringType),"[true,false,null]"),
                           new ColumnNetTypeArrowTypeValue("Map_JSON", typeof(string), typeof(StringType), "{\"key\":\"value\"}"),
-                        }
                     }
-                );
+                }
+            );
 
-                return sampleDataBuilder;
-            }
-            else if (environmentType == FlightSqlTestEnvironmentType.SQLite)
-            {
-                string tempTable = Guid.NewGuid().ToString().Replace("-","");
+            return sampleDataBuilder;
+        }
 
-                SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+        private static SampleDataBuilder GetSQLiteSampleData()
+        {
+            string tempTable = Guid.NewGuid().ToString().Replace("-", "");
 
-                sampleDataBuilder.Samples.Add(
-                    new SampleData()
+            SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+
+            sampleDataBuilder.Samples.Add(
+                new SampleData()
+                {
+                    // for SQLite, we can't just select data without a
+                    // table because we get mixed schemas that are returned,
+                    // resulting in an error. so create a temp table,
+                    // insert data, select data, then remove the table.
+                    PreQueryCommands = new List<string>()
                     {
-                        // for SQLite, we can't just select data without a
-                        // table because we get mixed schemas that are returned,
-                        // resulting in an error. so create a temp table,
-                        // insert data, select data, then remove the table.
-                        PreQueryCommands = new List<string>()
-                        {
                             $"CREATE TEMP TABLE [{tempTable}] (INTEGER_COLUMN INTEGER, TEXT_COLUMN TEXT, BLOB_COLUMN BLOB, REAL_COLUMN REAL, NULL_COLUMN NULL);",
                             $"INSERT INTO [{tempTable}] (INTEGER_COLUMN, TEXT_COLUMN, BLOB_COLUMN, REAL_COLUMN, NULL_COLUMN) VALUES (42, 'Hello, SQLite', X'426C6F62', 3.14159, NULL);"
-                        },
-                        Query = $"SELECT INTEGER_COLUMN, TEXT_COLUMN, BLOB_COLUMN, REAL_COLUMN, NULL_COLUMN FROM [{tempTable}];",
-                        PostQueryCommands = new List<string>()
-                        {
+                    },
+                    Query = $"SELECT INTEGER_COLUMN, TEXT_COLUMN, BLOB_COLUMN, REAL_COLUMN, NULL_COLUMN FROM [{tempTable}];",
+                    PostQueryCommands = new List<string>()
+                    {
                             $"DROP TABLE [{tempTable}];"
-                        },
-                        ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
-                        {
+                    },
+                    ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                    {
                           new ColumnNetTypeArrowTypeValue("INTEGER_COLUMN", typeof(long), typeof(Int64Type), 42L),
                           new ColumnNetTypeArrowTypeValue("TEXT_COLUMN", typeof(string), typeof(StringType), "Hello, SQLite"),
                           new ColumnNetTypeArrowTypeValue("BLOB_COLUMN", typeof(byte[]), typeof(BinaryType),  Encoding.UTF8.GetBytes("Blob")),
                           new ColumnNetTypeArrowTypeValue("REAL_COLUMN", typeof(double), typeof(DoubleType), 3.14159d),
                           new ColumnNetTypeArrowTypeValue("NULL_COLUMN", typeof(UnionType), typeof(UnionType), null),
-                        }
                     }
-                );
+                }
+            );
 
-                return sampleDataBuilder;
-            }
-            else if (environmentType == FlightSqlTestEnvironmentType.Dremio)
-            {
-                ListArray.Builder labuilder = new ListArray.Builder(Int32Type.Default);
-                Int32Array.Builder numbersBuilder = (Int32Array.Builder)labuilder.ValueBuilder;
-                labuilder.Append();
-                numbersBuilder.AppendRange(new List<int>() { 1, 2, 3 });
+            return sampleDataBuilder;
+        }
 
-                Int32Array numbersArray = numbersBuilder.Build();
+        private static SampleDataBuilder GetDremioSampleData()
+        {
+            ListArray.Builder labuilder = new ListArray.Builder(Int32Type.Default);
+            Int32Array.Builder numbersBuilder = (Int32Array.Builder)labuilder.ValueBuilder;
+            labuilder.Append();
+            numbersBuilder.AppendRange(new List<int>() { 1, 2, 3 });
 
-                SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+            Int32Array numbersArray = numbersBuilder.Build();
 
-                sampleDataBuilder.Samples.Add(
-                    new SampleData()
+            SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+
+            sampleDataBuilder.Samples.Add(
+                new SampleData()
+                {
+                    Query = "SELECT " +
+                            "TRUE AS sample_boolean, " +
+                            "CAST(123 AS INTEGER) AS sample_integer, " +
+                            "CAST(1234567890 AS BIGINT) AS sample_bigint, " +
+                            "CAST(123.45 AS FLOAT) AS sample_float," +
+                            "CAST(12345.6789 AS DOUBLE) AS sample_double,  " +
+                            "CAST(12345.67 AS DECIMAL(10, 2)) AS sample_decimal, " +
+                            "'Sample Text' AS sample_varchar,  " +
+                            "DATE '2024-01-01' AS sample_date,  " +
+                            "TIME '12:34:56' AS sample_time,  " +
+                            "TIMESTAMP '2024-01-01 12:34:56' AS sample_timestamp,  " +
+                            "ARRAY[1, 2, 3] AS sample_array, " +
+                            "CONVERT_FROM('{\"name\":\"Gnarly\", \"age\":7, \"car\":null}', 'json') as sample_struct",
+                    ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
                     {
-                        Query = "SELECT " +
-                                "TRUE AS sample_boolean, " +
-                                "CAST(123 AS INTEGER) AS sample_integer, " +
-                                "CAST(1234567890 AS BIGINT) AS sample_bigint, " +
-                                "CAST(123.45 AS FLOAT) AS sample_float," +
-                                "CAST(12345.6789 AS DOUBLE) AS sample_double,  " +
-                                "CAST(12345.67 AS DECIMAL(10, 2)) AS sample_decimal, " +
-                                "'Sample Text' AS sample_varchar,  " +
-                                "DATE '2024-01-01' AS sample_date,  " +
-                                "TIME '12:34:56' AS sample_time,  " +
-                                "TIMESTAMP '2024-01-01 12:34:56' AS sample_timestamp,  " +
-                                "ARRAY[1, 2, 3] AS sample_array, " +
-                                "CONVERT_FROM('{\"name\":\"Gnarly\", \"age\":7, \"car\":null}', 'json') as sample_struct",
-                        ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
-                        {
                             new ColumnNetTypeArrowTypeValue("sample_boolean", typeof(bool), typeof(BooleanType), true),
                             new ColumnNetTypeArrowTypeValue("sample_integer", typeof(int), typeof(Int32Type), 123),
                             new ColumnNetTypeArrowTypeValue("sample_bigint", typeof(Int64), typeof(Int64Type), 1234567890L),
@@ -176,15 +191,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                             new ColumnNetTypeArrowTypeValue("sample_timestamp", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2024, 1, 1, 12, 34, 56), TimeSpan.Zero)),
                             new ColumnNetTypeArrowTypeValue("sample_array", typeof(Int32Array), typeof(ListType), numbersArray),
                             new ColumnNetTypeArrowTypeValue("sample_struct", typeof(string), typeof(StringType), "{\"name\":\"Gnarly\", \"age\":7, \"car\":null}"),
-                        }
-                    });
+                    }
+                });
 
-                return sampleDataBuilder;
-            }
-            else
-            {
-                throw new InvalidOperationException("Unknown environment type.");
-            }
+            return sampleDataBuilder;
         }
     }
 }
