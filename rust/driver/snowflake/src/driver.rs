@@ -15,6 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//! Snowflake ADBC Driver
+//!
+//!
+
 #[cfg(any(feature = "bundled", feature = "linked"))]
 use std::ffi::{c_int, c_void};
 use std::{fmt, sync::LazyLock};
@@ -74,9 +78,36 @@ impl Driver {
     /// or to load the configuration from environment variables use
     /// [`Builder::from_env`].
     ///
+    /// If the crate was built without the `bundled` and `linked` features this
+    /// will attempt to dynamically load the driver.
+    ///
     /// # Error
     ///
     /// Returns an error when the driver fails to load.
+    ///
+    /// # Example
+    ///
+    /// ## Using the default ADBC version
+    ///
+    /// ```rust
+    /// # use adbc_core::error::Result;
+    /// # use adbc_snowflake::Driver;
+    /// # fn main() -> Result<()> {
+    /// let mut driver = Driver::try_load()?;
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// ## Using a different ADBC version
+    ///
+    /// ```rust
+    /// # use adbc_core::{error::Result, options::AdbcVersion};
+    /// # use adbc_snowflake::{driver::Builder, Driver};
+    /// # fn main() -> Result<()> {
+    /// let mut driver = Builder::default()
+    ///    .with_adbc_version(AdbcVersion::V100)
+    ///    .try_load()?;
+    /// # Ok(()) }
+    /// ```
     pub fn try_load() -> Result<Self> {
         Self::try_new(Default::default())
     }
@@ -104,6 +135,20 @@ impl Driver {
     ///
     /// This attempts to load the `adbc_driver_snowflake` library using the
     /// default `AdbcVersion`.
+    ///
+    /// # Error
+    ///
+    /// Returns an error when the driver fails to load.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// # use adbc_core::error::Result;
+    /// # use adbc_snowflake::Driver;
+    /// # fn main() -> Result<()> {
+    /// let mut driver = Driver::try_load_dynamic()?;
+    /// # Ok(()) }
+    /// ```
     pub fn try_load_dynamic() -> Result<Self> {
         Self::try_new_dynamic()
     }

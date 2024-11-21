@@ -15,7 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! A parser for [`Duration`] following <https://pkg.go.dev/time#ParseDuration>.
+//! A parser for [`Duration`] following <https://pkg.go.dev/time#ParseDuration>
+//!
 //!
 
 use std::{error::Error as StdError, num::IntErrorKind, sync::LazyLock, time::Duration};

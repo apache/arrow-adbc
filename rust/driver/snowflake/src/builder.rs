@@ -15,7 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! Builder utility.
+//! Builder utilities
+//!
 //!
 
 use std::iter::{Chain, Flatten};

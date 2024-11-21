@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! A builder for a [`Connection`].
+//! A builder for a [`Connection`]
 //!
 //!
 

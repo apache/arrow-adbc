@@ -15,6 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//! Snowflake ADBC Database
+//!
+//!
+
 use std::{collections::HashSet, ffi::c_int, sync::Arc};
 
 use adbc_core::{

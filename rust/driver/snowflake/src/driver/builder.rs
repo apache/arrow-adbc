@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! A builder for [`Driver`].
+//! A builder for [`Driver`]
 //!
 //!
 

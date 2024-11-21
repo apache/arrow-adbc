@@ -15,6 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//! Snowflake ADBC Statement
+//!
+//!
+
 use adbc_core::{
     driver_manager::ManagedStatement,
     error::Result,

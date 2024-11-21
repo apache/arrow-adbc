@@ -15,6 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//! Snowflake ADBC Connection
+//!
+//!
+
 use std::collections::HashSet;
 
 use adbc_core::{
