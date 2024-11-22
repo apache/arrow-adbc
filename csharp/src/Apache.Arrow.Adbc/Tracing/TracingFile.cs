@@ -71,10 +71,14 @@ namespace Apache.Arrow.Adbc.Tracing
                     ? mostRecentFile
                     : new FileInfo(NewFileName());
             }
-            else if (_currentTraceFileInfo.Length >= _maxFileSizeKb * 1024)
+            else
             {
-                // If tracing file is maxxed-out, start a new tracing file.
-                _currentTraceFileInfo = new FileInfo(NewFileName());
+                _currentTraceFileInfo.Refresh();
+                if (_currentTraceFileInfo.Length >= _maxFileSizeKb * 1024)
+                {
+                    // If tracing file is maxxed-out, start a new tracing file.
+                    _currentTraceFileInfo = new FileInfo(NewFileName());
+                }
             }
 
             // Write out to the file and retry if IO errors occur.
