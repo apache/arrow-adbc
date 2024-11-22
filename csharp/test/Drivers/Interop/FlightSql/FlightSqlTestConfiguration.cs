@@ -22,11 +22,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 {
     internal class FlightSqlTestConfiguration
     {
-        public FlightSqlTestConfiguration()
-        {
-            this.Environments = new Dictionary<string, FlightSqlTestEnvironment>();
-        }
-
         /// <summary>
         /// The file path location of the driver.
         /// </summary>
@@ -43,13 +38,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         /// A comma separated list of testable environments.
         /// </summary>
         [JsonPropertyName("testEnvironments")]
-        public string? TestableEnvironments { get; set; }
+        public List<string> TestableEnvironments { get; set; } = new List<string>();
 
         /// <summary>
         /// The active test environment.
         /// </summary>
         [JsonPropertyName("environments")]
-        public Dictionary<string, FlightSqlTestEnvironment> Environments { get; set; }
+        public Dictionary<string, FlightSqlTestEnvironment> Environments { get; set; } = new Dictionary<string, FlightSqlTestEnvironment>();
     }
 
     internal enum FlightSqlTestEnvironmentType
@@ -63,11 +58,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
     {
         public FlightSqlTestEnvironment()
         {
-            this.RPCCallHeaders = new Dictionary<string, string>();
-            this.TableTypes = new List<string>();
-            this.SupportsWriteUpdate = false;
-            this.SupportsCatalogs = false;
-            this.CaseSensitive = false;
+
         }
 
         /// <summary>
@@ -89,7 +80,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         /// Additional headers to add to the gRPC call.
         /// </summary>
         [JsonPropertyName("headers")]
-        public Dictionary<string, string> RPCCallHeaders { get; set; }
+        public Dictionary<string, string> RPCCallHeaders { get; set; } = new Dictionary<string, string>();
 
         /// <summary>
         /// Additional headers to add to the gRPC call.
@@ -126,15 +117,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         public string? Password { get; set; }
 
         [JsonPropertyName("supportsWriteUpdate")]
-        public bool SupportsWriteUpdate { get; set; }
+        public bool SupportsWriteUpdate { get; set; } = false;
 
         [JsonPropertyName("supportsCatalogs")]
-        public bool SupportsCatalogs { get; set; }
+        public bool SupportsCatalogs { get; set; } = false;
 
         [JsonPropertyName("tableTypes")]
-        public List<string> TableTypes { get; set; }
+        public List<string> TableTypes { get; set; } = new List<string>();
 
         [JsonPropertyName("caseSensitive")]
-        public bool CaseSensitive { get; set; }
+        public bool CaseSensitive { get; set; } = false;
     }
 }
