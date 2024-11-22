@@ -41,12 +41,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
-        private readonly TracerProvider? _tracerProvider;
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
             Properties = properties;
-            _tracerProvider = MaybeAddTracingListener();
 
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
@@ -186,7 +184,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         _transport = null;
                         _client = null;
                     }
-                    _tracerProvider?.Dispose();
                 }
                 _disposed = true;
             }
@@ -206,34 +203,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TGetResultSetMetadataReq request = new(operationHandle);
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
             return response;
-        }
-
-        private TracerProvider? MaybeAddTracingListener()
-        {
-            if (!Properties.TryGetValue(TracingOptions.Connection.Trace, out string? traceOption)
-                || !bool.TryParse(traceOption, out bool traceEnabled)
-                || !traceEnabled)
-            {
-                return null;
-            }
-
-            DirectoryInfo? tracingDirectory = GetTracingDirectory();
-            TracerProvider tracerProvider = Sdk.CreateTracerProviderBuilder()
-                .AddSource(ActivitySource.Name)
-                .AddAdbcFileExporter(ActivitySource.Name, tracingDirectory?.FullName)
-                .Build();
-            return tracerProvider;
-        }
-
-        private DirectoryInfo? GetTracingDirectory()
-        {
-            DirectoryInfo? traceDirectory = null;
-            if (Properties.TryGetValue(TracingOptions.Connection.TraceLocation, out string? traceLocation) == true)
-            {
-                traceDirectory = new DirectoryInfo(traceLocation!);
-                // TODO: Check if folder is writable
-            }
-            return traceDirectory;
         }
     }
 }

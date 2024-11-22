@@ -103,12 +103,15 @@ namespace Apache.Arrow.Adbc.Tracing
             this TracerProviderBuilder builder,
             string fileBaseName,
             string? traceLocation = default,
-            long maxTraceFileSizeKb = FileExporter.MaxFileSizeKbDefault,
-            int maxTraceFiles = FileExporter.MaxTraceFilesDefault)
+            long? maxTraceFileSizeKb = default,
+            int? maxTraceFiles = default)
         {
-            FileExporter.ValidParameters(fileBaseName, traceLocation, maxTraceFileSizeKb, maxTraceFiles);
+            maxTraceFileSizeKb ??= FileExporter.MaxFileSizeKbDefault;
+            maxTraceFiles ??= FileExporter.MaxTraceFilesDefault;
+            traceLocation ??= FileExporter.TracingLocationDefault;
+            FileExporter.ValidParameters(fileBaseName, traceLocation, maxTraceFileSizeKb.Value, maxTraceFiles.Value);
 
-            if (FileExporter.TryCreate(out FileExporter? fileExporter, fileBaseName, traceLocation, maxTraceFileSizeKb, maxTraceFiles))
+            if (FileExporter.TryCreate(out FileExporter? fileExporter, fileBaseName, traceLocation, maxTraceFileSizeKb.Value, maxTraceFiles.Value))
             {
                 // Only add a new processor if there isn't already one listening for the source/location.
                 return builder.AddProcessor(_ => new SimpleActivityExportProcessor(fileExporter!));

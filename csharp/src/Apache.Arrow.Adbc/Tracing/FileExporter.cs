@@ -51,17 +51,17 @@ namespace Apache.Arrow.Adbc.Tracing
             return TryCreate(
                 out fileExporter,
                 options.FileBaseName ?? ApacheArrowAdbcNamespace,
-                options.TraceLocation,
+                options.TraceLocation ?? TracingLocationDefault,
                 options.MaxTraceFileSizeKb,
                 options.MaxTraceFiles);
         }
 
         internal static bool TryCreate(
             out FileExporter? fileExporter,
-            string fileBaseName = ApacheArrowAdbcNamespace,
-            string? traceLocation = default,
-            long maxTraceFileSizeKb = FileExporter.MaxFileSizeKbDefault,
-            int maxTraceFiles = FileExporter.MaxTraceFilesDefault)
+            string fileBaseName,
+            string traceLocation,
+            long maxTraceFileSizeKb,
+            int maxTraceFiles)
         {
             ValidParameters(fileBaseName, traceLocation, maxTraceFileSizeKb, maxTraceFiles);
 

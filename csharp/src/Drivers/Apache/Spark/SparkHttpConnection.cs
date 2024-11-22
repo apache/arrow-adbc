@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -29,9 +30,12 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using OpenTelemetry.Trace;
+using OpenTelemetry;
 using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
@@ -39,6 +43,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
+
+        private bool _disposed;
+        private TracerProvider? _tracerProvider = null;
 
         public SparkHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
@@ -127,6 +134,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     ? requestTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(SparkParameters.HttpRequestTimeoutMilliseconds, requestTimeoutMs, $"must be a value between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
+            _tracerProvider = MaybeAddTracingExporter();
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
@@ -270,5 +278,55 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override SparkServerType ServerType => SparkServerType.Http;
+
+        private TracerProvider? MaybeAddTracingExporter()
+        {
+            if (!Properties.TryGetValue(TracingOptions.Connection.Trace, out string? traceOption)
+                || !bool.TryParse(traceOption, out bool traceEnabled)
+                || !traceEnabled)
+            {
+                return null;
+            }
+
+            GetTracingOptions(out string? tracingLocation, out long? maxTraceFileSizeKb, out int? maxTraceFiles);
+            TracerProvider tracerProvider = Sdk.CreateTracerProviderBuilder()
+                .AddSource(ActivitySource.Name)
+                .AddAdbcFileExporter(ActivitySource.Name, tracingLocation, maxTraceFileSizeKb, maxTraceFiles)
+                .Build();
+            return tracerProvider;
+        }
+
+        private void GetTracingOptions(out string? tracingLocation, out long? maxTraceFileSizeKb, out int? maxTraceFiles)
+        {
+            tracingLocation = null;
+            maxTraceFileSizeKb = null;
+            maxTraceFiles = null;
+            if (Properties.TryGetValue(TracingOptions.Connection.TraceLocation, out string? traceLocation))
+            {
+                traceLocation = new DirectoryInfo(traceLocation!).FullName;
+                // TODO: Check if folder is writable
+            }
+            if (Properties.TryGetValue(TracingOptions.Connection.TraceFileMaxSizeKb, out string? traceFileMaxSizeKbOption) && long.TryParse(traceFileMaxSizeKbOption, out long traceFileMaxSizeKb))
+            {
+                maxTraceFileSizeKb = traceFileMaxSizeKb;
+            }
+            if (Properties.TryGetValue(TracingOptions.Connection.TraceFileMaxFiles, out string? traceFileMaxFilesOption) && int.TryParse(traceFileMaxFilesOption, out int traceFileMaxFiles))
+            {
+                maxTraceFiles = traceFileMaxFiles;
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _tracerProvider?.Dispose();
+                }
+                _disposed = true;
+            }
+            base.Dispose(disposing);
+        }
     }
 }
