@@ -39,7 +39,10 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `adbc.spark.tls_options` | Comma-separated list of TLS/SSL options. Each option indicates the TLS/SSL option when connecting to a Spark server. <br><br>Allowed values: `allow_self_signed`, `allow_hostname_mismatch`. <br><br>Option `allow_self_signed` allows certificate errors due to an unknown certificate authority, typically when using a self-signed certificate. Option `allow_hostname_mismatch` allow certificate errors due to a mismatch of the hostname. (e.g., when connecting through an SSH tunnel). Example `adbc.spark.tls_options=allow_self_signed` | |
 | `adbc.spark.http_request_timeout_ms` | Sets the timeout (in milliseconds) when making requests to the Spark server (type: `http`). Set the value higher than the default if you notice errors due to network timeouts. | `30000` |
 | `adbc.statement.batch_size` | Sets the maximum number of rows to retrieve in a single batch request. | `50000` |
-| `adbc.statement.polltime_milliseconds` | If polling is necessary to get a result, this option sets the length of time (in milliseconds) to wait between polls. | `500` |
+| `adbc.tracing.connection.trace` | If `true`, enable writing trace messages to files. | `false` |
+| `adbc.tracing.connection.trace_location` | When file tracing is enabled, specifies the folder location to place trace files. | `{LocalApplicationData}/Apache.Arrow.Adbc/Traces` |
+| `adbc.tracing.connection.trace_max_size_kb` | When file tracing is enabled, specifies the approximate maximum size of each trace fiel (in KB). | `1024` |
+| `adbc.tracing.connection.trace_max_files` | When file tracing is enabled, specifies the maximun number of file in the trace location. Older trace files are removedm when exceeded. | `999` |
 
 ## Spark Types
 
