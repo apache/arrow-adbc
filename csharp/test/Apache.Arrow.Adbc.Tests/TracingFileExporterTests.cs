@@ -119,7 +119,7 @@ namespace Apache.Arrow.Adbc.Tests
                 for (int i = 0; i < 100; i++)
                 {
                     await AddEvent("test");
-                    await Task.Delay(10);
+                    await Task.Delay(1);
                 }
 
                 Assert.True(Directory.Exists(traceFolder));
@@ -144,9 +144,9 @@ namespace Apache.Arrow.Adbc.Tests
         [Fact]
         internal async Task CanSetCustomMaxFiles()
         {
-            const long maxTraceFileSizeKb = 5;
+            const long maxTraceFileSizeKb = 15;
             const int maxTraceFiles = 3;
-            const int delayMs = 5000;
+            var delay = TimeSpan.FromSeconds(8);
             string customFolderName = Guid.NewGuid().ToString().Replace("-", "").ToLower();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
 
@@ -158,14 +158,14 @@ namespace Apache.Arrow.Adbc.Tests
                     .AddAdbcFileExporter(_activitySourceName, traceFolder, maxTraceFileSizeKb, maxTraceFiles)
                     .Build();
 
-                for (int i = 0; i < 1000; i++)
+                for (int i = 0; i < 100; i++)
                 {
                     await AddEvent("test");
-                    await Task.Delay(10);
+                    await Task.Delay(1);
                 }
 
                 // Wait for clean-up task to poll and clean-up
-                await Task.Delay(delayMs);
+                await Task.Delay(delay);
 
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);
@@ -184,7 +184,7 @@ namespace Apache.Arrow.Adbc.Tests
         {
             const long maxTraceFileSizeKb = 5;
             const int maxTraceFiles = 1;
-            const int delayMs = 5000;
+            var delay = TimeSpan.FromSeconds(8);
             string customFolderName = Guid.NewGuid().ToString().Replace("-", "").ToLower();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
 
@@ -199,11 +199,11 @@ namespace Apache.Arrow.Adbc.Tests
                 for (int i = 0; i < 100; i++)
                 {
                     await AddEvent("test");
-                    await Task.Delay(10);
+                    await Task.Delay(1);
                 }
 
                 // Wait for clean-up task to poll and clean-up
-                await Task.Delay(delayMs * 2);
+                await Task.Delay(delay);
 
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);

@@ -67,10 +67,6 @@ namespace Apache.Arrow.Adbc.Tracing
 
             DirectoryInfo tracesDirectory = new(traceLocation ?? s_tracingLocationDefault);
             string tracesDirectoryFullName = tracesDirectory.FullName;
-            if (!Directory.Exists(tracesDirectoryFullName))
-            {
-                Directory.CreateDirectory(tracesDirectoryFullName);
-            }
 
             // In case we don't need to create this object, we'll lazy load the object only if added to the collection.
             var exporterInstance = new Lazy<FileExporterInstance>(() =>
@@ -119,6 +115,10 @@ namespace Apache.Arrow.Adbc.Tracing
         {
             try
             {
+                if (!Directory.Exists(traceLocation))
+                {
+                    Directory.CreateDirectory(traceLocation);
+                }
                 string tempFilePath = Path.Combine(traceLocation, Path.GetRandomFileName());
                 using FileStream fs = File.Create(tempFilePath, 1, FileOptions.DeleteOnClose);
                 return true;
