@@ -103,7 +103,7 @@ namespace Apache.Arrow.Adbc.Tests
         [Fact]
         internal async Task CanSetCustomMaxFileSize()
         {
-            const long maxTraceFileSizeKb = 5;
+            const long maxTraceFileSizeKb = 15;
             const long kilobyte = 1024;
             string customFolderName = Guid.NewGuid().ToString().Replace("-", "").ToLower();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
@@ -116,7 +116,11 @@ namespace Apache.Arrow.Adbc.Tests
                     .AddAdbcFileExporter(_activitySourceName, traceFolder, maxTraceFileSizeKb)
                     .Build();
 
-                for (int i = 0; i < 100; i++) await AddEvent("test");
+                for (int i = 0; i < 100; i++)
+                {
+                    await AddEvent("test");
+                    await Task.Delay(10);
+                }
 
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);
@@ -125,7 +129,8 @@ namespace Apache.Arrow.Adbc.Tests
                 Assert.True(files.All(f => f.Name.StartsWith(_activitySourceName)));
                 for (int i = 0; i < files.Length; i++)
                 {
-                    Assert.True(files[i].Length < (maxTraceFileSizeKb + 2) * kilobyte, $"actual file length: {files[i].Length}");
+                    long expectedUpperSizeLimit = (long)((maxTraceFileSizeKb + (long)(0.2 * maxTraceFileSizeKb)) * kilobyte);
+                    Assert.True(files[i].Length < expectedUpperSizeLimit, $"actual file length: {files[i].Length}");
                 }
                 _outputHelper?.WriteLine($"number of files: {files.Length}");
                 Console.WriteLine($"number of files: {files.Length}");
