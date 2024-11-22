@@ -45,7 +45,7 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
-        internal void CanSetCustomTraceFolder()
+        internal async Task CanSetCustomTraceFolder()
         {
             string customFolderName = Guid.NewGuid().ToString().Replace("-", "").ToLower();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
@@ -58,7 +58,7 @@ namespace Apache.Arrow.Adbc.Tests
                     .AddAdbcFileExporter(_activitySourceName, traceFolder)
                     .Build();
 
-                AddEvent("test");
+                await AddEvent("test");
 
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);
@@ -72,7 +72,7 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
-        internal void CanSetCustomFileBaseName()
+        internal async Task CanSetCustomFileBaseName()
         {
             const string customFileBaseName = "custom-base-name";
             string customFolderName = Guid.NewGuid().ToString().Replace("-", "").ToLower();
@@ -86,7 +86,7 @@ namespace Apache.Arrow.Adbc.Tests
                     .AddAdbcFileExporter(customFileBaseName, traceFolder)
                     .Build();
 
-                AddEvent("test");
+                await AddEvent("test");
 
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);
@@ -101,7 +101,7 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
-        internal void CanSetCustomMaxFileSize()
+        internal async Task CanSetCustomMaxFileSize()
         {
             const long maxTraceFileSizeKb = 5;
             const long kilobyte = 1024;
@@ -116,7 +116,7 @@ namespace Apache.Arrow.Adbc.Tests
                     .AddAdbcFileExporter(_activitySourceName, traceFolder, maxTraceFileSizeKb)
                     .Build();
 
-                for (int i = 0; i < 100; i++) AddEvent("test");
+                for (int i = 0; i < 100; i++) await AddEvent("test");
 
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);
@@ -153,7 +153,7 @@ namespace Apache.Arrow.Adbc.Tests
                     .AddAdbcFileExporter(_activitySourceName, traceFolder, maxTraceFileSizeKb, maxTraceFiles)
                     .Build();
 
-                for (int i = 0; i < 100; i++) AddEvent("test");
+                for (int i = 0; i < 100; i++) await AddEvent("test");
 
                 // Wait for clean-up task to poll and clean-up
                 await Task.Delay(delayMs);
@@ -187,7 +187,7 @@ namespace Apache.Arrow.Adbc.Tests
                     .AddAdbcFileExporter(_activitySourceName, traceFolder, maxTraceFileSizeKb, maxTraceFiles)
                     .Build();
 
-                for (int i = 0; i < 100; i++) AddEvent("test");
+                for (int i = 0; i < 100; i++) await AddEvent("test");
 
                 // Wait for clean-up task to poll and clean-up
                 await Task.Delay(delayMs);
@@ -222,15 +222,18 @@ namespace Apache.Arrow.Adbc.Tests
                     .Build());
         }
 
-        private void AddEvent(string eventName, string activityName = nameof(AddEvent))
+        private Task AddEvent(string eventName, string activityName = nameof(AddEvent))
         {
             using Activity? activity = _activitySource.StartActivity(activityName);
             activity?.AddEvent(new ActivityEvent(eventName));
+            return Task.CompletedTask;
         }
 
-        private void StartActivity(string activityName = nameof(StartActivity))
+        private Task StartActivity(string activityName = nameof(StartActivity))
         {
             using Activity? activity = _activitySource.StartActivity(activityName);
+            return Task.CompletedTask;
+
         }
 
         protected virtual void Dispose(bool disposing)
