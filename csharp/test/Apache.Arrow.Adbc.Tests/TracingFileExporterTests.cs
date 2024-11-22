@@ -196,10 +196,14 @@ namespace Apache.Arrow.Adbc.Tests
                     .AddAdbcFileExporter(_activitySourceName, traceFolder, maxTraceFileSizeKb, maxTraceFiles)
                     .Build();
 
-                for (int i = 0; i < 100; i++) await AddEvent("test");
+                for (int i = 0; i < 100; i++)
+                {
+                    await AddEvent("test");
+                    await Task.Delay(10);
+                }
 
                 // Wait for clean-up task to poll and clean-up
-                await Task.Delay(delayMs);
+                await Task.Delay(delayMs * 2);
 
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);
