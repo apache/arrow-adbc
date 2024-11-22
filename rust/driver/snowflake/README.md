@@ -41,10 +41,10 @@ use arrow_array::{cast::AsArray, types::Decimal128Type};
 let mut driver = Driver::try_load()?;
 
 // Construct a database using environment variables
-let mut database = database::Builder::from_env().build(&mut driver)?;
+let mut database = database::Builder::from_env()?.build(&mut driver)?;
 
 // Create a connection to the database
-let mut connection = connection::Builder::from_env().build(&mut database)?;
+let mut connection = connection::Builder::from_env()?.build(&mut database)?;
 
 // Construct a statement to execute a query
 let mut statement = connection.new_statement()?;

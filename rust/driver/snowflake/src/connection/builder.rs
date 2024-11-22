@@ -19,8 +19,6 @@
 //!
 //!
 
-#[cfg(feature = "env")]
-use std::env;
 use std::fmt;
 
 use adbc_core::{
@@ -30,7 +28,7 @@ use adbc_core::{
 };
 
 #[cfg(feature = "env")]
-use crate::database;
+use crate::{builder::env_parse_map_err, database};
 use crate::{builder::BuilderIter, Connection, Database};
 
 /// A builder for [`Connection`].
@@ -61,18 +59,21 @@ impl Builder {
 
     /// Construct a builder, setting values based on values of the
     /// configuration environment variables.
-    pub fn from_env() -> Self {
+    ///
+    /// # Error
+    ///
+    /// Returns an error when environment variables are set but their values
+    /// fail to parse.
+    pub fn from_env() -> Result<Self> {
         #[cfg(feature = "dotenv")]
         let _ = dotenvy::dotenv();
 
-        let use_high_precision = env::var(Self::USE_HIGH_PRECISION_ENV)
-            .ok()
-            .as_deref()
-            .and_then(|value| value.parse().ok());
-        Self {
+        let use_high_precision = env_parse_map_err(Self::USE_HIGH_PRECISION_ENV, str::parse)?;
+
+        Ok(Self {
             use_high_precision,
             ..Default::default()
-        }
+        })
     }
 }
 

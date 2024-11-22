@@ -39,11 +39,11 @@ fn arg_err(err: impl StdError) -> Error {
 }
 
 fn overflow() -> Error {
-    invalid_arg("overflow")
+    invalid_arg("duration overflow")
 }
 
 fn bad_input<T>() -> Result<T> {
-    Err(invalid_arg("bad input"))
+    Err(invalid_arg("invalid duration (valid durations are a sequence of decimal numbers, each with optional fraction and a unit suffix, such as 300ms, 1.5h, 2h45m, valid time units are ns, us, ms, s, m, h)"))
 }
 
 /// Parse the given string to a [`Duration`], returning an eror when parsing
@@ -260,7 +260,7 @@ mod tests {
                 + Duration::from_secs(48)
                 + Duration::from_nanos(372539828))
         );
-        let bad_input = Err(invalid_arg("bad input"));
+        let bad_input = Err(invalid_arg("invalid duration (valid durations are a sequence of decimal numbers, each with optional fraction and a unit suffix, such as 300ms, 1.5h, 2h45m, valid time units are ns, us, ms, s, m, h)"));
         assert_eq!(parse_duration(""), bad_input);
         assert_eq!(parse_duration("3"), bad_input);
         assert_eq!(parse_duration("-"), bad_input);
