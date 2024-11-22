@@ -476,7 +476,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
-            Trace.TraceError($"getting objects with depth={depth.ToString()}, catalog = {catalogPattern}, dbschema = {dbSchemaPattern}, tablename = {tableNamePattern}");
+            using var activity = StartActivity();
+            activity?.SetTag("getobjects.depth", depth);
+            activity?.SetTag("getobjects.catalogPattern", depth);
+            activity?.SetTag("getobjects.dbSchemaPattern", depth);
+            activity?.SetTag("getobjects.tableNamePattern", depth);
+            activity?.SetTag("getobjects.tableTypes", tableTypes);
+            activity?.SetTag("getobjects.columnNamePattern", columnNamePattern);
 
             Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>>();
             if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)

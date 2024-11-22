@@ -101,7 +101,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             return await base.CreateProtocolAsync(transport);
 
-            //Trace.TraceError($"create protocol with {Properties.Count} properties.");
             //if (!transport.IsOpen) await transport.OpenAsync(CancellationToken.None);
             //return new TBinaryProtocol(transport);
         }

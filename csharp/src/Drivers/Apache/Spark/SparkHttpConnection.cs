@@ -141,11 +141,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override Task<TTransport> CreateTransportAsync()
         {
-            foreach (var property in Properties.Keys)
-            {
-                Trace.TraceError($"key = {property} value = {Properties[property]}");
-            }
-
             // Assumption: parameters have already been validated.
             Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
             Properties.TryGetValue(SparkParameters.Path, out string? path);
@@ -221,7 +216,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport)
         {
-            Trace.TraceError($"create protocol with {Properties.Count} properties.");
+            using var activity = StartActivity();
+            activity?.SetTag("transport.type", transport.GetType().Name);
 
             if (!transport.IsOpen) await transport.OpenAsync(CancellationToken.None);
             return new TBinaryProtocol(transport);
@@ -229,10 +225,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
+            using var activity = StartActivity();
+
             var req = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11)
             {
                 CanUseMultipleCatalogs = true,
             };
+            activity?.SetTag("protocol.version", req.Client_protocol);
             return req;
         }
 
