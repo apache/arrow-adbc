@@ -158,7 +158,11 @@ namespace Apache.Arrow.Adbc.Tests
                     .AddAdbcFileExporter(_activitySourceName, traceFolder, maxTraceFileSizeKb, maxTraceFiles)
                     .Build();
 
-                for (int i = 0; i < 100; i++) await AddEvent("test");
+                for (int i = 0; i < 1000; i++)
+                {
+                    await AddEvent("test");
+                    await Task.Delay(10);
+                }
 
                 // Wait for clean-up task to poll and clean-up
                 await Task.Delay(delayMs);
@@ -167,7 +171,7 @@ namespace Apache.Arrow.Adbc.Tests
                 DirectoryInfo traceDirectory = new(traceFolder);
                 FileInfo[] files = traceDirectory.GetFiles();
                 Assert.True(files.Length > 2, $"actual # of trace files: {files.Length}");
-                Assert.True(files.Length <= maxTraceFiles, $"actual # of files: {files.Length}");
+                Assert.True(files.Length <= maxTraceFiles, $"Expecting {maxTraceFiles} files. Actual # of files: {files.Length}");
             }
             finally
             {
