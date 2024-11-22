@@ -69,7 +69,6 @@ namespace Apache.Arrow.Adbc.Tracing
             string tracesDirectoryFullName = tracesDirectory.FullName;
             if (!Directory.Exists(tracesDirectoryFullName))
             {
-                // TODO: Handle exceptions
                 Directory.CreateDirectory(tracesDirectoryFullName);
             }
 
@@ -100,18 +99,37 @@ namespace Apache.Arrow.Adbc.Tracing
             return false;
         }
 
-        internal static void ValidParameters(string fileBaseName, string? traceLocation, long maxTraceFileSizeKb, int maxTraceFiles)
+        internal static void ValidParameters(string fileBaseName, string traceLocation, long maxTraceFileSizeKb, int maxTraceFiles)
         {
             if (string.IsNullOrWhiteSpace(fileBaseName))
                 throw new ArgumentNullException(nameof(fileBaseName));
             if (fileBaseName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
                 throw new ArgumentException("Invalid or unsupported file name", nameof(fileBaseName));
-            if ((string.IsNullOrWhiteSpace(traceLocation) || (traceLocation?.IndexOfAny(Path.GetInvalidPathChars()) >= 0)))
+            if ((string.IsNullOrWhiteSpace(traceLocation) || (traceLocation.IndexOfAny(Path.GetInvalidPathChars()) >= 0)))
                 throw new ArgumentException("Invalid or unsupported folder name", nameof(traceLocation));
             if (maxTraceFileSizeKb < 1)
                 throw new ArgumentException("maxTraceFileSizeKb must be greater than zero", nameof(maxTraceFileSizeKb));
             if (maxTraceFiles < 1)
                 throw new ArgumentException("maxTraceFiles must be greater than zero.", nameof(maxTraceFiles));
+
+            IsDirectoryWritable(traceLocation, throwIfFails: true);
+        }
+
+        private static bool IsDirectoryWritable(string traceLocation, bool throwIfFails = false)
+        {
+            try
+            {
+                string tempFilePath = Path.Combine(traceLocation, Path.GetRandomFileName());
+                using FileStream fs = File.Create(tempFilePath, 1, FileOptions.DeleteOnClose);
+                return true;
+            }
+            catch
+            {
+                if (throwIfFails)
+                    throw;
+                else
+                    return false;
+            }
         }
 
         /// <summary>

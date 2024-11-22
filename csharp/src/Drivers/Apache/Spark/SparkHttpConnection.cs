@@ -303,7 +303,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             if (Properties.TryGetValue(TracingOptions.Connection.TraceLocation, out string? traceLocation))
             {
                 traceLocation = new DirectoryInfo(traceLocation!).FullName;
-                // TODO: Check if folder is writable
             }
             if (Properties.TryGetValue(TracingOptions.Connection.TraceFileMaxSizeKb, out string? traceFileMaxSizeKbOption) && long.TryParse(traceFileMaxSizeKbOption, out long traceFileMaxSizeKb))
             {
