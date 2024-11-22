@@ -123,7 +123,12 @@ namespace Apache.Arrow.Adbc.Tests
                 FileInfo[] files = traceDirectory.GetFiles();
                 Assert.True(files.Length > 2, $"actual # of trace files: {files.Length}");
                 Assert.True(files.All(f => f.Name.StartsWith(_activitySourceName)));
-                Assert.True(files.All(f => f.Length < (maxTraceFileSizeKb + 2) * kilobyte));
+                for (int i = 0; i < files.Length; i++)
+                {
+                    Assert.True(files[i].Length < (maxTraceFileSizeKb + 2) * kilobyte, $"actual file length: {files[i].Length}");
+                }
+                _outputHelper?.WriteLine($"number of files: {files.Length}");
+                Console.WriteLine($"number of files: {files.Length}");
             }
             finally
             {
