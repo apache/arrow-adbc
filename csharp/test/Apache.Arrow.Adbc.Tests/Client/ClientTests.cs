@@ -114,7 +114,7 @@ namespace Apache.Arrow.Adbc.Tests.Client
 
             List<RecordBatch> records = new List<RecordBatch>()
             {
-                new RecordBatch(schema, values, values.Count)
+                new RecordBatch(schema, values, array.Length)
             };
 
             MockArrayStream mockArrayStream = new MockArrayStream(schema, records);
@@ -150,7 +150,7 @@ namespace Apache.Arrow.Adbc.Tests.Client
 
             List<RecordBatch> records = new List<RecordBatch>()
             {
-                new RecordBatch(schema, values, numbersArray.Count())
+                new RecordBatch(schema, values, numbersArray.Length)
             };
 
             MockArrayStream mockArrayStream = new MockArrayStream(schema, records);

@@ -49,9 +49,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 
     internal enum FlightSqlTestEnvironmentType
     {
+        Denodo,
+        Dremio,
         DuckDB,
-        SQLite,
-        Dremio
+        SQLite
     }
 
     internal class FlightSqlTestEnvironment : TestConfiguration

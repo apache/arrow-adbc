@@ -302,7 +302,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         {
             foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                string databaseName = environment.Metadata.Catalog;
+                string? databaseName = environment.Metadata.Catalog;
                 string? schemaName = environment.Metadata.Schema;
                 string tableName = environment.Metadata.Table;
                 string? columnName = null;

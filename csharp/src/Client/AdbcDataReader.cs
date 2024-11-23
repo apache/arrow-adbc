@@ -61,7 +61,7 @@ namespace Apache.Arrow.Adbc.Client
         /// </remarks>
         public event GetValueEventHandler? OnGetValue;
 
-        internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior, bool closeConnection)
+        internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior, StructBehavior structBehavior, bool closeConnection)
         {
             if (adbcCommand == null)
                 throw new ArgumentNullException(nameof(adbcCommand));
@@ -82,6 +82,7 @@ namespace Apache.Arrow.Adbc.Client
             this.closeConnection = closeConnection;
             this.isClosed = false;
             this.DecimalBehavior = decimalBehavior;
+            this.StructBehavior = structBehavior;
         }
 
         public override object this[int ordinal] => GetValue(ordinal);
@@ -102,6 +103,8 @@ namespace Apache.Arrow.Adbc.Client
         public Schema ArrowSchema => this.schema;
 
         public DecimalBehavior DecimalBehavior { get; set; }
+
+        public StructBehavior StructBehavior { get; set; }
 
         public override int RecordsAffected => this.recordsAffected;
 
@@ -318,7 +321,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override DataTable? GetSchemaTable()
         {
-            return SchemaConverter.ConvertArrowSchema(this.schema, this.adbcCommand.AdbcStatement, this.DecimalBehavior);
+            return SchemaConverter.ConvertArrowSchema(this.schema, this.adbcCommand.AdbcStatement, this.DecimalBehavior, this.StructBehavior);
         }
 
 #if NET5_0_OR_GREATER
@@ -338,7 +341,7 @@ namespace Apache.Arrow.Adbc.Client
 
             foreach (Field f in this.schema.FieldsList)
             {
-                Type t = SchemaConverter.ConvertArrowType(f, this.DecimalBehavior);
+                Type t = SchemaConverter.ConvertArrowType(f, this.DecimalBehavior, this.StructBehavior);
 
                 if (f.HasMetadata &&
                     f.Metadata.ContainsKey("precision") &&
