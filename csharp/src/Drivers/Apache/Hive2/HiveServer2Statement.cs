@@ -35,24 +35,29 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             statement.QueryTimeout = QueryTimeoutSeconds;
         }
 
-        public override QueryResult ExecuteQuery() => ExecuteQueryAsync().AsTask().Result;
+        public override QueryResult ExecuteQuery()
+        {
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            return ExecuteQueryAsyncInternal(cancellationToken).Result;
+        }
 
-        public override UpdateResult ExecuteUpdate() => ExecuteUpdateAsync().Result;
+        public override UpdateResult ExecuteUpdate()
+        {
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            return ExecuteUpdateAsyncInternal(cancellationToken).Result;
+        }
 
-        public override async ValueTask<QueryResult> ExecuteQueryAsync()
+        private async Task<QueryResult> ExecuteQueryAsyncInternal(CancellationToken cancellationToken = default)
         {
             try
             {
-                CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-
                 // this could either:
                 // take QueryTimeoutSeconds * 3
                 // OR
                 // take QueryTimeoutSeconds (but this could be restricting)
-
-                await ExecuteStatementAsync(timeoutToken); // --> get QueryTimeout +
-                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, timeoutToken); // + poll, up to QueryTimeout
-                Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, timeoutToken); // + get the result, up to QueryTimeout
+                await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
+                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
+                Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken); // + get the result, up to QueryTimeout
 
                 return new QueryResult(-1, Connection.NewReader(this, schema));
             }
@@ -62,18 +67,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
+        public override async ValueTask<QueryResult> ExecuteQueryAsync()
+        {
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            return await ExecuteQueryAsyncInternal(cancellationToken);
+        }
+
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
             TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
             return Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
         }
 
-        public override async Task<UpdateResult> ExecuteUpdateAsync()
+        public async Task<UpdateResult> ExecuteUpdateAsyncInternal(CancellationToken cancellationToken = default)
         {
             const string NumberOfAffectedRowsColumnName = "num_affected_rows";
-            // TODO: Add CTS here --> this is inside of ExecuteQueryAsync
-
-            QueryResult queryResult = await ExecuteQueryAsync();
+            QueryResult queryResult = await ExecuteQueryAsyncInternal(cancellationToken);
             if (queryResult.Stream == null)
             {
                 throw new AdbcException("no data found");
@@ -94,7 +103,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             long? affectedRows = null;
             while (true)
             {
-                using RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync();
+                using RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync(cancellationToken);
                 if (nextBatch == null) { break; }
                 Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(NumberOfAffectedRowsColumnName);
                 // Note: should only have one item, but iterate for completeness
@@ -107,6 +116,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             // If no altered rows, i.e. DDC statements, then -1 is the default.
             return new UpdateResult(affectedRows ?? -1);
+        }
+
+        public override async Task<UpdateResult> ExecuteUpdateAsync()
+        {
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            return await ExecuteUpdateAsyncInternal(cancellationToken);
         }
 
         public override void SetOption(string key, string value)
@@ -148,7 +163,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
 
-        protected internal int QueryTimeoutSeconds { get; set; } = ApacheUtility.QueryTimeoutSecondsDefault;
+        protected internal int QueryTimeoutSeconds
+        {
+            // Coordinate updates with the connection
+            get => Connection.QueryTimeoutSeconds;
+            set => Connection.QueryTimeoutSeconds = value;
+        }
 
         public HiveServer2Connection Connection { get; private set; }
 
@@ -166,8 +186,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             if (OperationHandle != null)
             {
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                 TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
-                Connection.Client.CloseOperation(request).Wait();
+                Connection.Client.CloseOperation(request, cancellationToken).Wait();
                 OperationHandle = null;
             }
 

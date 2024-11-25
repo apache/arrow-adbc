@@ -64,7 +64,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal string VendorName => _vendorName.Value;
 
-        protected internal int QueryTimeoutSeconds { get; private set; } = ApacheUtility.QueryTimeoutSecondsDefault;
+        protected internal int QueryTimeoutSeconds { get; set; } = ApacheUtility.QueryTimeoutSecondsDefault;
 
         internal IReadOnlyDictionary<string, string> Properties { get; }
 
@@ -72,14 +72,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             try
             {
-                TTransport transport = await CreateTransportAsync();
-                TProtocol protocol = await CreateProtocolAsync(transport);
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
+                TTransport transport = await CreateTransportAsync(cancellationToken);
+                TProtocol protocol = await CreateProtocolAsync(transport, cancellationToken);
                 _transport = protocol.Transport;
                 _client = new TCLIService.Client(protocol);
                 TOpenSessionReq request = CreateSessionRequest();
 
-                CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
-                TOpenSessionResp? session = await Client.OpenSession(request, timeoutToken);
+                TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
 
                 // Explicitly check the session status
                 if (session == null)
@@ -114,9 +114,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal int ConnectTimeoutMilliseconds { get; set; } = ConnectTimeoutMillisecondDefault;
 
-        protected abstract Task<TTransport> CreateTransportAsync();
+        protected abstract Task<TTransport> CreateTransportAsync(CancellationToken cancellationToken = default);
 
-        protected abstract Task<TProtocol> CreateProtocolAsync(TTransport transport);
+        protected abstract Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default);
 
         protected abstract TOpenSessionReq CreateSessionRequest();
 
@@ -139,7 +139,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TGetOperationStatusResp? statusResponse = null;
             do
             {
-                if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds); }
+                if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds, cancellationToken); }
                 TGetOperationStatusReq request = new(operationHandle);
                 statusResponse = await client.GetOperationStatus(request, cancellationToken);
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
@@ -153,7 +153,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 InfoType = infoType,
             };
 
-            TGetInfoResp getInfoResp = Client.GetInfo(req).Result;
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
             if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
@@ -168,8 +169,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             if (_client != null)
             {
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                 TCloseSessionReq r6 = new TCloseSessionReq(SessionHandle);
-                _client.CloseSession(r6).Wait();
+                _client.CloseSession(r6, cancellationToken).Wait();
 
                 _transport?.Close();
                 _client.Dispose();

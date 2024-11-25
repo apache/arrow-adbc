@@ -131,7 +131,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
-        protected override Task<TTransport> CreateTransportAsync()
+        protected override Task<TTransport> CreateTransportAsync(CancellationToken cancellationToken = default)
         {
             foreach (var property in Properties.Keys)
             {
@@ -164,7 +164,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TConfiguration config = new();
             ThriftHttpTransport transport = new(httpClient, config)
             {
-                ConnectTimeout = ApacheUtility.GetConnectionTimeout(ConnectTimeoutMilliseconds, QueryTimeoutSeconds)
+                // This value can only be set before the first call/request. So if a new value for query timeout
+                // is set, we won't be able to update the value. Setting to ~infinite and relying on cancellation token
+                // to ensure cancelled correctly.
+                ConnectTimeout = int.MaxValue,
             };
             return Task.FromResult<TTransport>(transport);
         }
@@ -211,11 +214,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport)
+        protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
         {
             Trace.TraceError($"create protocol with {Properties.Count} properties.");
 
-            if (!transport.IsOpen) await transport.OpenAsync(CancellationToken.None);
+            if (!transport.IsOpen) await transport.OpenAsync(cancellationToken);
             return new TBinaryProtocol(transport);
         }
 
@@ -228,28 +231,28 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return req;
         }
 
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response) =>
-            FetchResultsAsync(response.OperationHandle);
-        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response) =>
-            FetchResultsAsync(response.OperationHandle);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response) =>
-            FetchResultsAsync(response.OperationHandle);
-        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response) =>
-            FetchResultsAsync(response.OperationHandle);
-        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response) =>
-            FetchResultsAsync(response.OperationHandle);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
 
         private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
         {
-            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault);
+            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
 
             TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
             if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)

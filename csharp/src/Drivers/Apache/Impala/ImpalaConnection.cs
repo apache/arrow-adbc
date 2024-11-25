@@ -40,7 +40,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
         }
 
-        protected override Task<TTransport> CreateTransportAsync()
+        protected override Task<TTransport> CreateTransportAsync(CancellationToken cancellationToken = default)
         {
             string hostName = Properties["HostName"];
             string? tmp;
@@ -55,7 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             return Task.FromResult(transport);
         }
 
-        protected override Task<TProtocol> CreateProtocolAsync(TTransport transport)
+        protected override Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<TProtocol>(new TBinaryProtocol(transport));
         }

@@ -419,9 +419,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 GetDirectResults = sparkGetDirectResults
             };
 
-            CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
 
-            TGetTableTypesResp resp = Client.GetTableTypes(req, timeoutToken).Result;
+            TGetTableTypesResp resp = Client.GetTableTypes(req, cancellationToken).Result;
 
             if (resp.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
@@ -430,7 +430,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     .SetSqlState(resp.Status.SqlState);
             }
 
-            TRowSet rowSet = GetRowSetAsync(resp).Result;
+            TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
             StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
 
             StringArray.Builder tableTypesBuilder = new StringArray.Builder();
@@ -452,15 +452,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             getColumnsReq.TableName = tableName;
             getColumnsReq.GetDirectResults = sparkGetDirectResults;
 
-            CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
 
-            var columnsResponse = Client.GetColumns(getColumnsReq, timeoutToken).Result;
+            var columnsResponse = Client.GetColumns(getColumnsReq, cancellationToken).Result;
             if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new Exception(columnsResponse.Status.ErrorMessage);
             }
 
-            TRowSet rowSet = GetRowSetAsync(columnsResponse).Result;
+            TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
             List<TColumn> columns = rowSet.Columns;
             int rowCount = rowSet.Columns[3].StringVal.Values.Length;
 
@@ -485,24 +485,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Trace.TraceError($"getting objects with depth={depth.ToString()}, catalog = {catalogPattern}, dbschema = {dbSchemaPattern}, tablename = {tableNamePattern}");
 
             Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>>();
-            CancellationToken timeoutToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
 
             if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
             {
                 TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
                 getCatalogsReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetCatalogsResp getCatalogsResp = Client.GetCatalogs(getCatalogsReq, timeoutToken).Result;
+                TGetCatalogsResp getCatalogsResp = Client.GetCatalogs(getCatalogsReq, cancellationToken).Result;
 
                 if (getCatalogsResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getCatalogsResp.Status.ErrorMessage);
                 }
-                var catalogsMetadata = GetResultSetMetadataAsync(getCatalogsResp).Result;
+                var catalogsMetadata = GetResultSetMetadataAsync(getCatalogsResp, cancellationToken).Result;
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(catalogsMetadata.Schema.Columns);
 
                 string catalogRegexp = PatternToRegEx(catalogPattern);
-                TRowSet rowSet = GetRowSetAsync(getCatalogsResp).Result;
+                TRowSet rowSet = GetRowSetAsync(getCatalogsResp, cancellationToken).Result;
                 IReadOnlyList<string> list = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
                 for (int i = 0; i < list.Count; i++)
                 {
@@ -528,15 +528,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 getSchemasReq.SchemaName = dbSchemaPattern;
                 getSchemasReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetSchemasResp getSchemasResp = Client.GetSchemas(getSchemasReq, timeoutToken).Result;
+                TGetSchemasResp getSchemasResp = Client.GetSchemas(getSchemasReq, cancellationToken).Result;
                 if (getSchemasResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getSchemasResp.Status.ErrorMessage);
                 }
 
-                TGetResultSetMetadataResp schemaMetadata = GetResultSetMetadataAsync(getSchemasResp).Result;
+                TGetResultSetMetadataResp schemaMetadata = GetResultSetMetadataAsync(getSchemasResp, cancellationToken).Result;
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(schemaMetadata.Schema.Columns);
-                TRowSet rowSet = GetRowSetAsync(getSchemasResp).Result;
+                TRowSet rowSet = GetRowSetAsync(getSchemasResp, cancellationToken).Result;
 
                 IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCatalog]].StringVal.Values;
                 IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
@@ -558,15 +558,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 getTablesReq.TableName = tableNamePattern;
                 getTablesReq.GetDirectResults = sparkGetDirectResults;
 
-                TGetTablesResp getTablesResp = Client.GetTables(getTablesReq, timeoutToken).Result;
+                TGetTablesResp getTablesResp = Client.GetTables(getTablesReq, cancellationToken).Result;
                 if (getTablesResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(getTablesResp.Status.ErrorMessage);
                 }
 
-                TGetResultSetMetadataResp tableMetadata = GetResultSetMetadataAsync(getTablesResp).Result;
+                TGetResultSetMetadataResp tableMetadata = GetResultSetMetadataAsync(getTablesResp, cancellationToken).Result;
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(tableMetadata.Schema.Columns);
-                TRowSet rowSet = GetRowSetAsync(getTablesResp).Result;
+                TRowSet rowSet = GetRowSetAsync(getTablesResp, cancellationToken).Result;
 
                 IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
                 IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
@@ -595,15 +595,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 if (!string.IsNullOrEmpty(columnNamePattern))
                     columnsReq.ColumnName = columnNamePattern;
 
-                var columnsResponse = Client.GetColumns(columnsReq, timeoutToken).Result;
+                var columnsResponse = Client.GetColumns(columnsReq, cancellationToken).Result;
                 if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
                 {
                     throw new Exception(columnsResponse.Status.ErrorMessage);
                 }
 
-                TGetResultSetMetadataResp columnsMetadata = GetResultSetMetadataAsync(columnsResponse).Result;
+                TGetResultSetMetadataResp columnsMetadata = GetResultSetMetadataAsync(columnsResponse, cancellationToken).Result;
                 IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsMetadata.Schema.Columns);
-                TRowSet rowSet = GetRowSetAsync(columnsResponse).Result;
+                TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
 
                 IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
                 IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
@@ -1005,15 +1005,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected abstract void ValidateAuthentication();
         protected abstract void ValidateOptions();
 
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response);
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetColumnsResp response);
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetTablesResp response);
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetCatalogsResp getCatalogsResp);
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetSchemasResp getSchemasResp);
-        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response);
-        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response);
-        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response);
-        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetCatalogsResp getCatalogsResp, CancellationToken cancellationToken = default);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetSchemasResp getSchemasResp, CancellationToken cancellationToken = default);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
 
         internal abstract SparkServerType ServerType { get; }
 

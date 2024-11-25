@@ -46,7 +46,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // TODO: Ensure this is set dynamically depending on server capabilities.
             statement.EnforceResultPersistenceMode = false;
             statement.ResultPersistenceMode = 2;
-            statement.QueryTimeout = QueryTimeoutSeconds; //it doesn't seem like we need to set this in combination with a CancellationToken, but keep it for now
+            // This seems like a good idea to have the server timeout so it doesn't keep processing unnecessarily.
+            // Set in combination with a CancellationToken.
+            statement.QueryTimeout = QueryTimeoutSeconds; 
             statement.CanReadArrowResult = true;
             statement.CanDownloadResult = true;
             statement.ConfOverlay = SparkConnection.timestampConfig;

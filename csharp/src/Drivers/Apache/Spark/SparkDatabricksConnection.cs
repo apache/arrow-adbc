@@ -16,6 +16,7 @@
 */
 
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -43,24 +44,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return req;
         }
 
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response) =>
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response) =>
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response) =>
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
 
-        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response) =>
+        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
     }
 }
