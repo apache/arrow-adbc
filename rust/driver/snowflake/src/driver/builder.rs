@@ -19,14 +19,13 @@
 //!
 //!
 
-#[cfg(feature = "env")]
-use std::env;
-
 use adbc_core::{
     error::{Error, Result},
     options::AdbcVersion,
 };
 
+#[cfg(feature = "env")]
+use crate::builder::env_parse;
 use crate::Driver;
 
 /// A builder for [`Driver`].
@@ -47,15 +46,18 @@ impl Builder {
 
     /// Construct a builder, setting values based on values of the
     /// configuration environment variables.
-    pub fn from_env() -> Self {
+    ///
+    /// # Error
+    ///
+    /// Returns an error when environment variables are set but their values
+    /// fail to parse.
+    pub fn from_env() -> Result<Self> {
         #[cfg(feature = "dotenv")]
         let _ = dotenvy::dotenv();
 
-        let adbc_version = env::var(Self::ADBC_VERSION_ENV)
-            .ok()
-            .as_deref()
-            .and_then(|value| value.parse().ok());
-        Self { adbc_version }
+        let adbc_version = env_parse(Self::ADBC_VERSION_ENV, str::parse)?;
+
+        Ok(Self { adbc_version })
     }
 }
 
@@ -77,5 +79,27 @@ impl TryFrom<Builder> for Driver {
 
     fn try_from(value: Builder) -> Result<Self> {
         value.try_load()
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "env")]
+mod tests {
+    use std::env;
+
+    use adbc_core::error::Status;
+
+    use super::*;
+
+    #[test]
+    fn from_env_parse_error() {
+        // Set a value that fails to parse to an AdbcVersion
+        env::set_var(Builder::ADBC_VERSION_ENV, "?");
+        let result = Builder::from_env();
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            Error::with_message_and_status("Unknown ADBC version: ?", Status::InvalidArguments)
+        );
     }
 }

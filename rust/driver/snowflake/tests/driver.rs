@@ -47,16 +47,16 @@ mod tests {
     const ADBC_VERSION: AdbcVersion = AdbcVersion::V110;
 
     static DRIVER: LazyLock<Result<Driver>> = LazyLock::new(|| {
-        driver::Builder::from_env()
+        driver::Builder::from_env()?
             .with_adbc_version(ADBC_VERSION)
             .try_load()
     });
 
     static DATABASE: LazyLock<Result<Database>> =
-        LazyLock::new(|| database::Builder::from_env().build(&mut DRIVER.deref().clone()?));
+        LazyLock::new(|| database::Builder::from_env()?.build(&mut DRIVER.deref().clone()?));
 
     static CONNECTION: LazyLock<Result<Connection>> =
-        LazyLock::new(|| connection::Builder::from_env().build(&mut DATABASE.deref().clone()?));
+        LazyLock::new(|| connection::Builder::from_env()?.build(&mut DATABASE.deref().clone()?));
 
     fn with_database(func: impl FnOnce(Database) -> Result<()>) -> Result<()> {
         DATABASE.deref().clone().and_then(func)
