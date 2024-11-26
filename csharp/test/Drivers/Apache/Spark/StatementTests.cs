@@ -114,8 +114,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("zero", true)]
         [InlineData("-2147483648", true)]
         [InlineData("2147483648", true)]
-        [InlineData("0", true)]
-        [InlineData("-1")]
+        [InlineData("0", false)]
+        [InlineData("-1", true)]
         [InlineData("1")]
         [InlineData("2147483647")]
         public void CanSetOptionQueryTimeout(string value, bool throws = false)
@@ -228,14 +228,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             string longRunningQuery = "SELECT COUNT(*) AS total_count\nFROM (\n  SELECT t1.id AS id1, t2.id AS id2\n  FROM RANGE(1000000) t1\n  CROSS JOIN RANGE(10000) t2\n) subquery\nWHERE MOD(id1 + id2, 2) = 0";
 
-            Add(new(-1, null, null));
+            Add(new(0, null, null));
             Add(new(null, null, null));
-            Add(new(1, null, typeof(TTransportException)));
+            Add(new(1, null, typeof(TimeoutException)));
             Add(new(5, null, null));
             Add(new(30, null, null));
             Add(new(5, longRunningQuery, typeof(TTransportException)));
             Add(new(null, longRunningQuery, typeof(TimeoutException)));
-            Add(new(-1, longRunningQuery, null));
+            Add(new(0, longRunningQuery, null));
         }
     }
 }

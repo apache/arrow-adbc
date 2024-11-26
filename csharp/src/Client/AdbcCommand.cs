@@ -36,6 +36,7 @@ namespace Apache.Arrow.Adbc.Client
         private AdbcParameterCollection? _dbParameterCollection;
         private int _timeout = 30;
         private bool _disposed;
+        private string? _commandTimeoutProperty;
 
         /// <summary>
         /// Overloaded. Initializes <see cref="AdbcCommand"/>.
@@ -114,13 +115,30 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
+        /// <summary>
+        /// Gets or setts the name of the command timeout property for the underlying ADBC driver.
+        /// </summary>
+        public string CommandTimeoutProperty
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_commandTimeoutProperty))
+                    throw new InvalidOperationException("CommandTimeoutProperty is not set.");
+
+                return _commandTimeoutProperty!;
+            }
+            set { _commandTimeoutProperty = value; }
+        }
+
         public override int CommandTimeout
         {
             get => _timeout;
             set
             {
+                // ensures the property exists before setting the this.connectionTimeout value
+                string property = this.CommandTimeoutProperty;
                 _timeout = value;
-                _adbcStatement.SetOption("adbc.apache.statement.query_timeout_s", value.ToString());
+                _adbcStatement.SetOption(property, value.ToString());
             }
         }
 

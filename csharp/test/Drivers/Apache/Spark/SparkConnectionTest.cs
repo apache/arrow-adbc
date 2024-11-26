@@ -60,11 +60,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         /// <param name="exceptionType">The exception type to expect (if any)</param>
         /// <param name="alternateExceptionType">An alternate exception that may occur (if any)</param>
         [SkippableTheory]
+        [InlineData(0, null, null)]
         [InlineData(1, typeof(TimeoutException), typeof(TTransportException))]
         [InlineData(10, typeof(TimeoutException), typeof(TTransportException))]
         [InlineData(30000, null, null)]
         [InlineData(null, null, null)]
-        [InlineData(-1, null, null)]
         public void ConnectionTimeoutTest(int? connectTimeoutMilliseconds, Type? exceptionType, Type? alternateExceptionType)
         {
             SparkTestConfiguration testConfiguration = (SparkTestConfiguration)TestConfiguration.Clone();
@@ -248,7 +248,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             {
                 List<Type?> expectedExceptions = new List<Type?>()
                 {
-                    null, // QueryTimeout = -1
+                    null, // QueryTimeout = 0
                     typeof(TTransportException), // QueryTimeout = 1
                     typeof(TimeoutException), // QueryTimeout = 10
                     null, // QueryTimeout = default
@@ -265,7 +265,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             /// <param name="expectedExceptions">The expected exceptions.</param>
             /// <remarks>
             /// For List<Type?> the position is based on the behavior when:
-            ///    [0] QueryTimeout = -1
+            ///    [0] QueryTimeout = 0
             ///    [1] QueryTimeout = 1
             ///    [2] QueryTimeout = 10
             ///    [3] QueryTimeout = default
@@ -280,7 +280,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                     Assert.True(alternateExceptions.Count == 5);
                 }
 
-                Add(new(-1, name, action, expectedExceptions[0], alternateExceptions?[0]));
+                Add(new(0, name, action, expectedExceptions[0], alternateExceptions?[0]));
                 Add(new(1, name, action, expectedExceptions[1], alternateExceptions?[1]));
                 Add(new(10, name, action, expectedExceptions[2], alternateExceptions?[2]));
                 Add(new(null, name, action, expectedExceptions[3], alternateExceptions?[3]));

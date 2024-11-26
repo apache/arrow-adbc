@@ -16,11 +16,7 @@
 */
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache
 {
@@ -38,7 +34,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
         {
             TimeSpan span;
 
-            if (timeout == -1 || timeout == int.MaxValue)
+            if (timeout == 0 || timeout == int.MaxValue)
             {
                 // the max TimeSpan for CancellationTokenSource is int.MaxValue in milliseconds (not TimeSpan.MaxValue)
                 // no matter what the unit is
@@ -67,14 +63,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
 
         public static bool QueryTimeoutIsValid(string key, string value, out int queryTimeoutSeconds)
         {
-            if (!string.IsNullOrEmpty(value) && int.TryParse(value, out int queryTimeout) && (queryTimeout > 0 || queryTimeout == -1))
+            if (!string.IsNullOrEmpty(value) && int.TryParse(value, out int queryTimeout) && (queryTimeout >= 0))
             {
                 queryTimeoutSeconds = queryTimeout;
                 return true;
             }
             else
             {
-                throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value of -1 (infinite) or greater than zero.");
+                throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value of 0 (infinite) or greater.");
             }
         }
     }
