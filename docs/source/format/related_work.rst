@@ -24,7 +24,7 @@ included, which is partially reproduced below for context, though note the
 descriptions are only kept up-to-date on a best-effort basis.
 
 Preexisting database client APIs
-=============================
+================================
 
 :external:doc:`Arrow Flight SQL <format/FlightSql>`
   A standard building on top of Arrow Flight, defining how to use
@@ -58,7 +58,7 @@ Preexisting database client APIs
   implement.
 
 Preexisting libraries
-==================
+=====================
 
 These are libraries which either 1) implement columnar data access for
 a particular system; or 2) could be used to implement such access.
