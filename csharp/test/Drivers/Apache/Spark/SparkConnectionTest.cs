@@ -19,14 +19,12 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
-using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Thrift.Protocol.Entities;
 using Thrift.Transport;
 using Xunit;
 using Xunit.Abstractions;
-using static Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.SparkConnectionTest;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
@@ -125,23 +123,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             {
                 metadataWithException.MetadataAction(testConfiguration);
             }
-            catch (AggregateException aex)
+            catch (Exception ex) when (ApacheUtility.ContainsException(ex, metadataWithException.ExceptionType, out Exception? containedException))
             {
-                if (metadataWithException.ExceptionType != null)
-                {
-                    if (metadataWithException.AlternateExceptionType != null && aex.InnerException?.GetType() != metadataWithException.ExceptionType)
-                    {
-                        Assert.IsType(metadataWithException.AlternateExceptionType, aex.InnerException);
-                    }
-                    else
-                    {
-                        Assert.IsType(metadataWithException.ExceptionType, aex.InnerException);
-                    }
-                }
-                else
-                {
-                    throw;
-                }
+                Assert.IsType(metadataWithException.ExceptionType!, containedException);
+            }
+            catch (Exception ex) when (ApacheUtility.ContainsException(ex, metadataWithException.AlternateExceptionType, out Exception? containedException))
+            {
+                Assert.IsType(metadataWithException.AlternateExceptionType!, containedException);
             }
         }
 
@@ -216,7 +204,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                     cn.GetObjects(AdbcConnection.GetObjectsDepth.Tables, testConfiguration.Metadata.Catalog, testConfiguration.Metadata.Schema, testConfiguration.Metadata.Schema, null, null);
                 };
 
-                AddAction("getObjectsAll", getObjectsAll, new List<Type?>() { null, typeof(TaskCanceledException), null, null, null } );
+                AddAction("getObjectsAll", getObjectsAll, new List<Type?>() { null, typeof(TimeoutException), null, null, null } );
                 AddAction("getObjectsCatalogs", getObjectsCatalogs);
                 AddAction("getObjectsDbSchemas", getObjectsDbSchemas);
                 AddAction("getObjectsTables", getObjectsTables);

@@ -39,45 +39,71 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public override QueryResult ExecuteQuery()
         {
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            return ExecuteQueryAsyncInternal(cancellationToken).Result;
-        }
-
-        public override UpdateResult ExecuteUpdate()
-        {
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            return ExecuteUpdateAsyncInternal(cancellationToken).Result;
-        }
-
-        private async Task<QueryResult> ExecuteQueryAsyncInternal(CancellationToken cancellationToken = default)
-        {
             try
             {
-                // this could either:
-                // take QueryTimeoutSeconds * 3
-                // OR
-                // take QueryTimeoutSeconds (but this could be restricting)
-                await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
-                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
-                Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken); // + get the result, up to QueryTimeout
-
-                return new QueryResult(-1, Connection.NewReader(this, schema));
+                return ExecuteQueryAsyncInternal(cancellationToken).Result;
             }
             catch (Exception ex)
                 when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
                      (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
             {
-                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+            }
+        }
+
+        public override UpdateResult ExecuteUpdate()
+        {
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            try
+            {
+                return ExecuteUpdateAsyncInternal(cancellationToken).Result;
             }
             catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
             {
-                throw new HiveServer2Exception($"An unexpected error occurred while running query. '{ex.Message}'", ex);
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
             }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+            }
+        }
+
+        private async Task<QueryResult> ExecuteQueryAsyncInternal(CancellationToken cancellationToken = default)
+        {
+            // this could either:
+            // take QueryTimeoutSeconds * 3
+            // OR
+            // take QueryTimeoutSeconds (but this could be restricting)
+            await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
+            await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
+            Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken); // + get the result, up to QueryTimeout
+
+            return new QueryResult(-1, Connection.NewReader(this, schema));
         }
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            return await ExecuteQueryAsyncInternal(cancellationToken);
+            try
+            {
+                return await ExecuteQueryAsyncInternal(cancellationToken);
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+            }
         }
 
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
@@ -128,7 +154,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            return await ExecuteUpdateAsyncInternal(cancellationToken);
+            try
+            {
+                return await ExecuteUpdateAsyncInternal(cancellationToken);
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+            }
         }
 
         public override void SetOption(string key, string value)

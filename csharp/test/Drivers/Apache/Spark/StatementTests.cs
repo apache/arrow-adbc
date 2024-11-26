@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Thrift.Transport;
@@ -164,16 +165,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
                 OutputHelper?.WriteLine($"QueryResultRowCount: {qr.RowCount}");
             }
-            catch (AggregateException aex)
+            catch (Exception ex) when (ApacheUtility.ContainsException(ex, statementWithExceptions.ExceptionType, out Exception? containedException))
             {
-                if (statementWithExceptions.ExceptionType != null)
-                {
-                    Assert.IsType(statementWithExceptions.ExceptionType, aex.InnerException);
-                }
-                else
-                {
-                    throw;
-                }
+                Assert.IsType(statementWithExceptions.ExceptionType!, containedException!);
             }
         }
 

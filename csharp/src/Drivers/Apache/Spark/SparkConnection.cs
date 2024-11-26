@@ -30,6 +30,7 @@ using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
+using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
@@ -420,28 +421,40 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             };
 
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-
-            TGetTableTypesResp resp = Client.GetTableTypes(req, cancellationToken).Result;
-
-            if (resp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+            try
             {
-                throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                    .SetNativeError(resp.Status.ErrorCode)
-                    .SetSqlState(resp.Status.SqlState);
-            }
+                TGetTableTypesResp resp = Client.GetTableTypes(req, cancellationToken).Result;
 
-            TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
-            StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
+                if (resp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                {
+                    throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                        .SetNativeError(resp.Status.ErrorCode)
+                        .SetSqlState(resp.Status.SqlState);
+                }
 
-            StringArray.Builder tableTypesBuilder = new StringArray.Builder();
-            tableTypesBuilder.AppendRange(tableTypes);
+                TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
+                StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
 
-            IArrowArray[] dataArrays = new IArrowArray[]
-            {
+                StringArray.Builder tableTypesBuilder = new StringArray.Builder();
+                tableTypesBuilder.AppendRange(tableTypes);
+
+                IArrowArray[] dataArrays = new IArrowArray[]
+                {
                 tableTypesBuilder.Build()
-            };
+                };
 
-            return new SparkInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
+                return new SparkInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+            }
         }
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
@@ -453,31 +466,43 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             getColumnsReq.GetDirectResults = sparkGetDirectResults;
 
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-
-            var columnsResponse = Client.GetColumns(getColumnsReq, cancellationToken).Result;
-            if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
+            try
             {
-                throw new Exception(columnsResponse.Status.ErrorMessage);
+                var columnsResponse = Client.GetColumns(getColumnsReq, cancellationToken).Result;
+                if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                {
+                    throw new Exception(columnsResponse.Status.ErrorMessage);
+                }
+
+                TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
+                List<TColumn> columns = rowSet.Columns;
+                int rowCount = rowSet.Columns[3].StringVal.Values.Length;
+
+                Field[] fields = new Field[rowCount];
+                for (int i = 0; i < rowCount; i++)
+                {
+                    string columnName = columns[3].StringVal.Values.GetString(i);
+                    int? columnType = columns[4].I32Val.Values.GetValue(i);
+                    string typeName = columns[5].StringVal.Values.GetString(i);
+                    // Note: the following two columns do not seem to be set correctly for DECIMAL types.
+                    //int? columnSize = columns[6].I32Val.Values.GetValue(i);
+                    //int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
+                    bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
+                    IArrowType dataType = SparkConnection.GetArrowType(columnType!.Value, typeName);
+                    fields[i] = new Field(columnName, dataType, nullable);
+                }
+                return new Schema(fields, null);
             }
-
-            TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
-            List<TColumn> columns = rowSet.Columns;
-            int rowCount = rowSet.Columns[3].StringVal.Values.Length;
-
-            Field[] fields = new Field[rowCount];
-            for (int i = 0; i < rowCount; i++)
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
             {
-                string columnName = columns[3].StringVal.Values.GetString(i);
-                int? columnType = columns[4].I32Val.Values.GetValue(i);
-                string typeName = columns[5].StringVal.Values.GetString(i);
-                // Note: the following two columns do not seem to be set correctly for DECIMAL types.
-                //int? columnSize = columns[6].I32Val.Values.GetValue(i);
-                //int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
-                bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
-                IArrowType dataType = SparkConnection.GetArrowType(columnType!.Value, typeName);
-                fields[i] = new Field(columnName, dataType, nullable);
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
             }
-            return new Schema(fields, null);
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+            }
         }
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
@@ -486,192 +511,204 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>>();
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-
-            if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
+            try
             {
-                TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
-                getCatalogsReq.GetDirectResults = sparkGetDirectResults;
-
-                TGetCatalogsResp getCatalogsResp = Client.GetCatalogs(getCatalogsReq, cancellationToken).Result;
-
-                if (getCatalogsResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
                 {
-                    throw new Exception(getCatalogsResp.Status.ErrorMessage);
-                }
-                var catalogsMetadata = GetResultSetMetadataAsync(getCatalogsResp, cancellationToken).Result;
-                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(catalogsMetadata.Schema.Columns);
+                    TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
+                    getCatalogsReq.GetDirectResults = sparkGetDirectResults;
 
-                string catalogRegexp = PatternToRegEx(catalogPattern);
-                TRowSet rowSet = GetRowSetAsync(getCatalogsResp, cancellationToken).Result;
-                IReadOnlyList<string> list = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
-                for (int i = 0; i < list.Count; i++)
-                {
-                    string col = list[i];
-                    string catalog = col;
+                    TGetCatalogsResp getCatalogsResp = Client.GetCatalogs(getCatalogsReq, cancellationToken).Result;
 
-                    if (Regex.IsMatch(catalog, catalogRegexp, RegexOptions.IgnoreCase))
+                    if (getCatalogsResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
                     {
-                        catalogMap.Add(catalog, new Dictionary<string, Dictionary<string, TableInfo>>());
+                        throw new Exception(getCatalogsResp.Status.ErrorMessage);
+                    }
+                    var catalogsMetadata = GetResultSetMetadataAsync(getCatalogsResp, cancellationToken).Result;
+                    IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(catalogsMetadata.Schema.Columns);
+
+                    string catalogRegexp = PatternToRegEx(catalogPattern);
+                    TRowSet rowSet = GetRowSetAsync(getCatalogsResp, cancellationToken).Result;
+                    IReadOnlyList<string> list = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
+                    for (int i = 0; i < list.Count; i++)
+                    {
+                        string col = list[i];
+                        string catalog = col;
+
+                        if (Regex.IsMatch(catalog, catalogRegexp, RegexOptions.IgnoreCase))
+                        {
+                            catalogMap.Add(catalog, new Dictionary<string, Dictionary<string, TableInfo>>());
+                        }
+                    }
+                    // Handle the case where server does not support 'catalog' in the namespace.
+                    if (list.Count == 0 && string.IsNullOrEmpty(catalogPattern))
+                    {
+                        catalogMap.Add(string.Empty, []);
                     }
                 }
-                // Handle the case where server does not support 'catalog' in the namespace.
-                if (list.Count == 0 && string.IsNullOrEmpty(catalogPattern))
+
+                if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.DbSchemas)
                 {
-                    catalogMap.Add(string.Empty, []);
-                }
-            }
+                    TGetSchemasReq getSchemasReq = new TGetSchemasReq(SessionHandle);
+                    getSchemasReq.CatalogName = catalogPattern;
+                    getSchemasReq.SchemaName = dbSchemaPattern;
+                    getSchemasReq.GetDirectResults = sparkGetDirectResults;
 
-            if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.DbSchemas)
-            {
-                TGetSchemasReq getSchemasReq = new TGetSchemasReq(SessionHandle);
-                getSchemasReq.CatalogName = catalogPattern;
-                getSchemasReq.SchemaName = dbSchemaPattern;
-                getSchemasReq.GetDirectResults = sparkGetDirectResults;
+                    TGetSchemasResp getSchemasResp = Client.GetSchemas(getSchemasReq, cancellationToken).Result;
+                    if (getSchemasResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                    {
+                        throw new Exception(getSchemasResp.Status.ErrorMessage);
+                    }
 
-                TGetSchemasResp getSchemasResp = Client.GetSchemas(getSchemasReq, cancellationToken).Result;
-                if (getSchemasResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                {
-                    throw new Exception(getSchemasResp.Status.ErrorMessage);
-                }
+                    TGetResultSetMetadataResp schemaMetadata = GetResultSetMetadataAsync(getSchemasResp, cancellationToken).Result;
+                    IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(schemaMetadata.Schema.Columns);
+                    TRowSet rowSet = GetRowSetAsync(getSchemasResp, cancellationToken).Result;
 
-                TGetResultSetMetadataResp schemaMetadata = GetResultSetMetadataAsync(getSchemasResp, cancellationToken).Result;
-                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(schemaMetadata.Schema.Columns);
-                TRowSet rowSet = GetRowSetAsync(getSchemasResp, cancellationToken).Result;
+                    IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCatalog]].StringVal.Values;
+                    IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
 
-                IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCatalog]].StringVal.Values;
-                IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
-
-                for (int i = 0; i < catalogList.Count; i++)
-                {
-                    string catalog = catalogList[i];
-                    string schemaDb = schemaList[i];
-                    // It seems Spark sometimes returns empty string for catalog on some schema (temporary tables).
-                    catalogMap.GetValueOrDefault(catalog)?.Add(schemaDb, new Dictionary<string, TableInfo>());
-                }
-            }
-
-            if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Tables)
-            {
-                TGetTablesReq getTablesReq = new TGetTablesReq(SessionHandle);
-                getTablesReq.CatalogName = catalogPattern;
-                getTablesReq.SchemaName = dbSchemaPattern;
-                getTablesReq.TableName = tableNamePattern;
-                getTablesReq.GetDirectResults = sparkGetDirectResults;
-
-                TGetTablesResp getTablesResp = Client.GetTables(getTablesReq, cancellationToken).Result;
-                if (getTablesResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                {
-                    throw new Exception(getTablesResp.Status.ErrorMessage);
+                    for (int i = 0; i < catalogList.Count; i++)
+                    {
+                        string catalog = catalogList[i];
+                        string schemaDb = schemaList[i];
+                        // It seems Spark sometimes returns empty string for catalog on some schema (temporary tables).
+                        catalogMap.GetValueOrDefault(catalog)?.Add(schemaDb, new Dictionary<string, TableInfo>());
+                    }
                 }
 
-                TGetResultSetMetadataResp tableMetadata = GetResultSetMetadataAsync(getTablesResp, cancellationToken).Result;
-                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(tableMetadata.Schema.Columns);
-                TRowSet rowSet = GetRowSetAsync(getTablesResp, cancellationToken).Result;
-
-                IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
-                IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
-                IReadOnlyList<string> tableList = rowSet.Columns[columnMap[TableName]].StringVal.Values;
-                IReadOnlyList<string> tableTypeList = rowSet.Columns[columnMap[TableType]].StringVal.Values;
-
-                for (int i = 0; i < catalogList.Count; i++)
+                if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Tables)
                 {
-                    string catalog = catalogList[i];
-                    string schemaDb = schemaList[i];
-                    string tableName = tableList[i];
-                    string tableType = tableTypeList[i];
-                    TableInfo tableInfo = new(tableType);
-                    catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.Add(tableName, tableInfo);
-                }
-            }
+                    TGetTablesReq getTablesReq = new TGetTablesReq(SessionHandle);
+                    getTablesReq.CatalogName = catalogPattern;
+                    getTablesReq.SchemaName = dbSchemaPattern;
+                    getTablesReq.TableName = tableNamePattern;
+                    getTablesReq.GetDirectResults = sparkGetDirectResults;
 
-            if (depth == GetObjectsDepth.All)
-            {
-                TGetColumnsReq columnsReq = new TGetColumnsReq(SessionHandle);
-                columnsReq.CatalogName = catalogPattern;
-                columnsReq.SchemaName = dbSchemaPattern;
-                columnsReq.TableName = tableNamePattern;
-                columnsReq.GetDirectResults = sparkGetDirectResults;
+                    TGetTablesResp getTablesResp = Client.GetTables(getTablesReq, cancellationToken).Result;
+                    if (getTablesResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                    {
+                        throw new Exception(getTablesResp.Status.ErrorMessage);
+                    }
 
-                if (!string.IsNullOrEmpty(columnNamePattern))
-                    columnsReq.ColumnName = columnNamePattern;
+                    TGetResultSetMetadataResp tableMetadata = GetResultSetMetadataAsync(getTablesResp, cancellationToken).Result;
+                    IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(tableMetadata.Schema.Columns);
+                    TRowSet rowSet = GetRowSetAsync(getTablesResp, cancellationToken).Result;
 
-                var columnsResponse = Client.GetColumns(columnsReq, cancellationToken).Result;
-                if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                {
-                    throw new Exception(columnsResponse.Status.ErrorMessage);
+                    IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
+                    IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
+                    IReadOnlyList<string> tableList = rowSet.Columns[columnMap[TableName]].StringVal.Values;
+                    IReadOnlyList<string> tableTypeList = rowSet.Columns[columnMap[TableType]].StringVal.Values;
+
+                    for (int i = 0; i < catalogList.Count; i++)
+                    {
+                        string catalog = catalogList[i];
+                        string schemaDb = schemaList[i];
+                        string tableName = tableList[i];
+                        string tableType = tableTypeList[i];
+                        TableInfo tableInfo = new(tableType);
+                        catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.Add(tableName, tableInfo);
+                    }
                 }
 
-                TGetResultSetMetadataResp columnsMetadata = GetResultSetMetadataAsync(columnsResponse, cancellationToken).Result;
-                IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsMetadata.Schema.Columns);
-                TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
-
-                IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
-                IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
-                IReadOnlyList<string> tableList = rowSet.Columns[columnMap[TableName]].StringVal.Values;
-                IReadOnlyList<string> columnNameList = rowSet.Columns[columnMap[ColumnName]].StringVal.Values;
-                ReadOnlySpan<int> columnTypeList = rowSet.Columns[columnMap[DataType]].I32Val.Values.Values;
-                IReadOnlyList<string> typeNameList = rowSet.Columns[columnMap[TypeName]].StringVal.Values;
-                ReadOnlySpan<int> nullableList = rowSet.Columns[columnMap[Nullable]].I32Val.Values.Values;
-                IReadOnlyList<string> columnDefaultList = rowSet.Columns[columnMap[ColumnDef]].StringVal.Values;
-                ReadOnlySpan<int> ordinalPosList = rowSet.Columns[columnMap[OrdinalPosition]].I32Val.Values.Values;
-                IReadOnlyList<string> isNullableList = rowSet.Columns[columnMap[IsNullable]].StringVal.Values;
-                IReadOnlyList<string> isAutoIncrementList = rowSet.Columns[columnMap[IsAutoIncrement]].StringVal.Values;
-
-                for (int i = 0; i < catalogList.Count; i++)
+                if (depth == GetObjectsDepth.All)
                 {
-                    // For systems that don't support 'catalog' in the namespace
-                    string catalog = catalogList[i] ?? string.Empty;
-                    string schemaDb = schemaList[i];
-                    string tableName = tableList[i];
-                    string columnName = columnNameList[i];
-                    short colType = (short)columnTypeList[i];
-                    string typeName = typeNameList[i];
-                    short nullable = (short)nullableList[i];
-                    string? isAutoIncrementString = isAutoIncrementList[i];
-                    bool isAutoIncrement = (!string.IsNullOrEmpty(isAutoIncrementString) && (isAutoIncrementString.Equals("YES", StringComparison.InvariantCultureIgnoreCase) || isAutoIncrementString.Equals("TRUE", StringComparison.InvariantCultureIgnoreCase)));
-                    string isNullable = isNullableList[i] ?? "YES";
-                    string columnDefault = columnDefaultList[i] ?? "";
-                    // Spark/Databricks reports ordinal index zero-indexed, instead of one-indexed
-                    int ordinalPos = ordinalPosList[i] + 1;
-                    TableInfo? tableInfo = catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.GetValueOrDefault(tableName);
-                    tableInfo?.ColumnName.Add(columnName);
-                    tableInfo?.ColType.Add(colType);
-                    tableInfo?.Nullable.Add(nullable);
-                    tableInfo?.IsAutoIncrement.Add(isAutoIncrement);
-                    tableInfo?.IsNullable.Add(isNullable);
-                    tableInfo?.ColumnDefault.Add(columnDefault);
-                    tableInfo?.OrdinalPosition.Add(ordinalPos);
-                    SetPrecisionScaleAndTypeName(colType, typeName, tableInfo);
+                    TGetColumnsReq columnsReq = new TGetColumnsReq(SessionHandle);
+                    columnsReq.CatalogName = catalogPattern;
+                    columnsReq.SchemaName = dbSchemaPattern;
+                    columnsReq.TableName = tableNamePattern;
+                    columnsReq.GetDirectResults = sparkGetDirectResults;
+
+                    if (!string.IsNullOrEmpty(columnNamePattern))
+                        columnsReq.ColumnName = columnNamePattern;
+
+                    var columnsResponse = Client.GetColumns(columnsReq, cancellationToken).Result;
+                    if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                    {
+                        throw new Exception(columnsResponse.Status.ErrorMessage);
+                    }
+
+                    TGetResultSetMetadataResp columnsMetadata = GetResultSetMetadataAsync(columnsResponse, cancellationToken).Result;
+                    IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsMetadata.Schema.Columns);
+                    TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
+
+                    IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
+                    IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
+                    IReadOnlyList<string> tableList = rowSet.Columns[columnMap[TableName]].StringVal.Values;
+                    IReadOnlyList<string> columnNameList = rowSet.Columns[columnMap[ColumnName]].StringVal.Values;
+                    ReadOnlySpan<int> columnTypeList = rowSet.Columns[columnMap[DataType]].I32Val.Values.Values;
+                    IReadOnlyList<string> typeNameList = rowSet.Columns[columnMap[TypeName]].StringVal.Values;
+                    ReadOnlySpan<int> nullableList = rowSet.Columns[columnMap[Nullable]].I32Val.Values.Values;
+                    IReadOnlyList<string> columnDefaultList = rowSet.Columns[columnMap[ColumnDef]].StringVal.Values;
+                    ReadOnlySpan<int> ordinalPosList = rowSet.Columns[columnMap[OrdinalPosition]].I32Val.Values.Values;
+                    IReadOnlyList<string> isNullableList = rowSet.Columns[columnMap[IsNullable]].StringVal.Values;
+                    IReadOnlyList<string> isAutoIncrementList = rowSet.Columns[columnMap[IsAutoIncrement]].StringVal.Values;
+
+                    for (int i = 0; i < catalogList.Count; i++)
+                    {
+                        // For systems that don't support 'catalog' in the namespace
+                        string catalog = catalogList[i] ?? string.Empty;
+                        string schemaDb = schemaList[i];
+                        string tableName = tableList[i];
+                        string columnName = columnNameList[i];
+                        short colType = (short)columnTypeList[i];
+                        string typeName = typeNameList[i];
+                        short nullable = (short)nullableList[i];
+                        string? isAutoIncrementString = isAutoIncrementList[i];
+                        bool isAutoIncrement = (!string.IsNullOrEmpty(isAutoIncrementString) && (isAutoIncrementString.Equals("YES", StringComparison.InvariantCultureIgnoreCase) || isAutoIncrementString.Equals("TRUE", StringComparison.InvariantCultureIgnoreCase)));
+                        string isNullable = isNullableList[i] ?? "YES";
+                        string columnDefault = columnDefaultList[i] ?? "";
+                        // Spark/Databricks reports ordinal index zero-indexed, instead of one-indexed
+                        int ordinalPos = ordinalPosList[i] + 1;
+                        TableInfo? tableInfo = catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.GetValueOrDefault(tableName);
+                        tableInfo?.ColumnName.Add(columnName);
+                        tableInfo?.ColType.Add(colType);
+                        tableInfo?.Nullable.Add(nullable);
+                        tableInfo?.IsAutoIncrement.Add(isAutoIncrement);
+                        tableInfo?.IsNullable.Add(isNullable);
+                        tableInfo?.ColumnDefault.Add(columnDefault);
+                        tableInfo?.OrdinalPosition.Add(ordinalPos);
+                        SetPrecisionScaleAndTypeName(colType, typeName, tableInfo);
+                    }
                 }
-            }
 
-            StringArray.Builder catalogNameBuilder = new StringArray.Builder();
-            List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>();
+                StringArray.Builder catalogNameBuilder = new StringArray.Builder();
+                List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>();
 
-            foreach (KeyValuePair<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogEntry in catalogMap)
-            {
-                catalogNameBuilder.Append(catalogEntry.Key);
-
-                if (depth == GetObjectsDepth.Catalogs)
+                foreach (KeyValuePair<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogEntry in catalogMap)
                 {
-                    catalogDbSchemasValues.Add(null);
+                    catalogNameBuilder.Append(catalogEntry.Key);
+
+                    if (depth == GetObjectsDepth.Catalogs)
+                    {
+                        catalogDbSchemasValues.Add(null);
+                    }
+                    else
+                    {
+                        catalogDbSchemasValues.Add(GetDbSchemas(
+                                    depth, catalogEntry.Value));
+                    }
                 }
-                else
-                {
-                    catalogDbSchemasValues.Add(GetDbSchemas(
-                                depth, catalogEntry.Value));
-                }
-            }
 
-            Schema schema = StandardSchemas.GetObjectsSchema;
-            IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
-                new List<IArrowArray>
-                {
+                Schema schema = StandardSchemas.GetObjectsSchema;
+                IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
+                    new List<IArrowArray>
+                    {
                     catalogNameBuilder.Build(),
                     catalogDbSchemasValues.BuildListArrayForType(new StructType(StandardSchemas.DbSchemaSchema)),
-                });
+                    });
 
-            return new SparkInfoArrowStream(schema, dataArrays);
+                return new SparkInfoArrowStream(schema, dataArrays);
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+            }
         }
 
         private static IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns

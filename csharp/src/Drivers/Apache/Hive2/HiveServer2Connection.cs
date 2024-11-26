@@ -101,7 +101,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 throw new TimeoutException("The operation timed out while attempting to open a session. Please try increasing connect timeout.", ex);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not HiveServer2Exception)
             {
                 // Handle other exceptions if necessary
                 throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ex.Message}'", ex);
@@ -156,15 +156,28 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             };
 
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
-            if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+            try
             {
-                throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
-                    .SetNativeError(getInfoResp.Status.ErrorCode)
-                    .SetSqlState(getInfoResp.Status.SqlState);
-            }
+                TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
+                if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                {
+                    throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
+                        .SetNativeError(getInfoResp.Status.ErrorCode)
+                        .SetSqlState(getInfoResp.Status.SqlState);
+                }
 
-            return getInfoResp.InfoValue.StringValue;
+                return getInfoResp.InfoValue.StringValue;
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+            }
         }
 
         public override void Dispose()
@@ -172,9 +185,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             if (_client != null)
             {
                 CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                TCloseSessionReq r6 = new TCloseSessionReq(SessionHandle);
+                TCloseSessionReq r6 = new(SessionHandle);
                 _client.CloseSession(r6, cancellationToken).Wait();
-
                 _transport?.Close();
                 _client.Dispose();
                 _transport = null;

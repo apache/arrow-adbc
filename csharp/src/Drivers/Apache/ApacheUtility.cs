@@ -76,6 +76,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
 
         public static bool ContainsException<T>(Exception? exception, out T? containedException) where T : Exception
         {
+            if (exception is AggregateException aggregateException)
+            {
+                foreach (Exception? ex in aggregateException.InnerExceptions)
+                {
+                    if (ex is T ce)
+                    {
+                        containedException = ce;
+                        return true;
+                    }
+                }
+            }
+
             Exception? e = exception;
             while (e != null)
             {
@@ -86,6 +98,42 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                 }
                 e = e.InnerException;
             }
+
+            containedException = null;
+            return false;
+        }
+
+        public static bool ContainsException(Exception? exception, Type? exceptionType, out Exception? containedException)
+        {
+            if ( exception == null || exceptionType == null)
+            {
+                containedException = null;
+                return false;
+            }
+
+            if (exception is AggregateException aggregateException)
+            {
+                foreach (Exception? ex in aggregateException.InnerExceptions)
+                {
+                    if (exceptionType.IsInstanceOfType(ex))
+                    {
+                        containedException = ex;
+                        return true;
+                    }
+                }
+            }
+
+            Exception? e = exception;
+            while (e != null)
+            {
+                if (exceptionType.IsInstanceOfType(e))
+                {
+                    containedException = e;
+                    return true;
+                }
+                e = e.InnerException;
+            }
+
             containedException = null;
             return false;
         }
