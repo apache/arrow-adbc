@@ -29,7 +29,7 @@ import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.memory.BufferAllocator;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-/** Instantiate connections to ABDC databases generically based on driver name. */
+/** Instantiate connections to ADBC databases generically based on driver name. */
 public final class AdbcDriverManager {
   private static final AdbcDriverManager INSTANCE = new AdbcDriverManager();
 
