@@ -62,15 +62,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 return new QueryResult(-1, Connection.NewReader(this, schema));
             }
-            catch (Exception ex) when (
-                (ex is TTransportException || ex is OperationCanceledException) &&
-                cancellationToken.IsCancellationRequested)
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
             {
-                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.");
+                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
             }
             catch (Exception ex)
             {
-                throw new HiveServer2Exception("The query execution timed out.", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while running query. '{ex.Message}'", ex);
             }
         }
 

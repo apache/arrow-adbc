@@ -73,5 +73,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                 throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value of 0 (infinite) or greater.");
             }
         }
+
+        public static bool ContainsException<T>(Exception? exception, out T? containedException) where T : Exception
+        {
+            Exception? e = exception;
+            while (e != null)
+            {
+                if (e is T ce)
+                {
+                    containedException = ce;
+                    return true;
+                }
+                e = e.InnerException;
+            }
+            containedException = null;
+            return false;
+        }
     }
 }

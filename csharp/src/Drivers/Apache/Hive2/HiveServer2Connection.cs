@@ -95,16 +95,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 SessionHandle = session.SessionHandle;
             }
-            catch (Exception ex) when (
-                (ex is TTransportException || ex is OperationCanceledException) &&
-                cancellationToken.IsCancellationRequested)
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
             {
-                throw new HiveServer2Exception("The operation timed out while attempting to open a session. Please try increasing connect timeout.");
+                throw new TimeoutException("The operation timed out while attempting to open a session. Please try increasing connect timeout.", ex);
             }
             catch (Exception ex)
             {
                 // Handle other exceptions if necessary
-                throw new HiveServer2Exception("An unexpected error occurred while opening the session.", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ex.Message}'", ex);
             }
         }
 

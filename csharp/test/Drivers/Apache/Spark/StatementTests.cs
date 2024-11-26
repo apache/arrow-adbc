@@ -233,7 +233,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             Add(new(1, null, typeof(TimeoutException)));
             Add(new(5, null, null));
             Add(new(30, null, null));
-            Add(new(5, longRunningQuery, typeof(TTransportException)));
+            Add(new(5, longRunningQuery, typeof(TimeoutException)));
             Add(new(null, longRunningQuery, typeof(TimeoutException)));
             Add(new(0, longRunningQuery, null));
         }
