@@ -255,3 +255,8 @@ Different parts of the project have different version numbers.  We consider
 certain implementations (like Go) to be "1.0"-ready, while others (like Java)
 are still pre-1.0.  :doc:`driver/status` has a rough overview of the status of
 individual driver implementations.
+
+Where can I learn more about the rationale for ADBC?
+====================================================
+
+See :doc:`format/related_work`.
