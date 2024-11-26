@@ -20,6 +20,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
@@ -61,9 +62,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 return new QueryResult(-1, Connection.NewReader(this, schema));
             }
-            catch (OperationCanceledException ex)
+            catch (Exception ex) when (
+                (ex is TTransportException || ex is OperationCanceledException) &&
+                cancellationToken.IsCancellationRequested)
             {
-                throw new TimeoutException("The query execution timed out.", ex);
+                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.");
+            }
+            catch (Exception ex)
+            {
+                throw new HiveServer2Exception("The query execution timed out.", ex);
             }
         }
 

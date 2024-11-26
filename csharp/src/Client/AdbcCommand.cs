@@ -117,7 +117,11 @@ namespace Apache.Arrow.Adbc.Client
         public override int CommandTimeout
         {
             get => _timeout;
-            set => _timeout = value;
+            set
+            {
+                _timeout = value;
+                _adbcStatement.SetOption("adbc.apache.statement.query_timeout_s", value.ToString());
+            }
         }
 
         protected override DbParameterCollection DbParameterCollection

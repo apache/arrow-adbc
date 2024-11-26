@@ -70,9 +70,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
             try
             {
-                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
                 TTransport transport = await CreateTransportAsync(cancellationToken);
                 TProtocol protocol = await CreateProtocolAsync(transport, cancellationToken);
                 _transport = protocol.Transport;
@@ -95,9 +95,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 SessionHandle = session.SessionHandle;
             }
-            catch (OperationCanceledException ex)
+            catch (Exception ex) when (
+                (ex is TTransportException || ex is OperationCanceledException) &&
+                cancellationToken.IsCancellationRequested)
             {
-                throw new TimeoutException("The operation timed out while attempting to open a session.", ex);
+                throw new HiveServer2Exception("The operation timed out while attempting to open a session. Please try increasing connect timeout.");
             }
             catch (Exception ex)
             {
