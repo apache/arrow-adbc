@@ -23,7 +23,7 @@ In the initial proposal, a survey of existing solutions and systems was
 included, which is partially reproduced below for context, though note the
 descriptions are only kept up-to-date on a best-effort basis.
 
-Existing database client APIs
+Preexisting database client APIs
 =============================
 
 :external:doc:`Arrow Flight SQL <format/FlightSql>`
@@ -48,8 +48,8 @@ Existing database client APIs
   A language-agnostic standard from the ISO/IEC for database access,
   associated with Microsoft. Feature-wise, it is similar to JDBC (and
   indeed JDBC can wrap ODBC drivers), but it offers columnar data
-  support through fetching buffers of column values. (See above for
-  caveats.) Provides a single C interface with drivers for specific
+  support through fetching buffers of column values (with some
+  caveats). Provides a single C interface with drivers for specific
   databases.
 
 `PEP 249 <https://www.python.org/dev/peps/pep-0249/>`_ (DBAPI 2.0)
@@ -57,7 +57,7 @@ Existing database client APIs
   a singular package, but rather a set of interfaces that packages
   implement.
 
-Existing libraries
+Preexisting libraries
 ==================
 
 These are libraries which either 1) implement columnar data access for
