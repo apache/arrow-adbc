@@ -133,11 +133,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override Task<TTransport> CreateTransportAsync(CancellationToken cancellationToken = default)
         {
-            foreach (var property in Properties.Keys)
-            {
-                Trace.TraceError($"key = {property} value = {Properties[property]}");
-            }
-
             // Assumption: parameters have already been validated.
             Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
             Properties.TryGetValue(SparkParameters.Path, out string? path);
@@ -216,8 +211,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
         {
-            Trace.TraceError($"create protocol with {Properties.Count} properties.");
-
             if (!transport.IsOpen) await transport.OpenAsync(cancellationToken);
             return new TBinaryProtocol(transport);
         }
