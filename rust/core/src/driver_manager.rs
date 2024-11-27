@@ -168,6 +168,11 @@ pub struct ManagedDriver {
 }
 
 impl ManagedDriver {
+    /// Returns the [`AdbcVersion`] of this driver.
+    pub fn version(&self) -> AdbcVersion {
+        self.inner.version
+    }
+
     /// Load a driver from an initialization function.
     pub fn load_static(init: &ffi::FFI_AdbcDriverInitFunc, version: AdbcVersion) -> Result<Self> {
         let driver = Self::load_impl(init, version)?;

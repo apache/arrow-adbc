@@ -163,7 +163,6 @@ Status MakeGetInfoStream(const std::vector<InfoValue>& infos, ArrowArrayStream* 
           } else {
             static_assert(!sizeof(T), "info value type not implemented");
           }
-          return status::Ok();
         },
         info.value));
     UNWRAP_ERRNO(Internal, ArrowArrayFinishElement(array.get()));

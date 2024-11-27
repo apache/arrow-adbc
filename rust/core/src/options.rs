@@ -16,7 +16,7 @@
 // under the License.
 
 //! Various option and configuration types.
-use std::os::raw::c_int;
+use std::{os::raw::c_int, str::FromStr};
 
 use crate::{
     error::{Error, Status},
@@ -96,12 +96,17 @@ impl<const N: usize> From<&[u8; N]> for OptionValue {
 }
 
 /// ADBC revision versions.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+///
+/// The [`Default`] implementation returns the latest version.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum AdbcVersion {
     /// Version 1.0.0.
     V100,
     /// Version 1.1.0.
+    ///
+    /// <https://arrow.apache.org/adbc/current/format/specification.html#version-1-1-0>
+    #[default]
     V110,
 }
 
@@ -120,8 +125,23 @@ impl TryFrom<c_int> for AdbcVersion {
         match value {
             constants::ADBC_VERSION_1_0_0 => Ok(AdbcVersion::V100),
             constants::ADBC_VERSION_1_1_0 => Ok(AdbcVersion::V110),
-            _ => Err(Error::with_message_and_status(
-                format!("Unknown ADBC version: {}", value),
+            value => Err(Error::with_message_and_status(
+                format!("Unknown ADBC version: {value}"),
+                Status::InvalidArguments,
+            )),
+        }
+    }
+}
+
+impl FromStr for AdbcVersion {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "1.0.0" | "1_0_0" | "100" => Ok(AdbcVersion::V100),
+            "1.1.0" | "1_1_0" | "110" => Ok(AdbcVersion::V110),
+            value => Err(Error::with_message_and_status(
+                format!("Unknown ADBC version: {value}"),
                 Status::InvalidArguments,
             )),
         }
@@ -129,7 +149,7 @@ impl TryFrom<c_int> for AdbcVersion {
 }
 
 /// Info codes for database/driver metadata.
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum InfoCode {
     /// The database vendor/product name (type: utf8).
