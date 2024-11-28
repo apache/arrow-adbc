@@ -33,7 +33,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     /// queries to run.
     /// </remarks>
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
-    public abstract class StatementTests<TConfig, TEnv> : TestBase<TConfig, TEnv> 
+    public abstract class StatementTests<TConfig, TEnv> : TestBase<TConfig, TEnv>
         where TConfig : ApacheTestConfiguration
         where TEnv : HiveServer2TestEnvironment<TConfig>
     {
