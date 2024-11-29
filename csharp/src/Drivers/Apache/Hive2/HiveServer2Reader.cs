@@ -24,7 +24,6 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tracing;
-using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -86,25 +85,45 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
             using Activity? activity = StartActivity();
-            // All records have been exhausted
-            if (_statement == null)
+            try
             {
-                return null;
+                // All records have been exhausted
+                if (_statement == null)
+                {
+                    return null;
+                }
+
+                // Await the fetch response
+                activity?.AddEvent(new ActivityEvent("start FetchResults", tags: new([new("batches.batchSize", _statement.BatchSize)])));
+
+                TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
+
+                int columnCount = GetColumnCount(response);
+                int rowCount = GetRowCount(response, columnCount);
+
+                activity?.AddEvent(new ActivityEvent("end FetchResults", tags: new(
+                    [
+                        new("fetch.statusCode", response.Status.StatusCode.ToString()),
+                            new("batches.count", rowCount > 0 ? 1 : 0),
+                            new("batches.rowCount", rowCount),
+                        ])));
+
+                if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
+                {
+                    // This is the last batch
+                    _statement = null;
+                }
+
+                // Build the current batch, if any data exists
+                RecordBatch? recordBatch = rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return recordBatch;
             }
-
-            // Await the fetch response
-            TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
-
-            int columnCount = GetColumnCount(response);
-            int rowCount = GetRowCount(response, columnCount);
-            if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
+            catch (Exception ex)
             {
-                // This is the last batch
-                _statement = null;
+                TraceException(ex, activity);
+                throw;
             }
-
-            // Build the current batch, if any data exists
-            return rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
         }
 
         private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)

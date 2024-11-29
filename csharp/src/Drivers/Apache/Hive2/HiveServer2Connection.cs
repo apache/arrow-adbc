@@ -91,7 +91,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         .SetNativeError(session.Status.ErrorCode)
                         .SetSqlState(session.Status.SqlState);
                 }
-
+                activity?.SetStatus(ActivityStatusCode.Ok);
                 SessionHandle = session.SessionHandle;
             }
             catch (Exception ex)
@@ -132,40 +132,54 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, ActivitySource? activitySource)
         {
             using Activity? activity = StartActivity(activitySource);
-            TGetOperationStatusResp? statusResponse = null;
-            do
+            try
             {
-                if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds); }
-                TGetOperationStatusReq request = new(operationHandle);
-                activity?.AddEvent(new ActivityEvent("calling GetOperationStatus"));
-                statusResponse = await client.GetOperationStatus(request);
-                activity?
-                    .AddEvent(
-                        new ActivityEvent(
-                            "completed call GetOperationStatus",
-                            tags: new ActivityTagsCollection([new("statusResponse.OperationState", statusResponse.OperationState)])));
-            } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
-            activity?.AddEvent(new ActivityEvent("completed"));
+                TGetOperationStatusResp? statusResponse = null;
+                do
+                {
+                    if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds); }
+                    TGetOperationStatusReq request = new(operationHandle);
+                    activity?.AddEvent(new ActivityEvent("start GetOperationStatus"));
+                    statusResponse = await client.GetOperationStatus(request);
+                    activity?.AddEvent(new ActivityEvent("end GetOperationStatus",tags: new([new("statusResponse.operationState", statusResponse.OperationState.ToString())])));
+                } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch (Exception ex)
+            {
+                TraceException(ex, activity);
+                throw;
+            }
         }
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
             using Activity? activity = StartActivity();
-            TGetInfoReq req = new()
+            try
             {
-                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
-                InfoType = infoType,
-            };
+                TGetInfoReq req = new()
+                {
+                    SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
+                    InfoType = infoType,
+                };
 
-            TGetInfoResp getInfoResp = Client.GetInfo(req).Result;
-            if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-            {
-                throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
-                    .SetNativeError(getInfoResp.Status.ErrorCode)
-                    .SetSqlState(getInfoResp.Status.SqlState);
+                TGetInfoResp getInfoResp = Client.GetInfo(req).Result;
+                if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                {
+                    throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
+                        .SetNativeError(getInfoResp.Status.ErrorCode)
+                        .SetSqlState(getInfoResp.Status.SqlState);
+                }
+
+                string stringValue = getInfoResp.InfoValue.StringValue;
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return stringValue;
             }
-
-            return getInfoResp.InfoValue.StringValue;
+            catch (Exception ex)
+            {
+                TraceException(ex, activity);
+                throw;
+            }
         }
 
         protected override void Dispose(bool disposing)
@@ -202,6 +216,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             using Activity? activity = StartActivity(activitySource);
             TGetResultSetMetadataReq request = new(operationHandle);
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
+            activity?.SetStatus(ActivityStatusCode.Ok);
             return response;
         }
     }

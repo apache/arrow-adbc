@@ -27,7 +27,7 @@ using OpenTelemetry.Trace;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests
+namespace Apache.Arrow.Adbc.Tests.Tracing
 {
     public class TracingFileExporterTests : IDisposable
     {
@@ -129,7 +129,7 @@ namespace Apache.Arrow.Adbc.Tests
                 Assert.True(files.All(f => f.Name.StartsWith(_activitySourceName)));
                 for (int i = 0; i < files.Length; i++)
                 {
-                    long expectedUpperSizeLimit = (long)((maxTraceFileSizeKb + (long)(0.2 * maxTraceFileSizeKb)) * kilobyte);
+                    long expectedUpperSizeLimit = (maxTraceFileSizeKb + (long)(0.2 * maxTraceFileSizeKb)) * kilobyte;
                     Assert.True(files[i].Length < expectedUpperSizeLimit, $"actual file length: {files[i].Length}");
                 }
                 _outputHelper?.WriteLine($"number of files: {files.Length}");
@@ -227,11 +227,11 @@ namespace Apache.Arrow.Adbc.Tests
         {
             string customFolderName = Guid.NewGuid().ToString().Replace("-", "").ToLower();
             string? traceFolder = traceLocation != null ? Path.Combine(s_localApplicationDataFolderPath, traceLocation) : null;
-                _ = Assert.Throws(expectedException, () =>
-                    Sdk.CreateTracerProviderBuilder()
-                    .AddSource(_activitySourceName)
-                    .AddAdbcFileExporter(fileBaseName, traceFolder, maxTraceFileSizeKb, maxTraceFiles)
-                    .Build());
+            _ = Assert.Throws(expectedException, () =>
+                Sdk.CreateTracerProviderBuilder()
+                .AddSource(_activitySourceName)
+                .AddAdbcFileExporter(fileBaseName, traceFolder, maxTraceFileSizeKb, maxTraceFiles)
+                .Build());
         }
 
         private Task AddEvent(string eventName, string activityName = nameof(AddEvent))

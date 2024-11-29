@@ -17,6 +17,7 @@
 
 using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
@@ -28,10 +29,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             foreach (KeyValuePair<string, string> kvp in connection.Properties)
             {
-                switch (kvp.Key)
+                switch (kvp.Key.ToLower())
                 {
                     case Options.BatchSize:
                     case Options.PollTimeMilliseconds:
+                    case TracingOptions.Statement.TraceParent:
                         {
                             SetOption(kvp.Key, kvp.Value);
                             break;

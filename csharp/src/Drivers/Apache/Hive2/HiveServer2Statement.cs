@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tracing;
@@ -48,7 +49,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, ActivitySource);
                 Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client);
 
-                return new QueryResult(-1, Connection.NewReader(this, schema));
+                QueryResult queryResult = new QueryResult(-1, Connection.NewReader(this, schema));
+
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return queryResult;
             }
             catch (Exception ex)
             {
@@ -60,8 +64,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
             using var activity = StartActivity();
-            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, ActivitySource, cancellationToken);
-            return Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
+            try
+            {
+                TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, ActivitySource, cancellationToken);
+                Schema schema = Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return schema;
+            }
+            catch (Exception ex)
+            {
+                TraceException(ex, activity);
+                throw;
+            }
         }
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
@@ -123,6 +137,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 case Options.BatchSize:
                     UpdateBatchSizeIfValid(key, value);
                     break;
+                case TracingOptions.Statement.TraceParent:
+                    UpdateParentContextIfValid(key, value);
+                    break;
                 default:
                     throw AdbcException.NotImplemented($"Option '{key}' is not implemented.");
             }
@@ -131,16 +148,26 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected async Task ExecuteStatementAsync()
         {
             using var activity = StartActivity();
-            TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery);
-            SetStatementProperties(executeRequest);
-            TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest);
-            if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
+            try
             {
-                throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)
-                    .SetSqlState(executeResponse.Status.SqlState)
-                    .SetNativeError(executeResponse.Status.ErrorCode);
+                TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery);
+                SetStatementProperties(executeRequest);
+                TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest);
+                if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                {
+                    throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)
+                        .SetSqlState(executeResponse.Status.SqlState)
+                        .SetNativeError(executeResponse.Status.ErrorCode);
+                }
+                OperationHandle = executeResponse.OperationHandle;
+
+                activity?.SetStatus(ActivityStatusCode.Ok);
             }
-            OperationHandle = executeResponse.OperationHandle;
+            catch (Exception ex)
+            {
+                TraceException(ex, activity);
+                throw;
+            }
         }
 
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
@@ -168,6 +195,29 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private void UpdateBatchSizeIfValid(string key, string value) => BatchSize = !string.IsNullOrEmpty(value) && long.TryParse(value, out long batchSize) && batchSize > 0
             ? batchSize
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
+
+        private void UpdateParentContextIfValid(string key, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                SetTraceParent(null);
+                throw new ArgumentNullException(key);
+            }
+            if (!ActivityContext.TryParse(value, null, true, out ActivityContext _))
+            {
+                SetTraceParent(null);
+                throw new ArgumentException($"Unable to parse trace parent value '{value}'", nameof(value));
+            }
+            SetTraceParent(value);
+        }
+
+        // Share the parent context with the connection
+        protected internal override ActivityContext? ParentContext
+        {
+            get => Connection.ParentContext;
+        }
+
+        protected internal override void SetTraceParent(string? traceParent) => Connection.SetTraceParent(traceParent);
 
         public override void Dispose()
         {

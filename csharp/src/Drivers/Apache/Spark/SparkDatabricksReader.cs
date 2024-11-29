@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
@@ -45,7 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            using Activity? activity = StartActivity(nameof(ReadNextRecordBatchAsync));
+            using Activity? activity = StartActivity();
             try
             {
                 while (true)
@@ -55,6 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
                         if (next != null)
                         {
+                            activity?.SetStatus(ActivityStatusCode.Ok);
                             return next;
                         }
                         this.reader = null;
@@ -71,12 +73,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                     if (this.statement == null)
                     {
+                        activity?.SetStatus(ActivityStatusCode.Ok);
                         return null;
                     }
 
                     TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
+
+                    activity?.AddEvent(new ActivityEvent("start FetchResults", tags: new([new("batches.batchSize", this.statement.BatchSize)])));
+
                     TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
                     this.batches = response.Results.ArrowBatches;
+
+                    activity?.AddEvent(new ActivityEvent("end FetchResults", tags: new(
+                        [
+                            new("fetch.statusCode", response.Status.StatusCode.ToString()),
+                            new("batches.count", this.batches?.Count ?? 0),
+                            new("batches.rowCount", this.batches?.Sum(b => b.RowCount) ?? 0),
+                        ])));
 
                     if (!response.HasMoreRows)
                     {
@@ -84,9 +97,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                //TraceException(ex, activity);
+                TraceException(ex, activity);
                 throw;
             }
         }

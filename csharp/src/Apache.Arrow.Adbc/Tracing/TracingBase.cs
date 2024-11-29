@@ -19,6 +19,7 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
@@ -31,6 +32,7 @@ namespace Apache.Arrow.Adbc.Tracing
         internal const string ProductVersionDefault = "1.0.0";
         private static readonly string s_assemblyVersion = GetProductVersion();
         private bool _disposedValue;
+        private string? _traceParent = null;
 
         /// <summary>
         /// Constructs a new <see cref="TracingBase"/> object. If <paramref name="activitySoureceName"/> is set, it provides the
@@ -64,7 +66,7 @@ namespace Apache.Arrow.Adbc.Tracing
             StackTrace stackTrace = new();
             MethodBase? callingMethod = stackTrace.GetFrame(1)?.GetMethod();
             string tracingBaseName = callingMethod?.DeclaringType?.DeclaringType?.FullName ?? callingMethod?.DeclaringType?.FullName ?? "[unknown-class]";
-            return StartActivity(ActivitySource, tracingBaseName, methodName);
+            return StartActivity(ActivitySource, tracingBaseName, methodName, ParentContext);
         }
 
         /// <summary>
@@ -87,11 +89,38 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <param name="activitySource">The <see cref="ActivitySource"/> from which to start the activity.</param>
         /// <param name="methodName">The name of the method for the activity</param>
         /// <returns>Returns a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise</returns>
-        protected internal static Activity? StartActivity(ActivitySource? activitySource, [CallerMemberName] string methodName = "[unknown-method]")
+        protected internal static Activity? StartActivity(ActivitySource? activitySource, [CallerMemberName] string methodName = "[unknown-method]", ActivityContext? parentContext = default)
         {
             MethodBase? callingMethod = (new StackTrace()).GetFrame(1)?.GetMethod();
-            string tracingBaseName = callingMethod?.DeclaringType?.DeclaringType?.FullName ?? callingMethod?.DeclaringType?.FullName ?? "[unknown-class]";
-            return StartActivity(activitySource, tracingBaseName, methodName);
+            string tracingBaseName = callingMethod?.DeclaringType?.DeclaringType?.FullName
+                ?? callingMethod?.DeclaringType?.FullName
+                ?? "[unknown-class]";
+            return StartActivity(activitySource, tracingBaseName, methodName, parentContext);
+        }
+
+        /// <summary>
+        /// Gets the parent context.
+        /// </summary>
+        /// <remarks>
+        /// To ensure the current parent context is retrieved only once,
+        /// the current value is returned and then the value is reset to null.
+        /// </remarks>
+        protected internal virtual ActivityContext? ParentContext
+        {
+            get
+            {
+                string? traceParent = Interlocked.Exchange(ref _traceParent, null);
+                if (ActivityContext.TryParse(traceParent, null, isRemote: true, out ActivityContext parentContext))
+                {
+                    return parentContext;
+                }
+                return null;
+            }
+        }
+
+        protected internal virtual void SetTraceParent(string? traceParent)
+        {
+            Interlocked.Exchange(ref _traceParent, traceParent);
         }
 
         protected static string GetProductVersion()
@@ -122,8 +151,9 @@ namespace Apache.Arrow.Adbc.Tracing
 
         private static void WriteTraceException(Exception exception, Activity? activity, bool escaped = true)
         {
+            activity?.SetStatus(ActivityStatusCode.Error);
             // https://opentelemetry.io/docs/specs/otel/trace/exceptions/
-            activity?.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection(
+            activity?.AddEvent(new ActivityEvent("exception", tags: new(
                 [
                     // https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/
                     new("exception.escaped", escaped),
@@ -133,9 +163,11 @@ namespace Apache.Arrow.Adbc.Tracing
                 ])));
         }
 
-        private static Activity? StartActivity(ActivitySource? activitySource, string tracingBaseName, string methodName)
+        private static Activity? StartActivity(ActivitySource? activitySource, string tracingBaseName, string methodName, ActivityContext? parentContext)
         {
-            return activitySource?.StartActivity(tracingBaseName + "." + methodName );
+            return parentContext == null
+                ? (activitySource?.StartActivity(tracingBaseName + "." + methodName, ActivityKind.Client))
+                : (activitySource?.StartActivity(tracingBaseName + "." + methodName, ActivityKind.Client, (ActivityContext)parentContext));
         }
     }
 }

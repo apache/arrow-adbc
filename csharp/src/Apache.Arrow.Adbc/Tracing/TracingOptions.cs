@@ -48,16 +48,11 @@ namespace Apache.Arrow.Adbc.Tracing
         public static class Statement
         {
             /// <summary>
-            /// The name of the canonical option for the hex-string for the 16-byte trace id for the parent context. Must be combined with the <see cref="ParentId"/> option.
-            /// See also <see href="https://www.w3.org/TR/trace-context/#trace-id">Trace Context</see>
+            /// The name of the canonical option for the string representing the trace parent header for the parent context. If provided, it overrides <see cref="TraceId"/> and <see cref="SpanId"/>.
+            /// The supported format allows verion <c>00</c> and trace flag of <c>00</c> (not sampled) or <c>01</c> (sampled). Example <c>00-0123456789abcdef0123456789abcdef-0123456789abcdef-01</c>.
+            /// See also <see href="https://w3c.github.io/trace-context/#traceparent-header"/>
             /// </summary>
-            public const string TraceId = "adbc.tracing.statement.trace_id";
-
-            /// <summary>
-            /// The name of the canonical option for the hex-string for the 8-byte parent id for the parent context. Must be combined with the <see cref="TraceId"/> option.
-            /// See also <see href="https://www.w3.org/TR/trace-context/#parent-id">Trace Context</see>
-            /// </summary>
-            public const string ParentId = "adbc.tracing.statement.parent_id";
+            public const string TraceParent = "adbc.tracing.statement.trace_parent";
         }
     }
 }

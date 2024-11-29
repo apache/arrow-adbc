@@ -206,7 +206,8 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 try
                 {
-                    string json = JsonSerializer.Serialize(activity);
+                    SerializableActivity serilalizableActivity = new(activity);
+                    string json = JsonSerializer.Serialize(serilalizableActivity);
                     await _tracingFile.WriteLine(json, cancellationToken);
                 }
                 catch (NotSupportedException ex)

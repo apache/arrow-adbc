@@ -217,10 +217,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport)
         {
             using var activity = StartActivity();
-            activity?.SetTag("transport.type", transport.GetType().Name);
+            try
+            {
+                activity?.SetTag("transport.type", transport.GetType().Name);
 
-            if (!transport.IsOpen) await transport.OpenAsync(CancellationToken.None);
-            return new TBinaryProtocol(transport);
+                if (!transport.IsOpen) await transport.OpenAsync(CancellationToken.None);
+
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return new TBinaryProtocol(transport);
+            }
+            catch (Exception ex)
+            {
+                TraceException(ex, activity);
+                throw;
+            }
         }
 
         protected override TOpenSessionReq CreateSessionRequest()
