@@ -76,9 +76,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 _client = new TCLIService.Client(protocol);
                 TOpenSessionReq request = CreateSessionRequest();
 
-                activity?.AddEvent(new ActivityEvent("start open session"));
+                activity?.AddEvent(new ActivityEvent("openSession.start"));
                 TOpenSessionResp? session = await Client.OpenSession(request);
-                activity?.AddEvent(new ActivityEvent("end open session"));
+                activity?.AddEvent(new ActivityEvent("openSession.end"));
 
                 // Some responses don't raise an exception. Explicitly check the status.
                 if (session == null)

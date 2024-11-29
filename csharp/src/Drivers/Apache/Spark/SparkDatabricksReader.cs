@@ -79,12 +79,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                     TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
 
-                    activity?.AddEvent(new ActivityEvent("start FetchResults", tags: new([new("batches.batchSize", this.statement.BatchSize)])));
+                    activity?.AddEvent(new ActivityEvent("fetchResults.start", tags: new([new("batches.batchSize", this.statement.BatchSize)])));
 
                     TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
                     this.batches = response.Results.ArrowBatches;
 
-                    activity?.AddEvent(new ActivityEvent("end FetchResults", tags: new(
+                    activity?.AddEvent(new ActivityEvent("fetchResults.end", tags: new(
                         [
                             new("fetch.statusCode", response.Status.StatusCode.ToString()),
                             new("batches.count", this.batches?.Count ?? 0),
