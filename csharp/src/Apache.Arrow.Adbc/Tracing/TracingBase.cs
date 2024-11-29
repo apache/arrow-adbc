@@ -118,11 +118,19 @@ namespace Apache.Arrow.Adbc.Tracing
             }
         }
 
+        /// <summary>
+        /// Sets the Trace Parent. See <see href="https://www.w3.org/TR/trace-context/#traceparent-header"/>
+        /// </summary>
+        /// <param name="traceParent"></param>
         protected internal virtual void SetTraceParent(string? traceParent)
         {
             Interlocked.Exchange(ref _traceParent, traceParent);
         }
 
+        /// <summary>
+        /// Gets the product version from the file version of the current assembly.
+        /// </summary>
+        /// <returns></returns>
         protected static string GetProductVersion()
         {
             FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
