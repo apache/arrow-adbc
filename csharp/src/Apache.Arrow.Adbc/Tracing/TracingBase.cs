@@ -17,9 +17,11 @@
 
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
@@ -61,12 +63,97 @@ namespace Apache.Arrow.Adbc.Tracing
         /// </summary>
         /// <param name="methodName">The name of the method for the activity</param>
         /// <returns>Returns a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise</returns>
-        protected Activity? StartActivity([CallerMemberName] string methodName = "[unknown-method]")
+        protected void Trace(Action<Activity?> call, [CallerMemberName] string? memberName = default)
         {
-            StackTrace stackTrace = new();
-            MethodBase? callingMethod = stackTrace.GetFrame(1)?.GetMethod();
-            string tracingBaseName = callingMethod?.DeclaringType?.DeclaringType?.FullName ?? callingMethod?.DeclaringType?.FullName ?? "[unknown-class]";
-            return StartActivity(ActivitySource, tracingBaseName, methodName, ParentContext);
+            using Activity? activity = StartActivityInternal(memberName);
+            try
+            {
+                call.Invoke(activity);
+                if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch (Exception ex)
+            {
+                TraceException(ex, activity);
+                throw;
+            }
+        }
+
+        protected T Trace<T>(Func<Activity?, T> call, [CallerMemberName] string? memberName = default)
+        {
+            using Activity? activity = StartActivityInternal(memberName);
+            try
+            {
+                T? result = call.Invoke(activity);
+                if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                TraceException(ex, activity);
+                throw;
+            }
+        }
+
+        protected async Task TraceAsync(Func<Activity?, Task> call, [CallerMemberName] string? memberName = default)
+        {
+            using Activity? activity = StartActivityInternal(memberName);
+            try
+            {
+                await call.Invoke(activity);
+                if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch (Exception ex)
+            {
+                TraceException(ex, activity);
+                throw;
+            }
+        }
+
+        protected async Task<T> TraceAsync<T>(Func<Activity?, Task<T>> call, [CallerMemberName] string? memberName = default)
+        {
+            using Activity? activity = StartActivityInternal(memberName);
+            try
+            {
+                T? result = await call.Invoke(activity);
+                if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                TraceException(ex, activity);
+                throw;
+            }
+        }
+
+        protected static async Task TraceAsync(ActivitySource? activitySource, Func<Activity?, Task> call, [CallerMemberName] string? memberName = default)
+        {
+            using Activity? activity = StartActivityInternal(activitySource, memberName);
+            try
+            {
+                await call.Invoke(activity);
+                if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch (Exception ex)
+            {
+                TraceException(ex, activity);
+                throw;
+            }
+        }
+
+        protected static async Task<T> TraceAsync<T>(ActivitySource? activitySource, Func<Activity?, Task<T>> call, [CallerMemberName] string? memberName = default)
+        {
+            using Activity? activity = StartActivityInternal(activitySource, memberName);
+            try
+            {
+                T? result = await call.Invoke(activity);
+                if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                TraceException(ex, activity);
+                throw;
+            }
         }
 
         /// <summary>
@@ -82,21 +169,6 @@ namespace Apache.Arrow.Adbc.Tracing
         /// </param>
         protected static void TraceException(Exception exception, Activity? activity, bool escaped = true) =>
             WriteTraceException(exception, activity, escaped);
-
-        /// <summary>
-        /// Creates and starts a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise.
-        /// </summary>
-        /// <param name="activitySource">The <see cref="ActivitySource"/> from which to start the activity.</param>
-        /// <param name="methodName">The name of the method for the activity</param>
-        /// <returns>Returns a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise</returns>
-        protected internal static Activity? StartActivity(ActivitySource? activitySource, [CallerMemberName] string methodName = "[unknown-method]", ActivityContext? parentContext = default)
-        {
-            MethodBase? callingMethod = (new StackTrace()).GetFrame(1)?.GetMethod();
-            string tracingBaseName = callingMethod?.DeclaringType?.DeclaringType?.FullName
-                ?? callingMethod?.DeclaringType?.FullName
-                ?? "[unknown-class]";
-            return StartActivity(activitySource, tracingBaseName, methodName, parentContext);
-        }
 
         /// <summary>
         /// Gets the parent context.
@@ -171,11 +243,38 @@ namespace Apache.Arrow.Adbc.Tracing
                 ])));
         }
 
-        private static Activity? StartActivity(ActivitySource? activitySource, string tracingBaseName, string methodName, ActivityContext? parentContext)
+        private Activity? StartActivityInternal(string? memberName)
+        {
+            return StartActivityInternal(ActivitySource, memberName, ParentContext);
+        }
+
+        private static Activity? StartActivityInternal(ActivitySource? activitySource, string? memberName, ActivityContext? parentContext = default)
+        {
+            string activityName = GetActivityName(memberName);
+            return StartActivity(activitySource, activityName, parentContext);
+        }
+
+        private static string GetActivityName(string? memberName)
+        {
+            memberName ??= "[unknown-member]";
+            StackTrace stackTrace = new();
+            StackFrame? frame = stackTrace.GetFrames().FirstOrDefault(f => f.GetMethod()?.Name == memberName);
+            string tracingBaseName = frame?.GetMethod()?.DeclaringType?.FullName ?? "[unknown-type]";
+            string activityName = tracingBaseName + "." + memberName;
+            return activityName;
+        }
+
+        /// <summary>
+        /// Creates and starts a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise.
+        /// </summary>
+        /// <param name="activitySource">The <see cref="ActivitySource"/> from which to start the activity.</param>
+        /// <param name="activityName">The name of the method for the activity</param>
+        /// <returns>Returns a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise</returns>
+        private static Activity? StartActivity(ActivitySource? activitySource, string activityName, ActivityContext? parentContext = default)
         {
             return parentContext == null
-                ? (activitySource?.StartActivity(tracingBaseName + "." + methodName, ActivityKind.Client))
-                : (activitySource?.StartActivity(tracingBaseName + "." + methodName, ActivityKind.Client, (ActivityContext)parentContext));
+                ? (activitySource?.StartActivity(activityName, ActivityKind.Client))
+                : (activitySource?.StartActivity(activityName, ActivityKind.Client, (ActivityContext)parentContext));
         }
     }
 }

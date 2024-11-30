@@ -46,8 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            using Activity? activity = StartActivity();
-            try
+            return await TraceAsync(async (activity) =>
             {
                 while (true)
                 {
@@ -56,7 +55,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
                         if (next != null)
                         {
-                            activity?.SetStatus(ActivityStatusCode.Ok);
                             return next;
                         }
                         this.reader = null;
@@ -73,7 +71,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                     if (this.statement == null)
                     {
-                        activity?.SetStatus(ActivityStatusCode.Ok);
                         return null;
                     }
 
@@ -96,12 +93,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         this.statement = null;
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                TraceException(ex, activity);
-                throw;
-            }
+            });
         }
 
         public override void Dispose()

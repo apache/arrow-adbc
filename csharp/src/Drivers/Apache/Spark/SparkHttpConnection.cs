@@ -216,33 +216,27 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport)
         {
-            using var activity = StartActivity();
-            try
+            return await TraceAsync(async (activity) =>
             {
                 activity?.SetTag("transport.type", transport.GetType().Name);
 
                 if (!transport.IsOpen) await transport.OpenAsync(CancellationToken.None);
 
-                activity?.SetStatus(ActivityStatusCode.Ok);
                 return new TBinaryProtocol(transport);
-            }
-            catch (Exception ex)
-            {
-                TraceException(ex, activity);
-                throw;
-            }
+            });
         }
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
-            using var activity = StartActivity();
-
-            var req = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11)
+            return Trace((activity) =>
             {
-                CanUseMultipleCatalogs = true,
-            };
-            activity?.SetTag("protocol.version", req.Client_protocol);
-            return req;
+                var req = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11)
+                {
+                    CanUseMultipleCatalogs = true,
+                };
+                activity?.SetTag("protocol.version", req.Client_protocol);
+                return req;
+            });
         }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>

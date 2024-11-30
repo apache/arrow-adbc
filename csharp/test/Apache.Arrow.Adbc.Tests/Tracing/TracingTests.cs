@@ -142,6 +142,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 Assert.Contains("MethodWithActivityRecursive", text);
                 Assert.DoesNotContain("MethodWithNoInstrumentation", text);
                 var activity = JsonSerializer.Deserialize<SerializableActivity>(text);
+                Assert.Contains("MethodWithActivityRecursive", activity?.OperationName);
                 Assert.NotNull(activity);
                 text = reader.ReadLine();
             }
@@ -177,28 +178,29 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 
             internal void MethodWithActivity()
             {
-                using var activity = StartActivity();
+                Trace(_ => { });
             }
 
             internal void MethodWithActivity(string activityName)
             {
-                using var activity = StartActivity(activityName);
+                Trace(_ => { }, activityName);
             }
 
             internal void MethodWithActivityRecursive(string activityName, int recurseCount)
             {
-                using var activity = StartActivity(activityName + recurseCount.ToString());
-                recurseCount--;
-                if (recurseCount > 0)
+                Trace(_ =>
                 {
-                    MethodWithActivityRecursive(activityName, recurseCount);
-                }
+                    recurseCount--;
+                    if (recurseCount > 0)
+                    {
+                        MethodWithActivityRecursive(activityName, recurseCount);
+                    }
+                }, activityName + recurseCount.ToString());
             }
 
             internal void MethodWithEvent(string eventName)
             {
-                using var acitivity = StartActivity();
-                acitivity?.AddEvent(new ActivityEvent(eventName));
+                Trace((acitivity) => acitivity?.AddEvent(new ActivityEvent(eventName)));
             }
         }
 

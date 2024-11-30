@@ -42,8 +42,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
-            using var activity = StartActivity();
-            try
+            return await TraceAsync(async (activity) =>
             {
                 await ExecuteStatementAsync();
                 await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, ActivitySource);
@@ -51,39 +50,25 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 QueryResult queryResult = new QueryResult(-1, Connection.NewReader(this, schema));
 
-                activity?.SetStatus(ActivityStatusCode.Ok);
                 return queryResult;
-            }
-            catch (Exception ex)
-            {
-                TraceException(ex, activity);
-                throw;
-            }
+            });
         }
 
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
-            using var activity = StartActivity();
-            try
+            return await TraceAsync(async (activity) =>
             {
                 TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, ActivitySource, cancellationToken);
                 Schema schema = Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
-                activity?.SetStatus(ActivityStatusCode.Ok);
                 return schema;
-            }
-            catch (Exception ex)
-            {
-                TraceException(ex, activity);
-                throw;
-            }
+            });
         }
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
             const string NumberOfAffectedRowsColumnName = "num_affected_rows";
 
-            using var activity = StartActivity();
-            try
+            return await TraceAsync(async (activity) =>
             {
                 QueryResult queryResult = await ExecuteQueryAsync();
                 if (queryResult.Stream == null)
@@ -119,12 +104,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 // If no altered rows, i.e. DDC statements, then -1 is the default.
                 return new UpdateResult(affectedRows ?? -1);
-            }
-            catch (Exception ex)
-            {
-                TraceException(ex, activity);
-                throw;
-            }
+            });
         }
 
         public override void SetOption(string key, string value)
@@ -147,8 +127,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task ExecuteStatementAsync()
         {
-            using var activity = StartActivity();
-            try
+            await TraceAsync(async (activity) =>
             {
                 TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery);
                 SetStatementProperties(executeRequest);
@@ -160,14 +139,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         .SetNativeError(executeResponse.Status.ErrorCode);
                 }
                 OperationHandle = executeResponse.OperationHandle;
-
-                activity?.SetStatus(ActivityStatusCode.Ok);
-            }
-            catch (Exception ex)
-            {
-                TraceException(ex, activity);
-                throw;
-            }
+            });
         }
 
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;

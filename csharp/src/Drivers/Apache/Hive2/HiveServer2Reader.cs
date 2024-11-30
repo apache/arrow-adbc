@@ -84,8 +84,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            using Activity? activity = StartActivity();
-            try
+            return await TraceAsync(async (activity) =>
             {
                 // All records have been exhausted
                 if (_statement == null)
@@ -116,14 +115,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 // Build the current batch, if any data exists
                 RecordBatch? recordBatch = rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
-                activity?.SetStatus(ActivityStatusCode.Ok);
                 return recordBatch;
-            }
-            catch (Exception ex)
-            {
-                TraceException(ex, activity);
-                throw;
-            }
+            });
         }
 
         private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)

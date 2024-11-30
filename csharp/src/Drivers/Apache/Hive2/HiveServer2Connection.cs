@@ -67,8 +67,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
-            using Activity? activity = StartActivity();
-            try
+            await TraceAsync(async (activity) =>
             {
                 TTransport transport = await CreateTransportAsync();
                 TProtocol protocol = await CreateProtocolAsync(transport);
@@ -91,14 +90,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         .SetNativeError(session.Status.ErrorCode)
                         .SetSqlState(session.Status.SqlState);
                 }
-                activity?.SetStatus(ActivityStatusCode.Ok);
                 SessionHandle = session.SessionHandle;
-            }
-            catch (Exception ex)
-            {
-                TraceException(ex, activity);
-                throw;
-            }
+            });
         }
 
         internal TSessionHandle? SessionHandle { get; private set; }
@@ -131,31 +124,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, ActivitySource? activitySource)
         {
-            using Activity? activity = StartActivity(activitySource);
-            try
+            await TraceAsync(activitySource, async (activity) =>
             {
                 TGetOperationStatusResp? statusResponse = null;
                 do
                 {
                     if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds); }
                     TGetOperationStatusReq request = new(operationHandle);
-                    activity?.AddEvent(new ActivityEvent("start GetOperationStatus"));
+                    activity?.AddEvent(new ActivityEvent("getOperationStatus.start"));
                     statusResponse = await client.GetOperationStatus(request);
-                    activity?.AddEvent(new ActivityEvent("end GetOperationStatus",tags: new([new("statusResponse.operationState", statusResponse.OperationState.ToString())])));
+                    activity?.AddEvent(new ActivityEvent("getOperationStatus.stop", tags: new([new("statusResponse.operationState", statusResponse.OperationState.ToString())])));
                 } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
-                activity?.SetStatus(ActivityStatusCode.Ok);
-            }
-            catch (Exception ex)
-            {
-                TraceException(ex, activity);
-                throw;
-            }
+            });
         }
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
-            using Activity? activity = StartActivity();
-            try
+            return Trace((activity) =>
             {
                 TGetInfoReq req = new()
                 {
@@ -172,14 +157,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 string stringValue = getInfoResp.InfoValue.StringValue;
-                activity?.SetStatus(ActivityStatusCode.Ok);
                 return stringValue;
-            }
-            catch (Exception ex)
-            {
-                TraceException(ex, activity);
-                throw;
-            }
+            });
         }
 
         protected override void Dispose(bool disposing)
@@ -213,11 +192,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, ActivitySource? activitySource = null, CancellationToken cancellationToken = default)
         {
-            using Activity? activity = StartActivity(activitySource);
-            TGetResultSetMetadataReq request = new(operationHandle);
-            TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            return response;
+            return await TraceAsync(activitySource, async (activity) =>
+            {
+                TGetResultSetMetadataReq request = new(operationHandle);
+                TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
+                return response;
+            });
         }
     }
 }
