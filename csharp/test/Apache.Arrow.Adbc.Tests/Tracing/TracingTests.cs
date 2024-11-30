@@ -178,17 +178,17 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 
             internal void MethodWithActivity()
             {
-                Trace(_ => { });
+                TraceActivity(_ => { });
             }
 
             internal void MethodWithActivity(string activityName)
             {
-                Trace(_ => { }, activityName);
+                TraceActivity(_ => { }, activityName);
             }
 
             internal void MethodWithActivityRecursive(string activityName, int recurseCount)
             {
-                Trace(_ =>
+                TraceActivity(_ =>
                 {
                     recurseCount--;
                     if (recurseCount > 0)
@@ -200,7 +200,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 
             internal void MethodWithEvent(string eventName)
             {
-                Trace((acitivity) => acitivity?.AddEvent(new ActivityEvent(eventName)));
+                TraceActivity((acitivity) => acitivity?.AddEvent(new ActivityEvent(eventName)));
             }
         }
 

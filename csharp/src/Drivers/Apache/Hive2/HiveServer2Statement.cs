@@ -42,7 +42,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
-            return await TraceAsync(async (activity) =>
+            return await TraceActivityAsync(async (_) =>
             {
                 await ExecuteStatementAsync();
                 await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, ActivitySource);
@@ -56,7 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
-            return await TraceAsync(async (activity) =>
+            return await TraceActivityAsync(async (_) =>
             {
                 TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, ActivitySource, cancellationToken);
                 Schema schema = Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
@@ -68,7 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             const string NumberOfAffectedRowsColumnName = "num_affected_rows";
 
-            return await TraceAsync(async (activity) =>
+            return await TraceActivityAsync(async (_) =>
             {
                 QueryResult queryResult = await ExecuteQueryAsync();
                 if (queryResult.Stream == null)
@@ -127,7 +127,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task ExecuteStatementAsync()
         {
-            await TraceAsync(async (activity) =>
+            await TraceActivityAsync(async (_) =>
             {
                 TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery);
                 SetStatementProperties(executeRequest);
@@ -172,24 +172,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             if (string.IsNullOrWhiteSpace(value))
             {
-                SetTraceParent(null);
+                TraceParent = null;
                 throw new ArgumentNullException(key);
             }
             if (!ActivityContext.TryParse(value, null, true, out ActivityContext _))
             {
-                SetTraceParent(null);
+                TraceParent = null;
                 throw new ArgumentException($"Unable to parse trace parent value '{value}'", nameof(value));
             }
-            SetTraceParent(value);
+
+            TraceParent = value;
         }
 
         // Share the parent context with the connection
-        protected internal override ActivityContext? ParentContext
+        protected internal override string? TraceParent
         {
-            get => Connection.ParentContext;
+            get => Connection.TraceParent;
         }
-
-        protected internal override void SetTraceParent(string? traceParent) => Connection.SetTraceParent(traceParent);
 
         public override void Dispose()
         {

@@ -67,7 +67,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
-            await TraceAsync(async (activity) =>
+            await TraceActivityAsync(async (activity) =>
             {
                 TTransport transport = await CreateTransportAsync();
                 TProtocol protocol = await CreateProtocolAsync(transport);
@@ -124,7 +124,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, ActivitySource? activitySource)
         {
-            await TraceAsync(activitySource, async (activity) =>
+            await TraceActivityAsync(activitySource, async (activity) =>
             {
                 TGetOperationStatusResp? statusResponse = null;
                 do
@@ -140,7 +140,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
-            return Trace((activity) =>
+            return TraceActivity((_) =>
             {
                 TGetInfoReq req = new()
                 {
@@ -192,7 +192,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, ActivitySource? activitySource = null, CancellationToken cancellationToken = default)
         {
-            return await TraceAsync(activitySource, async (activity) =>
+            return await TraceActivityAsync(activitySource, async (_) =>
             {
                 TGetResultSetMetadataReq request = new(operationHandle);
                 TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);

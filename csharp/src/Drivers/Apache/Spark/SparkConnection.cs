@@ -476,7 +476,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
-            return Trace((activity) =>
+            return TraceActivity((activity) =>
             {
                 activity?.SetTag("getobjects.depth", depth);
                 activity?.SetTag("getobjects.catalogPattern", depth);

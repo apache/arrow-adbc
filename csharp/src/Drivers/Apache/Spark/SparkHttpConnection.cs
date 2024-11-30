@@ -216,7 +216,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport)
         {
-            return await TraceAsync(async (activity) =>
+            return await TraceActivityAsync(async (activity) =>
             {
                 activity?.SetTag("transport.type", transport.GetType().Name);
 
@@ -228,7 +228,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
-            return Trace((activity) =>
+            return TraceActivity((activity) =>
             {
                 var req = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11)
                 {

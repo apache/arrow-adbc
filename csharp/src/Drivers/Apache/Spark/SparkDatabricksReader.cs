@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            return await TraceAsync(async (activity) =>
+            return await TraceActivityAsync(async (activity) =>
             {
                 while (true)
                 {
