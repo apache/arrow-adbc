@@ -261,7 +261,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <summary>
         /// Gets or sets the trace parent context.
         /// </summary>
-        protected internal virtual string? TraceParent {  get; set; }
+        protected internal virtual string? TraceParent { get; set; }
 
         /// <summary>
         /// Gets the product version from the file version of the current assembly.
