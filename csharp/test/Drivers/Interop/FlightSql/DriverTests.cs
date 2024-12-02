@@ -17,10 +17,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
+using Apache.Arrow.Types;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -213,22 +215,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                         List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
 
                         List<AdbcDbSchema>? dbSchemas = catalogs
-                            .Where(c => string.Equals(c.Name, databaseName))
+                            .Where(c => environment.SupportsCatalogs ? string.Equals(c.Name, databaseName) : true)
                             .Select(c => c.DbSchemas)
                             .FirstOrDefault();
 
                         Assert.True(dbSchemas != null, "dbSchemas should not be null in the [" + environment.Name + "] environment");
 
-                        AdbcDbSchema? dbSchema;
-
-                        if (schemaName == null)
-                        {
-                            dbSchema = dbSchemas.Where((dbSchema) => string.Equals(dbSchema.Name, string.Empty)).FirstOrDefault();
-                        }
-                        else
-                        {
-                            dbSchema = dbSchemas.Where((dbSchema) => string.Equals(dbSchema.Name, schemaName)).FirstOrDefault();
-                        }
+                        AdbcDbSchema? dbSchema = dbSchemas
+                            .Where(dbSchema => schemaName == null ? string.Equals(dbSchema.Name, string.Empty) : string.Equals(dbSchema.Name, schemaName))
+                            .FirstOrDefault();
 
                         Assert.True(dbSchema != null, "dbSchema should not be null in the [" + environment.Name + "] environment");
                     }
@@ -263,28 +258,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                     List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
 
                     List<AdbcDbSchema>? schemas = catalogs
-                        .Where(c => string.Equals(c.Name, databaseName))
+                        .Where(c => environment.SupportsCatalogs ? string.Equals(c.Name, databaseName) : true)
                         .Select(c => c.DbSchemas)
                         .FirstOrDefault();
 
                     Assert.True(schemas != null, "schemas should not be null in the [" + environment.Name + "] environment");
 
-                    List<AdbcTable>? tables;
-
-                    if (schemaName == null)
-                    {
-                        tables = schemas
-                            .Where(s => string.Equals(s.Name, string.Empty))
-                            .Select(s => s.Tables)
-                            .FirstOrDefault();
-                    }
-                    else
-                    {
-                        tables = schemas
-                          .Where(s => string.Equals(s.Name, schemaName))
-                          .Select(s => s.Tables)
-                          .FirstOrDefault();
-                    }
+                    List<AdbcTable>? tables = schemas
+                        .Where(s => schemaName == null ? string.Equals(s.Name, string.Empty) : string.Equals(s.Name, schemaName))
+                        .Select(s => s.Tables)
+                        .FirstOrDefault();
 
                     Assert.True(tables != null, "schemas should not be null in the [" + environment.Name + "] environment");
 
@@ -320,7 +303,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                 List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
 
                 List<AdbcDbSchema>? schemas = catalogs
-                    .Where(c => string.Equals(c.Name, databaseName))
+                    .Where(c => environment.SupportsCatalogs ? string.Equals(c.Name, databaseName) : true)
                     .Select(c => c.DbSchemas)
                     .FirstOrDefault();
 

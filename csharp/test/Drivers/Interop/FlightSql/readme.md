@@ -23,18 +23,63 @@ The Flight SQL tests leverage the interop nature of the C# ADBC library. These r
 To compile, navigate to the `go/adbc/pkg` directory of the cloned [arrow-adbc](https://github.com/apache/arrow-adbc) repository then run the `make` command.  If you encounter compilation errors, please ensure that Go, [GCC and C++](https://code.visualstudio.com/docs/cpp/config-mingw) tools are installed. And following [Contributing to ADBC](https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md#environment-setup).
 
 ## Setup
-The environment variable `FLIGHTSQL_TEST_CONFIG_FILE` must be set to a configuration JSON file for the tests to execute. If it is not, the tests will show as passed with an output message that they are skipped. A template configuration file can be found in the Resources directory.
+The environment variable `FLIGHTSQL_INTEROP_TEST_CONFIG_FILE` must be set to a configuration JSON file for the tests to execute. If it is not, the tests will show as passed with an output message that they are skipped. A template configuration file can be found in the Resources directory.
 
 ## Configuration
-Multiple data sources can support a Flight SQL interface. The configuration file supports targeting multiple data sources
-simultaneously. To use multiple data sources, you can configure comma delimited names in:
+A growing number of data sources support Arrow Flight SQL. This library has tests that run against:
 
-- The `testEnvironments` field in the configuration file
-- The `FLIGHTSQL_TEST_ENV_NAMES` environment variable
+- [Denodo](https://community.denodo.com/docs/html/browse/9.1/en/vdp/developer/access_through_flight_sql/connection_using_flight_sql/connection_using_flight_sql)
+- [Dremio](https://docs.dremio.com/current/sonar/developing-client-apps/arrow-flight-sql/)
+- [DuckDB](https://github.com/voltrondata/SQLFlite)
+- [SQLite](https://github.com/voltrondata/SQLFlite)
 
-If neither is specified, the first configured environment is used.
+It is recommended you test your data source with the Flight SQL Go driver to ensure compatibilty, since each data source can implement the Flight protocol slightly differently.
 
-## Data
-This project contains SQL scripts to generate Flight SQL data in the `sqlFile` file specified for each environment. This can be used to populate a table in your Flight SQL instance with data.
+A sample configuration file is provided in the Resources directory. The configuration file is a JSON file that contains the following fields:
 
-The tests included assume this script has been run.
+- **uri**: The endpoint for the service
+- **username**: User name to use for authentication
+- **password**: Password to use for authentication
+- **sslSkipVerify**: "adbc.flight.sql.client_option.authority",
+- **headers**: Key/value pairs of additional headers to include with the request.
+- **supportsWriteUpdate**: Indicates whether the data source supports creating new tables
+- **supportsCatalogs**: Indicates whether the data source supports catalog names
+- **type**: Specifies the type of data source used for running data from FlightSqlData. The supported types are:
+    - Dremio
+    - Denodo
+    - DuckDB
+    - SQLite
+- **tableTypes**: The table types to include in the GetObjects call
+- **sqlFile**: A path to a SQL file to run queries to test CRUD operations
+- **metadata**: Used for the GetObjects calls
+  - **catalog**: The catalog name to use for the GetObjects call
+  - **schema**: The schema name to use for the GetObjects call
+  - **table**: The table name to use for the GetObjects call
+  - **expectedColumnCount**: The number of columns that should be returned
+- **authorization**: Used to set the `adbc.flight.sql.authorization_header` property
+- **authority**: Used to set the `adbc.flight.sql.client_option.authority` property
+- **query**: Select query run against the data source,
+- **expectedResults**: Number of resutls expected from the query
+
+The configuration file supports targeting multiple data sources
+simultaneously. To use multiple data sources, you can configure them like:
+
+```
+    "testEnvironments**: [
+        "Dremio_Remote",
+        "DuckDb_Local",
+        "SQLite_Local"
+    ],
+    "environments**: {
+        "SQLite_Local**:
+        {
+           ...
+        },
+        "DuckDb_Local**:
+        {
+           ...
+		},
+        "Dremio_Remote**: {
+           ...
+        }
+```
