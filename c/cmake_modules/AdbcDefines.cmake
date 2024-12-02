@@ -93,7 +93,9 @@ if(MSVC)
   # Don't warn about padding added after members
   add_compile_options(/wd4820)
   add_compile_options(/wd5027)
+  add_compile_options(/wd5039)
   add_compile_options(/wd5045)
+  add_compile_options(/wd5246)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

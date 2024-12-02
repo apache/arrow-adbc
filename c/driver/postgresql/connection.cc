@@ -300,7 +300,8 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
 
     Column col;
     col.column_name = next_column_[0].value();
-    UNWRAP_RESULT(col.ordinal_position, next_column_[1].ParseInteger());
+    UNWRAP_RESULT(int64_t ordinal_position, next_column_[1].ParseInteger());
+    col.ordinal_position = static_cast<int32_t>(ordinal_position);
     if (!next_column_[2].is_null) {
       col.remarks = next_column_[2].value();
     }
