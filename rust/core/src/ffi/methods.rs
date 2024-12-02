@@ -64,7 +64,7 @@ method!(StatementSetSqlQuery ; FuncStatementSetSqlQuery ; FFI_AdbcStatusCode ; A
 method!(StatementSetSubstraitPlan ; FuncStatementSetSubstraitPlan ; FFI_AdbcStatusCode ; ADBC_STATUS_NOT_IMPLEMENTED ; *mut FFI_AdbcStatement, *const u8, usize, *mut FFI_AdbcError);
 method!(ErrorGetDetailCount ; FuncErrorGetDetailCount ; c_int ; 0 ; *const FFI_AdbcError);
 method!(ErrorGetDetail ; FuncErrorGetDetail ; FFI_AdbcErrorDetail ; FFI_AdbcErrorDetail::default() ; *const FFI_AdbcError, c_int);
-method!(ErrorFromArrayStream ; FuncErrorFromArrayStream ; *const FFI_AdbcError ; std::ptr::null() ; *mut FFI_ArrowArrayStream, *mut FFI_AdbcStatusCode);
+method!(_ErrorFromArrayStream ; FuncErrorFromArrayStream ; *const FFI_AdbcError ; std::ptr::null() ; *mut FFI_ArrowArrayStream, *mut FFI_AdbcStatusCode);
 method!(DatabaseGetOption ; FuncDatabaseGetOption ; FFI_AdbcStatusCode ; ADBC_STATUS_NOT_IMPLEMENTED ; *mut FFI_AdbcDatabase, *const c_char, *mut c_char, *mut usize, *mut FFI_AdbcError);
 method!(DatabaseGetOptionBytes ; FuncDatabaseGetOptionBytes ; FFI_AdbcStatusCode ; ADBC_STATUS_NOT_IMPLEMENTED ; *mut FFI_AdbcDatabase, *const c_char, *mut u8, *mut usize, *mut FFI_AdbcError);
 method!(DatabaseGetOptionDouble ; FuncDatabaseGetOptionDouble ; FFI_AdbcStatusCode ; ADBC_STATUS_NOT_IMPLEMENTED ; *mut FFI_AdbcDatabase, *const c_char, *mut f64, *mut FFI_AdbcError);
