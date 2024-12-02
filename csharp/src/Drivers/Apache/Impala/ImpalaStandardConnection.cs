@@ -18,11 +18,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
@@ -85,8 +85,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                 throw new ArgumentOutOfRangeException(
                     nameof(Properties),
                     port,
-                    $"Parameter '{ImpalaParameters.Port}' value is not in the valid range of 1 .. {IPEndPoint.MaxPort}.");
-
+                    $"Parameter '{ImpalaParameters.Port}' value is not in the valid range of {IPEndPoint.MinPort + 1} .. {IPEndPoint.MaxPort}.");
         }
 
         protected override void ValidateOptions()
@@ -145,6 +144,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             }
             return request;
         }
+
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         internal override ImpalaServerType ServerType => ImpalaServerType.Standard;
     }

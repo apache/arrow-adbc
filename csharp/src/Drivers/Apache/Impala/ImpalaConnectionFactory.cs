@@ -34,6 +34,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                 _ => throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{ImpalaParameters.Type}'. Supported types: {ServerTypeParser.SupportedList}"),
             };
         }
-
     }
 }
