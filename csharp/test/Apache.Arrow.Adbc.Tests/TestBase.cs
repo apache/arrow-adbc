@@ -486,9 +486,9 @@ namespace Apache.Arrow.Adbc.Tests
             {
                 int valueIndex = indexColumn?.GetValue(i) ?? i;
                 object? expected = value(valueIndex);
-                if (expected == null && isNullEvaluator != null)
+                if (isNullEvaluator != null)
                 {
-                    Assert.True(isNullEvaluator(i), "expecting actual value to be null");
+                    Assert.Equal(expected == null, isNullEvaluator(i));
                 }
                 object? actual = getter(i);
                 Assert.Equal<object>(expected, actual);
