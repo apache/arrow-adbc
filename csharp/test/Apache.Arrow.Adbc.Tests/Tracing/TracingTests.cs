@@ -32,26 +32,23 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
     {
         private readonly ITestOutputHelper? _outputHelper;
         private bool _disposed;
-        private readonly string _activitySourceName;
-        private readonly MemoryStream _stream;
 
         public TracingTests(ITestOutputHelper? outputHelper)
         {
             _outputHelper = outputHelper;
-            _activitySourceName = Guid.NewGuid().ToString().Replace("-", "");
-            _stream = new MemoryStream();
         }
 
         [Fact]
         internal void CanStartActivity()
         {
-            MemoryStream stream = _stream;
+            string activitySourceName = Guid.NewGuid().ToString().Replace("-", "");
+            using MemoryStream stream = new();
             using TracerProvider provider = Sdk.CreateTracerProviderBuilder()
-                .AddSource(_activitySourceName)
-                .AddTestMemoryExporter(_stream)
+                .AddSource(activitySourceName)
+                .AddTestMemoryExporter(stream)
                 .Build();
 
-            var testClass = new TraceInheritor(_activitySourceName);
+            var testClass = new TraceInheritor(activitySourceName);
             testClass.MethodWithNoInstrumentation();
             Assert.Equal(0, stream.Length);
 
@@ -70,8 +67,8 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             while (text != null)
             {
                 lineCount++;
-                Assert.Contains("MethodWithActivity", text);
-                Assert.DoesNotContain("MethodWithNoInstrumentation", text);
+                Assert.Contains(nameof(TraceInheritor.MethodWithActivity), text);
+                Assert.DoesNotContain(nameof(TraceInheritor.MethodWithNoInstrumentation), text);
                 var activity = JsonSerializer.Deserialize<SerializableActivity>(text);
                 Assert.NotNull(activity);
                 text = reader.ReadLine();
@@ -82,13 +79,14 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
         [Fact]
         internal void CanAddEvent()
         {
-            MemoryStream stream = _stream;
+            string activitySourceName = Guid.NewGuid().ToString().Replace("-", "");
+            using MemoryStream stream = new();
             using TracerProvider provider = Sdk.CreateTracerProviderBuilder()
-                .AddSource(_activitySourceName)
-                .AddTestMemoryExporter(_stream)
+                .AddSource(activitySourceName)
+                .AddTestMemoryExporter(stream)
                 .Build();
 
-            var testClass = new TraceInheritor(_activitySourceName);
+            var testClass = new TraceInheritor(activitySourceName);
             testClass.MethodWithNoInstrumentation();
             Assert.Equal(0, stream.Length);
 
@@ -107,8 +105,8 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             while (text != null)
             {
                 lineCount++;
-                Assert.Contains("MethodWithEvent", text);
-                Assert.DoesNotContain("MethodWithNoInstrumentation", text);
+                Assert.Contains(nameof(TraceInheritor.MethodWithEvent), text);
+                Assert.DoesNotContain(nameof(TraceInheritor.MethodWithNoInstrumentation), text);
                 Assert.Contains("eventName", text);
                 var activity = JsonSerializer.Deserialize<SerializableActivity>(text);
                 Assert.NotNull(activity);
@@ -120,15 +118,16 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
         [Fact]
         internal void CanAddActivityWithDepth()
         {
-            MemoryStream stream = _stream;
+            string activitySourceName = Guid.NewGuid().ToString().Replace("-", "");
+            using MemoryStream stream = new();
             using TracerProvider provider = Sdk.CreateTracerProviderBuilder()
-                .AddSource(_activitySourceName)
-                .AddTestMemoryExporter(_stream)
+                .AddSource(activitySourceName)
+                .AddTestMemoryExporter(stream)
                 .Build();
 
-            var testClass = new TraceInheritor(_activitySourceName);
+            var testClass = new TraceInheritor(activitySourceName);
             const int recurseCount = 5;
-            testClass.MethodWithActivityRecursive("MethodWithActivityRecursive", recurseCount);
+            testClass.MethodWithActivityRecursive(nameof(TraceInheritor.MethodWithActivityRecursive), recurseCount);
 
             stream.Seek(0, SeekOrigin.Begin);
             StreamReader reader = new(stream);
@@ -139,10 +138,10 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             {
                 if (string.IsNullOrWhiteSpace(text)) continue;
                 lineCount++;
-                Assert.Contains("MethodWithActivityRecursive", text);
-                Assert.DoesNotContain("MethodWithNoInstrumentation", text);
+                Assert.Contains(nameof(TraceInheritor.MethodWithActivityRecursive), text);
+                Assert.DoesNotContain(nameof(TraceInheritor.MethodWithNoInstrumentation), text);
                 var activity = JsonSerializer.Deserialize<SerializableActivity>(text);
-                Assert.Contains("MethodWithActivityRecursive", activity?.OperationName);
+                Assert.Contains(nameof(TraceInheritor.MethodWithActivityRecursive), activity?.OperationName);
                 Assert.NotNull(activity);
                 text = reader.ReadLine();
             }
@@ -152,32 +151,42 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
         [Fact]
         internal void CanAddTraceParent()
         {
-            MemoryStream stream = _stream;
+            string activitySourceName = Guid.NewGuid().ToString().Replace("-", "");
+            using MemoryStream stream = new();
             stream.SetLength(0);
             using TracerProvider provider1 = Sdk.CreateTracerProviderBuilder()
-                .AddSource(_activitySourceName)
-                .AddTestMemoryExporter(_stream)
+                .AddSource(activitySourceName)
+                .AddTestMemoryExporter(stream)
                 .Build();
 
-            var testClass = new TraceInheritor(_activitySourceName);
+            var testClass = new TraceInheritor(activitySourceName);
             testClass.MethodWithNoInstrumentation();
             Assert.Equal(0, stream.Length);
 
+            const string eventNameWithParent = "eventNameWithParent";
             const string eventNameWithoutParent = "eventNameWithoutParent";
             testClass.MethodWithActivity(eventNameWithoutParent);
             Assert.True(stream.Length > 0);
-            long currLength = stream.Length;
 
             const string traceParent = "00-3236da27af79882bd317c4d1c3776982-a3cc9bd52ccd58e6-01";
+
             testClass.SetTraceParent(traceParent);
-            const string eventNameWithParent = "eventNameWithParent";
-            testClass.MethodWithActivity(eventNameWithParent);
+            const int withParentCountExpected = 10;
+            for (int i = 0; i < withParentCountExpected; i++)
+            {
+                testClass.MethodWithActivity(eventNameWithParent);
+            }
+            testClass.SetTraceParent(null);
+
+            testClass.MethodWithActivity(eventNameWithoutParent);
             Assert.True(stream.Length > 0);
 
             stream.Seek(0, SeekOrigin.Begin);
             StreamReader reader = new(stream);
 
             int lineCount = 0;
+            int withParentCount = 0;
+            int withoutParentCount = 0;
             string? text = reader.ReadLine();
             while (text != null)
             {
@@ -186,16 +195,18 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 Assert.NotNull(clientActivity);
                 if (clientActivity.OperationName.Contains(eventNameWithoutParent))
                 {
+                    withoutParentCount++;
                     Assert.Null(clientActivity.ParentId);
                 }
                 else if (clientActivity.OperationName.Contains(eventNameWithParent))
                 {
+                    withParentCount++;
                     Assert.Equal(traceParent, clientActivity.ParentId);
                 }
-
                 text = reader.ReadLine();
             }
-
+            Assert.Equal(2, withoutParentCount);
+            Assert.Equal(withParentCountExpected, withParentCount);
         }
 
         protected virtual void Dispose(bool disposing)
