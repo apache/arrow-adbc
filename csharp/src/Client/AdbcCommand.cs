@@ -113,16 +113,6 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
-        /// <summary>
-        /// Sets a (string-valued) command option on the underlying driver.
-        /// </summary>
-        /// <param name="key">The name of the option to set.</param>
-        /// <param name="value">The value of the option to set.</param>
-        public void SetOption(string key, string value)
-        {
-            AdbcStatement.SetOption(key, value);
-        }
-
         public override int CommandTimeout
         {
             get => throw new NotImplementedException(nameof(CommandTimeout));

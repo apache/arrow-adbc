@@ -233,11 +233,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 AdbcCommand cmd = adbcConnection.CreateCommand();
                 if (exceptionType == null)
                 {
-                    cmd.SetOption(ApacheParameters.QueryTimeoutSeconds, value.ToString(CultureInfo.InvariantCulture));
+                    cmd.AdbcStatement.SetOption(ApacheParameters.QueryTimeoutSeconds, value.ToString(CultureInfo.InvariantCulture));
                 }
                 else
                 {
-                    Assert.Throws(exceptionType, () => cmd.SetOption(ApacheParameters.QueryTimeoutSeconds, value.ToString(CultureInfo.InvariantCulture)));
+                    Assert.Throws(exceptionType, () => cmd.AdbcStatement.SetOption(ApacheParameters.QueryTimeoutSeconds, value.ToString(CultureInfo.InvariantCulture)));
                 }
             }
         }
