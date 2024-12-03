@@ -27,9 +27,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
         [JsonPropertyName("port")]
         public string Port { get; set; } = string.Empty;
 
-        [JsonPropertyName("token"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string Token { get; set; } = string.Empty;
-
         [JsonPropertyName("path"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Path { get; set; } = string.Empty;
 
@@ -57,5 +54,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
         [JsonPropertyName("query_timeout_s"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string QueryTimeoutSeconds { get; set; } = string.Empty;
 
+        [JsonPropertyName("type"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Type { get; set; } = string.Empty;
+
+        [JsonPropertyName("data_type_conv"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string DataTypeConversion { get; set; } = string.Empty;
+
+        [JsonPropertyName("tls_options"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string TlsOptions { get; set; } = string.Empty;
     }
 }
