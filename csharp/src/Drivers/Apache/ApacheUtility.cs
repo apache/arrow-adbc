@@ -74,7 +74,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             }
         }
 
-        public static bool ContainsException<T>(Exception? exception, out T? containedException) where T : Exception
+        public static bool ContainsException<T>(Exception exception, out T? containedException) where T : Exception
         {
             if (exception is AggregateException aggregateException)
             {
@@ -103,9 +103,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             return false;
         }
 
-        public static bool ContainsException(Exception? exception, Type? exceptionType, out Exception? containedException)
+        public static bool ContainsException(Exception exception, Type? exceptionType, out Exception? containedException)
         {
-            if ( exception == null || exceptionType == null)
+            if (exception == null || exceptionType == null)
             {
                 containedException = null;
                 return false;

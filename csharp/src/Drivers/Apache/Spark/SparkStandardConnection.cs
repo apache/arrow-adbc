@@ -86,7 +86,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         }
 
-        protected override Task<TTransport> CreateTransportAsync(CancellationToken cancellationToken = default)
+        protected override TTransport CreateTransport()
         {
             // Assumption: hostName and port have already been validated.
             Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
@@ -95,7 +95,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // Delay the open connection until later.
             bool connectClient = false;
             ThriftSocketTransport transport = new(hostName!, int.Parse(port!), connectClient, config: new());
-            return Task.FromResult<TTransport>(transport);
+            return transport;
         }
 
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)

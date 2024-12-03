@@ -131,7 +131,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
-        protected override Task<TTransport> CreateTransportAsync(CancellationToken cancellationToken = default)
+        protected override TTransport CreateTransport()
         {
             // Assumption: parameters have already been validated.
             Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
@@ -164,7 +164,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 // to ensure cancelled correctly.
                 ConnectTimeout = int.MaxValue,
             };
-            return Task.FromResult<TTransport>(transport);
+            return transport;
         }
 
         private HttpClientHandler NewHttpClientHandler()

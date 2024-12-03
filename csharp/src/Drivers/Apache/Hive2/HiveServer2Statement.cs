@@ -47,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
                      (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
             {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
@@ -66,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
                      (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
             {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
@@ -98,7 +98,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
                      (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
             {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
@@ -162,7 +162,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
                      (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
             {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {

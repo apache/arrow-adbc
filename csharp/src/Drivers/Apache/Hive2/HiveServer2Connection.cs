@@ -30,7 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
-        private const int ConnectTimeoutMillisecondDefault = 30000;
+        private const int ConnectTimeoutMillisecondsDefault = 30000;
         private TTransport? _transport;
         private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
@@ -73,7 +73,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
             try
             {
-                TTransport transport = await CreateTransportAsync(cancellationToken);
+                TTransport transport = CreateTransport();
                 TProtocol protocol = await CreateProtocolAsync(transport, cancellationToken);
                 _transport = protocol.Transport;
                 _client = new TCLIService.Client(protocol);
@@ -114,9 +114,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal HiveServer2TlsOption TlsOptions { get; set; } = HiveServer2TlsOption.Empty;
 
-        protected internal int ConnectTimeoutMilliseconds { get; set; } = ConnectTimeoutMillisecondDefault;
+        protected internal int ConnectTimeoutMilliseconds { get; set; } = ConnectTimeoutMillisecondsDefault;
 
-        protected abstract Task<TTransport> CreateTransportAsync(CancellationToken cancellationToken = default);
+        protected abstract TTransport CreateTransport();
 
         protected abstract Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default);
 

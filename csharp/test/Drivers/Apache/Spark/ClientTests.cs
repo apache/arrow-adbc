@@ -17,7 +17,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Apache.Arrow.Adbc.Client;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
@@ -217,25 +219,37 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             }
         }
 
-        [SkippableFact]
-        public void VerifyTimeoutsSet()
+        [SkippableTheory]
+        [InlineData(0)]
+        [InlineData(99)]
+        [InlineData(int.MaxValue)]
+        [InlineData(long.MaxValue, typeof(ArgumentOutOfRangeException))]
+        [InlineData(-1, typeof(ArgumentOutOfRangeException))]
+        [InlineData(int.MinValue, typeof(ArgumentOutOfRangeException))]
+        public void VerifyTimeoutsSet(long value, Type? exceptionType = default)
         {
             using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
             {
-                int timeout = 99;
                 AdbcCommand cmd = adbcConnection.CreateCommand();
-
-                // setting the timout before the property value
-                Assert.Throws<InvalidOperationException>(() =>
+                if (exceptionType == null)
                 {
-                    cmd.CommandTimeout = 1;
-                });
+                    cmd.SetOption(ApacheParameters.QueryTimeoutSeconds, value.ToString(CultureInfo.InvariantCulture));
+                }
+                else
+                {
+                    Assert.Throws(exceptionType, () => cmd.SetOption(ApacheParameters.QueryTimeoutSeconds, value.ToString(CultureInfo.InvariantCulture)));
+                }
+            }
+        }
 
-                cmd.CommandTimeoutProperty = "adbc.apache.statement.query_timeout_s";
-                cmd.CommandTimeout = timeout;
-
-                Assert.True(cmd.CommandTimeout == timeout, $"ConnectionTimeout is not set to {timeout}");
-
+        [SkippableFact]
+        public void VerifyCommandTimeoutNotImplemented()
+        {
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
+            {
+                AdbcCommand cmd = adbcConnection.CreateCommand();
+                Assert.Throws<NotImplementedException>(() => cmd.CommandTimeout = 10);
+                Assert.Throws<NotImplementedException>(() => cmd.CommandTimeout);
             }
         }
 

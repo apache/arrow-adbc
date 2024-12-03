@@ -21,9 +21,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
     /// Options common to all Apache drivers.
     /// </summary>
     public class ApacheParameters
-        {
-            public const string PollTimeMilliseconds = "adbc.apache.statement.polltime_ms";
-            public const string BatchSize = "adbc.apache.statement.batch_size";
-            public const string QueryTimeoutSeconds = "adbc.apache.statement.query_timeout_s";
-        }
+    {
+        public const string PollTimeMilliseconds = "adbc.apache.statement.polltime_ms";
+        public const string BatchSize = "adbc.apache.statement.batch_size";
+        public const string QueryTimeoutSeconds = "adbc.apache.statement.query_timeout_s";
     }
+}
