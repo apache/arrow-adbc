@@ -15,108 +15,15 @@
 * limitations under the License.
 */
 
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Arrow.Adbc.Tests.Xunit;
-using Xunit;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
-    /// <summary>
-    /// Class for testing the Snowflake ADBC driver connection tests.
-    /// </summary>
-    /// <remarks>
-    /// Tests are ordered to ensure data is created for the other
-    /// queries to run.
-    /// </remarks>
-    [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
-    public class StatementTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>
+    public class StatementTests : Common.StatementTests<SparkTestConfiguration, SparkTestEnvironment>
     {
-        private static List<string> DefaultTableTypes => new() { "TABLE", "VIEW" };
-
-        public StatementTests(ITestOutputHelper? outputHelper) : base(outputHelper, new SparkTestEnvironment.Factory())
+        public StatementTests(ITestOutputHelper? outputHelper)
+            : base(outputHelper, new SparkTestEnvironment.Factory())
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));
-        }
-
-        /// <summary>
-        /// Validates if the SetOption handle valid/invalid data correctly for the PollTime option.
-        /// </summary>
-        [SkippableTheory]
-        [InlineData("-1", true)]
-        [InlineData("zero", true)]
-        [InlineData("-2147483648", true)]
-        [InlineData("2147483648", true)]
-        [InlineData("0")]
-        [InlineData("1")]
-        [InlineData("2147483647")]
-        public void CanSetOptionPollTime(string value, bool throws = false)
-        {
-            var testConfiguration = TestConfiguration.Clone() as SparkTestConfiguration;
-            testConfiguration!.PollTimeMilliseconds = value;
-            if (throws)
-            {
-                Assert.Throws<ArgumentOutOfRangeException>(() => NewConnection(testConfiguration).CreateStatement());
-            }
-
-            AdbcStatement statement = NewConnection().CreateStatement();
-            if (throws)
-            {
-                Assert.Throws<ArgumentOutOfRangeException>(() => statement.SetOption(SparkStatement.Options.PollTimeMilliseconds, value));
-            }
-            else
-            {
-                statement.SetOption(SparkStatement.Options.PollTimeMilliseconds, value);
-            }
-        }
-
-        /// <summary>
-        /// Validates if the SetOption handle valid/invalid data correctly for the BatchSize option.
-        /// </summary>
-        [SkippableTheory]
-        [InlineData("-1", true)]
-        [InlineData("one", true)]
-        [InlineData("-2147483648", true)]
-        [InlineData("2147483648", false)]
-        [InlineData("9223372036854775807", false)]
-        [InlineData("9223372036854775808", true)]
-        [InlineData("0", true)]
-        [InlineData("1")]
-        [InlineData("2147483647")]
-        public void CanSetOptionBatchSize(string value, bool throws = false)
-        {
-            var testConfiguration = TestConfiguration.Clone() as SparkTestConfiguration;
-            testConfiguration!.BatchSize = value;
-            if (throws)
-            {
-                Assert.Throws<ArgumentOutOfRangeException>(() => NewConnection(testConfiguration).CreateStatement());
-            }
-
-            AdbcStatement statement = NewConnection().CreateStatement();
-            if (throws)
-            {
-                Assert.Throws<ArgumentOutOfRangeException>(() => statement!.SetOption(SparkStatement.Options.BatchSize, value));
-            }
-            else
-            {
-                statement.SetOption(SparkStatement.Options.BatchSize, value);
-            }
-        }
-
-        /// <summary>
-        /// Validates if the driver can execute update statements.
-        /// </summary>
-        [SkippableFact, Order(1)]
-        public async Task CanInteractUsingSetOptions()
-        {
-            const string columnName = "INDEX";
-            Statement.SetOption(SparkStatement.Options.PollTimeMilliseconds, "100");
-            Statement.SetOption(SparkStatement.Options.BatchSize, "10");
-            using TemporaryTable temporaryTable = await NewTemporaryTableAsync(Statement, $"{columnName} INT");
-            await ValidateInsertSelectDeleteSingleValueAsync(temporaryTable.TableName, columnName, 1);
         }
     }
 }

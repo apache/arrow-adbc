@@ -43,7 +43,7 @@ namespace Apache.Arrow.Adbc.Tests
         public static void CanClientExecuteUpdate(Adbc.Client.AdbcConnection adbcConnection,
             TestConfiguration testConfiguration,
             string[] queries,
-            List<int> expectedResults)
+            IReadOnlyList<int> expectedResults)
         {
             if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
             if (testConfiguration == null) throw new ArgumentNullException(nameof(testConfiguration));
