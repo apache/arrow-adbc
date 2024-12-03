@@ -149,6 +149,55 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             Assert.Equal(recurseCount, lineCount);
         }
 
+        [Fact]
+        internal void CanAddTraceParent()
+        {
+            MemoryStream stream = _stream;
+            stream.SetLength(0);
+            using TracerProvider provider1 = Sdk.CreateTracerProviderBuilder()
+                .AddSource(_activitySourceName)
+                .AddTestMemoryExporter(_stream)
+                .Build();
+
+            var testClass = new TraceInheritor(_activitySourceName);
+            testClass.MethodWithNoInstrumentation();
+            Assert.Equal(0, stream.Length);
+
+            const string eventNameWithoutParent = "eventNameWithoutParent";
+            testClass.MethodWithActivity(eventNameWithoutParent);
+            Assert.True(stream.Length > 0);
+            long currLength = stream.Length;
+
+            const string traceParent = "00-3236da27af79882bd317c4d1c3776982-a3cc9bd52ccd58e6-01";
+            testClass.SetTraceParent(traceParent);
+            const string eventNameWithParent = "eventNameWithParent";
+            testClass.MethodWithActivity(eventNameWithParent);
+            Assert.True(stream.Length > 0);
+
+            stream.Seek(0, SeekOrigin.Begin);
+            StreamReader reader = new(stream);
+
+            int lineCount = 0;
+            string? text = reader.ReadLine();
+            while (text != null)
+            {
+                lineCount++;
+                SerializableActivity? clientActivity = JsonSerializer.Deserialize<SerializableActivity>(text);
+                Assert.NotNull(clientActivity);
+                if (clientActivity.OperationName.Contains(eventNameWithoutParent))
+                {
+                    Assert.Null(clientActivity.ParentId);
+                }
+                else if (clientActivity.OperationName.Contains(eventNameWithParent))
+                {
+                    Assert.Equal(traceParent, clientActivity.ParentId);
+                }
+
+                text = reader.ReadLine();
+            }
+
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
@@ -183,7 +232,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 
             internal void MethodWithActivity(string activityName)
             {
-                TraceActivity(_ => { }, activityName);
+                TraceActivity(activity => { Console.WriteLine(activity?.OperationName); }, activityName);
             }
 
             internal void MethodWithActivityRecursive(string activityName, int recurseCount)
@@ -201,6 +250,11 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             internal void MethodWithEvent(string eventName)
             {
                 TraceActivity((acitivity) => acitivity?.AddEvent(new ActivityEvent(eventName)));
+            }
+
+            internal void SetTraceParent(string? traceParent)
+            {
+                TraceParent = traceParent;
             }
         }
 
