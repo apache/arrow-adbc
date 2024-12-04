@@ -225,7 +225,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             }
         }
 
-
         private Adbc.Client.AdbcConnection GetAdbcConnection(bool includeTableConstraints = true)
         {
             return new Adbc.Client.AdbcConnection(
