@@ -34,6 +34,7 @@ namespace Apache.Arrow.Adbc.Client
     {
         private AdbcDatabase? adbcDatabase;
         private Adbc.AdbcConnection? adbcConnectionInternal;
+        private TimeoutValue? connectionTimeoutValue;
 
         private readonly Dictionary<string, string> adbcConnectionParameters;
         private readonly Dictionary<string, string> adbcConnectionOptions;
@@ -105,7 +106,10 @@ namespace Apache.Arrow.Adbc.Client
         /// Creates a new <see cref="AdbcCommand"/>.
         /// </summary>
         /// <returns><see cref="AdbcCommand"/></returns>
-        public new AdbcCommand CreateCommand() => (AdbcCommand)CreateDbCommand();
+        public new AdbcCommand CreateCommand()
+        {
+            return (AdbcCommand)CreateDbCommand();
+        }
 
         /// <summary>
         /// Gets or sets the <see cref="AdbcDriver"/> associated with this
@@ -122,6 +126,8 @@ namespace Apache.Arrow.Adbc.Client
             return this.adbcConnectionInternal!.CreateStatement();
         }
 
+        internal TimeoutValue? CommandTimeoutValue { get; private set; }
+
 #if NET5_0_OR_GREATER
         [AllowNull]
 #endif
@@ -137,11 +143,35 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         public StructBehavior StructBehavior { get; set; } = StructBehavior.JsonString;
 
+        public override int ConnectionTimeout
+        {
+            get
+            {
+                if (connectionTimeoutValue != null)
+                    return connectionTimeoutValue.Value;
+                else
+                    return base.ConnectionTimeout;
+            }
+        }
+
         protected override DbCommand CreateDbCommand()
         {
             EnsureConnectionOpen();
 
-            return new AdbcCommand(this);
+            return GetAdbcCommand();
+        }
+
+        private AdbcCommand GetAdbcCommand()
+        {
+            AdbcCommand cmd = new AdbcCommand(this);
+
+            if (CommandTimeoutValue != null)
+            {
+                cmd.AdbcCommandTimeoutProperty = CommandTimeoutValue.DriverPropertyName!;
+                cmd.CommandTimeout = CommandTimeoutValue.Value;
+            }
+
+            return cmd;
         }
 
         /// <summary>
@@ -237,7 +267,25 @@ namespace Apache.Arrow.Adbc.Client
                 object? builderValue = builder[key];
                 if (builderValue != null)
                 {
-                    this.adbcConnectionParameters.Add(key, Convert.ToString(builderValue)!);
+                    string paramValue = Convert.ToString(builderValue)!;
+
+                    this.adbcConnectionParameters.Add(key, paramValue);
+
+                    switch (key)
+                    {
+                        case ConnectionStringKeywords.DecimalBehavior:
+                            this.DecimalBehavior = (DecimalBehavior)Enum.Parse(typeof(DecimalBehavior), paramValue);
+                            break;
+                        case ConnectionStringKeywords.StructBehavior:
+                            this.StructBehavior = (StructBehavior)Enum.Parse(typeof(StructBehavior), paramValue);
+                            break;
+                        case ConnectionStringKeywords.CommandTimeout:
+                            CommandTimeoutValue = ConnectionStringParser.ParseTimeoutValue(paramValue);
+                            break;
+                        case ConnectionStringKeywords.ConnectionTimeout:
+                            this.connectionTimeoutValue = ConnectionStringParser.ParseTimeoutValue(paramValue);
+                            break;
+                    }
                 }
             }
         }
