@@ -21,11 +21,12 @@ using System.Data.SqlTypes;
 using System.Text;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
-    public class SparkTestEnvironment : TestEnvironment<SparkTestConfiguration>
+    public class SparkTestEnvironment : HiveServer2TestEnvironment<SparkTestConfiguration>
     {
         public class Factory : Factory<SparkTestEnvironment>
         {
@@ -48,12 +49,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             return string.Format("CREATE TABLE {0} ({1})", tableName, columns);
         }
-
-        public string? GetValueForProtocolVersion(string? hiveValue, string? databrickValue) =>
-            ServerType != SparkServerType.Databricks && ((HiveServer2Connection)Connection).DataTypeConversion.HasFlag(DataTypeConversion.None) ? hiveValue : databrickValue;
-
-        public object? GetValueForProtocolVersion(object? hiveValue, object? databrickValue) =>
-            ServerType != SparkServerType.Databricks && ((HiveServer2Connection)Connection).DataTypeConversion.HasFlag(DataTypeConversion.None) ? hiveValue : databrickValue;
 
         public override string Delimiter => "`";
 
@@ -122,8 +117,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         internal SparkServerType ServerType => ((SparkConnection)Connection).ServerType;
-
-        internal DataTypeConversion DataTypeConversion => ((SparkConnection)Connection).DataTypeConversion;
 
         public override string VendorVersion => ((HiveServer2Connection)Connection).VendorVersion;
 

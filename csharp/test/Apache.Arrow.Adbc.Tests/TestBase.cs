@@ -376,6 +376,16 @@ namespace Apache.Arrow.Adbc.Tests
             await SelectAndValidateValuesAsync(selectStatement, [value], expectedLength);
         }
 
+        private static T? ArrowArrayAs<T>(IArrowArray arrowArray)
+            where T : IArrowArray
+        {
+            if (arrowArray is T t)
+            {
+                return t;
+            }
+            return default;
+        }
+
         /// <summary>
         /// Selects a single value and validates it equality with expected value and number of results.
         /// </summary>
@@ -391,8 +401,23 @@ namespace Apache.Arrow.Adbc.Tests
             int actualLength = 0;
             using (IArrowArrayStream stream = queryResult.Stream ?? throw new InvalidOperationException("stream is null"))
             {
+                Dictionary<ArrowTypeId, Func<IArrowArray, int, object?>> valueGetters = new()
+                {
+                    { ArrowTypeId.Decimal128, (a, i) => ArrowArrayAs<Decimal128Array>(a)?.GetSqlDecimal(i) },
+                    { ArrowTypeId.Double, (a, i) => ArrowArrayAs<DoubleArray>(a)?.GetValue(i) },
+                    { ArrowTypeId.Float, (a, i) => ArrowArrayAs<FloatArray>(a)?.GetValue(i) },
+                    { ArrowTypeId.Int64, (a, i) => ArrowArrayAs<Int64Array>(a)?.GetValue(i) },
+                    { ArrowTypeId.Int32, (a, i) => ArrowArrayAs<Int32Array>(a)?.GetValue(i) },
+                    { ArrowTypeId.Int16, (a, i) => ArrowArrayAs<Int16Array>(a)?.GetValue(i) },
+                    { ArrowTypeId.Int8, (a, i) => ArrowArrayAs<Int8Array>(a)?.GetValue(i) },
+                    { ArrowTypeId.String, (a, i) => ArrowArrayAs<StringArray>(a)?.GetString(i) },
+                    { ArrowTypeId.Timestamp, (a, i) => ArrowArrayAs<TimestampArray>(a)?.GetTimestamp(i) },
+                    { ArrowTypeId.Date32, (a, i) => ArrowArrayAs<Date32Array>(a)?.GetDateTimeOffset(i) },
+                    { ArrowTypeId.Boolean, (a, i) => ArrowArrayAs<BooleanArray>(a)?.GetValue(i) },
+                };
                 // Assume first column
                 Field field = stream.Schema.GetFieldByIndex(0);
+                Int32Array? indexArray = null;
                 while (true)
                 {
                     using (RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync())
@@ -400,62 +425,6 @@ namespace Apache.Arrow.Adbc.Tests
                         if (nextBatch == null) { break; }
                         switch (field.DataType)
                         {
-                            case Decimal128Type:
-                                Decimal128Array decimalArray = (Decimal128Array)nextBatch.Column(0);
-                                actualLength += decimalArray.Length;
-                                ValidateValue((i) => values?[i], decimalArray.Length, (i) => decimalArray.GetSqlDecimal(i));
-                                break;
-                            case DoubleType:
-                                DoubleArray doubleArray = (DoubleArray)nextBatch.Column(0);
-                                actualLength += doubleArray.Length;
-                                ValidateValue((i) => values?[i], doubleArray.Length, (i) => doubleArray.GetValue(i));
-                                break;
-                            case FloatType:
-                                FloatArray floatArray = (FloatArray)nextBatch.Column(0);
-                                actualLength += floatArray.Length;
-                                ValidateValue((i) => values?[i], floatArray.Length, (i) => floatArray.GetValue(i));
-                                break;
-                            case Int64Type:
-                                Int64Array int64Array = (Int64Array)nextBatch.Column(0);
-                                actualLength += int64Array.Length;
-                                ValidateValue((i) => values?[i], int64Array.Length, (i) => int64Array.GetValue(i));
-                                break;
-                            case Int32Type:
-                                Int32Array intArray = (Int32Array)nextBatch.Column(0);
-                                actualLength += intArray.Length;
-                                ValidateValue((i) => values?[i], intArray.Length, (i) => intArray.GetValue(i));
-                                break;
-                            case Int16Type:
-                                Int16Array shortArray = (Int16Array)nextBatch.Column(0);
-                                actualLength += shortArray.Length;
-                                ValidateValue((i) => values?[i], shortArray.Length, (i) => shortArray.GetValue(i));
-                                break;
-                            case Int8Type:
-                                Int8Array tinyIntArray = (Int8Array)nextBatch.Column(0);
-                                actualLength += tinyIntArray.Length;
-                                ValidateValue((i) => values?[i], tinyIntArray.Length, (i) => tinyIntArray.GetValue(i));
-                                break;
-                            case StringType:
-                                StringArray stringArray = (StringArray)nextBatch.Column(0);
-                                actualLength += stringArray.Length;
-                                ValidateValue((i) => values?[i], stringArray.Length, (i) => stringArray.GetString(i));
-                                break;
-                            case TimestampType:
-                                TimestampArray timestampArray = (TimestampArray)nextBatch.Column(0);
-                                actualLength += timestampArray.Length;
-                                ValidateValue((i) => values?[i], timestampArray.Length, (i) => timestampArray.GetTimestamp(i));
-                                break;
-                            case Date32Type:
-                                Date32Array date32Array = (Date32Array)nextBatch.Column(0);
-                                actualLength += date32Array.Length;
-                                ValidateValue((i) => values?[i], date32Array.Length, (i) => date32Array.GetDateTimeOffset(i));
-                                break;
-                            case BooleanType:
-                                BooleanArray booleanArray = (BooleanArray)nextBatch.Column(0);
-                                Int32Array? indexArray = hasIndexColumn ? (Int32Array)nextBatch.Column(1) : null;
-                                actualLength += booleanArray.Length;
-                                ValidateValue((i) => values?[i], booleanArray.Length, (i) => booleanArray.GetValue(i), indexArray);
-                                break;
                             case BinaryType:
                                 BinaryArray binaryArray = (BinaryArray)nextBatch.Column(0);
                                 actualLength += binaryArray.Length;
@@ -464,10 +433,20 @@ namespace Apache.Arrow.Adbc.Tests
                             case NullType:
                                 NullArray nullArray = (NullArray)nextBatch.Column(0);
                                 actualLength += nullArray.Length;
-                                ValidateValue((i) => values?[i] == null, nullArray.Length, (i) => nullArray.IsNull(i));
+                                ValidateValue(nullArray.Length, (i) => values?[i] == null, (i) => nullArray.IsNull(i));
                                 break;
                             default:
-                                Assert.Fail($"Unhandled datatype {field.DataType}");
+                                if (valueGetters.TryGetValue(field.DataType.TypeId, out Func<IArrowArray, int, object?>? valueGetter))
+                                {
+                                    IArrowArray array = nextBatch.Column(0);
+                                    actualLength += array.Length;
+                                    indexArray = hasIndexColumn ? (Int32Array)nextBatch.Column(1) : null;
+                                    ValidateValue(array.Length, (i) => values?[i], (i) => valueGetter(array, i), indexArray, array.IsNull);
+                                }
+                                else
+                                {
+                                    Assert.Fail($"Unhandled datatype {field.DataType}");
+                                }
                                 break;
 
                         }
@@ -497,15 +476,20 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Validates a single values for all results (in the batch).
         /// </summary>
-        /// <param name="value">The value to validate.</param>
         /// <param name="length">The length of the current batch/array.</param>
+        /// <param name="value">The value to validate.</param>
         /// <param name="getter">The getter function to retrieve the actual value.</param>
-        private static void ValidateValue(Func<int, object?> value, int length, Func<int, object?> getter, Int32Array? indexColumn = null)
+        /// <param name="indexColumn"></param>
+        private static void ValidateValue(int length, Func<int, object?> value, Func<int, object?> getter, Int32Array? indexColumn = null, Func<int, bool>? isNullEvaluator = default)
         {
             for (int i = 0; i < length; i++)
             {
                 int valueIndex = indexColumn?.GetValue(i) ?? i;
                 object? expected = value(valueIndex);
+                if (isNullEvaluator != null)
+                {
+                    Assert.Equal(expected == null, isNullEvaluator(i));
+                }
                 object? actual = getter(i);
                 Assert.Equal<object>(expected, actual);
             }

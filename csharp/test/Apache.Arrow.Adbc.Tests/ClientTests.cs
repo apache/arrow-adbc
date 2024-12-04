@@ -44,7 +44,7 @@ namespace Apache.Arrow.Adbc.Tests
             Adbc.Client.AdbcConnection adbcConnection,
             TestConfiguration testConfiguration,
             string[] queries,
-            List<int> expectedResults,
+            IReadOnlyList<int> expectedResults,
             string? environmentName = null)
         {
             if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
