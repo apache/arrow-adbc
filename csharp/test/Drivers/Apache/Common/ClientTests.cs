@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
@@ -202,6 +203,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 Assert.Equal(16, columns.Columns.Count);
             }
         }
+
+        [SkippableFact]
+        public void VerifyTimeoutsSet()
+        {
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
+            {
+                int timeout = 99;
+                using AdbcCommand cmd = adbcConnection.CreateCommand();
+
+                // setting the timout before the property value
+                Assert.Throws<InvalidOperationException>(() =>
+                {
+                    cmd.CommandTimeout = 1;
+                });
+
+                cmd.AdbcCommandTimeoutProperty = "adbc.apache.statement.query_timeout_s";
+                cmd.CommandTimeout = timeout;
+
+                Assert.True(cmd.CommandTimeout == timeout, $"ConnectionTimeout is not set to {timeout}");
+            }
+        }
+
 
         private Adbc.Client.AdbcConnection GetAdbcConnection(bool includeTableConstraints = true)
         {
