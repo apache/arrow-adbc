@@ -16,10 +16,8 @@
  */
 
 using System;
-using System.IO;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
-using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc
 {
@@ -155,108 +153,6 @@ namespace Apache.Arrow.Adbc
 
         public virtual void Dispose()
         {
-        }
-
-        /// <summary>
-        /// Gets a value from the Arrow array at the specified index,
-        /// using the Field metadata for information.
-        /// </summary>
-        /// <param name="arrowArray">
-        /// The Arrow array.
-        /// </param>
-        /// <param name="field">
-        /// The <see cref="Field"/> from the <see cref="Schema"/> that can
-        /// be used for metadata inspection.
-        /// </param>
-        /// <param name="index">
-        /// The index in the array to get the value from.
-        /// </param>
-        public virtual object? GetValue(IArrowArray arrowArray, int index)
-        {
-            if (arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
-            if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
-
-            switch (arrowArray)
-            {
-                case BooleanArray booleanArray:
-                    return booleanArray.GetValue(index);
-                case Date32Array date32Array:
-                    return date32Array.GetDateTime(index);
-                case Date64Array date64Array:
-                    return date64Array.GetDateTime(index);
-                case Decimal128Array decimal128Array:
-                    return decimal128Array.GetSqlDecimal(index);
-                case Decimal256Array decimal256Array:
-                    return decimal256Array.GetString(index);
-                case DoubleArray doubleArray:
-                    return doubleArray.GetValue(index);
-                case FloatArray floatArray:
-                    return floatArray.GetValue(index);
-#if NET5_0_OR_GREATER
-                case PrimitiveArray<Half> halfFloatArray:
-                    return halfFloatArray.GetValue(index);
-#endif
-                case Int8Array int8Array:
-                    return int8Array.GetValue(index);
-                case Int16Array int16Array:
-                    return int16Array.GetValue(index);
-                case Int32Array int32Array:
-                    return int32Array.GetValue(index);
-                case Int64Array int64Array:
-                    return int64Array.GetValue(index);
-                case StringArray stringArray:
-                    return stringArray.GetString(index);
-#if NET6_0_OR_GREATER
-                case Time32Array time32Array:
-                    return time32Array.GetTime(index);
-                case Time64Array time64Array:
-                    return time64Array.GetTime(index);
-#else
-                case Time32Array time32Array:
-                    int? time32 = time32Array.GetValue(index);
-                    if (time32 == null) { return null; }
-                    return ((Time32Type)time32Array.Data.DataType).Unit switch
-                    {
-                        TimeUnit.Second => TimeSpan.FromSeconds(time32.Value),
-                        TimeUnit.Millisecond => TimeSpan.FromMilliseconds(time32.Value),
-                        _ => throw new InvalidDataException("Unsupported time unit for Time32Type")
-                    };
-                case Time64Array time64Array:
-                    long? time64 = time64Array.GetValue(index);
-                    if (time64 == null) { return null; }
-                    return ((Time64Type)time64Array.Data.DataType).Unit switch
-                    {
-                        TimeUnit.Microsecond => TimeSpan.FromTicks(time64.Value * 10),
-                        TimeUnit.Nanosecond => TimeSpan.FromTicks(time64.Value / 100),
-                        _ => throw new InvalidDataException("Unsupported time unit for Time64Type")
-                    };
-#endif
-                case TimestampArray timestampArray:
-                    return timestampArray.GetTimestamp(index);
-                case UInt8Array uInt8Array:
-                    return uInt8Array.GetValue(index);
-                case UInt16Array uInt16Array:
-                    return uInt16Array.GetValue(index);
-                case UInt32Array uInt32Array:
-                    return uInt32Array.GetValue(index);
-                case UInt64Array uInt64Array:
-                    return uInt64Array.GetValue(index);
-
-                case BinaryArray binaryArray:
-                    if (!binaryArray.IsNull(index))
-                        return binaryArray.GetBytes(index).ToArray();
-
-                    return null;
-
-                    // not covered:
-                    // -- struct array
-                    // -- dictionary array
-                    // -- fixed size binary
-                    // -- list array
-                    // -- union array
-            }
-
-            return null;
         }
 
         /// <summary>

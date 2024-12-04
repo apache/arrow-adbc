@@ -15,18 +15,15 @@
 * limitations under the License.
 */
 
-using System.IO;
-
-namespace Apache.Arrow.Adbc.Drivers.Interop.Snowflake
+namespace Apache.Arrow.Adbc.Drivers.Interop.FlightSql
 {
     /// <summary>
-    /// Lightweight class for loading the Snowflake Go driver to .NET.
+    /// Lightweight class for loading the Flight SQL Go driver to .NET.
     /// </summary>
-    public class SnowflakeDriverLoader : AdbcDriverLoader
+    public class FlightSqlDriverLoader : AdbcDriverLoader
     {
-        public SnowflakeDriverLoader() : base("libadbc_driver_snowflake", "SnowflakeDriverInit")
+        public FlightSqlDriverLoader() : base("libadbc_driver_flightsql", "FlightSqlDriverInit")
         {
-
         }
 
         /// <summary>
@@ -36,7 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Interop.Snowflake
         /// <exception cref="FileNotFoundException"></exception>
         public static AdbcDriver LoadDriver()
         {
-            return new SnowflakeDriverLoader().FindAndLoadDriver();
+            return new FlightSqlDriverLoader().FindAndLoadDriver();
         }
     }
 }

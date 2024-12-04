@@ -132,6 +132,11 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         public DecimalBehavior DecimalBehavior { get; set; }
 
+        /// <summary>
+        /// Indicates how structs should be treated.
+        /// </summary>
+        public StructBehavior StructBehavior { get; set; } = StructBehavior.JsonString;
+
         protected override DbCommand CreateDbCommand()
         {
             EnsureConnectionOpen();

@@ -102,5 +102,18 @@ namespace Apache.Arrow.Adbc.Tests
 
             return testConfiguration;
         }
+
+        /// <summary>
+        /// Formats a message to include a specific environment (if present).
+        /// </summary>
+        /// <param name="message">The message to format.</param>
+        /// <param name="environmentName">The name of the environment.</param>
+        public static string FormatMessage(string message, string? environmentName)
+        {
+            if (!string.IsNullOrEmpty(environmentName))
+                return $"{message} in the [{environmentName}] environment";
+
+            return message;
+        }
     }
 }

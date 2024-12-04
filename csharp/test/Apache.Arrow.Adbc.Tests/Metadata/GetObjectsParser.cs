@@ -30,10 +30,9 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         /// Parses a <see cref="RecordBatch"/> from a GetObjects call for the <see cref="AdbcCatalog"/>.
         /// </summary>
         /// <param name="recordBatch"></param>
-        /// <param name="databaseName"></param>
         /// <param name="schemaName"></param>
         /// <returns></returns>
-        public static List<AdbcCatalog> ParseCatalog(RecordBatch recordBatch, string? databaseName, string? schemaName)
+        public static List<AdbcCatalog> ParseCatalog(RecordBatch recordBatch, string? schemaName)
         {
             StringArray catalogNameArray = (StringArray)recordBatch.Column("catalog_name");
             ListArray dbSchemaArray = (ListArray)recordBatch.Column("catalog_db_schemas");

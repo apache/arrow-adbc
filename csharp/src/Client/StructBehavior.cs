@@ -15,28 +15,18 @@
 * limitations under the License.
 */
 
-using System.IO;
-
-namespace Apache.Arrow.Adbc.Drivers.Interop.Snowflake
+namespace Apache.Arrow.Adbc.Client
 {
-    /// <summary>
-    /// Lightweight class for loading the Snowflake Go driver to .NET.
-    /// </summary>
-    public class SnowflakeDriverLoader : AdbcDriverLoader
+    public enum StructBehavior
     {
-        public SnowflakeDriverLoader() : base("libadbc_driver_snowflake", "SnowflakeDriverInit")
-        {
-
-        }
+        /// <summary>
+        /// Serialized as a JSON string
+        /// </summary>
+        JsonString,
 
         /// <summary>
-        /// Loads the Snowflake Go driver from the current directory using the default name and entry point.
+        /// Leave as native StructArray
         /// </summary>
-        /// <returns>An <see cref="AdbcDriver"/> based on the Snowflake Go driver.</returns>
-        /// <exception cref="FileNotFoundException"></exception>
-        public static AdbcDriver LoadDriver()
-        {
-            return new SnowflakeDriverLoader().FindAndLoadDriver();
-        }
+        Strict
     }
 }
