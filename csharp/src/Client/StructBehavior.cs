@@ -15,24 +15,18 @@
 * limitations under the License.
 */
 
-using System;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-
-namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
+namespace Apache.Arrow.Adbc.Client
 {
-    internal class ImpalaStatement : HiveServer2Statement
+    public enum StructBehavior
     {
-        internal ImpalaStatement(ImpalaConnection connection)
-            : base(connection)
-        {
-        }
+        /// <summary>
+        /// Serialized as a JSON string
+        /// </summary>
+        JsonString,
 
         /// <summary>
-        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
+        /// Leave as native StructArray
         /// </summary>
-        public new sealed class Options : HiveServer2Statement.Options
-        {
-            // options specific to Impala go here
-        }
+        Strict
     }
 }

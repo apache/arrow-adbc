@@ -80,6 +80,7 @@ namespace Apache.Arrow.Adbc.Client
             this._adbcStatement = adbcStatement;
             this.DbConnection = adbcConnection;
             this.DecimalBehavior = adbcConnection.DecimalBehavior;
+            this.StructBehavior = adbcConnection.StructBehavior;
         }
 
         /// <summary>
@@ -89,6 +90,8 @@ namespace Apache.Arrow.Adbc.Client
         public AdbcStatement AdbcStatement => _disposed ? throw new ObjectDisposedException(nameof(AdbcCommand)) : this._adbcStatement;
 
         public DecimalBehavior DecimalBehavior { get; set; }
+
+        public StructBehavior StructBehavior { get; set; }
 
         public override string CommandText
         {
@@ -204,7 +207,7 @@ namespace Apache.Arrow.Adbc.Client
                 case CommandBehavior.SchemaOnly:   // The schema is not known until a read happens
                 case CommandBehavior.Default:
                     QueryResult result = this.ExecuteQuery();
-                    return new AdbcDataReader(this, result, this.DecimalBehavior, closeConnection);
+                    return new AdbcDataReader(this, result, this.DecimalBehavior, this.StructBehavior, closeConnection);
 
                 default:
                     throw new InvalidOperationException($"{behavior} is not supported with this provider");

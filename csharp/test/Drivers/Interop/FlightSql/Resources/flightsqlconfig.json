@@ -1,0 +1,54 @@
+{
+    "driverPath": "",
+    "driverEntryPoint": "",
+    "datasourceKind": "",
+    "testEnvironments": [ "","" ],
+    "environments": {
+        "<env1>": {
+            "uri": "",
+            "sslSkipVerify": true,
+            "headers": {
+                "routing_tag": "",
+                "routing_queue": ""
+            },
+            "supportsWriteUpdate": true,
+            "supportsCatalogs": true,
+            "type": "DuckDB",
+            "tableTypes": [ ],
+            "sqlFile": "<path>.sql",
+            "metadata": {
+                "catalog": "",
+                "schema": "",
+                "table": "",
+                "expectedColumnCount": 0
+            },
+            "authorization": "",
+            "authority": "",
+            "query": "",
+            "expectedResults": 0
+        },
+        "<env2>": {
+            "uri": "",
+            "sslSkipVerify": false,
+            "headers": {
+                "routing_tag": "",
+                "routing_queue": ""
+            },
+            "supportsWriteUpdate": false,
+            "supportsCatalogs": false,
+            "type": "Dremio",
+            "tableTypes": [],
+            "sqlFile": "<path>.sql",
+            "metadata": {
+                "catalog": "",
+                "schema": "",
+                "table": "",
+                "expectedColumnCount": 0
+            },
+            "authorization": "",
+            "authority": "",
+            "query": "",
+            "expectedResults": 0
+        }
+    }
+}

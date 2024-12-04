@@ -26,10 +26,19 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Client
 {
+    /// <summary>
+    /// Invoked when a value is read from an Arrow array.
+    /// </summary>
+    /// <param name="arrowArray">The Arrow array.</param>
+    /// <param name="index">The item index.</param>
+    /// <returns>The value at the index.</returns>
+    public delegate object GetValueEventHandler(IArrowArray arrowArray, int index);
+
     /// <summary>
     /// Represents a DbDataReader over Arrow record batches
     /// </summary>
@@ -44,7 +53,15 @@ namespace Apache.Arrow.Adbc.Client
         private bool isClosed;
         private int recordsAffected = -1;
 
-        internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior, bool closeConnection)
+        /// <summary>
+        /// An event that is raised when a value is read from an IArrowArray.
+        /// </summary>
+        /// <remarks>
+        /// Callers may opt to provide overrides for parsing values.
+        /// </remarks>
+        public event GetValueEventHandler? OnGetValue;
+
+        internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior, StructBehavior structBehavior, bool closeConnection)
         {
             if (adbcCommand == null)
                 throw new ArgumentNullException(nameof(adbcCommand));
@@ -65,11 +82,12 @@ namespace Apache.Arrow.Adbc.Client
             this.closeConnection = closeConnection;
             this.isClosed = false;
             this.DecimalBehavior = decimalBehavior;
+            this.StructBehavior = structBehavior;
         }
 
         public override object this[int ordinal] => GetValue(ordinal);
 
-        public override object this[string name] => GetValue(this.RecordBatch.Column(name), GetOrdinal(name)) ?? DBNull.Value;
+        public override object this[string name] => GetValue(this.RecordBatch.Column(name)) ?? DBNull.Value;
 
         public override int Depth => 0;
 
@@ -85,6 +103,8 @@ namespace Apache.Arrow.Adbc.Client
         public Schema ArrowSchema => this.schema;
 
         public DecimalBehavior DecimalBehavior { get; set; }
+
+        public StructBehavior StructBehavior { get; set; }
 
         public override int RecordsAffected => this.recordsAffected;
 
@@ -230,7 +250,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override object GetValue(int ordinal)
         {
-            object? value = GetValue(this.RecordBatch.Column(ordinal), ordinal);
+            object? value = GetValue(this.RecordBatch.Column(ordinal));
 
             if (value == null)
                 return DBNull.Value;
@@ -301,7 +321,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override DataTable? GetSchemaTable()
         {
-            return SchemaConverter.ConvertArrowSchema(this.schema, this.adbcCommand.AdbcStatement, this.DecimalBehavior);
+            return SchemaConverter.ConvertArrowSchema(this.schema, this.adbcCommand.AdbcStatement, this.DecimalBehavior, this.StructBehavior);
         }
 
 #if NET5_0_OR_GREATER
@@ -321,7 +341,7 @@ namespace Apache.Arrow.Adbc.Client
 
             foreach (Field f in this.schema.FieldsList)
             {
-                Type t = SchemaConverter.ConvertArrowType(f, this.DecimalBehavior);
+                Type t = SchemaConverter.ConvertArrowType(f, this.DecimalBehavior, this.StructBehavior);
 
                 if (f.HasMetadata &&
                     f.Metadata.ContainsKey("precision") &&
@@ -341,14 +361,19 @@ namespace Apache.Arrow.Adbc.Client
         }
 
         /// <summary>
-        /// Gets the value from an IArrowArray at the current row index
+        /// Gets the value from an IArrowArray at the current row index.
         /// </summary>
         /// <param name="arrowArray"></param>
         /// <returns></returns>
-        public object? GetValue(IArrowArray arrowArray, int ordinal)
+        private object? GetValue(IArrowArray arrowArray)
         {
-            Field field = this.schema.GetFieldByIndex(ordinal);
-            return this.adbcCommand.AdbcStatement.GetValue(arrowArray, this.currentRowInRecordBatch);
+            // if the OnGetValue event is set, call it
+            object? result = OnGetValue?.Invoke(arrowArray, this.currentRowInRecordBatch);
+
+            // if the value is null, try to get the value from the ArrowArray
+            result = result ?? arrowArray.ValueAt(this.currentRowInRecordBatch);
+
+            return result;
         }
 
         /// <summary>

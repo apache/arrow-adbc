@@ -15,24 +15,25 @@
 * limitations under the License.
 */
 
-using System;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-
-namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
+namespace Apache.Arrow.Adbc.Drivers.Interop.FlightSql
 {
-    internal class ImpalaStatement : HiveServer2Statement
+    /// <summary>
+    /// Lightweight class for loading the Flight SQL Go driver to .NET.
+    /// </summary>
+    public class FlightSqlDriverLoader : AdbcDriverLoader
     {
-        internal ImpalaStatement(ImpalaConnection connection)
-            : base(connection)
+        public FlightSqlDriverLoader() : base("libadbc_driver_flightsql", "FlightSqlDriverInit")
         {
         }
 
         /// <summary>
-        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
+        /// Loads the Snowflake Go driver from the current directory using the default name and entry point.
         /// </summary>
-        public new sealed class Options : HiveServer2Statement.Options
+        /// <returns>An <see cref="AdbcDriver"/> based on the Snowflake Go driver.</returns>
+        /// <exception cref="FileNotFoundException"></exception>
+        public static AdbcDriver LoadDriver()
         {
-            // options specific to Impala go here
+            return new FlightSqlDriverLoader().FindAndLoadDriver();
         }
     }
 }
