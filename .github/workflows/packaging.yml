@@ -568,7 +568,7 @@ jobs:
             is_pr: true
         include:
           - {arch: amd64, platform: linux/amd64}
-          - {arch: arm64v8, platform: linux/arm64}
+          - {arch: arm64v8, platform: linux/arm64/v8}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -599,11 +599,16 @@ jobs:
       - name: Build wheel
         env:
           ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
           pushd adbc
           docker compose run \
             -e SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION \
-            python-wheel-manylinux
+            python-wheel-manylinux-build
+
+          docker compose run \
+            -e SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION \
+            python-wheel-manylinux-relocate
           popd
 
       - name: Archive wheels
@@ -742,6 +747,7 @@ jobs:
           $PYTHON -m venv build-env
           source build-env/bin/activate
           ./ci/scripts/python_wheel_unix_build.sh $ARCH $(pwd) $(pwd)/build
+          ./ci/scripts/python_wheel_unix_relocate.sh $ARCH $(pwd) $(pwd)/build
           popd
 
       - name: Archive wheels
