@@ -120,24 +120,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
             Properties.TryGetValue(SparkParameters.TLSOptions, out string? tlsOptions);
             TlsOptions = TlsOptionsParser.Parse(tlsOptions);
-            Properties.TryGetValue(SparkParameters.HttpRequestTimeoutMilliseconds, out string? requestTimeoutMs);
-            if (requestTimeoutMs != null)
+            Properties.TryGetValue(SparkParameters.ConnectTimeoutMilliseconds, out string? connectTimeoutMs);
+            if (connectTimeoutMs != null)
             {
-                HttpRequestTimeout = int.TryParse(requestTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int requestTimeoutMsValue) && requestTimeoutMsValue > 0
-                    ? requestTimeoutMsValue
-                    : throw new ArgumentOutOfRangeException(SparkParameters.HttpRequestTimeoutMilliseconds, requestTimeoutMs, $"must be a value between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
+                ConnectTimeoutMilliseconds = int.TryParse(connectTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int connectTimeoutMsValue) && (connectTimeoutMsValue >= 0)
+                    ? connectTimeoutMsValue
+                    : throw new ArgumentOutOfRangeException(SparkParameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of 0 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
-        protected override Task<TTransport> CreateTransportAsync()
+        protected override TTransport CreateTransport()
         {
-            foreach (var property in Properties.Keys)
-            {
-                Trace.TraceError($"key = {property} value = {Properties[property]}");
-            }
-
             // Assumption: parameters have already been validated.
             Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
             Properties.TryGetValue(SparkParameters.Path, out string? path);
@@ -164,9 +159,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TConfiguration config = new();
             ThriftHttpTransport transport = new(httpClient, config)
             {
-                ConnectTimeout = HttpRequestTimeout,
+                // This value can only be set before the first call/request. So if a new value for query timeout
+                // is set, we won't be able to update the value. Setting to ~infinite and relying on cancellation token
+                // to ensure cancelled correctly.
+                ConnectTimeout = int.MaxValue,
             };
-            return Task.FromResult<TTransport>(transport);
+            return transport;
         }
 
         private HttpClientHandler NewHttpClientHandler()
@@ -211,11 +209,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport)
+        protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
         {
-            Trace.TraceError($"create protocol with {Properties.Count} properties.");
-
-            if (!transport.IsOpen) await transport.OpenAsync(CancellationToken.None);
+            if (!transport.IsOpen) await transport.OpenAsync(cancellationToken);
             return new TBinaryProtocol(transport);
         }
 
@@ -228,28 +224,29 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return req;
         }
 
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response) =>
-            FetchResultsAsync(response.OperationHandle);
-        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response) =>
-            FetchResultsAsync(response.OperationHandle);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response) =>
-            FetchResultsAsync(response.OperationHandle);
-        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response) =>
-            FetchResultsAsync(response.OperationHandle);
-        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response) =>
-            FetchResultsAsync(response.OperationHandle);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
 
         private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
         {
-            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault);
+            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
+
             TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
             if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {

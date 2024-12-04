@@ -30,7 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
-
+        private const int ConnectTimeoutMillisecondsDefault = 30000;
         private TTransport? _transport;
         private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
@@ -45,6 +45,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // https://learn.microsoft.com/en-us/dotnet/framework/performance/lazy-initialization#exceptions-in-lazy-objects
             _vendorVersion = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_VER), LazyThreadSafetyMode.PublicationOnly);
             _vendorName = new Lazy<string>(() => GetInfoTypeStringValue(TGetInfoType.CLI_DBMS_NAME), LazyThreadSafetyMode.PublicationOnly);
+
+            if (properties.TryGetValue(ApacheParameters.QueryTimeoutSeconds, out string? queryTimeoutSecondsSettingValue))
+            {
+                if (ApacheUtility.QueryTimeoutIsValid(ApacheParameters.QueryTimeoutSeconds, queryTimeoutSecondsSettingValue, out int queryTimeoutSeconds))
+                {
+                    QueryTimeoutSeconds = queryTimeoutSeconds;
+                }
+            }
         }
 
         internal TCLIService.Client Client
@@ -56,30 +64,48 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal string VendorName => _vendorName.Value;
 
+        protected internal int QueryTimeoutSeconds { get; set; } = ApacheUtility.QueryTimeoutSecondsDefault;
+
         internal IReadOnlyDictionary<string, string> Properties { get; }
 
         internal async Task OpenAsync()
         {
-            TTransport transport = await CreateTransportAsync();
-            TProtocol protocol = await CreateProtocolAsync(transport);
-            _transport = protocol.Transport;
-            _client = new TCLIService.Client(protocol);
-            TOpenSessionReq request = CreateSessionRequest();
-            TOpenSessionResp? session = await Client.OpenSession(request);
-
-            // Some responses don't raise an exception. Explicitly check the status.
-            if (session == null)
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
+            try
             {
-                throw new HiveServer2Exception("unable to open session. unknown error.");
-            }
-            else if (session.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-            {
-                throw new HiveServer2Exception(session.Status.ErrorMessage)
-                    .SetNativeError(session.Status.ErrorCode)
-                    .SetSqlState(session.Status.SqlState);
-            }
+                TTransport transport = CreateTransport();
+                TProtocol protocol = await CreateProtocolAsync(transport, cancellationToken);
+                _transport = protocol.Transport;
+                _client = new TCLIService.Client(protocol);
+                TOpenSessionReq request = CreateSessionRequest();
 
-            SessionHandle = session.SessionHandle;
+                TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
+
+                // Explicitly check the session status
+                if (session == null)
+                {
+                    throw new HiveServer2Exception("Unable to open session. Unknown error.");
+                }
+                else if (session.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+                {
+                    throw new HiveServer2Exception(session.Status.ErrorMessage)
+                        .SetNativeError(session.Status.ErrorCode)
+                        .SetSqlState(session.Status.SqlState);
+                }
+
+                SessionHandle = session.SessionHandle;
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The operation timed out while attempting to open a session. Please try increasing connect timeout.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                // Handle other exceptions if necessary
+                throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ex.Message}'", ex);
+            }
         }
 
         internal TSessionHandle? SessionHandle { get; private set; }
@@ -88,11 +114,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal HiveServer2TlsOption TlsOptions { get; set; } = HiveServer2TlsOption.Empty;
 
-        protected internal int HttpRequestTimeout { get; set; } = 30000;
+        protected internal int ConnectTimeoutMilliseconds { get; set; } = ConnectTimeoutMillisecondsDefault;
 
-        protected abstract Task<TTransport> CreateTransportAsync();
+        protected abstract TTransport CreateTransport();
 
-        protected abstract Task<TProtocol> CreateProtocolAsync(TTransport transport);
+        protected abstract Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default);
 
         protected abstract TOpenSessionReq CreateSessionRequest();
 
@@ -110,14 +136,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             throw new NotImplementedException();
         }
 
-        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds)
+        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
         {
             TGetOperationStatusResp? statusResponse = null;
             do
             {
-                if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds); }
+                if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds, cancellationToken); }
                 TGetOperationStatusReq request = new(operationHandle);
-                statusResponse = await client.GetOperationStatus(request);
+                statusResponse = await client.GetOperationStatus(request, cancellationToken);
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
         }
 
@@ -129,24 +155,38 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 InfoType = infoType,
             };
 
-            TGetInfoResp getInfoResp = Client.GetInfo(req).Result;
-            if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            try
             {
-                throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
-                    .SetNativeError(getInfoResp.Status.ErrorCode)
-                    .SetSqlState(getInfoResp.Status.SqlState);
-            }
+                TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
+                if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                {
+                    throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
+                        .SetNativeError(getInfoResp.Status.ErrorCode)
+                        .SetSqlState(getInfoResp.Status.SqlState);
+                }
 
-            return getInfoResp.InfoValue.StringValue;
+                return getInfoResp.InfoValue.StringValue;
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+            }
         }
 
         public override void Dispose()
         {
             if (_client != null)
             {
-                TCloseSessionReq r6 = new TCloseSessionReq(SessionHandle);
-                _client.CloseSession(r6).Wait();
-
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                TCloseSessionReq r6 = new(SessionHandle);
+                _client.CloseSession(r6, cancellationToken).Wait();
                 _transport?.Close();
                 _client.Dispose();
                 _transport = null;

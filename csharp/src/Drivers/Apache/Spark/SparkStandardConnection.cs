@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -85,7 +86,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         }
 
-        protected override Task<TTransport> CreateTransportAsync()
+        protected override TTransport CreateTransport()
         {
             // Assumption: hostName and port have already been validated.
             Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
@@ -94,14 +95,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // Delay the open connection until later.
             bool connectClient = false;
             ThriftSocketTransport transport = new(hostName!, int.Parse(port!), connectClient, config: new());
-            return Task.FromResult<TTransport>(transport);
+            return transport;
         }
 
-        protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport)
+        protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
         {
-            return await base.CreateProtocolAsync(transport);
+            return await base.CreateProtocolAsync(transport, cancellationToken);
 
-            //Trace.TraceError($"create protocol with {Properties.Count} properties.");
             //if (!transport.IsOpen) await transport.OpenAsync(CancellationToken.None);
             //return new TBinaryProtocol(transport);
         }

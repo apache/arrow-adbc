@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlTypes;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Apache.Arrow.Types;
@@ -32,10 +33,11 @@ namespace Apache.Arrow.Adbc.Client
     /// </summary>
     public sealed class AdbcCommand : DbCommand
     {
-        private AdbcStatement _adbcStatement;
+        private readonly AdbcStatement _adbcStatement;
         private AdbcParameterCollection? _dbParameterCollection;
         private int _timeout = 30;
         private bool _disposed;
+        private string? _commandTimeoutProperty;
 
         /// <summary>
         /// Overloaded. Initializes <see cref="AdbcCommand"/>.
@@ -117,10 +119,32 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
+
+        /// <summary>
+        /// Gets or sets the name of the command timeout property for the underlying ADBC driver.
+        /// </summary>
+        public string AdbcCommandTimeoutProperty
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_commandTimeoutProperty))
+                    throw new InvalidOperationException("CommandTimeoutProperty is not set.");
+
+                return _commandTimeoutProperty!;
+            }
+            set => _commandTimeoutProperty = value;
+        }
+
         public override int CommandTimeout
         {
             get => _timeout;
-            set => _timeout = value;
+            set
+            {
+                // ensures the property exists before setting the CommandTimeout value
+                string property = AdbcCommandTimeoutProperty;
+                _adbcStatement.SetOption(property, value.ToString(CultureInfo.InvariantCulture));
+                _timeout = value;
+            }
         }
 
         protected override DbParameterCollection DbParameterCollection

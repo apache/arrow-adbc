@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Text;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
@@ -102,15 +103,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             }
             if (!string.IsNullOrEmpty(testConfiguration.BatchSize))
             {
-                parameters.Add(HiveServer2Statement.Options.BatchSize, testConfiguration.BatchSize!);
+                parameters.Add(ApacheParameters.BatchSize, testConfiguration.BatchSize!);
             }
             if (!string.IsNullOrEmpty(testConfiguration.PollTimeMilliseconds))
             {
-                parameters.Add(HiveServer2Statement.Options.PollTimeMilliseconds, testConfiguration.PollTimeMilliseconds!);
+                parameters.Add(ApacheParameters.PollTimeMilliseconds, testConfiguration.PollTimeMilliseconds!);
             }
-            if (!string.IsNullOrEmpty(testConfiguration.HttpRequestTimeoutMilliseconds))
+            if (!string.IsNullOrEmpty(testConfiguration.ConnectTimeoutMilliseconds))
             {
-                parameters.Add(SparkParameters.HttpRequestTimeoutMilliseconds, testConfiguration.HttpRequestTimeoutMilliseconds!);
+                parameters.Add(SparkParameters.ConnectTimeoutMilliseconds, testConfiguration.ConnectTimeoutMilliseconds!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.QueryTimeoutSeconds))
+            {
+                parameters.Add(ApacheParameters.QueryTimeoutSeconds, testConfiguration.QueryTimeoutSeconds!);
             }
 
             return parameters;

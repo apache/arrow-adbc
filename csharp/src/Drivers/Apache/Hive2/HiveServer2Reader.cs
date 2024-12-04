@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
+using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
@@ -89,19 +90,32 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return null;
             }
 
-            // Await the fetch response
-            TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
-
-            int columnCount = GetColumnCount(response);
-            int rowCount = GetRowCount(response, columnCount);
-            if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
+            try
             {
-                // This is the last batch
-                _statement = null;
-            }
+                // Await the fetch response
+                TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
 
-            // Build the current batch, if any data exists
-            return rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
+                int columnCount = GetColumnCount(response);
+                int rowCount = GetRowCount(response, columnCount);
+                if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
+                {
+                    // This is the last batch
+                    _statement = null;
+                }
+
+                // Build the current batch, if any data exists
+                return rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+            }
         }
 
         private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)

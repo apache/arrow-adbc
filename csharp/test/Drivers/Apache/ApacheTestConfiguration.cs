@@ -45,11 +45,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
         [JsonPropertyName("batch_size"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string BatchSize { get; set; } = string.Empty;
 
-        [JsonPropertyName("polltime_milliseconds"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        [JsonPropertyName("polltime_ms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string PollTimeMilliseconds { get; set; } = string.Empty;
 
-        [JsonPropertyName("http_request_timeout_ms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string HttpRequestTimeoutMilliseconds { get; set; } = string.Empty;
+        [JsonPropertyName("connect_timeout_ms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string ConnectTimeoutMilliseconds { get; set; } = string.Empty;
+
+        [JsonPropertyName("query_timeout_s"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string QueryTimeoutSeconds { get; set; } = string.Empty;
 
         [JsonPropertyName("type"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Type { get; set; } = string.Empty;

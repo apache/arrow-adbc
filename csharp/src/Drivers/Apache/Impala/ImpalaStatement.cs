@@ -30,7 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
         /// </summary>
-        public new sealed class Options : HiveServer2Statement.Options
+        public sealed class Options : ApacheParameters
         {
             // options specific to Impala go here
         }

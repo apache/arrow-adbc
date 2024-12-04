@@ -15,6 +15,8 @@
 * limitations under the License.
 */
 
+using System;
+using Xunit;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark

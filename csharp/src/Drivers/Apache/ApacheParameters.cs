@@ -15,17 +15,15 @@
  * limitations under the License.
  */
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
+namespace Apache.Arrow.Adbc.Drivers.Apache
 {
-    public static class DataTypeConversionOptions
+    /// <summary>
+    /// Options common to all Apache drivers.
+    /// </summary>
+    public class ApacheParameters
     {
-        public const string None = "none";
-        public const string Scalar = "scalar";
-    }
-
-    public static class TlsOptions
-    {
-        public const string AllowSelfSigned = "allow_self_signed";
-        public const string AllowHostnameMismatch = "allow_hostname_mismatch";
+        public const string PollTimeMilliseconds = "adbc.apache.statement.polltime_ms";
+        public const string BatchSize = "adbc.apache.statement.batch_size";
+        public const string QueryTimeoutSeconds = "adbc.apache.statement.query_timeout_s";
     }
 }
