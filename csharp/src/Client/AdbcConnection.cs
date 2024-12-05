@@ -106,10 +106,7 @@ namespace Apache.Arrow.Adbc.Client
         /// Creates a new <see cref="AdbcCommand"/>.
         /// </summary>
         /// <returns><see cref="AdbcCommand"/></returns>
-        public new AdbcCommand CreateCommand()
-        {
-            return (AdbcCommand)CreateDbCommand();
-        }
+        public new AdbcCommand CreateCommand() => (AdbcCommand)CreateDbCommand();
 
         /// <summary>
         /// Gets or sets the <see cref="AdbcDriver"/> associated with this
@@ -158,11 +155,6 @@ namespace Apache.Arrow.Adbc.Client
         {
             EnsureConnectionOpen();
 
-            return GetAdbcCommand();
-        }
-
-        private AdbcCommand GetAdbcCommand()
-        {
             AdbcCommand cmd = new AdbcCommand(this);
 
             if (CommandTimeoutValue != null)
