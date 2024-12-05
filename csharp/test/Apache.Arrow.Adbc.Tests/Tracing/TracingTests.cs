@@ -299,7 +299,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 
             internal void MethodWithEvent(string eventName)
             {
-                TraceActivity((activity) => activity?.AddEvent(new ActivityEvent(eventName)));
+                TraceActivity((activity) => activity?.AddEvent(eventName));
             }
 
             internal void MethodWithAllProperties(
@@ -310,14 +310,13 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             {
                 TraceActivity(activity =>
                 {
-
-                    foreach (var tag in tags)
+                    foreach (KeyValuePair<string, object?> tag in tags)
                     {
-                        activity?.SetTag(tag.Key, tag.Value);
+                        activity?.AddTag(tag.Key, tag.Value);
                         activity?.AddBaggage(tag.Key, tag.Value?.ToString());
                     }
-                    activity?.AddEvent(new ActivityEvent(eventName, tags: new ActivityTagsCollection(tags)));
-                    activity?.AddLink(new ActivityLink(ActivityContext.Parse(traceParent, null), tags: new ActivityTagsCollection(tags)));
+                    activity?.AddEvent(eventName, tags);
+                    activity?.AddLink(traceParent, tags);
                 }, activityName: activityName, traceParent: traceParent);
             }
 

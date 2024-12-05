@@ -93,19 +93,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 // Await the fetch response
-                activity?.AddEvent(new ActivityEvent("fetchResults.start", tags: new([new("batches.batchSize", _statement.BatchSize)])));
+                activity?.AddEvent("fetchResults.start", [new("batches.batchSize", _statement.BatchSize)]);
 
                 TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
 
                 int columnCount = GetColumnCount(response);
                 int rowCount = GetRowCount(response, columnCount);
 
-                activity?.AddEvent(new ActivityEvent("fetchResults.end", tags: new(
+                activity?.AddEvent("fetchResults.end",
                     [
                         new("fetch.statusCode", response.Status.StatusCode.ToString()),
-                            new("batches.count", rowCount > 0 ? 1 : 0),
-                            new("batches.rowCount", rowCount),
-                        ])));
+                        new("batches.count", rowCount > 0 ? 1 : 0),
+                        new("batches.rowCount", rowCount),
+                    ]);
 
                 if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
                 {

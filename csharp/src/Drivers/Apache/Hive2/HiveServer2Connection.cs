@@ -75,9 +75,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 _client = new TCLIService.Client(protocol);
                 TOpenSessionReq request = CreateSessionRequest();
 
-                activity?.AddEvent(new ActivityEvent("openSession.start"));
+                activity?.AddEvent("openSession.start");
                 TOpenSessionResp? session = await Client.OpenSession(request);
-                activity?.AddEvent(new ActivityEvent("openSession.end"));
+                activity?.AddEvent("openSession.end", [new("openSession.statusCode", session?.Status.StatusCode.ToString())]);
 
                 // Some responses don't raise an exception. Explicitly check the status.
                 if (session == null)
@@ -131,9 +131,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds); }
                     TGetOperationStatusReq request = new(operationHandle);
-                    activity?.AddEvent(new ActivityEvent("getOperationStatus.start"));
+                    activity?.AddEvent("getOperationStatus.start");
                     statusResponse = await client.GetOperationStatus(request);
-                    activity?.AddEvent(new ActivityEvent("getOperationStatus.stop", tags: new([new("statusResponse.operationState", statusResponse.OperationState.ToString())])));
+                    activity?.AddEvent("getOperationStatus.stop", [new("statusResponse.operationState", statusResponse.OperationState.ToString())]);
                 } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
             });
         }

@@ -37,7 +37,6 @@ namespace Apache.Arrow.Adbc.Tracing
             bool hasRemoteParent,
             ActivityKind kind,
             string operationName,
-            string displayName,
             TimeSpan duration,
             DateTime startTimeUtc,
             string? id,
@@ -60,7 +59,6 @@ namespace Apache.Arrow.Adbc.Tracing
             HasRemoteParent = hasRemoteParent;
             Kind = kind.ToString();
             OperationName = operationName;
-            DisplayName = displayName;
             Duration = duration;
             StartTimeUtc = startTimeUtc;
             Id = id;
@@ -86,7 +84,6 @@ namespace Apache.Arrow.Adbc.Tracing
             activity.HasRemoteParent,
             activity.Kind,
             activity.OperationName,
-            activity.DisplayName,
             activity.Duration,
             activity.StartTimeUtc,
             activity.Id,
@@ -110,7 +107,6 @@ namespace Apache.Arrow.Adbc.Tracing
         public bool HasRemoteParent { get; set; }
         public string? Kind { get; set; }
         public string OperationName { get; set; } = "";
-        public string DisplayName { get; set; } = "";
         public TimeSpan Duration { get; set; }
         public DateTime StartTimeUtc { get; set; }
         public string? Id { get; set; }

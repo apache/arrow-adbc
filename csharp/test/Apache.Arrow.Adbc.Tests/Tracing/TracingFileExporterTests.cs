@@ -237,7 +237,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
         private Task AddEvent(string eventName, string activityName = nameof(AddEvent))
         {
             using Activity? activity = _activitySource.StartActivity(activityName);
-            activity?.AddEvent(new ActivityEvent(eventName));
+            activity?.AddEvent(eventName);
             return Task.CompletedTask;
         }
 

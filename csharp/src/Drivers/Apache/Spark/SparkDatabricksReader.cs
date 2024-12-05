@@ -76,17 +76,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                     TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
 
-                    activity?.AddEvent(new ActivityEvent("fetchResults.start", tags: new([new("batches.batchSize", this.statement.BatchSize)])));
+                    activity?.AddEvent("fetchResults.start", [new("batches.batchSize", this.statement.BatchSize)]);
 
                     TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
                     this.batches = response.Results.ArrowBatches;
 
-                    activity?.AddEvent(new ActivityEvent("fetchResults.end", tags: new(
+                    activity?.AddEvent("fetchResults.end",
                         [
-                            new("fetch.statusCode", response.Status.StatusCode.ToString()),
+                            new("fetchResults.statusCode", response.Status.StatusCode.ToString()),
                             new("batches.count", this.batches?.Count ?? 0),
                             new("batches.rowCount", this.batches?.Sum(b => b.RowCount) ?? 0),
-                        ])));
+                        ]);
 
                     if (!response.HasMoreRows)
                     {
