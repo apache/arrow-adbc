@@ -58,6 +58,11 @@ namespace Apache.Arrow.Adbc.Tracing
         protected ActivitySource ActivitySource { get; }
 
         /// <summary>
+        /// Gets the name of the <see cref="System.Diagnostics.ActivitySource"/>
+        /// </summary>
+        public string ActivitySourceName => ActivitySource.Name;
+
+        /// <summary>
         /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
         /// </summary>
         /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
