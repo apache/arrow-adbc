@@ -43,6 +43,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `adbc.tracing.connection.trace_location` | When file tracing is enabled, specifies the folder location to place trace files. | `{LocalApplicationData}/Apache.Arrow.Adbc/Traces` |
 | `adbc.tracing.connection.trace_max_size_kb` | When file tracing is enabled, specifies the approximate maximum size of each trace fiel (in KB). | `1024` |
 | `adbc.tracing.connection.trace_max_files` | When file tracing is enabled, specifies the maximun number of file in the trace location. Older trace files are removedm when exceeded. | `999` |
+| `adbc.tracing.statement.trace_parent` | When tracing is enabled, sets the `traceparent` id |
 
 ## Spark Types
 
