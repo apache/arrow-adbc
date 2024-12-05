@@ -221,6 +221,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         }
 
+        // Note Spark's Position is zero-indexed, not one-indexed
         protected override IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
             .Select(t => new { Index = t.Position - 1, t.ColumnName })
             .ToDictionary(t => t.ColumnName, t => t.Index);

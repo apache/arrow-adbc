@@ -65,6 +65,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             return new ImpalaStatement(this);
         }
 
+        // Note Impala's Position is one-indexed, not zero-indexed
         protected override IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
            .Select(t => new { Index = t.Position, t.ColumnName })
            .ToDictionary(t => t.ColumnName, t => t.Index);
