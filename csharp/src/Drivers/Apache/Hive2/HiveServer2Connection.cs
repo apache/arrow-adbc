@@ -122,7 +122,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             throw new NotImplementedException();
         }
 
-        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, ActivitySource? activitySource)
+        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, ActivitySource activitySource)
         {
             await TraceActivityAsync(activitySource, async (activity) =>
             {
@@ -190,7 +190,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             GC.SuppressFinalize(this);
         }
 
-        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, ActivitySource? activitySource = null, CancellationToken cancellationToken = default)
+        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, ActivitySource activitySource, CancellationToken cancellationToken = default)
         {
             return await TraceActivityAsync(activitySource, async (_) =>
             {

@@ -40,14 +40,14 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
         public TracingFileExporterTests(ITestOutputHelper? outputHelper)
         {
             _outputHelper = outputHelper;
-            _activitySourceName = Guid.NewGuid().ToString().Replace("-", "");
+            _activitySourceName = TracingTests.NewName();
             _activitySource = new ActivitySource(_activitySourceName);
         }
 
         [Fact]
         internal async Task CanSetCustomTraceFolder()
         {
-            string customFolderName = Guid.NewGuid().ToString().Replace("-", "").ToLower();
+            string customFolderName = TracingTests.NewName();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
 
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
@@ -75,7 +75,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
         internal async Task CanSetCustomFileBaseName()
         {
             const string customFileBaseName = "custom-base-name";
-            string customFolderName = Guid.NewGuid().ToString().Replace("-", "").ToLower();
+            string customFolderName = TracingTests.NewName();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
 
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
@@ -105,7 +105,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
         {
             const long maxTraceFileSizeKb = 15;
             const long kilobyte = 1024;
-            string customFolderName = Guid.NewGuid().ToString().Replace("-", "").ToLower();
+            string customFolderName = TracingTests.NewName();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
 
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
@@ -147,7 +147,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             const long maxTraceFileSizeKb = 15;
             const int maxTraceFiles = 3;
             var delay = TimeSpan.FromSeconds(8);
-            string customFolderName = Guid.NewGuid().ToString().Replace("-", "").ToLower();
+            string customFolderName = TracingTests.NewName();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
 
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
@@ -185,7 +185,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             const long maxTraceFileSizeKb = 5;
             const int maxTraceFiles = 1;
             var delay = TimeSpan.FromSeconds(8);
-            string customFolderName = Guid.NewGuid().ToString().Replace("-", "").ToLower();
+            string customFolderName = TracingTests.NewName();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
 
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
@@ -225,7 +225,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
         [InlineData("abc", "abc", 1, -1, typeof(ArgumentException))]
         internal void CanDetectInvalidOptions(string fileBaseName, string? traceLocation, long maxTraceFileSizeKb, int maxTraceFiles, Type expectedException)
         {
-            string customFolderName = Guid.NewGuid().ToString().Replace("-", "").ToLower();
+            string customFolderName = TracingTests.NewName();
             string? traceFolder = traceLocation != null ? Path.Combine(s_localApplicationDataFolderPath, traceLocation) : null;
             _ = Assert.Throws(expectedException, () =>
                 Sdk.CreateTracerProviderBuilder()

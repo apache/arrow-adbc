@@ -24,7 +24,7 @@ using System.Text.Json.Serialization;
 namespace Apache.Arrow.Adbc.Tracing
 {
     /// <summary>
-    /// Simplified version of <see cref="Activity"/> that exclude <see cref="Activity.Parent"/>, etc.
+    /// Simplified version of <see cref="Activity"/> that excludes some properties, etc.
     /// </summary>
     internal class SerializableActivity
     {
@@ -52,14 +52,13 @@ namespace Apache.Arrow.Adbc.Tracing
             ActivitySpanId parentSpanId,
             ActivityIdFormat idFormat,
             IReadOnlyList<KeyValuePair<string, object?>> tagObjects,
-            IReadOnlyList<ActivityEvent> events,
-            IReadOnlyList<ActivityLink> links,
+            IReadOnlyList<SerializableActivityEvent> events,
+            IReadOnlyList<SerializableActivityLink> links,
             IReadOnlyList<KeyValuePair<string, string?>> baggage)
         {
-            Status = status;
-            StatusDescription = statusDescription ?? status.ToString();
+            Status = statusDescription ?? status.ToString();
             HasRemoteParent = hasRemoteParent;
-            Kind = kind;
+            Kind = kind.ToString();
             OperationName = operationName;
             DisplayName = displayName;
             Duration = duration;
@@ -68,13 +67,13 @@ namespace Apache.Arrow.Adbc.Tracing
             ParentId = parentId;
             RootId = rootId;
             TraceStateString = traceStateString;
-            SpanId = spanId;
-            TraceId = traceId;
+            SpanId = spanId.ToHexString();
+            TraceId = traceId.ToHexString();
             Recorded = recorded;
             IsAllDataRequested = isAllDataRequested;
-            ActivityTraceFlags = activityTraceFlags;
-            ParentSpanId = parentSpanId;
-            IdFormat = idFormat;
+            ActivityTraceFlags = activityTraceFlags.ToString();
+            ParentSpanId = parentSpanId.ToHexString();
+            IdFormat = idFormat.ToString();
             TagObjects = tagObjects;
             Events = events;
             Links = links;
@@ -102,15 +101,14 @@ namespace Apache.Arrow.Adbc.Tracing
             activity.ParentSpanId,
             activity.IdFormat,
             activity.TagObjects.ToArray(),
-            activity.Events.ToArray(),
-            activity.Links.ToArray(),
+            activity.Events.Select(e => (SerializableActivityEvent)e).ToArray(),
+            activity.Links.Select(l => (SerializableActivityLink)l).ToArray(),
             activity.Baggage.ToArray())
         { }
 
-        public ActivityStatusCode Status { get; set; }
-        public string? StatusDescription { get; set; }
+        public string? Status { get; set; }
         public bool HasRemoteParent { get; set; }
-        public ActivityKind Kind { get; set; }
+        public string? Kind { get; set; }
         public string OperationName { get; set; } = "";
         public string DisplayName { get; set; } = "";
         public TimeSpan Duration { get; set; }
@@ -120,17 +118,79 @@ namespace Apache.Arrow.Adbc.Tracing
         public string? RootId { get; set; }
 
         public string? TraceStateString { get; set; }
-        public ActivitySpanId SpanId { get; set; }
-        public ActivityTraceId TraceId { get; set; }
+        public string? SpanId { get; set; }
+        public string? TraceId { get; set; }
         public bool Recorded { get; set; }
         public bool IsAllDataRequested { get; set; }
-        public ActivityTraceFlags ActivityTraceFlags { get; set; }
-        public ActivitySpanId ParentSpanId { get; set; }
-        public ActivityIdFormat IdFormat { get; set; }
+        public string? ActivityTraceFlags { get; set; }
+        public string? ParentSpanId { get; set; }
+        public string? IdFormat { get; set; }
 
         public IReadOnlyList<KeyValuePair<string, object?>> TagObjects { get; set; } = [];
-        public IReadOnlyList<ActivityEvent> Events { get; set; } = [];
-        public IReadOnlyList<ActivityLink> Links { get; set; } = [];
+        public IReadOnlyList<SerializableActivityEvent> Events { get; set; } = [];
+        public IReadOnlyList<SerializableActivityLink> Links { get; set; } = [];
         public IReadOnlyList<KeyValuePair<string, string?>> Baggage { get; set; } = [];
+    }
+
+    internal class SerializableActivityEvent
+    {
+        /// <summary>
+        /// Gets the <see cref="SerializableActivityEvent"/> name.
+        /// </summary>
+        public string? Name { get; set; }
+
+        /// <summary>
+        /// Gets the <see cref="SerializableActivityEvent"/> timestamp.
+        /// </summary>
+        public DateTimeOffset Timestamp { get; set; }
+
+        public IReadOnlyList<KeyValuePair<string, object?>> Tags { get; set; } = [];
+
+        public static implicit operator SerializableActivityEvent(System.Diagnostics.ActivityEvent source)
+        {
+            return new SerializableActivityEvent()
+            {
+                Name = source.Name,
+                Timestamp = source.Timestamp,
+                Tags = source.Tags.ToArray(),
+            };
+        }
+    }
+
+    internal class SerializableActivityLink
+    {
+        public SerializableActivityContext? Context { get; set; }
+
+        public IReadOnlyList<KeyValuePair<string, object?>>? Tags { get; set; } = [];
+
+        public static implicit operator SerializableActivityLink(System.Diagnostics.ActivityLink source)
+        {
+            return new SerializableActivityLink()
+            {
+                Context = source.Context,
+                Tags = source.Tags?.ToArray(),
+            };
+        }
+    }
+
+    internal class SerializableActivityContext
+    {
+        public string? SpanId { get; set; }
+        public string? TraceId { get; set; }
+        public string? TraceState { get; set; }
+        public ActivityTraceFlags? TraceFlags { get; set; }
+        public bool IsRemote { get; set; }
+
+        public static implicit operator SerializableActivityContext(System.Diagnostics.ActivityContext source)
+        {
+            return new SerializableActivityContext()
+            {
+                SpanId = source.SpanId.ToHexString(),
+                TraceId = source.TraceId.ToHexString(),
+                TraceState = source.TraceState,
+                TraceFlags = source.TraceFlags,
+                IsRemote = source.IsRemote,
+            };
+        }
     }
 }

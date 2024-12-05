@@ -70,9 +70,9 @@ namespace Apache.Arrow.Adbc.Tracing
         /// status is set to <see cref="ActivityStatusCode.Error"/> and an Activity <see cref="ActivityEvent"/> is added to the actitity
         /// and finally the exception is rethrown.
         /// </remarks>
-        protected void TraceActivity(Action<Activity?> call, [CallerMemberName] string? memberName = default)
+        protected void TraceActivity(Action<Activity?> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
-            using Activity? activity = StartActivityInternal(memberName, ActivitySource, TraceParent);
+            using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
             try
             {
                 call.Invoke(activity);
@@ -97,11 +97,11 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Activity <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
+        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
         /// </remarks>
-        protected T TraceActivity<T>(Func<Activity?, T> call, [CallerMemberName] string? memberName = default)
+        protected T TraceActivity<T>(Func<Activity?, T> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
-            using Activity? activity = StartActivityInternal(memberName, ActivitySource, TraceParent);
+            using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
             try
             {
                 T? result = call.Invoke(activity);
@@ -126,11 +126,11 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Activity <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
+        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
         /// </remarks>
-        protected async Task TraceActivityAsync(Func<Activity?, Task> call, [CallerMemberName] string? memberName = default)
+        protected async Task TraceActivityAsync(Func<Activity?, Task> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
-            using Activity? activity = StartActivityInternal(memberName, ActivitySource, TraceParent);
+            using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
             try
             {
                 await call.Invoke(activity);
@@ -155,11 +155,11 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Activity <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
+        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
         /// </remarks>
-        protected async Task<T> TraceActivityAsync<T>(Func<Activity?, Task<T>> call, [CallerMemberName] string? memberName = default)
+        protected async Task<T> TraceActivityAsync<T>(Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
-            using Activity? activity = StartActivityInternal(memberName, ActivitySource, TraceParent);
+            using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
             try
             {
                 T? result = await call.Invoke(activity);
@@ -185,11 +185,11 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Activity <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
+        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
         /// </remarks>
-        protected static async Task TraceActivityAsync(ActivitySource? activitySource, Func<Activity?, Task> call, [CallerMemberName] string? memberName = default)
+        protected static async Task TraceActivityAsync(ActivitySource activitySource, Func<Activity?, Task> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
-            using Activity? activity = StartActivityInternal(memberName, activitySource);
+            using Activity? activity = StartActivityInternal(activityName, activitySource, traceParent);
             try
             {
                 await call.Invoke(activity);
@@ -215,11 +215,11 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Activity <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
+        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
         /// </remarks>
-        protected static async Task<T> TraceActivityAsync<T>(ActivitySource? activitySource, Func<Activity?, Task<T>> call, [CallerMemberName] string? memberName = default)
+        protected static async Task<T> TraceActivityAsync<T>(ActivitySource activitySource, Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
-            using Activity? activity = StartActivityInternal(memberName, activitySource);
+            using Activity? activity = StartActivityInternal(activityName, activitySource, traceParent);
             try
             {
                 T? result = await call.Invoke(activity);
@@ -244,8 +244,8 @@ namespace Apache.Arrow.Adbc.Tracing
         /// For example, <c>escaped</c> should be <c>true</c> if the exception is caught and re-thrown.
         /// However, <c>escaped</c> should be set to <c>false</c> if execution continues in the current scope.
         /// </param>
-        protected static void TraceException(Exception exception, Activity? activity, bool escaped = true) =>
-            WriteTraceException(exception, activity, escaped);
+        protected static void TraceException(Exception exception, Activity? activity) =>
+            WriteTraceException(exception, activity);
 
         /// <summary>
         /// Starts an <see cref="Activity"/> on the <see cref="TracingBase.ActivitySource"/> if there is
@@ -253,9 +253,9 @@ namespace Apache.Arrow.Adbc.Tracing
         /// </summary>
         /// <param name="methodName">The name of the method for the activity.</param>
         /// <returns>If there is an active listener on the source, an <see cref="Activity"/> is returned, null otherwise.</returns>
-        protected Activity? StartActivity([CallerMemberName] string? memberName = default)
+        protected Activity? StartActivity([CallerMemberName] string? activityName = default, string? traceParent = default)
         {
-            return StartActivityInternal(memberName, ActivitySource, TraceParent);
+            return StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
         }
 
         /// <summary>
@@ -297,34 +297,37 @@ namespace Apache.Arrow.Adbc.Tracing
             GC.SuppressFinalize(this);
         }
 
-        private static void WriteTraceException(Exception exception, Activity? activity, bool escaped = true)
+        private static void WriteTraceException(Exception exception, Activity? activity)
         {
+            activity?.AddException(exception);
             activity?.SetStatus(ActivityStatusCode.Error);
-            // https://opentelemetry.io/docs/specs/otel/trace/exceptions/
-            activity?.AddEvent(new ActivityEvent("exception", tags: new(
-                [
-                    // https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/
-                    new("exception.escaped", escaped),
-                    new("exception.message", exception.Message),
-                    new("exception.stacktrace", exception.StackTrace),
-                    new("exception.type", exception.GetType().Name),
-                ])));
         }
 
-        private static Activity? StartActivityInternal(string? memberName, ActivitySource? activitySource, string? traceParent = default)
+        private static Activity? StartActivityInternal(string? activityName, ActivitySource activitySource, string? traceParent = default)
         {
-            string activityName = GetActivityName(memberName);
-            return StartActivity(activitySource, activityName, traceParent);
+            string fullActivityName = GetActivityName(activityName);
+            return StartActivity(activitySource, fullActivityName, traceParent);
         }
 
-        private static string GetActivityName(string? memberName)
+        private static string GetActivityName(string? activityName)
         {
-            memberName ??= "[unknown-member]";
-            StackTrace stackTrace = new();
-            StackFrame? frame = stackTrace.GetFrames().FirstOrDefault(f => f.GetMethod()?.Name == memberName);
-            string tracingBaseName = frame?.GetMethod()?.DeclaringType?.FullName ?? "[unknown-type]";
-            string activityName = tracingBaseName + "." + memberName;
-            return activityName;
+            string tracingBaseName = string.Empty;
+            if (!string.IsNullOrWhiteSpace(activityName))
+            {
+                StackTrace stackTrace = new();
+                StackFrame? frame = stackTrace.GetFrames().FirstOrDefault(f => f.GetMethod()?.Name == activityName);
+                tracingBaseName = frame?.GetMethod()?.DeclaringType?.FullName ?? string.Empty;
+                if (tracingBaseName != string.Empty)
+                {
+                    tracingBaseName += ".";
+                }
+            }
+            else
+            {
+                activityName = "[unknown-member]";
+            }
+            string fullActivityName = tracingBaseName + activityName;
+            return fullActivityName;
         }
 
         /// <summary>
@@ -333,11 +336,11 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <param name="activitySource">The <see cref="ActivitySource"/> from which to start the activity.</param>
         /// <param name="activityName">The name of the method for the activity</param>
         /// <returns>Returns a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise</returns>
-        private static Activity? StartActivity(ActivitySource? activitySource, string activityName, string? traceParent = default)
+        private static Activity? StartActivity(ActivitySource activitySource, string activityName, string? traceParent = default)
         {
-            return traceParent == null
-                ? (activitySource?.StartActivity(activityName, ActivityKind.Client))
-                : (activitySource?.StartActivity(activityName, ActivityKind.Client, traceParent));
+            return traceParent != null && ActivityContext.TryParse(traceParent, null, isRemote: true, out ActivityContext parentContext)
+                ? (activitySource.StartActivity(activityName, ActivityKind.Client, parentContext))
+                : (activitySource.StartActivity(activityName, ActivityKind.Client));
         }
     }
 }
