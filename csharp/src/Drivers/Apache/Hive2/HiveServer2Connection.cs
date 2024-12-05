@@ -43,19 +43,39 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
 
-        const string ColumnDef = "COLUMN_DEF";
-        const string ColumnName = "COLUMN_NAME";
-        const string DataType = "DATA_TYPE";
-        const string IsAutoIncrement = "IS_AUTO_INCREMENT";
-        const string IsNullable = "IS_NULLABLE";
-        const string OrdinalPosition = "ORDINAL_POSITION";
-        const string TableCat = "TABLE_CAT";
-        const string TableCatalog = "TABLE_CATALOG";
-        const string TableName = "TABLE_NAME";
-        const string TableSchem = "TABLE_SCHEM";
-        const string TableType = "TABLE_TYPE";
-        const string TypeName = "TYPE_NAME";
-        const string Nullable = "NULLABLE";
+        internal const string ColumnDef = "COLUMN_DEF";
+        internal const string ColumnName = "COLUMN_NAME";
+        internal const string DataType = "DATA_TYPE";
+        internal const string IsAutoIncrement = "IS_AUTO_INCREMENT";
+        internal const string IsNullable = "IS_NULLABLE";
+        internal const string OrdinalPosition = "ORDINAL_POSITION";
+        internal const string TableCat = "TABLE_CAT";
+        internal const string TableCatalog = "TABLE_CATALOG";
+        internal const string TableName = "TABLE_NAME";
+        internal const string TableSchem = "TABLE_SCHEM";
+        internal const string TableMd = "TABLE_MD";
+        internal const string TableType = "TABLE_TYPE";
+        internal const string TypeName = "TYPE_NAME";
+        internal const string Nullable = "NULLABLE";
+
+        /// <summary>
+        /// The GetColumns metadata call returns a result with different column names
+        /// on different data sources. Populate this structure with the actual column names.
+        /// </summary>
+        internal struct ColumnsMetadataColumnNames
+        {
+            public string TableCatalog { get; internal set; }
+            public string TableSchema { get; internal set; }
+            public string TableName { get; internal set; }
+            public string ColumnName { get; internal set; }
+            public string DataType { get; internal set; }
+            public string TypeName {  get; internal set; }
+            public string Nullable { get; internal set; }
+            public string ColumnDef { get; internal set; }
+            public string OrdinalPosition { get; internal set; }
+            public string IsNullable { get; internal set; }
+            public string IsAutoIncrement { get; internal set; }
+        }
 
         /// <summary>
         /// The data type definitions based on the <see href="https://docs.oracle.com/en%2Fjava%2Fjavase%2F21%2Fdocs%2Fapi%2F%2F/java.sql/java/sql/Types.html">JDBC Types</see> constants.
@@ -322,6 +342,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
 
+        /// <summary>
+        /// Gets the data-source specific columns names for the GetColumns metadata result.
+        /// </summary>
+        /// <returns></returns>
+        protected abstract ColumnsMetadataColumnNames GetColumnsMetadataColumnNames();
+
         internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
         {
             TGetOperationStatusResp? statusResponse = null;
@@ -577,17 +603,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsMetadata.Schema.Columns);
                     TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
 
-                    IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
-                    IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
-                    IReadOnlyList<string> tableList = rowSet.Columns[columnMap[TableName]].StringVal.Values;
-                    IReadOnlyList<string> columnNameList = rowSet.Columns[columnMap[ColumnName]].StringVal.Values;
-                    ReadOnlySpan<int> columnTypeList = rowSet.Columns[columnMap[DataType]].I32Val.Values.Values;
-                    IReadOnlyList<string> typeNameList = rowSet.Columns[columnMap[TypeName]].StringVal.Values;
-                    ReadOnlySpan<int> nullableList = rowSet.Columns[columnMap[Nullable]].I32Val.Values.Values;
-                    IReadOnlyList<string> columnDefaultList = rowSet.Columns[columnMap[ColumnDef]].StringVal.Values;
-                    ReadOnlySpan<int> ordinalPosList = rowSet.Columns[columnMap[OrdinalPosition]].I32Val.Values.Values;
-                    IReadOnlyList<string> isNullableList = rowSet.Columns[columnMap[IsNullable]].StringVal.Values;
-                    IReadOnlyList<string> isAutoIncrementList = rowSet.Columns[columnMap[IsAutoIncrement]].StringVal.Values;
+                    ColumnsMetadataColumnNames columnNames = GetColumnsMetadataColumnNames();
+                    IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[columnNames.TableCatalog]].StringVal.Values;
+                    IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[columnNames.TableSchema]].StringVal.Values;
+                    IReadOnlyList<string> tableList = rowSet.Columns[columnMap[columnNames.TableName]].StringVal.Values;
+                    IReadOnlyList<string> columnNameList = rowSet.Columns[columnMap[columnNames.ColumnName]].StringVal.Values;
+                    ReadOnlySpan<int> columnTypeList = rowSet.Columns[columnMap[columnNames.DataType]].I32Val.Values.Values;
+                    IReadOnlyList<string> typeNameList = rowSet.Columns[columnMap[columnNames.TypeName]].StringVal.Values;
+                    ReadOnlySpan<int> nullableList = rowSet.Columns[columnMap[columnNames.Nullable]].I32Val.Values.Values;
+                    IReadOnlyList<string> columnDefaultList = rowSet.Columns[columnMap[columnNames.ColumnDef]].StringVal.Values;
+                    ReadOnlySpan<int> ordinalPosList = rowSet.Columns[columnMap[columnNames.OrdinalPosition]].I32Val.Values.Values;
+                    IReadOnlyList<string> isNullableList = rowSet.Columns[columnMap[columnNames.IsNullable]].StringVal.Values;
+                    IReadOnlyList<string> isAutoIncrementList = rowSet.Columns[columnMap[columnNames.IsAutoIncrement]].StringVal.Values;
 
                     for (int i = 0; i < catalogList.Count; i++)
                     {

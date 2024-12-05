@@ -234,6 +234,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected abstract void ValidateAuthentication();
         protected abstract void ValidateOptions();
 
-        internal abstract SparkServerType ServerType { get; }   
+        internal abstract SparkServerType ServerType { get; }
+
+        protected override ColumnsMetadataColumnNames GetColumnsMetadataColumnNames()
+        {
+            return new ColumnsMetadataColumnNames()
+            {
+                TableCatalog = TableCat,
+                TableSchema = TableSchem,
+                TableName = TableName,
+                ColumnName = ColumnName,
+                DataType = DataType,
+                TypeName = TypeName,
+                Nullable = Nullable,
+                ColumnDef = ColumnDef,
+                OrdinalPosition = OrdinalPosition,
+                IsNullable = IsNullable,
+                IsAutoIncrement = IsAutoIncrement,
+            };
+        }
     }
 }

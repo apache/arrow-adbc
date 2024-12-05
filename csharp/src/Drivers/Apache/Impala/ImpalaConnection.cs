@@ -93,8 +93,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         protected override TSparkGetDirectResults GetDirectResults() => throw new System.NotImplementedException();
 
-        public override IArrowArrayStream GetTableTypes() => throw new System.NotImplementedException();
-
         internal override SchemaParser SchemaParser { get; } = new HiveServer2SchemaParser();
 
         protected abstract void ValidateConnection();
@@ -104,5 +102,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         protected abstract void ValidateOptions();
 
         internal abstract ImpalaServerType ServerType { get; }
+
+        protected override ColumnsMetadataColumnNames GetColumnsMetadataColumnNames()
+        {
+            return new ColumnsMetadataColumnNames()
+            {
+                TableCatalog = TableCat,
+                TableSchema = TableMd,
+                TableName = TableName,
+                ColumnName = ColumnName,
+                DataType = DataType,
+                TypeName = TypeName,
+                Nullable = Nullable,
+                ColumnDef = ColumnDef,
+                OrdinalPosition = OrdinalPosition,
+                IsNullable = IsNullable,
+                IsAutoIncrement = IsAutoIncrement,
+            };
+        }
     }
 }
