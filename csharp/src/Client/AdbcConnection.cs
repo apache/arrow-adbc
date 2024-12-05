@@ -261,8 +261,6 @@ namespace Apache.Arrow.Adbc.Client
                 {
                     string paramValue = Convert.ToString(builderValue)!;
 
-                    this.adbcConnectionParameters.Add(key, paramValue);
-
                     switch (key)
                     {
                         case ConnectionStringKeywords.DecimalBehavior:
@@ -276,6 +274,10 @@ namespace Apache.Arrow.Adbc.Client
                             break;
                         case ConnectionStringKeywords.ConnectionTimeout:
                             this.connectionTimeoutValue = ConnectionStringParser.ParseTimeoutValue(paramValue);
+                            this.adbcConnectionParameters.Add(connectionTimeoutValue.DriverPropertyName, connectionTimeoutValue.Value.ToString());
+                            break;
+                        default:
+                            this.adbcConnectionParameters.Add(key, paramValue);
                             break;
                     }
                 }

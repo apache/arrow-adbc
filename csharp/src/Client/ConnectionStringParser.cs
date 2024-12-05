@@ -16,9 +16,6 @@
 */
 
 using System;
-using System.Collections.Generic;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Apache.Arrow.Adbc.Client
@@ -62,7 +59,7 @@ namespace Apache.Arrow.Adbc.Client
             }
             else
             {
-                throw new InvalidOperationException("cannot parse the timeout value");
+                throw new ArgumentOutOfRangeException(nameof(value));
             }
         }
     }

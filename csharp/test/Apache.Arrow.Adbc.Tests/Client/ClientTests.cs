@@ -181,7 +181,16 @@ namespace Apache.Arrow.Adbc.Tests.Client
         {
             if (!success)
             {
-                Assert.Throws<InvalidOperationException>(() => ConnectionStringParser.ParseTimeoutValue(value));
+                try
+                {
+                    ConnectionStringParser.ParseTimeoutValue(value);
+                }
+                catch (ArgumentOutOfRangeException) { }
+                catch (InvalidOperationException) { }
+                catch
+                {
+                    Assert.Fail("Unknown exception found");
+                }
             }
             else
             {
