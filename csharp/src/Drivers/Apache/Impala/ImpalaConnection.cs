@@ -115,8 +115,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         public override IArrowArrayStream GetTableTypes() => throw new System.NotImplementedException();
 
-        public override Schema GetTableSchema(string? catalog, string? dbSchema, string tableName) => throw new System.NotImplementedException();
-
         internal override SchemaParser SchemaParser { get; } = new HiveServer2SchemaParser();
 
         protected abstract void ValidateConnection();

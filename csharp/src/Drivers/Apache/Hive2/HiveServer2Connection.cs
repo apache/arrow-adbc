@@ -17,8 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Data.SqlTypes;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
@@ -323,11 +321,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal abstract SchemaParser SchemaParser { get; }
 
         internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
-
-        public override IArrowArrayStream GetTableTypes()
-        {
-            throw new NotImplementedException();
-        }
 
         internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
         {
@@ -894,6 +887,159 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         tableInfo?.BaseTypeName.Add(result.BaseTypeName);
                         break;
                     }
+            }
+        }
+
+        public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
+        {
+            TGetColumnsReq getColumnsReq = new TGetColumnsReq(SessionHandle);
+            getColumnsReq.CatalogName = catalog;
+            getColumnsReq.SchemaName = dbSchema;
+            getColumnsReq.TableName = tableName;
+            if (AreResultsAvailableDirectly())
+            {
+                getColumnsReq.GetDirectResults = GetDirectResults();
+            }
+
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            try
+            {
+                var columnsResponse = Client.GetColumns(getColumnsReq, cancellationToken).Result;
+                if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                {
+                    throw new Exception(columnsResponse.Status.ErrorMessage);
+                }
+
+                TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
+                List<TColumn> columns = rowSet.Columns;
+                int rowCount = rowSet.Columns[3].StringVal.Values.Length;
+
+                Field[] fields = new Field[rowCount];
+                for (int i = 0; i < rowCount; i++)
+                {
+                    string columnName = columns[3].StringVal.Values.GetString(i);
+                    int? columnType = columns[4].I32Val.Values.GetValue(i);
+                    string typeName = columns[5].StringVal.Values.GetString(i);
+                    // Note: the following two columns do not seem to be set correctly for DECIMAL types.
+                    //int? columnSize = columns[6].I32Val.Values.GetValue(i);
+                    //int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
+                    bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
+                    IArrowType dataType = HiveServer2Connection.GetArrowType(columnType!.Value, typeName);
+                    fields[i] = new Field(columnName, dataType, nullable);
+                }
+                return new Schema(fields, null);
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+            }
+        }
+
+        private static IArrowType GetArrowType(int columnTypeId, string typeName)
+        {
+            switch (columnTypeId)
+            {
+                case (int)ColumnTypeId.BOOLEAN:
+                    return BooleanType.Default;
+                case (int)ColumnTypeId.TINYINT:
+                    return Int8Type.Default;
+                case (int)ColumnTypeId.SMALLINT:
+                    return Int16Type.Default;
+                case (int)ColumnTypeId.INTEGER:
+                    return Int32Type.Default;
+                case (int)ColumnTypeId.BIGINT:
+                    return Int64Type.Default;
+                case (int)ColumnTypeId.FLOAT:
+                case (int)ColumnTypeId.REAL:
+                    return FloatType.Default;
+                case (int)ColumnTypeId.DOUBLE:
+                    return DoubleType.Default;
+                case (int)ColumnTypeId.VARCHAR:
+                case (int)ColumnTypeId.NVARCHAR:
+                case (int)ColumnTypeId.LONGVARCHAR:
+                case (int)ColumnTypeId.LONGNVARCHAR:
+                    return StringType.Default;
+                case (int)ColumnTypeId.TIMESTAMP:
+                    return new TimestampType(TimeUnit.Microsecond, timezone: (string?)null);
+                case (int)ColumnTypeId.BINARY:
+                case (int)ColumnTypeId.VARBINARY:
+                case (int)ColumnTypeId.LONGVARBINARY:
+                    return BinaryType.Default;
+                case (int)ColumnTypeId.DATE:
+                    return Date32Type.Default;
+                case (int)ColumnTypeId.CHAR:
+                case (int)ColumnTypeId.NCHAR:
+                    return StringType.Default;
+                case (int)ColumnTypeId.DECIMAL:
+                case (int)ColumnTypeId.NUMERIC:
+                    // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
+                    // are not returned in the Thrift call to GetColumns
+                    return SqlTypeNameParser<SqlDecimalParserResult>
+                        .Parse(typeName, columnTypeId)
+                        .Decimal128Type;
+                case (int)ColumnTypeId.NULL:
+                    return NullType.Default;
+                case (int)ColumnTypeId.ARRAY:
+                case (int)ColumnTypeId.JAVA_OBJECT:
+                case (int)ColumnTypeId.STRUCT:
+                    return StringType.Default;
+                default:
+                    throw new NotImplementedException($"Column type id: {columnTypeId} is not supported.");
+            }
+        }
+
+        public override IArrowArrayStream GetTableTypes()
+        {
+            TGetTableTypesReq req = new()
+            {
+                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
+            };
+
+            if (AreResultsAvailableDirectly())
+            {
+                req.GetDirectResults = GetDirectResults();
+            }
+
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            try
+            {
+                TGetTableTypesResp resp = Client.GetTableTypes(req, cancellationToken).Result;
+
+                if (resp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                {
+                    throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                        .SetNativeError(resp.Status.ErrorCode)
+                        .SetSqlState(resp.Status.SqlState);
+                }
+
+                TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
+                StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
+
+                StringArray.Builder tableTypesBuilder = new StringArray.Builder();
+                tableTypesBuilder.AppendRange(tableTypes);
+
+                IArrowArray[] dataArrays = new IArrowArray[]
+                {
+                tableTypesBuilder.Build()
+                };
+
+                return new HiveInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
             }
         }
 
