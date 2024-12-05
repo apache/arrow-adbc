@@ -242,27 +242,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
 
-        private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
-        {
-            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
-
-            TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
-            if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-            {
-                throw new HiveServer2Exception(fetchResp.Status.ErrorMessage)
-                    .SetNativeError(fetchResp.Status.ErrorCode)
-                    .SetSqlState(fetchResp.Status.SqlState);
-            }
-            return fetchResp.Results;
-        }
-
-        internal static async Task<TFetchResultsResp> FetchNextAsync(TOperationHandle operationHandle, TCLIService.IAsync client, long batchSize, CancellationToken cancellationToken = default)
-        {
-            TFetchResultsReq request = new(operationHandle, TFetchOrientation.FETCH_NEXT, batchSize);
-            TFetchResultsResp response = await client.FetchResults(request, cancellationToken);
-            return response;
-        }
-
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override SparkServerType ServerType => SparkServerType.Http;

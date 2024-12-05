@@ -69,20 +69,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
            .Select(t => new { Index = t.Position, t.ColumnName })
            .ToDictionary(t => t.ColumnName, t => t.Index);
 
-        private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
-        {
-            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
-
-            TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
-            if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-            {
-                throw new HiveServer2Exception(fetchResp.Status.ErrorMessage)
-                    .SetNativeError(fetchResp.Status.ErrorCode)
-                    .SetSqlState(fetchResp.Status.SqlState);
-            }
-            return fetchResp.Results;
-        }
-
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
@@ -101,13 +87,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-
-        internal static async Task<TFetchResultsResp> FetchNextAsync(TOperationHandle operationHandle, TCLIService.IAsync client, long batchSize, CancellationToken cancellationToken = default)
-        {
-            TFetchResultsReq request = new(operationHandle, TFetchOrientation.FETCH_NEXT, batchSize);
-            TFetchResultsResp response = await client.FetchResults(request, cancellationToken);
-            return response;
-        }
 
         protected override bool AreResultsAvailableDirectly() => false;
 
