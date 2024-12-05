@@ -29,7 +29,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         public const string Type = "adbc.impala.type";
         public const string DataTypeConv = "adbc.impala.data_type_conv";
         public const string TLSOptions = "adbc.impala.tls_options";
-        public const string HttpRequestTimeoutMilliseconds = "adbc.impala.http_request_timeout_ms";
+        public const string ConnectTimeoutMilliseconds = "adbc.spark.connect_timeout_ms";
     }
 
     public static class ImpalaAuthTypeConstants

@@ -112,24 +112,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
             Properties.TryGetValue(ImpalaParameters.TLSOptions, out string? tlsOptions);
             TlsOptions = TlsOptionsParser.Parse(tlsOptions);
-            Properties.TryGetValue(ImpalaParameters.HttpRequestTimeoutMilliseconds, out string? requestTimeoutMs);
-            if (requestTimeoutMs != null)
+            Properties.TryGetValue(ImpalaParameters.ConnectTimeoutMilliseconds, out string? connectTimeoutMs);
+            if (connectTimeoutMs != null)
             {
-                HttpRequestTimeout = int.TryParse(requestTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int requestTimeoutMsValue) && requestTimeoutMsValue > 0
-                    ? requestTimeoutMsValue
-                    : throw new ArgumentOutOfRangeException(ImpalaParameters.HttpRequestTimeoutMilliseconds, requestTimeoutMs, $"must be a value between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
+                ConnectTimeoutMilliseconds = int.TryParse(connectTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int connectTimeoutMsValue) && (connectTimeoutMsValue >= 0)
+                    ? connectTimeoutMsValue
+                    : throw new ArgumentOutOfRangeException(ImpalaParameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of 0 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
-        protected override Task<TTransport> CreateTransportAsync()
+        protected override TTransport CreateTransport()
         {
-            foreach (var property in Properties.Keys)
-            {
-                Trace.TraceError($"key = {property} value = {Properties[property]}");
-            }
-
             // Assumption: parameters have already been validated.
             Properties.TryGetValue(ImpalaParameters.HostName, out string? hostName);
             Properties.TryGetValue(ImpalaParameters.Path, out string? path);
@@ -155,9 +150,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             TConfiguration config = new();
             ThriftHttpTransport transport = new(httpClient, config)
             {
-                ConnectTimeout = HttpRequestTimeout,
+                // This value can only be set before the first call/request. So if a new value for query timeout
+                // is set, we won't be able to update the value. Setting to ~infinite and relying on cancellation token
+                // to ensure cancelled correctly.
+                ConnectTimeout = int.MaxValue,
             };
-            return Task.FromResult<TTransport>(transport);
+            return transport;
         }
 
         private HttpClientHandler NewHttpClientHandler()
@@ -198,7 +196,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             }
         }
 
-        protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport)
+        protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
         {
             Trace.TraceError($"create protocol with {Properties.Count} properties.");
 
