@@ -15,33 +15,16 @@
 * limitations under the License.
 */
 
-using System.Threading.Tasks;
-using Xunit;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
-    public class NumericValueTests : Common.NumericValueTests<SparkTestConfiguration, SparkTestEnvironment>
+    public class NumericValueTests : Common.NumericValueTests<ApacheTestConfiguration, ImpalaTestEnvironment>
     {
         public NumericValueTests(ITestOutputHelper output)
-            : base(output, new SparkTestEnvironment.Factory())
+            : base(output, new ImpalaTestEnvironment.Factory())
         {
-        }
-
-        [SkippableTheory]
-        [InlineData(double.NaN)]
-        [InlineData(double.MinValue)]
-        [InlineData(double.MaxValue)]
-        public override async Task TestDoubleValuesInsertSelectDelete(double value)
-        {
-            await base.TestDoubleValuesInsertSelectDelete(value);
-        }
-
-        [SkippableTheory]
-        [InlineData(float.NaN)]
-        public override async Task TestFloatValuesInsertSelectDelete(float value)
-        {
-            await base.TestFloatValuesInsertSelectDelete(value);
         }
     }
 }
