@@ -38,7 +38,7 @@ function check_visibility {
     grep ' T ' nm_arrow.log | grep -v -E '(Adbc|DriverInit|\b_init\b|\b_fini\b)' | cat - > visible_symbols.log
 
     if [[ -f visible_symbols.log && `cat visible_symbols.log | wc -l` -eq 0 ]]; then
-        return 0
+        echo "No unexpected symbols exported by $1"
     else
         echo "== Unexpected symbols exported by $1 =="
         cat visible_symbols.log
@@ -46,33 +46,21 @@ function check_visibility {
 
         exit 1
     fi
-}
 
-function check_wheels {
-    if [[ $(uname) == "Linux" ]]; then
-        echo "=== Tag $component wheel with manylinux${MANYLINUX_VERSION} ==="
-        auditwheel repair "$@" -L . -w repaired_wheels
-    else # macOS
-        echo "=== Tag $component wheel with macOS ==="
-        delocate-wheel -v -k -w repaired_wheels "$@"
+    # Also check the max glibc version, to avoid accidentally bumping our
+    # manylinux requirement
+    local -r glibc_max=2.17
+    local -r glibc_requirement=$(grep -Eo 'GLIBC_\S+' nm_arrow.log | awk -F_ '{print $2}' | sort --version-sort -u | tail -n1)
+    local -r maxver=$(echo -e "${glibc_requirement}\n${glibc_max}" | sort --version-sort | tail -n1)
+    if [[ "${maxver}" != "2.17" ]]; then
+        echo "== glibc check failed for $1 =="
+        echo "Expected ${glibc_max} but found ${glibc_requirement}"
+        exit 1
     fi
 }
 
 echo "=== Set up platform variables ==="
 setup_build_vars "${arch}"
-
-# XXX: when we manually retag the wheel, we have to use the right arch
-# tag accounting for cross-compiling, hence the replacements
-PLAT_NAME=$(python -c "import sysconfig; print(sysconfig.get_platform()\
-    .replace('-x86_64', '-${PYTHON_ARCH}')\
-    .replace('-arm64', '-${PYTHON_ARCH}')\
-    .replace('-universal2', '-${PYTHON_ARCH}'))")
-if [[ "${arch}" = "arm64v8" && "$(uname)" = "Darwin" ]]; then
-   # Manually override the tag in this case - CI will naively generate
-   # "macosx_10_9_arm64" but this isn't a 'real' tag because the first
-   # version of macOS supporting AArch64 was macOS 11 Big Sur
-   PLAT_NAME="macosx_11_0_arm64"
-fi
 
 echo "=== Building C/C++ driver components ==="
 # Sets ADBC_POSTGRESQL_LIBRARY, ADBC_SQLITE_LIBRARY
@@ -84,40 +72,3 @@ check_visibility $ADBC_FLIGHTSQL_LIBRARY
 check_visibility $ADBC_POSTGRESQL_LIBRARY
 check_visibility $ADBC_SQLITE_LIBRARY
 check_visibility $ADBC_SNOWFLAKE_LIBRARY
-
-# https://github.com/pypa/pip/issues/7555
-# Get the latest pip so we have in-tree-build by default
-python -m pip install --upgrade pip auditwheel 'cibuildwheel>=2.21.2' delocate setuptools wheel
-
-# Build with Cython debug info
-export ADBC_BUILD_TYPE="debug"
-
-for component in $COMPONENTS; do
-    pushd ${source_dir}/python/$component
-
-    echo "=== Clean build artifacts ==="
-    rm -rf ./build ./dist ./repaired_wheels ./$component/*.so ./$component/*.so.*
-
-    echo "=== Check $component version ==="
-    python $component/_version.py
-
-    echo "=== Building $component wheel ==="
-    # First, create an sdist, which 1) bundles the C++ sources and 2)
-    # embeds the git tag.  cibuildwheel may copy into a Docker
-    # container during build, but it only copies the package
-    # directory, which omits the C++ sources and .git directory,
-    # causing the build to fail.
-    python setup.py sdist
-    if [[ "$component" = "adbc_driver_manager" ]]; then
-        python -m cibuildwheel --output-dir repaired_wheels/ dist/$component-*.tar.gz
-    else
-        python -m pip wheel --no-deps -w dist -vvv .
-
-        # Retag the wheel
-        python "${script_dir}/python_wheel_fix_tag.py" --plat-name="${PLAT_NAME}" dist/$component-*.whl
-
-        check_wheels dist/$component-*.whl
-    fi
-
-    popd
-done
