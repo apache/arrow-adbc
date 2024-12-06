@@ -88,7 +88,7 @@ namespace Apache.Arrow.Adbc.Client
 
             if (adbcConnection.CommandTimeoutValue != null)
             {
-                this.adbcConnectionParameters[connectionTimeoutValue.DriverPropertyName] = connectionTimeoutValue.Value.ToString();
+                this.AdbcCommandTimeoutProperty = adbcConnection.CommandTimeoutValue.DriverPropertyName;
                 this.CommandTimeout = adbcConnection.CommandTimeoutValue.Value;
             }
         }

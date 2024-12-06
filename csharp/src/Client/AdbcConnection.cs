@@ -274,7 +274,7 @@ namespace Apache.Arrow.Adbc.Client
                             break;
                         case ConnectionStringKeywords.ConnectionTimeout:
                             this.connectionTimeoutValue = ConnectionStringParser.ParseTimeoutValue(paramValue);
-                            this.adbcConnectionParameters.Add(connectionTimeoutValue.DriverPropertyName, connectionTimeoutValue.Value.ToString());
+                            this.adbcConnectionParameters[connectionTimeoutValue.DriverPropertyName] = connectionTimeoutValue.Value.ToString();
                             break;
                         default:
                             this.adbcConnectionParameters.Add(key, paramValue);
