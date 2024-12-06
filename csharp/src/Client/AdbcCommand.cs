@@ -53,6 +53,7 @@ namespace Apache.Arrow.Adbc.Client
 
             this.DbConnection = adbcConnection;
             this.DecimalBehavior = adbcConnection.DecimalBehavior;
+            this.StructBehavior = adbcConnection.StructBehavior;
             this._adbcStatement = adbcConnection.CreateStatement();
         }
 
@@ -74,6 +75,7 @@ namespace Apache.Arrow.Adbc.Client
 
             this.DbConnection = adbcConnection;
             this.DecimalBehavior = adbcConnection.DecimalBehavior;
+            this.StructBehavior = adbcConnection.StructBehavior;
         }
 
         // For testing
@@ -83,6 +85,12 @@ namespace Apache.Arrow.Adbc.Client
             this.DbConnection = adbcConnection;
             this.DecimalBehavior = adbcConnection.DecimalBehavior;
             this.StructBehavior = adbcConnection.StructBehavior;
+
+            if (adbcConnection.CommandTimeoutValue != null)
+            {
+                this.AdbcCommandTimeoutProperty = adbcConnection.CommandTimeoutValue.DriverPropertyName;
+                this.CommandTimeout = adbcConnection.CommandTimeoutValue.Value;
+            }
         }
 
         /// <summary>
@@ -118,7 +126,6 @@ namespace Apache.Arrow.Adbc.Client
                 }
             }
         }
-
 
         /// <summary>
         /// Gets or sets the name of the command timeout property for the underlying ADBC driver.
