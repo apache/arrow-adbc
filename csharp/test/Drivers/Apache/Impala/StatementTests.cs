@@ -17,15 +17,16 @@
 
 using System;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
-    public class StatementTests : Common.StatementTests<SparkTestConfiguration, SparkTestEnvironment>
+    public class StatementTests : Common.StatementTests<ApacheTestConfiguration, ImpalaTestEnvironment>
     {
         public StatementTests(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new SparkTestEnvironment.Factory())
+            : base(outputHelper, new ImpalaTestEnvironment.Factory())
         {
         }
 
@@ -40,11 +41,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             public LongRunningQueryTestData()
             {
-                string longRunningQuery = "SELECT COUNT(*) AS total_count\nFROM (\n  SELECT t1.id AS id1, t2.id AS id2\n  FROM RANGE(1000000) t1\n  CROSS JOIN RANGE(10000) t2\n) subquery\nWHERE MOD(id1 + id2, 2) = 0";
+                // TODO: Determine if this long-running query will work as expected on Impala. 
+                //string longRunningQuery = "SELECT CAST(NULL AS STRING), SLEEP(70000)";
 
-                Add(new(5, longRunningQuery, typeof(TimeoutException)));
-                Add(new(null, longRunningQuery, typeof(TimeoutException)));
-                Add(new(0, longRunningQuery, null));
+                //Add(new(5, longRunningQuery, typeof(TimeoutException)));
+                //Add(new(null, longRunningQuery, typeof(TimeoutException)));
+                //Add(new(0, longRunningQuery, null));
             }
         }
     }

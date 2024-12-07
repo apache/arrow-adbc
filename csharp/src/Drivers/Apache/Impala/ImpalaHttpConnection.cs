@@ -200,7 +200,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
             Trace.TraceError($"create protocol with {Properties.Count} properties.");
 
-            if (!transport.IsOpen) await transport.OpenAsync(CancellationToken.None);
+            if (!transport.IsOpen) await transport.OpenAsync(cancellationToken);
             return new TBinaryProtocol(transport);
         }
 

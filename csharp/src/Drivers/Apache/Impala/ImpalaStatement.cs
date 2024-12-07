@@ -24,6 +24,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         internal ImpalaStatement(ImpalaConnection connection)
             : base(connection)
         {
+            ValidateOptions(connection.Properties);
         }
 
         /// <summary>
