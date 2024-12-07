@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 /// \brief Helper to manage binding data to a SQLite statement.
-struct ADBC_EXPORT AdbcSqliteBinder {
+struct ADBC_EXPORT_STRUCT AdbcSqliteBinder {
   // State
   struct ArrowSchema schema;
   struct ArrowArrayStream params;
