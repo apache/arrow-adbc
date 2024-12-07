@@ -440,6 +440,10 @@ func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 		parameterMode:          OptionValueQueryParameterModePositional,
 		resultRecordBufferSize: c.resultRecordBufferSize,
 		prefetchConcurrency:    c.prefetchConcurrency,
+		queryConfig: bigquery.QueryConfig{
+			DefaultProjectID: c.catalog,
+			DefaultDatasetID: c.dbSchema,
+		},
 	}, nil
 }
 
