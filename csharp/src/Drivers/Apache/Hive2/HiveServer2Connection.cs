@@ -145,6 +145,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TGetOperationStatusReq request = new(operationHandle);
                 statusResponse = await client.GetOperationStatus(request, cancellationToken);
             } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
+
+            // Must be in the finished state to be valid. If not, typically a server error or timeout has occurred.
+            if (statusResponse.OperationState != TOperationState.FINISHED_STATE)
+            {
+                throw new HiveServer2Exception(statusResponse.ErrorMessage, AdbcStatusCode.InvalidState)
+                    .SetSqlState(statusResponse.SqlState)
+                    .SetNativeError(statusResponse.ErrorCode);
+            }
         }
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
