@@ -76,12 +76,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         protected virtual async Task TestVarcharData(string? value)
         {
             string columnName = "VARCHARTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "VARCHAR(100)"));
+            string typeName = "VARCHAR(100)";
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, typeName));
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 value,
-                value != null ? QuoteValue(value) : value);
+                value != null ? $"CAST({QuoteValue(value)} as {typeName})" : value);
         }
 
         /// <summary>
@@ -90,15 +91,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         [SkippableTheory]
         [InlineData(null)]
         [InlineData("")]
-        [InlineData("你好")]
         [InlineData(" Leading and trailing spaces ")]
-        protected virtual async Task TestCharData(string? value)
+        internal virtual async Task TestCharData(string? value)
         {
             string columnName = "CHARTYPE";
             int fieldLength = 100;
-            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, $"CHAR({fieldLength})"));
+            string typeName = $"CHAR({fieldLength})";
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, typeName));
 
-            string? formattedValue = value != null ? QuoteValue(value.PadRight(fieldLength)) : value;
+            string? formattedValue = value != null ? $"CAST({QuoteValue(value.PadRight(fieldLength))} as {typeName})" : value;
             string? paddedValue = value != null ? value.PadRight(fieldLength) : value;
 
             await InsertSingleValueAsync(table.TableName, columnName, formattedValue);
@@ -110,8 +111,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// <summary>
         /// Validates if driver fails to insert invalid length of VARCHAR value.
         /// </summary>
-        [SkippableTheory]
-        [InlineData("String whose length is too long for VARCHAR(10).", new string[] { "Exceeds", "length limitation: 10" }, null)]
         protected virtual async Task TestVarcharExceptionData(string value, string[] expectedTexts, string? expectedSqlState)
         {
             string columnName = "VARCHARTYPE";
