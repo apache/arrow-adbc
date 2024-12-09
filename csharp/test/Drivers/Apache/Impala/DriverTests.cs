@@ -17,16 +17,17 @@
 
 using System;
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Apache.Impala;
+using Apache.Arrow.Adbc.Tests.Metadata;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
-    public class DriverTests : Common.DriverTests<SparkTestConfiguration, SparkTestEnvironment>
+    public class DriverTests : Common.DriverTests<ApacheTestConfiguration, ImpalaTestEnvironment>
     {
         public DriverTests(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new SparkTestEnvironment.Factory())
+            : base(outputHelper, new ImpalaTestEnvironment.Factory())
         {
         }
 
@@ -58,18 +59,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             Dictionary<string, string> parameters = GetDriverParameters(TestConfiguration);
 
             bool hasUri = parameters.TryGetValue(AdbcOptions.Uri, out var uri) && !string.IsNullOrEmpty(uri);
-            bool hasHostName = parameters.TryGetValue(SparkParameters.HostName, out var hostName) && !string.IsNullOrEmpty(hostName);
+            bool hasHostName = parameters.TryGetValue(ImpalaParameters.HostName, out var hostName) && !string.IsNullOrEmpty(hostName);
             if (hasUri)
             {
                 parameters[AdbcOptions.Uri] = "http://unknownhost.azure.com/cliservice";
             }
             else if (hasHostName)
             {
-                parameters[SparkParameters.HostName] = "unknownhost.azure.com";
+                parameters[ImpalaParameters.HostName] = "unknownhost.azure.com";
             }
             else
             {
-                Assert.Fail($"Unexpected configuration. Must provide '{AdbcOptions.Uri}' or '{SparkParameters.HostName}'.");
+                Assert.Fail($"Unexpected configuration. Must provide '{AdbcOptions.Uri}' or '{ImpalaParameters.HostName}'.");
             }
 
             AdbcDatabase database = driver.Open(parameters);
@@ -83,20 +84,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             Assert.NotNull(driver);
             Dictionary<string, string> parameters = GetDriverParameters(TestConfiguration);
 
-            bool hasToken = parameters.TryGetValue(SparkParameters.Token, out var token) && !string.IsNullOrEmpty(token);
             bool hasUsername = parameters.TryGetValue(AdbcOptions.Username, out var username) && !string.IsNullOrEmpty(username);
             bool hasPassword = parameters.TryGetValue(AdbcOptions.Password, out var password) && !string.IsNullOrEmpty(password);
-            if (hasToken)
-            {
-                parameters[SparkParameters.Token] = "invalid-token";
-            }
-            else if (hasUsername && hasPassword)
+            if (hasUsername && hasPassword)
             {
                 parameters[AdbcOptions.Password] = "invalid-password";
             }
             else
             {
-                Assert.Fail($"Unexpected configuration. Must provide '{SparkParameters.Token}' or '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.");
+                Assert.Fail($"Unexpected configuration. Must provide '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.");
             }
 
             AdbcDatabase database = driver.Open(parameters);
@@ -107,7 +103,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         protected override IReadOnlyList<int> GetUpdateExpectedResults()
         {
             int affectedRows = ValidateAffectedRows ? 1 : -1;
-            return ClientTests.GetUpdateExpecteResults(affectedRows, TestEnvironment.ServerType == SparkServerType.Databricks);
+            return ClientTests.GetUpdateExpecteResults(affectedRows);
         }
 
 
@@ -129,26 +125,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             return GetPatterns(tableName);
         }
 
-        protected override bool TypeHasDecimalDigits(Metadata.AdbcColumn column)
-        {
-            HashSet<short> typesHaveDecimalDigits = new()
-                {
-                    (short)SupportedSparkDataType.DECIMAL,
-                    (short)SupportedSparkDataType.NUMERIC,
-                };
-            return typesHaveDecimalDigits.Contains(column.XdbcDataType!.Value);
-        }
+        protected override bool TypeHasColumnSize(AdbcColumn column) => true;
 
-        protected override bool TypeHasColumnSize(Metadata.AdbcColumn column)
-        {
-            HashSet<short> typesHaveColumnSize = new()
-                {
-                    (short)SupportedSparkDataType.DECIMAL,
-                    (short)SupportedSparkDataType.NUMERIC,
-                    (short)SupportedSparkDataType.CHAR,
-                    (short)SupportedSparkDataType.VARCHAR,
-                };
-            return typesHaveColumnSize.Contains(column.XdbcDataType!.Value);
-        }
+        protected override bool TypeHasDecimalDigits(AdbcColumn column) => true;
     }
 }

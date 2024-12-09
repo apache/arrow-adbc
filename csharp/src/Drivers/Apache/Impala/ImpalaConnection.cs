@@ -28,11 +28,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     internal abstract class ImpalaConnection : HiveServer2Connection
     {
-        internal static readonly string s_userAgent = $"{InfoDriverName.Replace(" ", "")}/{ProductVersionDefault}";
+        internal static readonly string s_userAgent = $"{DriverName.Replace(" ", "")}/{ProductVersionDefault}";
 
-        const string ProductVersionDefault = "1.0.0";
-        const string InfoDriverName = "ADBC Impala Driver";
-
+        private const string ProductVersionDefault = "1.0.0";
+        private const string DriverName = "ADBC Impala Driver";
+        private const string ArrowVersion = "1.0.0";
         private readonly Lazy<string> _productVersion;
 
         /*
@@ -56,7 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             ValidateOptions();
         }
 
-        protected string ProductVersion => _productVersion.Value;
+        protected override string ProductVersion => _productVersion.Value;
 
         protected override string GetProductVersionDefault() => ProductVersionDefault;
 
@@ -65,10 +65,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             return new ImpalaStatement(this);
         }
 
-        // Note Impala's Position is one-indexed, not zero-indexed
-        protected override IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
-           .Select(t => new { Index = t.Position, t.ColumnName })
-           .ToDictionary(t => t.ColumnName, t => t.Index);
+        protected internal override int PositionOffset => 0;
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
@@ -89,7 +86,26 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
 
+        protected override void SetPrecisionScaleAndTypeName(
+            short colType,
+            string typeName,
+            TableInfo? tableInfo,
+            int columnSize,
+            int decimalDigits)
+        {
+            tableInfo?.TypeName.Add(typeName);
+            tableInfo?.Precision.Add(columnSize);
+            tableInfo?.Scale.Add((short)decimalDigits);
+            tableInfo?.BaseTypeName.Add(typeName);
+        }
+
         protected override bool AreResultsAvailableDirectly() => false;
+
+        protected override string InfoDriverName => DriverName;
+
+        protected override string InfoDriverArrowVersion => ArrowVersion;
+
+        protected override bool GetObjectsPatternsRequireLowerCase => true;
 
         protected override TSparkGetDirectResults GetDirectResults() => throw new System.NotImplementedException();
 
@@ -118,6 +134,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                 OrdinalPosition = OrdinalPosition,
                 IsNullable = IsNullable,
                 IsAutoIncrement = IsAutoIncrement,
+                ColumnSize = ColumnSize,
+                DecimalDigits = DecimalDigits,
             };
         }
     }

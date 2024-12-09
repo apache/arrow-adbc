@@ -20,7 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// <summary>
         /// Supported Spark data types as a subset of <see cref="ColumnTypeId"/>
         /// </summary>
-        private enum SupportedSparkDataType : short
+        internal enum SupportedSparkDataType : short
         {
             ARRAY = ColumnTypeId.ARRAY,
             BIGINT = ColumnTypeId.BIGINT,
@@ -268,8 +268,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public abstract void CanGetObjectsDbSchemas(string dbSchemaPattern);
 
         /// <summary>
-                                                                          /// Validates if the driver can call GetObjects with GetObjectsDepth as DbSchemas with DbSchemaName as a pattern.
-                                                                          /// </summary>
+        /// Validates if the driver can call GetObjects with GetObjectsDepth as DbSchemas with DbSchemaName as a pattern.
+        /// </summary>
         protected void GetObjectsDbSchemasTest(string dbSchemaPattern)
         {
             // need to add the database
@@ -380,11 +380,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             Assert.True(columns != null, "Columns cannot be null");
             Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, columns.Count);
 
+            HiveServer2Connection hiveServer2Connection = (HiveServer2Connection)Connection;
             for (int i = 0; i < columns.Count; i++)
             {
                 // Verify column metadata is returned/consistent.
                 AdbcColumn column = columns[i];
-                Assert.Equal(i + 1, column.OrdinalPosition);
+                // Handle data source position offset.
+                int offset = 2 + hiveServer2Connection.PositionOffset;
+                Assert.Equal(i + offset, column.OrdinalPosition);
                 Assert.False(string.IsNullOrEmpty(column.Name));
                 Assert.False(string.IsNullOrEmpty(column.XdbcTypeName));
                 Assert.False(Regex.IsMatch(column.XdbcTypeName, @"[_,\d\<\>\(\)]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
@@ -397,23 +400,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 Assert.NotNull(column.XdbcDataType);
                 Assert.Contains((SupportedSparkDataType)column.XdbcDataType!, supportedTypes);
 
-                HashSet<short> typesHaveColumnSize = new()
-                {
-                    (short)SupportedSparkDataType.DECIMAL,
-                    (short)SupportedSparkDataType.NUMERIC,
-                    (short)SupportedSparkDataType.CHAR,
-                    (short)SupportedSparkDataType.VARCHAR,
-                };
-                HashSet<short> typesHaveDecimalDigits = new()
-                {
-                    (short)SupportedSparkDataType.DECIMAL,
-                    (short)SupportedSparkDataType.NUMERIC,
-                };
-
-                bool typeHasColumnSize = typesHaveColumnSize.Contains(column.XdbcDataType.Value);
+                bool typeHasColumnSize = TypeHasColumnSize(column);
                 Assert.Equal(column.XdbcColumnSize.HasValue, typeHasColumnSize);
-
-                bool typeHasDecimalDigits = typesHaveDecimalDigits.Contains(column.XdbcDataType.Value);
+                bool typeHasDecimalDigits = TypeHasDecimalDigits(column);
                 Assert.Equal(column.XdbcDecimalDigits.HasValue, typeHasDecimalDigits);
 
                 Assert.False(string.IsNullOrEmpty(column.Remarks));
@@ -436,6 +425,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 Assert.Null(column.XdbcScopeTable);
             }
         }
+
+        protected abstract bool TypeHasDecimalDigits(AdbcColumn column);
+
+        protected abstract bool TypeHasColumnSize(AdbcColumn column);
 
         /// <summary>
         /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables with TableName as a Special Character.
@@ -599,59 +592,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         }
 
         [SkippableFact, Order(13)]
-        public void CanDetectInvalidAuthentication()
-        {
-            AdbcDriver driver = NewDriver;
-            Assert.NotNull(driver);
-            Dictionary<string, string> parameters = GetDriverParameters(TestConfiguration);
-
-            bool hasToken = parameters.TryGetValue(SparkParameters.Token, out var token) && !string.IsNullOrEmpty(token);
-            bool hasUsername = parameters.TryGetValue(AdbcOptions.Username, out var username) && !string.IsNullOrEmpty(username);
-            bool hasPassword = parameters.TryGetValue(AdbcOptions.Password, out var password) && !string.IsNullOrEmpty(password);
-            if (hasToken)
-            {
-                parameters[SparkParameters.Token] = "invalid-token";
-            }
-            else if (hasUsername && hasPassword)
-            {
-                parameters[AdbcOptions.Password] = "invalid-password";
-            }
-            else
-            {
-                Assert.Fail($"Unexpected configuration. Must provide '{SparkParameters.Token}' or '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.");
-            }
-
-            AdbcDatabase database = driver.Open(parameters);
-            AggregateException exception = Assert.ThrowsAny<AggregateException>(() => database.Connect(parameters));
-            OutputHelper?.WriteLine(exception.Message);
-        }
+        public abstract void CanDetectInvalidAuthentication();
 
         [SkippableFact, Order(14)]
-        public void CanDetectInvalidServer()
-        {
-            AdbcDriver driver = NewDriver;
-            Assert.NotNull(driver);
-            Dictionary<string, string> parameters = GetDriverParameters(TestConfiguration);
-
-            bool hasUri = parameters.TryGetValue(AdbcOptions.Uri, out var uri) && !string.IsNullOrEmpty(uri);
-            bool hasHostName = parameters.TryGetValue(SparkParameters.HostName, out var hostName) && !string.IsNullOrEmpty(hostName);
-            if (hasUri)
-            {
-                parameters[AdbcOptions.Uri] = "http://unknownhost.azure.com/cliservice";
-            }
-            else if (hasHostName)
-            {
-                parameters[SparkParameters.HostName] = "unknownhost.azure.com";
-            }
-            else
-            {
-                Assert.Fail($"Unexpected configuration. Must provide '{AdbcOptions.Uri}' or '{SparkParameters.HostName}'.");
-            }
-
-            AdbcDatabase database = driver.Open(parameters);
-            AggregateException exception = Assert.ThrowsAny<AggregateException>(() => database.Connect(parameters));
-            OutputHelper?.WriteLine(exception.Message);
-        }
+        public abstract void CanDetectInvalidServer();
 
         /// <summary>
         /// Validates if the driver can connect to a live server and

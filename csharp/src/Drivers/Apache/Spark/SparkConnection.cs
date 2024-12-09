@@ -31,22 +31,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal abstract class SparkConnection : HiveServer2Connection
     {
-        internal static readonly string s_userAgent = $"{InfoDriverName.Replace(" ", "")}/{ProductVersionDefault}";
-
-        readonly AdbcInfoCode[] infoSupportedCodes = new[] {
-            AdbcInfoCode.DriverName,
-            AdbcInfoCode.DriverVersion,
-            AdbcInfoCode.DriverArrowVersion,
-            AdbcInfoCode.VendorName,
-            AdbcInfoCode.VendorSql,
-            AdbcInfoCode.VendorVersion,
-        };
-
-        const string ProductVersionDefault = "1.0.0";
-        const string InfoDriverName = "ADBC Spark Driver";
-        const string InfoDriverArrowVersion = "1.0.0";
-        const bool InfoVendorSql = true;
-
+        protected const string ProductVersionDefault = "1.0.0";
+        protected const string DriverName = "ADBC Spark Driver";
+        private const string ArrowVersion = "1.0.0";
         private readonly Lazy<string> _productVersion;
 
         protected override string GetProductVersionDefault() => ProductVersionDefault;
@@ -72,161 +59,68 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             ValidateOptions();
         }
 
-        protected string ProductVersion => _productVersion.Value;
+        protected override string ProductVersion => _productVersion.Value;
 
         public override AdbcStatement CreateStatement()
         {
             return new SparkStatement(this);
         }
 
-        public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
+        protected internal override int PositionOffset => -1;
+
+        protected override void SetPrecisionScaleAndTypeName(
+            short colType,
+            string typeName,
+            TableInfo? tableInfo,
+            int columnSize,
+            int decimalDigits)
         {
-            const int strValTypeID = 0;
-            const int boolValTypeId = 1;
-
-            UnionType infoUnionType = new UnionType(
-                new Field[]
-                {
-                    new Field("string_value", StringType.Default, true),
-                    new Field("bool_value", BooleanType.Default, true),
-                    new Field("int64_value", Int64Type.Default, true),
-                    new Field("int32_bitmask", Int32Type.Default, true),
-                    new Field(
-                        "string_list",
-                        new ListType(
-                            new Field("item", StringType.Default, true)
-                        ),
-                        false
-                    ),
-                    new Field(
-                        "int32_to_int32_list_map",
-                        new ListType(
-                            new Field("entries", new StructType(
-                                new Field[]
-                                {
-                                    new Field("key", Int32Type.Default, false),
-                                    new Field("value", Int32Type.Default, true),
-                                }
-                                ), false)
-                        ),
-                        true
-                    )
-                },
-                new int[] { 0, 1, 2, 3, 4, 5 },
-                UnionMode.Dense);
-
-            if (codes.Count == 0)
+            // Keep the original type name
+            tableInfo?.TypeName.Add(typeName);
+            switch (colType)
             {
-                codes = infoSupportedCodes;
+                case (short)ColumnTypeId.DECIMAL:
+                case (short)ColumnTypeId.NUMERIC:
+                    {
+                        SqlDecimalParserResult result = SqlTypeNameParser<SqlDecimalParserResult>.Parse(typeName, colType);
+                        tableInfo?.Precision.Add(result.Precision);
+                        tableInfo?.Scale.Add((short)result.Scale);
+                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
+                        break;
+                    }
+
+                case (short)ColumnTypeId.CHAR:
+                case (short)ColumnTypeId.NCHAR:
+                case (short)ColumnTypeId.VARCHAR:
+                case (short)ColumnTypeId.LONGVARCHAR:
+                case (short)ColumnTypeId.LONGNVARCHAR:
+                case (short)ColumnTypeId.NVARCHAR:
+                    {
+                        SqlCharVarcharParserResult result = SqlTypeNameParser<SqlCharVarcharParserResult>.Parse(typeName, colType);
+                        tableInfo?.Precision.Add(result.ColumnSize);
+                        tableInfo?.Scale.Add(null);
+                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
+                        break;
+                    }
+
+                default:
+                    {
+                        SqlTypeNameParserResult result = SqlTypeNameParser<SqlTypeNameParserResult>.Parse(typeName, colType);
+                        tableInfo?.Precision.Add(null);
+                        tableInfo?.Scale.Add(null);
+                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
+                        break;
+                    }
             }
-
-            UInt32Array.Builder infoNameBuilder = new UInt32Array.Builder();
-            ArrowBuffer.Builder<byte> typeBuilder = new ArrowBuffer.Builder<byte>();
-            ArrowBuffer.Builder<int> offsetBuilder = new ArrowBuffer.Builder<int>();
-            StringArray.Builder stringInfoBuilder = new StringArray.Builder();
-            BooleanArray.Builder booleanInfoBuilder = new BooleanArray.Builder();
-
-            int nullCount = 0;
-            int arrayLength = codes.Count;
-            int offset = 0;
-
-            foreach (AdbcInfoCode code in codes)
-            {
-                switch (code)
-                {
-                    case AdbcInfoCode.DriverName:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.Append(InfoDriverName);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.DriverVersion:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.Append(ProductVersion);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.DriverArrowVersion:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.Append(InfoDriverArrowVersion);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.VendorName:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        string vendorName = VendorName;
-                        stringInfoBuilder.Append(vendorName);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.VendorVersion:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        string? vendorVersion = VendorVersion;
-                        stringInfoBuilder.Append(vendorVersion);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.VendorSql:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(boolValTypeId);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.AppendNull();
-                        booleanInfoBuilder.Append(InfoVendorSql);
-                        break;
-                    default:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.AppendNull();
-                        booleanInfoBuilder.AppendNull();
-                        nullCount++;
-                        break;
-                }
-            }
-
-            StructType entryType = new StructType(
-                new Field[] {
-                    new Field("key", Int32Type.Default, false),
-                    new Field("value", Int32Type.Default, true)});
-
-            StructArray entriesDataArray = new StructArray(entryType, 0,
-                new[] { new Int32Array.Builder().Build(), new Int32Array.Builder().Build() },
-                new ArrowBuffer.BitmapBuilder().Build());
-
-            IArrowArray[] childrenArrays = new IArrowArray[]
-            {
-                stringInfoBuilder.Build(),
-                booleanInfoBuilder.Build(),
-                new Int64Array.Builder().Build(),
-                new Int32Array.Builder().Build(),
-                new ListArray.Builder(StringType.Default).Build(),
-                new List<IArrowArray?>(){ entriesDataArray }.BuildListArrayForType(entryType)
-            };
-
-            DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
-
-            IArrowArray[] dataArrays = new IArrowArray[]
-            {
-                infoNameBuilder.Build(),
-                infoValue
-            };
-            StandardSchemas.GetInfoSchema.Validate(dataArrays);
-
-            return new HiveInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
-
         }
 
-        // Note Spark's Position is zero-indexed, not one-indexed
-        protected override IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
-            .Select(t => new { Index = t.Position - 1, t.ColumnName })
-            .ToDictionary(t => t.ColumnName, t => t.Index);
-
         protected override bool AreResultsAvailableDirectly() => true;
+
+        protected override string InfoDriverName => DriverName;
+
+        protected override string InfoDriverArrowVersion => ArrowVersion;
+
+        protected override bool GetObjectsPatternsRequireLowerCase => false;
 
         protected override TSparkGetDirectResults GetDirectResults() => sparkGetDirectResults;
 
@@ -251,6 +145,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 OrdinalPosition = OrdinalPosition,
                 IsNullable = IsNullable,
                 IsAutoIncrement = IsAutoIncrement,
+                ColumnSize = ColumnSize,
+                DecimalDigits = DecimalDigits,
             };
         }
     }

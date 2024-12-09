@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -35,6 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal abstract class HiveServer2Connection : AdbcConnection
     {
+        internal const bool InfoVendorSql = true;
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
         private const int ConnectTimeoutMillisecondsDefault = 30000;
@@ -42,6 +44,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private TCLIService.Client? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
+
+        readonly AdbcInfoCode[] infoSupportedCodes = [
+            AdbcInfoCode.DriverName,
+            AdbcInfoCode.DriverVersion,
+            AdbcInfoCode.DriverArrowVersion,
+            AdbcInfoCode.VendorName,
+            AdbcInfoCode.VendorSql,
+            AdbcInfoCode.VendorVersion,
+        ];
 
         internal const string ColumnDef = "COLUMN_DEF";
         internal const string ColumnName = "COLUMN_NAME";
@@ -57,6 +68,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal const string TableType = "TABLE_TYPE";
         internal const string TypeName = "TYPE_NAME";
         internal const string Nullable = "NULLABLE";
+        internal const string ColumnSize = "COLUMN_SIZE";
+        internal const string DecimalDigits = "DECIMAL_DIGITS";
+        internal const string BufferLength = "BUFFER_LENGTH";
 
         /// <summary>
         /// The GetColumns metadata call returns a result with different column names
@@ -75,6 +89,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             public string OrdinalPosition { get; internal set; }
             public string IsNullable { get; internal set; }
             public string IsAutoIncrement { get; internal set; }
+            public string ColumnSize { get; set; }
+            public string DecimalDigits { get; set; }
         }
 
         /// <summary>
@@ -473,7 +489,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected abstract TSparkGetDirectResults GetDirectResults();
 
-        protected abstract IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns);
+        // Note data source's Position may be one-indexed or zero-indexed
+        protected IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
+           .Select(t => new { Index = t.Position + PositionOffset, t.ColumnName })
+           .ToDictionary(t => t.ColumnName, t => t.Index);
+
+        protected internal abstract int PositionOffset { get; }
+
+        protected abstract string InfoDriverName { get; }
+
+        protected abstract string InfoDriverArrowVersion { get; }
+
+        protected abstract string ProductVersion { get; }
+
+        protected abstract bool GetObjectsPatternsRequireLowerCase {  get; }
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
@@ -481,6 +510,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
             try
             {
+                if (GetObjectsPatternsRequireLowerCase)
+                {
+                    catalogPattern = catalogPattern?.ToLower();
+                    dbSchemaPattern = dbSchemaPattern?.ToLower();
+                    tableNamePattern = tableNamePattern?.ToLower();
+                    columnNamePattern = columnNamePattern?.ToLower();
+                }
                 if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
                 {
                     TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
@@ -623,6 +659,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     ReadOnlySpan<int> ordinalPosList = rowSet.Columns[columnMap[columnNames.OrdinalPosition]].I32Val.Values.Values;
                     IReadOnlyList<string> isNullableList = rowSet.Columns[columnMap[columnNames.IsNullable]].StringVal.Values;
                     IReadOnlyList<string> isAutoIncrementList = rowSet.Columns[columnMap[columnNames.IsAutoIncrement]].StringVal.Values;
+                    ReadOnlySpan<int> columnSizeList = rowSet.Columns[columnMap[columnNames.ColumnSize]].I32Val.Values.Values;
+                    ReadOnlySpan<int> decimalDigitsList = rowSet.Columns[columnMap[columnNames.DecimalDigits]].I32Val.Values.Values;
 
                     for (int i = 0; i < catalogList.Count; i++)
                     {
@@ -640,6 +678,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         string columnDefault = columnDefaultList[i] ?? "";
                         // Spark/Databricks reports ordinal index zero-indexed, instead of one-indexed
                         int ordinalPos = ordinalPosList[i] + 1;
+                        int columnSize = columnSizeList[i];
+                        int decimalDigits = decimalDigitsList[i];
                         TableInfo? tableInfo = catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.GetValueOrDefault(tableName);
                         tableInfo?.ColumnName.Add(columnName);
                         tableInfo?.ColType.Add(colType);
@@ -648,7 +688,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         tableInfo?.IsNullable.Add(isNullable);
                         tableInfo?.ColumnDefault.Add(columnDefault);
                         tableInfo?.OrdinalPosition.Add(ordinalPos);
-                        SetPrecisionScaleAndTypeName(colType, typeName, tableInfo);
+                        SetPrecisionScaleAndTypeName(colType, typeName, tableInfo, columnSize, decimalDigits);
                     }
                 }
 
@@ -884,46 +924,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 nullBitmapBuffer.Build());
         }
 
-        private static void SetPrecisionScaleAndTypeName(short colType, string typeName, TableInfo? tableInfo)
-        {
-            // Keep the original type name
-            tableInfo?.TypeName.Add(typeName);
-            switch (colType)
-            {
-                case (short)ColumnTypeId.DECIMAL:
-                case (short)ColumnTypeId.NUMERIC:
-                    {
-                        SqlDecimalParserResult result = SqlTypeNameParser<SqlDecimalParserResult>.Parse(typeName, colType);
-                        tableInfo?.Precision.Add(result.Precision);
-                        tableInfo?.Scale.Add((short)result.Scale);
-                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
-                        break;
-                    }
-
-                case (short)ColumnTypeId.CHAR:
-                case (short)ColumnTypeId.NCHAR:
-                case (short)ColumnTypeId.VARCHAR:
-                case (short)ColumnTypeId.LONGVARCHAR:
-                case (short)ColumnTypeId.LONGNVARCHAR:
-                case (short)ColumnTypeId.NVARCHAR:
-                    {
-                        SqlCharVarcharParserResult result = SqlTypeNameParser<SqlCharVarcharParserResult>.Parse(typeName, colType);
-                        tableInfo?.Precision.Add(result.ColumnSize);
-                        tableInfo?.Scale.Add(null);
-                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
-                        break;
-                    }
-
-                default:
-                    {
-                        SqlTypeNameParserResult result = SqlTypeNameParser<SqlTypeNameParserResult>.Parse(typeName, colType);
-                        tableInfo?.Precision.Add(null);
-                        tableInfo?.Scale.Add(null);
-                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
-                        break;
-                    }
-            }
-        }
+        protected abstract void SetPrecisionScaleAndTypeName(
+            short colType,
+            string typeName,
+            TableInfo? tableInfo,
+            int columnSize,
+            int decimalDigits);
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
         {
@@ -1097,6 +1103,148 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TFetchResultsReq request = new(operationHandle, TFetchOrientation.FETCH_NEXT, batchSize);
             TFetchResultsResp response = await client.FetchResults(request, cancellationToken);
             return response;
+        }
+
+        public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
+        {
+            const int strValTypeID = 0;
+            const int boolValTypeId = 1;
+
+            UnionType infoUnionType = new UnionType(
+                new Field[]
+                {
+                    new Field("string_value", StringType.Default, true),
+                    new Field("bool_value", BooleanType.Default, true),
+                    new Field("int64_value", Int64Type.Default, true),
+                    new Field("int32_bitmask", Int32Type.Default, true),
+                    new Field(
+                        "string_list",
+                        new ListType(
+                            new Field("item", StringType.Default, true)
+                        ),
+                        false
+                    ),
+                    new Field(
+                        "int32_to_int32_list_map",
+                        new ListType(
+                            new Field("entries", new StructType(
+                                new Field[]
+                                {
+                                    new Field("key", Int32Type.Default, false),
+                                    new Field("value", Int32Type.Default, true),
+                                }
+                                ), false)
+                        ),
+                        true
+                    )
+                },
+                new int[] { 0, 1, 2, 3, 4, 5 },
+                UnionMode.Dense);
+
+            if (codes.Count == 0)
+            {
+                codes = infoSupportedCodes;
+            }
+
+            UInt32Array.Builder infoNameBuilder = new UInt32Array.Builder();
+            ArrowBuffer.Builder<byte> typeBuilder = new ArrowBuffer.Builder<byte>();
+            ArrowBuffer.Builder<int> offsetBuilder = new ArrowBuffer.Builder<int>();
+            StringArray.Builder stringInfoBuilder = new StringArray.Builder();
+            BooleanArray.Builder booleanInfoBuilder = new BooleanArray.Builder();
+
+            int nullCount = 0;
+            int arrayLength = codes.Count;
+            int offset = 0;
+
+            foreach (AdbcInfoCode code in codes)
+            {
+                switch (code)
+                {
+                    case AdbcInfoCode.DriverName:
+                        infoNameBuilder.Append((UInt32)code);
+                        typeBuilder.Append(strValTypeID);
+                        offsetBuilder.Append(offset++);
+                        stringInfoBuilder.Append(InfoDriverName);
+                        booleanInfoBuilder.AppendNull();
+                        break;
+                    case AdbcInfoCode.DriverVersion:
+                        infoNameBuilder.Append((UInt32)code);
+                        typeBuilder.Append(strValTypeID);
+                        offsetBuilder.Append(offset++);
+                        stringInfoBuilder.Append(ProductVersion);
+                        booleanInfoBuilder.AppendNull();
+                        break;
+                    case AdbcInfoCode.DriverArrowVersion:
+                        infoNameBuilder.Append((UInt32)code);
+                        typeBuilder.Append(strValTypeID);
+                        offsetBuilder.Append(offset++);
+                        stringInfoBuilder.Append(InfoDriverArrowVersion);
+                        booleanInfoBuilder.AppendNull();
+                        break;
+                    case AdbcInfoCode.VendorName:
+                        infoNameBuilder.Append((UInt32)code);
+                        typeBuilder.Append(strValTypeID);
+                        offsetBuilder.Append(offset++);
+                        string vendorName = VendorName;
+                        stringInfoBuilder.Append(vendorName);
+                        booleanInfoBuilder.AppendNull();
+                        break;
+                    case AdbcInfoCode.VendorVersion:
+                        infoNameBuilder.Append((UInt32)code);
+                        typeBuilder.Append(strValTypeID);
+                        offsetBuilder.Append(offset++);
+                        string? vendorVersion = VendorVersion;
+                        stringInfoBuilder.Append(vendorVersion);
+                        booleanInfoBuilder.AppendNull();
+                        break;
+                    case AdbcInfoCode.VendorSql:
+                        infoNameBuilder.Append((UInt32)code);
+                        typeBuilder.Append(boolValTypeId);
+                        offsetBuilder.Append(offset++);
+                        stringInfoBuilder.AppendNull();
+                        booleanInfoBuilder.Append(InfoVendorSql);
+                        break;
+                    default:
+                        infoNameBuilder.Append((UInt32)code);
+                        typeBuilder.Append(strValTypeID);
+                        offsetBuilder.Append(offset++);
+                        stringInfoBuilder.AppendNull();
+                        booleanInfoBuilder.AppendNull();
+                        nullCount++;
+                        break;
+                }
+            }
+
+            StructType entryType = new StructType(
+                new Field[] {
+                    new Field("key", Int32Type.Default, false),
+                    new Field("value", Int32Type.Default, true)});
+
+            StructArray entriesDataArray = new StructArray(entryType, 0,
+                new[] { new Int32Array.Builder().Build(), new Int32Array.Builder().Build() },
+                new ArrowBuffer.BitmapBuilder().Build());
+
+            IArrowArray[] childrenArrays = new IArrowArray[]
+            {
+                stringInfoBuilder.Build(),
+                booleanInfoBuilder.Build(),
+                new Int64Array.Builder().Build(),
+                new Int32Array.Builder().Build(),
+                new ListArray.Builder(StringType.Default).Build(),
+                new List<IArrowArray?>(){ entriesDataArray }.BuildListArrayForType(entryType)
+            };
+
+            DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
+
+            IArrowArray[] dataArrays = new IArrowArray[]
+            {
+                infoNameBuilder.Build(),
+                infoValue
+            };
+            StandardSchemas.GetInfoSchema.Validate(dataArrays);
+
+            return new HiveInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
+
         }
 
         internal struct TableInfo(string type)
