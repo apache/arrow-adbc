@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data.SqlTypes;
 using System.Linq;
 using System.Threading;
@@ -26,6 +27,7 @@ using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Moq;
 using Xunit;
+using AdbcClient = Apache.Arrow.Adbc.Client;
 
 namespace Apache.Arrow.Adbc.Tests.Client
 {
@@ -165,6 +167,117 @@ namespace Apache.Arrow.Adbc.Tests.Client
 
             AdbcDataReader reader = cmd.ExecuteReader();
             return reader;
+        }
+
+        [Theory]
+        [InlineData("(adbc.driver.value, 1, s)", "adbc.driver.value", 1, "s", true)]
+        [InlineData("(somevalue,10, ms)", "somevalue", 10, "ms", true)]
+        [InlineData("(somevalue,10, s)", "somevalue", 10, "s", true)]
+        [InlineData("somevalue,10, s)", null, null, null, false)]
+        [InlineData("(somevalue,10, s", null, null, null, false)]
+        [InlineData("(some.value_goes.here,99,Q)", null, null, null, false)]
+        [InlineData("some.value_goes.here,99,Q", null, null, null, false)]
+        public void TestTimeoutParsing(string value, string? driverPropertyName, int? timeout, string? unit, bool success)
+        {
+            if (!success)
+            {
+                try
+                {
+                    ConnectionStringParser.ParseTimeoutValue(value);
+                }
+                catch (ArgumentOutOfRangeException) { }
+                catch (InvalidOperationException) { }
+                catch
+                {
+                    Assert.Fail("Unknown exception found");
+                }
+            }
+            else
+            {
+                Assert.True(driverPropertyName != null);
+                Assert.True(timeout != null);
+                Assert.True(unit != null);
+
+                TimeoutValue timeoutValue = ConnectionStringParser.ParseTimeoutValue(value);
+
+                Assert.Equal(driverPropertyName, timeoutValue.DriverPropertyName);
+                Assert.Equal(timeout, timeoutValue.Value);
+                Assert.Equal(unit, timeoutValue.Units);
+            }
+        }
+
+        [Theory]
+        [ClassData(typeof(ConnectionParsingTestData))]
+        internal void TestConnectionStringParsing(ConnectionStringExample connectionStringExample)
+        {
+            AdbcClient.AdbcConnection cn = new AdbcClient.AdbcConnection(connectionStringExample.ConnectionString);
+
+            Mock<AdbcStatement> mockStatement = new Mock<AdbcStatement>();
+            AdbcCommand cmd = new AdbcCommand(mockStatement.Object, cn);
+
+            Assert.True(cn.StructBehavior == connectionStringExample.ExpectedStructBehavior);
+            Assert.True(cn.DecimalBehavior == connectionStringExample.ExpectedDecimalBehavior);
+            Assert.True(cn.ConnectionTimeout == connectionStringExample.ConnectionTimeout);
+
+            if (!string.IsNullOrEmpty(connectionStringExample.CommandTimeoutProperty))
+            {
+                Assert.True(cmd.AdbcCommandTimeoutProperty == connectionStringExample.CommandTimeoutProperty);
+                Assert.True(cmd.CommandTimeout == connectionStringExample.CommandTimeout);
+            }
+            else
+            {
+                Assert.Throws<InvalidOperationException>(() => cmd.AdbcCommandTimeoutProperty);
+            }
+        }
+    }
+
+    internal class ConnectionStringExample
+    {
+        public ConnectionStringExample(
+            string connectionString,
+            DecimalBehavior decimalBehavior,
+            StructBehavior structBehavior,
+            string connectionTimeoutPropertyName,
+            int connectionTimeout,
+            string commandTimeoutPropertyName,
+            int commandTimeout)
+        {
+            ConnectionString = connectionString;
+            ExpectedDecimalBehavior = decimalBehavior;
+            ExpectedStructBehavior = structBehavior;
+            ConnectionTimeoutProperty = connectionTimeoutPropertyName;
+            ConnectionTimeout = connectionTimeout;
+            CommandTimeoutProperty = commandTimeoutPropertyName;
+            CommandTimeout = commandTimeout;
+        }
+
+        public string ConnectionString { get; }
+
+        public string ConnectionTimeoutProperty { get; }
+
+        public int ConnectionTimeout { get; }
+
+        public DecimalBehavior ExpectedDecimalBehavior { get; }
+
+        public StructBehavior ExpectedStructBehavior { get; }
+
+        public string CommandTimeoutProperty { get; }
+
+        public int CommandTimeout { get; }
+    }
+
+    /// <summary>
+    /// Collection of <see cref="ConnectionStringExample"/> for testing statement timeouts."/>
+    /// </summary>
+    internal class ConnectionParsingTestData : TheoryData<ConnectionStringExample>
+    {
+        public ConnectionParsingTestData()
+        {
+            int defaultDbConnectionTimeout = 15;
+
+            Add(new("StructBehavior=JsonString", default, StructBehavior.JsonString, "", defaultDbConnectionTimeout, "", 30));
+            Add(new("StructBehavior=JsonString;AdbcCommandTimeout=(adbc.apache.statement.query_timeout_s,45,s)", default, StructBehavior.JsonString, "", defaultDbConnectionTimeout, "adbc.apache.statement.query_timeout_s", 45));
+            Add(new("StructBehavior=JsonString;DecimalBehavior=OverflowDecimalAsString;AdbcConnectionTimeout=(adbc.spark.connect_timeout_ms,90,s);AdbcCommandTimeout=(adbc.apache.statement.query_timeout_s,45,s)", DecimalBehavior.OverflowDecimalAsString, StructBehavior.JsonString, "adbc.spark.connect_timeout_ms", 90, "adbc.apache.statement.query_timeout_s", 45));
         }
     }
 
