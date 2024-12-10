@@ -337,7 +337,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public override string BaseTypeName => "CHAR";
 
         private static readonly Regex s_expression = new(
-            @"^\s*(?<typeName>((CHAR)|(NCHAR)))(\s*\(\s*(?<precision>\d{1,10})\s*\))?\s*$",
+            @"^\s*(?<typeName>((CHAR)|(NCHAR)))(\s*\(\s*(?<precision>\d{1,10})\s*\))\s*$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         protected override Regex Expression => s_expression;
