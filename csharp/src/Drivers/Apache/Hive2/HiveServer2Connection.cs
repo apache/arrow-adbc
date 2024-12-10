@@ -358,152 +358,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
 
-        /// <summary>
-        /// Gets the data-source specific columns names for the GetColumns metadata result.
-        /// </summary>
-        /// <returns></returns>
-        protected abstract ColumnsMetadataColumnNames GetColumnsMetadataColumnNames();
-
-        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
-        {
-            TGetOperationStatusResp? statusResponse = null;
-            do
-            {
-                if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds, cancellationToken); }
-                TGetOperationStatusReq request = new(operationHandle);
-                statusResponse = await client.GetOperationStatus(request, cancellationToken);
-            } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
-
-            // Must be in the finished state to be valid. If not, typically a server error or timeout has occurred.
-            if (statusResponse.OperationState != TOperationState.FINISHED_STATE)
-            {
-                throw new HiveServer2Exception(statusResponse.ErrorMessage, AdbcStatusCode.InvalidState)
-                    .SetSqlState(statusResponse.SqlState)
-                    .SetNativeError(statusResponse.ErrorCode);
-            }
-        }
-
-        private string GetInfoTypeStringValue(TGetInfoType infoType)
-        {
-            TGetInfoReq req = new()
-            {
-                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
-                InfoType = infoType,
-            };
-
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            try
-            {
-                TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
-                if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                {
-                    throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
-                        .SetNativeError(getInfoResp.Status.ErrorCode)
-                        .SetSqlState(getInfoResp.Status.SqlState);
-                }
-
-                return getInfoResp.InfoValue.StringValue;
-            }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
-            {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
-            }
-        }
-
-        public override void Dispose()
-        {
-            if (_client != null)
-            {
-                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                TCloseSessionReq r6 = new(SessionHandle);
-                _client.CloseSession(r6, cancellationToken).Wait();
-                _transport?.Close();
-                _client.Dispose();
-                _transport = null;
-                _client = null;
-            }
-        }
-
-        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
-        {
-            TGetResultSetMetadataReq request = new(operationHandle);
-            TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
-            return response;
-        }
-
-        protected abstract string GetProductVersionDefault();
-
-        protected internal string GetProductVersion()
-        {
-            FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
-            return fileVersionInfo.ProductVersion ?? GetProductVersionDefault();
-        }
-
-        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port)
-        {
-            // Uri property takes precedent.
-            if (!string.IsNullOrWhiteSpace(uri))
-            {
-                var uriValue = new Uri(uri);
-                if (uriValue.Scheme != Uri.UriSchemeHttp && uriValue.Scheme != Uri.UriSchemeHttps)
-                    throw new ArgumentOutOfRangeException(
-                        AdbcOptions.Uri,
-                        uri,
-                        $"Unsupported scheme '{uriValue.Scheme}'");
-                return uriValue;
-            }
-
-            bool isPortSet = !string.IsNullOrEmpty(port);
-            bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
-            bool isDefaultHttpsPort = !isPortSet || (isValidPortNumber && portNumber == 443);
-            string uriScheme = isDefaultHttpsPort ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
-            int uriPort;
-            if (!isPortSet)
-                uriPort = -1;
-            else if (isValidPortNumber)
-                uriPort = portNumber;
-            else
-                throw new ArgumentOutOfRangeException(nameof(port), portNumber, $"Port number is not in a valid range.");
-
-            Uri baseAddress = new UriBuilder(uriScheme, hostName, uriPort, path).Uri;
-            return baseAddress;
-        }
-
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetCatalogsResp getCatalogsResp, CancellationToken cancellationToken = default);
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetSchemasResp getSchemasResp, CancellationToken cancellationToken = default);
-        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
-
-        protected abstract bool AreResultsAvailableDirectly();
-
-        protected abstract TSparkGetDirectResults GetDirectResults();
-
-        // Note data source's Position may be one-indexed or zero-indexed
-        protected IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
-           .Select(t => new { Index = t.Position + PositionOffset, t.ColumnName })
-           .ToDictionary(t => t.ColumnName, t => t.Index);
-
-        protected internal abstract int PositionOffset { get; }
-
-        protected abstract string InfoDriverName { get; }
-
-        protected abstract string InfoDriverArrowVersion { get; }
-
-        protected abstract string ProductVersion { get; }
-
-        protected abstract bool GetObjectsPatternsRequireLowerCase {  get; }
-
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
             Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>>();
@@ -677,7 +531,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         string isNullable = isNullableList[i] ?? "YES";
                         string columnDefault = columnDefaultList[i] ?? "";
                         // Spark/Databricks reports ordinal index zero-indexed, instead of one-indexed
-                        int ordinalPos = ordinalPosList[i] + 1;
+                        int ordinalPos = ordinalPosList[i] + PositionRequiredOffset;
                         int columnSize = columnSizeList[i];
                         int decimalDigits = decimalDigitsList[i];
                         TableInfo? tableInfo = catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.GetValueOrDefault(tableName);
@@ -731,6 +585,203 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
             }
         }
+
+        public override IArrowArrayStream GetTableTypes()
+        {
+            TGetTableTypesReq req = new()
+            {
+                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
+            };
+
+            if (AreResultsAvailableDirectly())
+            {
+                req.GetDirectResults = GetDirectResults();
+            }
+
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            try
+            {
+                TGetTableTypesResp resp = Client.GetTableTypes(req, cancellationToken).Result;
+
+                if (resp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                {
+                    throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                        .SetNativeError(resp.Status.ErrorCode)
+                        .SetSqlState(resp.Status.SqlState);
+                }
+
+                TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
+                StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
+
+                StringArray.Builder tableTypesBuilder = new StringArray.Builder();
+                tableTypesBuilder.AppendRange(tableTypes);
+
+                IArrowArray[] dataArrays = new IArrowArray[]
+                {
+                tableTypesBuilder.Build()
+                };
+
+                return new HiveInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+            }
+        }
+
+        /// <summary>
+        /// Gets the data-source specific columns names for the GetColumns metadata result.
+        /// </summary>
+        /// <returns></returns>
+        protected abstract ColumnsMetadataColumnNames GetColumnsMetadataColumnNames();
+
+        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
+        {
+            TGetOperationStatusResp? statusResponse = null;
+            do
+            {
+                if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds, cancellationToken); }
+                TGetOperationStatusReq request = new(operationHandle);
+                statusResponse = await client.GetOperationStatus(request, cancellationToken);
+            } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
+
+            // Must be in the finished state to be valid. If not, typically a server error or timeout has occurred.
+            if (statusResponse.OperationState != TOperationState.FINISHED_STATE)
+            {
+                throw new HiveServer2Exception(statusResponse.ErrorMessage, AdbcStatusCode.InvalidState)
+                    .SetSqlState(statusResponse.SqlState)
+                    .SetNativeError(statusResponse.ErrorCode);
+            }
+        }
+
+        private string GetInfoTypeStringValue(TGetInfoType infoType)
+        {
+            TGetInfoReq req = new()
+            {
+                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
+                InfoType = infoType,
+            };
+
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            try
+            {
+                TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
+                if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                {
+                    throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
+                        .SetNativeError(getInfoResp.Status.ErrorCode)
+                        .SetSqlState(getInfoResp.Status.SqlState);
+                }
+
+                return getInfoResp.InfoValue.StringValue;
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+            }
+        }
+
+        public override void Dispose()
+        {
+            if (_client != null)
+            {
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                TCloseSessionReq r6 = new(SessionHandle);
+                _client.CloseSession(r6, cancellationToken).Wait();
+                _transport?.Close();
+                _client.Dispose();
+                _transport = null;
+                _client = null;
+            }
+        }
+
+        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
+        {
+            TGetResultSetMetadataReq request = new(operationHandle);
+            TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
+            return response;
+        }
+
+        protected abstract string GetProductVersionDefault();
+
+        protected internal string GetProductVersion()
+        {
+            FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+            return fileVersionInfo.ProductVersion ?? GetProductVersionDefault();
+        }
+
+        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port)
+        {
+            // Uri property takes precedent.
+            if (!string.IsNullOrWhiteSpace(uri))
+            {
+                var uriValue = new Uri(uri);
+                if (uriValue.Scheme != Uri.UriSchemeHttp && uriValue.Scheme != Uri.UriSchemeHttps)
+                    throw new ArgumentOutOfRangeException(
+                        AdbcOptions.Uri,
+                        uri,
+                        $"Unsupported scheme '{uriValue.Scheme}'");
+                return uriValue;
+            }
+
+            bool isPortSet = !string.IsNullOrEmpty(port);
+            bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
+            bool isDefaultHttpsPort = !isPortSet || (isValidPortNumber && portNumber == 443);
+            string uriScheme = isDefaultHttpsPort ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
+            int uriPort;
+            if (!isPortSet)
+                uriPort = -1;
+            else if (isValidPortNumber)
+                uriPort = portNumber;
+            else
+                throw new ArgumentOutOfRangeException(nameof(port), portNumber, $"Port number is not in a valid range.");
+
+            Uri baseAddress = new UriBuilder(uriScheme, hostName, uriPort, path).Uri;
+            return baseAddress;
+        }
+
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetCatalogsResp getCatalogsResp, CancellationToken cancellationToken = default);
+        protected abstract Task<TRowSet> GetRowSetAsync(TGetSchemasResp getSchemasResp, CancellationToken cancellationToken = default);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
+
+        protected abstract bool AreResultsAvailableDirectly();
+
+        protected abstract TSparkGetDirectResults GetDirectResults();
+
+        // Note data source's Position may be one-indexed or zero-indexed
+        protected IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
+           .Select(t => new { Index = t.Position - PositionRequiredOffset, t.ColumnName })
+           .ToDictionary(t => t.ColumnName, t => t.Index);
+
+        protected internal abstract int PositionRequiredOffset { get; }
+
+        protected abstract string InfoDriverName { get; }
+
+        protected abstract string InfoDriverArrowVersion { get; }
+
+        protected abstract string ProductVersion { get; }
+
+        protected abstract bool GetObjectsPatternsRequireLowerCase {  get; }
+
+        protected abstract bool IsColumnSizeValidForDecimal { get; }
 
         private static string PatternToRegEx(string? pattern)
         {
@@ -962,10 +1013,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     int? columnType = columns[4].I32Val.Values.GetValue(i);
                     string typeName = columns[5].StringVal.Values.GetString(i);
                     // Note: the following two columns do not seem to be set correctly for DECIMAL types.
-                    //int? columnSize = columns[6].I32Val.Values.GetValue(i);
-                    //int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
+                    bool isColumnSizeValid = IsColumnSizeValidForDecimal;
+                    int? columnSize = columns[6].I32Val.Values.GetValue(i);
+                    int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
                     bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
-                    IArrowType dataType = HiveServer2Connection.GetArrowType(columnType!.Value, typeName);
+                    IArrowType dataType = HiveServer2Connection.GetArrowType(columnType!.Value, typeName, isColumnSizeValid, columnSize, decimalDigits);
                     fields[i] = new Field(columnName, dataType, nullable);
                 }
                 return new Schema(fields, null);
@@ -982,7 +1034,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        private static IArrowType GetArrowType(int columnTypeId, string typeName)
+        private static IArrowType GetArrowType(int columnTypeId, string typeName, bool isColumnSizeValid, int? columnSize, int? decimalDigits)
         {
             switch (columnTypeId)
             {
@@ -1019,11 +1071,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     return StringType.Default;
                 case (int)ColumnTypeId.DECIMAL:
                 case (int)ColumnTypeId.NUMERIC:
-                    // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
-                    // are not returned in the Thrift call to GetColumns
-                    return SqlTypeNameParser<SqlDecimalParserResult>
-                        .Parse(typeName, columnTypeId)
-                        .Decimal128Type;
+                    if (isColumnSizeValid && columnSize.HasValue && decimalDigits.HasValue)
+                    {
+                        return new Decimal128Type(columnSize.Value, decimalDigits.Value);
+                    }
+                    else
+                    {
+                        // Note: parsing the type name for SQL DECIMAL types as the precision and scale values
+                        // may not be returned in the Thrift call to GetColumns
+                        return SqlTypeNameParser<SqlDecimalParserResult>
+                            .Parse(typeName, columnTypeId)
+                            .Decimal128Type;
+                    }
                 case (int)ColumnTypeId.NULL:
                     return NullType.Default;
                 case (int)ColumnTypeId.ARRAY:
@@ -1032,55 +1091,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     return StringType.Default;
                 default:
                     throw new NotImplementedException($"Column type id: {columnTypeId} is not supported.");
-            }
-        }
-
-        public override IArrowArrayStream GetTableTypes()
-        {
-            TGetTableTypesReq req = new()
-            {
-                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
-            };
-
-            if (AreResultsAvailableDirectly())
-            {
-                req.GetDirectResults = GetDirectResults();
-            }
-
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            try
-            {
-                TGetTableTypesResp resp = Client.GetTableTypes(req, cancellationToken).Result;
-
-                if (resp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                {
-                    throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                        .SetNativeError(resp.Status.ErrorCode)
-                        .SetSqlState(resp.Status.SqlState);
-                }
-
-                TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
-                StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
-
-                StringArray.Builder tableTypesBuilder = new StringArray.Builder();
-                tableTypesBuilder.AppendRange(tableTypes);
-
-                IArrowArray[] dataArrays = new IArrowArray[]
-                {
-                tableTypesBuilder.Build()
-                };
-
-                return new HiveInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
-            }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
-            {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
             }
         }
 

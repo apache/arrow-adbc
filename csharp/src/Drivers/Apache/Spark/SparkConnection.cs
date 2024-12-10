@@ -66,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return new SparkStatement(this);
         }
 
-        protected internal override int PositionOffset => -1;
+        protected internal override int PositionRequiredOffset => 1;
 
         protected override void SetPrecisionScaleAndTypeName(
             short colType,
@@ -121,6 +121,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override string InfoDriverArrowVersion => ArrowVersion;
 
         protected override bool GetObjectsPatternsRequireLowerCase => false;
+
+        protected override bool IsColumnSizeValidForDecimal => false;
 
         protected override TSparkGetDirectResults GetDirectResults() => sparkGetDirectResults;
 

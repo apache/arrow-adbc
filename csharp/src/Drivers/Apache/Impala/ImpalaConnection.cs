@@ -65,7 +65,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             return new ImpalaStatement(this);
         }
 
-        protected internal override int PositionOffset => 0;
+        protected internal override int PositionRequiredOffset => 0;
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
@@ -106,6 +106,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         protected override string InfoDriverArrowVersion => ArrowVersion;
 
         protected override bool GetObjectsPatternsRequireLowerCase => true;
+
+        protected override bool IsColumnSizeValidForDecimal => true;
 
         protected override TSparkGetDirectResults GetDirectResults() => throw new System.NotImplementedException();
 

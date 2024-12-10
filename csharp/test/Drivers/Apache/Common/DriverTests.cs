@@ -385,9 +385,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             {
                 // Verify column metadata is returned/consistent.
                 AdbcColumn column = columns[i];
-                // Handle data source position offset.
-                int offset = 2 + hiveServer2Connection.PositionOffset;
-                Assert.Equal(i + offset, column.OrdinalPosition);
+                Assert.Equal(i + 1, column.OrdinalPosition);
                 Assert.False(string.IsNullOrEmpty(column.Name));
                 Assert.False(string.IsNullOrEmpty(column.XdbcTypeName));
                 Assert.False(Regex.IsMatch(column.XdbcTypeName, @"[_,\d\<\>\(\)]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
