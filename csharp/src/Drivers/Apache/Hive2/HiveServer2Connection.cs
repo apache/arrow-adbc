@@ -635,12 +635,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        /// <summary>
-        /// Gets the data-source specific columns names for the GetColumns metadata result.
-        /// </summary>
-        /// <returns></returns>
-        protected abstract ColumnsMetadataColumnNames GetColumnsMetadataColumnNames();
-
         internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
         {
             TGetOperationStatusResp? statusResponse = null;
@@ -714,8 +708,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return response;
         }
 
+        /// <summary>
+        /// Gets the data-source specific columns names for the GetColumns metadata result.
+        /// </summary>
+        /// <returns></returns>
+        protected abstract ColumnsMetadataColumnNames GetColumnsMetadataColumnNames();
+
+        /// <summary>
+        /// Gets the default product version
+        /// </summary>
+        /// <returns></returns>
         protected abstract string GetProductVersionDefault();
 
+        /// <summary>
+        /// Gets the current product version.
+        /// </summary>
+        /// <returns></returns>
         protected internal string GetProductVersion()
         {
             FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
