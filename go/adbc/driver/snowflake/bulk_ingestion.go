@@ -159,7 +159,7 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 	r, w := io.Pipe()
 	bw := bufio.NewWriter(w)
 	g.Go(func() error {
-		defer r.Close()
+		defer w.Close()
 		defer bw.Flush()
 
 		err = writeParquet(schema, bw, recordCh, 0, parquetProps, arrowProps)
