@@ -16,7 +16,6 @@
 */
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -93,11 +92,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     }
                 }
             });
-        }
-
-        public override void Dispose()
-        {
-            base.Dispose();
         }
     }
 }

@@ -17,8 +17,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -27,8 +27,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
@@ -39,6 +42,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
+
+        private bool _disposed;
+        private TracerProvider? _tracerProvider = null;
 
         public SparkHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
@@ -83,6 +89,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 default:
                     throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
+            _tracerProvider = MaybeAddTracingExporter();
         }
 
         protected override void ValidateConnection()
@@ -211,27 +218,35 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
         {
-            if (!transport.IsOpen) await transport.OpenAsync(cancellationToken);
-            return new TBinaryProtocol(transport);
+            return await TraceActivityAsync(async activity =>
+            {
+                activity?.SetTag("transport.type", transport.GetType().Name);
+                if (!transport.IsOpen) await transport.OpenAsync(cancellationToken);
+                return new TBinaryProtocol(transport);
+            });
         }
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
-            var req = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11)
+            return TraceActivity(activity =>
             {
-                CanUseMultipleCatalogs = true,
-            };
-            return req;
+                var req = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11)
+                {
+                    CanUseMultipleCatalogs = true,
+                };
+                activity?.SetTag("protocol.version", req.Client_protocol);
+                return req;
+            });
         }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+            GetResultSetMetadataAsync(response.OperationHandle, Client, ActivitySource, cancellationToken);
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+            GetResultSetMetadataAsync(response.OperationHandle, Client, ActivitySource, cancellationToken);
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+            GetResultSetMetadataAsync(response.OperationHandle, Client, ActivitySource, cancellationToken);
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+            GetResultSetMetadataAsync(response.OperationHandle, Client, ActivitySource, cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
@@ -245,7 +260,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
         {
-            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
+            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, ActivitySource, cancellationToken);
 
             TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
             if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
@@ -267,5 +282,54 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override SparkServerType ServerType => SparkServerType.Http;
+
+        private TracerProvider? MaybeAddTracingExporter()
+        {
+            if (!Properties.TryGetValue(TracingOptions.Connection.Trace, out string? traceOption)
+                || !bool.TryParse(traceOption, out bool traceEnabled)
+                || !traceEnabled)
+            {
+                return null;
+            }
+
+            GetTracingOptions(out string? tracingLocation, out long? maxTraceFileSizeKb, out int? maxTraceFiles);
+            TracerProvider tracerProvider = Sdk.CreateTracerProviderBuilder()
+                .AddSource(ActivitySource.Name)
+                .AddAdbcFileExporter(ActivitySource.Name, tracingLocation, maxTraceFileSizeKb, maxTraceFiles)
+                .Build();
+            return tracerProvider;
+        }
+
+        private void GetTracingOptions(out string? tracingLocation, out long? maxTraceFileSizeKb, out int? maxTraceFiles)
+        {
+            tracingLocation = null;
+            maxTraceFileSizeKb = null;
+            maxTraceFiles = null;
+            if (Properties.TryGetValue(TracingOptions.Connection.TraceLocation, out string? traceLocation))
+            {
+                traceLocation = new DirectoryInfo(traceLocation!).FullName;
+            }
+            if (Properties.TryGetValue(TracingOptions.Connection.TraceFileMaxSizeKb, out string? traceFileMaxSizeKbOption) && long.TryParse(traceFileMaxSizeKbOption, out long traceFileMaxSizeKb))
+            {
+                maxTraceFileSizeKb = traceFileMaxSizeKb;
+            }
+            if (Properties.TryGetValue(TracingOptions.Connection.TraceFileMaxFiles, out string? traceFileMaxFilesOption) && int.TryParse(traceFileMaxFilesOption, out int traceFileMaxFiles))
+            {
+                maxTraceFiles = traceFileMaxFiles;
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _tracerProvider?.Dispose();
+                }
+                _disposed = true;
+            }
+            base.Dispose(disposing);
+        }
     }
 }

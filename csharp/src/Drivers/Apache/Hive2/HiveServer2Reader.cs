@@ -22,6 +22,7 @@ using System.Data.SqlTypes;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -29,7 +30,7 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class HiveServer2Reader : IArrowArrayStream
+    internal class HiveServer2Reader : TracingArrowArrayStream
     {
         private const byte AsciiZero = (byte)'0';
         private const int AsciiDigitMaxIndex = '9' - AsciiZero;
@@ -80,42 +81,53 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             _dataTypeConversion = dataTypeConversion;
         }
 
-        public Schema Schema { get; }
+        public override Schema Schema { get; }
 
-        public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            // All records have been exhausted
-            if (_statement == null)
+            return await TraceActivityAsync(async activity =>
             {
-                return null;
-            }
-
-            try
-            {
-                // Await the fetch response
-                TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
-
-                int columnCount = GetColumnCount(response);
-                int rowCount = GetRowCount(response, columnCount);
-                if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
+                // All records have been exhausted
+                if (_statement == null)
                 {
-                    // This is the last batch
-                    _statement = null;
+                    return null;
                 }
 
-                // Build the current batch, if any data exists
-                return rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
-            }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
-            {
-                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
-            }
+                try
+                {
+                    activity?.AddEvent("fetchResults.start", [new("batches.batchSize", _statement.BatchSize)]);
+                    // Await the fetch response
+                    TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
+
+                    int columnCount = GetColumnCount(response);
+                    int rowCount = GetRowCount(response, columnCount);
+
+                    activity?.AddEvent("fetchResults.end", [
+                        new("fetch.statusCode", response.Status.StatusCode.ToString()),
+                        new("batches.count", rowCount > 0 ? 1 : 0),
+                        new("batches.rowCount", rowCount),
+                    ]);
+
+                    if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
+                    {
+                        // This is the last batch
+                        _statement = null;
+                    }
+
+                    // Build the current batch, if any data exists
+                    return rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
+                }
+                catch (Exception ex)
+                    when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                         (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+                {
+                    throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+                }
+            });
         }
 
         private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)
@@ -144,9 +156,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return await statement.Connection.Client.FetchResults(request, cancellationToken);
         }
 
-        public void Dispose()
-        {
-        }
+        protected override void Dispose(bool disposing) =>
+            base.Dispose(disposing);
 
         private static IArrowArray GetArray(TColumn column, IArrowType? expectedArrowType = default)
         {

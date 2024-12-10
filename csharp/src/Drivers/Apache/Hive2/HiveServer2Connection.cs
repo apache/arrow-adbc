@@ -17,8 +17,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -28,6 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal abstract class HiveServer2Connection : AdbcConnection
     {
+        private bool _disposed;
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
         private const int ConnectTimeoutMillisecondsDefault = 30000;
@@ -83,6 +86,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                     activity?.AddEvent("openSession.start");
                     TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
+                    activity?.AddEvent("openSession.end", [new("openSession.statusCode", session?.Status.StatusCode.ToString())]);
 
                     // Explicitly check the session status
                     if (session == null)
@@ -140,77 +144,94 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             throw new NotImplementedException();
         }
 
-        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
+        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, ActivitySource activitySource, CancellationToken cancellationToken = default)
         {
-            TGetOperationStatusResp? statusResponse = null;
-            do
+            await TraceActivityAsync(activitySource, async activity =>
             {
-                if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds, cancellationToken); }
-                TGetOperationStatusReq request = new(operationHandle);
-                statusResponse = await client.GetOperationStatus(request, cancellationToken);
-            } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
+                TGetOperationStatusResp? statusResponse = null;
+                do
+                {
+                    if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds, cancellationToken); }
+                    TGetOperationStatusReq request = new(operationHandle);
+                    statusResponse = await client.GetOperationStatus(request, cancellationToken);
+                } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
 
-            // Must be in the finished state to be valid. If not, typically a server error or timeout has occurred.
-            if (statusResponse.OperationState != TOperationState.FINISHED_STATE)
-            {
-                throw new HiveServer2Exception(statusResponse.ErrorMessage, AdbcStatusCode.InvalidState)
-                    .SetSqlState(statusResponse.SqlState)
-                    .SetNativeError(statusResponse.ErrorCode);
-            }
+                // Must be in the finished state to be valid. If not, typically a server error or timeout has occurred.
+                if (statusResponse.OperationState != TOperationState.FINISHED_STATE)
+                {
+                    throw new HiveServer2Exception(statusResponse.ErrorMessage, AdbcStatusCode.InvalidState)
+                        .SetSqlState(statusResponse.SqlState)
+                        .SetNativeError(statusResponse.ErrorCode);
+                }
+            });
         }
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
-            TGetInfoReq req = new()
+            return TraceActivity(_ =>
             {
-                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
-                InfoType = infoType,
-            };
-
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            try
-            {
-                TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
-                if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                TGetInfoReq req = new()
                 {
-                    throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
-                        .SetNativeError(getInfoResp.Status.ErrorCode)
-                        .SetSqlState(getInfoResp.Status.SqlState);
-                }
+                    SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
+                    InfoType = infoType,
+                };
 
-                return getInfoResp.InfoValue.StringValue;
-            }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
-            {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
-            }
-        }
-
-        public override void Dispose()
-        {
-            if (_client != null)
-            {
                 CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                TCloseSessionReq r6 = new(SessionHandle);
-                _client.CloseSession(r6, cancellationToken).Wait();
-                _transport?.Close();
-                _client.Dispose();
-                _transport = null;
-                _client = null;
-            }
+                try
+                {
+                    TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
+                    if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                    {
+                        throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
+                            .SetNativeError(getInfoResp.Status.ErrorCode)
+                            .SetSqlState(getInfoResp.Status.SqlState);
+                    }
+
+                    return getInfoResp.InfoValue.StringValue;
+                }
+                catch (Exception ex)
+                    when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                         (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+                {
+                    throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+                }
+            });
         }
 
-        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
+        protected override void Dispose(bool disposing)
         {
-            TGetResultSetMetadataReq request = new(operationHandle);
-            TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
-            return response;
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    if (_client != null)
+                    {
+                        CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                        TCloseSessionReq r6 = new(SessionHandle);
+                        _client.CloseSession(r6, cancellationToken).Wait();
+                        _transport?.Close();
+                        _client.Dispose();
+                        _transport = null;
+                        _client = null;
+                    }
+                }
+                _disposed = true;
+            }
+            base.Dispose(disposing);
+        }
+
+        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, ActivitySource activitySource, CancellationToken cancellationToken = default)
+        {
+            return await TraceActivityAsync(activitySource, async _ =>
+            {
+                TGetResultSetMetadataReq request = new(operationHandle);
+                TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
+                return response;
+            });
         }
     }
 }
