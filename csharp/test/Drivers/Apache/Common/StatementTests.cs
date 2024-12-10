@@ -145,7 +145,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// Queries the backend with various timeouts.
         /// </summary>
         /// <param name="statementWithExceptions"></param>
-        internal virtual void StatementTimeoutTestInternal(StatementWithExceptions statementWithExceptions)
+        internal virtual void StatementTimeoutTest(StatementWithExceptions statementWithExceptions)
         {
             TConfig testConfiguration = (TConfig)TestConfiguration.Clone();
 
@@ -216,9 +216,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     /// <summary>
     /// Collection of <see cref="StatementWithExceptions"/> for testing statement timeouts."/>
     /// </summary>
-    internal class StatementTimeoutTestData : TheoryData<StatementWithExceptions>
+    internal class ShortRunningStatementTimeoutTestData : TheoryData<StatementWithExceptions>
     {
-        public StatementTimeoutTestData()
+        public ShortRunningStatementTimeoutTestData()
         {
             Add(new(0, null, null));
             Add(new(null, null, null));

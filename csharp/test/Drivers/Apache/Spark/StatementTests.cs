@@ -30,15 +30,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         [SkippableTheory]
-        [ClassData(typeof(LongRunningQueryTestData))]
-        internal override void StatementTimeoutTestInternal(StatementWithExceptions statementWithExceptions)
+        [ClassData(typeof(LongRunningStatementTimeoutTestData))]
+        internal override void StatementTimeoutTest(StatementWithExceptions statementWithExceptions)
         {
-            base.StatementTimeoutTestInternal(statementWithExceptions);
+            base.StatementTimeoutTest(statementWithExceptions);
         }
 
-        internal class LongRunningQueryTestData : StatementTimeoutTestData
+        internal class LongRunningStatementTimeoutTestData : ShortRunningStatementTimeoutTestData
         {
-            public LongRunningQueryTestData()
+            public LongRunningStatementTimeoutTestData()
             {
                 string longRunningQuery = "SELECT COUNT(*) AS total_count\nFROM (\n  SELECT t1.id AS id1, t2.id AS id2\n  FROM RANGE(1000000) t1\n  CROSS JOIN RANGE(100000) t2\n) subquery\nWHERE MOD(id1 + id2, 2) = 0";
 

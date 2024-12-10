@@ -31,15 +31,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
         }
 
         [SkippableTheory]
-        [ClassData(typeof(LongRunningQueryTestData))]
-        internal override void StatementTimeoutTestInternal(StatementWithExceptions statementWithExceptions)
+        [ClassData(typeof(LongRunningStatementTimeoutTestData))]
+        internal override void StatementTimeoutTest(StatementWithExceptions statementWithExceptions)
         {
-            base.StatementTimeoutTestInternal(statementWithExceptions);
+            base.StatementTimeoutTest(statementWithExceptions);
         }
 
-        internal class LongRunningQueryTestData : StatementTimeoutTestData
+        internal class LongRunningStatementTimeoutTestData : ShortRunningStatementTimeoutTestData
         {
-            public LongRunningQueryTestData()
+            public LongRunningStatementTimeoutTestData()
             {
                 // TODO: Determine if this long-running query will work as expected on Impala. 
                 //string longRunningQuery = "SELECT CAST(NULL AS STRING), SLEEP(70000)";
