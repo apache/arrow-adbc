@@ -40,10 +40,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="testConfiguration">The <see cref="TestConfiguration"/> to use</param>
         /// <param name="queries">The queries to run</param>
         /// <param name="expectedResults">The expected results (one per query)</param>
-        public static void CanClientExecuteUpdate(Adbc.Client.AdbcConnection adbcConnection,
+        public static void CanClientExecuteUpdate(
+            Adbc.Client.AdbcConnection adbcConnection,
             TestConfiguration testConfiguration,
             string[] queries,
-            IReadOnlyList<int> expectedResults)
+            IReadOnlyList<int> expectedResults,
+            string? environmentName = null)
         {
             if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
             if (testConfiguration == null) throw new ArgumentNullException(nameof(testConfiguration));
@@ -63,7 +65,7 @@ namespace Apache.Arrow.Adbc.Tests
 
                 int rows = adbcCommand.ExecuteNonQuery();
 
-                Assert.Equal(expectedResults[i], rows);
+                Assert.True(expectedResults[i]==rows, Utils.FormatMessage("Expected results are not equal", environmentName));
             }
         }
 
@@ -74,7 +76,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="testConfiguration">The <see cref="TestConfiguration"/> to use</param>
         /// <param name="customQuery">The custom query to use instead of query from <see cref="TestConfiguration.Query" /></param>"/>
         /// <param name="expectedColumnCount">The custom column count to use instead of query from <see cref="TestMetadata.ExpectedColumnCount" /></param>
-        public static void CanClientGetSchema(Adbc.Client.AdbcConnection adbcConnection, TestConfiguration testConfiguration, string? customQuery = default, int? expectedColumnCount = default)
+        public static void CanClientGetSchema(
+            Adbc.Client.AdbcConnection adbcConnection,
+            TestConfiguration testConfiguration,
+            string? customQuery = default,
+            int? expectedColumnCount = default,
+            string? environmentName = null)
         {
             if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
             if (testConfiguration == null) throw new ArgumentNullException(nameof(testConfiguration));
@@ -102,7 +109,8 @@ namespace Apache.Arrow.Adbc.Tests
             TestConfiguration testConfiguration,
             Action<AdbcCommand>? additionalCommandOptionsSetter = null,
             string? customQuery = default,
-            int? expectedResultsCount = default)
+            int? expectedResultsCount = default,
+            string? environmentName = null)
         {
             if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
             if (testConfiguration == null) throw new ArgumentNullException(nameof(testConfiguration));
@@ -144,7 +152,10 @@ namespace Apache.Arrow.Adbc.Tests
         /// </summary>
         /// <param name="adbcConnection">The <see cref="Adbc.Client.AdbcConnection"/> to use.</param>
         /// <param name="sampleDataBuilder">The <see cref="SampleDataBuilder"/> to use</param>
-        public static void VerifyTypesAndValues(Adbc.Client.AdbcConnection adbcConnection, SampleDataBuilder sampleDataBuilder)
+        public static void VerifyTypesAndValues(
+            Adbc.Client.AdbcConnection adbcConnection,
+            SampleDataBuilder sampleDataBuilder,
+            string? environmentName = null)
         {
             if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
             if (sampleDataBuilder == null) throw new ArgumentNullException(nameof(sampleDataBuilder));
@@ -153,6 +164,13 @@ namespace Apache.Arrow.Adbc.Tests
 
             foreach (SampleData sample in sampleDataBuilder.Samples)
             {
+                foreach (string preQueryCommandText in sample.PreQueryCommands)
+                {
+                    using AdbcCommand preQueryCommand = adbcConnection.CreateCommand();
+                    preQueryCommand.CommandText = preQueryCommandText;
+                    preQueryCommand.ExecuteNonQuery();
+                }
+
                 using AdbcCommand dbCommand = adbcConnection.CreateCommand();
                 dbCommand.CommandText = sample.Query;
 
@@ -161,17 +179,24 @@ namespace Apache.Arrow.Adbc.Tests
                 {
                     var column_schema = reader.GetColumnSchema();
                     DataTable? dataTable = reader.GetSchemaTable();
-                    Assert.NotNull(dataTable);
+                    Assert.True(dataTable != null, Utils.FormatMessage("dataTable is null", environmentName) );
 
-                    Assert.True(reader.FieldCount == sample.ExpectedValues.Count, $"{sample.ExpectedValues.Count} fields were expected but {reader.FieldCount} fields were returned for the query [{sample.Query}]");
+                    Assert.True(reader.FieldCount == sample.ExpectedValues.Count, Utils.FormatMessage($"{sample.ExpectedValues.Count} fields were expected but {reader.FieldCount} fields were returned for the query [{sample.Query}]", environmentName));
 
                     for (int i = 0; i < reader.FieldCount; i++)
                     {
                         object value = reader.GetValue(i);
                         ColumnNetTypeArrowTypeValue ctv = sample.ExpectedValues[i];
 
-                        AssertTypeAndValue(ctv, value, reader, column_schema, dataTable, sample.Query);
+                        AssertTypeAndValue(ctv, value, reader, column_schema, dataTable, sample.Query, environmentName);
                     }
+                }
+
+                foreach (string postQueryCommandText in sample.PostQueryCommands)
+                {
+                    using AdbcCommand preQueryCommand = adbcConnection.CreateCommand();
+                    preQueryCommand.CommandText = postQueryCommandText;
+                    preQueryCommand.ExecuteNonQuery();
                 }
             }
         }
@@ -190,7 +215,8 @@ namespace Apache.Arrow.Adbc.Tests
             DbDataReader reader,
             ReadOnlyCollection<DbColumn> column_schema,
             DataTable dataTable,
-            string query)
+            string query,
+            string? environmentName = null)
         {
             string name = ctv.Name;
             Type? clientArrowType = column_schema.Where(x => x.ColumnName == name).FirstOrDefault()?.DataType;
@@ -210,18 +236,18 @@ namespace Apache.Arrow.Adbc.Tests
             Type? netType = reader[name]?.GetType();
             if (netType == typeof(DBNull)) netType = null;
 
-            Assert.True(clientArrowType == ctv.ExpectedNetType, $"{name} is {clientArrowType.Name} and not {ctv.ExpectedNetType.Name} in the column schema for query [{query}]");
+            Assert.True(clientArrowType == ctv.ExpectedNetType, Utils.FormatMessage($"{name} is {clientArrowType.Name} and not {ctv.ExpectedNetType.Name} in the column schema for query [{query}]", environmentName));
 
-            Assert.True(dataTableType == ctv.ExpectedNetType, $"{name} is {dataTableType.Name} and not {ctv.ExpectedNetType.Name} in the data table for query [{query}]");
+            Assert.True(dataTableType == ctv.ExpectedNetType, Utils.FormatMessage($"{name} is {dataTableType.Name} and not {ctv.ExpectedNetType.Name} in the data table for query [{query}]", environmentName));
 
             if (arrowType is null)
-                Assert.True(ctv.ExpectedArrowArrayType is null, $"{name} is null and not {ctv.ExpectedArrowArrayType!.Name} in the provider type for query [{query}]");
+                Assert.True(ctv.ExpectedArrowArrayType is null, Utils.FormatMessage($"{name} is null and not {ctv.ExpectedArrowArrayType!.Name} in the provider type for query [{query}]", environmentName));
             else
-                Assert.True(arrowType.GetType() == ctv.ExpectedArrowArrayType, $"{name} is {arrowType.Name} and not {ctv.ExpectedArrowArrayType.Name} in the provider type for query [{query}]");
+                Assert.True(arrowType.GetType() == ctv.ExpectedArrowArrayType, Utils.FormatMessage($"{name} is {arrowType.Name} and not {ctv.ExpectedArrowArrayType.Name} in the provider type for query [{query}]", environmentName));
 
             if (netType != null)
             {
-                Assert.True(netType == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader for query [{query}]");
+                Assert.True(netType == ctv.ExpectedNetType, Utils.FormatMessage($"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader for query [{query}]", environmentName));
             }
 
             if (value != DBNull.Value)
@@ -229,20 +255,20 @@ namespace Apache.Arrow.Adbc.Tests
                 var type = value.GetType();
                 if (type.BaseType?.Name.Contains("PrimitiveArray") == false)
                 {
-                    Assert.True(ctv.ExpectedNetType == type, $"Expected type does not match actual type for {ctv.Name} for query [{query}]");
+                    Assert.True(ctv.ExpectedNetType == type, Utils.FormatMessage($"Expected type does not match actual type for {ctv.Name} for query [{query}]", environmentName));
 
                     if (value is byte[] actualBytes)
                     {
                         byte[]? expectedBytes = ctv.ExpectedValue as byte[];
-                        Assert.True(expectedBytes != null && actualBytes.SequenceEqual(expectedBytes), $"byte[] values do not match expected values for {ctv.Name} for query [{query}]");
+                        Assert.True(expectedBytes != null && actualBytes.SequenceEqual(expectedBytes), Utils.FormatMessage($"byte[] values do not match expected values for {ctv.Name} for query [{query}]", environmentName));
                     }
                     else if (ctv.ExpectedValue is null)
                     {
-                        Assert.True(value is null, $"Expected value [{ctv.ExpectedValue}] does not match actual value [{value}] for {ctv.Name} for query [{query}]");
+                        Assert.True(value is null, Utils.FormatMessage($"Expected value [{ctv.ExpectedValue}] does not match actual value [{value}] for {ctv.Name} for query [{query}]", environmentName));
                     }
                     else
                     {
-                        Assert.True(ctv.ExpectedValue.Equals(value), $"Expected value [{ctv.ExpectedValue}] does not match actual value [{value}] for {ctv.Name} for query [{query}]");
+                        Assert.True(ctv.ExpectedValue.Equals(value), Utils.FormatMessage($"Expected value [{ctv.ExpectedValue}] does not match actual value [{value}] for {ctv.Name} for query [{query}]", environmentName));
                     }
                 }
                 else
@@ -267,7 +293,7 @@ namespace Apache.Arrow.Adbc.Tests
 
                             if (i == j)
                             {
-                                Assert.True(expected.Equals(actual), $"Expected value does not match actual value for {ctv.Name} at {i} for query [{query}]");
+                                Assert.True(expected.Equals(actual), Utils.FormatMessage($"Expected value does not match actual value for {ctv.Name} at {i} for query [{query}]", environmentName));
                             }
                         }
                     }
@@ -275,7 +301,7 @@ namespace Apache.Arrow.Adbc.Tests
             }
             else
             {
-                Assert.True(ctv.ExpectedValue == null, $"The value for {ctv.Name} is null and but it's expected value is not null for query [{query}]");
+                Assert.True(ctv.ExpectedValue == null, Utils.FormatMessage($"The value for {ctv.Name} is null and but it's expected value is not null for query [{query}]", environmentName));
             }
         }
     }

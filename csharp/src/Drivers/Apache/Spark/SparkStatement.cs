@@ -17,7 +17,6 @@
 
 using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
@@ -29,11 +28,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             foreach (KeyValuePair<string, string> kvp in connection.Properties)
             {
-                switch (kvp.Key.ToLower())
+                switch (kvp.Key)
                 {
                     case Options.BatchSize:
                     case Options.PollTimeMilliseconds:
-                    case TracingOptions.Statement.TraceParent:
+                    case Options.QueryTimeoutSeconds:
                         {
                             SetOption(kvp.Key, kvp.Value);
                             break;
@@ -47,7 +46,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // TODO: Ensure this is set dynamically depending on server capabilities.
             statement.EnforceResultPersistenceMode = false;
             statement.ResultPersistenceMode = 2;
-
+            // This seems like a good idea to have the server timeout so it doesn't keep processing unnecessarily.
+            // Set in combination with a CancellationToken.
+            statement.QueryTimeout = QueryTimeoutSeconds;
             statement.CanReadArrowResult = true;
             statement.CanDownloadResult = true;
             statement.ConfOverlay = SparkConnection.timestampConfig;
@@ -67,7 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         /// <summary>
         /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
         /// </summary>
-        public new sealed class Options : HiveServer2Statement.Options
+        public sealed class Options : ApacheParameters
         {
             // options specific to Spark go here
         }

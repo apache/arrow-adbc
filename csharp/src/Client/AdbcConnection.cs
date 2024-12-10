@@ -34,6 +34,7 @@ namespace Apache.Arrow.Adbc.Client
     {
         private AdbcDatabase? adbcDatabase;
         private Adbc.AdbcConnection? adbcConnectionInternal;
+        private TimeoutValue? connectionTimeoutValue;
 
         private readonly Dictionary<string, string> adbcConnectionParameters;
         private readonly Dictionary<string, string> adbcConnectionOptions;
@@ -122,6 +123,8 @@ namespace Apache.Arrow.Adbc.Client
             return this.adbcConnectionInternal!.CreateStatement();
         }
 
+        internal TimeoutValue? CommandTimeoutValue { get; private set; }
+
 #if NET5_0_OR_GREATER
         [AllowNull]
 #endif
@@ -132,11 +135,35 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         public DecimalBehavior DecimalBehavior { get; set; }
 
+        /// <summary>
+        /// Indicates how structs should be treated.
+        /// </summary>
+        public StructBehavior StructBehavior { get; set; } = StructBehavior.JsonString;
+
+        public override int ConnectionTimeout
+        {
+            get
+            {
+                if (connectionTimeoutValue != null)
+                    return connectionTimeoutValue.Value;
+                else
+                    return base.ConnectionTimeout;
+            }
+        }
+
         protected override DbCommand CreateDbCommand()
         {
             EnsureConnectionOpen();
 
-            return new AdbcCommand(this);
+            AdbcCommand cmd = new AdbcCommand(this);
+
+            if (CommandTimeoutValue != null)
+            {
+                cmd.AdbcCommandTimeoutProperty = CommandTimeoutValue.DriverPropertyName!;
+                cmd.CommandTimeout = CommandTimeoutValue.Value;
+            }
+
+            return cmd;
         }
 
         /// <summary>
@@ -232,7 +259,27 @@ namespace Apache.Arrow.Adbc.Client
                 object? builderValue = builder[key];
                 if (builderValue != null)
                 {
-                    this.adbcConnectionParameters.Add(key, Convert.ToString(builderValue)!);
+                    string paramValue = Convert.ToString(builderValue)!;
+
+                    switch (key)
+                    {
+                        case ConnectionStringKeywords.DecimalBehavior:
+                            this.DecimalBehavior = (DecimalBehavior)Enum.Parse(typeof(DecimalBehavior), paramValue);
+                            break;
+                        case ConnectionStringKeywords.StructBehavior:
+                            this.StructBehavior = (StructBehavior)Enum.Parse(typeof(StructBehavior), paramValue);
+                            break;
+                        case ConnectionStringKeywords.CommandTimeout:
+                            CommandTimeoutValue = ConnectionStringParser.ParseTimeoutValue(paramValue);
+                            break;
+                        case ConnectionStringKeywords.ConnectionTimeout:
+                            this.connectionTimeoutValue = ConnectionStringParser.ParseTimeoutValue(paramValue);
+                            this.adbcConnectionParameters[connectionTimeoutValue.DriverPropertyName] = connectionTimeoutValue.Value.ToString();
+                            break;
+                        default:
+                            this.adbcConnectionParameters.Add(key, paramValue);
+                            break;
+                    }
                 }
             }
         }

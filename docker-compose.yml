@@ -121,7 +121,10 @@ services:
 
   ############################ Python wheels ##################################
 
-  python-wheel-manylinux:
+  # We build on a different image to use an older base image/glibc, then
+  # relocate on a separate image so that we can use a newer docker for cibuildwheel
+
+  python-wheel-manylinux-build:
     image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
     build:
       context: .
@@ -136,10 +139,23 @@ services:
         REPO: ${REPO}
         VCPKG: ${VCPKG}
     volumes:
+      - .:/adbc
+    # Must set safe.directory so go/miniver won't error when calling git
+    command: "'git config --global --add safe.directory /adbc && /adbc/ci/scripts/python_wheel_unix_build.sh ${ARCH} /adbc /adbc/build'"
+
+  python-wheel-manylinux-relocate:
+    image: ${REPO}:adbc-python-${PYTHON}-wheel-relocate
+    platform: ${PLATFORM}
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:adbc-python-${PYTHON}-wheel-relocate
+      dockerfile: ci/docker/python-wheel-manylinux-relocate.dockerfile
+    volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - .:/adbc
-    # Must set safe.directory so miniver won't error when calling git
-    command: "'git config --global --add safe.directory /adbc && git config --global --get safe.directory && /adbc/ci/scripts/python_wheel_unix_build.sh ${ARCH} /adbc /adbc/build'"
+    # Must set safe.directory so go/miniver won't error when calling git
+    command: "bash -c 'git config --global --add safe.directory /adbc && python -m venv /venv && source /venv/bin/activate && /adbc/ci/scripts/python_wheel_unix_relocate.sh ${ARCH} /adbc /adbc/build'"
 
   python-wheel-manylinux-test:
     image: ${ARCH}/python:${PYTHON}-slim

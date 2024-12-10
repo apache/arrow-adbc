@@ -19,7 +19,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -30,12 +29,9 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
-using OpenTelemetry.Trace;
-using OpenTelemetry;
 using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
-using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
@@ -43,9 +39,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
-
-        private bool _disposed;
-        private TracerProvider? _tracerProvider = null;
 
         public SparkHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
@@ -127,19 +120,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
             Properties.TryGetValue(SparkParameters.TLSOptions, out string? tlsOptions);
             TlsOptions = TlsOptionsParser.Parse(tlsOptions);
-            Properties.TryGetValue(SparkParameters.HttpRequestTimeoutMilliseconds, out string? requestTimeoutMs);
-            if (requestTimeoutMs != null)
+            Properties.TryGetValue(SparkParameters.ConnectTimeoutMilliseconds, out string? connectTimeoutMs);
+            if (connectTimeoutMs != null)
             {
-                HttpRequestTimeout = int.TryParse(requestTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int requestTimeoutMsValue) && requestTimeoutMsValue > 0
-                    ? requestTimeoutMsValue
-                    : throw new ArgumentOutOfRangeException(SparkParameters.HttpRequestTimeoutMilliseconds, requestTimeoutMs, $"must be a value between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
+                ConnectTimeoutMilliseconds = int.TryParse(connectTimeoutMs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int connectTimeoutMsValue) && (connectTimeoutMsValue >= 0)
+                    ? connectTimeoutMsValue
+                    : throw new ArgumentOutOfRangeException(SparkParameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of 0 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
-            _tracerProvider = MaybeAddTracingExporter();
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
-        protected override Task<TTransport> CreateTransportAsync()
+        protected override TTransport CreateTransport()
         {
             // Assumption: parameters have already been validated.
             Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
@@ -167,9 +159,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TConfiguration config = new();
             ThriftHttpTransport transport = new(httpClient, config)
             {
-                ConnectTimeout = HttpRequestTimeout,
+                // This value can only be set before the first call/request. So if a new value for query timeout
+                // is set, we won't be able to update the value. Setting to ~infinite and relying on cancellation token
+                // to ensure cancelled correctly.
+                ConnectTimeout = int.MaxValue,
             };
-            return Task.FromResult<TTransport>(transport);
+            return transport;
         }
 
         private HttpClientHandler NewHttpClientHandler()
@@ -214,53 +209,44 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport)
+        protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
         {
-            return await TraceActivityAsync(async (activity) =>
-            {
-                activity?.SetTag("transport.type", transport.GetType().Name);
-
-                if (!transport.IsOpen) await transport.OpenAsync(CancellationToken.None);
-
-                return new TBinaryProtocol(transport);
-            });
+            if (!transport.IsOpen) await transport.OpenAsync(cancellationToken);
+            return new TBinaryProtocol(transport);
         }
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
-            return TraceActivity((activity) =>
+            var req = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11)
             {
-                var req = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11)
-                {
-                    CanUseMultipleCatalogs = true,
-                };
-                activity?.SetTag("protocol.version", req.Client_protocol);
-                return req;
-            });
+                CanUseMultipleCatalogs = true,
+            };
+            return req;
         }
 
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, activitySource: ActivitySource);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, activitySource: ActivitySource);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, activitySource: ActivitySource);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, activitySource: ActivitySource);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response) =>
-            FetchResultsAsync(response.OperationHandle);
-        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response) =>
-            FetchResultsAsync(response.OperationHandle);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response) =>
-            FetchResultsAsync(response.OperationHandle);
-        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response) =>
-            FetchResultsAsync(response.OperationHandle);
-        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response) =>
-            FetchResultsAsync(response.OperationHandle);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
 
         private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
         {
-            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, ActivitySource);
+            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
+
             TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
             if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
@@ -281,54 +267,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override SparkServerType ServerType => SparkServerType.Http;
-
-        private TracerProvider? MaybeAddTracingExporter()
-        {
-            if (!Properties.TryGetValue(TracingOptions.Connection.Trace, out string? traceOption)
-                || !bool.TryParse(traceOption, out bool traceEnabled)
-                || !traceEnabled)
-            {
-                return null;
-            }
-
-            GetTracingOptions(out string? tracingLocation, out long? maxTraceFileSizeKb, out int? maxTraceFiles);
-            TracerProvider tracerProvider = Sdk.CreateTracerProviderBuilder()
-                .AddSource(ActivitySource.Name)
-                .AddAdbcFileExporter(ActivitySource.Name, tracingLocation, maxTraceFileSizeKb, maxTraceFiles)
-                .Build();
-            return tracerProvider;
-        }
-
-        private void GetTracingOptions(out string? tracingLocation, out long? maxTraceFileSizeKb, out int? maxTraceFiles)
-        {
-            tracingLocation = null;
-            maxTraceFileSizeKb = null;
-            maxTraceFiles = null;
-            if (Properties.TryGetValue(TracingOptions.Connection.TraceLocation, out string? traceLocation))
-            {
-                traceLocation = new DirectoryInfo(traceLocation!).FullName;
-            }
-            if (Properties.TryGetValue(TracingOptions.Connection.TraceFileMaxSizeKb, out string? traceFileMaxSizeKbOption) && long.TryParse(traceFileMaxSizeKbOption, out long traceFileMaxSizeKb))
-            {
-                maxTraceFileSizeKb = traceFileMaxSizeKb;
-            }
-            if (Properties.TryGetValue(TracingOptions.Connection.TraceFileMaxFiles, out string? traceFileMaxFilesOption) && int.TryParse(traceFileMaxFilesOption, out int traceFileMaxFiles))
-            {
-                maxTraceFiles = traceFileMaxFiles;
-            }
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    _tracerProvider?.Dispose();
-                }
-                _disposed = true;
-            }
-            base.Dispose(disposing);
-        }
     }
 }

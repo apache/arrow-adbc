@@ -35,7 +35,13 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="expectedNumberOfResults">
         /// The number of records.
         /// </param>
-        public static void CanExecuteQuery(QueryResult queryResult, long expectedNumberOfResults)
+        /// <param name="environmentName">
+        /// Name of the test environment.
+        /// </param>
+        public static void CanExecuteQuery(
+            QueryResult queryResult,
+            long expectedNumberOfResults,
+            string? environmentName = null)
         {
             long count = 0;
 
@@ -46,14 +52,14 @@ namespace Apache.Arrow.Adbc.Tests
                 count += nextBatch.Length;
             }
 
-            Assert.True(expectedNumberOfResults == count, $"The parsed records ({count}) differ from the expected amount ({expectedNumberOfResults})");
+            Assert.True(expectedNumberOfResults == count, Utils.FormatMessage($"The parsed records ({count}) differ from the expected amount ({expectedNumberOfResults})", environmentName));
 
             // if the values were set, make sure they are correct
             if (queryResult.RowCount != -1)
             {
-                Assert.True(queryResult.RowCount == expectedNumberOfResults, "The RowCount value does not match the expected results");
+                Assert.True(queryResult.RowCount == expectedNumberOfResults, Utils.FormatMessage("The RowCount value does not match the expected results", environmentName));
 
-                Assert.True(queryResult.RowCount == count, "The RowCount value does not match the counted records");
+                Assert.True(queryResult.RowCount == count, Utils.FormatMessage("The RowCount value does not match the counted records", environmentName));
             }
         }
 
@@ -67,7 +73,13 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="expectedNumberOfResults">
         /// The number of records.
         /// </param>
-        public static async Task CanExecuteQueryAsync(QueryResult queryResult, long expectedNumberOfResults)
+        /// <param name="environmentName">
+        /// Name of the test environment.
+        /// </param>
+        public static async Task CanExecuteQueryAsync(
+            QueryResult queryResult,
+            long expectedNumberOfResults,
+            string? environmentName = null)
         {
             long count = 0;
 
@@ -82,14 +94,14 @@ namespace Apache.Arrow.Adbc.Tests
                 count += nextBatch.Length;
             }
 
-            Assert.True(expectedNumberOfResults == count, $"The parsed records ({count}) differ from the expected amount ({expectedNumberOfResults})");
+            Assert.True(expectedNumberOfResults == count, Utils.FormatMessage($"The parsed records ({count}) differ from the expected amount ({expectedNumberOfResults})", environmentName));
 
             // if the values were set, make sure they are correct
             if (queryResult.RowCount != -1)
             {
-                Assert.True(queryResult.RowCount == expectedNumberOfResults, "The RowCount value does not match the expected results");
+                Assert.True(queryResult.RowCount == expectedNumberOfResults, Utils.FormatMessage("The RowCount value does not match the expected results", environmentName));
 
-                Assert.True(queryResult.RowCount == count, "The RowCount value does not match the counted records");
+                Assert.True(queryResult.RowCount == count, Utils.FormatMessage("The RowCount value does not match the counted records", environmentName));
             }
         }
     }

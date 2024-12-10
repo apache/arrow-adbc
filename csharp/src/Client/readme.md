@@ -73,3 +73,12 @@ if using the default user name and password authentication, but look like
 when using JWT authentication with an unencrypted key file.
 
 Other ADBC drivers will have different connection parameters, so be sure to check the documentation for each driver.
+
+### Connection Keywords
+Because the ADO.NET client is designed to work with multiple drivers, callers will need to specify the driver properties that are set for particular values. This can be done either as properties on the objects directly, or can be parsed from the connection string.
+These properties are:
+
+- __AdbcConnectionTimeout__ - This specifies the connection timeout value. The value needs to be in the form (driver.property.name, integer, unit) where the unit is one of `s` or `ms`, For example, `AdbcConnectionTimeout=(adbc.snowflake.sql.client_option.client_timeout,30,s)` would set the connection timeout to 30 seconds.
+- __AdbcCommandTimeout__ - This specifies the command timeout value. This follows the same pattern as `AdbcConnectionTimeout` and sets the `AdbcCommandTimeoutProperty` and `CommandTimeout` values on the `AdbcCommand` object.
+- __StructBehavior__ - This specifies the StructBehavior when working with Arrow Struct arrays. The valid values are `JsonString` (the default) or `Strict` (treat the struct as a native type).
+- __DecimalBehavior__ - This specifies the DecimalBehavior when parsing decimal values from Arrow libraries. The valid values are `UseSqlDecimal` or `OverflowDecimalAsString` where values like Decimal256 are treated as strings.

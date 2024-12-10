@@ -255,7 +255,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
 
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, catalogName, null);
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
             AdbcCatalog? catalog = catalogs.Where((catalog) => string.Equals(catalog.Name, catalogName)).FirstOrDefault();
 
             Assert.True(pattern == string.Empty && catalog == null || catalog != null, "catalog should not be null");
@@ -287,7 +287,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
 
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
 
             List<AdbcDbSchema>? dbSchemas = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
@@ -324,7 +324,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
 
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
 
             List<AdbcTable>? tables = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
@@ -362,7 +362,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
 
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
             AdbcTable? table = catalogs
                 .Where(c => string.Equals(c.Name, databaseName))
                 .Select(c => c.DbSchemas)
@@ -467,7 +467,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
 
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, catalogName, schemaName);
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
 
             List<AdbcTable>? tables = catalogs
                 .Where(c => string.Equals(c.Name, catalogName))
