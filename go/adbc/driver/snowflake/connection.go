@@ -67,7 +67,7 @@ type connectionImpl struct {
 
 	cn    snowflakeConn
 	db    *databaseImpl
-	ctor  gosnowflake.Connector
+	ctor  driver.Connector
 	sqldb *sql.DB
 
 	activeTransaction bool

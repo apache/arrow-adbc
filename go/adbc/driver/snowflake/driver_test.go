@@ -24,6 +24,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
+	sqldriver "database/sql/driver"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
@@ -53,7 +54,7 @@ import (
 type SnowflakeQuirks struct {
 	dsn         string
 	mem         *memory.CheckedAllocator
-	connector   gosnowflake.Connector
+	connector   sqldriver.Connector
 	catalogName string
 	schemaName  string
 }
