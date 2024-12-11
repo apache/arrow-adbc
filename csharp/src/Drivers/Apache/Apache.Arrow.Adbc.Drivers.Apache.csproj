@@ -6,7 +6,6 @@
 
   <ItemGroup>
     <PackageReference Include="ApacheThrift" Version="0.21.0" />
-    <PackageReference Include="OpenTelemetry" Version="1.10.0" />
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 

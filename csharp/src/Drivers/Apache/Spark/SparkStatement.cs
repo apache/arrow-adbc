@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             foreach (KeyValuePair<string, string> kvp in connection.Properties)
             {
-                switch (kvp.Key.ToLowerInvariant())
+                switch (kvp.Key)
                 {
                     case Options.BatchSize:
                     case Options.PollTimeMilliseconds:

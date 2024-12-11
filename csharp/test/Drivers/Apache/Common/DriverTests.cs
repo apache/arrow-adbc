@@ -22,7 +22,6 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
@@ -662,23 +661,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task CanExecuteQueryAsyncEmptyResult()
         {
             using AdbcConnection adbcConnection = NewConnection();
-            using AdbcStatement statement = adbcConnection.CreateStatement();
-
-            statement.SqlQuery = $"SELECT * from {TestConfiguration.Metadata.Table} WHERE FALSE";
-            QueryResult queryResult = await statement.ExecuteQueryAsync();
-
-            await Tests.DriverTests.CanExecuteQueryAsync(queryResult, 0);
-        }
-
-        /// <summary>
-        /// Validates if the connection accept the trace option.
-        /// </summary>
-        [SkippableFact, Order(16)]
-        public async Task CanEnableAndWriteTracing()
-        {
-            var config = (TConfig)TestConfiguration.Clone();
-            config.Trace = "true";
-            using AdbcConnection adbcConnection = NewConnection(config);
             using AdbcStatement statement = adbcConnection.CreateStatement();
 
             statement.SqlQuery = $"SELECT * from {TestConfiguration.Metadata.Table} WHERE FALSE";
