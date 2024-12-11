@@ -18,7 +18,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -27,11 +26,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
-using OpenTelemetry;
-using OpenTelemetry.Trace;
 using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
@@ -42,9 +38,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
-
-        private bool _disposed;
-        private TracerProvider? _tracerProvider = null;
 
         public SparkHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
@@ -273,18 +266,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override SparkServerType ServerType => SparkServerType.Http;
-
-        protected override void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    _tracerProvider?.Dispose();
-                }
-                _disposed = true;
-            }
-            base.Dispose(disposing);
-        }
     }
 }

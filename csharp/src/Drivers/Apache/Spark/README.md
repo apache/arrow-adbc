@@ -41,13 +41,6 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `adbc.apache.statement.batch_size` | Sets the maximum number of rows to retrieve in a single batch request. | `50000` |
 | `adbc.apache.statement.polltime_ms` | If polling is necessary to get a result, this option sets the length of time (in milliseconds) to wait between polls. | `500` |
 | `adbc.apache.statement.query_timeout_s` | Sets the maximum time (in seconds) for a query to complete. Values can be 0 (infinite) or greater than zero. | `60` |
-| `adbc.spark.http_request_timeout_ms` | Sets the timeout (in milliseconds) when making requests to the Spark server (type: `http`). Set the value higher than the default if you notice errors due to network timeouts. | `30000` |
-| `adbc.statement.batch_size` | Sets the maximum number of rows to retrieve in a single batch request. | `50000` |
-| `adbc.tracing.connection.trace` | If `true`, enable writing trace messages to files. | `false` |
-| `adbc.tracing.connection.trace_location` | When file tracing is enabled, specifies the folder location to place trace files. | `{LocalApplicationData}/Apache.Arrow.Adbc/Traces` |
-| `adbc.tracing.connection.trace_max_size_kb` | When file tracing is enabled, specifies the approximate maximum size of each trace fiel (in KB). | `1024` |
-| `adbc.tracing.connection.trace_max_files` | When file tracing is enabled, specifies the maximun number of file in the trace location. Older trace files are removedm when exceeded. | `999` |
-| `adbc.tracing.statement.trace_parent` | When tracing is enabled, sets the `traceparent` id |
 
 ## Timeout Configuration
 

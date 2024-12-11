@@ -16,17 +16,15 @@
 */
 
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
-    internal sealed class SparkDatabricksReader : TracingArrowArrayStream
+    internal sealed class SparkDatabricksReader : IArrowArrayStream
     {
         HiveServer2Statement? statement;
         Schema schema;
@@ -40,9 +38,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             this.schema = schema;
         }
 
-        public override Schema Schema { get { return schema; } }
+        public Schema Schema { get { return schema; } }
 
-        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
             while (true)
             {
@@ -80,6 +78,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     this.statement = null;
                 }
             }
+        }
+
+        public void Dispose()
+        {
         }
     }
 }

@@ -16,10 +16,8 @@
 */
 
 using System;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Transport;
@@ -119,7 +117,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public async Task<UpdateResult> ExecuteUpdateAsyncInternal(CancellationToken cancellationToken = default)
         {
             const string NumberOfAffectedRowsColumnName = "num_affected_rows";
-
             QueryResult queryResult = await ExecuteQueryAsyncInternal(cancellationToken);
             if (queryResult.Stream == null)
             {
