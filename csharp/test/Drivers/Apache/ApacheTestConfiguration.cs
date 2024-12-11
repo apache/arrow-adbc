@@ -62,6 +62,5 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
 
         [JsonPropertyName("tls_options"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string TlsOptions { get; set; } = string.Empty;
-
     }
 }
