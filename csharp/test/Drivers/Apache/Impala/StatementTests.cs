@@ -41,7 +41,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
         {
             public LongRunningStatementTimeoutTestData()
             {
-                // TODO: Determine if this long-running query will work as expected on Impala. 
+                // TODO: Determine if this long-running query will work as expected on Impala.
                 //string longRunningQuery = "SELECT CAST(NULL AS STRING), SLEEP(70000)";
 
                 //Add(new(5, longRunningQuery, typeof(TimeoutException)));
