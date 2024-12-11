@@ -85,49 +85,39 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            return await TraceActivityAsync(async activity =>
+            // All records have been exhausted
+            if (_statement == null)
             {
-                // All records have been exhausted
-                if (_statement == null)
+                return null;
+            }
+
+            try
+            {
+                // Await the fetch response
+                TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
+
+                int columnCount = GetColumnCount(response);
+                int rowCount = GetRowCount(response, columnCount);
+
+                if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
                 {
-                    return null;
+                    // This is the last batch
+                    _statement = null;
                 }
 
-                try
-                {
-                    activity?.AddEvent("fetchResults.start", [new("batches.batchSize", _statement.BatchSize)]);
-                    // Await the fetch response
-                    TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
-
-                    int columnCount = GetColumnCount(response);
-                    int rowCount = GetRowCount(response, columnCount);
-
-                    activity?.AddEvent("fetchResults.end", [
-                        new("fetch.statusCode", response.Status.StatusCode.ToString()),
-                        new("batches.count", rowCount > 0 ? 1 : 0),
-                        new("batches.rowCount", rowCount),
-                    ]);
-
-                    if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
-                    {
-                        // This is the last batch
-                        _statement = null;
-                    }
-
-                    // Build the current batch, if any data exists
-                    return rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
-                }
-                catch (Exception ex)
-                    when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                         (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
-                {
-                    throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
-                }
-                catch (Exception ex) when (ex is not HiveServer2Exception)
-                {
-                    throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
-                }
-            });
+                // Build the current batch, if any data exists
+                return rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
+            }
+            catch (Exception ex)
+                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            {
+                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
+            }
+            catch (Exception ex) when (ex is not HiveServer2Exception)
+            {
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+            }
         }
 
         private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)

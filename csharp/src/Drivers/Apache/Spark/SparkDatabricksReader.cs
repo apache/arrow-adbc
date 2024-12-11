@@ -44,54 +44,42 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            return await TraceActivityAsync(async (activity) =>
+            while (true)
             {
-                while (true)
+                if (this.reader != null)
                 {
-                    if (this.reader != null)
+                    RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+                    if (next != null)
                     {
-                        RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
-                        if (next != null)
-                        {
-                            return next;
-                        }
-                        this.reader = null;
+                        return next;
                     }
-
-                    if (this.batches != null && this.index < this.batches.Count)
-                    {
-                        this.reader = new ArrowStreamReader(new ChunkStream(this.schema, this.batches[this.index++].Batch));
-                        continue;
-                    }
-
-                    this.batches = null;
-                    this.index = 0;
-
-                    if (this.statement == null)
-                    {
-                        return null;
-                    }
-
-                    TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
-
-                    activity?.AddEvent("fetchResults.start", [new("batches.batchSize", this.statement.BatchSize)]);
-
-                    TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
-                    this.batches = response.Results.ArrowBatches;
-
-                    activity?.AddEvent("fetchResults.end",
-                        [
-                            new("fetchResults.statusCode", response.Status.StatusCode.ToString()),
-                            new("batches.count", this.batches?.Count ?? 0),
-                            new("batches.rowCount", this.batches?.Sum(b => b.RowCount) ?? 0),
-                        ]);
-
-                    if (!response.HasMoreRows)
-                    {
-                        this.statement = null;
-                    }
+                    this.reader = null;
                 }
-            });
+
+                if (this.batches != null && this.index < this.batches.Count)
+                {
+                    this.reader = new ArrowStreamReader(new ChunkStream(this.schema, this.batches[this.index++].Batch));
+                    continue;
+                }
+
+                this.batches = null;
+                this.index = 0;
+
+                if (this.statement == null)
+                {
+                    return null;
+                }
+
+                TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
+
+                TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
+                this.batches = response.Results.ArrowBatches;
+
+                if (!response.HasMoreRows)
+                {
+                    this.statement = null;
+                }
+            }
         }
     }
 }
