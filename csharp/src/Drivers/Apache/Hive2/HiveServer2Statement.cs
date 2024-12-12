@@ -26,8 +26,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal abstract class HiveServer2Statement : AdbcStatement
     {
-        private bool _disposed;
-
         protected HiveServer2Statement(HiveServer2Connection connection)
         {
             Connection = connection;
@@ -231,23 +229,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
 
 
-        protected override void Dispose(bool disposing)
+        public override void Dispose()
         {
-            if (!_disposed)
+            if (OperationHandle != null)
             {
-                if (disposing)
-                {
-                    if (OperationHandle != null)
-                    {
-                        CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                        TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
-                        Connection.Client.CloseOperation(request, cancellationToken).Wait();
-                        OperationHandle = null;
-                    }
-                }
-                _disposed = true;
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
+                Connection.Client.CloseOperation(request, cancellationToken).Wait();
+                OperationHandle = null;
             }
-            base.Dispose(disposing);
+
+            base.Dispose();
         }
     }
 }

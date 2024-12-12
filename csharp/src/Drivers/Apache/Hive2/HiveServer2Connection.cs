@@ -28,7 +28,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal abstract class HiveServer2Connection : AdbcConnection
     {
-        private bool _disposed;
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
         private const int ConnectTimeoutMillisecondsDefault = 30000;
@@ -189,26 +188,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        protected override void Dispose(bool disposing)
+        public override void Dispose()
         {
-            if (!_disposed)
+            if (_client != null)
             {
-                if (disposing)
-                {
-                    if (_client != null)
-                    {
-                        CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                        TCloseSessionReq r6 = new(SessionHandle);
-                        _client.CloseSession(r6, cancellationToken).Wait();
-                        _transport?.Close();
-                        _client.Dispose();
-                        _transport = null;
-                        _client = null;
-                    }
-                }
-                _disposed = true;
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                TCloseSessionReq r6 = new(SessionHandle);
+                _client.CloseSession(r6, cancellationToken).Wait();
+                _transport?.Close();
+                _client.Dispose();
+                _transport = null;
+                _client = null;
             }
-            base.Dispose(disposing);
         }
 
         internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
