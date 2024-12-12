@@ -15,9 +15,7 @@
 * limitations under the License.
 */
 
-using System;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark;
 using Xunit;
 using Xunit.Abstractions;
 

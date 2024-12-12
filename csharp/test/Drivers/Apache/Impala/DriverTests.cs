@@ -103,7 +103,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
         protected override IReadOnlyList<int> GetUpdateExpectedResults()
         {
             int affectedRows = ValidateAffectedRows ? 1 : -1;
-            return ClientTests.GetUpdateExpecteResults(affectedRows);
+            return ClientTests.GetUpdateExpectedResults(affectedRows);
         }
 
 
