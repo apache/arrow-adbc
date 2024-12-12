@@ -999,6 +999,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return builder.ToString();
         }
 
+
         private static string GetProductVersion()
         {
             FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
