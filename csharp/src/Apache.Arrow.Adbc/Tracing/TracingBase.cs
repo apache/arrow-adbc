@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Tracing
     /// </summary>
     public class TracingBase : IDisposable
     {
-        internal const string ProductVersionDefault = "1.0.0";
+        private const string ProductVersionDefault = "1.0.0";
         private static readonly string s_assemblyVersion = GetProductVersion();
         private bool _disposedValue;
 
@@ -272,7 +272,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Gets the product version from the file version of the current assembly.
         /// </summary>
         /// <returns></returns>
-        protected static string GetProductVersion()
+        private static string GetProductVersion()
         {
             FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
             return fileVersionInfo.ProductVersion ?? ProductVersionDefault;

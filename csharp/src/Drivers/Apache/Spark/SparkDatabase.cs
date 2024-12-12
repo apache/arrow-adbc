@@ -38,7 +38,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 : options
                     .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            SparkConnection connection = SparkConnectionFactory.NewConnection(mergedProperties);
+            SparkConnection connection = SparkConnectionFactory.NewConnection(mergedProperties); // new SparkConnection(mergedProperties);
             connection.OpenAsync().Wait();
             return connection;
         }

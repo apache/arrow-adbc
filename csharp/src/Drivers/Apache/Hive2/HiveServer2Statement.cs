@@ -228,7 +228,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             ? batchSize
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
 
-
         public override void Dispose()
         {
             if (OperationHandle != null)

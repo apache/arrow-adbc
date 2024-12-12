@@ -47,6 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             AdbcInfoCode.VendorVersion,
         };
 
+        const string ProductVersionDefault = "1.0.0";
         const string InfoDriverName = "ADBC Spark Driver";
         const string InfoDriverArrowVersion = "1.0.0";
         const bool InfoVendorSql = true;
@@ -996,6 +997,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             builder.Append('$');
 
             return builder.ToString();
+        }
+
+        private static string GetProductVersion()
+        {
+            FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+            return fileVersionInfo.ProductVersion ?? ProductVersionDefault;
         }
 
         protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port)
