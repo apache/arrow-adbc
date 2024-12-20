@@ -29,15 +29,10 @@ using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Tracing
 {
-    public class TracingTests : IDisposable
+    public class TracingTests(ITestOutputHelper? outputHelper) : IDisposable
     {
-        private readonly ITestOutputHelper? _outputHelper;
+        private readonly ITestOutputHelper? _outputHelper = outputHelper;
         private bool _disposed;
-
-        public TracingTests(ITestOutputHelper? outputHelper)
-        {
-            _outputHelper = outputHelper;
-        }
 
         [Fact]
         internal void CanStartActivity()
@@ -68,7 +63,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             while (text != null)
             {
                 lineCount++;
-                var activity = JsonSerializer.Deserialize<SerializableActivity>(text);
+                SerializableActivity? activity = JsonSerializer.Deserialize<SerializableActivity>(text);
                 Assert.NotNull(activity);
                 Assert.Contains(nameof(TraceInheritor.MethodWithActivity), activity.OperationName);
                 Assert.DoesNotContain(nameof(TraceInheritor.MethodWithNoInstrumentation), activity.OperationName);
@@ -128,7 +123,8 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             var testClass = new TraceInheritor(activitySourceName);
             string activityName = NewName();
             string eventName = NewName();
-            const string traceParent = "00-3236da27af79882bd317c4d1c3776982-a3cc9bd52ccd58e6-01";
+            const string rootId = "3236da27af79882bd317c4d1c3776982";
+            string traceParent = $"00-{rootId}-a3cc9bd52ccd58e6-01";
             IReadOnlyList<KeyValuePair<string, object?>> tags =
                 [
                     new (NewName(), NewName()),
@@ -146,7 +142,12 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 SerializableActivity? activity = JsonSerializer.Deserialize<SerializableActivity>(text);
                 Assert.NotNull(activity);
                 string activityJson = JsonSerializer.Serialize(activity);
+                Assert.Equal(rootId, activity.TraceId);
+                Assert.Equal(rootId, activity.RootId);
+                Assert.Contains(rootId, activity.ParentId);
+                Assert.True(activity.HasRemoteParent);
                 Assert.Equal(text, activityJson);
+
                 text = reader.ReadLine();
             }
             Assert.Equal(1, lineCount);
@@ -177,7 +178,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 lineCount++;
                 Assert.Contains(nameof(TraceInheritor.MethodWithActivityRecursive), text);
                 Assert.DoesNotContain(nameof(TraceInheritor.MethodWithNoInstrumentation), text);
-                var activity = JsonSerializer.Deserialize<SerializableActivity>(text);
+                SerializableActivity? activity = JsonSerializer.Deserialize<SerializableActivity>(text);
                 Assert.Contains(nameof(TraceInheritor.MethodWithActivityRecursive), activity?.OperationName);
                 Assert.NotNull(activity);
                 text = reader.ReadLine();
@@ -326,14 +327,9 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             }
         }
 
-        internal class MemoryStreamExporter : BaseExporter<Activity>
+        internal class MemoryStreamExporter(MemoryStream stream) : BaseExporter<Activity>
         {
-            private readonly MemoryStream _stream;
-
-            public MemoryStreamExporter(MemoryStream stream)
-            {
-                _stream = stream;
-            }
+            private readonly MemoryStream _stream = stream;
 
             public override ExportResult Export(in Batch<Activity> batch)
             {
