@@ -164,7 +164,7 @@
       <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
-        <version>5.11.3</version>
+        <version>5.11.4</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -299,7 +299,7 @@
                 <path>
                   <groupId>com.uber.nullaway</groupId>
                   <artifactId>nullaway</artifactId>
-                  <version>0.12.1</version>
+                  <version>0.12.2</version>
                 </path>
                 <path>
                   <groupId>org.checkerframework</groupId>

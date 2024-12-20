@@ -51,3 +51,9 @@ updates:
       - dependency-name: "System.*"
         update-types:
           - "version-update:semver-major"
+  - package-ecosystem: "cargo"
+    directory: "/rust/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(rust): "
