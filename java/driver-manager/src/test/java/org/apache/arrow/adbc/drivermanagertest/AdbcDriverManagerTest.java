@@ -15,12 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.adbc.drivermanager;
+package org.apache.arrow.adbc.drivermanagertest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.function.Function;
 import org.apache.arrow.adbc.core.AdbcDriver;
+import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
 import org.apache.arrow.adbc.test.TestDriver;
 import org.apache.arrow.adbc.test.TestDriverFactory;
 import org.apache.arrow.memory.BufferAllocator;
@@ -33,6 +34,8 @@ public class AdbcDriverManagerTest {
   public void testDriverFromServiceLoader() {
     final Function<BufferAllocator, AdbcDriver> driverFactoryFunction =
         AdbcDriverManager.getInstance().lookupDriver(TestDriverFactory.class.getCanonicalName());
+
+    assertThat(driverFactoryFunction).isNotNull();
 
     try (BufferAllocator allocator = new RootAllocator()) {
       final AdbcDriver driverInstance = driverFactoryFunction.apply(allocator);
