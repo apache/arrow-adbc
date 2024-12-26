@@ -54,6 +54,7 @@ class RecipeDirective(SphinxDirective):
     def default_prose_prefix(language: str) -> str:
         return {
             "cpp": "///",
+            "go": "///",
             "python": "#:",
         }.get(language, "#:")
 
