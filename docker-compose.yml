@@ -37,8 +37,6 @@ services:
     build:
       context: .
       dockerfile: ci/docker/cpp-clang-latest.dockerfile
-      args:
-        VCPKG: ${VCPKG}
     volumes:
       - .:/adbc:delegated
     command: "bash -c 'export PATH=$PATH:/opt/go/bin CC=$(which clang) CXX=$(which clang++) && git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build'"
@@ -56,7 +54,7 @@ services:
     command: |
       /bin/bash -c 'git config --global --add safe.directory /adbc && source /opt/conda/etc/profile.d/conda.sh && mamba create -y -n adbc -c conda-forge go --file /adbc/ci/conda_env_cpp.txt --file /adbc/ci/conda_env_docs.txt --file /adbc/ci/conda_env_java.txt --file /adbc/ci/conda_env_python.txt && conda activate adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build && /adbc/ci/scripts/go_build.sh /adbc /adbc/build && /adbc/ci/scripts/python_build.sh /adbc /adbc/build && /adbc/ci/scripts/r_build.sh /adbc && /adbc/ci/scripts/docs_build.sh /adbc'
 
-  ############################ Java JARs ######################################
+  ################################### Java ###################################
 
   java-dist:
     image: ${ARCH}/maven:${MAVEN}-jdk-${JDK}
