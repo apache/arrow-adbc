@@ -128,40 +128,8 @@ the :c:struct:`AdbcDatabase`.
    .. tab-item:: Go
       :sync: go
 
-      .. code-block:: go
-
-         import (
-            "context"
-
-            "github.com/apache/arrow-adbc/go/adbc"
-            "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
-         )
-
-         var headers = map[string]string{"foo": "bar"}
-
-         func main() {
-            options := map[string]string{
-                adbc.OptionKeyURI: "grpc+tls://localhost:8080",
-                flightsql.OptionSSLSkipVerify: adbc.OptionValueEnabled,
-            }
-
-            for k, v := range headers {
-                options[flightsql.OptionRPCCallHeaderPrefix + k] = v
-            }
-
-            var drv flightsql.Driver
-            db, err := drv.NewDatabase(options)
-            if err != nil {
-                // do something with the error
-            }
-            defer db.Close()
-
-            cnxn, err := db.Open(context.Background())
-            if err != nil {
-                // handle the error
-            }
-            defer cnxn.Close()
-         }
+      .. recipe:: ../../../go/adbc/driver/flightsql/example_usage_test.go
+         :language: go
 
 Supported Features
 ==================
