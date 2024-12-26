@@ -379,6 +379,17 @@ jobs:
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/glib_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
+      - name: Search for build logs
+        if: failure()
+        run: |
+          for log in $(find glib -type f | grep mkmf.log); do
+            echo ============================================================
+            echo $log
+            cat $log
+            echo ============================================================
+          done
+
+
   # ------------------------------------------------------------
   # Go
   # ------------------------------------------------------------
