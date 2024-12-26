@@ -35,8 +35,9 @@ require (
 	golang.org/x/sync v0.10.0
 	golang.org/x/tools v0.28.0
 	google.golang.org/api v0.214.0
-	google.golang.org/grpc v1.69.0
+	google.golang.org/grpc v1.69.2
 	google.golang.org/protobuf v1.36.0
+	modernc.org/sqlite v1.29.6
 )
 
 require (
@@ -125,7 +126,6 @@ require (
 	modernc.org/libc v1.45.3 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.7.2 // indirect
-	modernc.org/sqlite v1.29.6 // indirect
 	modernc.org/strutil v1.2.0 // indirect
 	modernc.org/token v1.1.0 // indirect
 )
