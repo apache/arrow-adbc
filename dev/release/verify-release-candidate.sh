@@ -621,7 +621,7 @@ test_glib() {
   fi
 
   # Build and test C GLib
-  maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_glib.txt" || exit 1
+  maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_glib.txt" 'arrow-c-glib>=18.1.0' || exit 1
   maybe_setup_virtualenv meson || exit 1
 
   # Install bundler if doesn't exist
