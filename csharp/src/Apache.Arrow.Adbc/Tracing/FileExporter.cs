@@ -195,7 +195,7 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 _activityQueue.Enqueue(activity);
                 // Intentionally don't await the result of the call
-                _ = Task.Run(() => DequeueAndWrite(_cancellationTokenSource.Token));
+                _ = DequeueAndWrite(_cancellationTokenSource.Token);
             }
             return ExportResult.Success;
         }
