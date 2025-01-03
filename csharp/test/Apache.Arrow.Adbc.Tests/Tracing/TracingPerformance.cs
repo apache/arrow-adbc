@@ -44,7 +44,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
         //.NET SDK 9.0.101
         //  [Host]     : .NET 8.0.11 (8.0.1124.51707), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
         //  Job-OYCNCY : .NET 8.0.11 (8.0.1124.51707), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-        //IterationCount = 20  WarmupCount=3  
+        //IterationCount = 20  WarmupCount=3
         //| Method      | Iterations | EnableTracing | Mean       | Error      | StdDev      | Min        | Max        |
         //|------------ |----------- |-------------- |-----------:|-----------:|------------:|-----------:|-----------:|
         //| TestTracing | 100        | False         |   7.029 ms |  0.2993 ms |   0.3446 ms |   6.601 ms |   7.761 ms |
