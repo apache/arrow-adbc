@@ -24,6 +24,7 @@ using OpenTelemetry;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
@@ -193,31 +194,33 @@ namespace Apache.Arrow.Adbc.Tracing
             foreach (Activity activity in batch)
             {
                 _activityQueue.Enqueue(activity);
-                // Intentionally avoid await.
-                DequeueAndWrite(_cancellationTokenSource.Token)
-                    .ContinueWith(t => Console.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
+                // Intentionally don't await the result of the call
+                _ = Task.Run(() => DequeueAndWrite(_cancellationTokenSource.Token));
             }
             return ExportResult.Success;
         }
 
         private async Task DequeueAndWrite(CancellationToken cancellationToken = default)
         {
-            if (_activityQueue.TryDequeue(out Activity? activity) && activity != null)
-            {
-                try
+            try {
+                if (_activityQueue.TryDequeue(out Activity? activity) && activity != null)
                 {
-                    SerializableActivity serilalizableActivity = new(activity);
-                    string json = JsonSerializer.Serialize(serilalizableActivity);
-                    await _tracingFile.WriteLine(json, cancellationToken);
-                }
-                catch (NotSupportedException ex)
-                {
-                    // TODO: Handle excption thrown by JsonSerializer
-                    Console.WriteLine(ex.Message);
+                    try
+                    {
+                        SerializableActivity serilalizableActivity = new(activity);
+                        string json = JsonSerializer.Serialize(serilalizableActivity);
+                        await _tracingFile.WriteLine(json, cancellationToken);
+                    }
+                    catch (NotSupportedException ex)
+                    {
+                        // TODO: Handle excption thrown by JsonSerializer
+                        Console.WriteLine(ex.Message);
+                    }
                 }
             }
-
-            return;
+            catch {
+                // Ignore all errors so it doesn't crash Task runner.
+            }
         }
 
         internal static string TracingLocationDefault =>

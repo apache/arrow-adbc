@@ -36,20 +36,20 @@ namespace Apache.Arrow.Adbc.Tracing
         private bool _disposedValue;
 
         /// <summary>
-        /// Constructs a new <see cref="TracingBase"/> object. If <paramref name="activitySoureceName"/> is set, it provides the
+        /// Constructs a new <see cref="TracingBase"/> object. If <paramref name="activitySourceName"/> is set, it provides the
         /// activity source name, otherwise the current assembly name is used as the acctivity source name.
         /// </summary>
-        /// <param name="activitySoureceName"></param>
-        protected TracingBase(string? activitySoureceName = default)
+        /// <param name="activitySourceName"></param>
+        protected TracingBase(string? activitySourceName = default)
         {
-            activitySoureceName ??= GetType().Assembly.GetName().Name!;
-            if (string.IsNullOrWhiteSpace(activitySoureceName))
+            activitySourceName ??= GetType().Assembly.GetName().Name!;
+            if (string.IsNullOrWhiteSpace(activitySourceName))
             {
-                throw new ArgumentNullException(nameof(activitySoureceName));
+                throw new ArgumentNullException(nameof(activitySourceName));
             }
 
             // This is required to be disposed
-            ActivitySource = new(activitySoureceName, s_assemblyVersion);
+            ActivitySource = new(activitySourceName, s_assemblyVersion);
         }
 
         /// <summary>
