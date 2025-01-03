@@ -24,7 +24,6 @@ using OpenTelemetry;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
@@ -39,7 +38,6 @@ namespace Apache.Arrow.Adbc.Tracing
         private static readonly ConcurrentDictionary<string, Lazy<FileExporterInstance>> s_fileExporters = new();
 
         private bool _disposed = false;
-        private readonly ConcurrentQueue<Activity> _activityQueue = new();
         private readonly TracingFile _tracingFile;
         private readonly string _fileBaseName;
         private readonly string _tracesDirectoryFullName;
@@ -193,32 +191,31 @@ namespace Apache.Arrow.Adbc.Tracing
         {
             foreach (Activity activity in batch)
             {
-                _activityQueue.Enqueue(activity);
+                if (activity == null) continue;
                 // Intentionally don't await the result of the call
-                _ = DequeueAndWrite(_cancellationTokenSource.Token);
+                _ = DequeueAndWrite(activity, _cancellationTokenSource.Token);
             }
             return ExportResult.Success;
         }
 
-        private async Task DequeueAndWrite(CancellationToken cancellationToken = default)
+        private async Task DequeueAndWrite(Activity activity, CancellationToken cancellationToken = default)
         {
-            try {
-                if (_activityQueue.TryDequeue(out Activity? activity) && activity != null)
+            try
+            {
+                try
                 {
-                    try
-                    {
-                        SerializableActivity serilalizableActivity = new(activity);
-                        string json = JsonSerializer.Serialize(serilalizableActivity);
-                        await _tracingFile.WriteLine(json, cancellationToken);
-                    }
-                    catch (NotSupportedException ex)
-                    {
-                        // TODO: Handle excption thrown by JsonSerializer
-                        Console.WriteLine(ex.Message);
-                    }
+                    SerializableActivity serilalizableActivity = new(activity);
+                    string json = JsonSerializer.Serialize(serilalizableActivity);
+                    await _tracingFile.WriteLine(json, cancellationToken);
+                }
+                catch (NotSupportedException ex)
+                {
+                    // TODO: Handle excption thrown by JsonSerializer
+                    Console.WriteLine(ex.Message);
                 }
             }
-            catch {
+            catch
+            {
                 // Ignore all errors so it doesn't crash Task runner.
             }
         }

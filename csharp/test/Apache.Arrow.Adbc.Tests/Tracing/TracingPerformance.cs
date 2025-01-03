@@ -37,20 +37,6 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
     {
         private readonly ITestOutputHelper _outputHelper = outputHelper;
 
-        //---------------------------------------------------
-        // * Summary *
-        //BenchmarkDotNet v0.14.0, Windows 11 (10.0.26100.2605)
-        //AMD Ryzen 9 PRO 7940HS w/ Radeon 780M Graphics, 1 CPU, 16 logical and 8 physical cores
-        //.NET SDK 9.0.101
-        //  [Host]     : .NET 8.0.11 (8.0.1124.51707), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-        //  Job-OYCNCY : .NET 8.0.11 (8.0.1124.51707), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-        //IterationCount = 20  WarmupCount=3
-        //| Method      | Iterations | EnableTracing | Mean       | Error      | StdDev      | Min        | Max        |
-        //|------------ |----------- |-------------- |-----------:|-----------:|------------:|-----------:|-----------:|
-        //| TestTracing | 100        | False         |   7.029 ms |  0.2993 ms |   0.3446 ms |   6.601 ms |   7.761 ms |
-        //| TestTracing | 100        | True          |  54.241 ms |  3.1346 ms |   3.4841 ms |  48.093 ms |  61.842 ms |
-        //| TestTracing | 1000       | False         |  79.042 ms |  9.3948 ms |  10.8190 ms |  65.913 ms | 109.458 ms |
-        //| TestTracing | 1000       | True          | 526.526 ms | 87.4242 ms | 100.6778 ms | 396.193 ms | 703.849 ms |
         [SkippableFact]
         public void TestPerformance()
         {
