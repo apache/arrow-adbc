@@ -562,9 +562,7 @@ test_python() {
   # Build and test Python
   maybe_setup_virtualenv cython duckdb pandas protobuf pyarrow pytest setuptools_scm setuptools importlib_resources || exit 1
   # XXX: pin Python for now since various other packages haven't caught up
-  # XXX: force a later PyArrow to try to get a recent build
-  # https://github.com/conda-forge/abseil-cpp-feedstock/issues/87
-  maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_python.txt" python=3.12 'pyarrow>=18.1.0' || exit 1
+  maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_python.txt" python=3.12 || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
