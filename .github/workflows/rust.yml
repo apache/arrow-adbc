@@ -84,7 +84,6 @@ jobs:
           unzip "protoc.zip" -d $HOME/.local
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Build C++/Go drivers
-        shell: bash -l {0}
         run: |
           mkdir -p build
           mkdir -p local
