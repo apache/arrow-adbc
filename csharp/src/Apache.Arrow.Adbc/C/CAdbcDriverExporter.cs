@@ -127,13 +127,12 @@ namespace Apache.Arrow.Adbc.C
             nativeDriver->StatementBindStream = StatementBindStreamPtr;
             nativeDriver->StatementExecuteQuery = StatementExecuteQueryPtr;
             nativeDriver->StatementExecutePartitions = StatementExecutePartitionsPtr;
-            nativeDriver->StatementExecuteSchema = StatementExecuteSchemaPtr;
+            nativeDriver->StatementGetParameterSchema = StatementGetParameterSchemaPtr;
             nativeDriver->StatementNew = StatementNewPtr;
             nativeDriver->StatementPrepare = StatementPreparePtr;
             nativeDriver->StatementRelease = StatementReleasePtr;
             nativeDriver->StatementSetSqlQuery = StatementSetSqlQueryPtr;
             nativeDriver->StatementSetSubstraitPlan = StatementSetSubstraitPlanPtr;
-            nativeDriver->StatementGetParameterSchema = StatementGetParameterSchemaPtr;
 
             return 0;
         }
