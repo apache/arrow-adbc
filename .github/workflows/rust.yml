@@ -83,6 +83,12 @@ jobs:
           curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-universal_binary.zip" -o protoc.zip
           unzip "protoc.zip" -d $HOME/.local
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install sqlite3
+        if: runner.os == 'Linux'
+        run: sudo apt-get install libsqlite3-dev
+      - name: Install sqlite3
+        if: runner.os == 'macOS'
+        run: brew install sqlite3
       - name: Build C++/Go drivers
         run: |
           mkdir -p build
