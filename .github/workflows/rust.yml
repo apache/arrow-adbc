@@ -86,9 +86,6 @@ jobs:
       - name: Install sqlite3
         if: runner.os == 'Linux'
         run: sudo apt-get install libsqlite3-dev
-      - name: Install sqlite3
-        if: runner.os == 'macOS'
-        run: brew install sqlite3
       - name: Build C++/Go drivers
         run: |
           mkdir -p build
