@@ -56,6 +56,7 @@ struct BindStream {
   Handle<struct ArrowBuffer> param_buffer;
 
   bool has_tz_field = false;
+  bool autocommit = false;
   std::string tz_setting;
 
   struct ArrowError na_error;
@@ -119,6 +120,7 @@ struct BindStream {
       if (!has_tz_field && type.type_id() == PostgresTypeId::kTimestamptz) {
         UNWRAP_STATUS(SetDatabaseTimezoneUTC(pg_conn, autocommit));
         has_tz_field = true;
+        this->autocommit = autocommit;
       }
 
       std::unique_ptr<PostgresCopyFieldWriter> writer;
@@ -254,8 +256,14 @@ struct BindStream {
       PqResultHelper reset(pg_conn, "SET TIME ZONE '" + tz_setting + "'");
       UNWRAP_STATUS(reset.Execute());
 
-      PqResultHelper commit(pg_conn, "COMMIT");
-      UNWRAP_STATUS(reset.Execute());
+      if (autocommit) {
+        // SetDatabaseTimezoneUTC will start a transaction if autocommit is
+        // enabled (so the timezone setting will roll back if we error), so we
+        // need to commit here.  Otherwise we should not commit and let the
+        // user commit.
+        PqResultHelper commit(pg_conn, "COMMIT");
+        UNWRAP_STATUS(commit.Execute());
+      }
     }
 
     return Status::Ok();

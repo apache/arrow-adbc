@@ -230,28 +230,6 @@ jobs:
           echo "ADBC_USE_ASAN=ON" >> $GITHUB_ENV
           echo "ADBC_USE_UBSAN=ON" >> $GITHUB_ENV
 
-      - name: Test PostgreSQL Driver - postgres 11
-        shell: bash -l {0}
-        env:
-          BUILD_ALL: "0"
-          BUILD_DRIVER_POSTGRESQL: "1"
-          PYTEST_ADDOPTS: "--error-for-skips"
-        run: |
-          env POSTGRES_VERSION=11 docker compose up --wait --detach postgres-test
-          ./ci/scripts/cpp_test.sh "$(pwd)/build"
-          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
-          docker compose down
-      - name: Test PostgreSQL Driver - postgres 12
-        shell: bash -l {0}
-        env:
-          BUILD_ALL: "0"
-          BUILD_DRIVER_POSTGRESQL: "1"
-          PYTEST_ADDOPTS: "--error-for-skips"
-        run: |
-          env POSTGRES_VERSION=12 docker compose up --wait --detach postgres-test
-          ./ci/scripts/cpp_test.sh "$(pwd)/build"
-          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
-          docker compose down
       - name: Test PostgreSQL Driver - postgres 13
         shell: bash -l {0}
         env:
@@ -286,6 +264,17 @@ jobs:
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
           docker compose down
       - name: Test PostgreSQL Driver - postgres 16
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          PYTEST_ADDOPTS: "--error-for-skips"
+        run: |
+          env POSTGRES_VERSION=16 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 17
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
