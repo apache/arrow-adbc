@@ -201,6 +201,7 @@
             <exclude>**/*.log</exclude>
             <exclude>**/target/**</exclude>
             <exclude>.mvn/jvm.config</exclude>
+            <exclude>build/</exclude>
           </excludes>
         </configuration>
         <executions>
@@ -314,6 +315,13 @@
           </plugin>
         </plugins>
       </build>
+    </profile>
+
+    <profile>
+      <id>jni</id>
+      <modules>
+        <module>driver/jni</module>
+      </modules>
     </profile>
   </profiles>
 </project>
