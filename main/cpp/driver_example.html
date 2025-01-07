@@ -17,7 +17,7 @@
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>Driver Example - ADBC 16 (dev) documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
@@ -711,16 +711,16 @@ to expose a ready-to-go Pythonic database API. This is also useful for
 high-level testing!</p>
 <p>First, we’ll import pathlib for a few path calculations and the
 <code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code>’s <code class="docutils literal notranslate"><span class="pre">dbapi</span></code> module:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">26</span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">26</span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="linenos">27</span>
-<span class="linenos">28</span><span class="kn">from</span> <span class="nn">adbc_driver_manager</span> <span class="kn">import</span> <span class="n">dbapi</span>
+<span class="linenos">28</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 </pre></div>
 </div>
 <p>Next, we’ll define a <code class="docutils literal notranslate"><span class="pre">connect()</span></code> function that wraps <code class="docutils literal notranslate"><span class="pre">dbapi.connect()</span></code>
 with the location of the shared library we built using <code class="docutils literal notranslate"><span class="pre">cmake</span></code> in the previous
 section. For the purposes of our tutorial, this will be in the CMake <code class="docutils literal notranslate"><span class="pre">build/</span></code>
 directory.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">35</span><span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">35</span><span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="linenos">36</span>    <span class="n">build_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;build&quot;</span>
 <span class="linenos">37</span>    <span class="k">for</span> <span class="n">lib</span> <span class="ow">in</span> <span class="p">[</span>
 <span class="linenos">38</span>        <span class="s2">&quot;libdriver_example.dylib&quot;</span><span class="p">,</span>
@@ -739,9 +739,9 @@ directory.</p>
 <p>Next, we can give our driver a go! The two pieces we implemented in the driver
 were the “bulk ingest” feature and “select all from”, so let’s see if it works!</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">53</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-<span class="linenos">54</span>    <span class="kn">import</span> <span class="nn">os</span>
+<span class="linenos">54</span>    <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">55</span>
-<span class="linenos">56</span>    <span class="kn">import</span> <span class="nn">pyarrow</span>
+<span class="linenos">56</span>    <span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">57</span>
 <span class="linenos">58</span>    <span class="k">with</span> <span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">as_uri</span><span class="p">())</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
 <span class="linenos">59</span>        <span class="n">data</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">table</span><span class="p">({</span><span class="s2">&quot;col&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]})</span>

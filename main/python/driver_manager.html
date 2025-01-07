@@ -17,7 +17,7 @@
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>Driver Manager - ADBC 16 (dev) documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
@@ -421,7 +421,7 @@ name of a library to load, or the path to a library to load.  <code class="docut
 if provided, should be the name of the symbol that serves as the ADBC
 entrypoint (see <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-driver.html#ga5fb0507a84a8d440448d1c6b5cb0d1db" title="(in ADBC C vversion)"><code class="xref c c-type docutils literal notranslate"><span class="pre">AdbcDriverInitFunc</span></code></a>).  Then, create a
 <a class="reference internal" href="api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection" title="adbc_driver_manager.AdbcConnection"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">adbc_driver_manager</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_manager</span>
 
 <span class="c1"># You must build/locate the driver yourself</span>
 <span class="k">with</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcDatabase</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">&quot;PATH/TO/libadbc_driver_sqlite.so&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>

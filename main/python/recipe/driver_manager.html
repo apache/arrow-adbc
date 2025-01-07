@@ -17,7 +17,7 @@
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>DBAPI/Driver Manager Recipes - ADBC 16 (dev) documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=a746c00c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
@@ -393,10 +393,10 @@ isn’t necessarily specific to any one driver.</p>
 <p>While the <a class="reference external" href="https://peps.python.org/pep-0249/">DB-API</a> bindings are recommended for general use, the low-level
 bindings are also available.  These mostly mirror the ADBC C API directly.
 They can be useful to opt out of some behaviors of the DB-API wrapper.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">25</span><span class="kn">import</span> <span class="nn">pyarrow</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">25</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">26</span>
-<span class="linenos">27</span><span class="kn">import</span> <span class="nn">adbc_driver_manager</span>
-<span class="linenos">28</span><span class="kn">import</span> <span class="nn">adbc_driver_sqlite</span>
+<span class="linenos">27</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_manager</span>
+<span class="linenos">28</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_sqlite</span>
 </pre></div>
 </div>
 <p>The driver packages do still have conveniences to create the root
@@ -460,9 +460,9 @@ will give you the schema of the parameters (if supported by the server).
 This can be done with <a class="reference internal" href="../api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.adbc_prepare" title="adbc_driver_manager.dbapi.Cursor.adbc_prepare"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Cursor.adbc_prepare</span></code></a>.</p>
 <p>We’ll demo this with the SQLite driver, though other drivers also support
 this.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">36</span><span class="kn">import</span> <span class="nn">pyarrow</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">36</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">37</span>
-<span class="linenos">38</span><span class="kn">import</span> <span class="nn">adbc_driver_sqlite.dbapi</span>
+<span class="linenos">38</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_sqlite.dbapi</span>
 <span class="linenos">39</span>
 <span class="linenos">40</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_sqlite</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
 <span class="linenos">41</span>

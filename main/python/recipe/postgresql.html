@@ -17,7 +17,7 @@
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>PostgreSQL Recipes - ADBC 16 (dev) documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=a746c00c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
@@ -395,9 +395,9 @@ be provided in the URI.  For example,</p>
 </div>
 <p>See the <a class="reference external" href="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING">PostgreSQL documentation</a>
 for full details.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">30</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">30</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">31</span>
-<span class="linenos">32</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">32</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
 <span class="linenos">33</span>
 <span class="linenos">34</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 <span class="linenos">35</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
@@ -414,17 +414,17 @@ for full details.</p>
 <span id="recipe-postgresql-create-append"></span><h2>Create/append to a table from an Arrow dataset<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-dataset" title="Link to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_dataset_table.py">postgresql_create_dataset_table.py</a></p>
 <p>ADBC makes it easy to load PyArrow datasets into your datastore.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
-<span class="linenos">23</span><span class="kn">import</span> <span class="nn">tempfile</span>
-<span class="linenos">24</span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="linenos">23</span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="linenos">24</span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="linenos">25</span>
-<span class="linenos">26</span><span class="kn">import</span> <span class="nn">pyarrow</span>
-<span class="linenos">27</span><span class="kn">import</span> <span class="nn">pyarrow.csv</span>
-<span class="linenos">28</span><span class="kn">import</span> <span class="nn">pyarrow.dataset</span>
-<span class="linenos">29</span><span class="kn">import</span> <span class="nn">pyarrow.feather</span>
-<span class="linenos">30</span><span class="kn">import</span> <span class="nn">pyarrow.parquet</span>
+<span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
+<span class="linenos">27</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.csv</span>
+<span class="linenos">28</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.dataset</span>
+<span class="linenos">29</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.feather</span>
+<span class="linenos">30</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.parquet</span>
 <span class="linenos">31</span>
-<span class="linenos">32</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">32</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
 <span class="linenos">33</span>
 <span class="linenos">34</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 <span class="linenos">35</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
@@ -593,11 +593,11 @@ PostgreSQL, though.</p>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_append_table.py">postgresql_create_append_table.py</a></p>
 <p>ADBC allows creating and appending to database tables using Arrow
 tables.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">23</span>
-<span class="linenos">24</span><span class="kn">import</span> <span class="nn">pyarrow</span>
+<span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">25</span>
-<span class="linenos">26</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
 <span class="linenos">27</span>
 <span class="linenos">28</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 <span class="linenos">29</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
@@ -687,11 +687,11 @@ append.</p>
 <h2>Create/append to a temporary table<a class="headerlink" href="#create-append-to-a-temporary-table" title="Link to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_temp_table.py">postgresql_create_temp_table.py</a></p>
 <p>ADBC allows creating and appending to temporary tables as well.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">21</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">21</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">22</span>
-<span class="linenos">23</span><span class="kn">import</span> <span class="nn">pyarrow</span>
+<span class="linenos">23</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">24</span>
-<span class="linenos">25</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">25</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
 <span class="linenos">26</span>
 <span class="linenos">27</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 <span class="linenos">28</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
@@ -769,11 +769,11 @@ If we reconnect, the table won’t exist; we’ll see only the ‘normal’ tabl
 <p>ADBC allows using Python and Arrow values as bind parameters.
 Right now, the PostgreSQL driver only supports bind parameters
 for queries that don’t generate result sets.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">25</span>
-<span class="linenos">26</span><span class="kn">import</span> <span class="nn">pyarrow</span>
+<span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">27</span>
-<span class="linenos">28</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">28</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
 <span class="linenos">29</span>
 <span class="linenos">30</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 <span class="linenos">31</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
@@ -823,11 +823,11 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 <h2>Get the Arrow schema of a table<a class="headerlink" href="#get-the-arrow-schema-of-a-table" title="Link to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_table_schema.py">postgresql_get_table_schema.py</a></p>
 <p>ADBC lets you get the schema of a table as an Arrow schema.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">23</span>
-<span class="linenos">24</span><span class="kn">import</span> <span class="nn">pyarrow</span>
+<span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">25</span>
-<span class="linenos">26</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
 <span class="linenos">27</span>
 <span class="linenos">28</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 <span class="linenos">29</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
@@ -882,11 +882,11 @@ decimals do not map onto Arrow decimals.</p>
 <h2>Get the Arrow schema of a query<a class="headerlink" href="#get-the-arrow-schema-of-a-query" title="Link to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_query_schema.py">postgresql_get_query_schema.py</a></p>
 <p>ADBC lets you get the schema of a result set, without executing the query.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">23</span>
-<span class="linenos">24</span><span class="kn">import</span> <span class="nn">pyarrow</span>
+<span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">25</span>
-<span class="linenos">26</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
 <span class="linenos">27</span>
 <span class="linenos">28</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 <span class="linenos">29</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
@@ -925,9 +925,9 @@ decimals do not map onto Arrow decimals.</p>
 <h2>List catalogs, schemas, and tables<a class="headerlink" href="#list-catalogs-schemas-and-tables" title="Link to this heading">¶</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_list_catalogs.py">postgresql_list_catalogs.py</a></p>
 <p>ADBC allows listing tables, catalogs, and schemas in the database.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">23</span>
-<span class="linenos">24</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
 <span class="linenos">25</span>
 <span class="linenos">26</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 <span class="linenos">27</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
@@ -971,11 +971,11 @@ decimals do not map onto Arrow decimals.</p>
 <p>ADBC does not implement connection pooling, as this is not generally a
 feature of DBAPI drivers.  Instead, use a third party connection pool
 like the one built into <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/pooling.html">SQLAlchemy</a>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">26</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">27</span>
-<span class="linenos">28</span><span class="kn">import</span> <span class="nn">sqlalchemy.pool</span>
+<span class="linenos">28</span><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy.pool</span>
 <span class="linenos">29</span>
-<span class="linenos">30</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">30</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
 <span class="linenos">31</span>
 <span class="linenos">32</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 <span class="linenos">33</span>
@@ -1022,11 +1022,11 @@ use ADBC to exchange data with PostgreSQL and other databases.  Compared to
 using SQLAlchemy or other options, using ADBC with pandas can have better
 performance, such as by avoiding excess conversions to and from Python
 objects.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">28</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">28</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">29</span>
-<span class="linenos">30</span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="linenos">30</span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="linenos">31</span>
-<span class="linenos">32</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">32</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
 <span class="linenos">33</span>
 <span class="linenos">34</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 <span class="linenos">35</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
@@ -1069,9 +1069,9 @@ DataFrame is initialised from row-wise data.</p>
 </div></blockquote>
 <p>Obviously, ADBC returns Arrow data directly, making ADBC and Polars a
 natural fit for each other.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">33</span>
-<span class="linenos">34</span><span class="kn">import</span> <span class="nn">polars</span> <span class="k">as</span> <span class="nn">pl</span>
+<span class="linenos">34</span><span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
 <span class="linenos">35</span>
 <span class="linenos">36</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 </pre></div>
