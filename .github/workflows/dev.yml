@@ -28,6 +28,11 @@ concurrency:
 permissions:
   contents: read
 
+defaults:
+  run:
+    # 'bash' will expand to -eo pipefail
+    shell: bash
+
 jobs:
   pre-commit:
     name: "pre-commit"

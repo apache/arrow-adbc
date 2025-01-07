@@ -46,6 +46,10 @@ env:
   # Increment this to reset cache manually
   CACHE_NUMBER: "0"
 
+defaults:
+  run:
+    shell: bash -l -eo pipefail {0}
+
 jobs:
   duckdb:
     name: "DuckDB Integration Tests"
@@ -57,7 +61,6 @@ jobs:
           persist-credentials: false
       - name: Get Date
         id: get-date
-        shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
@@ -71,16 +74,13 @@ jobs:
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
       - name: Work around ASAN issue (GH-1617)
-        shell: bash -l {0}
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
       - name: Build DuckDB Integration Tests
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
@@ -92,7 +92,6 @@ jobs:
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Run DuckDB Integration Tests
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_INTEGRATION_DUCKDB: "1"
@@ -112,7 +111,6 @@ jobs:
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
-        shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
@@ -126,7 +124,6 @@ jobs:
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt \
@@ -139,18 +136,15 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
       - name: Work around ASAN issue (GH-1617)
-        shell: bash -l {0}
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
       - name: Start SQLite server and Dremio
-        shell: bash -l {0}
         run: |
           docker compose up --detach flightsql-test flightsql-sqlite-test dremio dremio-init
           pip install python-dotenv[cli]
           python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
 
       - name: Build FlightSQL Driver
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_FLIGHTSQL: "1"
@@ -159,7 +153,6 @@ jobs:
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
       - name: Test FlightSQL Driver against Dremio and SQLite
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_FLIGHTSQL: "1"
@@ -167,7 +160,6 @@ jobs:
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
       - name: Test Python Flight SQL driver against Dremio
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_FLIGHTSQL: "1"
@@ -175,7 +167,6 @@ jobs:
         run: |
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
       - name: Stop SQLite server and Dremio
-        shell: bash -l {0}
         run: |
           docker compose down
 
@@ -189,7 +180,6 @@ jobs:
           persist-credentials: false
       - name: Get Date
         id: get-date
-        shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
@@ -203,18 +193,15 @@ jobs:
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
           pip install pytest-error-for-skips
       - name: Work around ASAN issue (GH-1617)
-        shell: bash -l {0}
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
       - name: Build PostgreSQL Driver
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
@@ -223,7 +210,6 @@ jobs:
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
       - name: Configure Integration Env Vars
-        shell: bash -l {0}
         run: |
           pip install python-dotenv[cli]
           python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
@@ -231,7 +217,6 @@ jobs:
           echo "ADBC_USE_UBSAN=ON" >> $GITHUB_ENV
 
       - name: Test PostgreSQL Driver - postgres 13
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
@@ -242,7 +227,6 @@ jobs:
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
           docker compose down
       - name: Test PostgreSQL Driver - postgres 14
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
@@ -253,7 +237,6 @@ jobs:
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
           docker compose down
       - name: Test PostgreSQL Driver - postgres 15
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
@@ -264,7 +247,6 @@ jobs:
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
           docker compose down
       - name: Test PostgreSQL Driver - postgres 16
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
@@ -275,7 +257,6 @@ jobs:
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
           docker compose down
       - name: Test PostgreSQL Driver - postgres 17
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
@@ -299,7 +280,6 @@ jobs:
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
-        shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
@@ -313,13 +293,11 @@ jobs:
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
       - name: Work around ASAN issue (GH-1617)
-        shell: bash -l {0}
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
       - uses: actions/setup-go@v5
@@ -329,7 +307,6 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
       - name: Build and Test Snowflake Driver
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SNOWFLAKE: "1"
@@ -338,7 +315,6 @@ jobs:
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
       - name: Build and Test Snowflake Driver (Python)
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"

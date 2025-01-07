@@ -36,6 +36,10 @@ concurrency:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash -l -eo pipefail {0}
+
 jobs:
   java:
     name: "Java ${{ matrix.java }}/Linux"
@@ -55,7 +59,6 @@ jobs:
           distribution: "temurin"
           java-version: ${{ matrix.java }}
       - name: Start test services
-        shell: bash -l {0}
         run: |
           docker compose up --detach --wait flightsql-sqlite-test mssql-test postgres-test
           cat .env | grep -v -e '^#' | awk NF | tee -a $GITHUB_ENV
