@@ -1055,6 +1055,14 @@ type DomainSocketTests struct {
 }
 
 func (suite *DomainSocketTests) SetupSuite() {
+	// This doesn't appear to run under Windows
+	// transport: Error while dialing: dial unix
+	// /Users/RUNNER~1/AppData/Local/Temp/adbc-flight-sql-tests-1919020904/adbc.sock:
+	// connect: A socket operation encountered a dead network.
+	if runtime.GOOS == "windows" {
+		suite.T().Skip()
+	}
+
 	suite.alloc = memory.NewCheckedAllocator(memory.DefaultAllocator)
 
 	tempDir, err := os.MkdirTemp("", "adbc-flight-sql-tests-*")
