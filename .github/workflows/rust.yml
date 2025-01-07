@@ -38,7 +38,7 @@ permissions:
 
 defaults:
   run:
-    shell: bash -l {0}
+    shell: bash -l -eo pipefail {0}
 
 jobs:
   rust:
@@ -83,8 +83,10 @@ jobs:
           curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-universal_binary.zip" -o protoc.zip
           unzip "protoc.zip" -d $HOME/.local
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install sqlite3
+        if: runner.os == 'Linux'
+        run: sudo apt-get install libsqlite3-dev
       - name: Build C++/Go drivers
-        shell: bash -l {0}
         run: |
           mkdir -p build
           mkdir -p local
