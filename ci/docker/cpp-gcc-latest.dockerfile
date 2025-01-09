@@ -15,27 +15,20 @@
 # specific language governing permissions and limitations
 # under the License.
 
-FROM debian:12
+FROM amd64/debian:experimental
+ARG GCC
 ARG GO
 
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update -y && \
-    apt-get install -y curl gnupg && \
-    echo "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm main" \
-         > /etc/apt/sources.list.d/llvm.list && \
-    echo "deb-src http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm main" \
-         >> /etc/apt/sources.list.d/llvm.list && \
-    curl -L https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
-    apt-get update -y && \
-    apt-get install -y clang libc++abi-dev libc++-dev libomp-dev && \
-    apt-get clean
+ENV DEBIAN_FRONTEND noninteractive
 
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get install -y cmake git libpq-dev libsqlite3-dev pkg-config
+RUN apt-get update -y && \
+    apt-get install -y -q cmake curl git gnupg libpq-dev libsqlite3-dev pkg-config && \
+    apt-get install -y -q -t experimental g++-${GCC} gcc-${GCC} && \
+    apt-get clean
 
 RUN curl -L -o go.tar.gz https://go.dev/dl/go${GO}.linux-amd64.tar.gz && \
     tar -C /opt -xvf go.tar.gz
 
 ENV PATH=/opt/go/bin:$PATH \
-    CC=/usr/bin/clang \
-    CXX=/usr/bin/clang++
+    CC=/usr/bin/gcc-${GCC} \
+    CXX=/usr/bin/g++-${GCC}
