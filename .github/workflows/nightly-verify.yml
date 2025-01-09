@@ -190,6 +190,11 @@ jobs:
           pushd arrow-adbc
           docker compose run --rm cpp-clang-latest
 
+      - name: cpp-clang-latest
+        run: |
+          pushd arrow-adbc
+          docker compose run --rm cpp-clang-latest
+
       - name: python-debug
         run: |
           pushd arrow-adbc
