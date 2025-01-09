@@ -759,3 +759,32 @@
 - **c/driver/postgresql**: Use Status instead of AdbcStatusCode/AdbcError in result helper (#2178)
 - **c/driver**: Use non-objects framework components in Postgres driver (#2166)
 - **c/driver/postgresql**: Use copy writer in BindStream for parameter binding (#2157)
+
+## ADBC Libraries 16 (2025-01-09)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.4.0
+- C#: 0.16.0
+- Java: 0.16.0
+- R: 0.16.0
+- Rust: 0.16.0
+
+### Feat
+
+- **csharp/src/Client**: parse custom properties from connection string (#2352)
+- **csharp/src/Drivers/Apache**: add connect and query timeout options (#2312)
+- **csharp/src/Drivers**: introduce Interop.FlightSql driver (#2214)
+- **csharp/src/Drivers/Apache**: make Apache driver tests inheritable (#2341)
+- **rust/driver/snowflake**: return a `Result` from `Builder::from_env` when parsing fails (#2334)
+- **rust/driver/snowflake**: add `adbc_snowflake` crate with Go driver wrapper (#2207)
+
+### Fix
+
+- **c/driver/postgresql**: don't unnecessarily COMMIT (#2412)
+- **csharp/src/Apache.Arrow.Adbc/C**: export statement_execute_schema correctly (#2409)
+- **go/adbc/driver/bigquery**: set default project and dataset for new statements (#2342)
+- **csharp/src/Drivers/Apache**: detect sever error when polling for response (#2355)
+- **ci**: ensure wheels are built with older manylinux (#2351)
+- **java/driver-manager**: typo (#2336)
+- **go/adbc/driver/snowflake**: update default values for fetch params (#2325)
