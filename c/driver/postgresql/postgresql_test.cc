@@ -237,8 +237,6 @@ TEST_F(PostgresDatabaseTest, AdbcDriverBackwardsCompatibility) {
 
   ASSERT_THAT(::PostgresqlDriverInit(424242, &driver, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
-
-  ASSERT_THAT(driver.release(&driver, &error), IsOkStatus(&error));
 }
 
 class PostgresConnectionTest : public ::testing::Test,

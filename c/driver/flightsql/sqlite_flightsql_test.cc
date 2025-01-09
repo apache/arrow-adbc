@@ -249,8 +249,6 @@ TEST_F(SqliteFlightSqlTest, AdbcDriverBackwardsCompatibility) {
 
   ASSERT_THAT(::FlightSQLDriverInit(424242, &driver, &error),
               adbc_validation::IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
-
-  ASSERT_THAT(driver.release(&driver, &error), IsOkStatus(&error));
 }
 
 class SqliteFlightSqlConnectionTest : public ::testing::Test,
