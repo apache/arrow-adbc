@@ -65,8 +65,8 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 TimeSpan meanTimePerEvent = TimeSpan.FromTicks((long)meanTimeInTicksPerEvent);
 
                 // Note: these value are twice as large as the largest observed mean times on development machine.
-                const double maxForTracingEnabled = 0.8;
-                const double maxForTracingDisabled = 0.2;
+                const double maxForTracingEnabled = 0.06;
+                const double maxForTracingDisabled = 0.04;
                 double maxExpectedMeanTimeMilliseconds = isTracingEnabled.Value
                     ? maxForTracingEnabled
                     : maxForTracingDisabled;
@@ -84,15 +84,19 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 }
             }
 
+            _outputHelper.WriteLine(string.Empty);
+            const double diffTolerance = 0.05;
             foreach (int numberOfEvents in testCasesByNumberOfEvent.Keys)
             {
-                var performanceByTracingEnabled = testCasesByNumberOfEvent[numberOfEvents];
+                Dictionary<bool, double> performanceByTracingEnabled = testCasesByNumberOfEvent[numberOfEvents];
                 Assert.Equal(2, performanceByTracingEnabled.Count);
+                double performanceDifference = performanceByTracingEnabled[true] - performanceByTracingEnabled[false];
                 _outputHelper.WriteLine(string.Format("Events: {0} - Disabled: {1} ms - Enabled {2} ms - Difference {3} ms",
                     numberOfEvents,
                     performanceByTracingEnabled[false],
                     performanceByTracingEnabled[true],
-                    performanceByTracingEnabled[true] - performanceByTracingEnabled[false]));
+                    performanceDifference));
+                Assert.True(performanceDifference < diffTolerance, $"Expect performance difference to be less than '{diffTolerance}'. Actual '{performanceDifference}'");
             }
         }
     }
@@ -102,6 +106,8 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
     public class Tracing : TracingBase
     {
         private const string MyActivitySourceName = "MyActivitySourceName";
+
+        private TracerProvider? _tracerProvider = default;
 
         public Tracing()
             : base(MyActivitySourceName)
@@ -116,16 +122,6 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
         [Benchmark]
         public async Task TestTracing()
         {
-            TracerProvider? provider = default;
-            if (IsTracingEnabled)
-            {
-                provider = Sdk.CreateTracerProviderBuilder()
-                    .AddSource(MyActivitySourceName)
-                    .AddAdbcFileExporter(
-                        MyActivitySourceName,
-                        maxTraceFiles: 999999)
-                    .Build();
-            }
             for (int i = 0; i < NumberOfEvents; i++)
             {
                 await TraceActivity(async activity =>
@@ -133,26 +129,34 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                     await DoWork(activity, 20);
                 });
             }
-            provider?.Dispose();
         }
 
         private static async Task DoWork(Activity? activity, int iterations)
         {
-            long sum = 0;
             for (int i = 0; i < iterations; i++)
             {
-                activity?.AddTag($"iteration{i}", i);
-                for (int j = 0; j < 10000; j++)
-                {
-                    sum += j;
-                }
-                await Task.Delay(0);
+                await Task.Delay(TimeSpan.FromMilliseconds(0.1));
+            }
+        }
+
+        [GlobalSetup]
+        public void GlobalSetup()
+        {
+            if (IsTracingEnabled)
+            {
+                _tracerProvider = Sdk.CreateTracerProviderBuilder()
+                    .AddSource(MyActivitySourceName)
+                    .AddAdbcFileExporter(
+                        MyActivitySourceName,
+                        maxTraceFiles: 999999)
+                    .Build();
             }
         }
 
         [GlobalCleanup]
         public void GlobalCleanup()
         {
+            _tracerProvider?.Dispose();
             var location = new DirectoryInfo(
                 Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

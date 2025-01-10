@@ -193,12 +193,12 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 if (activity == null) continue;
                 // Intentionally don't await the result of the call
-                _ = DequeueAndWrite(activity, _cancellationTokenSource.Token);
+                Task.Run(() => WriteActivity(activity, _cancellationTokenSource.Token));
             }
             return ExportResult.Success;
         }
 
-        private async Task DequeueAndWrite(Activity activity, CancellationToken cancellationToken = default)
+        private async Task WriteActivity(Activity activity, CancellationToken cancellationToken = default)
         {
             try
             {
