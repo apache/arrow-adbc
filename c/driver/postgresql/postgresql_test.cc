@@ -223,18 +223,20 @@ class PostgresDatabaseTest : public ::testing::Test,
 };
 ADBCV_TEST_DATABASE(PostgresDatabaseTest)
 
-TEST_F(PostgresDatabaseTest, AdbcDriverBackwardsCompatibility) {
-  // XXX: sketchy cast
-  auto* driver = static_cast<struct AdbcDriver*>(malloc(ADBC_DRIVER_1_0_0_SIZE));
-  std::memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE);
+int Canary(const struct AdbcError*) { return 0; }
 
-  ASSERT_THAT(::PostgresqlDriverInit(ADBC_VERSION_1_0_0, driver, &error),
+TEST_F(PostgresDatabaseTest, AdbcDriverBackwardsCompatibility) {
+  struct AdbcDriver driver;
+  std::memset(&driver, 0, ADBC_DRIVER_1_1_0_SIZE);
+  driver.ErrorGetDetailCount = Canary;
+
+  ASSERT_THAT(::PostgresqlDriverInit(ADBC_VERSION_1_0_0, &driver, &error),
               IsOkStatus(&error));
 
-  ASSERT_THAT(::PostgresqlDriverInit(424242, driver, &error),
-              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_EQ(Canary, driver.ErrorGetDetailCount);
 
-  free(driver);
+  ASSERT_THAT(::PostgresqlDriverInit(424242, &driver, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
 }
 
 class PostgresConnectionTest : public ::testing::Test,
@@ -1552,24 +1554,25 @@ TEST_F(PostgresStatementTest, BatchSizeHint) {
 
 // Test that an ADBC 1.0.0-sized error still works
 TEST_F(PostgresStatementTest, AdbcErrorBackwardsCompatibility) {
-  // XXX: sketchy cast
-  auto* error = static_cast<struct AdbcError*>(malloc(ADBC_ERROR_1_0_0_SIZE));
-  std::memset(error, 0, ADBC_ERROR_1_0_0_SIZE);
+  struct AdbcError error;
+  std::memset(&error, 0, ADBC_ERROR_1_1_0_SIZE);
+  struct AdbcDriver canary;
+  error.private_data = &canary;
+  error.private_driver = &canary;
 
-  ASSERT_THAT(AdbcStatementNew(&connection, &statement, error), IsOkStatus(error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(
-      AdbcStatementSetSqlQuery(&statement, "SELECT * FROM thistabledoesnotexist", error),
-      IsOkStatus(error));
+      AdbcStatementSetSqlQuery(&statement, "SELECT * FROM thistabledoesnotexist", &error),
+      IsOkStatus(&error));
   adbc_validation::StreamReader reader;
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                        &reader.rows_affected, error),
-              IsStatus(ADBC_STATUS_NOT_FOUND, error));
-
-  ASSERT_EQ("42P01", std::string_view(error->sqlstate, 5));
-  ASSERT_EQ(0, AdbcErrorGetDetailCount(error));
-
-  error->release(error);
-  free(error);
+                                        &reader.rows_affected, &error),
+              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  ASSERT_EQ("42P01", std::string_view(error.sqlstate, 5));
+  ASSERT_EQ(0, AdbcErrorGetDetailCount(&error));
+  ASSERT_EQ(&canary, error.private_data);
+  ASSERT_EQ(&canary, error.private_driver);
+  error.release(&error);
 }
 
 TEST_F(PostgresStatementTest, Cancel) {

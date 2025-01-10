@@ -92,9 +92,16 @@ namespace literals {
 /// @{
 
 /// \brief User literal operator allowing ArrowStringView construction like "str"_asv
+#if !defined(__clang__) && (defined(__GNUC__) && __GNUC__ < 6)
 inline ArrowStringView operator"" _asv(const char* data, std::size_t size_bytes) {
   return {data, static_cast<int64_t>(size_bytes)};
 }
+#else
+inline ArrowStringView operator""_asv(const char* data, std::size_t size_bytes) {
+  return {data, static_cast<int64_t>(size_bytes)};
+}
+#endif
+// N.B. older GCC requires the space above, newer Clang forbids the space
 
 // @}
 

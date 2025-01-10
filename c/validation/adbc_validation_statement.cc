@@ -2817,21 +2817,23 @@ struct ADBC_EXPORT AdbcError100 {
 // Test that an ADBC 1.0.0-sized error still works
 void StatementTest::TestErrorCompatibility() {
   static_assert(sizeof(AdbcError100) == ADBC_ERROR_1_0_0_SIZE, "Wrong size");
-  // XXX: sketchy cast
-  auto* error = reinterpret_cast<struct AdbcError*>(malloc(ADBC_ERROR_1_0_0_SIZE));
-  std::memset(error, 0, ADBC_ERROR_1_0_0_SIZE);
+  struct AdbcError error;
+  std::memset(&error, 0, ADBC_ERROR_1_1_0_SIZE);
+  struct AdbcDriver canary;
+  error.private_data = &canary;
+  error.private_driver = &canary;
 
-  ASSERT_THAT(AdbcStatementNew(&connection, &statement, error), IsOkStatus(error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(
-      AdbcStatementSetSqlQuery(&statement, "SELECT * FROM thistabledoesnotexist", error),
-      IsOkStatus(error));
+      AdbcStatementSetSqlQuery(&statement, "SELECT * FROM thistabledoesnotexist", &error),
+      IsOkStatus(&error));
   adbc_validation::StreamReader reader;
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                        &reader.rows_affected, error),
-              ::testing::Not(IsOkStatus(error)));
-  auto* old_error = reinterpret_cast<AdbcError100*>(error);
-  old_error->release(old_error);
-  free(error);
+                                        &reader.rows_affected, &error),
+              ::testing::Not(IsOkStatus(&error)));
+  ASSERT_EQ(&canary, error.private_data);
+  ASSERT_EQ(&canary, error.private_driver);
+  error.release(&error);
 }
 
 void StatementTest::TestResultInvalidation() {
