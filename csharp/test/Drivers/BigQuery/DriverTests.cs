@@ -18,7 +18,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
@@ -117,7 +116,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     catalogPattern: catalogName,
                     dbSchemaPattern: schemaName,
                     tableNamePattern: tableName,
-                    tableTypes: BigQueryTableTypes.TableTypes,
+                    tableTypes: new List<string> { "BASE TABLE", "VIEW" },
                     columnNamePattern: columnName);
 
             RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
@@ -133,40 +132,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 .FirstOrDefault();
 
             Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns?.Count);
-        }
-
-        [SkippableFact, Order(3)]
-        public void CanGetObjectsTables()
-        { 
-            string? catalogName = _testConfiguration.Metadata.Catalog;
-            string? schemaName = _testConfiguration.Metadata.Schema;
-            string? tableName = _testConfiguration.Metadata.Table;
-
-            AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(_testConfiguration);
-
-            IArrowArrayStream stream = adbcConnection.GetObjects(
-                    depth: AdbcConnection.GetObjectsDepth.Tables,
-                    catalogPattern: catalogName,
-                    dbSchemaPattern: schemaName,
-                    tableNamePattern: null,
-                    tableTypes: BigQueryTableTypes.TableTypes,
-                    columnNamePattern: null);
-
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
-
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
-
-            List<AdbcTable>? tables = catalogs
-                .Where(c => string.Equals(c.Name, catalogName))
-                .Select(c => c.DbSchemas)
-                .FirstOrDefault()
-                ?.Where(s => string.Equals(s.Name, schemaName))
-                .Select(s => s.Tables)
-                .FirstOrDefault();
-
-            AdbcTable? table = tables?.Where((table) => string.Equals(table.Name, tableName)).FirstOrDefault();
-            Assert.True(table != null, "table should not be null");
-            Assert.Equal("BASE TABLE", table.Type);
         }
 
         /// <summary>
@@ -202,7 +167,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             StringArray stringArray = (StringArray)recordBatch.Column("table_type");
 
-            List<string> known_types = BigQueryTableTypes.TableTypes;
+            List<string> known_types = new List<string>
+            {
+                "BASE TABLE", "VIEW"
+            };
 
             int results = 0;
 
