@@ -38,21 +38,10 @@ services:
       context: .
       dockerfile: ci/docker/cpp-clang-latest.dockerfile
       args:
-        GO: ${GO}
+        VCPKG: ${VCPKG}
     volumes:
       - .:/adbc:delegated
-    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/clang-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/clang-latest'"
-
-  cpp-gcc-latest:
-    build:
-      context: .
-      dockerfile: ci/docker/cpp-gcc-latest.dockerfile
-      args:
-        GCC: 15
-        GO: ${GO}
-    volumes:
-      - .:/adbc:delegated
-    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/gcc-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/gcc-latest'"
+    command: "bash -c 'export PATH=$PATH:/opt/go/bin CC=$(which clang) CXX=$(which clang++) && git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build'"
 
   ############################ Documentation ###################################
 

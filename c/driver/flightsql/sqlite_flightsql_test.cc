@@ -235,20 +235,18 @@ TEST_F(SqliteFlightSqlTest, TestGarbageInput) {
   ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
 }
 
-int Canary(const struct AdbcError*) { return 0; }
-
 TEST_F(SqliteFlightSqlTest, AdbcDriverBackwardsCompatibility) {
-  struct AdbcDriver driver;
-  std::memset(&driver, 0, ADBC_DRIVER_1_1_0_SIZE);
-  driver.ErrorGetDetailCount = Canary;
+  // XXX: sketchy cast
+  auto* driver = static_cast<struct AdbcDriver*>(malloc(ADBC_DRIVER_1_0_0_SIZE));
+  std::memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE);
 
-  ASSERT_THAT(::FlightSQLDriverInit(ADBC_VERSION_1_0_0, &driver, &error),
+  ASSERT_THAT(::FlightSQLDriverInit(ADBC_VERSION_1_0_0, driver, &error),
               IsOkStatus(&error));
 
-  ASSERT_EQ(Canary, driver.ErrorGetDetailCount);
-
-  ASSERT_THAT(::FlightSQLDriverInit(424242, &driver, &error),
+  ASSERT_THAT(::FlightSQLDriverInit(424242, driver, &error),
               adbc_validation::IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+
+  free(driver);
 }
 
 class SqliteFlightSqlConnectionTest : public ::testing::Test,

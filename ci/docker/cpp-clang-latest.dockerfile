@@ -15,8 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+ARG VCPKG
+
 FROM debian:12
-ARG GO
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && \
@@ -33,9 +34,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y cmake git libpq-dev libsqlite3-dev pkg-config
 
-RUN curl -L -o go.tar.gz https://go.dev/dl/go${GO}.linux-amd64.tar.gz && \
-    tar -C /opt -xvf go.tar.gz
-
-ENV PATH=/opt/go/bin:$PATH \
-    CC=/usr/bin/clang \
-    CXX=/usr/bin/clang++
+RUN curl -L -o go.tar.gz https://go.dev/dl/go1.22.5.linux-amd64.tar.gz && \
+    tar -C /opt -xvf go.tar.gz && \
+    echo 'export PATH=$PATH:/opt/go/bin' | tee -a ~/.bashrc
