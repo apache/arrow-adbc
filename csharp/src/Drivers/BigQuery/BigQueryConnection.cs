@@ -530,11 +530,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     ordinalPositionBuilder.Append((int)(long)row["ordinal_position"]);
                     remarksBuilder.Append("");
 
-                    string dataType = ToTypeName(GetValue(row["data_type"]));
+                    string dataType = ToTypeName(GetValue(row["data_type"]), out string suffix);
 
-                    if (dataType.StartsWith("NUMERIC") || dataType.StartsWith("DECIMAL") || dataType.StartsWith("BIGNUMERIC") || dataType.StartsWith("BIGDECIMAL"))
+                    if ((dataType.StartsWith("NUMERIC") ||
+                         dataType.StartsWith("DECIMAL") ||
+                         dataType.StartsWith("BIGNUMERIC") ||
+                         dataType.StartsWith("BIGDECIMAL"))
+                        && !string.IsNullOrEmpty(suffix))
                     {
-                        ParsedDecimalValues values = ParsePrecisionAndScale(dataType);
+                        ParsedDecimalValues values = ParsePrecisionAndScale(suffix);
                         xdbcColumnSizeBuilder.Append(values.Precision);
                         xdbcDecimalDigitsBuilder.Append(Convert.ToInt16(values.Scale));
                     }
@@ -752,10 +756,19 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return builder.ToString();
         }
 
-        private string ToTypeName(string type)
+        private string ToTypeName(string type, out string suffix)
         {
-            int index = Math.Min(type.IndexOf("("), type.IndexOf("<"));
+            suffix = string.Empty;
+
+            int index = type.IndexOf("(");
+            if (index == -1)
+                index = type.IndexOf("<");
+
             string dataType = index == -1 ? type : type.Substring(0, index);
+
+            if (index > -1)
+                suffix = type.Substring(dataType.Length);
+            
             return dataType;
         }
 
@@ -965,7 +978,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public override IArrowArrayStream GetTableTypes()
         {
             StringArray.Builder tableTypesBuilder = new StringArray.Builder();
-            tableTypesBuilder.AppendRange(new string[] { "BASE TABLE", "VIEW" });
+            tableTypesBuilder.AppendRange(BigQueryTableTypes.TableTypes);
 
             IArrowArray[] dataArrays = new IArrowArray[]
             {

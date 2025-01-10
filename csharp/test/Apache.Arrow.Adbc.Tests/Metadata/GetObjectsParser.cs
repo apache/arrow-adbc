@@ -156,6 +156,17 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         {
             if (constraintsArray == null) return null;
 
+            // constraint details may not be loaded correctly if the depth wasn't Columns
+            try
+            {
+                if (constraintsArray.Fields.Count == 0)
+                    return null;
+            }
+            catch (NullReferenceException)
+            {
+                return null;
+            }
+            
             List<AdbcConstraint> constraints = new List<AdbcConstraint>();
 
             StringArray name = (StringArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndexOrThrow("constraint_name")]; // constraint_name | utf8
