@@ -202,7 +202,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             StringArray stringArray = (StringArray)recordBatch.Column("table_type");
 
-            List<string> known_types = BigQueryTableTypes.TableTypes;
+            List<string> known_types = BigQueryTableTypes.TableTypes.ToList();
 
             int results = 0;
 

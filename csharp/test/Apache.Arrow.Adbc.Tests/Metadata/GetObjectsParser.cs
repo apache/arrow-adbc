@@ -157,19 +157,13 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             if (constraintsArray == null) return null;
 
             // constraint details may not be loaded correctly if the depth wasn't Columns
-            try
-            {
-                if (constraintsArray.Fields.Count == 0)
-                    return null;
-            }
-            catch (NullReferenceException)
-            {
+            int fieldCount = constraintsArray?.Fields?.Count ?? 0;
+            if (fieldCount == 0)
                 return null;
-            }
 
             List<AdbcConstraint> constraints = new List<AdbcConstraint>();
 
-            StringArray name = (StringArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndexOrThrow("constraint_name")]; // constraint_name | utf8
+            StringArray name = (StringArray)constraintsArray!.Fields[StandardSchemas.ConstraintSchema.FindIndexOrThrow("constraint_name")]; // constraint_name | utf8
             StringArray type = (StringArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndexOrThrow("constraint_type")]; //	constraint_type | utf8 not null
             ListArray columnNames = (ListArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndexOrThrow("constraint_column_names")]; //	constraint_column_names | list<utf8> not null
             ListArray columnUsages = (ListArray)constraintsArray.Fields[StandardSchemas.ConstraintSchema.FindIndexOrThrow("constraint_column_usage")]; //	constraint_column_usage | list<USAGE_SCHEMA>

@@ -1,4 +1,3 @@
-
 /*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
@@ -448,7 +447,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     nullBitmapBuffer.Append(true);
                     length++;
 
-                    if (includeConstraints)
+                    if (depth == GetObjectsDepth.All && includeConstraints)
                     {
                         tableConstraintsValues.Add(GetConstraintSchema(
                             depth, catalog, dbSchema, GetValue(row["table_name"]), columnNamePattern));
@@ -657,6 +656,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 constraintColumnNamesValues.BuildListArrayForType(StringType.Default),
                 constraintColumnUsageValues.BuildListArrayForType(new StructType(StandardSchemas.UsageSchema))
             };
+
             StandardSchemas.ConstraintSchema.Validate(dataArrays);
 
             return new StructArray(
@@ -743,7 +743,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 dataArrays,
                 nullBitmapBuffer.Build());
         }
-
+        
         private string PatternToRegEx(string? pattern)
         {
             if (pattern == null)
