@@ -743,7 +743,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 dataArrays,
                 nullBitmapBuffer.Build());
         }
-        
+
         private string PatternToRegEx(string? pattern)
         {
             if (pattern == null)
