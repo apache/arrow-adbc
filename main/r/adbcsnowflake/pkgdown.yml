@@ -1,8 +1,8 @@
-pandoc: 3.6.1
+pandoc: 3.6.2
 pkgdown: 2.1.1
 pkgdown_sha: ~
 articles: {}
-last_built: 2025-01-12T04:32Z
+last_built: 2025-01-13T16:42Z
 urls:
   reference: https://arrow.apache.org/adbc/current/r/adbcsnowflake/reference
   article: https://arrow.apache.org/adbc/current/r/adbcsnowflake/articles
