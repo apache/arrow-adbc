@@ -928,7 +928,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 case "TIME":
                     return fieldBuilder.DataType(Time64Type.Default);
                 case "DATE":
-                    return fieldBuilder.DataType(Date64Type.Default);
+                    return fieldBuilder.DataType(Date32Type.Default);
                 case "RECORD" or "STRUCT":
                     string fieldRecords = type.Substring(index + 1);
                     fieldRecords = fieldRecords.Remove(fieldRecords.Length - 1);

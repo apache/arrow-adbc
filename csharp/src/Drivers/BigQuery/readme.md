@@ -87,7 +87,7 @@ The following table depicts how the BigQuery ADBC driver converts a BigQuery typ
 | BIGNUMERIC |    Decimal256    | string
 | BOOL |    Boolean   | bool
 | BYTES |    Binary   | byte[]
-| DATE |    Date64   | DateTime
+| DATE |    Date32   | DateTime
 | DATETIME |    Timestamp   | DateTime
 | FLOAT64 |    Double   | double
 | GEOGRAPHY |    String   | string

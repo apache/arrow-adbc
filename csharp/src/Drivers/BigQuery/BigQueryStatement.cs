@@ -161,7 +161,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 case "TIME":
                     return GetType(field, Time64Type.Default);
                 case "DATE":
-                    return GetType(field, Date64Type.Default);
+                    return GetType(field, Date32Type.Default);
                 case "RECORD" or "STRUCT":
                     // its a json string
                     return GetType(field, StringType.Default);
