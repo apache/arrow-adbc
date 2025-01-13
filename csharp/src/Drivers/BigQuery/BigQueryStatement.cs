@@ -83,7 +83,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryJob firstQueryJob = new BigQueryJob(client, job.Resource);
                 foreach (BigQueryJob childJob in joblist)
                 {
-                    var tempJob = client.GetJob(childJob.Reference.JobId);
+                    var tempJob = client.GetJob(childJob.Reference);
                     var query = tempJob.Resource?.Configuration?.Query;
                     if (query != null && query.DestinationTable != null && query.DestinationTable.ProjectId != null && query.DestinationTable.DatasetId != null && query.DestinationTable.TableId != null)
                     {
