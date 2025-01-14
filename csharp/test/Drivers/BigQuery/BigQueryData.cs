@@ -72,7 +72,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                                     new ColumnNetTypeArrowTypeValue("is_active", typeof(bool), typeof(BooleanType), true),
                                     new ColumnNetTypeArrowTypeValue("name", typeof(string), typeof(StringType), "John Doe"),
                                     new ColumnNetTypeArrowTypeValue("data", typeof(byte[]), typeof(BinaryType), UTF8Encoding.UTF8.GetBytes("abc123")),
-                                    new ColumnNetTypeArrowTypeValue("date", typeof(DateTime), typeof(Date64Type), new DateTime(2023, 9, 8)),
+                                    new ColumnNetTypeArrowTypeValue("date", typeof(DateTime), typeof(Date32Type), new DateTime(2023, 9, 8)),
             #if NET6_0_OR_GREATER
                                     new ColumnNetTypeArrowTypeValue("time", typeof(TimeOnly), typeof(Time64Type), new TimeOnly(12, 34, 56)), //'12:34:56'
             #else
@@ -134,7 +134,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                                     new ColumnNetTypeArrowTypeValue("is_active", typeof(bool), typeof(BooleanType), null),
                                     new ColumnNetTypeArrowTypeValue("name", typeof(string), typeof(StringType), null),
                                     new ColumnNetTypeArrowTypeValue("data", typeof(byte[]), typeof(BinaryType), null),
-                                    new ColumnNetTypeArrowTypeValue("date", typeof(DateTime), typeof(Date64Type), null),
+                                    new ColumnNetTypeArrowTypeValue("date", typeof(DateTime), typeof(Date32Type), null),
             #if NET6_0_OR_GREATER
                                     new ColumnNetTypeArrowTypeValue("time", typeof(TimeOnly), typeof(Time64Type), null),
             #else
