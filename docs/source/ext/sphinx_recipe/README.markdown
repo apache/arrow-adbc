@@ -41,6 +41,17 @@ formatted in documentation.
 ## Usage
 
 #. Install this extension.
+
+   This extension can be installed via pip from this repo:
+
+   ```bash
+   pip install 'git+https://github.com/apache/arrow-adbc@main#subdirectory=docs/source/ext/sphinx_recipe'
+   pip install 'https://github.com/apache/arrow-adbc/archive/main.zip#subdirectory=docs/source/ext/sphinx_recipe'
+   ```
+
+   The latter is likely a bit faster (it downloads the source archive vs
+   having to actually perform a Git clone).
+
 #. Add `sphinx_recipe` to `extensions` in your `conf.py`.
 #. Optionally, set the config value `recipe_repo_url_template` to a URL
    with a `{rel_filename}` placeholder.  This will be used to link to the full
