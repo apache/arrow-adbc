@@ -16,8 +16,8 @@
 # under the License.
 
 [project]
-name = "illiterate-sphinx"
-description = "A Sphinx directive for not-quite-literate programming."
+name = "sphinx-recipe"
+description = "A Sphinx directive for not-quite-literate programming in the form of code recipes."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
 readme = "README.md"
@@ -37,5 +37,5 @@ build-backend = "setuptools.build_meta"
 xfail_strict = true
 
 [tool.setuptools]
-packages = ["illiterate_sphinx"]
-py-modules = ["illiterate_sphinx"]
+packages = ["sphinx_recipe"]
+py-modules = ["sphinx_recipe"]

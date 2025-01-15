@@ -19,7 +19,7 @@ import os
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path("./ext/illiterate_sphinx").resolve()))
+sys.path.append(str(Path("./ext/sphinx_recipe").resolve()))
 sys.path.append(str(Path("./ext").resolve()))
 
 # -- Project information -----------------------------------------------------
@@ -41,7 +41,7 @@ version = release
 exclude_patterns = []
 extensions = [
     # recipe directive
-    "illiterate_sphinx",
+    "sphinx_recipe",
     # generic directives to enable intersphinx for java
     "adbc_java_domain",
     "numpydoc",
@@ -115,9 +115,9 @@ html_theme_options = {
     "source_directory": "docs/source/",
 }
 
-# -- Options for Illiterate Sphinx -------------------------------------------
+# -- Options for sphinx-recipe -----------------------------------------------
 
-illiterate_repo_url_template = (
+recipe_repo_url_template = (
     "https://github.com/apache/arrow-adbc/blob/main/docs/source/{rel_filename}"
 )
 

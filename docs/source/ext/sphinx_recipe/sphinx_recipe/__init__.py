@@ -112,7 +112,7 @@ class RecipeDirective(SphinxDirective):
         generated_lines = []
 
         # Link to the source on GitHub
-        repo_url_template = self.env.config.illiterate_repo_url_template
+        repo_url_template = self.env.config.recipe_repo_url_template
         if repo_url_template is not None:
             repo_url = repo_url_template.format(rel_filename=rel_filename)
             generated_lines.append(
@@ -155,7 +155,7 @@ class RecipeDirective(SphinxDirective):
 
 def setup(app) -> None:
     app.add_config_value(
-        "illiterate_repo_url_template",
+        "recipe_repo_url_template",
         default=None,
         rebuild="html",
         types=str,

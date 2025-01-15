@@ -17,7 +17,7 @@
   under the License.
 -->
 
-# Illiterate Sphinx: Not Literate Programming, For Sphinx
+# sphinx-recipe: Not Literate Programming, For Sphinx
 
 [Literate Programming][literate] is a style of programming introduced by the
 venerable Donald Knuth where a program is developed as a prose document
@@ -26,13 +26,13 @@ actual use.
 
 This isn't that.
 
-Illiterate Sphinx is an extension for the [Sphinx][sphinx] documentation
-generator that lets you write code interspersed with special comments.  The
-extension then separates the code and comments to generate a prose document
-interspersed with code.  Meanwhile, since the source document is still just
-code, it can be run and/or tested without special documentation-specific
-tooling.  And Sphinx doesn't need to understand anything about the source
-language other than what comment delimiter it should look for.
+sphiox-recipe is an extension for the [Sphinx][sphinx] documentation generator
+that lets you write code interspersed with special comments.  The extension
+then separates the code and comments to generate a prose document interspersed
+with code.  Meanwhile, since the source document is still just code, it can be
+run and/or tested without special documentation-specific tooling.  And Sphinx
+doesn't need to understand anything about the source language other than what
+comment delimiter it should look for.
 
 This extension makes it easy to write self-contained "cookbook" documentation
 pages that can be run and tested as real code while still being nicely
@@ -41,8 +41,8 @@ formatted in documentation.
 ## Usage
 
 #. Install this extension.
-#. Add `illiterate_sphinx` to `extensions` in your `conf.py`.
-#. Optionally, set the config value `illiterate_repo_url_template` to a URL
+#. Add `sphinx_recipe` to `extensions` in your `conf.py`.
+#. Optionally, set the config value `recipe_repo_url_template` to a URL
    with a `{rel_filename}` placeholder.  This will be used to link to the full
    recipe source on GitHub or your favorite code hosting platform.
 #. Write your cookbook recipe.  For example:
