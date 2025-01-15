@@ -40,7 +40,7 @@ formatted in documentation.
 
 ## Usage
 
-#. Install this extension.
+1. Install this extension.
 
    This extension can be installed via pip from this repo:
 
@@ -52,11 +52,11 @@ formatted in documentation.
    The latter is likely a bit faster (it downloads the source archive vs
    having to actually perform a Git clone).
 
-#. Add `sphinx_recipe` to `extensions` in your `conf.py`.
-#. Optionally, set the config value `recipe_repo_url_template` to a URL
+1. Add `sphinx_recipe` to `extensions` in your `conf.py`.
+1. Optionally, set the config value `recipe_repo_url_template` to a URL
    with a `{rel_filename}` placeholder.  This will be used to link to the full
    recipe source on GitHub or your favorite code hosting platform.
-#. Write your cookbook recipe.  For example:
+1. Write your cookbook recipe.  For example:
 
     ```python
 
@@ -74,7 +74,7 @@ formatted in documentation.
     print("Goodbye, world!")
     ```
 
-#. Include the recipe in your documentation via the `recipe` directive:
+1. Include the recipe in your documentation via the `recipe` directive:
 
     ```rst
     .. recipe:: helloworld.py
