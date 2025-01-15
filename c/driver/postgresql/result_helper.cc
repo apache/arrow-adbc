@@ -167,11 +167,10 @@ Status PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_resolver,
     const Oid pg_oid = PQftype(result_, i);
     PostgresType pg_type;
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      Status status =
-          Status::NotImplemented("[libpq] Column #", i + 1, " (\"", PQfname(result_, i),
-                                 "\") has unknown type code ", pg_oid);
-      ClearResult();
-      return status;
+      // We couldn't look up the OID.
+      // TODO(apache/arrow-adbc#1243): issue a warning (maybe reloading the
+      // connection will load the OIDs if it was a newly created type)
+      pg_type = PostgresType::Unnamed(pg_oid);
     }
 
     root_type.AppendChild(PQfname(result_, i), pg_type);
