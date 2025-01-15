@@ -759,3 +759,14 @@
 - **c/driver/postgresql**: Use Status instead of AdbcStatusCode/AdbcError in result helper (#2178)
 - **c/driver**: Use non-objects framework components in Postgres driver (#2166)
 - **c/driver/postgresql**: Use copy writer in BindStream for parameter binding (#2157)
+
+
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.4.0
+- C#: 0.16.0
+- Java: 0.16.0
+- R: 0.16.0
+- Rust: 0.16.0
+
