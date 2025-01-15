@@ -65,8 +65,8 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 TimeSpan meanTimePerEvent = TimeSpan.FromTicks((long)meanTimeInTicksPerEvent);
 
                 // Note: these value are twice as large as the largest observed mean times on development machine.
-                const double maxForTracingEnabled = 0.06;
-                const double maxForTracingDisabled = 0.04;
+                const double maxForTracingEnabled = 0.04;
+                const double maxForTracingDisabled = 0.02;
                 double maxExpectedMeanTimeMilliseconds = isTracingEnabled.Value
                     ? maxForTracingEnabled
                     : maxForTracingDisabled;
@@ -85,7 +85,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             }
 
             _outputHelper.WriteLine(string.Empty);
-            const double diffTolerance = 0.05;
+            const double diffTolerance = 0.01;
             foreach (int numberOfEvents in testCasesByNumberOfEvent.Keys)
             {
                 Dictionary<bool, double> performanceByTracingEnabled = testCasesByNumberOfEvent[numberOfEvents];
@@ -157,13 +157,20 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
         public void GlobalCleanup()
         {
             _tracerProvider?.Dispose();
-            var location = new DirectoryInfo(
-                Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Apache.Arrow.Adbc",
-                    "Traces")
-                );
-            if (location.Exists) location.Delete(recursive: true);
+            try
+            {
+                var location = new DirectoryInfo(
+                    Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "Apache.Arrow.Adbc",
+                        "Traces")
+                    );
+                if (location.Exists) location.Delete(recursive: true);
+            }
+            catch
+            {
+                // Ignore
+            }
         }
     }
 }

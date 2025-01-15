@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -50,13 +51,12 @@ namespace Apache.Arrow.Adbc.Tracing
         }
 
         /// <summary>
-        /// Append text to a last modified trace file. If the last modified trace file exceeds the
-        /// individual file size limit, a new trace file is created.
+        /// Writes lines of trace where each stream is a line in the trace file.
         /// </summary>
-        /// <param name="text">The text to write to the trace file.</param>
+        /// <param name="streams">The enumerable of trace lines.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        internal async Task WriteLine(string text, CancellationToken cancellationToken = default)
+        internal async Task WriteLines(IAsyncEnumerable<Stream> streams, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested) return;
 
@@ -82,11 +82,14 @@ namespace Apache.Arrow.Adbc.Tracing
             }
 
             // Write out to the file and retry if IO errors occur.
-            await ActionWithRetry<IOException>(() =>
+            await ActionWithRetryAsync<IOException>(async () =>
             {
-                using (StreamWriter sw = _currentTraceFileInfo.AppendText())
+                using (FileStream sw = _currentTraceFileInfo.OpenWrite())
                 {
-                    sw.WriteLine(text);
+                    await foreach (Stream stream in streams)
+                    {
+                        await stream.CopyToAsync(sw);
+                    }
                 }
             }, cancellationToken: cancellationToken);
         }
@@ -98,7 +101,7 @@ namespace Apache.Arrow.Adbc.Tracing
                 .OrderByDescending(f => f.LastWriteTimeUtc);
         }
 
-        internal static async Task ActionWithRetry<T>(Action action, int maxRetries = 5, CancellationToken cancellationToken = default) where T : Exception
+        internal static async Task ActionWithRetryAsync<T>(Action action, int maxRetries = 5, CancellationToken cancellationToken = default) where T : Exception
         {
             int retryCount = 0;
             TimeSpan pauseTime = TimeSpan.FromMilliseconds(10);
@@ -116,7 +119,39 @@ namespace Apache.Arrow.Adbc.Tracing
                     retryCount++;
                     if (retryCount >= maxRetries)
                     {
-                        // TODO: Handle if not complete after retries
+                        throw;
+                    }
+                    try
+                    {
+                        await Task.Delay(pauseTime, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Need to catch this exception or it will be propogated.
+                        break;
+                    }
+                }
+            }
+        }
+
+        internal static async Task ActionWithRetryAsync<T>(Func<Task> action, int maxRetries = 5, CancellationToken cancellationToken = default) where T : Exception
+        {
+            int retryCount = 0;
+            TimeSpan pauseTime = TimeSpan.FromMilliseconds(10);
+            bool completed = false;
+
+            while (!cancellationToken.IsCancellationRequested && !completed && retryCount < maxRetries)
+            {
+                try
+                {
+                    await action.Invoke();
+                    completed = true;
+                }
+                catch (T)
+                {
+                    retryCount++;
+                    if (retryCount >= maxRetries)
+                    {
                         throw;
                     }
                     try

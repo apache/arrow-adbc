@@ -53,13 +53,13 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
             try
             {
-                using TracerProvider provider = Sdk.CreateTracerProviderBuilder()
+                using (TracerProvider provider = Sdk.CreateTracerProviderBuilder()
                     .AddSource(_activitySourceName)
                     .AddAdbcFileExporter(_activitySourceName, traceFolder)
-                    .Build();
-
-                await AddEvent("test");
-
+                    .Build())
+                {
+                    await AddEvent("test");
+                }
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);
                 FileInfo[] files = traceDirectory.GetFiles();
@@ -81,12 +81,13 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
             try
             {
-                using TracerProvider provider = Sdk.CreateTracerProviderBuilder()
+                using (TracerProvider provider = Sdk.CreateTracerProviderBuilder()
                     .AddSource(_activitySourceName)
                     .AddAdbcFileExporter(customFileBaseName, traceFolder)
-                    .Build();
-
-                await AddEvent("test");
+                    .Build())
+                {
+                    await AddEvent("test");
+                }
 
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);

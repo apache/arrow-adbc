@@ -24,6 +24,9 @@ using OpenTelemetry;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
@@ -37,11 +40,13 @@ namespace Apache.Arrow.Adbc.Tracing
         private static readonly string s_tracingLocationDefault = TracingLocationDefault;
         private static readonly ConcurrentDictionary<string, Lazy<FileExporterInstance>> s_fileExporters = new();
 
-        private bool _disposed = false;
         private readonly TracingFile _tracingFile;
         private readonly string _fileBaseName;
         private readonly string _tracesDirectoryFullName;
+        private readonly ConcurrentQueue<Activity> _activityQueue = new();
         private readonly CancellationTokenSource _cancellationTokenSource;
+
+        private bool _disposed = false;
 
         private static string GetListenerId(string sourceName, string traceFolderLocation) => $"{sourceName}{traceFolderLocation}";
 
@@ -71,9 +76,11 @@ namespace Apache.Arrow.Adbc.Tracing
             var exporterInstance = new Lazy<FileExporterInstance>(() =>
             {
                 CancellationTokenSource cancellationTokenSource = new();
+                FileExporter fileExporter = new(fileBaseName, tracesDirectory, maxTraceFileSizeKb);
                 return new FileExporterInstance(
-                    new FileExporter(fileBaseName, tracesDirectory, maxTraceFileSizeKb),
-                    CleanupTraceDirectory(tracesDirectory, fileBaseName, maxTraceFiles, cancellationTokenSource.Token),
+                    fileExporter,
+                    Task.Run(async () => await CleanupTraceDirectory(tracesDirectory, fileBaseName, maxTraceFiles, cancellationTokenSource.Token)),
+                    Task.Run(async () => await WriteActivities(fileExporter._tracingFile, fileExporter._activityQueue, cancellationTokenSource.Token)),
                     cancellationTokenSource);
             });
 
@@ -131,6 +138,33 @@ namespace Apache.Arrow.Adbc.Tracing
             }
         }
 
+        private static async Task WriteActivities(TracingFile tracingFile, ConcurrentQueue<Activity> activityQueue, CancellationToken cancellationToken)
+        {
+            TimeSpan delay = TimeSpan.FromMilliseconds(10);
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(delay, cancellationToken);
+                await tracingFile.WriteLines(GetActivitiesAsync(activityQueue), cancellationToken);
+            }
+        }
+
+        private static readonly byte[] s_newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
+
+        private static async IAsyncEnumerable<Stream> GetActivitiesAsync(ConcurrentQueue<Activity> activityQueue)
+        {
+            MemoryStream stream = new MemoryStream();
+            while (activityQueue.TryDequeue(out Activity? activity))
+            {
+                stream.SetLength(0);
+                SerializableActivity serilalizableActivity = new(activity);
+                await JsonSerializer.SerializeAsync(stream, serilalizableActivity);
+                stream.Write(s_newLine, 0, s_newLine.Length);
+                stream.Position = 0;
+
+                yield return stream;
+            }
+        }
+
         /// <summary>
         /// Runs continuously to monitor the tracing folder to remove older trace files.
         /// </summary>
@@ -157,7 +191,7 @@ namespace Apache.Arrow.Adbc.Tracing
                         for (int i = tracingFiles.Length - 1; i >= maxTraceFiles; i--)
                         {
                             FileInfo? file = tracingFiles.ElementAtOrDefault(i);
-                            await TracingFile.ActionWithRetry<IOException>(() => file?.Delete(), cancellationToken: cancellationToken);
+                            await TracingFile.ActionWithRetryAsync<IOException>(() => file?.Delete(), cancellationToken: cancellationToken);
                         }
                     }
                 }
@@ -193,31 +227,12 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 if (activity == null) continue;
                 // Intentionally don't await the result of the call
-                Task.Run(() => WriteActivity(activity, _cancellationTokenSource.Token));
+                //_ = WriteActivity(activity, _cancellationTokenSource.Token);
+                //Task.Run(async () => await WriteActivity(activity, _tracingFile, _cancellationTokenSource.Token));
+                //s_taskQueue.Enqueue(task);
+                _activityQueue.Enqueue(activity);
             }
             return ExportResult.Success;
-        }
-
-        private async Task WriteActivity(Activity activity, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                try
-                {
-                    SerializableActivity serilalizableActivity = new(activity);
-                    string json = JsonSerializer.Serialize(serilalizableActivity);
-                    await _tracingFile.WriteLine(json, cancellationToken);
-                }
-                catch (NotSupportedException ex)
-                {
-                    // TODO: Handle excption thrown by JsonSerializer
-                    Console.WriteLine(ex.Message);
-                }
-            }
-            catch
-            {
-                // Ignore all errors so it doesn't crash Task runner.
-            }
         }
 
         internal static string TracingLocationDefault =>
@@ -228,12 +243,26 @@ namespace Apache.Arrow.Adbc.Tracing
                     TracesFolderName)
                 ).FullName;
 
+        private async Task FlushAsync(CancellationToken cancellationToken = default)
+        {
+            // Ensure existing writes are completed.
+            while (!cancellationToken.IsCancellationRequested && !_activityQueue.IsEmpty)
+            {
+                await Task.Delay(100);
+            }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (!_disposed)
             {
                 if (disposing)
                 {
+                    // Allow flush of any existing events.
+                    using CancellationTokenSource flushTimeoutTS = new();
+                    flushTimeoutTS.CancelAfter(TimeSpan.FromSeconds(5));
+                    FlushAsync(flushTimeoutTS.Token).Wait();
+
                     // Remove and dispose of single instance of exporter
                     string listenerId = GetListenerId(_fileBaseName, _tracesDirectoryFullName);
                     bool isRemoved = s_fileExporters.TryRemove(listenerId, out Lazy<FileExporterInstance>? listener);
@@ -249,7 +278,7 @@ namespace Apache.Arrow.Adbc.Tracing
             base.Dispose(disposing);
         }
 
-        private class FileExporterInstance(FileExporter fileExporter, Task folderCleanupTask, CancellationTokenSource cancellationTokenSource)
+        private class FileExporterInstance(FileExporter fileExporter, Task folderCleanupTask, Task writeActivitiesTask, CancellationTokenSource cancellationTokenSource)
             : IDisposable
         {
             private bool _disposedValue;
@@ -260,6 +289,8 @@ namespace Apache.Arrow.Adbc.Tracing
 
             internal CancellationTokenSource CancellationTokenSource { get; } = cancellationTokenSource;
 
+            internal Task WriteActivitiesTask { get; } = writeActivitiesTask;
+
             protected virtual void Dispose(bool disposing)
             {
                 if (!_disposedValue)
@@ -267,7 +298,6 @@ namespace Apache.Arrow.Adbc.Tracing
                     if (disposing)
                     {
                         CancellationTokenSource.Cancel();
-                        CancellationTokenSource.Dispose();
                         try
                         {
                             FolderCleanupTask.Wait();
@@ -276,7 +306,17 @@ namespace Apache.Arrow.Adbc.Tracing
                         {
                             // Ignore
                         }
+                        try
+                        {
+                            WriteActivitiesTask.Wait();
+                        }
+                        catch
+                        {
+                            // Ignore
+                        }
                         FolderCleanupTask.Dispose();
+                        WriteActivitiesTask.Dispose();
+                        CancellationTokenSource.Dispose();
                     }
                     _disposedValue = true;
                 }
