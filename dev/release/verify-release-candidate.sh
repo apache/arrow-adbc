@@ -692,6 +692,7 @@ test_rust() {
   maybe_setup_conda rust || exit 1
 
   # We expect the C++ libraries to exist.
+  export ADBC_SNOWFLAKE_GO_LIB_DIR="${CPP_INSTALL_PREFIX}/lib"
   "${ADBC_DIR}/ci/scripts/rust_build.sh" "${ADBC_SOURCE_DIR}"
   "${ADBC_DIR}/ci/scripts/rust_test.sh" "${ADBC_SOURCE_DIR}" "${CPP_INSTALL_PREFIX}"
 }

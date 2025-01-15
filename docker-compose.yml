@@ -38,10 +38,21 @@ services:
       context: .
       dockerfile: ci/docker/cpp-clang-latest.dockerfile
       args:
-        VCPKG: ${VCPKG}
+        GO: ${GO}
     volumes:
       - .:/adbc:delegated
-    command: "bash -c 'export PATH=$PATH:/opt/go/bin CC=$(which clang) CXX=$(which clang++) && git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build'"
+    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/clang-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/clang-latest'"
+
+  cpp-gcc-latest:
+    build:
+      context: .
+      dockerfile: ci/docker/cpp-gcc-latest.dockerfile
+      args:
+        GCC: 15
+        GO: ${GO}
+    volumes:
+      - .:/adbc:delegated
+    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/gcc-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/gcc-latest'"
 
   ############################ Documentation ###################################
 
@@ -210,7 +221,7 @@ services:
       args:
         GO: ${GO}
     healthcheck:
-      test: ["CMD", "curl", "--http2-prior-knowledge", "-XPOST", "-H", "content-type: application/grpc"]
+      test: ["CMD", "curl", "--http2-prior-knowledge", "-XPOST", "-H", "content-type: application/grpc", "localhost:41414"]
       interval: 5s
       timeout: 30s
       retries: 3

@@ -83,7 +83,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryJob firstQueryJob = new BigQueryJob(client, job.Resource);
                 foreach (BigQueryJob childJob in joblist)
                 {
-                    var tempJob = client.GetJob(childJob.Reference.JobId);
+                    var tempJob = client.GetJob(childJob.Reference);
                     var query = tempJob.Resource?.Configuration?.Query;
                     if (query != null && query.DestinationTable != null && query.DestinationTable.ProjectId != null && query.DestinationTable.DatasetId != null && query.DestinationTable.TableId != null)
                     {
@@ -161,7 +161,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 case "TIME":
                     return GetType(field, Time64Type.Default);
                 case "DATE":
-                    return GetType(field, Date64Type.Default);
+                    return GetType(field, Date32Type.Default);
                 case "RECORD" or "STRUCT":
                     // its a json string
                     return GetType(field, StringType.Default);

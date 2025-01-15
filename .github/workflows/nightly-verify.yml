@@ -32,6 +32,11 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    # 'bash' will expand to -eo pipefail
+    shell: bash
+
 jobs:
   source:
     # For cron: only run on the main repo, not forks
@@ -45,14 +50,12 @@ jobs:
           submodules: recursive
 
       - name: Prepare version
-        shell: bash
         run: |
           VERSION=$(grep 'set(ADBC_VERSION' c/cmake_modules/AdbcVersion.cmake | \
                       grep -E -o '[0-9]+\.[0-9]+\.[0-9]+')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Create archive
-        shell: bash
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
@@ -64,7 +67,6 @@ jobs:
             apache-arrow-adbc-${VERSION}-rc0
 
       - name: Create fake GPG key
-        shell: bash
         run: |
           gpg \
             --quick-gen-key \
@@ -80,7 +82,6 @@ jobs:
             --export >> KEYS
 
       - name: Create sum/signature
-        shell: bash
         run: |
           gpg \
             --armor \
@@ -118,7 +119,6 @@ jobs:
           persist-credentials: false
 
       - name: Prepare version
-        shell: bash
         run: |
           VERSION=$(grep 'set(ADBC_VERSION' arrow-adbc/c/cmake_modules/AdbcVersion.cmake | \
                       grep -E -o '[0-9]+\.[0-9]+\.[0-9]+')
@@ -130,7 +130,6 @@ jobs:
           path: ${{ github.workspace }}/apache-arrow-adbc-${{ env.VERSION }}-rc0/
 
       - name: Setup directory structure
-        shell: bash
         run: |
           mv apache-arrow-adbc-${{ env.VERSION }}-rc0/KEYS .
 
@@ -142,7 +141,6 @@ jobs:
           use-mamba: true
 
       - name: Work around ASAN issue (GH-1617)
-        shell: bash -l {0}
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
@@ -191,6 +189,11 @@ jobs:
         run: |
           pushd arrow-adbc
           docker compose run --rm cpp-clang-latest
+
+      - name: cpp-gcc-latest
+        run: |
+          pushd arrow-adbc
+          docker compose run --rm cpp-gcc-latest
 
       - name: python-debug
         run: |

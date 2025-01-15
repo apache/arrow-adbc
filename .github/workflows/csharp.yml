@@ -36,6 +36,11 @@ concurrency:
 permissions:
   contents: read
 
+defaults:
+  run:
+    # 'bash' will expand to -eo pipefail
+    shell: bash
+
 jobs:
   csharp:
     name: "C# ${{ matrix.os }} ${{ matrix.dotnet }}"

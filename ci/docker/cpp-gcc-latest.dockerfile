@@ -15,26 +15,20 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[package]
-name = "adbc_datafusion"
-description = "ADBC driver for Apache DataFusion"
-version = { workspace = true }
-edition = { workspace = true }
-authors = { workspace = true }
-license = { workspace = true }
+FROM amd64/debian:experimental
+ARG GCC
+ARG GO
 
-[dependencies]
-adbc_core = { path = "../../core" }
-arrow-array.workspace = true
-arrow-buffer.workspace = true
-arrow-schema.workspace = true
-datafusion = "44.0.0"
-datafusion-substrait = "44.0.0"
-tokio = { version = "1.43", features = ["rt-multi-thread"] }
-prost = "0.13.4"
+ENV DEBIAN_FRONTEND noninteractive
 
-[dev-dependencies]
-arrow-select.workspace = true
+RUN apt-get update -y && \
+    apt-get install -y -q cmake curl git gnupg libpq-dev libsqlite3-dev pkg-config && \
+    apt-get install -y -q -t experimental g++-${GCC} gcc-${GCC} && \
+    apt-get clean
 
-[lib]
-crate-type = ["lib", "cdylib"]
+RUN curl -L -o go.tar.gz https://go.dev/dl/go${GO}.linux-amd64.tar.gz && \
+    tar -C /opt -xvf go.tar.gz
+
+ENV PATH=/opt/go/bin:$PATH \
+    CC=/usr/bin/gcc-${GCC} \
+    CXX=/usr/bin/g++-${GCC}

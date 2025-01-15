@@ -47,6 +47,10 @@ concurrency:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: pwsh
+
 jobs:
   # ------------------------------------------------------------
   # Common build (builds libraries used in GLib, Python, Ruby)
@@ -80,7 +84,6 @@ jobs:
           miniforge-version: latest
           use-mamba: true
       - name: Install Dependencies
-        shell: pwsh
         run: |
           mamba install -c conda-forge `
             --file ci\conda_env_cpp.txt
@@ -88,7 +91,6 @@ jobs:
           mamba uninstall gtest
 
       - name: Build and Install (No ASan)
-        shell: pwsh
         env:
           BUILD_ALL: "1"
           # TODO(apache/arrow-adbc#634)
@@ -137,7 +139,6 @@ jobs:
           miniforge-version: latest
           use-mamba: true
       - name: Install Dependencies
-        shell: pwsh
         run: |
           mamba install -c conda-forge `
             --file ci\conda_env_cpp.txt
@@ -145,31 +146,26 @@ jobs:
           mamba uninstall gtest
 
       - name: Build Driver Manager
-        shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
         run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Build Driver PostgreSQL
-        shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
         run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Build Driver SQLite
-        shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
         run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Test Driver Manager
-        shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
         run: .\ci\scripts\cpp_test.ps1 $pwd\build
       - name: Test Driver SQLite
-        shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
@@ -213,7 +209,6 @@ jobs:
           miniforge-version: latest
           use-mamba: true
       - name: Install Dependencies
-        shell: pwsh
         run: |
           mamba install -c conda-forge `
             --file ci\conda_env_cpp.txt
@@ -230,7 +225,6 @@ jobs:
           path: ${{ github.workspace }}/build
 
       - name: Go Build
-        shell: pwsh
         env:
           CGO_ENABLED: "1"
         run: |
@@ -238,7 +232,6 @@ jobs:
           .\ci\scripts\go_build.ps1 $pwd $pwd\build
       # TODO(apache/arrow#358): enable these tests on Windows
       # - name: Go Test
-      #   shell: pwsh
       #   env:
       #     CGO_ENABLED: "1"
       #   run: |
@@ -280,7 +273,6 @@ jobs:
           miniforge-version: latest
           use-mamba: true
       - name: Install Dependencies
-        shell: pwsh
         run: |
           mamba install -c conda-forge `
             python=${{ matrix.python }} `
@@ -293,37 +285,31 @@ jobs:
           path: ${{ github.workspace }}/build
 
       - name: Build Python Driver Manager
-        shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
         run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Build Python Driver PostgreSQL
-        shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
         run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Build Python Driver SQLite
-        shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
         run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Test Python Driver Manager
-        shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
         run: .\ci\scripts\python_test.ps1 $pwd $pwd\build
       - name: Test Python Driver PostgreSQL
-        shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
         run: .\ci\scripts\python_test.ps1 $pwd $pwd\build
       - name: Test Python Driver SQLite
-        shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"

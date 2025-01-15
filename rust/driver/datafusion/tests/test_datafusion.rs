@@ -197,7 +197,7 @@ fn test_execute_substrait() {
 
         let df = ctx.sql("SELECT c1, c2 FROM datafusion.public.example").await.unwrap();
 
-        to_substrait_plan(df.logical_plan(), &ctx).unwrap()
+        to_substrait_plan(df.logical_plan(), &ctx.state()).unwrap()
     });
 
     let batch = execute_substrait(&mut connection, *plan);

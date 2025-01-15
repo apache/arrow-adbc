@@ -495,7 +495,7 @@ jobs:
         arch: ["osx_64_"]
     defaults:
       run:
-        shell: bash -l {0}
+        shell: bash -l -eo pipefail {0}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -1035,7 +1035,7 @@ jobs:
       # - python-conda-macos
     defaults:
       run:
-        shell: bash -l {0}
+        shell: bash -l -eo pipefail {0}
     steps:
       - uses: actions/checkout@v4
         with:
