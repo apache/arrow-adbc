@@ -26,7 +26,7 @@ actual use.
 
 This isn't that.
 
-sphiox-recipe is an extension for the [Sphinx][sphinx] documentation generator
+sphinx-recipe is an extension for the [Sphinx][sphinx] documentation generator
 that lets you write code interspersed with special comments.  The extension
 then separates the code and comments to generate a prose document interspersed
 with code.  Meanwhile, since the source document is still just code, it can be
