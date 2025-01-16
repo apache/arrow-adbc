@@ -27,7 +27,7 @@ using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
 using Xunit;
 using Xunit.Abstractions;
-using ColumnTypeId = Apache.Arrow.Adbc.Drivers.Apache.Spark.SparkConnection.ColumnTypeId;
+using ColumnTypeId = Apache.Arrow.Adbc.Drivers.Apache.Hive2.HiveServer2Connection.ColumnTypeId;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
 {
@@ -48,9 +48,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         where TEnv : HiveServer2TestEnvironment<TConfig>
     {
         /// <summary>
-        /// Supported Spark data types as a subset of <see cref="ColumnTypeId"/>
+        /// Supported data types as a subset of <see cref="ColumnTypeId"/>
         /// </summary>
-        internal enum SupportedSparkDataType : short
+        internal enum SupportedDriverDataType : short
         {
             ARRAY = ColumnTypeId.ARRAY,
             BIGINT = ColumnTypeId.BIGINT,
@@ -391,12 +391,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 Assert.False(Regex.IsMatch(column.XdbcTypeName, @"[_,\d\<\>\(\)]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
                     "Unexpected character found in field XdbcTypeName");
 
-                var supportedTypes = Enum.GetValues(typeof(SupportedSparkDataType)).Cast<SupportedSparkDataType>();
-                Assert.Contains((SupportedSparkDataType)column.XdbcSqlDataType!, supportedTypes);
+                var supportedTypes = Enum.GetValues(typeof(SupportedDriverDataType)).Cast<SupportedDriverDataType>();
+                Assert.Contains((SupportedDriverDataType)column.XdbcSqlDataType!, supportedTypes);
                 Assert.Equal(column.XdbcDataType, column.XdbcSqlDataType);
 
                 Assert.NotNull(column.XdbcDataType);
-                Assert.Contains((SupportedSparkDataType)column.XdbcDataType!, supportedTypes);
+                Assert.Contains((SupportedDriverDataType)column.XdbcDataType!, supportedTypes);
 
                 bool typeHasColumnSize = TypeHasColumnSize(column);
                 Assert.Equal(column.XdbcColumnSize.HasValue, typeHasColumnSize);

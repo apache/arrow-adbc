@@ -327,9 +327,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 SessionHandle = session.SessionHandle;
             }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
             {
                 throw new TimeoutException("The operation timed out while attempting to open a session. Please try increasing connect timeout.", ex);
             }
@@ -376,7 +374,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
                     if (AreResultsAvailableDirectly())
                     {
-                        getCatalogsReq.GetDirectResults = GetDirectResults();
+                        SetDirectResults(getCatalogsReq);
                     }
 
                     TGetCatalogsResp getCatalogsResp = Client.GetCatalogs(getCatalogsReq, cancellationToken).Result;
@@ -415,7 +413,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     getSchemasReq.SchemaName = dbSchemaPattern;
                     if (AreResultsAvailableDirectly())
                     {
-                        getSchemasReq.GetDirectResults = GetDirectResults();
+                        SetDirectResults(getSchemasReq);
                     }
 
                     TGetSchemasResp getSchemasResp = Client.GetSchemas(getSchemasReq, cancellationToken).Result;
@@ -448,7 +446,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     getTablesReq.TableName = tableNamePattern;
                     if (AreResultsAvailableDirectly())
                     {
-                        getTablesReq.GetDirectResults = GetDirectResults();
+                        SetDirectResults(getTablesReq);
                     }
 
                     TGetTablesResp getTablesResp = Client.GetTables(getTablesReq, cancellationToken).Result;
@@ -485,7 +483,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     columnsReq.TableName = tableNamePattern;
                     if (AreResultsAvailableDirectly())
                     {
-                        columnsReq.GetDirectResults = GetDirectResults();
+                        SetDirectResults(columnsReq);
                     }
 
                     if (!string.IsNullOrEmpty(columnNamePattern))
@@ -574,9 +572,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 return new HiveInfoArrowStream(schema, dataArrays);
             }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
             {
                 throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
             }
@@ -595,7 +591,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             if (AreResultsAvailableDirectly())
             {
-                req.GetDirectResults = GetDirectResults();
+                SetDirectResults(req);
             }
 
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
@@ -623,9 +619,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 return new HiveInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
             }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
             {
                 throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
             }
@@ -675,9 +669,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 return getInfoResp.InfoValue.StringValue;
             }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
             {
                 throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
             }
@@ -775,9 +767,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
 
-        protected abstract bool AreResultsAvailableDirectly();
+        protected virtual bool AreResultsAvailableDirectly() => false;
 
-        protected abstract TSparkGetDirectResults GetDirectResults();
+        protected virtual void SetDirectResults(TGetColumnsReq request) => throw new System.NotImplementedException();
+
+        protected virtual void SetDirectResults(TGetCatalogsReq request) => throw new System.NotImplementedException();
+
+        protected virtual void SetDirectResults(TGetSchemasReq request) => throw new System.NotImplementedException();
+
+        protected virtual void SetDirectResults(TGetTablesReq request) => throw new System.NotImplementedException();
+
+        protected virtual void SetDirectResults(TGetTableTypesReq request) => throw new System.NotImplementedException();
 
         protected internal abstract int PositionRequiredOffset { get; }
 
@@ -813,10 +813,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             ArrowBuffer.BitmapBuilder nullBitmapBuffer = new ArrowBuffer.BitmapBuilder();
             int length = 0;
 
-
             foreach (KeyValuePair<string, Dictionary<string, TableInfo>> schemaEntry in schemaMap)
             {
-
                 dbSchemaNameBuilder.Append(schemaEntry.Key);
                 length++;
                 nullBitmapBuffer.Append(true);
@@ -830,7 +828,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     dbSchemaTablesValues.Add(GetTableSchemas(
                         depth, schemaEntry.Value));
                 }
-
             }
 
             IReadOnlyList<Field> schema = StandardSchemas.DbSchemaSchema;
@@ -859,7 +856,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             ArrowBuffer.BitmapBuilder nullBitmapBuffer = new ArrowBuffer.BitmapBuilder();
             int length = 0;
 
-
             foreach (KeyValuePair<string, TableInfo> tableEntry in tableMap)
             {
                 tableNameBuilder.Append(tableEntry.Key);
@@ -867,9 +863,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 nullBitmapBuffer.Append(true);
                 length++;
 
-
                 tableConstraintsValues.Add(null);
-
 
                 if (depth == GetObjectsDepth.Tables)
                 {
@@ -880,7 +874,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     tableColumnsValues.Add(GetColumnSchema(tableEntry.Value));
                 }
             }
-
 
             IReadOnlyList<Field> schema = StandardSchemas.TableSchema;
             IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
@@ -998,7 +991,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             getColumnsReq.TableName = tableName;
             if (AreResultsAvailableDirectly())
             {
-                getColumnsReq.GetDirectResults = GetDirectResults();
+                SetDirectResults(getColumnsReq);
             }
 
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
@@ -1030,9 +1023,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
                 return new Schema(fields, null);
             }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
             {
                 throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
             }
@@ -1316,6 +1307,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 this.batch?.Dispose();
                 this.batch = null;
+            }
+        }
+
+        private static class ExceptionHelper
+        {
+            public static bool IsOperationCanceledOrCancellationRequested(Exception ex, CancellationToken cancellationToken)
+            {
+                return ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                       (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested);
             }
         }
     }

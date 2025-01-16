@@ -55,7 +55,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             byte[] bytes = new byte[size];
             for (int i = 0; i < size; i++)
             {
-
                 builder.Append(values[rnd.Next(values.Length)]);
             }
             yield return new object[] { Encoding.UTF8.GetBytes(builder.ToString()) };

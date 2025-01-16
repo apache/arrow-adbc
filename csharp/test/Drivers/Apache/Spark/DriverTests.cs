@@ -133,8 +133,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             HashSet<short> typesHaveDecimalDigits = new()
                 {
-                    (short)SupportedSparkDataType.DECIMAL,
-                    (short)SupportedSparkDataType.NUMERIC,
+                    (short)SupportedDriverDataType.DECIMAL,
+                    (short)SupportedDriverDataType.NUMERIC,
                 };
             return typesHaveDecimalDigits.Contains(column.XdbcDataType!.Value);
         }
@@ -143,10 +143,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             HashSet<short> typesHaveColumnSize = new()
                 {
-                    (short)SupportedSparkDataType.DECIMAL,
-                    (short)SupportedSparkDataType.NUMERIC,
-                    (short)SupportedSparkDataType.CHAR,
-                    (short)SupportedSparkDataType.VARCHAR,
+                    (short)SupportedDriverDataType.DECIMAL,
+                    (short)SupportedDriverDataType.NUMERIC,
+                    (short)SupportedDriverDataType.CHAR,
+                    (short)SupportedDriverDataType.VARCHAR,
                 };
             return typesHaveColumnSize.Contains(column.XdbcDataType!.Value);
         }

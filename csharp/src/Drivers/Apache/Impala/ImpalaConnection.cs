@@ -97,8 +97,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             tableInfo?.BaseTypeName.Add(typeName);
         }
 
-        protected override bool AreResultsAvailableDirectly() => false;
-
         protected override string InfoDriverName => DriverName;
 
         protected override string InfoDriverArrowVersion => ArrowVersion;
@@ -108,8 +106,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         protected override bool IsColumnSizeValidForDecimal => true;
 
         protected internal override int PositionRequiredOffset => 0;
-
-        protected override TSparkGetDirectResults GetDirectResults() => throw new System.NotImplementedException();
 
         internal override SchemaParser SchemaParser { get; } = new HiveServer2SchemaParser();
 

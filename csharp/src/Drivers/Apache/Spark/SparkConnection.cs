@@ -114,8 +114,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        protected override bool AreResultsAvailableDirectly() => true;
-
         protected override string InfoDriverName => DriverName;
 
         protected override string InfoDriverArrowVersion => ArrowVersion;
@@ -124,7 +122,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override bool IsColumnSizeValidForDecimal => false;
 
-        protected override TSparkGetDirectResults GetDirectResults() => sparkGetDirectResults;
+        protected override bool AreResultsAvailableDirectly() => true;
+
+        protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = sparkGetDirectResults;
+
+        protected override void SetDirectResults(TGetCatalogsReq request) => request.GetDirectResults = sparkGetDirectResults;
+
+        protected override void SetDirectResults(TGetSchemasReq request) => request.GetDirectResults = sparkGetDirectResults;
+
+        protected override void SetDirectResults(TGetTablesReq request) => request.GetDirectResults = sparkGetDirectResults;
+
+        protected override void SetDirectResults(TGetTableTypesReq request) => request.GetDirectResults = sparkGetDirectResults;
 
         protected abstract void ValidateConnection();
         protected abstract void ValidateAuthentication();
