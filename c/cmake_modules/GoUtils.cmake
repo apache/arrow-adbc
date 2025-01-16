@@ -87,10 +87,10 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
   separate_arguments(GO_BUILD_FLAGS NATIVE_COMMAND
                      "${GO_BUILD_FLAGS} $<$<CONFIG:DEBUG>:-gcflags=\"-N -l\">")
 
-  # if we're building debug mode then change the default and CGO_CXXFLAGS from "-g O2" to "-g3"
-  # We can't add CGO_CFLAGS=-g3 because it will result in no longer inlining the ArrowArray* helper
-  # functions used internally within the cdata Go package, causing linker errors of missing symbols.
-  set(GO_ENV_VARS "CGO_ENABLED=1 $<$<CONFIG:DEBUG>:CGO_CXXFLAGS=-g3>")
+  # if we're building debug mode then change the default CGO_CFLAGS and CGO_CXXFLAGS from "-g O2" to "-g3"
+  set(GO_ENV_VARS
+      "CGO_ENABLED=1 $<$<CONFIG:DEBUG>:CGO_CFLAGS=-g3> $<$<CONFIG:DEBUG>:CGO_CXXFLAGS=-g3>"
+  )
   separate_arguments(GO_ENV_VARS NATIVE_COMMAND "${GO_ENV_VARS}")
 
   if(BUILD_SHARED)
