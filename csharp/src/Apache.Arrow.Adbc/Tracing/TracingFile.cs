@@ -36,17 +36,19 @@ namespace Apache.Arrow.Adbc.Tracing
         private FileInfo? _currentTraceFileInfo;
         private bool _disposedValue;
         private readonly long _maxFileSizeKb = FileExporter.MaxFileSizeKbDefault;
+        private readonly int _maxTraceFiles = FileExporter.MaxTraceFilesDefault;
 
-        internal TracingFile(string fileBaseName, string? traceDirectoryPath = default, long maxFileSizeKb = FileExporter.MaxFileSizeKbDefault) :
-            this(fileBaseName, traceDirectoryPath == null ? new DirectoryInfo(s_defaultTracePath) : new DirectoryInfo(traceDirectoryPath), maxFileSizeKb)
+        internal TracingFile(string fileBaseName, string? traceDirectoryPath = default, long maxFileSizeKb = FileExporter.MaxFileSizeKbDefault, int maxTraceFiles = FileExporter.MaxTraceFilesDefault) :
+            this(fileBaseName, traceDirectoryPath == null ? new DirectoryInfo(s_defaultTracePath) : new DirectoryInfo(traceDirectoryPath), maxFileSizeKb, maxTraceFiles)
         { }
 
-        internal TracingFile(string fileBaseName, DirectoryInfo traceDirectory, long maxFileSizeKb)
+        internal TracingFile(string fileBaseName, DirectoryInfo traceDirectory, long maxFileSizeKb, int maxTraceFiles)
         {
             if (string.IsNullOrWhiteSpace(fileBaseName)) throw new ArgumentNullException(nameof(fileBaseName));
             _fileBaseName = fileBaseName;
             _tracingDirectory = traceDirectory;
             _maxFileSizeKb = maxFileSizeKb;
+            _maxTraceFiles = maxTraceFiles;
             EnsureTraceDirectory();
         }
 
@@ -60,9 +62,9 @@ namespace Apache.Arrow.Adbc.Tracing
         {
             if (cancellationToken.IsCancellationRequested) return;
 
+            string searchPattern = _fileBaseName + "-trace-*.log";
             if (_currentTraceFileInfo == null)
             {
-                string searchPattern = _fileBaseName + "-trace-*.log";
                 IOrderedEnumerable<FileInfo>? traceFileInfos = GetTracingFiles(_tracingDirectory, searchPattern);
                 FileInfo? mostRecentFile = traceFileInfos?.FirstOrDefault();
 
@@ -71,27 +73,52 @@ namespace Apache.Arrow.Adbc.Tracing
                     ? mostRecentFile
                     : new FileInfo(NewFileName());
             }
-            else
-            {
-                _currentTraceFileInfo.Refresh();
-                if (_currentTraceFileInfo.Length >= _maxFileSizeKb * 1024)
-                {
-                    // If tracing file is maxxed-out, start a new tracing file.
-                    _currentTraceFileInfo = new FileInfo(NewFileName());
-                }
-            }
 
             // Write out to the file and retry if IO errors occur.
-            await ActionWithRetryAsync<IOException>(async () =>
+            await ActionWithRetryAsync<IOException>((Func<Task>)(async () =>
             {
-                using (FileStream sw = _currentTraceFileInfo.OpenWrite())
+                bool hasMoreData;
+                do
                 {
-                    await foreach (Stream stream in streams)
+                    bool newFileRequired = false;
+                    using (FileStream fileStream = _currentTraceFileInfo.OpenWrite())
                     {
-                        await stream.CopyToAsync(sw);
+                        hasMoreData = false;
+                        await foreach (Stream stream in streams)
+                        {
+                            await stream.CopyToAsync(fileStream);
+
+                            _currentTraceFileInfo.Refresh();
+                            if (_currentTraceFileInfo.Length >= (_maxFileSizeKb * 1024))
+                            {
+                                hasMoreData = true;
+                                newFileRequired = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (newFileRequired)
+                    {
+                        // If tracing file is maxxed-out, start a new tracing file.
+                        _currentTraceFileInfo = new FileInfo(NewFileName());
+                    }
+                } while (hasMoreData);
+            }), cancellationToken: cancellationToken);
+
+            // Check if we need to remove old files
+            if (_tracingDirectory.Exists)
+            {
+                FileInfo[] tracingFiles = [.. GetTracingFiles(_tracingDirectory, searchPattern)];
+                if (tracingFiles != null && tracingFiles.Length > _maxTraceFiles)
+                {
+                    for (int i = tracingFiles.Length - 1; i >= _maxTraceFiles; i--)
+                    {
+                        FileInfo? file = tracingFiles.ElementAtOrDefault(i);
+                        // Note: don't pass the cancellation tokenm, as we want this to ALWAYS run at the end.
+                        await ActionWithRetryAsync<IOException>(() => file?.Delete());
                     }
                 }
-            }, cancellationToken: cancellationToken);
+            }
         }
 
         internal static IOrderedEnumerable<FileInfo> GetTracingFiles(DirectoryInfo tracingDirectory, string searchPattern)

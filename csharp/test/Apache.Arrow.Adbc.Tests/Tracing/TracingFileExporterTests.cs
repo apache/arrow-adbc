@@ -112,15 +112,16 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
             try
             {
-                using TracerProvider provider = Sdk.CreateTracerProviderBuilder()
+                using (TracerProvider provider = Sdk.CreateTracerProviderBuilder()
                     .AddSource(_activitySourceName)
                     .AddAdbcFileExporter(_activitySourceName, traceFolder, maxTraceFileSizeKb)
-                    .Build();
-
-                for (int i = 0; i < 100; i++)
+                    .Build())
                 {
-                    await AddEvent("test");
-                    await Task.Delay(1);
+                    for (int i = 0; i < 1000; i++)
+                    {
+                        await AddEvent("test");
+                        await Task.Delay(TimeSpan.FromMilliseconds(0.1));
+                    }
                 }
 
                 Assert.True(Directory.Exists(traceFolder));
@@ -145,28 +146,25 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
         [Fact]
         internal async Task CanSetCustomMaxFiles()
         {
-            const long maxTraceFileSizeKb = 15;
+            const long maxTraceFileSizeKb = 5;
             const int maxTraceFiles = 3;
-            var delay = TimeSpan.FromSeconds(8);
             string customFolderName = TracingTests.NewName();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
 
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
             try
             {
-                using TracerProvider provider = Sdk.CreateTracerProviderBuilder()
+                using (TracerProvider provider = Sdk.CreateTracerProviderBuilder()
                     .AddSource(_activitySourceName)
                     .AddAdbcFileExporter(_activitySourceName, traceFolder, maxTraceFileSizeKb, maxTraceFiles)
-                    .Build();
-
-                for (int i = 0; i < 100; i++)
+                    .Build())
                 {
-                    await AddEvent("test");
-                    await Task.Delay(1);
+                    for (int i = 0; i < 1000; i++)
+                    {
+                        await AddEvent("test");
+                        await Task.Delay(TimeSpan.FromMilliseconds(0.1));
+                    }
                 }
-
-                // Wait for clean-up task to poll and clean-up
-                await Task.Delay(delay);
 
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);
@@ -192,19 +190,17 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
             try
             {
-                using TracerProvider provider = Sdk.CreateTracerProviderBuilder()
+                using (TracerProvider provider = Sdk.CreateTracerProviderBuilder()
                     .AddSource(_activitySourceName)
                     .AddAdbcFileExporter(_activitySourceName, traceFolder, maxTraceFileSizeKb, maxTraceFiles)
-                    .Build();
-
-                for (int i = 0; i < 100; i++)
+                    .Build())
                 {
-                    await AddEvent("test");
-                    await Task.Delay(1);
+                    for (int i = 0; i < 100; i++)
+                    {
+                        await AddEvent("test");
+                        await Task.Delay(TimeSpan.FromMilliseconds(0.1));
+                    }
                 }
-
-                // Wait for clean-up task to poll and clean-up
-                await Task.Delay(delay);
 
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);
