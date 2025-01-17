@@ -115,7 +115,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>default void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind</a><wbr>(<a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link">VectorSchemaRoot</a>&nbsp;root)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind</a><wbr>(org.apache.arrow.vector.VectorSchemaRoot&nbsp;root)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Bind this statement to a VectorSchemaRoot to provide parameter values/bulk data ingestion.</div>
 </div>
@@ -123,7 +123,7 @@ loadScripts(document, 'script');</script>
 <div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#bulkIngest(java.lang.String,org.apache.arrow.adbc.core.BulkIngestMode)" class="member-name-link">bulkIngest</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;targetTableName,
  <a href="../BulkIngestMode.html" title="enum in org.apache.arrow.adbc.core">BulkIngestMode</a>&nbsp;mode)</code></div>
 <div class="col-last odd-row-color">
-<div class="block">Create a new statement to bulk insert a <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link"><code>VectorSchemaRoot</code></a> into a table.</div>
+<div class="block">Create a new statement to bulk insert a <code>VectorSchemaRoot</code> into a table.</div>
 </div>
 <div class="col-first even-row-color"><code>default void</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#cancel()" class="member-name-link">cancel</a>()</code></div>
@@ -160,7 +160,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Execute a result set-generating query and get the result.</div>
 </div>
-<div class="col-first odd-row-color"><code>default <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-first odd-row-color"><code>default org.apache.arrow.vector.types.pojo.Schema</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#executeSchema()" class="member-name-link">executeSchema</a>()</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Get the schema of the result set without executing the query.</div>
@@ -185,17 +185,17 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Get the current schema.</div>
 </div>
-<div class="col-first even-row-color"><code>default <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first even-row-color"><code>default org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#getInfo()" class="member-name-link">getInfo</a>()</code></div>
 <div class="col-last even-row-color">
 <div class="block">Get metadata about the driver/database.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first odd-row-color"><code>org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#getInfo(int%5B%5D)" class="member-name-link">getInfo</a><wbr>(int @Nullable []&nbsp;infoCodes)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Get metadata about the driver/database.</div>
 </div>
-<div class="col-first even-row-color"><code>default <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first even-row-color"><code>default org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#getInfo(org.apache.arrow.adbc.core.AdbcInfoCode%5B%5D)" class="member-name-link">getInfo</a><wbr>(<a href="../AdbcInfoCode.html" title="enum in org.apache.arrow.adbc.core">AdbcInfoCode</a>[]&nbsp;infoCodes)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Get metadata about the driver/database.</div>
@@ -210,7 +210,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Get the upper bound of the progress.</div>
 </div>
-<div class="col-first odd-row-color"><code>default <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first odd-row-color"><code>default org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#getObjects(org.apache.arrow.adbc.core.AdbcConnection.GetObjectsDepth,java.lang.String,java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String)" class="member-name-link">getObjects</a><wbr>(<a href="../AdbcConnection.GetObjectsDepth.html" title="enum in org.apache.arrow.adbc.core">AdbcConnection.GetObjectsDepth</a>&nbsp;depth,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalogPattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchemaPattern,
@@ -225,7 +225,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Get a generic option.</div>
 </div>
-<div class="col-first odd-row-color"><code>default <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-first odd-row-color"><code>default org.apache.arrow.vector.types.pojo.Schema</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#getParameterSchema()" class="member-name-link">getParameterSchema</a>()</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Get the schema for bound parameters.</div>
@@ -240,12 +240,12 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Get whether the connection is read-only.</div>
 </div>
-<div class="col-first even-row-color"><code>default <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first even-row-color"><code>default org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#getStatisticNames()" class="member-name-link">getStatisticNames</a>()</code></div>
 <div class="col-last even-row-color">
 <div class="block">Get the names of additional statistics defined by this driver.</div>
 </div>
-<div class="col-first odd-row-color"><code>default <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first odd-row-color"><code>default org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#getStatistics(java.lang.String,java.lang.String,java.lang.String,boolean)" class="member-name-link">getStatistics</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalogPattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchemaPattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;tableNamePattern,
@@ -253,14 +253,14 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Get statistics about the data distribution of table(s).</div>
 </div>
-<div class="col-first even-row-color"><code>default <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-first even-row-color"><code>default org.apache.arrow.vector.types.pojo.Schema</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#getTableSchema(java.lang.String,java.lang.String,java.lang.String)" class="member-name-link">getTableSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchema,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;tableName)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Get the Arrow schema of a database table.</div>
 </div>
-<div class="col-first odd-row-color"><code>default <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first odd-row-color"><code>default org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#getTableTypes()" class="member-name-link">getTableTypes</a>()</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Get a list of table types supported by the database.</div>
@@ -280,7 +280,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Turn this statement into a prepared statement.</div>
 </div>
-<div class="col-first odd-row-color"><code>default <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first odd-row-color"><code>default org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#readPartition(java.nio.ByteBuffer)" class="member-name-link">readPartition</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;descriptor)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Create a result set from a serialized PartitionDescriptor.</div>
@@ -369,7 +369,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color"><code><a href="../AdbcStatement.QueryResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.QueryResult</a></code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">FlightSqlStatement.</span><code><a href="../../driver/flightsql/FlightSqlStatement.html#executeQuery()" class="member-name-link">executeQuery</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-first even-row-color"><code>org.apache.arrow.vector.types.pojo.Schema</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">FlightSqlStatement.</span><code><a href="../../driver/flightsql/FlightSqlStatement.html#executeSchema()" class="member-name-link">executeSchema</a>()</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code><a href="../AdbcStatement.UpdateResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.UpdateResult</a></code></div>
@@ -378,10 +378,10 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color"><code>boolean</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">FlightSqlConnection.</span><code><a href="../../driver/flightsql/FlightSqlConnection.html#getAutoCommit()" class="member-name-link">getAutoCommit</a>()</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first odd-row-color"><code>org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">FlightSqlConnection.</span><code><a href="../../driver/flightsql/FlightSqlConnection.html#getInfo(int%5B%5D)" class="member-name-link">getInfo</a><wbr>(int @Nullable []&nbsp;infoCodes)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first even-row-color"><code>org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">FlightSqlConnection.</span><code><a href="../../driver/flightsql/FlightSqlConnection.html#getObjects(org.apache.arrow.adbc.core.AdbcConnection.GetObjectsDepth,java.lang.String,java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String)" class="member-name-link">getObjects</a><wbr>(<a href="../AdbcConnection.GetObjectsDepth.html" title="enum in org.apache.arrow.adbc.core">AdbcConnection.GetObjectsDepth</a>&nbsp;depth,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalogPattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchemaPattern,
@@ -389,7 +389,7 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;tableTypes,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;columnNamePattern)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-first odd-row-color"><code>org.apache.arrow.vector.types.pojo.Schema</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">FlightSqlStatement.</span><code><a href="../../driver/flightsql/FlightSqlStatement.html#getParameterSchema()" class="member-name-link">getParameterSchema</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code><a href="../AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></code></div>
@@ -398,7 +398,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color"><code>void</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">FlightSqlStatement.</span><code><a href="../../driver/flightsql/FlightSqlStatement.html#prepare()" class="member-name-link">prepare</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first even-row-color"><code>org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">FlightSqlConnection.</span><code><a href="../../driver/flightsql/FlightSqlConnection.html#readPartition(java.nio.ByteBuffer)" class="member-name-link">readPartition</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;descriptor)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>void</code></div>
@@ -437,7 +437,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color"><code><a href="../AdbcStatement.QueryResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.QueryResult</a></code></div>
 <div class="col-second even-row-color"><span class="type-name-label">JdbcStatement.</span><code><a href="../../driver/jdbc/JdbcStatement.html#executeQuery()" class="member-name-link">executeQuery</a>()</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-first odd-row-color"><code>org.apache.arrow.vector.types.pojo.Schema</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">JdbcStatement.</span><code><a href="../../driver/jdbc/JdbcStatement.html#executeSchema()" class="member-name-link">executeSchema</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code><a href="../AdbcStatement.UpdateResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.UpdateResult</a></code></div>
@@ -452,13 +452,13 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">JdbcConnection.</span><code><a href="../../driver/jdbc/JdbcConnection.html#getCurrentDbSchema()" class="member-name-link">getCurrentDbSchema</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first even-row-color"><code>org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">JdbcConnection.</span><code><a href="../../driver/jdbc/JdbcConnection.html#getInfo(int%5B%5D)" class="member-name-link">getInfo</a><wbr>(int @Nullable []&nbsp;infoCodes)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code><a href="../IsolationLevel.html" title="enum in org.apache.arrow.adbc.core">IsolationLevel</a></code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">JdbcConnection.</span><code><a href="../../driver/jdbc/JdbcConnection.html#getIsolationLevel()" class="member-name-link">getIsolationLevel</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first even-row-color"><code>org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">JdbcConnection.</span><code><a href="../../driver/jdbc/JdbcConnection.html#getObjects(org.apache.arrow.adbc.core.AdbcConnection.GetObjectsDepth,java.lang.String,java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String)" class="member-name-link">getObjects</a><wbr>(<a href="../AdbcConnection.GetObjectsDepth.html" title="enum in org.apache.arrow.adbc.core">AdbcConnection.GetObjectsDepth</a>&nbsp;depth,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalogPattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchemaPattern,
@@ -466,27 +466,27 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;tableTypes,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;columnNamePattern)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-first odd-row-color"><code>org.apache.arrow.vector.types.pojo.Schema</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">JdbcStatement.</span><code><a href="../../driver/jdbc/JdbcStatement.html#getParameterSchema()" class="member-name-link">getParameterSchema</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>boolean</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">JdbcConnection.</span><code><a href="../../driver/jdbc/JdbcConnection.html#getReadOnly()" class="member-name-link">getReadOnly</a>()</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first odd-row-color"><code>org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">JdbcConnection.</span><code><a href="../../driver/jdbc/JdbcConnection.html#getStatisticNames()" class="member-name-link">getStatisticNames</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first even-row-color"><code>org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">JdbcConnection.</span><code><a href="../../driver/jdbc/JdbcConnection.html#getStatistics(java.lang.String,java.lang.String,java.lang.String,boolean)" class="member-name-link">getStatistics</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalogPattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchemaPattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;tableNamePattern,
  boolean&nbsp;approximate)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-first odd-row-color"><code>org.apache.arrow.vector.types.pojo.Schema</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">JdbcConnection.</span><code><a href="../../driver/jdbc/JdbcConnection.html#getTableSchema(java.lang.String,java.lang.String,java.lang.String)" class="member-name-link">getTableSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchema,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;tableName)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-first even-row-color"><code>org.apache.arrow.vector.ipc.ArrowReader</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">JdbcConnection.</span><code><a href="../../driver/jdbc/JdbcConnection.html#getTableTypes()" class="member-name-link">getTableTypes</a>()</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code><a href="../AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></code></div>
@@ -539,7 +539,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>abstract <a href="../AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">SqlValidationQuirks.</span><code><a href="../../driver/testsuite/SqlValidationQuirks.html#initDatabase(org.apache.arrow.memory.BufferAllocator)" class="member-name-link">initDatabase</a><wbr>(<a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.memory.core/org/apache/arrow/memory/BufferAllocator.html" title="class or interface in org.apache.arrow.memory" class="external-link">BufferAllocator</a>&nbsp;allocator)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">SqlValidationQuirks.</span><code><a href="../../driver/testsuite/SqlValidationQuirks.html#initDatabase(org.apache.arrow.memory.BufferAllocator)" class="member-name-link">initDatabase</a><wbr>(org.apache.arrow.memory.BufferAllocator&nbsp;allocator)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 </div>
 </section>
@@ -554,7 +554,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code><a href="../AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></code></div>
 <div class="col-second even-row-color"><span class="type-name-label">AdbcDriverManager.</span><code><a href="../../drivermanager/AdbcDriverManager.html#connect(java.lang.String,org.apache.arrow.memory.BufferAllocator,java.util.Map)" class="member-name-link">connect</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;driverFactoryName,
- <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.memory.core/org/apache/arrow/memory/BufferAllocator.html" title="class or interface in org.apache.arrow.memory" class="external-link">BufferAllocator</a>&nbsp;allocator,
+ org.apache.arrow.memory.BufferAllocator&nbsp;allocator,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;&nbsp;parameters)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Connect to a database.</div>

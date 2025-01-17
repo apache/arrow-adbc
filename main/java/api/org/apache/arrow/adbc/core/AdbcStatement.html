@@ -140,7 +140,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/ja
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind</a><wbr>(<a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link">VectorSchemaRoot</a>&nbsp;root)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind</a><wbr>(org.apache.arrow.vector.VectorSchemaRoot&nbsp;root)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Bind this statement to a VectorSchemaRoot to provide parameter values/bulk data ingestion.</div>
 </div>
@@ -159,7 +159,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/ja
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Execute a result set-generating query and get the result.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default org.apache.arrow.vector.types.pojo.Schema</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#executeSchema()" class="member-name-link">executeSchema</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Get the schema of the result set without executing the query.</div>
@@ -174,7 +174,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/ja
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Get the upper bound of the progress.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default org.apache.arrow.vector.types.pojo.Schema</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#getParameterSchema()" class="member-name-link">getParameterSchema</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Get the schema for bound parameters.</div>
@@ -297,7 +297,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/ja
 <li>
 <section class="detail" id="bind(org.apache.arrow.vector.VectorSchemaRoot)">
 <h3>bind</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">bind</span><wbr><span class="parameters">(<a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link">VectorSchemaRoot</a>&nbsp;root)</span>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">bind</span><wbr><span class="parameters">(org.apache.arrow.vector.VectorSchemaRoot&nbsp;root)</span>
            throws <span class="exceptions"><a href="AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
 <div class="block">Bind this statement to a VectorSchemaRoot to provide parameter values/bulk data ingestion.</div>
 <dl class="notes">
@@ -353,8 +353,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/ja
 <li>
 <section class="detail" id="executeSchema()">
 <h3>executeSchema</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></span>&nbsp;<span class="element-name">executeSchema</span>()
-                      throws <span class="exceptions"><a href="AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">org.apache.arrow.vector.types.pojo.Schema</span>&nbsp;<span class="element-name">executeSchema</span>()
+                                                         throws <span class="exceptions"><a href="AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
 <div class="block">Get the schema of the result set without executing the query.</div>
 <dl class="notes">
 <dt>Throws:</dt>
@@ -413,8 +413,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/ja
 <li>
 <section class="detail" id="getParameterSchema()">
 <h3>getParameterSchema</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></span>&nbsp;<span class="element-name">getParameterSchema</span>()
-                           throws <span class="exceptions"><a href="AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">org.apache.arrow.vector.types.pojo.Schema</span>&nbsp;<span class="element-name">getParameterSchema</span>()
+                                                              throws <span class="exceptions"><a href="AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
 <div class="block">Get the schema for bound parameters.
 
  <p>This retrieves an Arrow schema describing the number, names, and types of the parameters in

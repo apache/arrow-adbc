@@ -130,13 +130,13 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get the name of the default schema.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/TimeUnit.html" title="class or interface in org.apache.arrow.vector.types" class="external-link">TimeUnit</a></code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>org.apache.arrow.vector.types.TimeUnit</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#defaultTimestampUnit()" class="member-name-link">defaultTimestampUnit</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/ArrowType.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">ArrowType</a></code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>org.apache.arrow.vector.types.pojo.ArrowType</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#defaultTimeType()" class="member-name-link">defaultTimeType</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/TimeUnit.html" title="class or interface in org.apache.arrow.vector.types" class="external-link">TimeUnit</a></code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>org.apache.arrow.vector.types.TimeUnit</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#defaultTimeUnit()" class="member-name-link">defaultTimeUnit</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
@@ -158,7 +158,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Generates a query to set a column to NOT NULL in a table.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>abstract <a href="../../core/AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#initDatabase(org.apache.arrow.memory.BufferAllocator)" class="member-name-link">initDatabase</a><wbr>(<a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.memory.core/org/apache/arrow/memory/BufferAllocator.html" title="class or interface in org.apache.arrow.memory" class="external-link">BufferAllocator</a>&nbsp;allocator)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#initDatabase(org.apache.arrow.memory.BufferAllocator)" class="member-name-link">initDatabase</a><wbr>(org.apache.arrow.memory.BufferAllocator&nbsp;allocator)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#supportsCurrentCatalog()" class="member-name-link">supportsCurrentCatalog</a>()</code></div>
@@ -197,7 +197,7 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="initDatabase(org.apache.arrow.memory.BufferAllocator)">
 <h3>initDatabase</h3>
-<div class="member-signature"><span class="modifiers">public abstract</span>&nbsp;<span class="return-type"><a href="../../core/AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></span>&nbsp;<span class="element-name">initDatabase</span><wbr><span class="parameters">(<a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.memory.core/org/apache/arrow/memory/BufferAllocator.html" title="class or interface in org.apache.arrow.memory" class="external-link">BufferAllocator</a>&nbsp;allocator)</span>
+<div class="member-signature"><span class="modifiers">public abstract</span>&nbsp;<span class="return-type"><a href="../../core/AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></span>&nbsp;<span class="element-name">initDatabase</span><wbr><span class="parameters">(org.apache.arrow.memory.BufferAllocator&nbsp;allocator)</span>
                                    throws <span class="exceptions"><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
@@ -273,19 +273,19 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="defaultTimeUnit()">
 <h3>defaultTimeUnit</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/TimeUnit.html" title="class or interface in org.apache.arrow.vector.types" class="external-link">TimeUnit</a></span>&nbsp;<span class="element-name">defaultTimeUnit</span>()</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">org.apache.arrow.vector.types.TimeUnit</span>&nbsp;<span class="element-name">defaultTimeUnit</span>()</div>
 </section>
 </li>
 <li>
 <section class="detail" id="defaultTimeType()">
 <h3>defaultTimeType</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/ArrowType.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">ArrowType</a></span>&nbsp;<span class="element-name">defaultTimeType</span>()</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">org.apache.arrow.vector.types.pojo.ArrowType</span>&nbsp;<span class="element-name">defaultTimeType</span>()</div>
 </section>
 </li>
 <li>
 <section class="detail" id="defaultTimestampUnit()">
 <h3>defaultTimestampUnit</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://arrow.apache.org/docs/java/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/TimeUnit.html" title="class or interface in org.apache.arrow.vector.types" class="external-link">TimeUnit</a></span>&nbsp;<span class="element-name">defaultTimestampUnit</span>()</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">org.apache.arrow.vector.types.TimeUnit</span>&nbsp;<span class="element-name">defaultTimestampUnit</span>()</div>
 </section>
 </li>
 <li>
