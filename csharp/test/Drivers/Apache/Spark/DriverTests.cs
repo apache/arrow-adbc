@@ -110,7 +110,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             return ClientTests.GetUpdateExpectedResults(affectedRows, TestEnvironment.ServerType == SparkServerType.Databricks);
         }
 
-
         public static IEnumerable<object[]> CatalogNamePatternData()
         {
             string? catalogName = new DriverTests(null).TestConfiguration?.Metadata?.Catalog;
@@ -131,12 +130,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         protected override bool TypeHasDecimalDigits(Metadata.AdbcColumn column)
         {
-            HashSet<short> typesHaveDecimalDigits = new()
-                {
-                    (short)SupportedDriverDataType.DECIMAL,
-                    (short)SupportedDriverDataType.NUMERIC,
-                };
-            return typesHaveDecimalDigits.Contains(column.XdbcDataType!.Value);
+            switch (column.XdbcDataType!.Value)
+            {
+                case (short)SupportedDriverDataType.DECIMAL:
+                case (short)SupportedDriverDataType.NUMERIC:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         protected override bool TypeHasColumnSize(Metadata.AdbcColumn column)

@@ -21,11 +21,11 @@ using System.Linq;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
-    public class ImpalaDatabase : AdbcDatabase
+    internal class ImpalaDatabase : AdbcDatabase
     {
         readonly IReadOnlyDictionary<string, string> properties;
 
-        public ImpalaDatabase(IReadOnlyDictionary<string, string> properties)
+        internal ImpalaDatabase(IReadOnlyDictionary<string, string> properties)
         {
             this.properties = properties;
         }

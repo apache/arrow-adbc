@@ -106,7 +106,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
             return ClientTests.GetUpdateExpectedResults(affectedRows);
         }
 
-
         public static IEnumerable<object[]> CatalogNamePatternData()
         {
             string? catalogName = new DriverTests(null).TestConfiguration?.Metadata?.Catalog;

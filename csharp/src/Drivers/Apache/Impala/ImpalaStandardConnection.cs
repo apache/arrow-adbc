@@ -110,8 +110,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
         {
-            Trace.TraceError($"create protocol with {Properties.Count} properties.");
-
             if (!transport.IsOpen) await transport.OpenAsync(cancellationToken);
             return new TBinaryProtocol(transport);
         }
