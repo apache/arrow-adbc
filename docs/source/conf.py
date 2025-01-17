@@ -31,7 +31,7 @@ Apache, the Apache feather logo, and the Apache Arrow project logo are either
 registered trademarks or trademarks of The Apache Software Foundation in the
 United States and other countries."""
 author = "the Apache Arrow Developers"
-release = "16 (dev)"
+release = "16"
 # Needed to generate version switcher
 version = release
 
