@@ -142,14 +142,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         protected override bool TypeHasColumnSize(Metadata.AdbcColumn column)
         {
-            HashSet<short> typesHaveColumnSize = new()
-                {
-                    (short)SupportedDriverDataType.DECIMAL,
-                    (short)SupportedDriverDataType.NUMERIC,
-                    (short)SupportedDriverDataType.CHAR,
-                    (short)SupportedDriverDataType.VARCHAR,
-                };
-            return typesHaveColumnSize.Contains(column.XdbcDataType!.Value);
+            switch (column.XdbcDataType!.Value)
+            {
+                case (short)SupportedDriverDataType.DECIMAL:
+                case (short)SupportedDriverDataType.NUMERIC:
+                case (short)SupportedDriverDataType.CHAR:
+                case (short)SupportedDriverDataType.VARCHAR:
+                    return true;
+                default:
+                    return false;
+            }
         }
     }
 }
