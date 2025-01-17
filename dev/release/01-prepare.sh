@@ -57,6 +57,18 @@ main() {
         echo ;
         changelog
     ) >> ${SOURCE_DIR}/../../CHANGELOG.md
+
+    read -p "Please review the changelog. Press ENTER to continue..." ignored
+    git diff ${SOURCE_DIR}/../../CHANGELOG.md
+
+    echo "Is the changelog correct?"
+    select yn in "y" "n"; do
+        case $yn in
+            y ) echo "Continuing"; break;;
+            n ) echo "Aborting"; return 1;;
+        esac
+    done
+
     git add ${SOURCE_DIR}/../../CHANGELOG.md
     git commit -m "chore: update CHANGELOG.md for ${RELEASE}"
 

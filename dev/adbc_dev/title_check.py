@@ -38,31 +38,55 @@ COMMIT_TYPES = {
 }
 
 
-def matches_commit_format(root: Path, title: str) -> typing.List[str]:
+class Commit(typing.NamedTuple):
+    category: str
+    components: list[str]
+    breaking_change: bool
+    subject: str
+
+    failed_validation_reasons: list[str]
+
+
+def matches_commit_format(root: Path, title: str) -> list[str]:
     """Check a title and return a list of reasons why it's invalid."""
     if not root.is_dir():
-        return [f"Invalid root: must be a directory: {root}"]
+        return Commit(
+            category="",
+            components=[],
+            breaking_change=False,
+            subject="",
+            failed_validation_reasons=[f"Invalid root: must be a directory: {root}"],
+        )
 
     # Relax the initial regex a bit, do more friendly validation below
+    # We'll allow a deviation from Conventional Commits (feat!(foo) instead of
+    # feat(foo)!) since that appears to have snuck in already
     commit_type = "([a-z]+)"
+    breaking = "(!?)"
     scope = r"(?:\(([^\)]*)\))?"
-    delimiter = "!?:"
+    delimiter = "(!?):"
     subject = " (.+)"
-    commit = re.compile(f"^{commit_type}{scope}{delimiter}{subject}$")
+    commit = re.compile(f"^{commit_type}{breaking}{scope}{delimiter}{subject}$")
     valid_component = re.compile(r"^[a-zA-Z0-9_/\-\.]+$")
 
     m = commit.match(title)
     if m is None:
-        return [
-            "Format is incorrect, see https://www.conventionalcommits.org/en/v1.0.0/"
-        ]
+        commit_spec = "https://www.conventionalcommits.org/en/v1.0.0/"
+        return Commit(
+            category="",
+            components=[],
+            breaking_change=False,
+            subject="",
+            failed_validation_reasons=[f"Format is incorrect, see {commit_spec}"],
+        )
 
     reasons = []
     commit_type = m.group(1)
     if commit_type not in COMMIT_TYPES:
         reasons.append(f"Invalid commit type: {commit_type}")
 
-    components = m.group(2)
+    breaking = m.group(2)
+    components = m.group(3)
     if components is not None:
         if not components.strip():
             reasons.append("Invalid components: must not be empty")
@@ -84,13 +108,24 @@ def matches_commit_format(root: Path, title: str) -> typing.List[str]:
                         f"or directory in the repo: {component}"
                     )
 
-    subject = m.group(3)
+    delimiter = m.group(4)
+    subject = m.group(5)
     if subject.strip() != subject:
         reasons.append(f"Invalid subject: must have no trailing space: {subject}")
     if subject.strip().endswith("."):
         reasons.append(f"Invalid subject: must not end in a period: {subject}")
 
-    return reasons
+    if bool(breaking) and bool(delimiter):
+        # feat!(foo)!: subject
+        reasons.append("Can only provide breaking-change '!' once")
+
+    return Commit(
+        category=commit_type,
+        components=components or [],
+        breaking_change=bool(breaking) or bool(delimiter),
+        subject=subject,
+        failed_validation_reasons=reasons,
+    )
 
 
 def main():
@@ -102,13 +137,13 @@ def main():
 
     print(f'PR title: "{args.title}"')
 
-    reasons = matches_commit_format(args.root, args.title)
-    if not reasons:
+    commit = matches_commit_format(args.root, args.title)
+    if not commit.failed_validation_reasons:
         print("Title is valid")
         return 0
 
     print("Title is invalid:")
-    for reason in reasons:
+    for reason in commit.failed_validation_reasons:
         print("-", reason)
     return 1
 
