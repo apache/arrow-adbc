@@ -38,8 +38,7 @@ header() {
 
 changelog() {
     # Strip trailing blank line
-    local -r changelog=$(printf '%s\n' "$(env PYTHONPATH=${SOURCE_TOP_DIR}/dev python -m adbc_dev.changelog --name "ADBC Libraries ${RELEASE}" apache-arrow-adbc-${PREVIOUS_RELEASE} HEAD 2>/dev/null)")
-    echo "${changelog}"
+    env PYTHONPATH=${SOURCE_TOP_DIR}/dev python -m adbc_dev.changelog --name "ADBC Libraries ${RELEASE}" apache-arrow-adbc-${PREVIOUS_RELEASE} HEAD 2>/dev/null
 }
 
 header "Config"
