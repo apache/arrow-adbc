@@ -21,14 +21,15 @@ import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
+import org.apache.arrow.adbc.driver.jni.impl.NativeDatabaseHandle;
 import org.apache.arrow.adbc.driver.jni.impl.NativeHandle;
 import org.apache.arrow.memory.BufferAllocator;
 
 public class JniDatabase implements AdbcDatabase {
   private final BufferAllocator allocator;
-  private final NativeHandle handle;
+  private final NativeDatabaseHandle handle;
 
-  public JniDatabase(BufferAllocator allocator, NativeHandle handle) {
+  public JniDatabase(BufferAllocator allocator, NativeDatabaseHandle handle) {
     this.allocator = allocator;
     this.handle = handle;
   }

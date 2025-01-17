@@ -19,37 +19,31 @@ package org.apache.arrow.adbc.driver.jni.impl;
 
 import java.lang.ref.Cleaner;
 
-public class NativeHandle implements AutoCloseable {
+abstract class NativeHandle implements AutoCloseable {
   static final Cleaner cleaner = Cleaner.create();
 
-  private final State state;
+  protected final State state;
   private final Cleaner.Cleanable cleanable;
 
-  NativeHandle(NativeHandleType type, long nativeHandle) {
-    this.state = new State(type, nativeHandle);
+  NativeHandle(long nativeHandle) {
+    this.state = new State(nativeHandle, getCloseFunction());
     this.cleanable = cleaner.register(this, state);
   }
+
+  abstract Closer getCloseFunction();
 
   @Override
   public void close() {
     cleanable.clean();
   }
 
-  public NativeHandleType getHandleType() {
-    return state.type;
-  }
-
-  long getHandle() {
-    return state.nativeHandle;
-  }
-
-  private static class State implements Runnable {
-    private final NativeHandleType type;
+  protected static class State implements Runnable {
     long nativeHandle;
+    private final Closer closer;
 
-    State(NativeHandleType type, long nativeHandle) {
-      this.type = type;
+    State(long nativeHandle, Closer closer) {
       this.nativeHandle = nativeHandle;
+      this.closer = closer;
     }
 
     @Override
@@ -58,21 +52,16 @@ public class NativeHandle implements AutoCloseable {
       final long handle = nativeHandle;
       nativeHandle = 0;
       try {
-        switch (type) {
-          case DATABASE:
-            NativeAdbc.closeDatabase(handle);
-            break;
-          case CONNECTION:
-            NativeAdbc.closeConnection(handle);
-            break;
-          case STATEMENT:
-            NativeAdbc.closeStatement(handle);
-            break;
-        }
+        closer.close(handle);
       } catch (NativeAdbcException e) {
         // TODO: convert to ADBC exception first
         throw new RuntimeException(e);
       }
     }
+  }
+
+  @FunctionalInterface
+  interface Closer {
+    void close(long handle) throws NativeAdbcException;
   }
 }
