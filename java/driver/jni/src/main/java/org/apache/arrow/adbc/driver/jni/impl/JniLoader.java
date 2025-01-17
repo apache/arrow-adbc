@@ -66,7 +66,7 @@ public enum JniLoader {
     }
   }
 
-  public NativeHandle openDatabase(Map<String, String> parameters) {
+  public NativeDatabaseHandle openDatabase(Map<String, String> parameters) {
     String[] nativeParameters = new String[parameters.size() * 2];
     int index = 0;
     for (Map.Entry<String, String> parameter : parameters.entrySet()) {
@@ -81,18 +81,16 @@ public enum JniLoader {
     }
   }
 
-  public NativeHandle openConnection(NativeHandle database) {
-    Preconditions.checkArgument(database.getHandleType() == NativeHandleType.DATABASE);
+  public NativeConnectionHandle openConnection(NativeDatabaseHandle database) {
     try {
-      return NativeAdbc.openConnection(database.getHandle());
+      return NativeAdbc.openConnection(database.getDatabaseHandle());
     } catch (NativeAdbcException e) {
       // TODO: convert to AdbcException
       throw new RuntimeException(e);
     }
   }
 
-  public NativeHandle openStatement(NativeHandle connection) {
-    Preconditions.checkArgument(connection.getHandleType() == NativeHandleType.CONNECTION);
+  public NativeStatementHandle openStatement(NativeConnectionHandle connection) {
     try {
       return NativeAdbc.openStatement(connection.getHandle());
     } catch (NativeAdbcException e) {
@@ -101,7 +99,7 @@ public enum JniLoader {
     }
   }
 
-  public NativeQueryResult statementExecuteQuery(NativeHandle statement) throws AdbcException {
+  public NativeQueryResult statementExecuteQuery(NativeStatementHandle statement) throws AdbcException {
     try {
       return NativeAdbc.statementExecuteQuery(statement.getHandle());
     } catch (NativeAdbcException e) {
@@ -110,7 +108,7 @@ public enum JniLoader {
     }
   }
 
-  public void statementSetSqlQuery(NativeHandle statement, String query) throws AdbcException {
+  public void statementSetSqlQuery(NativeStatementHandle statement, String query) throws AdbcException {
     try {
       NativeAdbc.statementSetSqlQuery(statement.getHandle(), query);
     } catch (NativeAdbcException e) {
