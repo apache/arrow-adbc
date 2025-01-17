@@ -17,9 +17,13 @@
 
 package org.apache.arrow.adbc.driver.jni.impl;
 
-public enum NativeHandleType {
-  DATABASE,
-  CONNECTION,
-  STATEMENT,
-  ;
+public class NativeConnectionHandle extends NativeHandle {
+  NativeConnectionHandle(long nativeHandle) {
+    super(nativeHandle);
+  }
+
+  @Override
+  Closer getCloseFunction() {
+    return NativeAdbc::closeConnection;
+  }
 }
