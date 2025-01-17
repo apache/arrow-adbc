@@ -14,11 +14,3 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
-gh>=2.32.0
-jq
-pre-commit
-pygit2
-python
-python-dotenv
-twine
