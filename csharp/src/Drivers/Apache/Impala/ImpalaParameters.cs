@@ -26,13 +26,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         public const string Port = "adbc.impala.port";
         public const string Path = "adbc.impala.path";
         public const string AuthType = "adbc.impala.auth_type";
+        public const string Type = "adbc.impala.type";
         public const string DataTypeConv = "adbc.impala.data_type_conv";
+        public const string TLSOptions = "adbc.impala.tls_options";
+        public const string ConnectTimeoutMilliseconds = "adbc.spark.connect_timeout_ms";
     }
 
-    public static class AuthTypeOptions
+    public static class ImpalaAuthTypeConstants
     {
         public const string None = "none";
         public const string UsernameOnly = "username_only";
         public const string Basic = "basic";
+    }
+
+    public static class ImpalaServerTypeConstants
+    {
+        public const string Http = "http";
+        public const string Standard = "standard";
     }
 }

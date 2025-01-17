@@ -15,33 +15,21 @@
 * limitations under the License.
 */
 
-using System.Threading.Tasks;
-using Xunit;
+using System.Text;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
-    public class NumericValueTests : Common.NumericValueTests<SparkTestConfiguration, SparkTestEnvironment>
+    public class BinaryBooleanValueTests : Common.BinaryBooleanValueTests<ApacheTestConfiguration, ImpalaTestEnvironment>
     {
-        public NumericValueTests(ITestOutputHelper output)
-            : base(output, new SparkTestEnvironment.Factory())
+        public BinaryBooleanValueTests(ITestOutputHelper output)
+            : base(output, new ImpalaTestEnvironment.Factory())
         {
         }
 
-        [SkippableTheory]
-        [InlineData(double.NaN)]
-        [InlineData(double.MinValue)]
-        [InlineData(double.MaxValue)]
-        public override async Task TestDoubleValuesInsertSelectDelete(double value)
+        protected override string? GetFormattedBinaryValue(byte[]? value)
         {
-            await base.TestDoubleValuesInsertSelectDelete(value);
-        }
-
-        [SkippableTheory]
-        [InlineData(float.NaN)]
-        public override async Task TestFloatValuesInsertSelectDelete(float value)
-        {
-            await base.TestFloatValuesInsertSelectDelete(value);
+            return value != null ? $"CAST ('{Encoding.UTF8.GetString(value)}' as BINARY)" : null;
         }
     }
 }

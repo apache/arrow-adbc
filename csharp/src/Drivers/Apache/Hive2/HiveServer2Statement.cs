@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -239,6 +240,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             base.Dispose();
+        }
+
+        protected void ValidateOptions(IReadOnlyDictionary<string, string> properties)
+        {
+            foreach (KeyValuePair<string, string> kvp in properties)
+            {
+                switch (kvp.Key)
+                {
+                    case ApacheParameters.BatchSize:
+                    case ApacheParameters.PollTimeMilliseconds:
+                    case ApacheParameters.QueryTimeoutSeconds:
+                        {
+                            SetOption(kvp.Key, kvp.Value);
+                            break;
+                        }
+                }
+            }
         }
     }
 }

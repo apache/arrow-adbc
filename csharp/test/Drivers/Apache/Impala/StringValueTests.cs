@@ -19,29 +19,16 @@ using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
-    public class NumericValueTests : Common.NumericValueTests<SparkTestConfiguration, SparkTestEnvironment>
+    public class StringValueTests(ITestOutputHelper output)
+        : Common.StringValueTests<ApacheTestConfiguration, ImpalaTestEnvironment>(output, new ImpalaTestEnvironment.Factory())
     {
-        public NumericValueTests(ITestOutputHelper output)
-            : base(output, new SparkTestEnvironment.Factory())
-        {
-        }
-
         [SkippableTheory]
-        [InlineData(double.NaN)]
-        [InlineData(double.MinValue)]
-        [InlineData(double.MaxValue)]
-        public override async Task TestDoubleValuesInsertSelectDelete(double value)
+        [InlineData("String whose length is too long for VARCHAR(10).", new string[] { "Possible loss of precision for target table", "whose length is too long" }, "HY000")]
+        protected async Task TestVarcharExceptionDataImpala(string value, string[] expectedTexts, string? expectedSqlState)
         {
-            await base.TestDoubleValuesInsertSelectDelete(value);
-        }
-
-        [SkippableTheory]
-        [InlineData(float.NaN)]
-        public override async Task TestFloatValuesInsertSelectDelete(float value)
-        {
-            await base.TestFloatValuesInsertSelectDelete(value);
+            await base.TestVarcharExceptionData(value, expectedTexts, expectedSqlState);
         }
     }
 }

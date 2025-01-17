@@ -527,11 +527,11 @@ namespace Apache.Arrow.Adbc.Tests
             switch (value)
             {
                 case double.PositiveInfinity:
-                    return "double('infinity')";
+                    return "CAST('inf' as DOUBLE)";
                 case double.NegativeInfinity:
-                    return "double('-infinity')";
+                    return "CAST('-inf' as DOUBLE)";
                 case double.NaN:
-                    return "double('NaN')";
+                    return "CAST('Nan' as DOUBLE)";
 #if NET472
                 // Double.ToString() rounds max/min values, causing Snowflake to store +/- infinity
                 case double.MaxValue:
@@ -554,11 +554,11 @@ namespace Apache.Arrow.Adbc.Tests
             switch (value)
             {
                 case float.PositiveInfinity:
-                    return "float('infinity')";
+                    return "CAST('inf' as FLOAT)";
                 case float.NegativeInfinity:
-                    return "float('-infinity')";
+                    return "CAST('-inf' as FLOAT)";
                 case float.NaN:
-                    return "float('NaN')";
+                    return "CAST('NaN' as FLOAT)";
 #if NET472
                 // Float.ToString() rounds max/min values, causing Snowflake to store +/- infinity
                 case float.MaxValue:

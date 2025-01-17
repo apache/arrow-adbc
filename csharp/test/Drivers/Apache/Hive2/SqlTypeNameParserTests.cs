@@ -17,11 +17,11 @@
 
 using System;
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
 {
     public class SqlTypeNameParserTests(ITestOutputHelper outputHelper)
     {
@@ -232,7 +232,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [Fact()]
         internal void CanDetectInvalidReturnType()
         {
-            Func<object?> testCode = () => SqlTypeNameParser<SqlDecimalParserResult>.Parse("INTEGER", (int)SparkConnection.ColumnTypeId.INTEGER);
+            Func<object?> testCode = () => SqlTypeNameParser<SqlDecimalParserResult>.Parse("INTEGER", (int)HiveServer2Connection.ColumnTypeId.INTEGER);
             _outputHelper.WriteLine(Assert.Throws<InvalidCastException>(testCode).Message);
         }
 

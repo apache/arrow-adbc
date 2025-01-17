@@ -15,30 +15,19 @@
 * limitations under the License.
 */
 
-using System.Collections.Generic;
-using Apache.Arrow.Adbc.Drivers.Apache.Impala;
-using Apache.Arrow.Adbc.Tests.Xunit;
-using Xunit;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
-    [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
-    public class ImpalaTests : TestBase<ApacheTestConfiguration, ImpalaTestEnvironment>
+    public class DateTimeValueTests : Common.DateTimeValueTests<ApacheTestConfiguration, ImpalaTestEnvironment>
     {
-        public ImpalaTests(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new ImpalaTestEnvironment.Factory())
-        {
-        }
+        public DateTimeValueTests(ITestOutputHelper output)
+            : base(output, new ImpalaTestEnvironment.Factory())
+        { }
 
-        [SkippableFact, Order(1)]
-        public void CanExecuteQuery()
+        protected override string GetFormattedTimestampValue(string value)
         {
-            AdbcStatement statement = Connection.CreateStatement();
-            statement.SqlQuery = TestConfiguration.Query;
-            QueryResult queryResult = statement.ExecuteQuery();
-
-            DriverTests.CanExecuteQuery(queryResult, TestConfiguration.ExpectedResultsCount);
+            return $"CAST({QuoteValue(value)} as TIMESTAMP)";
         }
     }
 }

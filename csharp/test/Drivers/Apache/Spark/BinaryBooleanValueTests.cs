@@ -15,6 +15,9 @@
 * limitations under the License.
 */
 
+using System;
+using System.Threading.Tasks;
+using Xunit;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
@@ -24,6 +27,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public BinaryBooleanValueTests(ITestOutputHelper output)
             : base(output, new SparkTestEnvironment.Factory())
         {
+        }
+
+        [SkippableTheory]
+        [MemberData(nameof(ByteArrayData), 2)]
+        [MemberData(nameof(ByteArrayData), 1024)]
+        public override Task TestBinaryData(byte[]? value)
+        {
+            return base.TestBinaryData(value);
+        }
+
+        [SkippableTheory]
+        [InlineData("CAST(NULL AS MAP<STRING, INT>)")]
+        [InlineData("CAST(NULL AS STRUCT<NAME: STRING>)")]
+        [InlineData("CAST(NULL AS ARRAY<INT>)")]
+        public override Task TestNullData(string projectionClause)
+        {
+            return base.TestNullData(projectionClause);
+        }
+
+        protected override string? GetFormattedBinaryValue(byte[]? value)
+        {
+            return value != null ? $"X'{BitConverter.ToString(value).Replace("-", "")}'" : null;
         }
     }
 }

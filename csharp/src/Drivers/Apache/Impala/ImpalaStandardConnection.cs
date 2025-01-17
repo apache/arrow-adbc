@@ -17,18 +17,21 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
-    internal class SparkStandardConnection : SparkHttpConnection
+    internal class ImpalaStandardConnection : ImpalaConnection
     {
-        public SparkStandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public ImpalaStandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }
 
@@ -36,61 +39,68 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
-            Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
+            Properties.TryGetValue(ImpalaParameters.AuthType, out string? authType);
+            bool isValidAuthType = ImpalaAuthTypeParser.TryParse(authType, out ImpalaAuthType authTypeValue);
             switch (authTypeValue)
             {
-                case SparkAuthType.None:
+                case ImpalaAuthType.None:
                     break;
-                case SparkAuthType.UsernameOnly:
+                case ImpalaAuthType.UsernameOnly:
                     if (string.IsNullOrWhiteSpace(username))
                         throw new ArgumentException(
-                            $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.UsernameOnly}' but parameters '{AdbcOptions.Username}' is not set. Please provide a value for this parameter.",
+                            $"Parameter '{ImpalaParameters.AuthType}' is set to '{ImpalaAuthTypeConstants.UsernameOnly}' but parameters '{AdbcOptions.Username}' is not set. Please provide a value for this parameter.",
                             nameof(Properties));
                     break;
-                case SparkAuthType.Basic:
+                case ImpalaAuthType.Basic:
                     if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                         throw new ArgumentException(
-                            $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.Basic}' but parameters '{AdbcOptions.Username}' or '{AdbcOptions.Password}' are not set. Please provide a values for these parameters.",
+                            $"Parameter '{ImpalaParameters.AuthType}' is set to '{ImpalaAuthTypeConstants.Basic}' but parameters '{AdbcOptions.Username}' or '{AdbcOptions.Password}' are not set. Please provide a values for these parameters.",
                             nameof(Properties));
                     break;
-                case SparkAuthType.Empty:
+                case ImpalaAuthType.Empty:
                     if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                         throw new ArgumentException(
-                            $"Parameters must include valid authentiation settings. Please provide either '{SparkParameters.Token}'; or '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.",
+                            $"Parameters must include valid authentiation settings. Please provide '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.",
                             nameof(Properties));
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
+                    throw new ArgumentOutOfRangeException(ImpalaParameters.AuthType, authType, $"Unsupported {ImpalaParameters.AuthType} value.");
             }
         }
 
         protected override void ValidateConnection()
         {
             // HostName is required parameter
-            Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
+            Properties.TryGetValue(ImpalaParameters.HostName, out string? hostName);
             if (Uri.CheckHostName(hostName) == UriHostNameType.Unknown)
             {
                 throw new ArgumentException(
-                    $"Required parameter '{SparkParameters.HostName}' is missing or invalid. Please provide a valid hostname for the data source.",
+                    $"Required parameter '{ImpalaParameters.HostName}' is missing or invalid. Please provide a valid hostname for the data source.",
                     nameof(Properties));
             }
 
             // Validate port range
-            Properties.TryGetValue(SparkParameters.Port, out string? port);
+            Properties.TryGetValue(ImpalaParameters.Port, out string? port);
             if (int.TryParse(port, out int portNumber) && (portNumber <= IPEndPoint.MinPort || portNumber > IPEndPoint.MaxPort))
                 throw new ArgumentOutOfRangeException(
                     nameof(Properties),
                     port,
-                    $"Parameter '{SparkParameters.Port}' value is not in the valid range of 1 .. {IPEndPoint.MaxPort}.");
+                    $"Parameter '{ImpalaParameters.Port}' value is not in the valid range of {IPEndPoint.MinPort + 1} .. {IPEndPoint.MaxPort}.");
+        }
 
+        protected override void ValidateOptions()
+        {
+            Properties.TryGetValue(ImpalaParameters.DataTypeConv, out string? dataTypeConv);
+            DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
+            Properties.TryGetValue(ImpalaParameters.TLSOptions, out string? tlsOptions);
+            TlsOptions = TlsOptionsParser.Parse(tlsOptions);
         }
 
         protected override TTransport CreateTransport()
         {
             // Assumption: hostName and port have already been validated.
-            Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
-            Properties.TryGetValue(SparkParameters.Port, out string? port);
+            Properties.TryGetValue(ImpalaParameters.HostName, out string? hostName);
+            Properties.TryGetValue(ImpalaParameters.Port, out string? port);
 
             // Delay the open connection until later.
             bool connectClient = false;
@@ -100,10 +110,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
         {
-            return await base.CreateProtocolAsync(transport, cancellationToken);
-
-            //if (!transport.IsOpen) await transport.OpenAsync(CancellationToken.None);
-            //return new TBinaryProtocol(transport);
+            if (!transport.IsOpen) await transport.OpenAsync(cancellationToken);
+            return new TBinaryProtocol(transport);
         }
 
         protected override TOpenSessionReq CreateSessionRequest()
@@ -111,27 +119,32 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // Assumption: user name and password have already been validated.
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
-            Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
-            TOpenSessionReq request = base.CreateSessionRequest();
+            Properties.TryGetValue(ImpalaParameters.AuthType, out string? authType);
+            bool isValidAuthType = ImpalaAuthTypeParser.TryParse(authType, out ImpalaAuthType authTypeValue);
+            TOpenSessionReq request = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7)
+            {
+                CanUseMultipleCatalogs = true,
+            };
             switch (authTypeValue)
             {
-                case SparkAuthType.UsernameOnly:
-                case SparkAuthType.Basic:
-                case SparkAuthType.Empty when !string.IsNullOrEmpty(username):
+                case ImpalaAuthType.UsernameOnly:
+                case ImpalaAuthType.Basic:
+                case ImpalaAuthType.Empty when !string.IsNullOrEmpty(username):
                     request.Username = username!;
                     break;
             }
             switch (authTypeValue)
             {
-                case SparkAuthType.Basic:
-                case SparkAuthType.Empty when !string.IsNullOrEmpty(password):
+                case ImpalaAuthType.Basic:
+                case ImpalaAuthType.Empty when !string.IsNullOrEmpty(password):
                     request.Password = password!;
                     break;
             }
             return request;
         }
 
-        internal override SparkServerType ServerType => SparkServerType.Standard;
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+
+        internal override ImpalaServerType ServerType => ImpalaServerType.Standard;
     }
 }
