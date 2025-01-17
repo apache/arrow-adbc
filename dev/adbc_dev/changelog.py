@@ -126,7 +126,7 @@ def main():
 
     commits = list_commits(repo, args.from_rev, args.to_rev)
     changelog = format_changelog(args.name, release, commits)
-    print(changelog)
+    print(changelog, end="")
 
     return 0
 
