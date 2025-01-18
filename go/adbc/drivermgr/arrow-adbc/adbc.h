@@ -152,15 +152,26 @@ struct ArrowArrayStream {
 // Storage class macros for Windows
 // Allow overriding/aliasing with application-defined macros
 #if !defined(ADBC_EXPORT)
-#if defined(_WIN32)
-#if defined(ADBC_EXPORTING)
-#define ADBC_EXPORT __declspec(dllexport)
-#else
-#define ADBC_EXPORT __declspec(dllimport)
-#endif  // defined(ADBC_EXPORTING)
-#else
-#define ADBC_EXPORT
-#endif  // defined(_WIN32)
+  #if defined(_WIN32)
+    #if defined(ADBC_EXPORTING)
+      #define ADBC_EXPORT __declspec(dllexport)
+    #else
+      #define ADBC_EXPORT __declspec(dllimport)
+    #endif  // defined(ADBC_EXPORTING)
+
+    #if defined(__cplusplus)
+      #if defined(ADBC_EXPORTING)
+        #define ADBC_EXPORT_STRUCT __declspec(dllexport)
+      #else
+        #define ADBC_EXPORT_STRUCT __declspec(dllimport)
+      #endif  // defined(ADBC_EXPORTING)
+    #else
+        #define ADBC_EXPORT_STRUCT
+    #endif  // defined(__cplusplus)
+  #else
+    #define ADBC_EXPORT
+    #define ADBC_EXPORT_STRUCT
+  #endif  // defined(_WIN32)
 #endif  // !defined(ADBC_EXPORT)
 
 /// \defgroup adbc-error-handling Error Handling
@@ -266,7 +277,7 @@ typedef uint8_t AdbcStatusCode;
 /// ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.  Clients are required to initialize
 /// this struct to avoid the possibility of uninitialized values confusing the
 /// driver.
-struct ADBC_EXPORT AdbcError {
+struct ADBC_EXPORT_STRUCT AdbcError {
   /// \brief The error message.
   char* message;
 
@@ -347,7 +358,7 @@ struct ADBC_EXPORT AdbcError {
 /// called.
 ///
 /// \since ADBC API revision 1.1.0
-struct ADBC_EXPORT AdbcErrorDetail {
+struct ADBC_EXPORT_STRUCT AdbcErrorDetail {
   /// \brief The metadata key.
   const char* key;
   /// \brief The binary metadata value.
@@ -805,7 +816,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \brief An instance of a database.
 ///
 /// Must be kept alive as long as any connections exist.
-struct ADBC_EXPORT AdbcDatabase {
+struct ADBC_EXPORT_STRUCT AdbcDatabase {
   /// \brief Opaque implementation-defined state.
   /// This field is NULLPTR iff the connection is unintialized/freed.
   void* private_data;
@@ -828,7 +839,7 @@ struct ADBC_EXPORT AdbcDatabase {
 /// Connections are not required to be thread-safe, but they can be
 /// used from multiple threads so long as clients take care to
 /// serialize accesses to a connection.
-struct ADBC_EXPORT AdbcConnection {
+struct ADBC_EXPORT_STRUCT AdbcConnection {
   /// \brief Opaque implementation-defined state.
   /// This field is NULLPTR iff the connection is unintialized/freed.
   void* private_data;
@@ -866,7 +877,7 @@ struct ADBC_EXPORT AdbcConnection {
 /// Statements are not required to be thread-safe, but they can be
 /// used from multiple threads so long as clients take care to
 /// serialize accesses to a statement.
-struct ADBC_EXPORT AdbcStatement {
+struct ADBC_EXPORT_STRUCT AdbcStatement {
   /// \brief Opaque implementation-defined state.
   /// This field is NULLPTR iff the connection is unintialized/freed.
   void* private_data;
@@ -933,7 +944,7 @@ struct AdbcPartitions {
 /// initialization routines. Drivers should populate this struct, and
 /// applications can call ADBC functions through this struct, without
 /// worrying about multiple definitions of the same symbol.
-struct ADBC_EXPORT AdbcDriver {
+struct ADBC_EXPORT_STRUCT AdbcDriver {
   /// \brief Opaque driver-defined state.
   /// This field is NULL if the driver is unintialized/freed (but
   /// it need not have a value even if the driver is initialized).
