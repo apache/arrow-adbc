@@ -28,7 +28,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  * <p>Connections are not required to be thread-safe, but they can be used from multiple threads so
  * long as clients take care to serialize accesses to a connection.
  */
-public interface AdbcConnection extends AutoCloseable, AdbcOptions {
+public interface AdbcConnection extends AdbcCloseable, AdbcOptions {
   /**
    * Cancel execution of a query.
    *
