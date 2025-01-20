@@ -77,7 +77,7 @@ services:
 
   ############################ Python conda ##################################
 
-  # Must be run as docker-compose run -e HOST_USER_ID=$(id -u) python-conda
+  # Must be run as docker compose run -e HOST_USER_ID=$(id -u) python-conda
   python-conda:
     image: condaforge/linux-anvil-cos7-x86_64
     volumes:
