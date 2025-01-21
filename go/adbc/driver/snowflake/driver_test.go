@@ -37,9 +37,9 @@ import (
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
-	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/decimal128"
@@ -302,9 +302,9 @@ func withQuirks(t *testing.T, fn func(*SnowflakeQuirks)) {
 
 func TestValidation(t *testing.T) {
 	withQuirks(t, func(q *SnowflakeQuirks) {
-		suite.Run(t, &validation.DatabaseTests{Quirks: q})
-		suite.Run(t, &validation.ConnectionTests{Quirks: q})
-		suite.Run(t, &validation.StatementTests{Quirks: q})
+		suite.Run(t, &internal.DatabaseTests{Quirks: q})
+		suite.Run(t, &internal.ConnectionTests{Quirks: q})
+		suite.Run(t, &internal.StatementTests{Quirks: q})
 	})
 }
 

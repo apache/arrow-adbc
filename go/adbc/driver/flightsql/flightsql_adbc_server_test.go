@@ -38,7 +38,6 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
-	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
@@ -1878,7 +1877,7 @@ type GetObjectsTests struct {
 	suite.Suite
 
 	Driver adbc.Driver
-	Quirks validation.DriverQuirks
+	Quirks internal.DriverQuirks
 	Cnxn   adbc.Connection
 	ctx    context.Context
 	DB     adbc.Database

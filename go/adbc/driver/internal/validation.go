@@ -19,7 +19,7 @@
 // driver development for ADBC drivers. It provides a series of utilities
 // and defined tests that can be used to validate a driver follows the
 // correct and expected behavior.
-package validation
+package internal
 
 import (
 	"context"
