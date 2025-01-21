@@ -23,6 +23,7 @@ package internal
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -606,6 +607,200 @@ func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 			c.Equal(tt.expectFindTable, foundTable)
 			c.ElementsMatch(tt.expectedColnames, colnames)
 			c.ElementsMatch(tt.expectedPositions, positions)
+		})
+	}
+}
+
+func (c *ConnectionTests) TestMetadataGetObjectsColumnsXdbc() {
+	ctx := context.Background()
+	cnxn, _ := c.DB.Open(ctx)
+	defer cnxn.Close()
+
+	ingestTableName := "bulk_ingest"
+
+	c.Require().NoError(c.Quirks.DropTable(cnxn, ingestTableName))
+
+	mdInts := make(map[string]string)
+	mdInts["TYPE_NAME"] = "NUMERIC"
+	mdInts["ORDINAL_POSITION"] = "1"
+	mdInts["XDBC_DATA_TYPE"] = strconv.Itoa(int(arrow.PrimitiveTypes.Int64.ID()))
+	mdInts["XDBC_TYPE_NAME"] = "NUMERIC"
+	mdInts["XDBC_SQL_DATA_TYPE"] = strconv.Itoa(int(XdbcDataType_XDBC_BIGINT))
+	mdInts["XDBC_NULLABLE"] = strconv.FormatBool(true)
+	mdInts["XDBC_IS_NULLABLE"] = "YES"
+	mdInts["XDBC_PRECISION"] = strconv.Itoa(38)
+	mdInts["XDBC_SCALE"] = strconv.Itoa(0)
+	mdInts["XDBC_NUM_PREC_RADIX"] = strconv.Itoa(10)
+
+	mdStrings := make(map[string]string)
+	mdStrings["TYPE_NAME"] = "TEXT"
+	mdStrings["ORDINAL_POSITION"] = "2"
+	mdStrings["XDBC_DATA_TYPE"] = strconv.Itoa(int(arrow.BinaryTypes.String.ID()))
+	mdStrings["XDBC_TYPE_NAME"] = "TEXT"
+	mdStrings["XDBC_SQL_DATA_TYPE"] = strconv.Itoa(int(XdbcDataType_XDBC_VARCHAR))
+	mdStrings["XDBC_IS_NULLABLE"] = "YES"
+	mdStrings["CHARACTER_MAXIMUM_LENGTH"] = strconv.Itoa(16777216)
+	mdStrings["XDBC_CHAR_OCTET_LENGTH"] = strconv.Itoa(16777216)
+
+	rec, _, err := array.RecordFromJSON(c.Quirks.Alloc(), arrow.NewSchema(
+		[]arrow.Field{
+			{Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true, Metadata: arrow.MetadataFrom(mdInts)},
+			{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true, Metadata: arrow.MetadataFrom(mdStrings)},
+		}, nil), strings.NewReader(`[
+			{"int64s": 42, "strings": "foo"},
+			{"int64s": -42, "strings": null},
+			{"int64s": null, "strings": ""}
+		]`))
+	c.Require().NoError(err)
+	defer rec.Release()
+
+	c.Require().NoError(c.Quirks.CreateSampleTable("bulk_ingest", rec))
+
+	tests := []struct {
+		name             string
+		colnames         []string
+		positions        []string
+		dataTypes        []string
+		comments         []string
+		xdbcDataType     []string
+		xdbcTypeName     []string
+		xdbcSqlDataType  []string
+		xdbcNullable     []string
+		xdbcIsNullable   []string
+		xdbcScale        []string
+		xdbcNumPrecRadix []string
+		xdbcCharMaxLen   []string
+		xdbcCharOctetLen []string
+		xdbcDateTimeSub  []string
+	}{
+		{
+			"BASIC",                       // name
+			[]string{"int64s", "strings"}, // colNames
+			[]string{"1", "2"},            // positions
+			[]string{"NUMBER", "TEXT"},    // dataTypes
+			[]string{"", ""},              // comments
+			[]string{"9", "13"},           // xdbcDataType
+			[]string{"NUMBER", "TEXT"},    // xdbcTypeName
+			[]string{"-5", "12"},          // xdbcSqlDataType
+			[]string{"1", "1"},            // xdbcNullable
+			[]string{"YES", "YES"},        // xdbcIsNullable
+			[]string{"0", "0"},            // xdbcScale
+			[]string{"10", "0"},           // xdbcNumPrecRadix
+			[]string{"38", "16777216"},    // xdbcCharMaxLen (xdbcPrecision)
+			[]string{"0", "16777216"},     // xdbcCharOctetLen
+			[]string{"-5", "12", "0"},     // xdbcDateTimeSub
+		},
+	}
+
+	for _, tt := range tests {
+		c.Run(tt.name, func() {
+			rdr, err := cnxn.GetObjects(ctx, adbc.ObjectDepthColumns, nil, nil, nil, nil, nil)
+			c.Require().NoError(err)
+			defer rdr.Release()
+
+			c.Truef(adbc.GetObjectsSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.GetObjectsSchema, rdr.Schema())
+			c.True(rdr.Next())
+			rec := rdr.Record()
+			c.Greater(rec.NumRows(), int64(0))
+			var (
+				foundExpected        = false
+				catalogDbSchemasList = rec.Column(1).(*array.List)
+				catalogDbSchemas     = catalogDbSchemasList.ListValues().(*array.Struct)
+				dbSchemaNames        = catalogDbSchemas.Field(0).(*array.String)
+				dbSchemaTablesList   = catalogDbSchemas.Field(1).(*array.List)
+				dbSchemaTables       = dbSchemaTablesList.ListValues().(*array.Struct)
+				tableColumnsList     = dbSchemaTables.Field(2).(*array.List)
+				tableColumns         = tableColumnsList.ListValues().(*array.Struct)
+
+				colnames          = make([]string, 0)
+				positions         = make([]string, 0)
+				comments          = make([]string, 0)
+				xdbcDataTypes     = make([]string, 0)
+				dataTypes         = make([]string, 0)
+				xdbcTypeNames     = make([]string, 0)
+				xdbcCharMaxLens   = make([]string, 0)
+				xdbcScales        = make([]string, 0)
+				xdbcNumPrecRadixs = make([]string, 0)
+				xdbcNullables     = make([]string, 0)
+				xdbcSqlDataTypes  = make([]string, 0)
+				xdbcDateTimeSub   = make([]string, 0)
+				xdbcCharOctetLen  = make([]string, 0)
+				xdbcIsNullables   = make([]string, 0)
+			)
+			for row := 0; row < int(rec.NumRows()); row++ {
+				dbSchemaIdxStart, dbSchemaIdxEnd := catalogDbSchemasList.ValueOffsets(row)
+				for dbSchemaIdx := dbSchemaIdxStart; dbSchemaIdx < dbSchemaIdxEnd; dbSchemaIdx++ {
+					schemaName := dbSchemaNames.Value(int(dbSchemaIdx))
+					tblIdxStart, tblIdxEnd := dbSchemaTablesList.ValueOffsets(int(dbSchemaIdx))
+					for tblIdx := tblIdxStart; tblIdx < tblIdxEnd; tblIdx++ {
+						tableName := dbSchemaTables.Field(0).(*array.String).Value(int(tblIdx))
+
+						if strings.EqualFold(schemaName, c.Quirks.DBSchema()) && strings.EqualFold("bulk_ingest", tableName) {
+							foundExpected = true
+
+							colIdxStart, colIdxEnd := tableColumnsList.ValueOffsets(int(tblIdx))
+							for colIdx := colIdxStart; colIdx < colIdxEnd; colIdx++ {
+								name := tableColumns.Field(0).(*array.String).Value(int(colIdx))
+								colnames = append(colnames, strings.ToLower(name))
+
+								pos := tableColumns.Field(1).(*array.Int32).Value(int(colIdx))
+								positions = append(positions, strconv.Itoa(int(pos)))
+
+								comments = append(comments, tableColumns.Field(2).(*array.String).Value(int(colIdx)))
+
+								xdt := tableColumns.Field(3).(*array.Int16).Value(int(colIdx))
+								xdbcDataTypes = append(xdbcDataTypes, strconv.Itoa(int(xdt)))
+
+								dataType := tableColumns.Field(4).(*array.String).Value(int(colIdx))
+								dataTypes = append(dataTypes, dataType)
+								xdbcTypeNames = append(xdbcTypeNames, dataType)
+
+								// these are column size attributes used for either precision for numbers OR the length for text
+								maxLenOrPrecision := tableColumns.Field(5).(*array.Int32).Value(int(colIdx))
+								xdbcCharMaxLens = append(xdbcCharMaxLens, strconv.Itoa(int(maxLenOrPrecision)))
+
+								scale := tableColumns.Field(6).(*array.Int16).Value(int(colIdx))
+								xdbcScales = append(xdbcScales, strconv.Itoa(int(scale)))
+
+								radix := tableColumns.Field(7).(*array.Int16).Value(int(colIdx))
+								xdbcNumPrecRadixs = append(xdbcNumPrecRadixs, strconv.Itoa(int(radix)))
+
+								isnull := tableColumns.Field(8).(*array.Int16).Value(int(colIdx))
+								xdbcNullables = append(xdbcNullables, strconv.Itoa(int(isnull)))
+
+								sqlType := tableColumns.Field(10).(*array.Int16).Value(int(colIdx))
+								xdbcSqlDataTypes = append(xdbcSqlDataTypes, strconv.Itoa(int(sqlType)))
+
+								dtPrec := tableColumns.Field(11).(*array.Int16).Value(int(colIdx))
+								xdbcDateTimeSub = append(xdbcSqlDataTypes, strconv.Itoa(int(dtPrec)))
+
+								charOctetLen := tableColumns.Field(12).(*array.Int32).Value(int(colIdx))
+								xdbcCharOctetLen = append(xdbcCharOctetLen, strconv.Itoa(int(charOctetLen)))
+
+								xdbcIsNullables = append(xdbcIsNullables, tableColumns.Field(13).(*array.String).Value(int(colIdx)))
+							}
+						}
+					}
+				}
+			}
+
+			c.False(rdr.Next())
+			c.True(foundExpected)
+			c.Equal(tt.colnames, colnames)                  // colNames
+			c.Equal(tt.positions, positions)                // positions
+			c.Equal(tt.comments, comments)                  // comments
+			c.Equal(tt.xdbcDataType, xdbcDataTypes)         // xdbcDataType
+			c.Equal(tt.dataTypes, dataTypes)                // dataTypes
+			c.Equal(tt.xdbcTypeName, xdbcTypeNames)         // xdbcTypeName
+			c.Equal(tt.xdbcCharMaxLen, xdbcCharMaxLens)     // xdbcCharMaxLen
+			c.Equal(tt.xdbcScale, xdbcScales)               // xdbcScale
+			c.Equal(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs) // xdbcNumPrecRadix
+			c.Equal(tt.xdbcNullable, xdbcNullables)         // xdbcNullable
+			c.Equal(tt.xdbcSqlDataType, xdbcSqlDataTypes)   // xdbcSqlDataType
+			c.Equal(tt.xdbcDateTimeSub, xdbcDateTimeSub)    // xdbcDateTimeSub
+			c.Equal(tt.xdbcCharOctetLen, xdbcCharOctetLen)  // xdbcCharOctetLen
+			c.Equal(tt.xdbcIsNullable, xdbcIsNullables)     // xdbcIsNullable
+
 		})
 	}
 }
