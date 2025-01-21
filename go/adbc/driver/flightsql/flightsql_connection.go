@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -57,10 +58,58 @@ type connectionImpl struct {
 	supportInfo support
 }
 
+func initMetadataHandlersOverrides() internal.MetadataToHandlers {
+	metadataHandlers := make(internal.MetadataToHandlers)
+
+	metadataHandlers[internal.XDBC_TYPE_NAME] = func(column arrow.Field, builder array.Builder) error {
+		if column.HasMetadata() {
+			md := column.Metadata
+			b := builder.(*array.StringBuilder)
+			if typeName, ok := md.GetValue("ARROW:FLIGHT:SQL:TYPE_NAME"); ok {
+				b.Append(typeName)
+			} else if typeName, ok = md.GetValue(internal.XDBC_TYPE_NAME); ok {
+				b.Append(typeName)
+			} else {
+				b.AppendNull()
+			}
+		}
+		return nil
+	}
+	metadataHandlers[internal.XDBC_SQL_DATA_TYPE] = func(column arrow.Field, builder array.Builder) error {
+		if column.HasMetadata() {
+			md := column.Metadata
+			b := builder.(*array.Int16Builder)
+			if strSqlDataTypeId, ok := md.GetValue(internal.XDBC_SQL_DATA_TYPE); ok {
+				sqlDataTypeId64, _ := strconv.ParseInt(strSqlDataTypeId, 10, 16)
+				b.Append(int16(sqlDataTypeId64))
+			} else {
+				b.Append(int16(internal.ToXdbcDataType(column.Type)))
+			}
+		}
+		return nil
+	}
+
+	// metadataHandlers[internal.XDBC_DATA_TYPE] = func(column arrow.Field, builder array.Builder) error {
+	// 	if column.HasMetadata() {
+	// 		md := column.Metadata
+	// 		b := builder.(*array.Int16Builder)
+	// 		if strDataTypeId, ok := md.GetValue(internal.XDBC_DATA_TYPE); ok {
+	// 			dataTypeId64, _ := strconv.ParseInt(strDataTypeId, 10, 16)
+	// 			b.Append(int16(dataTypeId64))
+	// 		} else {
+	// 			b.Append(int16(internal.ToXdbcDataType(column.Type)))
+	// 		}
+	// 	}
+	// 	return nil
+	// }
+
+	return metadataHandlers
+}
+
 func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
 	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
-	if err := g.Init(c.Base().Alloc, c.GetObjectsDbSchemas, c.GetObjectsTables); err != nil {
+	if err := g.Init(c.Base().Alloc, c.GetObjectsDbSchemas, c.GetObjectsTables, initMetadataHandlersOverrides()); err != nil {
 		return nil, err
 	}
 	defer g.Release()
