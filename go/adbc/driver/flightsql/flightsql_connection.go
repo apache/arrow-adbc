@@ -60,12 +60,29 @@ type connectionImpl struct {
 
 func initMetadataHandlersOverrides() internal.MetadataToHandlers {
 	metadataHandlers := make(internal.MetadataToHandlers)
-
+	metadataHandlers[internal.XDBC_IS_AUTOINCREMENT] = func(column arrow.Field, builder array.Builder) error {
+		var err error
+		if column.HasMetadata() {
+			md := column.Metadata
+			b := builder.(*array.BooleanBuilder)
+			var parsed bool
+			if typeName, ok := md.GetValue(flightsql.IsAutoIncrementKey); ok {
+				parsed, err = strconv.ParseBool(typeName)
+				b.Append(parsed)
+			} else if typeName, ok = md.GetValue(internal.XDBC_IS_AUTOINCREMENT); ok {
+				parsed, err = strconv.ParseBool(typeName)
+				b.Append(parsed)
+			} else {
+				b.AppendNull()
+			}
+		}
+		return err
+	}
 	metadataHandlers[internal.XDBC_TYPE_NAME] = func(column arrow.Field, builder array.Builder) error {
 		if column.HasMetadata() {
 			md := column.Metadata
 			b := builder.(*array.StringBuilder)
-			if typeName, ok := md.GetValue("ARROW:FLIGHT:SQL:TYPE_NAME"); ok {
+			if typeName, ok := md.GetValue(flightsql.TypeNameKey); ok {
 				b.Append(typeName)
 			} else if typeName, ok = md.GetValue(internal.XDBC_TYPE_NAME); ok {
 				b.Append(typeName)
@@ -76,32 +93,20 @@ func initMetadataHandlersOverrides() internal.MetadataToHandlers {
 		return nil
 	}
 	metadataHandlers[internal.XDBC_SQL_DATA_TYPE] = func(column arrow.Field, builder array.Builder) error {
+		var err error
 		if column.HasMetadata() {
 			md := column.Metadata
 			b := builder.(*array.Int16Builder)
+			var sqlDataTypeId64 int64
 			if strSqlDataTypeId, ok := md.GetValue(internal.XDBC_SQL_DATA_TYPE); ok {
-				sqlDataTypeId64, _ := strconv.ParseInt(strSqlDataTypeId, 10, 16)
+				sqlDataTypeId64, err = strconv.ParseInt(strSqlDataTypeId, 10, 16)
 				b.Append(int16(sqlDataTypeId64))
 			} else {
 				b.Append(int16(internal.ToXdbcDataType(column.Type)))
 			}
 		}
-		return nil
+		return err
 	}
-
-	// metadataHandlers[internal.XDBC_DATA_TYPE] = func(column arrow.Field, builder array.Builder) error {
-	// 	if column.HasMetadata() {
-	// 		md := column.Metadata
-	// 		b := builder.(*array.Int16Builder)
-	// 		if strDataTypeId, ok := md.GetValue(internal.XDBC_DATA_TYPE); ok {
-	// 			dataTypeId64, _ := strconv.ParseInt(strDataTypeId, 10, 16)
-	// 			b.Append(int16(dataTypeId64))
-	// 		} else {
-	// 			b.Append(int16(internal.ToXdbcDataType(column.Type)))
-	// 		}
-	// 	}
-	// 	return nil
-	// }
 
 	return metadataHandlers
 }
