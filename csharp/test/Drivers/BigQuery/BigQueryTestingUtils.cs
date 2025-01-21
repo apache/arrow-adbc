@@ -83,7 +83,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             parameters.Add(BigQueryParameters.IncludeConstraintsWithGetObjects, testConfiguration.IncludeTableConstraints.ToString());
 
-            parameters.Add(BigQueryParameters.IncludePublicProjectIds, testConfiguration.IncludePublicProjectIds.ToString());
+            parameters.Add(BigQueryParameters.IncludePublicProjectId, testConfiguration.IncludePublicProjectId.ToString());
 
             if (!string.IsNullOrEmpty(testConfiguration.LargeResultsDestinationTable))
             {

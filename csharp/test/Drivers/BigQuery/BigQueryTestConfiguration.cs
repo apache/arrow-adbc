@@ -57,8 +57,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("includeTableConstraints")]
         public bool IncludeTableConstraints { get; set; }
 
-        [JsonPropertyName("includePublicProjectIds")]
-        public bool IncludePublicProjectIds { get; set; } = false;
+        [JsonPropertyName("includePublicProjectId")]
+        public bool IncludePublicProjectId { get; set; } = false;
 
         [JsonPropertyName("timeoutMinutes")]
         public int? TimeoutMinutes { get; set; }

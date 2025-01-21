@@ -66,7 +66,7 @@ https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/G
 **adbc.bigquery.project_id**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The [Project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects) used for accessing BigQuery. If not specified, will default to detect the projectIds the credentials have access to.
 
-**adbc.bigquery.include_public_project_ids**<br>
+**adbc.bigquery.include_public_project_id**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Include the `bigquery-public-data` project ID with the list of project IDs.
 
 **adbc.bigquery.refresh_token**<br>

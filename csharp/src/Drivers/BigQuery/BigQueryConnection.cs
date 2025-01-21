@@ -86,7 +86,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
                 projectId = BigQueryConstants.DetectProjectId;
 
-            if (this.properties.TryGetValue(BigQueryParameters.IncludePublicProjectIds, out string? result))
+            if (this.properties.TryGetValue(BigQueryParameters.IncludePublicProjectId, out string? result))
             {
                 if (!string.IsNullOrEmpty(result))
                     includePublicProjectIds = Convert.ToBoolean(result);
@@ -311,7 +311,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             StringArray.Builder catalogNameBuilder = new StringArray.Builder();
             List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>();
-
             string catalogRegexp = PatternToRegEx(catalogPattern);
             PagedEnumerable<ProjectList, CloudProject>? catalogs = this.client?.ListProjects();
 

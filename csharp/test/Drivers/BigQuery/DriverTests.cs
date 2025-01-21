@@ -107,8 +107,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(3)]
         public void CanGetObjectsAllCatalogs()
         {
-            // need to add the database
-
             AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(_testConfiguration);
 
             IArrowArrayStream stream = adbcConnection.GetObjects(
@@ -121,7 +119,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, null);
 
             foreach (AdbcCatalog ct in catalogs)
             {
