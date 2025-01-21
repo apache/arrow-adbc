@@ -23,6 +23,7 @@ using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 {
@@ -37,12 +38,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     public class DriverTests
     {
         BigQueryTestConfiguration _testConfiguration;
+        readonly ITestOutputHelper? outputHelper;
 
-        public DriverTests()
+        public DriverTests(ITestOutputHelper? outputHelper)
         {
+            this.outputHelper = outputHelper;
+
             Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
             _testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
-
         }
 
         /// <summary>
@@ -95,6 +98,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
                 StringArray stringArray = (StringArray)valueArray.Fields[0];
                 Console.WriteLine($"{value}={stringArray.GetString(i)}");
+            }
+        }
+
+        /// <summary>
+        /// Validates if the driver can call GetObjects.
+        /// </summary>
+        [SkippableFact, Order(3)]
+        public void CanGetObjectsAllCatalogs()
+        {
+            // need to add the database
+
+            AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(_testConfiguration);
+
+            IArrowArrayStream stream = adbcConnection.GetObjects(
+                    depth: AdbcConnection.GetObjectsDepth.Catalogs,
+                    catalogPattern: null,
+                    dbSchemaPattern: null,
+                    tableNamePattern: null,
+                    tableTypes: BigQueryTableTypes.TableTypes,
+                    columnNamePattern: null);
+
+            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, schemaName);
+
+            foreach (AdbcCatalog ct in catalogs)
+            {
+                this.outputHelper?.WriteLine(ct.Name);
             }
         }
 

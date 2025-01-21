@@ -64,7 +64,10 @@ https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/G
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the [DestinationTable](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_DestinationTable) value of the QueryOptions if configured. Expects the format to be `{projectId}.{datasetId}.{tableId}` to set the corresponding values in the [TableReference](https://github.com/googleapis/google-api-dotnet-client/blob/6c415c73788b848711e47c6dd33c2f93c76faf97/Src/Generated/Google.Apis.Bigquery.v2/Google.Apis.Bigquery.v2.cs#L9348) class.
 
 **adbc.bigquery.project_id**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;The [Project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects) used for accessing BigQuery.
+&nbsp;&nbsp;&nbsp;&nbsp;The [Project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects) used for accessing BigQuery. If not specified, will default to detect the projectIds the credentials have access to.
+
+**adbc.bigquery.include_public_project_ids**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Include the `bigquery-public-data` project ID with the list of project IDs.
 
 **adbc.bigquery.refresh_token**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The refresh token used for when the generated OAuth token expires. Required for `user` authentication.
