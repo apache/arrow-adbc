@@ -52,10 +52,6 @@ type BigQueryQuirks struct {
 	schemaName string
 }
 
-func (q *BigQueryQuirks) CreateSampleTableWithMetadata(tableName string, r arrow.Record) error {
-	return errors.ErrUnsupported
-}
-
 func (q *BigQueryQuirks) CreateSampleTable(tableName string, r arrow.Record) error {
 	var buf bytes.Buffer
 

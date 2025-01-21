@@ -171,56 +171,6 @@ func writeTo(arr arrow.Array, idx int, w io.Writer) {
 	}
 }
 
-func (s *FlightSQLQuirks) CreateSampleTableWithMetadata(tableName string, r arrow.Record) error {
-	var b strings.Builder
-	b.WriteString("CREATE TABLE ")
-	b.WriteString(tableName)
-	b.WriteString(" (")
-	for i := 0; i < int(r.NumCols()); i++ {
-		if i != 0 {
-			b.WriteString(", ")
-		}
-		f := r.Schema().Field(i)
-		b.WriteString(f.Name)
-		b.WriteByte(' ')
-		b.WriteString(s.getSqlTypeFromArrowType(f.Type))
-		for _, key := range f.Metadata.Keys() {
-			b.WriteString(" ")
-			b.WriteString(key)
-			b.WriteString(" ")
-		}
-	}
-	b.WriteString(")")
-
-	_, err := s.srv.DoPutCommandStatementUpdate(context.Background(), srvQuery(b.String()))
-	if err != nil {
-		return err
-	}
-
-	insertQueryPrefix := "INSERT INTO " + tableName + " VALUES ("
-	for i := 0; i < int(r.NumRows()); i++ {
-		b.Reset()
-		b.WriteString(insertQueryPrefix)
-
-		for j := 0; j < int(r.NumCols()); j++ {
-			if j != 0 {
-				b.WriteString(", ")
-			}
-
-			col := r.Column(j)
-			writeTo(col, j, &b)
-		}
-
-		b.WriteString(")")
-		_, err := s.srv.DoPutCommandStatementUpdate(context.Background(), srvQuery(b.String()))
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (s *FlightSQLQuirks) CreateSampleTable(tableName string, r arrow.Record) error {
 	var b strings.Builder
 	b.WriteString("CREATE TABLE ")
@@ -343,18 +293,18 @@ func TestADBCFlightSQL(t *testing.T) {
 	defer db.Close()
 
 	q := &FlightSQLQuirks{db: db}
-	// suite.Run(t, &internal.DatabaseTests{Quirks: q})
+	suite.Run(t, &internal.DatabaseTests{Quirks: q})
 	suite.Run(t, &internal.ConnectionTests{Quirks: q})
-	// suite.Run(t, &internal.StatementTests{Quirks: q})
+	suite.Run(t, &internal.StatementTests{Quirks: q})
 
-	// suite.Run(t, &DefaultDialOptionsTests{Quirks: q})
-	// suite.Run(t, &HeaderTests{Quirks: q})
-	// suite.Run(t, &OptionTests{Quirks: q})
-	// suite.Run(t, &PartitionTests{Quirks: q})
-	// suite.Run(t, &StatementTests{Quirks: q})
-	// suite.Run(t, &TLSTests{Quirks: &FlightSQLQuirks{db: db}})
-	//suite.Run(t, &ConnectionTests{})
-	// suite.Run(t, &DomainSocketTests{db: db})
+	suite.Run(t, &DefaultDialOptionsTests{Quirks: q})
+	suite.Run(t, &HeaderTests{Quirks: q})
+	suite.Run(t, &OptionTests{Quirks: q})
+	suite.Run(t, &PartitionTests{Quirks: q})
+	suite.Run(t, &StatementTests{Quirks: q})
+	suite.Run(t, &TLSTests{Quirks: &FlightSQLQuirks{db: db}})
+	suite.Run(t, &ConnectionTests{})
+	suite.Run(t, &DomainSocketTests{db: db})
 }
 
 // Run the test suite, but validating that a header set on the database is ALWAYS passed
