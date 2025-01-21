@@ -81,7 +81,7 @@ type GetObjDBSchemasFn func(ctx context.Context, depth adbc.ObjectDepth, catalog
 type GetObjTablesFn func(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, tableName *string, columnName *string, tableType []string, metadataRecords []Metadata) (map[CatalogAndSchema][]TableInfo, error)
 type SchemaToTableInfo = map[CatalogAndSchema][]TableInfo
 type MetadataToBuilders = map[string]array.Builder
-type MetadataHandlers = func(md arrow.Field, builder array.Builder) error
+type MetadataHandlers = func(md arrow.Field, builder array.Builder)
 type MetadataToHandlers = map[string]MetadataHandlers
 
 // Helper function that compiles a SQL-style pattern (%, _) to a regex
@@ -279,41 +279,59 @@ func (g *GetObjects) Init(mem memory.Allocator, getObj GetObjDBSchemasFn, getTbl
 	return nil
 }
 
+func parseColumnMetadata(key string, column arrow.Field, builder array.Builder) {
+	if column.HasMetadata() {
+		if value, ok := column.Metadata.GetValue(key); ok {
+			var parsedInt int64
+			var parsedBool bool
+			var err error
+			switch b := builder.(type) {
+			case *array.Int16Builder:
+				parsedInt, err = strconv.ParseInt(value, 10, 16)
+				if err != nil {
+					b.AppendNull()
+				} else {
+					b.Append(int16(parsedInt))
+				}
+			case *array.Int32Builder:
+				parsedInt, err = strconv.ParseInt(value, 10, 32)
+				if err != nil {
+					b.AppendNull()
+				} else {
+					b.Append(int32(parsedInt))
+				}
+			case *array.Int64Builder:
+				parsedInt, err = strconv.ParseInt(value, 10, 64)
+				if err != nil {
+					b.AppendNull()
+				} else {
+					b.Append(parsedInt)
+				}
+			case *array.BooleanBuilder:
+				parsedBool, err = strconv.ParseBool(value)
+				if err != nil {
+					b.AppendNull()
+				} else {
+					b.Append(parsedBool)
+				}
+			case *array.StringBuilder:
+				b.Append(value)
+			default:
+				b.AppendNull()
+			}
+		} else {
+			builder.AppendNull()
+		}
+	} else {
+		builder.AppendNull()
+	}
+}
+
 func (g *GetObjects) initMetadataHandlers(overrides MetadataToHandlers) MetadataToHandlers {
 
 	createHandler := func(key string) MetadataHandlers {
-		return func(column arrow.Field, builder array.Builder) error {
-			if column.HasMetadata() {
-				if value, ok := column.Metadata.GetValue(key); ok {
-					var parsedInt int64
-					var parsedBool bool
-					var err error
-					switch b := builder.(type) {
-					case *array.Int16Builder:
-						parsedInt, err = strconv.ParseInt(value, 10, 16)
-						b.Append(int16(parsedInt))
-					case *array.Int32Builder:
-						parsedInt, err = strconv.ParseInt(value, 10, 32)
-						b.Append(int32(parsedInt))
-					case *array.Int64Builder:
-						parsedInt, err = strconv.ParseInt(value, 10, 64)
-						b.Append(parsedInt)
-					case *array.StringBuilder:
-						b.Append(value)
-					case *array.BooleanBuilder:
-						parsedBool, err = strconv.ParseBool(value)
-						b.Append(parsedBool)
-					default:
-						b.AppendNull()
-					}
-					return err
-				} else {
-					builder.AppendNull()
-				}
-			} else {
-				builder.AppendNull()
-			}
-			return nil
+		return func(column arrow.Field, builder array.Builder) {
+			parseColumnMetadata(key, column, builder)
 		}
 	}
 
