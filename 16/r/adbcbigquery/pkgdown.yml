@@ -1,0 +1,8 @@
+pandoc: 3.6.2
+pkgdown: 2.1.1
+pkgdown_sha: ~
+articles: {}
+last_built: 2025-01-21T01:30Z
+urls:
+  reference: https://arrow.apache.org/adbc/current/r/adbcbigquery/reference
+  article: https://arrow.apache.org/adbc/current/r/adbcbigquery/articles
