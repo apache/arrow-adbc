@@ -47,6 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         const string infoDriverVersion = "1.0.0";
         const string infoVendorName = "BigQuery";
         const string infoDriverArrowVersion = "1.0.0";
+        const string publicProjectId = "bigquery-public-data";
 
         readonly AdbcInfoCode[] infoSupportedCodes = new[] {
             AdbcInfoCode.DriverName,
@@ -317,8 +318,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             if (catalogs != null)
             {
                 List<string> projectIds = catalogs.Select(x => x.ProjectId).ToList();
-
-                string publicProjectId = "bigquery-public-data";
 
                 if (this.includePublicProjectIds && !projectIds.Contains(publicProjectId))
                     projectIds.Add(publicProjectId);
@@ -1012,7 +1011,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             if (this.credential == null)
             {
-                throw new InvalidOperationException("A credential must be set");
+                throw new AdbcException("A credential must be set", AdbcStatusCode.Unauthenticated);
             }
 
             if (this.client == null)
