@@ -35,7 +35,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 
         internal static IReadOnlyList<int> GetUpdateExpectedResults(int affectedRows)
         {
-            return 
+            return
                 [
                     -1, // DROP TABLE
                     -1, // CREATE TABLE
