@@ -18,10 +18,11 @@
 [package]
 name = "adbc_dummy"
 description = "A dummy ADBC driver for testing purposes"
-version = { workspace = true }
-edition = { workspace = true }
-authors = { workspace = true }
-license = { workspace = true }
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
 
 [dependencies]
 adbc_core = { path = "../../core" }
