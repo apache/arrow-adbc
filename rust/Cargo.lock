@@ -10,7 +10,6 @@ dependencies = [
  "arrow-schema",
  "arrow-select",
  "libloading",
- "once_cell",
 ]
 
 [[package]]
