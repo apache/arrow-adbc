@@ -34,7 +34,7 @@ keywords = ["arrow"]
 categories = ["database"]
 
 [workspace.dependencies]
-adbc_core = { path = "./core" }
+adbc_core = { path = "./core", version = "0.17.0" }
 arrow-array = { version = "53.4.0", default-features = false, features = [
     "ffi",
 ] }

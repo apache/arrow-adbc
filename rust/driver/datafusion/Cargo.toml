@@ -31,7 +31,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
-adbc_core = { path = "../../core" }
+adbc_core.workspace = true
 arrow-array.workspace = true
 arrow-buffer.workspace = true
 arrow-schema.workspace = true
