@@ -105,41 +105,41 @@ func (suite *ServerBasedTests) TearDownSuite() {
 
 // ---- Tests --------------------
 
-// func TestAuthn(t *testing.T) {
-// 	suite.Run(t, &AuthnTests{})
-// }
+func TestAuthn(t *testing.T) {
+	suite.Run(t, &AuthnTests{})
+}
 
-// func TestErrorDetails(t *testing.T) {
-// 	suite.Run(t, &ErrorDetailsTests{})
-// }
+func TestErrorDetails(t *testing.T) {
+	suite.Run(t, &ErrorDetailsTests{})
+}
 
-// func TestExecuteSchema(t *testing.T) {
-// 	suite.Run(t, &ExecuteSchemaTests{})
-// }
+func TestExecuteSchema(t *testing.T) {
+	suite.Run(t, &ExecuteSchemaTests{})
+}
 
-// func TestIncrementalPoll(t *testing.T) {
-// 	suite.Run(t, &IncrementalPollTests{})
-// }
+func TestIncrementalPoll(t *testing.T) {
+	suite.Run(t, &IncrementalPollTests{})
+}
 
-// func TestTimeout(t *testing.T) {
-// 	suite.Run(t, &TimeoutTests{})
-// }
+func TestTimeout(t *testing.T) {
+	suite.Run(t, &TimeoutTests{})
+}
 
-// func TestCookies(t *testing.T) {
-// 	suite.Run(t, &CookieTests{})
-// }
+func TestCookies(t *testing.T) {
+	suite.Run(t, &CookieTests{})
+}
 
-// func TestDataType(t *testing.T) {
-// 	suite.Run(t, &DataTypeTests{})
-// }
+func TestDataType(t *testing.T) {
+	suite.Run(t, &DataTypeTests{})
+}
 
-// func TestMultiTable(t *testing.T) {
-// 	suite.Run(t, &MultiTableTests{})
-// }
+func TestMultiTable(t *testing.T) {
+	suite.Run(t, &MultiTableTests{})
+}
 
-// func TestSessionOptions(t *testing.T) {
-// 	suite.Run(t, &SessionOptionTests{})
-// }
+func TestSessionOptions(t *testing.T) {
+	suite.Run(t, &SessionOptionTests{})
+}
 
 func TestGetObjects(t *testing.T) {
 	suite.Run(t, &GetObjectsTests{})
