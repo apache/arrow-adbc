@@ -43,7 +43,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
@@ -293,9 +293,9 @@ func TestADBCFlightSQL(t *testing.T) {
 	defer db.Close()
 
 	q := &FlightSQLQuirks{db: db}
-	suite.Run(t, &internal.DatabaseTests{Quirks: q})
-	suite.Run(t, &internal.ConnectionTests{Quirks: q})
-	suite.Run(t, &internal.StatementTests{Quirks: q})
+	suite.Run(t, &validation.DatabaseTests{Quirks: q})
+	suite.Run(t, &validation.ConnectionTests{Quirks: q})
+	suite.Run(t, &validation.StatementTests{Quirks: q})
 
 	suite.Run(t, &DefaultDialOptionsTests{Quirks: q})
 	suite.Run(t, &HeaderTests{Quirks: q})
@@ -371,9 +371,9 @@ func TestADBCFlightSQLWithHeader(t *testing.T) {
 	defer db.Close()
 
 	q := &FlightSQLWithHeaderQuirks{FlightSQLQuirks{db: db}}
-	suite.Run(t, &internal.DatabaseTests{Quirks: q})
-	suite.Run(t, &internal.ConnectionTests{Quirks: q})
-	suite.Run(t, &internal.StatementTests{Quirks: q})
+	suite.Run(t, &validation.DatabaseTests{Quirks: q})
+	suite.Run(t, &validation.ConnectionTests{Quirks: q})
+	suite.Run(t, &validation.StatementTests{Quirks: q})
 	suite.Run(t, &OptionTests{Quirks: q})
 	suite.Run(t, &PartitionTests{Quirks: q})
 	suite.Run(t, &StatementTests{Quirks: q})
@@ -385,7 +385,7 @@ type DefaultDialOptionsTests struct {
 	suite.Suite
 
 	Driver adbc.Driver
-	Quirks internal.DriverQuirks
+	Quirks validation.DriverQuirks
 
 	ctx context.Context
 	DB  adbc.Database
@@ -480,7 +480,7 @@ type OptionTests struct {
 	suite.Suite
 
 	Driver adbc.Driver
-	Quirks internal.DriverQuirks
+	Quirks validation.DriverQuirks
 }
 
 func (suite *OptionTests) SetupTest() {
@@ -561,7 +561,7 @@ type PartitionTests struct {
 	suite.Suite
 
 	Driver adbc.Driver
-	Quirks internal.DriverQuirks
+	Quirks validation.DriverQuirks
 
 	DB   adbc.Database
 	Cnxn adbc.Connection
@@ -610,7 +610,7 @@ type StatementTests struct {
 	suite.Suite
 
 	Driver adbc.Driver
-	Quirks internal.DriverQuirks
+	Quirks validation.DriverQuirks
 
 	DB   adbc.Database
 	Cnxn adbc.Connection

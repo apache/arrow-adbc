@@ -30,7 +30,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/bigquery"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/decimal128"
@@ -548,9 +548,9 @@ func withQuirks(t *testing.T, fn func(quirks *BigQueryQuirks)) {
 // todo: finish other callbacks and make this validation test suite pass
 func TestValidation(t *testing.T) {
 	withQuirks(t, func(q *BigQueryQuirks) {
-		suite.Run(t, &internal.DatabaseTests{Quirks: q})
-		suite.Run(t, &internal.ConnectionTests{Quirks: q})
-		suite.Run(t, &internal.StatementTests{Quirks: q})
+		suite.Run(t, &validation.DatabaseTests{Quirks: q})
+		suite.Run(t, &validation.ConnectionTests{Quirks: q})
+		suite.Run(t, &validation.StatementTests{Quirks: q})
 	})
 }
 
@@ -1482,4 +1482,4 @@ func (suite *BigQueryTests) TestMetadataGetObjectsColumnsXdbc() {
 
 }
 
-var _ internal.DriverQuirks = (*BigQueryQuirks)(nil)
+var _ validation.DriverQuirks = (*BigQueryQuirks)(nil)
