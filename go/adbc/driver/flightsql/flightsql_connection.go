@@ -58,51 +58,32 @@ type connectionImpl struct {
 	supportInfo support
 }
 
-func initMetadataHandlersOverrides() internal.MetadataToHandlers {
-	metadataHandlers := make(internal.MetadataToHandlers)
-	metadataHandlers[internal.XDBC_IS_AUTOINCREMENT] = func(column arrow.Field, builder array.Builder) {
-		if column.HasMetadata() {
-			md := column.Metadata
-			b := builder.(*array.BooleanBuilder)
-			if typeName, ok := md.GetValue(flightsql.IsAutoIncrementKey); ok {
-				if parsed, err := strconv.ParseBool(typeName); err == nil {
-					b.Append(parsed)
-				} else {
-					b.AppendNull()
-				}
-			} else if typeName, ok = md.GetValue(internal.XDBC_IS_AUTOINCREMENT); ok {
-				if parsed, err := strconv.ParseBool(typeName); err == nil {
-					b.Append(parsed)
-				} else {
-					b.AppendNull()
-				}
-			} else {
-				b.AppendNull()
-			}
-		}
-	}
-
-	metadataHandlers[internal.XDBC_TYPE_NAME] = func(column arrow.Field, builder array.Builder) {
+func stringMetadataHandler(xdbc_key string, flight_key string) func(arrow.Field, array.Builder) {
+	return func(column arrow.Field, builder array.Builder) {
 		if column.HasMetadata() {
 			md := column.Metadata
 			b := builder.(*array.StringBuilder)
-			if typeName, ok := md.GetValue(flightsql.TypeNameKey); ok {
+			if typeName, ok := md.GetValue(flight_key); ok {
 				b.Append(typeName)
-			} else if typeName, ok = md.GetValue(internal.XDBC_TYPE_NAME); ok {
+			} else if typeName, ok = md.GetValue(xdbc_key); ok {
 				b.Append(typeName)
 			} else {
 				b.AppendNull()
 			}
+		} else {
+			builder.AppendNull()
 		}
 	}
+}
 
-	metadataHandlers[internal.XDBC_SQL_DATA_TYPE] = func(column arrow.Field, builder array.Builder) {
+func typeMetadataHandler(xdbc_key string) func(arrow.Field, array.Builder) {
+	return func(column arrow.Field, builder array.Builder) {
 		var err error
 		if column.HasMetadata() {
 			md := column.Metadata
 			b := builder.(*array.Int16Builder)
 			var sqlDataTypeId64 int64
-			if strSqlDataTypeId, ok := md.GetValue(internal.XDBC_SQL_DATA_TYPE); ok {
+			if strSqlDataTypeId, ok := md.GetValue(xdbc_key); ok {
 				if sqlDataTypeId64, err = strconv.ParseInt(strSqlDataTypeId, 10, 16); err == nil {
 					b.Append(int16(sqlDataTypeId64))
 				} else {
@@ -111,8 +92,48 @@ func initMetadataHandlersOverrides() internal.MetadataToHandlers {
 			} else {
 				b.Append(int16(internal.ToXdbcDataType(column.Type)))
 			}
+		} else {
+			builder.AppendNull()
 		}
 	}
+}
+func booleanMetadataHandler(xdbc_key string, flight_key string) func(arrow.Field, array.Builder) {
+	return func(column arrow.Field, builder array.Builder) {
+		if column.HasMetadata() {
+			md := column.Metadata
+			b := builder.(*array.BooleanBuilder)
+			if typeName, ok := md.GetValue(flight_key); ok {
+				if parsed, err := strconv.ParseBool(typeName); err == nil {
+					b.Append(parsed)
+				} else {
+					b.AppendNull()
+				}
+			} else if typeName, ok = md.GetValue(xdbc_key); ok {
+				if parsed, err := strconv.ParseBool(typeName); err == nil {
+					b.Append(parsed)
+				} else {
+					b.AppendNull()
+				}
+			} else {
+				b.AppendNull()
+			}
+		} else {
+			builder.AppendNull()
+		}
+	}
+}
+
+func initMetadataHandlersOverrides() internal.MetadataToHandlers {
+	metadataHandlers := make(internal.MetadataToHandlers)
+	metadataHandlers[internal.XDBC_IS_AUTOINCREMENT] = booleanMetadataHandler(internal.XDBC_IS_AUTOINCREMENT, flightsql.IsAutoIncrementKey)
+
+	metadataHandlers[internal.XDBC_SQL_DATA_TYPE] = typeMetadataHandler(internal.XDBC_SQL_DATA_TYPE)
+	metadataHandlers[internal.XDBC_DATA_TYPE] = typeMetadataHandler(internal.XDBC_DATA_TYPE)
+
+	metadataHandlers[internal.XDBC_TYPE_NAME] = stringMetadataHandler(internal.XDBC_TYPE_NAME, flightsql.TypeNameKey)
+	metadataHandlers[internal.XDBC_SCOPE_CATALOG] = stringMetadataHandler(internal.XDBC_SCOPE_CATALOG, flightsql.CatalogNameKey)
+	metadataHandlers[internal.XDBC_SCOPE_SCHEMA] = stringMetadataHandler(internal.XDBC_SCOPE_SCHEMA, flightsql.SchemaNameKey)
+	metadataHandlers[internal.XDBC_SCOPE_TABLE] = stringMetadataHandler(internal.XDBC_SCOPE_TABLE, flightsql.TableNameKey)
 
 	return metadataHandlers
 }
