@@ -41,13 +41,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         readonly IReadOnlyDictionary<string, string> properties;
         BigQueryClient? client;
         GoogleCredential? credential;
+        bool includePublicProjectIds = false;
 
         const string infoDriverName = "ADBC BigQuery Driver";
         const string infoDriverVersion = "1.0.0";
         const string infoVendorName = "BigQuery";
         const string infoDriverArrowVersion = "1.0.0";
+        const string publicProjectId = "bigquery-public-data";
 
-        readonly AdbcInfoCode[] infoSupportedCodes = new [] {
+        readonly AdbcInfoCode[] infoSupportedCodes = new[] {
             AdbcInfoCode.DriverName,
             AdbcInfoCode.DriverVersion,
             AdbcInfoCode.DriverArrowVersion,
@@ -81,8 +83,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             // TODO: handle token expiration
 
+            // if the caller doesn't specify a projectId, use the default
             if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
-                throw new ArgumentException($"The {BigQueryParameters.ProjectId} parameter is not present");
+                projectId = BigQueryConstants.DetectProjectId;
+
+            if (this.properties.TryGetValue(BigQueryParameters.IncludePublicProjectId, out string? result))
+            {
+                if (!string.IsNullOrEmpty(result))
+                    includePublicProjectIds = Convert.ToBoolean(result);
+            }
 
             if (this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out string? newAuthenticationType))
             {
@@ -308,11 +317,18 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (catalogs != null)
             {
-                foreach (CloudProject catalog in catalogs)
+                List<string> projectIds = catalogs.Select(x => x.ProjectId).ToList();
+
+                if (this.includePublicProjectIds && !projectIds.Contains(publicProjectId))
+                    projectIds.Add(publicProjectId);
+
+                projectIds.Sort();
+
+                foreach (string projectId in projectIds)
                 {
-                    if (Regex.IsMatch(catalog.ProjectId, catalogRegexp, RegexOptions.IgnoreCase))
+                    if (Regex.IsMatch(projectId, catalogRegexp, RegexOptions.IgnoreCase))
                     {
-                        catalogNameBuilder.Append(catalog.ProjectId);
+                        catalogNameBuilder.Append(projectId);
 
                         if (depth == GetObjectsDepth.Catalogs)
                         {
@@ -321,7 +337,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         else
                         {
                             catalogDbSchemasValues.Add(GetDbSchemas(
-                                depth, catalog.ProjectId, dbSchemaPattern,
+                                depth, projectId, dbSchemaPattern,
                                 tableNamePattern, tableTypes, columnNamePattern));
                         }
                     }
@@ -333,6 +349,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 catalogNameBuilder.Build(),
                 catalogDbSchemasValues.BuildListArrayForType(new StructType(StandardSchemas.DbSchemaSchema)),
             };
+
             StandardSchemas.GetObjectsSchema.Validate(dataArrays);
 
             return dataArrays;
@@ -447,7 +464,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     nullBitmapBuffer.Append(true);
                     length++;
 
-                    if (includeConstraints)
+                    if (depth == GetObjectsDepth.All && includeConstraints)
                     {
                         tableConstraintsValues.Add(GetConstraintSchema(
                             depth, catalog, dbSchema, GetValue(row["table_name"]), columnNamePattern));
@@ -530,11 +547,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     ordinalPositionBuilder.Append((int)(long)row["ordinal_position"]);
                     remarksBuilder.Append("");
 
-                    string dataType = ToTypeName(GetValue(row["data_type"]));
+                    string dataType = ToTypeName(GetValue(row["data_type"]), out string suffix);
 
-                    if (dataType.StartsWith("NUMERIC") || dataType.StartsWith("DECIMAL") || dataType.StartsWith("BIGNUMERIC") || dataType.StartsWith("BIGDECIMAL"))
+                    if ((dataType.StartsWith("NUMERIC") ||
+                         dataType.StartsWith("DECIMAL") ||
+                         dataType.StartsWith("BIGNUMERIC") ||
+                         dataType.StartsWith("BIGDECIMAL"))
+                        && !string.IsNullOrEmpty(suffix))
                     {
-                        ParsedDecimalValues values = ParsePrecisionAndScale(dataType);
+                        ParsedDecimalValues values = ParsePrecisionAndScale(suffix);
                         xdbcColumnSizeBuilder.Append(values.Precision);
                         xdbcDecimalDigitsBuilder.Append(Convert.ToInt16(values.Scale));
                     }
@@ -652,6 +673,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 constraintColumnNamesValues.BuildListArrayForType(StringType.Default),
                 constraintColumnUsageValues.BuildListArrayForType(new StructType(StandardSchemas.UsageSchema))
             };
+
             StandardSchemas.ConstraintSchema.Validate(dataArrays);
 
             return new StructArray(
@@ -752,10 +774,19 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return builder.ToString();
         }
 
-        private string ToTypeName(string type)
+        private string ToTypeName(string type, out string suffix)
         {
-            int index = Math.Min(type.IndexOf("("), type.IndexOf("<"));
+            suffix = string.Empty;
+
+            int index = type.IndexOf("(");
+            if (index == -1)
+                index = type.IndexOf("<");
+
             string dataType = index == -1 ? type : type.Substring(0, index);
+
+            if (index > -1)
+                suffix = type.Substring(dataType.Length);
+
             return dataType;
         }
 
@@ -914,7 +945,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 case "TIME":
                     return fieldBuilder.DataType(Time64Type.Default);
                 case "DATE":
-                    return fieldBuilder.DataType(Date64Type.Default);
+                    return fieldBuilder.DataType(Date32Type.Default);
                 case "RECORD" or "STRUCT":
                     string fieldRecords = type.Substring(index + 1);
                     fieldRecords = fieldRecords.Remove(fieldRecords.Length - 1);
@@ -965,7 +996,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public override IArrowArrayStream GetTableTypes()
         {
             StringArray.Builder tableTypesBuilder = new StringArray.Builder();
-            tableTypesBuilder.AppendRange(new string[] { "BASE TABLE", "VIEW" });
+            tableTypesBuilder.AppendRange(BigQueryTableTypes.TableTypes);
 
             IArrowArray[] dataArrays = new IArrowArray[]
             {
@@ -980,7 +1011,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             if (this.credential == null)
             {
-                throw new InvalidOperationException();
+                throw new AdbcException("A credential must be set", AdbcStatusCode.Unauthenticated);
             }
 
             if (this.client == null)

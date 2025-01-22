@@ -49,6 +49,10 @@ concurrency:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash -l -eo pipefail {0}
+
 env:
   # Increment this to reset cache manually
   CACHE_NUMBER: "1"
@@ -84,7 +88,6 @@ jobs:
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
-        shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
@@ -98,7 +101,6 @@ jobs:
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
@@ -110,7 +112,6 @@ jobs:
           cache-dependency-path: go/adbc/go.sum
 
       - name: Build and Install (No ASan)
-        shell: bash -l {0}
         run: |
           # Python and others need something that don't use the ASAN runtime
           rm -rf "$(pwd)/build"
@@ -122,7 +123,6 @@ jobs:
           export ADBC_CMAKE_ARGS="-DCMAKE_UNITY_BUILD=ON"
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Go Build
-        shell: bash -l {0}
         env:
           CGO_ENABLED: "1"
         run: |
@@ -135,7 +135,6 @@ jobs:
       # https://github.com/actions/download-artifact/issues/346
 
       - name: tar artifacts
-        shell: bash -l {0}
         run: |
           cd
           tar czf ~/local.tgz local
@@ -167,7 +166,6 @@ jobs:
           persist-credentials: false
       - name: Get Date
         id: get-date
-        shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
@@ -181,18 +179,15 @@ jobs:
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
       - name: Work around ASAN issue (GH-1617)
-        shell: bash -l {0}
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
       - name: Build
-        shell: bash -l {0}
         env:
           ADBC_CMAKE_ARGS: "-DCMAKE_UNITY_BUILD=ON"
           BUILD_ALL: "0"
@@ -202,7 +197,6 @@ jobs:
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Test
-        shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
@@ -244,7 +238,6 @@ jobs:
       - name: Install Meson via Python
         run: pip install meson
       - name: Start SQLite server, Dremio, and postgresql
-        shell: bash -l {0}
         run: |
           env POSTSGRES_VERSION=16 docker compose up --detach --wait \
             dremio \
@@ -270,7 +263,6 @@ jobs:
         run: |
           meson test -C c/build --print-errorlogs
       - name: Stop SQLite server, Dremio, and postgresql
-        shell: bash -l {0}
         run: |
           docker compose down
 
@@ -284,7 +276,6 @@ jobs:
           persist-credentials: false
       - name: Get Date
         id: get-date
-        shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
@@ -298,14 +289,12 @@ jobs:
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_cpp_lint.txt
 
       - name: clang-tidy
-        shell: bash -l {0}
         run: |
           ./ci/scripts/cpp_clang_tidy.sh "$(pwd)" "$(pwd)/build"
 
@@ -333,7 +322,6 @@ jobs:
           persist-credentials: false
       - name: Get Date
         id: get-date
-        shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
@@ -347,14 +335,12 @@ jobs:
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
             'arrow-c-glib>=10.0.1' \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_glib.txt
       - name: Work around ASAN issue (GH-1617)
-        shell: bash -l {0}
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
@@ -365,19 +351,27 @@ jobs:
           path: "~"
 
       - name: untar artifacts
-        shell: bash -l {0}
         run: |
           cd
           tar xvf ~/local.tgz
 
       - name: Build GLib Driver Manager
-        shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/glib_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test GLib/Ruby Driver Manager
-        shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/glib_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+
+      - name: Search for build logs
+        if: failure()
+        run: |
+          for log in $(find glib -type f | grep mkmf.log); do
+            echo ============================================================
+            echo $log
+            cat $log
+            echo ============================================================
+          done
+
 
   # ------------------------------------------------------------
   # Go
@@ -409,7 +403,6 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
       - name: Work around ASAN issue (GH-1617)
-        shell: bash -l {0}
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
@@ -465,7 +458,6 @@ jobs:
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
-        shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
@@ -479,13 +471,11 @@ jobs:
           use-only-tar-bz2: false
           use-mamba: true
       - name: Work around ASAN issue (GH-1617)
-        shell: bash -l {0}
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
       - name: Install Dependencies
-        shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
@@ -496,7 +486,6 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
       - name: Install staticcheck
-        shell: bash -l {0}
         if: matrix.os == 'ubuntu-latest'
         run: go install honnef.co/go/tools/cmd/staticcheck@latest
 
@@ -506,25 +495,21 @@ jobs:
           path: "~"
 
       - name: untar artifacts
-        shell: bash -l {0}
         run: |
           cd
           tar xvf ~/local.tgz
 
       - name: Go Build
-        shell: bash -l {0}
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Run Staticcheck
         if: matrix.os == 'ubuntu-latest'
-        shell: bash -l {0}
         run: |
           pushd go/adbc
           staticcheck -f stylish ./...
           popd
       - name: Go Test
-        shell: bash -l {0}
         env:
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
@@ -557,7 +542,6 @@ jobs:
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Get Date
         id: get-date
-        shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
@@ -571,14 +555,12 @@ jobs:
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
             python=${{ matrix.python }} \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
       - name: Work around ASAN issue (GH-1617)
-        shell: bash -l {0}
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
@@ -595,13 +577,11 @@ jobs:
           path: "~"
 
       - name: untar artifacts
-        shell: bash -l {0}
         run: |
           cd
           tar xvf ~/local.tgz
 
       - name: Build
-        shell: bash -l {0}
         env:
           BUILD_ALL: "1"
           ADBC_USE_ASAN: "0"
@@ -610,7 +590,6 @@ jobs:
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Build Panic Dummy
-        shell: bash -l {0}
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           if [[ $(uname) = "Darwin" ]]; then
@@ -619,7 +598,6 @@ jobs:
             make -C ./go/adbc/pkg libadbc_driver_panicdummy.so
           fi
       - name: Test Python Driver Manager
-        shell: bash -l {0}
         run: |
           if [[ $(uname) = "Darwin" ]]; then
             export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.dylib
@@ -629,7 +607,6 @@ jobs:
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver Flight SQL
-        shell: bash -l {0}
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           # Can't use Docker on macOS
@@ -647,19 +624,15 @@ jobs:
           env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQL=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
           kill %1
       - name: Test Python Driver PostgreSQL
-        shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver SQLite
-        shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver Snowflake
-        shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SNOWFLAKE=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Typecheck Python
-        shell: bash -l {0}
         run: |
           ./ci/scripts/python_typecheck.sh "$(pwd)"
 
@@ -679,7 +652,6 @@ jobs:
           persist-credentials: false
       - name: Get Date
         id: get-date
-        shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
@@ -693,14 +665,12 @@ jobs:
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
-        shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
             python=${{ matrix.python }} \
             --file ci/conda_env_docs.txt \
             --file ci/conda_env_python.txt
       - name: Work around ASAN issue (GH-1617)
-        shell: bash -l {0}
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
@@ -711,13 +681,11 @@ jobs:
           path: "~"
 
       - name: untar artifacts
-        shell: bash -l {0}
         run: |
           cd
           tar xvf ~/local.tgz
 
       - name: Build Python
-        shell: bash -l {0}
         env:
           BUILD_ALL: "1"
           ADBC_USE_ASAN: "0"
@@ -726,7 +694,6 @@ jobs:
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       # Docs requires Python packages since it runs doctests
       - name: Build Docs
-        shell: bash -l {0}
         run: |
           ./ci/scripts/docs_build.sh "$(pwd)"
       - name: Archive docs
@@ -737,16 +704,13 @@ jobs:
           path: |
             docs/build/html
       - name: Configure Integration Env Vars
-        shell: bash -l {0}
         run: |
           pip install python-dotenv[cli]
           python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
       - name: Test Recipes (C++)
-        shell: bash -l {0}
         run: |
           ./ci/scripts/cpp_recipe.sh $(pwd) ~/local build/recipe
       - name: Test Recipes (Python)
-        shell: bash -l {0}
         run: |
           docker compose up --detach --wait dremio dremio-init flightsql-sqlite-test postgres-test
           pytest -vvs docs/source/tests/

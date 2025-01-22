@@ -31,6 +31,11 @@ concurrency:
   group: ${{ github.repository }}-${{ github.workflow }}
   cancel-in-progress: false
 
+defaults:
+  run:
+    # 'bash' will expand to -eo pipefail
+    shell: bash
+
 jobs:
   build:
     name: "Build Website"
@@ -41,7 +46,6 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Build
-        shell: bash
         run: |
           docker compose run docs
       - name: Archive docs
@@ -80,7 +84,6 @@ jobs:
         with:
           python-version: '3.x'
       - name: Build
-        shell: bash
         run: |
           pip install sphobjinv
           ./scripts/ci/scripts/website_build.sh "$(pwd)/scripts" "$(pwd)/site" "$(pwd)/temp"

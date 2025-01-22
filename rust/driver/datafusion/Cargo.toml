@@ -18,20 +18,27 @@
 [package]
 name = "adbc_datafusion"
 description = "ADBC driver for Apache DataFusion"
-version = { workspace = true }
-edition = { workspace = true }
-authors = { workspace = true }
-license = { workspace = true }
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+readme.workspace = true
+documentation = "http://docs.rs/adbc_datafusion/"
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 adbc_core = { path = "../../core" }
 arrow-array.workspace = true
 arrow-buffer.workspace = true
 arrow-schema.workspace = true
-datafusion = "42.0.0"
-datafusion-substrait = "42.0.0"
-tokio = { version = "1.0", features = ["rt-multi-thread"] }
-prost = "0.13.3"
+datafusion = "44.0.0"
+datafusion-substrait = "44.0.0"
+tokio = { version = "1.43", features = ["rt-multi-thread"] }
+prost = "0.13.4"
 
 [dev-dependencies]
 arrow-select.workspace = true

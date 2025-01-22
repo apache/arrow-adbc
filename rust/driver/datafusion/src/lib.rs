@@ -876,9 +876,10 @@ impl Statement for DataFusionStatement {
                     .await
                     .unwrap()
             } else {
-                let plan = from_substrait_plan(&self.ctx, &self.substrait_plan.clone().unwrap())
-                    .await
-                    .unwrap();
+                let plan =
+                    from_substrait_plan(&self.ctx.state(), &self.substrait_plan.clone().unwrap())
+                        .await
+                        .unwrap();
                 self.ctx.execute_logical_plan(plan).await.unwrap()
             };
 

@@ -15,8 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-commitizen
 gh>=2.32.0
 jq
 pre-commit
+pygit2
+python
+python-dotenv
 twine

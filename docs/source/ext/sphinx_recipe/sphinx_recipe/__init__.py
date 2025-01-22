@@ -27,6 +27,8 @@ from sphinx.util.docutils import SphinxDirective
 from sphinx.util.nodes import nested_parse_with_titles
 from sphinx.util.typing import OptionSpec
 
+__all__ = ["setup"]
+
 
 class SourceLine(typing.NamedTuple):
     content: str
@@ -54,6 +56,7 @@ class RecipeDirective(SphinxDirective):
     def default_prose_prefix(language: str) -> str:
         return {
             "cpp": "///",
+            "go": "///",
             "python": "#:",
         }.get(language, "#:")
 
@@ -106,17 +109,22 @@ class RecipeDirective(SphinxDirective):
         # --- Generate the final reST as a whole and parse it
         # That way, section hierarchy works properly
 
+        generated_lines = []
+
         # Link to the source on GitHub
-        github_url = (
-            f"https://github.com/apache/arrow-adbc/blob/main/docs/source/{rel_filename}"
-        )
-        generated_lines = [
-            PREAMBLE.format(
-                name=Path(rel_filename).name,
-                url=github_url,
-            ),
-            "",
-        ]
+        repo_url_template = self.env.config.recipe_repo_url_template
+        if repo_url_template is not None:
+            repo_url = repo_url_template.format(rel_filename=rel_filename)
+            generated_lines.append(
+                PREAMBLE.format(
+                    name=Path(rel_filename).name,
+                    url=repo_url,
+                )
+            )
+
+        # Paragraph break
+        generated_lines.append("")
+
         for fragment in fragments:
             if fragment.kind == "prose":
                 generated_lines.extend([line.content for line in fragment.lines])
@@ -146,6 +154,12 @@ class RecipeDirective(SphinxDirective):
 
 
 def setup(app) -> None:
+    app.add_config_value(
+        "recipe_repo_url_template",
+        default=None,
+        rebuild="html",
+        types=str,
+    )
     app.add_directive("recipe", RecipeDirective)
 
     return {

@@ -19,6 +19,7 @@ import os
 import sys
 from pathlib import Path
 
+sys.path.append(str(Path("./ext/sphinx_recipe").resolve()))
 sys.path.append(str(Path("./ext").resolve()))
 
 # -- Project information -----------------------------------------------------
@@ -30,7 +31,7 @@ Apache, the Apache feather logo, and the Apache Arrow project logo are either
 registered trademarks or trademarks of The Apache Software Foundation in the
 United States and other countries."""
 author = "the Apache Arrow Developers"
-release = "16 (dev)"
+release = "17 (dev)"
 # Needed to generate version switcher
 version = release
 
@@ -40,7 +41,7 @@ version = release
 exclude_patterns = []
 extensions = [
     # recipe directive
-    "adbc_cookbook",
+    "sphinx_recipe",
     # generic directives to enable intersphinx for java
     "adbc_java_domain",
     "numpydoc",
@@ -113,6 +114,12 @@ html_theme_options = {
     "source_branch": "main",
     "source_directory": "docs/source/",
 }
+
+# -- Options for sphinx-recipe -----------------------------------------------
+
+recipe_repo_url_template = (
+    "https://github.com/apache/arrow-adbc/blob/main/docs/source/{rel_filename}"
+)
 
 # -- Options for Intersphinx -------------------------------------------------
 

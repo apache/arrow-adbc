@@ -51,10 +51,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// <returns></returns>
         internal static Dictionary<string, string> GetBigQueryParameters(BigQueryTestConfiguration testConfiguration)
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>
+            Dictionary<string, string> parameters = new Dictionary<string, string>{};
+
+            if (!string.IsNullOrEmpty(testConfiguration.ProjectId))
             {
-               { BigQueryParameters.ProjectId, testConfiguration.ProjectId },
-            };
+                parameters.Add(BigQueryParameters.ProjectId, testConfiguration.ProjectId!);
+            }
 
             if (!string.IsNullOrEmpty(testConfiguration.JsonCredential))
             {
@@ -80,6 +82,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
 
             parameters.Add(BigQueryParameters.IncludeConstraintsWithGetObjects, testConfiguration.IncludeTableConstraints.ToString());
+
+            parameters.Add(BigQueryParameters.IncludePublicProjectId, testConfiguration.IncludePublicProjectId.ToString());
 
             if (!string.IsNullOrEmpty(testConfiguration.LargeResultsDestinationTable))
             {

@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import datetime
 import string
 from pathlib import Path
 from typing import Generator
@@ -424,3 +425,26 @@ def test_ingest_large(postgres: dbapi.Connection) -> None:
     table = pyarrow.Table.from_batches([batch] * 4)
     with postgres.cursor() as cur:
         cur.adbc_ingest("test_ingest_large", table, mode="replace")
+
+
+def test_timestamp_txn(postgres: dbapi.Connection) -> None:
+    """Regression test for #2410."""
+    ts = datetime.datetime.now()
+    ts_with_tz = datetime.datetime.now(tz=datetime.UTC)
+
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS ts_txn")
+        cur.execute("CREATE TABLE ts_txn (ts TIMESTAMP WITH TIME ZONE);")
+    postgres.commit()
+
+    with postgres.cursor() as cur:
+        cur.execute("INSERT INTO ts_txn VALUES ($1)", parameters=[ts])
+        cur.execute("SELECT pg_current_xact_id_if_assigned()")
+        assert cur.fetchone() != (None,)
+    postgres.commit()
+
+    with postgres.cursor() as cur:
+        cur.execute("INSERT INTO ts_txn VALUES ($1)", parameters=[ts_with_tz])
+        cur.execute("SELECT pg_current_xact_id_if_assigned()")
+        assert cur.fetchone() != (None,)
+    postgres.commit()

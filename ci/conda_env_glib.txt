@@ -15,12 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-arrow-c-glib=15.0.2
-glib=2.80.5
+arrow-c-glib
+glib
 gobject-introspection
 meson
 postgresql
 ruby
-# TODO(https://github.com/apache/arrow-adbc/issues/2176): pin for now because
-# gobject-introspection uses a deprecated/removed API
-setuptools <74
+setuptools

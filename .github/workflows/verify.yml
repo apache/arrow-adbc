@@ -38,6 +38,11 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    # 'bash' will expand to -eo pipefail
+    shell: bash
+
 jobs:
   binary-unix:
     name: "Verify Binaries/${{ matrix.os }}"
@@ -54,12 +59,10 @@ jobs:
       # No Docker on M1
       - name: Skip Binary Verifiction
         if: matrix.os == 'macos-latest'
-        shell: bash
         run: |
           echo "TEST_APT=0" | tee -a $GITHUB_ENV
           echo "TEST_YUM=0" | tee -a $GITHUB_ENV
       - name: Verify
-        shell: bash
         env:
           CI: "false"
           REPOSITORY: ${{ github.repository }}
@@ -91,7 +94,6 @@ jobs:
           miniforge-version: latest
           use-mamba: true
       - name: Work around ASAN issue (GH-1617)
-        shell: bash -l {0}
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28

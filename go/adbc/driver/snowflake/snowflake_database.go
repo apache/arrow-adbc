@@ -93,7 +93,7 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 	case OptionApplicationName:
 		return d.cfg.Application, nil
 	case OptionSSLSkipVerify:
-		if d.cfg.InsecureMode {
+		if d.cfg.DisableOCSPChecks {
 			return adbc.OptionValueEnabled, nil
 		}
 		return adbc.OptionValueDisabled, nil
@@ -260,9 +260,9 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		case OptionSSLSkipVerify:
 			switch v {
 			case adbc.OptionValueEnabled:
-				d.cfg.InsecureMode = true
+				d.cfg.DisableOCSPChecks = true
 			case adbc.OptionValueDisabled:
-				d.cfg.InsecureMode = false
+				d.cfg.DisableOCSPChecks = false
 			default:
 				return adbc.Error{
 					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),

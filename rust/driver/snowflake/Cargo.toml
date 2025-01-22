@@ -20,15 +20,15 @@ name = "adbc_snowflake"
 description = "Snowflake Arrow Database Connectivity (ADBC) driver"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
+readme.workspace = true
+documentation = "http://docs.rs/adbc_snowflake/"
 homepage.workspace = true
 repository.workspace = true
-rust-version.workspace = true
 keywords.workspace = true
 categories.workspace = true
-documentation = "http://docs.rs/adbc_snowflake/"
-readme = "README.md"
 
 [features]
 default = ["bundled", "env", "dotenv"]
@@ -47,7 +47,7 @@ arrow-array.workspace = true
 arrow-schema.workspace = true
 dotenvy = { version = "0.15.7", default-features = false, optional = true }
 regex = { version = "1.11.1", default-features = false, optional = true }
-url = "2.5.3"
+url = "2.5.4"
 
 [dev-dependencies]
-test-with = { version = "0.14.4", default-features = false }
+test-with = { version = "0.14.7", default-features = false }

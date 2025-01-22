@@ -38,18 +38,10 @@ permissions:
 
 defaults:
   run:
-    shell: bash
-    working-directory: rust
+    shell: bash -l -eo pipefail {0}
 
 jobs:
-  native-unix:
-    uses: ./.github/workflows/native-unix.yml
-    permissions:
-      contents: read
-      id-token: write
-
   rust:
-    needs: [native-unix]
     strategy:
       matrix:
         # TODO(alexandreyc): add `windows-latest`
@@ -72,7 +64,7 @@ jobs:
           rustup default stable
       - name: Get required Go version
         run: |
-          (. ../.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
+          (. ./.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - uses: actions/setup-go@v5
         with:
           go-version: "${{ env.GO_VERSION }}"
@@ -91,39 +83,63 @@ jobs:
           curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-universal_binary.zip" -o protoc.zip
           unzip "protoc.zip" -d $HOME/.local
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - uses: actions/download-artifact@v4
-        with:
-          name: driver-manager-${{ matrix.os }}
-          path: "~"
-      - name: Untar artifacts
-        shell: bash -l {0}
+      - name: Install sqlite3
+        if: runner.os == 'Linux'
+        run: sudo apt-get install libsqlite3-dev
+      - name: Build C++/Go drivers
         run: |
-          cd
-          mkdir -p ${{ github.workspace }}/build
-          tar xvf ~/local.tgz -C ${{ github.workspace }}/build --strip-components=1
+          mkdir -p build
+          mkdir -p local
+          pushd build
+          cmake \
+            -DADBC_BUILD_TESTS=OFF \
+            -DADBC_DRIVER_BIGQUERY=ON \
+            -DADBC_DRIVER_FLIGHTSQL=ON \
+            -DADBC_DRIVER_MANAGER=ON \
+            -DADBC_DRIVER_SQLITE=ON \
+            -DADBC_DRIVER_SNOWFLAKE=ON \
+            -DADBC_USE_ASAN=OFF \
+            -DADBC_USE_UBSAN=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=../local \
+            ../c
+          cmake --build . --target install
+          popd
       - name: Set dynamic linker path
         if: matrix.os == 'ubuntu-latest'
         run: |
-          echo "LD_LIBRARY_PATH=${{ github.workspace }}/build/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=${{ github.workspace }}/local/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
       - name: Set dynamic linker path
         if: matrix.os == 'macos-latest'
         run: |
-          echo "DYLD_LIBRARY_PATH=/opt/homebrew/opt/sqlite/lib:${{ github.workspace }}/build/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          echo "DYLD_LIBRARY_PATH=/opt/homebrew/opt/sqlite/lib:${{ github.workspace }}/local/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
       - name: Set dynamic linker path
         if: matrix.os == 'macos-13'
         run: |
-          echo "DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib:${{ github.workspace }}/build/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          echo "DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib:${{ github.workspace }}/local/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
       - name: Set search dir for Snowflake Go lib
-        run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/build/lib" >> "$GITHUB_ENV"
+        run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -Dwarnings
+        run: |
+          pushd rust
+          cargo clippy --workspace --all-targets --all-features -- -Dwarnings
+          popd
       - name: Test
-        run: cargo test --workspace --all-targets --all-features
+        run: |
+          pushd rust
+          cargo test --workspace --all-targets --all-features
+          popd
         # env:
         # ADBC_SNOWFLAKE_TESTS: 1
         # ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         # ADBC_SNOWFLAKE_SQL_DB: ADBC_TESTING
       - name: Doctests
-        run: cargo test --workspace --doc --all-features
+        run: |
+          pushd rust
+          cargo test --workspace --doc --all-features
+          popd
       - name: Check docs
-        run: cargo doc --workspace --all-features
+        run: |
+          pushd rust
+          cargo doc --workspace --all-features
+          popd

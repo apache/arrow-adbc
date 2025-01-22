@@ -36,6 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string IncludeConstraintsWithGetObjects = "adbc.bigquery.include_constraints_getobjects";
         public const string GetQueryResultsOptionsTimeoutMinutes = "adbc.bigquery.get_query_results_options.timeout";
         public const string MaxFetchConcurrency = "adbc.bigquery.max_fetch_concurrency";
+        public const string IncludePublicProjectId = "adbc.bigquery.include_public_project_id";
     }
 
     /// <summary>
@@ -47,5 +48,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string ServiceAccountAuthenticationType = "service";
         public const string TokenEndpoint = "https://accounts.google.com/o/oauth2/token";
         public const string TreatLargeDecimalAsString = "true";
+
+        // default value per https://pkg.go.dev/cloud.google.com/go/bigquery#section-readme
+        public const string DetectProjectId = "*detect-project-id*";
     }
 }
