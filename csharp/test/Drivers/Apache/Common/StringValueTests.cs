@@ -54,7 +54,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         [InlineData("")]
         [InlineData("你好")]
         [InlineData(" Leading and trailing spaces ")]
-        protected virtual async Task TestStringData(string? value)
+        protected async Task TestStringData(string? value)
         {
             string columnName = "STRINGTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "STRING"));
@@ -73,7 +73,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         [InlineData("")]
         [InlineData("你好")]
         [InlineData(" Leading and trailing spaces ")]
-        protected virtual async Task TestVarcharData(string? value)
+        protected async Task TestVarcharData(string? value)
         {
             string columnName = "VARCHARTYPE";
             string typeName = "VARCHAR(100)";
@@ -88,10 +88,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// <summary>
         /// Validates if driver can send and receive specific VARCHAR values correctly.
         /// </summary>
-        [SkippableTheory]
-        [InlineData(null)]
-        [InlineData("")]
-        [InlineData(" Leading and trailing spaces ")]
         internal virtual async Task TestCharData(string? value)
         {
             string columnName = "CHARTYPE";

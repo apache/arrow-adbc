@@ -99,6 +99,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         [SkippableTheory]
+        [MemberData(nameof(TimestampBasicData), "TIMESTAMP")]
         [MemberData(nameof(TimestampExtendedData), "TIMESTAMP")]
         public override Task TestTimestampData(DateTimeOffset value, string columnType)
         {

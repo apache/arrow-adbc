@@ -221,13 +221,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// <summary>
         /// Validates if driver can handle floating point number type correctly
         /// </summary>
-        [SkippableTheory]
-        [InlineData(0)]
-        [InlineData(0.2)]
-        [InlineData(15e-03)]
-        [InlineData(1.234E+2)]
-        [InlineData(double.NegativeInfinity)]
-        [InlineData(double.PositiveInfinity)]
         public virtual async Task TestDoubleValuesInsertSelectDelete(double value)
         {
             string columnName = "DOUBLETYPE";
@@ -242,18 +235,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// <summary>
         /// Validates if driver can handle floating point number type correctly
         /// </summary>
-        [SkippableTheory]
-        [InlineData(0)]
-        [InlineData(25)]
-        [InlineData(float.NegativeInfinity)]
-        [InlineData(float.PositiveInfinity)]
-        // TODO: Solve server issue when non-integer float value is used in where clause.
-        //[InlineData(25.1)]
-        //[InlineData(0.2)]
-        //[InlineData(15e-03)]
-        //[InlineData(1.234E+2)]
-        //[InlineData(float.MinValue)]
-        //[InlineData(float.MaxValue)]
         public virtual async Task TestFloatValuesInsertSelectDelete(float value)
         {
             string columnName = "FLOATTYPE";

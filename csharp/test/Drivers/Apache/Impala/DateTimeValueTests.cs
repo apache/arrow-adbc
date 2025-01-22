@@ -15,6 +15,9 @@
 * limitations under the License.
 */
 
+using System;
+using System.Threading.Tasks;
+using Xunit;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
@@ -24,6 +27,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
         public DateTimeValueTests(ITestOutputHelper output)
             : base(output, new ImpalaTestEnvironment.Factory())
         { }
+
+        [SkippableTheory]
+        [MemberData(nameof(TimestampBasicData), "TIMESTAMP")]
+        public override Task TestTimestampData(DateTimeOffset value, string columnType)
+        {
+            return base.TestTimestampData(value, columnType);
+        }
 
         protected override string GetFormattedTimestampValue(string value)
         {

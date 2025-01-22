@@ -30,6 +30,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         [SkippableTheory]
+        [InlineData(null)]
+        [MemberData(nameof(AsciiArrayData), 0)]
+        [MemberData(nameof(AsciiArrayData), 2)]
+        [MemberData(nameof(AsciiArrayData), 1024)]
         [MemberData(nameof(ByteArrayData), 2)]
         [MemberData(nameof(ByteArrayData), 1024)]
         public override Task TestBinaryData(byte[]? value)
@@ -38,6 +42,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         [SkippableTheory]
+        [InlineData("NULL")]
+        [InlineData("CAST(NULL AS INT)")]
+        [InlineData("CAST(NULL AS BIGINT)")]
+        [InlineData("CAST(NULL AS SMALLINT)")]
+        [InlineData("CAST(NULL AS TINYINT)")]
+        [InlineData("CAST(NULL AS FLOAT)")]
+        [InlineData("CAST(NULL AS DOUBLE)")]
+        [InlineData("CAST(NULL AS DECIMAL(38,0))")]
+        [InlineData("CAST(NULL AS STRING)")]
+        [InlineData("CAST(NULL AS VARCHAR(10))")]
+        [InlineData("CAST(NULL AS CHAR(10))")]
+        [InlineData("CAST(NULL AS BOOLEAN)")]
+        [InlineData("CAST(NULL AS BINARY)")]
         [InlineData("CAST(NULL AS MAP<STRING, INT>)")]
         [InlineData("CAST(NULL AS STRUCT<NAME: STRING>)")]
         [InlineData("CAST(NULL AS ARRAY<INT>)")]

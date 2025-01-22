@@ -42,6 +42,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         [SkippableTheory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" Leading and trailing spaces ")]
         [InlineData("你好")]
         internal override async Task TestCharData(string? value)
         {

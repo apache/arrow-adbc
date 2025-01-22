@@ -16,6 +16,8 @@
 */
 
 using System.Text;
+using System.Threading.Tasks;
+using Xunit;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
@@ -25,6 +27,35 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
         public BinaryBooleanValueTests(ITestOutputHelper output)
             : base(output, new ImpalaTestEnvironment.Factory())
         {
+        }
+
+        [SkippableTheory]
+        [InlineData(null)]
+        [MemberData(nameof(AsciiArrayData), 0)]
+        [MemberData(nameof(AsciiArrayData), 2)]
+        [MemberData(nameof(AsciiArrayData), 1024)]
+        public override Task TestBinaryData(byte[]? value)
+        {
+            return base.TestBinaryData(value);
+        }
+
+        [SkippableTheory]
+        [InlineData("NULL")]
+        [InlineData("CAST(NULL AS INT)")]
+        [InlineData("CAST(NULL AS BIGINT)")]
+        [InlineData("CAST(NULL AS SMALLINT)")]
+        [InlineData("CAST(NULL AS TINYINT)")]
+        [InlineData("CAST(NULL AS FLOAT)")]
+        [InlineData("CAST(NULL AS DOUBLE)")]
+        [InlineData("CAST(NULL AS DECIMAL(38,0))")]
+        [InlineData("CAST(NULL AS STRING)")]
+        [InlineData("CAST(NULL AS VARCHAR(10))")]
+        [InlineData("CAST(NULL AS CHAR(10))")]
+        [InlineData("CAST(NULL AS BOOLEAN)")]
+        [InlineData("CAST(NULL AS BINARY)")]
+        public override Task TestNullData(string projectionClause)
+        {
+            return base.TestNullData(projectionClause);
         }
 
         protected override string? GetFormattedBinaryValue(byte[]? value)

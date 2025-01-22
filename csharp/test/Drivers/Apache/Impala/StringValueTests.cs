@@ -30,5 +30,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
         {
             await base.TestVarcharExceptionData(value, expectedTexts, expectedSqlState);
         }
+
+        [SkippableTheory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" Leading and trailing spaces ")]
+        internal override Task TestCharData(string? value)
+        {
+            return base.TestCharData(value);
+        }
     }
 }

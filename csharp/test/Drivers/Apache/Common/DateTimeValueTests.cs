@@ -61,8 +61,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// <summary>
         /// Validates if driver can send and receive specific Timstamp values correctly
         /// </summary>
-        [SkippableTheory]
-        [MemberData(nameof(TimestampBasicData), "TIMESTAMP")]
         public virtual async Task TestTimestampData(DateTimeOffset value, string columnType)
         {
             string columnName = "TIMESTAMPTYPE";
