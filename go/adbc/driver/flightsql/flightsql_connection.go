@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"strconv"
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -58,90 +57,63 @@ type connectionImpl struct {
 	supportInfo support
 }
 
-func stringMetadataHandler(xdbc_key string, flight_key string) func(arrow.Field, array.Builder) {
-	return func(column arrow.Field, builder array.Builder) {
-		if column.HasMetadata() {
-			md := column.Metadata
-			b := builder.(*array.StringBuilder)
-			if typeName, ok := md.GetValue(flight_key); ok {
-				b.Append(typeName)
-			} else if typeName, ok = md.GetValue(xdbc_key); ok {
-				b.Append(typeName)
-			} else {
-				b.AppendNull()
-			}
-		} else {
-			builder.AppendNull()
-		}
+type flightSqlMetadata struct {
+	internal.DefaultXdbcMetadataBuilder
+}
+
+func (md *flightSqlMetadata) SetXdbcScopeCatalog(b *array.StringBuilder) {
+	f := &flightsql.ColumnMetadata{Data: md.Metadata()}
+	if v, ok := f.CatalogName(); ok {
+		b.Append(v)
+	} else {
+		md.DefaultXdbcMetadataBuilder.SetXdbcScopeCatalog(b)
 	}
 }
 
-func typeMetadataHandler(xdbc_key string) func(arrow.Field, array.Builder) {
-	return func(column arrow.Field, builder array.Builder) {
-		var err error
-		if column.HasMetadata() {
-			md := column.Metadata
-			b := builder.(*array.Int16Builder)
-			var sqlDataTypeId64 int64
-			if strSqlDataTypeId, ok := md.GetValue(xdbc_key); ok {
-				if sqlDataTypeId64, err = strconv.ParseInt(strSqlDataTypeId, 10, 16); err == nil {
-					b.Append(int16(sqlDataTypeId64))
-				} else {
-					b.AppendNull()
-				}
-			} else {
-				b.Append(int16(internal.ToXdbcDataType(column.Type)))
-			}
-		} else {
-			builder.AppendNull()
-		}
-	}
-}
-func booleanMetadataHandler(xdbc_key string, flight_key string) func(arrow.Field, array.Builder) {
-	return func(column arrow.Field, builder array.Builder) {
-		if column.HasMetadata() {
-			md := column.Metadata
-			b := builder.(*array.BooleanBuilder)
-			if typeName, ok := md.GetValue(flight_key); ok {
-				if parsed, err := strconv.ParseBool(typeName); err == nil {
-					b.Append(parsed)
-				} else {
-					b.AppendNull()
-				}
-			} else if typeName, ok = md.GetValue(xdbc_key); ok {
-				if parsed, err := strconv.ParseBool(typeName); err == nil {
-					b.Append(parsed)
-				} else {
-					b.AppendNull()
-				}
-			} else {
-				b.AppendNull()
-			}
-		} else {
-			builder.AppendNull()
-		}
+func (md *flightSqlMetadata) SetXdbcScopeSchema(b *array.StringBuilder) {
+	f := &flightsql.ColumnMetadata{Data: md.Metadata()}
+	if v, ok := f.SchemaName(); ok {
+		b.Append(v)
+	} else {
+		md.DefaultXdbcMetadataBuilder.SetXdbcScopeSchema(b)
 	}
 }
 
-func initMetadataHandlersOverrides() internal.MetadataToHandlers {
-	metadataHandlers := make(internal.MetadataToHandlers)
-	metadataHandlers[internal.XDBC_IS_AUTOINCREMENT] = booleanMetadataHandler(internal.XDBC_IS_AUTOINCREMENT, flightsql.IsAutoIncrementKey)
+func (md *flightSqlMetadata) SetXdbcScopeTable(b *array.StringBuilder) {
+	f := &flightsql.ColumnMetadata{Data: md.Metadata()}
+	if v, ok := f.TableName(); ok {
+		b.Append(v)
+	} else {
+		md.DefaultXdbcMetadataBuilder.SetXdbcScopeTable(b)
+	}
+}
 
-	metadataHandlers[internal.XDBC_SQL_DATA_TYPE] = typeMetadataHandler(internal.XDBC_SQL_DATA_TYPE)
-	metadataHandlers[internal.XDBC_DATA_TYPE] = typeMetadataHandler(internal.XDBC_DATA_TYPE)
+func (md *flightSqlMetadata) SetXdbcSqlDataType(columnType arrow.DataType, b *array.Int16Builder) {
+	b.Append(int16(internal.ToXdbcDataType(columnType)))
+}
 
-	metadataHandlers[internal.XDBC_TYPE_NAME] = stringMetadataHandler(internal.XDBC_TYPE_NAME, flightsql.TypeNameKey)
-	metadataHandlers[internal.XDBC_SCOPE_CATALOG] = stringMetadataHandler(internal.XDBC_SCOPE_CATALOG, flightsql.CatalogNameKey)
-	metadataHandlers[internal.XDBC_SCOPE_SCHEMA] = stringMetadataHandler(internal.XDBC_SCOPE_SCHEMA, flightsql.SchemaNameKey)
-	metadataHandlers[internal.XDBC_SCOPE_TABLE] = stringMetadataHandler(internal.XDBC_SCOPE_TABLE, flightsql.TableNameKey)
+func (md *flightSqlMetadata) SetXdbcTypeName(b *array.StringBuilder) {
+	f := &flightsql.ColumnMetadata{Data: md.Metadata()}
+	if v, ok := f.TypeName(); ok {
+		b.Append(v)
+	} else {
+		md.DefaultXdbcMetadataBuilder.SetXdbcTypeName(b)
+	}
+}
 
-	return metadataHandlers
+func (md *flightSqlMetadata) SetXdbcIsAutoincrement(builder *array.BooleanBuilder) {
+	f := &flightsql.ColumnMetadata{Data: md.Metadata()}
+	if v, ok := f.IsAutoIncrement(); ok {
+		builder.Append(v)
+	} else {
+		md.DefaultXdbcMetadataBuilder.SetXdbcIsAutoincrement(builder)
+	}
 }
 
 func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
 	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
-	if err := g.Init(c.Base().Alloc, c.GetObjectsDbSchemas, c.GetObjectsTables, initMetadataHandlersOverrides()); err != nil {
+	if err := g.Init(c.Base().Alloc, c.GetObjectsDbSchemas, c.GetObjectsTables, &flightSqlMetadata{}); err != nil {
 		return nil, err
 	}
 	defer g.Release()
