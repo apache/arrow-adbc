@@ -786,7 +786,7 @@ func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string
 }
 
 // Helper function to build up a map of catalogs to DB schemas
-func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, metadataRecords []internal.Metadata) (result map[string][]string, err error) {
+func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string) (result map[string][]string, err error) {
 	if depth == adbc.ObjectDepthCatalogs {
 		return
 	}
@@ -828,7 +828,7 @@ func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.Obj
 	return
 }
 
-func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string, metadataRecords []internal.Metadata) (result internal.SchemaToTableInfo, err error) {
+func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (result internal.SchemaToTableInfo, err error) {
 	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
 		return
 	}
