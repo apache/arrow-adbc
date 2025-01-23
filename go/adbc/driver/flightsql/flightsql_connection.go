@@ -59,11 +59,15 @@ type connectionImpl struct {
 
 type flightSqlMetadata struct {
 	internal.DefaultXdbcMetadataBuilder
+	columnMetadata *flightsql.ColumnMetadata
+}
+
+func (md *flightSqlMetadata) SetMetadata(metadata arrow.Metadata) {
+	md.columnMetadata = &flightsql.ColumnMetadata{Data: &metadata}
 }
 
 func (md *flightSqlMetadata) SetXdbcScopeCatalog(b *array.StringBuilder) {
-	f := &flightsql.ColumnMetadata{Data: md.Metadata()}
-	if v, ok := f.CatalogName(); ok {
+	if v, ok := md.columnMetadata.CatalogName(); ok {
 		b.Append(v)
 	} else {
 		md.DefaultXdbcMetadataBuilder.SetXdbcScopeCatalog(b)
@@ -71,8 +75,7 @@ func (md *flightSqlMetadata) SetXdbcScopeCatalog(b *array.StringBuilder) {
 }
 
 func (md *flightSqlMetadata) SetXdbcScopeSchema(b *array.StringBuilder) {
-	f := &flightsql.ColumnMetadata{Data: md.Metadata()}
-	if v, ok := f.SchemaName(); ok {
+	if v, ok := md.columnMetadata.SchemaName(); ok {
 		b.Append(v)
 	} else {
 		md.DefaultXdbcMetadataBuilder.SetXdbcScopeSchema(b)
@@ -80,8 +83,7 @@ func (md *flightSqlMetadata) SetXdbcScopeSchema(b *array.StringBuilder) {
 }
 
 func (md *flightSqlMetadata) SetXdbcScopeTable(b *array.StringBuilder) {
-	f := &flightsql.ColumnMetadata{Data: md.Metadata()}
-	if v, ok := f.TableName(); ok {
+	if v, ok := md.columnMetadata.TableName(); ok {
 		b.Append(v)
 	} else {
 		md.DefaultXdbcMetadataBuilder.SetXdbcScopeTable(b)
@@ -93,8 +95,7 @@ func (md *flightSqlMetadata) SetXdbcSqlDataType(columnType arrow.DataType, b *ar
 }
 
 func (md *flightSqlMetadata) SetXdbcTypeName(b *array.StringBuilder) {
-	f := &flightsql.ColumnMetadata{Data: md.Metadata()}
-	if v, ok := f.TypeName(); ok {
+	if v, ok := md.columnMetadata.TypeName(); ok {
 		b.Append(v)
 	} else {
 		md.DefaultXdbcMetadataBuilder.SetXdbcTypeName(b)
@@ -102,8 +103,7 @@ func (md *flightSqlMetadata) SetXdbcTypeName(b *array.StringBuilder) {
 }
 
 func (md *flightSqlMetadata) SetXdbcIsAutoincrement(builder *array.BooleanBuilder) {
-	f := &flightsql.ColumnMetadata{Data: md.Metadata()}
-	if v, ok := f.IsAutoIncrement(); ok {
+	if v, ok := md.columnMetadata.IsAutoIncrement(); ok {
 		builder.Append(v)
 	} else {
 		md.DefaultXdbcMetadataBuilder.SetXdbcIsAutoincrement(builder)

@@ -378,7 +378,7 @@ func (g *GetObjects) appendColumnsInfo(tableInfo TableInfo) {
 			continue
 		}
 
-		g.metadataHandler.setMetadata(column.Metadata)
+		g.metadataHandler.SetMetadata(column.Metadata)
 
 		pos := int32(colIndex + 1)
 
@@ -408,7 +408,7 @@ func (g *GetObjects) appendColumnsInfo(tableInfo TableInfo) {
 
 type XdbcMetadataBuilder interface {
 	Metadata() *arrow.Metadata
-	setMetadata(md arrow.Metadata)
+	SetMetadata(md arrow.Metadata)
 	SetOrdinalPosition(defaultPos int32, b *array.Int32Builder)
 	SetRemarks(b *array.StringBuilder)
 	SetXdbcDataType(defaultType arrow.DataType, b *array.Int16Builder)
@@ -437,7 +437,7 @@ func (c *DefaultXdbcMetadataBuilder) Metadata() *arrow.Metadata {
 	return c.Data
 }
 
-func (c *DefaultXdbcMetadataBuilder) setMetadata(md arrow.Metadata) {
+func (c *DefaultXdbcMetadataBuilder) SetMetadata(md arrow.Metadata) {
 	c.Data = &md
 }
 
