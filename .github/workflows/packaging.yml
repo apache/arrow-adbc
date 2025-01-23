@@ -300,6 +300,7 @@ jobs:
           - almalinux-9
           - debian-bookworm
           - ubuntu-jammy
+          - ubuntu-noble
     steps:
       - uses: actions/download-artifact@v4
         with:
