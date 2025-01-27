@@ -553,23 +553,21 @@ jobs:
           ./adbc/ci/scripts/python_conda_test.sh $(pwd)/adbc $(pwd)/adbc/build
 
   python-manylinux:
-    name: "Python ${{ matrix.arch }} manylinux${{ matrix.manylinux_version }}"
-    runs-on: ubuntu-latest
+    name: "Python ${{ matrix.arch }} manylinux"
+    runs-on: ${{ matrix.runs_on }}
     needs:
       - source
     strategy:
       fail-fast: false
       matrix:
         arch: ["amd64", "arm64v8"]
-        is_pr:
-          - ${{ startsWith(github.ref, 'refs/pull/') }}
-        exclude:
-          # Don't run arm64v8 build on PRs since the build is excessively slow
-          - arch: arm64v8
-            is_pr: true
         include:
-          - {arch: amd64, platform: linux/amd64}
-          - {arch: arm64v8, platform: linux/arm64/v8}
+          - arch: amd64
+            platform: "linux/amd64"
+            runs_on: "ubuntu-latest"
+          - arch: arm64v8
+            platform: "linux/arm64/v8"
+            runs_on: "ubuntu-24.04-arm"
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -593,9 +591,6 @@ jobs:
           echo "upload_artifacts: ${{ github.event.inputs.upload_artifacts }}" >> $GITHUB_STEP_SUMMARY
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Build wheel
         env:
@@ -656,6 +651,14 @@ jobs:
         run: |
           pushd adbc
           env PYTHON=3.12 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.13
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          pushd adbc
+          env PYTHON=3.13 docker compose run python-wheel-manylinux-test
 
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
@@ -738,6 +741,7 @@ jobs:
           sudo ci/scripts/install_python.sh macos 3.10
           sudo ci/scripts/install_python.sh macos 3.11
           sudo ci/scripts/install_python.sh macos 3.12
+          sudo ci/scripts/install_python.sh macos 3.13
           popd
 
       - name: Build wheel
@@ -802,6 +806,16 @@ jobs:
           /Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12 -m venv test-env-312
           source test-env-312/bin/activate
           export PYTHON_VERSION=3.12
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
+      - name: Test wheel 3.13
+        run: |
+          pushd adbc
+
+          /Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13 -m venv test-env-313
+          source test-env-313/bin/activate
+          export PYTHON_VERSION=3.13
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
