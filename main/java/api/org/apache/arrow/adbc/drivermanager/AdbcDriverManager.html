@@ -96,7 +96,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../core/AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#connect(java.lang.String,org.apache.arrow.memory.BufferAllocator,java.util.Map)" class="member-name-link">connect</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;driverFactoryName,
- org.apache.arrow.memory.BufferAllocator&nbsp;allocator,
+ <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.memory.core/org/apache/arrow/memory/BufferAllocator.html" title="class or interface in org.apache.arrow.memory" class="external-link">BufferAllocator</a>&nbsp;allocator,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;&nbsp;parameters)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Connect to a database.</div>
@@ -106,7 +106,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#registerDriver(java.lang.String,java.util.function.Function)" class="member-name-link">registerDriver</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;driverFactoryName,
- <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;org.apache.arrow.memory.BufferAllocator,<wbr><a href="../core/AdbcDriver.html" title="interface in org.apache.arrow.adbc.core">AdbcDriver</a>&gt;&nbsp;driverFactory)</code></div>
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.memory.core/org/apache/arrow/memory/BufferAllocator.html" title="class or interface in org.apache.arrow.memory" class="external-link">BufferAllocator</a>,<wbr><a href="../core/AdbcDriver.html" title="interface in org.apache.arrow.adbc.core">AdbcDriver</a>&gt;&nbsp;driverFactory)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Register a driver manually.</div>
 </div>
@@ -131,7 +131,7 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="connect(java.lang.String,org.apache.arrow.memory.BufferAllocator,java.util.Map)">
 <h3>connect</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../core/AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></span>&nbsp;<span class="element-name">connect</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;driverFactoryName,
- org.apache.arrow.memory.BufferAllocator&nbsp;allocator,
+ <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.memory.core/org/apache/arrow/memory/BufferAllocator.html" title="class or interface in org.apache.arrow.memory" class="external-link">BufferAllocator</a>&nbsp;allocator,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;&nbsp;parameters)</span>
                      throws <span class="exceptions"><a href="../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
 <div class="block">Connect to a database.</div>
@@ -151,7 +151,7 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="registerDriver(java.lang.String,java.util.function.Function)">
 <h3>registerDriver</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">registerDriver</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;driverFactoryName,
- <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;org.apache.arrow.memory.BufferAllocator,<wbr><a href="../core/AdbcDriver.html" title="interface in org.apache.arrow.adbc.core">AdbcDriver</a>&gt;&nbsp;driverFactory)</span></div>
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/function/Function.html" title="class or interface in java.util.function" class="external-link">Function</a>&lt;<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.memory.core/org/apache/arrow/memory/BufferAllocator.html" title="class or interface in org.apache.arrow.memory" class="external-link">BufferAllocator</a>,<wbr><a href="../core/AdbcDriver.html" title="interface in org.apache.arrow.adbc.core">AdbcDriver</a>&gt;&nbsp;driverFactory)</span></div>
 <div class="block">Register a driver manually.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
