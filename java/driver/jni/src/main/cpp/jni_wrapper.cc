@@ -67,7 +67,7 @@ jclass RequireImplClass(JNIEnv* env, std::string_view name) {
   if (klass == nullptr) {
     throw AdbcException{
         .code = ADBC_STATUS_INTERNAL,
-        .message = "[JNI] Could not find class" + full_name,
+        .message = "[JNI] Could not find class " + full_name,
     };
   }
   return klass;
@@ -169,18 +169,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openDatabase(
 
     CHECK_ADBC_ERROR(AdbcDatabaseInit(db.get(), &error), error);
 
-    jclass nativeHandleTypeKlass = RequireImplClass(env, "NativeHandleType");
-    jfieldID typeId =
-        env->GetStaticFieldID(nativeHandleTypeKlass, "DATABASE",
-                              "Lorg/apache/arrow/adbc/driver/jni/impl/NativeHandleType;");
-    jobject handleType = env->GetStaticObjectField(nativeHandleTypeKlass, typeId);
-
-    jclass nativeHandleKlass = RequireImplClass(env, "NativeHandle");
-    jmethodID nativeHandleCtor =
-        RequireMethod(env, nativeHandleKlass, "<init>",
-                      "(Lorg/apache/arrow/adbc/driver/jni/impl/NativeHandleType;J)V");
+    jclass nativeHandleKlass = RequireImplClass(env, "NativeDatabaseHandle");
+    jmethodID nativeHandleCtor = RequireMethod(env, nativeHandleKlass, "<init>", "(J)V");
     jobject object =
-        env->NewObject(nativeHandleKlass, nativeHandleCtor, handleType,
+        env->NewObject(nativeHandleKlass, nativeHandleCtor,
                        static_cast<jlong>(reinterpret_cast<uintptr_t>(db.get())));
     // Don't release until after we've constructed the object
     db.release();
@@ -218,18 +210,11 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openConnection(
     CHECK_ADBC_ERROR(AdbcConnectionNew(conn.get(), &error), error);
     CHECK_ADBC_ERROR(AdbcConnectionInit(conn.get(), db, &error), error);
 
-    jclass native_handle_class = RequireImplClass(env, "NativeHandle");
-    jclass native_handle_type_class = RequireImplClass(env, "NativeHandleType");
-    jfieldID type_id =
-        env->GetStaticFieldID(native_handle_type_class, "CONNECTION",
-                              "Lorg/apache/arrow/adbc/driver/jni/impl/NativeHandleType;");
-    jobject handle_type = env->GetStaticObjectField(native_handle_type_class, type_id);
-
+    jclass native_handle_class = RequireImplClass(env, "NativeConnectionHandle");
     jmethodID native_handle_ctor =
-        RequireMethod(env, native_handle_class, "<init>",
-                      "(Lorg/apache/arrow/adbc/driver/jni/impl/NativeHandleType;J)V");
+        RequireMethod(env, native_handle_class, "<init>", "(J)V");
     jobject object =
-        env->NewObject(native_handle_class, native_handle_ctor, handle_type,
+        env->NewObject(native_handle_class, native_handle_ctor,
                        static_cast<jlong>(reinterpret_cast<uintptr_t>(conn.get())));
     // Don't release until after we've constructed the object
     conn.release();
@@ -266,18 +251,11 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openStatement(
 
     CHECK_ADBC_ERROR(AdbcStatementNew(conn, stmt.get(), &error), error);
 
-    jclass native_handle_class = RequireImplClass(env, "NativeHandle");
-    jclass native_handle_type_class = RequireImplClass(env, "NativeHandleType");
-    jfieldID type_id =
-        env->GetStaticFieldID(native_handle_type_class, "STATEMENT",
-                              "Lorg/apache/arrow/adbc/driver/jni/impl/NativeHandleType;");
-    jobject handle_type = env->GetStaticObjectField(native_handle_type_class, type_id);
-
+    jclass native_handle_class = RequireImplClass(env, "NativeStatementHandle");
     jmethodID native_handle_ctor =
-        RequireMethod(env, native_handle_class, "<init>",
-                      "(Lorg/apache/arrow/adbc/driver/jni/impl/NativeHandleType;J)V");
+        RequireMethod(env, native_handle_class, "<init>", "(J)V");
     jobject object =
-        env->NewObject(native_handle_class, native_handle_ctor, handle_type,
+        env->NewObject(native_handle_class, native_handle_ctor,
                        static_cast<jlong>(reinterpret_cast<uintptr_t>(stmt.get())));
     // Don't release until after we've constructed the object
     stmt.release();
