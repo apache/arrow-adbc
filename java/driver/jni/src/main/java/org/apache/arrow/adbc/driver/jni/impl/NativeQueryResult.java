@@ -18,11 +18,19 @@
 package org.apache.arrow.adbc.driver.jni.impl;
 
 public class NativeQueryResult {
-  public final long rowsAffected;
-  public final long cDataStream;
+  private final long rowsAffected;
+  private final long cDataStream;
 
   public NativeQueryResult(long rowsAffected, long cDataStream) {
     this.rowsAffected = rowsAffected;
     this.cDataStream = cDataStream;
+  }
+
+  public long rowsAffected() {
+    return rowsAffected;
+  }
+
+  public long cDataStream() {
+    return cDataStream;
   }
 }
