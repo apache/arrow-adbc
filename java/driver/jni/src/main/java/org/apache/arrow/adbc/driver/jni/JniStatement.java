@@ -45,10 +45,10 @@ public class JniStatement implements AdbcStatement {
     NativeQueryResult result = JniLoader.INSTANCE.statementExecuteQuery(handle);
     // TODO: need to handle result in such a way that we free it even if we error here
     ArrowReader reader;
-    try (final ArrowArrayStream cStream = ArrowArrayStream.wrap(result.cDataStream)) {
+    try (final ArrowArrayStream cStream = ArrowArrayStream.wrap(result.cDataStream())) {
       reader = org.apache.arrow.c.Data.importArrayStream(allocator, cStream);
     }
-    return new QueryResult(result.rowsAffected, reader);
+    return new QueryResult(result.rowsAffected(), reader);
   }
 
   @Override
