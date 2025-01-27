@@ -239,10 +239,9 @@
         <configuration>
           <!-- Ignore missing @return, @throws -->
           <doclint>all,-missing</doclint>
-          <!-- TODO(apache/arrow-adbc#2454): upstream stopped building this -->
-          <!-- <links> -->
-          <!--   <link>https://arrow.apache.org/docs/java/reference/</link> -->
-          <!-- </links> -->
+          <links>
+            <link>https://arrow.apache.org/java/main/reference/</link>
+          </links>
           <!-- Stop it from trying to document the tests -->
           <show>public</show>
         </configuration>
