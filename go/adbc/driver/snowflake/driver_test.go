@@ -2253,3 +2253,44 @@ func TestJSONUnmarshal(t *testing.T) {
 		}
 	}
 }
+
+func (suite *SnowflakeTests) TestQueryTag() {
+	u, err := uuid.NewV7()
+	suite.Require().NoError(err)
+	tag := u.String()
+	suite.Require().NoError(suite.stmt.SetOption(driver.OptionStatementQueryTag, tag))
+
+	val, err := suite.stmt.(adbc.GetSetOptions).GetOption(driver.OptionStatementQueryTag)
+	suite.Require().NoError(err)
+	suite.Require().Equal(tag, val)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT 1"))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(1, n)
+	suite.True(rdr.Next())
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+
+	// Unset tag
+	suite.Require().NoError(suite.stmt.SetOption(driver.OptionStatementQueryTag, ""))
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf(`
+SELECT query_text
+FROM table(information_schema.query_history())
+WHERE query_tag = '%s'
+ORDER BY start_time;
+`, tag)))
+	rdr, n, err = suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(1, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+	suite.Require().Equal("SELECT 1", result.Column(0).(*array.String).Value(0))
+	suite.False(rdr.Next())
+	suite.Require().NoError(rdr.Err())
+}
