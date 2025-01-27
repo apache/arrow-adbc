@@ -26,7 +26,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 import java.util.Map;
 import org.apache.arrow.adbc.core.AdbcException;
-import org.apache.arrow.util.Preconditions;
 
 public enum JniLoader {
   INSTANCE;
@@ -74,7 +73,7 @@ public enum JniLoader {
       nativeParameters[index++] = parameter.getValue();
     }
     try {
-      return NativeAdbc.openDatabase(1001000, nativeParameters);
+      return (NativeDatabaseHandle) NativeAdbc.openDatabase(1001000, nativeParameters);
     } catch (NativeAdbcException e) {
       // TODO: convert to AdbcException
       throw new RuntimeException(e);
@@ -83,7 +82,7 @@ public enum JniLoader {
 
   public NativeConnectionHandle openConnection(NativeDatabaseHandle database) {
     try {
-      return NativeAdbc.openConnection(database.getDatabaseHandle());
+      return (NativeConnectionHandle) NativeAdbc.openConnection(database.getDatabaseHandle());
     } catch (NativeAdbcException e) {
       // TODO: convert to AdbcException
       throw new RuntimeException(e);
@@ -92,25 +91,27 @@ public enum JniLoader {
 
   public NativeStatementHandle openStatement(NativeConnectionHandle connection) {
     try {
-      return NativeAdbc.openStatement(connection.getHandle());
+      return (NativeStatementHandle) NativeAdbc.openStatement(connection.getConnectionHandle());
     } catch (NativeAdbcException e) {
       // TODO: convert to AdbcException
       throw new RuntimeException(e);
     }
   }
 
-  public NativeQueryResult statementExecuteQuery(NativeStatementHandle statement) throws AdbcException {
+  public NativeQueryResult statementExecuteQuery(NativeStatementHandle statement)
+      throws AdbcException {
     try {
-      return NativeAdbc.statementExecuteQuery(statement.getHandle());
+      return NativeAdbc.statementExecuteQuery(statement.getStatementHandle());
     } catch (NativeAdbcException e) {
       // TODO: convert to AdbcException
       throw new RuntimeException(e);
     }
   }
 
-  public void statementSetSqlQuery(NativeStatementHandle statement, String query) throws AdbcException {
+  public void statementSetSqlQuery(NativeStatementHandle statement, String query)
+      throws AdbcException {
     try {
-      NativeAdbc.statementSetSqlQuery(statement.getHandle(), query);
+      NativeAdbc.statementSetSqlQuery(statement.getStatementHandle(), query);
     } catch (NativeAdbcException e) {
       // TODO: convert to AdbcException
       throw new RuntimeException(e);

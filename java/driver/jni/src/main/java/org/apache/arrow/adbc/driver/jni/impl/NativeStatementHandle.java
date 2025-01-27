@@ -22,6 +22,10 @@ public class NativeStatementHandle extends NativeHandle {
     super(nativeHandle);
   }
 
+  long getStatementHandle() {
+    return state.nativeHandle;
+  }
+
   @Override
   Closer getCloseFunction() {
     return NativeAdbc::closeStatement;

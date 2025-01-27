@@ -20,17 +20,17 @@ package org.apache.arrow.adbc.driver.jni;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
-import org.apache.arrow.adbc.driver.jni.impl.NativeHandle;
 import org.apache.arrow.adbc.driver.jni.impl.NativeQueryResult;
+import org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle;
 import org.apache.arrow.c.ArrowArrayStream;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.ipc.ArrowReader;
 
 public class JniStatement implements AdbcStatement {
   private final BufferAllocator allocator;
-  private final NativeHandle handle;
+  private final NativeStatementHandle handle;
 
-  public JniStatement(BufferAllocator allocator, NativeHandle handle) {
+  public JniStatement(BufferAllocator allocator, NativeStatementHandle handle) {
     this.allocator = allocator;
     this.handle = handle;
   }

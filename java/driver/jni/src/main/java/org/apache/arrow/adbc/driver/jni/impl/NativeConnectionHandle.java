@@ -22,6 +22,10 @@ public class NativeConnectionHandle extends NativeHandle {
     super(nativeHandle);
   }
 
+  long getConnectionHandle() {
+    return state.nativeHandle;
+  }
+
   @Override
   Closer getCloseFunction() {
     return NativeAdbc::closeConnection;

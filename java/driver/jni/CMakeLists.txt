@@ -21,7 +21,6 @@ add_jar(adbc_driver_jni_jar
         SOURCES src/main/java/org/apache/arrow/adbc/driver/jni/impl/NativeAdbc.java
                 src/main/java/org/apache/arrow/adbc/driver/jni/impl/NativeAdbcException.java
                 src/main/java/org/apache/arrow/adbc/driver/jni/impl/NativeHandle.java
-                src/main/java/org/apache/arrow/adbc/driver/jni/impl/NativeHandleType.java
                 src/main/java/org/apache/arrow/adbc/driver/jni/impl/NativeQueryResult.java
                 GENERATE_NATIVE_HEADERS
                 adbc_driver_jni_headers)

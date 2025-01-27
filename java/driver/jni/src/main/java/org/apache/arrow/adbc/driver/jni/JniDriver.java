@@ -24,7 +24,7 @@ import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.TypedKey;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
-import org.apache.arrow.adbc.driver.jni.impl.NativeHandle;
+import org.apache.arrow.adbc.driver.jni.impl.NativeDatabaseHandle;
 import org.apache.arrow.memory.BufferAllocator;
 
 /** An ADBC driver wrapping Arrow Flight SQL. */
@@ -48,7 +48,7 @@ public class JniDriver implements AdbcDriver {
     Map<String, String> nativeParameters = new HashMap<>();
     nativeParameters.put("driver", driverName);
 
-    NativeHandle handle = JniLoader.INSTANCE.openDatabase(nativeParameters);
+    NativeDatabaseHandle handle = JniLoader.INSTANCE.openDatabase(nativeParameters);
     return new JniDatabase(allocator, handle);
   }
 }

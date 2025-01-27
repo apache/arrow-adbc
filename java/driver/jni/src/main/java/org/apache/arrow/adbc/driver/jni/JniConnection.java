@@ -21,16 +21,16 @@ import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
-import org.apache.arrow.adbc.driver.jni.impl.NativeHandle;
+import org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class JniConnection implements AdbcConnection {
   private final BufferAllocator allocator;
-  private final NativeHandle handle;
+  private final NativeConnectionHandle handle;
 
-  public JniConnection(BufferAllocator allocator, NativeHandle handle) {
+  public JniConnection(BufferAllocator allocator, NativeConnectionHandle handle) {
     this.allocator = allocator;
     this.handle = handle;
   }
